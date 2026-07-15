@@ -1,0 +1,17 @@
+{
+  "default": true,
+  "MD013": false,
+  "MD024": false,
+  "MD033": false,
+  "MD036": false,
+  "MD041": false,
+  "MD047": true,
+  "MD060": false,
+  "MD010": {
+    "code_blocks": false
+  },
+  "MD046": {
+    "style": "fenced"
+  },
+  "MD051": true
+}
