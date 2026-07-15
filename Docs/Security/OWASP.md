@@ -1,7 +1,7 @@
-# OWASP Top 10 Mitigations
+﻿# OWASP Top 10 Mitigations
 
-> **Purpose:** Define OWASP Top 10 mitigations for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define OWASP Top 10 mitigations for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
 
@@ -14,27 +14,27 @@ graph TD
     classDef med fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef low fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1px
 
-    subgraph Input["📥 Input Layer"]
+    subgraph Input["ðŸ“¥ Input Layer"]
         A1["A03: Injection<br/>Mitigation: Input validation<br/>Pydantic + class-validator"]:::crit
         A2["A08: Data Integrity<br/>Mitigation: Signed requests<br/>HMAC signatures"]:::med
     end
 
-    subgraph Auth["🔑 Auth Layer"]
+    subgraph Auth["ðŸ”‘ Auth Layer"]
         B1["A01: Broken Access Control<br/>Mitigation: Permission Engine<br/>Every endpoint checked"]:::crit
         B2["A07: Auth Failures<br/>Mitigation: Managed auth<br/>Clerk / Auth0"]:::high
     end
 
-    subgraph Crypto["🔒 Crypto Layer"]
+    subgraph Crypto["ðŸ”’ Crypto Layer"]
         C1["A02: Crypto Failures<br/>Mitigation: TLS 1.3 + AES-256<br/>Every service"]:::high
         C2["A06: Vulnerable Components<br/>Mitigation: Dependency scanning<br/>Dependabot / Snyk"]:::high
     end
 
-    subgraph Config["⚙️ Config Layer"]
+    subgraph Config["âš™ï¸ Config Layer"]
         D1["A04: Insecure Design<br/>Mitigation: Threat modeling<br/>Design phase review"]:::high
         D2["A05: Security Misconfiguration<br/>Mitigation: Infrastructure as Code<br/>CI/CD enforcement"]:::med
     end
 
-    subgraph Output["📤 Output Layer"]
+    subgraph Output["ðŸ“¤ Output Layer"]
         E1["A09: Logging Failures<br/>Mitigation: Structured logging<br/>OpenTelemetry + APM"]:::med
         E2["A10: SSRF<br/>Mitigation: Network policies<br/>Outbound restrictions"]:::low
     end
@@ -47,7 +47,7 @@ graph TD
     class E2 low
 ```
 
-> **Diagram:** OWASP Top 10 mitigations organized by security layer — **Input** (injection, integrity), **Auth** (access control, auth failures), **Crypto** (crypto failures, vulnerable components), **Config** (insecure design, misconfiguration), **Output** (logging, SSRF). Severity color-coded: red = critical, orange = high, green = medium, blue = low.
+> **Diagram:** OWASP Top 10 mitigations organized by security layer â€” **Input** (injection, integrity), **Auth** (access control, auth failures), **Crypto** (crypto failures, vulnerable components), **Config** (insecure design, misconfiguration), **Output** (logging, SSRF). Severity color-coded: red = critical, orange = high, green = medium, blue = low.
 
 ---
 
@@ -71,17 +71,17 @@ graph TD
 ### SQL Injection
 
 ```typescript
-// ❌ Never: String concatenation
+// âŒ Never: String concatenation
 db.query(`SELECT * FROM users WHERE id = '${userId}'`);
 
-// ✅ Always: Parameterized queries
+// âœ… Always: Parameterized queries
 db.query('SELECT * FROM users WHERE id = $1', [userId]);
 ```
 
 ### XSS Prevention
 
 ```tsx
-// React auto-escapes by default — don't use dangerouslySetInnerHTML
+// React auto-escapes by default â€” don't use dangerouslySetInnerHTML
 // If needed, sanitize with DOMPurify
 import DOMPurify from 'dompurify';
 <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userContent) }} />
@@ -97,53 +97,53 @@ import DOMPurify from 'dompurify';
 
 | Mistake | Consequence |
 |---------|-------------|
-| Only addressing OWASP Top 10 once at launch | OWASP Top 10 changes every few years (2021→2024), and new vulnerabilities emerge — treat OWASP as a living threat list, not a one-time audit. Update the mitigation map each year |
-| Mitigations documented but not tested in CI | A mitigation like "parameterized queries prevent SQL injection" is useless if the actual codebase has raw query builders — add SAST scanning (CodeQL, custom linters) to CI to detect OWASP violations automatically |
-| Dependency scanning without remediation SLAs | Dependabot alerts that are never acted on accumulate — set an SLA: critical vulnerabilities patched within 48 hours, high within 7 days, medium within 30 days |
+| Only addressing OWASP Top 10 once at launch | OWASP Top 10 changes every few years (2021â†’2024), and new vulnerabilities emerge â€” treat OWASP as a living threat list, not a one-time audit. Update the mitigation map each year |
+| Mitigations documented but not tested in CI | A mitigation like "parameterized queries prevent SQL injection" is useless if the actual codebase has raw query builders â€” add SAST scanning (CodeQL, custom linters) to CI to detect OWASP violations automatically |
+| Dependency scanning without remediation SLAs | Dependabot alerts that are never acted on accumulate â€” set an SLA: critical vulnerabilities patched within 48 hours, high within 7 days, medium within 30 days |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Integrate SAST and dependency scanning into CI/CD | OWASP vulnerabilities found in production are expensive to fix — catch injection flaws, insecure deserialization, and known vulnerable dependencies before they reach production |
-| Prioritize mitigations by exploitation likelihood and impact | Not all OWASP items carry equal risk for your architecture — SSRF is lower risk behind a VPC, while broken access control is critical in a multi-tenant SaaS. Risk-rank each item for your specific deployment |
-| Run OWASP-focused penetration tests annually | Automated scanning catches known patterns but misses logic flaws in custom authorization — supplement with manual pen testing focused on OWASP categories relevant to your architecture |
+| Integrate SAST and dependency scanning into CI/CD | OWASP vulnerabilities found in production are expensive to fix â€” catch injection flaws, insecure deserialization, and known vulnerable dependencies before they reach production |
+| Prioritize mitigations by exploitation likelihood and impact | Not all OWASP items carry equal risk for your architecture â€” SSRF is lower risk behind a VPC, while broken access control is critical in a multi-tenant SaaS. Risk-rank each item for your specific deployment |
+| Run OWASP-focused penetration tests annually | Automated scanning catches known patterns but misses logic flaws in custom authorization â€” supplement with manual pen testing focused on OWASP categories relevant to your architecture |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| SAST false positives causing alert fatigue | Too many false positives from automated scanning cause teams to ignore alerts — tune SAST rules to your tech stack and establish a triage process that distinguishes true vulnerabilities from noise |
-| Dependency chain attacks via transitive dependencies | A vulnerability in a transitive dependency (a library's library) can be invisible to direct scanning — use software composition analysis (SCA) that resolves the full dependency tree and flags transitive CVEs |
-| OWASP mitigation coverage gap during rapid prototyping | Fast-moving features may skip security review — apply a lightweight security review checklist for prototypes (auth check, input validation, output encoding) that takes 15 minutes, not days |
+| SAST false positives causing alert fatigue | Too many false positives from automated scanning cause teams to ignore alerts â€” tune SAST rules to your tech stack and establish a triage process that distinguishes true vulnerabilities from noise |
+| Dependency chain attacks via transitive dependencies | A vulnerability in a transitive dependency (a library's library) can be invisible to direct scanning â€” use software composition analysis (SCA) that resolves the full dependency tree and flags transitive CVEs |
+| OWASP mitigation coverage gap during rapid prototyping | Fast-moving features may skip security review â€” apply a lightweight security review checklist for prototypes (auth check, input validation, output encoding) that takes 15 minutes, not days |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| SAST scanning time slowing CI pipelines | Full SAST scans on every commit can take 10-30 minutes — run incremental scans on changed files for PRs and full scans nightly. Use diff-aware scanning for faster CI feedback |
-| Dependency scanning frequency vs. compute cost | Scanning every dependency on every commit is wasteful for pinned package versions — cache dependency scan results and only re-scan when dependencies change, or run weekly full scans with daily CVE diff checks |
-| Input sanitization overhead on every request | Running input sanitization (XSS, SQL injection checks) on every field adds latency — apply the most expensive sanitization (HTML encoding, SQL escaping) only to fields that could contain untrusted content, not all fields |
+| SAST scanning time slowing CI pipelines | Full SAST scans on every commit can take 10-30 minutes â€” run incremental scans on changed files for PRs and full scans nightly. Use diff-aware scanning for faster CI feedback |
+| Dependency scanning frequency vs. compute cost | Scanning every dependency on every commit is wasteful for pinned package versions â€” cache dependency scan results and only re-scan when dependencies change, or run weekly full scans with daily CVE diff checks |
+| Input sanitization overhead on every request | Running input sanitization (XSS, SQL injection checks) on every field adds latency â€” apply the most expensive sanitization (HTML encoding, SQL escaping) only to fields that could contain untrusted content, not all fields |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| SAST false positives causing alert fatigue | Too many false positives from automated scanning cause teams to ignore alerts — tune SAST rules to your tech stack and establish a triage process that distinguishes true vulnerabilities from noise |
-| Dependency chain attacks via transitive dependencies | A vulnerability in a transitive dependency (a library's library) can be invisible to direct scanning — use software composition analysis (SCA) that resolves the full dependency tree and flags transitive CVEs |
-| OWASP mitigation coverage gap during rapid prototyping | Fast-moving features may skip security review — apply a lightweight security review checklist for prototypes (auth check, input validation, output encoding) that takes 15 minutes, not days |
+| SAST false positives causing alert fatigue | Too many false positives from automated scanning cause teams to ignore alerts â€” tune SAST rules to your tech stack and establish a triage process that distinguishes true vulnerabilities from noise |
+| Dependency chain attacks via transitive dependencies | A vulnerability in a transitive dependency (a library's library) can be invisible to direct scanning â€” use software composition analysis (SCA) that resolves the full dependency tree and flags transitive CVEs |
+| OWASP mitigation coverage gap during rapid prototyping | Fast-moving features may skip security review â€” apply a lightweight security review checklist for prototypes (auth check, input validation, output encoding) that takes 15 minutes, not days |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| SAST scanning time slowing CI pipelines | Full SAST scans on every commit can take 10-30 minutes — run incremental scans on changed files for PRs and full scans nightly. Use diff-aware scanning for faster CI feedback |
-| Dependency scanning frequency vs. compute cost | Scanning every dependency on every commit is wasteful for pinned package versions — cache dependency scan results and only re-scan when dependencies change, or run weekly full scans with daily CVE diff checks |
-| Input sanitization overhead on every request | Running input sanitization (XSS, SQL injection checks) on every field adds latency — apply the most expensive sanitization (HTML encoding, SQL escaping) only to fields that could contain untrusted content, not all fields |
+| SAST scanning time slowing CI pipelines | Full SAST scans on every commit can take 10-30 minutes â€” run incremental scans on changed files for PRs and full scans nightly. Use diff-aware scanning for faster CI feedback |
+| Dependency scanning frequency vs. compute cost | Scanning every dependency on every commit is wasteful for pinned package versions â€” cache dependency scan results and only re-scan when dependencies change, or run weekly full scans with daily CVE diff checks |
+| Input sanitization overhead on every request | Running input sanitization (XSS, SQL injection checks) on every field adds latency â€” apply the most expensive sanitization (HTML encoding, SQL escaping) only to fields that could contain untrusted content, not all fields |
 
 ## Scope
 
-This document defines the OWASP Top 10 mitigation strategies for Meridian — covering the 10 vulnerability categories, specific mitigations (SQL injection, XSS, CSRF), and testing tools. Applies to all application code, APIs, and infrastructure across all environments. Out of scope: penetration testing procedures (see [Penetration-Test-Procedure.md](./Penetration-Test-Procedure.md)), broader threat model (see [Threat-Model.md](./Threat-Model.md)), SAST/DAST tool configuration.
+This document defines the OWASP Top 10 mitigation strategies for Vaeloom â€” covering the 10 vulnerability categories, specific mitigations (SQL injection, XSS, CSRF), and testing tools. Applies to all application code, APIs, and infrastructure across all environments. Out of scope: penetration testing procedures (see [Penetration-Test-Procedure.md](./Penetration-Test-Procedure.md)), broader threat model (see [Threat-Model.md](./Threat-Model.md)), SAST/DAST tool configuration.
 
 ---
 
@@ -215,30 +215,30 @@ sequenceDiagram
         CI->>SEC: Auto-create incident; page on-call
         SEC->>DEV: Assign with 48h SLA
         DEV->>CI: Fix + retest
-        CI-->>SEC: Retest passes → close finding
+        CI-->>SEC: Retest passes â†’ close finding
     else High Finding
         CI->>DEV: Add to sprint backlog (7d SLA)
         DEV->>CI: Fix + retest
-        CI-->>SEC: Retest passes → close finding
+        CI-->>SEC: Retest passes â†’ close finding
     else Low/Medium
         CI->>DEV: Add to backlog
     end
 ```
 
-> **Diagram:** Vulnerability detection flow — SAST and SCA scans on every commit, findings auto-tagged by severity, critical findings page security team with 48h SLA, high findings have 7d SLA, low/medium added to backlog.
+> **Diagram:** Vulnerability detection flow â€” SAST and SCA scans on every commit, findings auto-tagged by severity, critical findings page security team with 48h SLA, high findings have 7d SLA, low/medium added to backlog.
 
 ---
 
 ## Data Flow
 
 ```text
-Code Commit → CI Pipeline
-    → SAST (incremental scan on changed files)
-    → SCA (dependency scan if changed)
-    → Findings auto-tagged: Critical / High / Medium / Low
-    → [Critical] → Auto-incident → Page Security → 48h Fix → Retest → Close
-    → [High] → Sprint Backlog → 7d Fix → Retest → Close
-    → [Low/Med] → Backlog → Next Release → Retest → Close
+Code Commit â†’ CI Pipeline
+    â†’ SAST (incremental scan on changed files)
+    â†’ SCA (dependency scan if changed)
+    â†’ Findings auto-tagged: Critical / High / Medium / Low
+    â†’ [Critical] â†’ Auto-incident â†’ Page Security â†’ 48h Fix â†’ Retest â†’ Close
+    â†’ [High] â†’ Sprint Backlog â†’ 7d Fix â†’ Retest â†’ Close
+    â†’ [Low/Med] â†’ Backlog â†’ Next Release â†’ Retest â†’ Close
 ```
 
 ---
@@ -324,10 +324,10 @@ Code Commit → CI Pipeline
 ### Example 1: SQL Injection Prevention
 
 ```typescript
-// ❌ Never: String concatenation
+// âŒ Never: String concatenation
 db.query(`SELECT * FROM users WHERE id = '${userId}'`);
 
-// ✅ Always: Parameterized queries
+// âœ… Always: Parameterized queries
 db.query('SELECT * FROM users WHERE id = $1', [userId]);
 ```
 
@@ -366,17 +366,17 @@ function SafeHTML({ html }: { html: string }) {
 | SAST limited to known patterns | Misses novel vulnerability classes | Supplement with manual pen testing | AI-assisted vulnerability discovery (Phase 3) |
 | Dependency scan only covers direct + transitive dependencies | Cannot detect runtime vulnerabilities | Runtime SCA agent for production | Full runtime application self-protection (RASP) (Phase 4) |
 | No DAST (dynamic scanning) in CI | Runtime vulnerabilities missed | Manual pen testing covers DAST scenarios | Integrate DAST into CI pipeline (Phase 2) |
-| OWASP Top 10 only — not full CWE coverage | Some less common CWEs not addressed | Pen test covers broader attack surface | Extended CWE coverage (Phase 3) |
+| OWASP Top 10 only â€” not full CWE coverage | Some less common CWEs not addressed | Pen test covers broader attack surface | Extended CWE coverage (Phase 3) |
 
 ---
 
 ## Overview
 
-Meridian follows the OWASP Application Security Verification Standard (ASVS) as the primary framework for identifying, classifying, and mitigating security vulnerabilities across the platform. The OWASP Top 10 serves as the baseline threat assessment, with additional focus areas from ASVS Level 2 (standard) for API security, authentication, and access control.
+Vaeloom follows the OWASP Application Security Verification Standard (ASVS) as the primary framework for identifying, classifying, and mitigating security vulnerabilities across the platform. The OWASP Top 10 serves as the baseline threat assessment, with additional focus areas from ASVS Level 2 (standard) for API security, authentication, and access control.
 
-This document maps each OWASP Top 10 category to Meridian-specific risks, mitigation strategies, and verification methods. The primary audience is security engineers, developers, and QA engineers involved in security reviews and penetration testing.
+This document maps each OWASP Top 10 category to Vaeloom-specific risks, mitigation strategies, and verification methods. The primary audience is security engineers, developers, and QA engineers involved in security reviews and penetration testing.
 
-Within the Meridian platform, OWASP practices are embedded in the development lifecycle — automated SAST/SCA scanning in CI, mandatory manual security review for authentication and authorization code, and quarterly penetration testing against the OWASP Top 10. The risk register tracks CWEs found during scans and assessments.
+Within the Vaeloom platform, OWASP practices are embedded in the development lifecycle â€” automated SAST/SCA scanning in CI, mandatory manual security review for authentication and authorization code, and quarterly penetration testing against the OWASP Top 10. The risk register tracks CWEs found during scans and assessments.
 
 Enterprise-grade security requires defense in depth: no single control is relied upon for any risk. Input validation, parameterized queries, output encoding, CSP headers, rate limiting, and audit logging work together to provide overlapping protection layers.
 
@@ -384,7 +384,7 @@ Enterprise-grade security requires defense in depth: no single control is relied
 
 ## Goals
 
-- Achieve OWASP ASVS Level 2 compliance across all Meridian services
+- Achieve OWASP ASVS Level 2 compliance across all Vaeloom services
 - Zero critical/high OWASP Top 10 vulnerabilities in production at any time
 - Automate SAST and SCA scanning in CI pipeline with mandatory pass before deployment
 - Maintain a risk register mapping every identified CWE to mitigation, status, and verification evidence
@@ -416,10 +416,10 @@ Enterprise-grade security requires defense in depth: no single control is relied
 ### Example 1: SQL Injection Prevention via Parameterized Queries
 
 ```typescript
-// ❌ Vulnerable: string concatenation
+// âŒ Vulnerable: string concatenation
 const result = await db.query(`SELECT * FROM documents WHERE id = '${docId}'`);
 
-// ✅ Safe: parameterized query
+// âœ… Safe: parameterized query
 const result = await db.query(
   'SELECT * FROM documents WHERE id = $1',
   [docId]
@@ -434,10 +434,10 @@ app.use(
   helmet.contentSecurityPolicy({
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://cdn.meridian.ai"],
+      scriptSrc: ["'self'", "https://cdn.Vaeloom.ai"],
       styleSrc: ["'self'", "https://fonts.googleapis.com"],
-      imgSrc: ["'self'", "data:", "https://storage.meridian.dev"],
-      connectSrc: ["'self'", "https://api.meridian.dev"],
+      imgSrc: ["'self'", "data:", "https://storage.Vaeloom.dev"],
+      connectSrc: ["'self'", "https://api.Vaeloom.dev"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       objectSrc: ["'none'"],
       frameSrc: ["'none'"],
@@ -470,10 +470,10 @@ sequenceDiagram
     SCA-->>CI: Results (package:CVE)
 
     alt Vuln Found (Critical/High)
-        CI-->>DEV: ❌ Block merge
+        CI-->>DEV: âŒ Block merge
         DEV->>REGISTRY: Create CWE entry with mitigation
     else No Vulns
-        CI-->>DEV: ✅ Pass
+        CI-->>DEV: âœ… Pass
     end
 
     Note over PROD: Quarterly
@@ -481,7 +481,7 @@ sequenceDiagram
     PROD->>REGISTRY: Log findings with resolution SLA
 ```
 
-> **Diagram:** OWASP security scanning — code push triggers SAST (static analysis) and SCA (dependency) scans, critical/high findings block the merge, all findings tracked in risk register with quarterly penetration testing.
+> **Diagram:** OWASP security scanning â€” code push triggers SAST (static analysis) and SCA (dependency) scans, critical/high findings block the merge, all findings tracked in risk register with quarterly penetration testing.
 
 ---
 

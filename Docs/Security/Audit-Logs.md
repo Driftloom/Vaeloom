@@ -1,10 +1,10 @@
-# Audit Logs
+﻿# Audit Logs
 
-> **Purpose:** Define the audit logging system for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the audit logging system for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/06-Meridian-Enterprise-Paper.md#197-audit-logging`](../../Docs/06-Meridian-Enterprise-Paper.md#197-audit-logging)
+> **Canonical source:** [`/Docs/06-Vaeloom-Enterprise-Paper.md#197-audit-logging`](../../Docs/06-Vaeloom-Enterprise-Paper.md#197-audit-logging)
 
 ## Audit Log Architecture
 
@@ -15,7 +15,7 @@ graph TD
     classDef retention fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef query fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Sources["📤 What Gets Logged"]
+    subgraph Sources["ðŸ“¤ What Gets Logged"]
         direction TB
         S1["Agent Proposal<br/>Input, proposed output, confidence"]
         S2["User Approval/Rejection<br/>Which proposal, user action"]
@@ -25,18 +25,18 @@ graph TD
         S6["Connector Events<br/>Type, scopes, errors"]
     end
 
-    subgraph Schema["🗄️ Database Schema"]
+    subgraph Schema["ðŸ—„ï¸ Database Schema"]
         SC["agent_actions<br/>id: UUID PK<br/>workspace_id: UUID FK<br/>agent_name: TEXT<br/>action_type: TEXT<br/>input_ref: JSONB<br/>output_ref: JSONB<br/>status: pending/approved/rejected...<br/>created_at: TIMESTAMPTZ<br/>approved_by: TEXT<br/>undo_action_id: UUID"]
     end
 
-    subgraph Retention["⏱️ Retention Policies"]
+    subgraph Retention["â±ï¸ Retention Policies"]
         R1["Agent actions<br/>MVP: 1 year<br/>Enterprise: 7 years"]
         R2["Memory reads<br/>90 days"]
         R3["Permission changes<br/>Permanent"]
         R4["Connector events<br/>1 year"]
     end
 
-    subgraph Queries["🔍 Querying Audit Logs"]
+    subgraph Queries["ðŸ” Querying Audit Logs"]
         Q1["All actions by agent<br/>WHERE agent_name = 'org_agent'<br/>AND created_at > 7 days ago"]
         Q2["Actions that were undone<br/>WHERE undo_action_id IS NOT NULL"]
         Q3["All actions on workspace<br/>WHERE workspace_id = 'ws_abc'<br/>ORDER BY created_at DESC"]
@@ -52,7 +52,7 @@ graph TD
     class Q1,Q2,Q3 query
 ```
 
-> **Diagram:** Audit log architecture showing **6 event sources** → single `agent_actions` table with full schema → **4 retention tiers** (90 days to permanent) → **query patterns** for investigation. The append-only design prevents tampering, and every action is traceable to its source agent.
+> **Diagram:** Audit log architecture showing **6 event sources** â†’ single `agent_actions` table with full schema â†’ **4 retention tiers** (90 days to permanent) â†’ **query patterns** for investigation. The append-only design prevents tampering, and every action is traceable to its source agent.
 
 ---
 
@@ -79,14 +79,14 @@ CREATE TABLE agent_actions (
 
 | Action | Logged? | Detail Level |
 |--------|---------|-------------|
-| Agent proposal | ✅ | Input, proposed output, confidence |
-| User approval/rejection | ✅ | Which proposal, user action |
-| Agent autonomous action | ✅ | Full input, output, reasoning |
-| Memory read | ✅ | Query, result count, agent identity |
-| Memory write | ✅ | Entity, relationship, confidence |
-| Permission grant/revoke | ✅ | Granter, grantee, scope |
-| Connector connection | ✅ | Connector type, scopes |
-| Connector failure | ✅ | Connector, error, timestamp |
+| Agent proposal | âœ… | Input, proposed output, confidence |
+| User approval/rejection | âœ… | Which proposal, user action |
+| Agent autonomous action | âœ… | Full input, output, reasoning |
+| Memory read | âœ… | Query, result count, agent identity |
+| Memory write | âœ… | Entity, relationship, confidence |
+| Permission grant/revoke | âœ… | Granter, grantee, scope |
+| Connector connection | âœ… | Connector type, scopes |
+| Connector failure | âœ… | Connector, error, timestamp |
 
 ## Log Retention
 
@@ -116,53 +116,53 @@ WHERE undo_action_id IS NOT NULL;
 
 | Mistake | Consequence |
 |---------|-------------|
-| Logging too little (missing critical events) | If agent proposals aren't logged before execution, there's no way to trace what an agent actually did — log the full input and proposed output, not just the action type |
-| Logging too much (PII in audit logs) | Audit logs that contain personal data (email bodies, document content) become a compliance liability — log references and metadata, not the full content |
-| Audit logs without an immutable storage layer | An attacker who compromises the database can tamper with audit logs to cover their tracks — use append-only storage (immutable S3 buckets, WORM storage) for audit records |
+| Logging too little (missing critical events) | If agent proposals aren't logged before execution, there's no way to trace what an agent actually did â€” log the full input and proposed output, not just the action type |
+| Logging too much (PII in audit logs) | Audit logs that contain personal data (email bodies, document content) become a compliance liability â€” log references and metadata, not the full content |
+| Audit logs without an immutable storage layer | An attacker who compromises the database can tamper with audit logs to cover their tracks â€” use append-only storage (immutable S3 buckets, WORM storage) for audit records |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Log all agent actions with full input and output context | Agent behavior is non-deterministic — without full context, debugging what an agent did is impossible. Log the prompt, the proposed action, and the final output |
-| Store audit logs in append-only immutable storage | Traditional databases can be tampered with after a breach — use WORM (Write Once, Read Many) storage or S3 Object Lock for audit trail immutability |
-| Implement automated anomaly detection on audit logs | Audit logs are most valuable when analyzed — set up alerts for unusual patterns (mass permission changes, off-hours agent activity, repeated access denials) |
+| Log all agent actions with full input and output context | Agent behavior is non-deterministic â€” without full context, debugging what an agent did is impossible. Log the prompt, the proposed action, and the final output |
+| Store audit logs in append-only immutable storage | Traditional databases can be tampered with after a breach â€” use WORM (Write Once, Read Many) storage or S3 Object Lock for audit trail immutability |
+| Implement automated anomaly detection on audit logs | Audit logs are most valuable when analyzed â€” set up alerts for unusual patterns (mass permission changes, off-hours agent activity, repeated access denials) |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Audit log tampering after a breach | An attacker with database access can modify or delete audit records — use immutable storage with cryptographic signing of log entries to detect tampering |
-| Cross-tenant visibility in audit queries | A tenant should not be able to query another tenant's audit logs — scope audit queries by workspace_id from the auth token, not user-supplied parameters |
-| Audit log data extraction by unauthorized parties | Audit logs contain sensitive metadata (who did what, when) — encrypt audit records at rest and restrict query access to admin roles only |
+| Audit log tampering after a breach | An attacker with database access can modify or delete audit records â€” use immutable storage with cryptographic signing of log entries to detect tampering |
+| Cross-tenant visibility in audit queries | A tenant should not be able to query another tenant's audit logs â€” scope audit queries by workspace_id from the auth token, not user-supplied parameters |
+| Audit log data extraction by unauthorized parties | Audit logs contain sensitive metadata (who did what, when) â€” encrypt audit records at rest and restrict query access to admin roles only |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Synchronous audit logging blocking request processing | Writing an audit log entry on every request adds latency — use async logging with a queue buffer and batch writes to avoid blocking the response path |
-| Audit log table growth slowing queries | The agent_actions table grows by millions of rows in production — partition by month and implement a retention-based archival policy to keep the active working set small |
-| Indexing overhead on high-volume audit tables | Every index on the audit log table slows write throughput — index only the most common query patterns (workspace_id, agent_name, created_at) and use full-text search for ad-hoc queries |
+| Synchronous audit logging blocking request processing | Writing an audit log entry on every request adds latency â€” use async logging with a queue buffer and batch writes to avoid blocking the response path |
+| Audit log table growth slowing queries | The agent_actions table grows by millions of rows in production â€” partition by month and implement a retention-based archival policy to keep the active working set small |
+| Indexing overhead on high-volume audit tables | Every index on the audit log table slows write throughput â€” index only the most common query patterns (workspace_id, agent_name, created_at) and use full-text search for ad-hoc queries |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Audit log tampering after a breach | An attacker with database access can modify or delete audit records — use immutable storage with cryptographic signing of log entries to detect tampering |
-| Cross-tenant visibility in audit queries | A tenant should not be able to query another tenant's audit logs — scope audit queries by workspace_id from the auth token, not user-supplied parameters |
-| Audit log data extraction by unauthorized parties | Audit logs contain sensitive metadata (who did what, when) — encrypt audit records at rest and restrict query access to admin roles only |
+| Audit log tampering after a breach | An attacker with database access can modify or delete audit records â€” use immutable storage with cryptographic signing of log entries to detect tampering |
+| Cross-tenant visibility in audit queries | A tenant should not be able to query another tenant's audit logs â€” scope audit queries by workspace_id from the auth token, not user-supplied parameters |
+| Audit log data extraction by unauthorized parties | Audit logs contain sensitive metadata (who did what, when) â€” encrypt audit records at rest and restrict query access to admin roles only |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Synchronous audit logging blocking request processing | Writing an audit log entry on every request adds latency — use async logging with a queue buffer and batch writes to avoid blocking the response path |
-| Audit log table growth slowing queries | The agent_actions table grows by millions of rows in production — partition by month and implement a retention-based archival policy to keep the active working set small |
-| Indexing overhead on high-volume audit tables | Every index on the audit log table slows write throughput — index only the most common query patterns (workspace_id, agent_name, created_at) and use full-text search for ad-hoc queries |
+| Synchronous audit logging blocking request processing | Writing an audit log entry on every request adds latency â€” use async logging with a queue buffer and batch writes to avoid blocking the response path |
+| Audit log table growth slowing queries | The agent_actions table grows by millions of rows in production â€” partition by month and implement a retention-based archival policy to keep the active working set small |
+| Indexing overhead on high-volume audit tables | Every index on the audit log table slows write throughput â€” index only the most common query patterns (workspace_id, agent_name, created_at) and use full-text search for ad-hoc queries |
 
 ## Overview
 
-Meridian's audit logging system provides immutable, append-only tracking of all agent actions, memory operations, permission changes, and connector events. Every action is recorded with full input/output context, agent identity, and workspace scope, enabling complete traceability for debugging, compliance, and security investigation.
+Vaeloom's audit logging system provides immutable, append-only tracking of all agent actions, memory operations, permission changes, and connector events. Every action is recorded with full input/output context, agent identity, and workspace scope, enabling complete traceability for debugging, compliance, and security investigation.
 
 ---
 
@@ -178,7 +178,7 @@ Meridian's audit logging system provides immutable, append-only tracking of all 
 
 ## Scope
 
-This document defines the audit logging system for Meridian — covering what gets logged, the agent_actions schema, retention policies, query patterns, and immutable storage requirements. Applies to all agent actions, memory reads/writes, permission changes, and connector events across all environments. Out of scope: compliance-specific audit requirements (see [Compliance.md](./Compliance.md)), anomaly detection on audit data (see [Threat-Model.md](./Threat-Model.md)).
+This document defines the audit logging system for Vaeloom â€” covering what gets logged, the agent_actions schema, retention policies, query patterns, and immutable storage requirements. Applies to all agent actions, memory reads/writes, permission changes, and connector events across all environments. Out of scope: compliance-specific audit requirements (see [Compliance.md](./Compliance.md)), anomaly detection on audit data (see [Threat-Model.md](./Threat-Model.md)).
 
 ---
 
@@ -236,7 +236,7 @@ This document defines the audit logging system for Meridian — covering what ge
 2. Query Engine filters by workspace_id, agent_name, time range
 3. Results returned with full event context
 4. Investigator reviews and can export findings
-5. Any tampering detected → alert security team
+5. Any tampering detected â†’ alert security team
 
 ---
 
@@ -266,19 +266,19 @@ sequenceDiagram
     RM->>IS: Confirm lifecycle applied
 ```
 
-> **Diagram:** Audit log flow — events collected asynchronously, batched, written to immutable store, then lifecycle policies applied based on log type and retention schedule.
+> **Diagram:** Audit log flow â€” events collected asynchronously, batched, written to immutable store, then lifecycle policies applied based on log type and retention schedule.
 
 ---
 
 ## Data Flow
 
 ```text
-Agent Event → Event Collector (validate schema)
-    → Async Queue (buffer for batching)
-    → Log Writer (flush batch every 100 events / 5s)
-    → Immutable Store (S3 Object Lock / WORM)
-    → Retention Manager (daily check: 90d / 1yr / 7yr / permanent)
-    → Archive / Delete based on policy
+Agent Event â†’ Event Collector (validate schema)
+    â†’ Async Queue (buffer for batching)
+    â†’ Log Writer (flush batch every 100 events / 5s)
+    â†’ Immutable Store (S3 Object Lock / WORM)
+    â†’ Retention Manager (daily check: 90d / 1yr / 7yr / permanent)
+    â†’ Archive / Delete based on policy
 ```
 
 ---
@@ -426,4 +426,4 @@ ORDER BY created_at DESC;
 
 - [Security Architecture.md](./Security-Architecture.md)
 - [Compliance.md](./Compliance.md)
-- [`/Docs/06-Meridian-Enterprise-Paper.md#197-audit-logging`](../../Docs/06-Meridian-Enterprise-Paper.md#197-audit-logging)
+- [`/Docs/06-Vaeloom-Enterprise-Paper.md#197-audit-logging`](../../Docs/06-Vaeloom-Enterprise-Paper.md#197-audit-logging)

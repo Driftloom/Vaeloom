@@ -1,14 +1,14 @@
-# Meridian SDK Documentation
+﻿# Vaeloom SDK Documentation
 
-> **Purpose:** SDK architecture, installation, usage, and governance for the Meridian platform
-> **Status:** 🆕 New
+> **Purpose:** SDK architecture, installation, usage, and governance for the Vaeloom platform
+> **Status:** ðŸ†• New
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
 | Metadata         | Value                          |
 |------------------|--------------------------------|
-| **Purpose**      | SDK architecture, installation, usage, and governance for the Meridian platform |
-| **Status**       | 🆕 New                         |
+| **Purpose**      | SDK architecture, installation, usage, and governance for the Vaeloom platform |
+| **Status**       | ðŸ†• New                         |
 | **Owner**        | Engineering Team               |
 | **Last Updated** | 2026-07-13                     |
 | **Version**      | 1.0.0                          |
@@ -48,21 +48,21 @@
 
 ## 1. Overview
 
-The **Meridian SDK** is a first-class, type-safe client library that enables developers to interact with the Meridian platform programmatically. It abstracts HTTP transport concerns, handles authentication, provides a fluent query builder, and exposes dedicated clients for entity CRUD operations and agent lifecycle management.
+The **Vaeloom SDK** is a first-class, type-safe client library that enables developers to interact with the Vaeloom platform programmatically. It abstracts HTTP transport concerns, handles authentication, provides a fluent query builder, and exposes dedicated clients for entity CRUD operations and agent lifecycle management.
 
-**Audience:** Backend engineers, data engineers, and platform integrators building against Meridian APIs.
+**Audience:** Backend engineers, data engineers, and platform integrators building against Vaeloom APIs.
 
-**Why SDK Architecture:** A dedicated SDK reduces boilerplate, centralizes error handling, enforces consistent authentication flows, and provides discoverable APIs with full editor intellisense — dramatically reducing integration time compared to raw HTTP calls.
+**Why SDK Architecture:** A dedicated SDK reduces boilerplate, centralizes error handling, enforces consistent authentication flows, and provides discoverable APIs with full editor intellisense â€” dramatically reducing integration time compared to raw HTTP calls.
 
 ---
 
 ## 2. Goals
 
-1. **Type Safety** — Leverage TypeScript generics and Python type hints to catch contract violations at compile time.
-2. **Consistency** — Uniform patterns across auth, query, CRUD, and agent modules so developers can predict API shapes.
-3. **Resilience** — Built-in retry, backoff, rate-limit awareness, and timeout enforcement without user configuration.
-4. **Discoverability** — Self-documenting method signatures, comprehensive JSDoc/Python docstrings, and exported TypeScript interfaces.
-5. **Minimal Dependencies** — Keep the dependency surface small to avoid version conflicts in consumer projects.
+1. **Type Safety** â€” Leverage TypeScript generics and Python type hints to catch contract violations at compile time.
+2. **Consistency** â€” Uniform patterns across auth, query, CRUD, and agent modules so developers can predict API shapes.
+3. **Resilience** â€” Built-in retry, backoff, rate-limit awareness, and timeout enforcement without user configuration.
+4. **Discoverability** â€” Self-documenting method signatures, comprehensive JSDoc/Python docstrings, and exported TypeScript interfaces.
+5. **Minimal Dependencies** â€” Keep the dependency surface small to avoid version conflicts in consumer projects.
 
 ---
 
@@ -76,7 +76,7 @@ The **Meridian SDK** is a first-class, type-safe client library that enables dev
 | Python SDK         | Python 3.11+    | Native async client for Python services          |
 | Auth Helpers       | Both            | API key, OAuth2, and token refresh flows         |
 | Query Builder      | Both            | Fluent, type-safe query construction             |
-| Entity CRUD        | Both            | Create, read, update, delete for Meridian entities |
+| Entity CRUD        | Both            | Create, read, update, delete for Vaeloom entities |
 | Agent Execution    | Both            | Submit, poll, cancel, and webhook-based agents   |
 
 ### Out of Scope
@@ -85,8 +85,8 @@ The **Meridian SDK** is a first-class, type-safe client library that enables dev
 |-------------------------|-------------------------------------------------|
 | Mobile SDK (iOS/Android)| Separate native team; REST compatibility only   |
 | Frontend Components     | UI concerns are owned by the web app team       |
-| CLI Tool                | Covered by `meridian-cli` package separately    |
-| GraphQL Client          | Future consideration (see §25)                  |
+| CLI Tool                | Covered by `Vaeloom-cli` package separately    |
+| GraphQL Client          | Future consideration (see Â§25)                  |
 
 ---
 
@@ -100,16 +100,16 @@ graph TD
         APP[Your Application]
     end
 
-    subgraph Meridian SDK
+    subgraph Vaeloom SDK
         direction TB
         L5["Transport Layer<br/><i>HTTP client, connection pool, keep-alive</i>"]
         L4["Auth Layer<br/><i>API key, OAuth2, token refresh, credential resolution</i>"]
         L3["Client Layer<br/><i>BaseClient, error wrapping, tracing, logging</i>"]
         L2["Resource Layer<br/><i>EntityClient, AgentClient, QueryBuilder</i>"]
-        L1["Public API Layer<br/><i>MeridianClient, typed exports</i>"]
+        L1["Public API Layer<br/><i>VaeloomClient, typed exports</i>"]
     end
 
-    subgraph Meridian Platform
+    subgraph Vaeloom Platform
         API[REST API Gateway]
         AUTH[Auth Service]
         ENT[Entity Service]
@@ -127,37 +127,37 @@ graph TD
     API --> AGT
 ```
 
-**Request flow:** Consumer calls a public method → resource client builds the request → base client enriches with auth headers → transport dispatches via connection pool → response is unwrapped, errors are classified, and a typed result is returned.
+**Request flow:** Consumer calls a public method â†’ resource client builds the request â†’ base client enriches with auth headers â†’ transport dispatches via connection pool â†’ response is unwrapped, errors are classified, and a typed result is returned.
 
 ---
 
 ## 5. Components
 
-### 5.1 TypeScript SDK (`@meridian/sdk-ts`)
+### 5.1 TypeScript SDK (`@vaeloom/sdk-ts`)
 
-The primary SDK for Node.js and browser environments. Exposes a single `MeridianClient` entry point.
+The primary SDK for Node.js and browser environments. Exposes a single `VaeloomClient` entry point.
 
 ```typescript
-import { MeridianClient } from "@meridian/sdk-ts";
+import { VaeloomClient } from "@vaeloom/sdk-ts";
 
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
 });
 ```
 
-### 5.2 Python SDK (`meridian-sdk-py`)
+### 5.2 Python SDK (`Vaeloom-sdk-py`)
 
 Async-first Python SDK targeting Python 3.11+.
 
 ```python
-from meridian_sdk import MeridianClient
+from Vaeloom_sdk import VaeloomClient
 
-client = MeridianClient(
-    api_key=os.environ["MERIDIAN_API_KEY"],
+client = VaeloomClient(
+    api_key=os.environ["Vaeloom_API_KEY"],
 )
 ```
 
-### 5.3 Shared Types (`@meridian/sdk-types`)
+### 5.3 Shared Types (`@vaeloom/sdk-types`)
 
 Platform-defined interfaces consumed by both SDKs and automatically generated from the OpenAPI spec.
 
@@ -188,9 +188,9 @@ Handles credential resolution, token caching, and automatic refresh.
 
 | Strategy    | Token Source              | Refresh Mechanism               |
 |-------------|--------------------------|---------------------------------|
-| API Key     | `MERIDIAN_API_KEY` env    | Static, no refresh              |
-| OAuth2      | `MERIDIAN_CLIENT_ID` + `MERIDIAN_CLIENT_SECRET` | OAuth2 client credentials grant, auto-refreshed at 80% TTL |
-| Access Token| `MERIDIAN_ACCESS_TOKEN` env | Manual refresh via `client.auth.refresh()` |
+| API Key     | `Vaeloom_API_KEY` env    | Static, no refresh              |
+| OAuth2      | `Vaeloom_CLIENT_ID` + `Vaeloom_CLIENT_SECRET` | OAuth2 client credentials grant, auto-refreshed at 80% TTL |
+| Access Token| `Vaeloom_ACCESS_TOKEN` env | Manual refresh via `client.auth.refresh()` |
 
 ### 5.5 Query Builder
 
@@ -208,7 +208,7 @@ const query = client
 
 ### 5.6 Entity Client
 
-Dedicated client for lifecycle operations on Meridian entities.
+Dedicated client for lifecycle operations on Vaeloom entities.
 
 ```typescript
 const entityClient = client.entity("documents");
@@ -229,7 +229,7 @@ const agentClient = client.agent("data-enrichment");
 // Fire-and-forget with webhook callback
 await agentClient.run({
   payload: { documentId: "doc_abc123" },
-  webhookUrl: "https://myapp.com/webhooks/meridian",
+  webhookUrl: "https://myapp.com/webhooks/Vaeloom",
 });
 
 // Poll for completion
@@ -247,8 +247,8 @@ const result = await agentClient.runAndWait({
 ```mermaid
 sequenceDiagram
     participant Dev as Developer
-    participant SDK as Meridian SDK
-    participant API as Meridian API
+    participant SDK as Vaeloom SDK
+    participant API as Vaeloom API
     participant Auth as Auth Service
     participant Agent as Agent Service
 
@@ -280,91 +280,91 @@ sequenceDiagram
 
 ```
 packages/sdk-ts/
-├── src/
-│   ├── client/
-│   │   ├── MeridianClient.ts        # Public entry point
-│   │   └── BaseClient.ts             # HTTP transport, auth injection
-│   ├── auth/
-│   │   ├── AuthProvider.ts           # Auth interface
-│   │   ├── ApiKeyAuth.ts             # API key strategy
-│   │   └── OAuth2Auth.ts             # OAuth2 client credentials
-│   ├── resources/
-│   │   ├── EntityClient.ts           # Entity CRUD operations
-│   │   ├── AgentClient.ts            # Agent execution lifecycle
-│   │   └── QueryBuilder.ts           # Fluent query builder
-│   ├── errors/
-│   │   ├── MeridianError.ts          # Base error class
-│   │   ├── AuthenticationError.ts
-│   │   ├── RateLimitError.ts
-│   │   ├── ValidationError.ts
-│   │   └── NotFoundError.ts
-│   ├── transport/
-│   │   ├── HttpClient.ts             # Axios/fetch wrapper
-│   │   ├── RetryHandler.ts           # Exponential backoff
-│   │   └── RateLimiter.ts            # Token-bucket limiter
-│   ├── types/
-│   │   ├── entity.ts
-│   │   ├── agent.ts
-│   │   ├── query.ts
-│   │   └── common.ts
-│   ├── utils/
-│   │   ├── logger.ts
-│   │   ├── tracer.ts                 # X-Request-Id propagation
-│   │   └── version.ts
-│   └── index.ts                      # Barrel exports
-├── test/
-│   ├── unit/
-│   ├── integration/
-│   └── fixtures/
-├── package.json
-├── tsconfig.json
-└── README.md
+â”œâ”€â”€ src/
+â”‚   â”œâ”€â”€ client/
+â”‚   â”‚   â”œâ”€â”€ VaeloomClient.ts        # Public entry point
+â”‚   â”‚   â””â”€â”€ BaseClient.ts             # HTTP transport, auth injection
+â”‚   â”œâ”€â”€ auth/
+â”‚   â”‚   â”œâ”€â”€ AuthProvider.ts           # Auth interface
+â”‚   â”‚   â”œâ”€â”€ ApiKeyAuth.ts             # API key strategy
+â”‚   â”‚   â””â”€â”€ OAuth2Auth.ts             # OAuth2 client credentials
+â”‚   â”œâ”€â”€ resources/
+â”‚   â”‚   â”œâ”€â”€ EntityClient.ts           # Entity CRUD operations
+â”‚   â”‚   â”œâ”€â”€ AgentClient.ts            # Agent execution lifecycle
+â”‚   â”‚   â””â”€â”€ QueryBuilder.ts           # Fluent query builder
+â”‚   â”œâ”€â”€ errors/
+â”‚   â”‚   â”œâ”€â”€ VaeloomError.ts          # Base error class
+â”‚   â”‚   â”œâ”€â”€ AuthenticationError.ts
+â”‚   â”‚   â”œâ”€â”€ RateLimitError.ts
+â”‚   â”‚   â”œâ”€â”€ ValidationError.ts
+â”‚   â”‚   â””â”€â”€ NotFoundError.ts
+â”‚   â”œâ”€â”€ transport/
+â”‚   â”‚   â”œâ”€â”€ HttpClient.ts             # Axios/fetch wrapper
+â”‚   â”‚   â”œâ”€â”€ RetryHandler.ts           # Exponential backoff
+â”‚   â”‚   â””â”€â”€ RateLimiter.ts            # Token-bucket limiter
+â”‚   â”œâ”€â”€ types/
+â”‚   â”‚   â”œâ”€â”€ entity.ts
+â”‚   â”‚   â”œâ”€â”€ agent.ts
+â”‚   â”‚   â”œâ”€â”€ query.ts
+â”‚   â”‚   â””â”€â”€ common.ts
+â”‚   â”œâ”€â”€ utils/
+â”‚   â”‚   â”œâ”€â”€ logger.ts
+â”‚   â”‚   â”œâ”€â”€ tracer.ts                 # X-Request-Id propagation
+â”‚   â”‚   â””â”€â”€ version.ts
+â”‚   â””â”€â”€ index.ts                      # Barrel exports
+â”œâ”€â”€ test/
+â”‚   â”œâ”€â”€ unit/
+â”‚   â”œâ”€â”€ integration/
+â”‚   â””â”€â”€ fixtures/
+â”œâ”€â”€ package.json
+â”œâ”€â”€ tsconfig.json
+â””â”€â”€ README.md
 ```
 
 ### 7.2 Python SDK
 
 ```
 packages/sdk-py/
-├── src/meridian_sdk/
-│   ├── __init__.py
-│   ├── client.py                      # MeridianClient entry point
-│   ├── base_client.py                 # HTTP transport, auth injection
-│   ├── auth/
-│   │   ├── __init__.py
-│   │   ├── provider.py                # Auth interface
-│   │   ├── api_key.py                 # API key strategy
-│   │   └── oauth2.py                  # OAuth2 client credentials
-│   ├── resources/
-│   │   ├── entity_client.py
-│   │   ├── agent_client.py
-│   │   └── query_builder.py
-│   ├── errors/
-│   │   ├── __init__.py
-│   │   ├── meridian_error.py
-│   │   ├── authentication_error.py
-│   │   ├── rate_limit_error.py
-│   │   ├── validation_error.py
-│   │   └── not_found_error.py
-│   ├── transport/
-│   │   ├── http_client.py
-│   │   ├── retry_handler.py
-│   │   └── rate_limiter.py
-│   ├── types/
-│   │   ├── entity.py
-│   │   ├── agent.py
-│   │   ├── query.py
-│   │   └── common.py
-│   └── utils/
-│       ├── logger.py
-│       ├── tracer.py
-│       └── version.py
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── fixtures/
-├── pyproject.toml
-├── setup.cfg
-└── README.md
+â”œâ”€â”€ src/Vaeloom_sdk/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ client.py                      # VaeloomClient entry point
+â”‚   â”œâ”€â”€ base_client.py                 # HTTP transport, auth injection
+â”‚   â”œâ”€â”€ auth/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ provider.py                # Auth interface
+â”‚   â”‚   â”œâ”€â”€ api_key.py                 # API key strategy
+â”‚   â”‚   â””â”€â”€ oauth2.py                  # OAuth2 client credentials
+â”‚   â”œâ”€â”€ resources/
+â”‚   â”‚   â”œâ”€â”€ entity_client.py
+â”‚   â”‚   â”œâ”€â”€ agent_client.py
+â”‚   â”‚   â””â”€â”€ query_builder.py
+â”‚   â”œâ”€â”€ errors/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ Vaeloom_error.py
+â”‚   â”‚   â”œâ”€â”€ authentication_error.py
+â”‚   â”‚   â”œâ”€â”€ rate_limit_error.py
+â”‚   â”‚   â”œâ”€â”€ validation_error.py
+â”‚   â”‚   â””â”€â”€ not_found_error.py
+â”‚   â”œâ”€â”€ transport/
+â”‚   â”‚   â”œâ”€â”€ http_client.py
+â”‚   â”‚   â”œâ”€â”€ retry_handler.py
+â”‚   â”‚   â””â”€â”€ rate_limiter.py
+â”‚   â”œâ”€â”€ types/
+â”‚   â”‚   â”œâ”€â”€ entity.py
+â”‚   â”‚   â”œâ”€â”€ agent.py
+â”‚   â”‚   â”œâ”€â”€ query.py
+â”‚   â”‚   â””â”€â”€ common.py
+â”‚   â””â”€â”€ utils/
+â”‚       â”œâ”€â”€ logger.py
+â”‚       â”œâ”€â”€ tracer.py
+â”‚       â””â”€â”€ version.py
+â”œâ”€â”€ tests/
+â”‚   â”œâ”€â”€ unit/
+â”‚   â”œâ”€â”€ integration/
+â”‚   â””â”€â”€ fixtures/
+â”œâ”€â”€ pyproject.toml
+â”œâ”€â”€ setup.cfg
+â””â”€â”€ README.md
 ```
 
 ---
@@ -374,11 +374,11 @@ packages/sdk-py/
 ### 8.1 TypeScript SDK
 
 ```bash
-npm install @meridian/sdk-ts@^1.0.0
+npm install @vaeloom/sdk-ts@^1.0.0
 # or
-yarn add @meridian/sdk-ts@^1.0.0
+yarn add @vaeloom/sdk-ts@^1.0.0
 # or
-pnpm add @meridian/sdk-ts@^1.0.0
+pnpm add @vaeloom/sdk-ts@^1.0.0
 ```
 
 **Version pinning:** Always pin the major version with the `^` range (e.g. `^1.0.0`). The SDK follows [SemVer](#19-versioning) strictly: minors and patches are safe upgrades.
@@ -386,7 +386,7 @@ pnpm add @meridian/sdk-ts@^1.0.0
 ### 8.2 Python SDK
 
 ```bash
-pip install "meridian-sdk-py>=1.0.0,<2.0.0"
+pip install "Vaeloom-sdk-py>=1.0.0,<2.0.0"
 ```
 
 **Version pinning:** Use the `>=X.Y.Z,<NEXT_MAJOR` range to receive patch and minor updates while breaking changes remain opt-in.
@@ -395,14 +395,14 @@ pip install "meridian-sdk-py>=1.0.0,<2.0.0"
 
 ```typescript
 // TypeScript
-import { version } from "@meridian/sdk-ts";
-console.log(`Meridian SDK v${version}`);
+import { version } from "@vaeloom/sdk-ts";
+console.log(`Vaeloom SDK v${version}`);
 ```
 
 ```python
 # Python
-from meridian_sdk import __version__
-print(f"Meridian SDK v{__version__}")
+from Vaeloom_sdk import __version__
+print(f"Vaeloom SDK v{__version__}")
 ```
 
 ---
@@ -411,19 +411,19 @@ print(f"Meridian SDK v{__version__}")
 
 ### 9.1 API Key
 
-The simplest authentication method. Generate an API key from the Meridian Dashboard and set it as an environment variable.
+The simplest authentication method. Generate an API key from the Vaeloom Dashboard and set it as an environment variable.
 
 ```typescript
 // TypeScript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
 });
 ```
 
 ```python
 # Python
-client = MeridianClient(
-    api_key=os.environ["MERIDIAN_API_KEY"],
+client = VaeloomClient(
+    api_key=os.environ["Vaeloom_API_KEY"],
 )
 ```
 
@@ -433,18 +433,18 @@ For production services that require scoped, short-lived credentials.
 
 ```typescript
 // TypeScript
-const client = new MeridianClient({
-  clientId: process.env.MERIDIAN_CLIENT_ID,
-  clientSecret: process.env.MERIDIAN_CLIENT_SECRET,
+const client = new VaeloomClient({
+  clientId: process.env.Vaeloom_CLIENT_ID,
+  clientSecret: process.env.Vaeloom_CLIENT_SECRET,
   scopes: ["entities:read", "agents:write"],
 });
 ```
 
 ```python
 # Python
-client = MeridianClient(
-    client_id=os.environ["MERIDIAN_CLIENT_ID"],
-    client_secret=os.environ["MERIDIAN_CLIENT_SECRET"],
+client = VaeloomClient(
+    client_id=os.environ["Vaeloom_CLIENT_ID"],
+    client_secret=os.environ["Vaeloom_CLIENT_SECRET"],
     scopes=["entities:read", "agents:write"],
 );
 ```
@@ -454,8 +454,8 @@ client = MeridianClient(
 For environments where an external identity provider has already obtained a token.
 
 ```typescript
-const client = new MeridianClient({
-  accessToken: "meridian_eyJhbGci...",
+const client = new VaeloomClient({
+  accessToken: "Vaeloom_eyJhbGci...",
 });
 ```
 
@@ -471,12 +471,12 @@ await client.auth.refresh();
 
 | Variable                     | Description                          | Required       |
 |------------------------------|--------------------------------------|----------------|
-| `MERIDIAN_API_KEY`           | API key for simple auth              | Conditional    |
-| `MERIDIAN_CLIENT_ID`         | OAuth2 client ID                     | Conditional    |
-| `MERIDIAN_CLIENT_SECRET`     | OAuth2 client secret                 | Conditional    |
-| `MERIDIAN_ACCESS_TOKEN`      | Pre-obtained access token            | Conditional    |
-| `MERIDIAN_BASE_URL`          | API base URL (default: `https://api.meridian.dev`) | No |
-| `MERIDIAN_REQUEST_TIMEOUT`   | Request timeout in ms (default: `30000`) | No |
+| `Vaeloom_API_KEY`           | API key for simple auth              | Conditional    |
+| `Vaeloom_CLIENT_ID`         | OAuth2 client ID                     | Conditional    |
+| `Vaeloom_CLIENT_SECRET`     | OAuth2 client secret                 | Conditional    |
+| `Vaeloom_ACCESS_TOKEN`      | Pre-obtained access token            | Conditional    |
+| `Vaeloom_BASE_URL`          | API base URL (default: `https://api.Vaeloom.dev`) | No |
+| `Vaeloom_REQUEST_TIMEOUT`   | Request timeout in ms (default: `30000`) | No |
 
 ---
 
@@ -487,11 +487,11 @@ The query builder provides a fluent, type-safe interface for constructing API qu
 ### 10.1 Basic Usage
 
 ```typescript
-import { MeridianClient, eq, inList, gt } from "@meridian/sdk-ts";
+import { VaeloomClient, eq, inList, gt } from "@vaeloom/sdk-ts";
 
-const client = new MeridianClient({ apiKey: process.env.MERIDIAN_API_KEY });
+const client = new VaeloomClient({ apiKey: process.env.Vaeloom_API_KEY });
 
-// Typed query — `documents` maps to the Document interface
+// Typed query â€” `documents` maps to the Document interface
 const query = client
   .query("documents")
   .filter("status", eq("published"))
@@ -506,9 +506,9 @@ const result = await query.fetch();
 ```
 
 ```python
-from meridian_sdk import MeridianClient, eq, in_list, gt
+from Vaeloom_sdk import VaeloomClient, eq, in_list, gt
 
-client = MeridianClient(api_key=os.environ["MERIDIAN_API_KEY"])
+client = VaeloomClient(api_key=os.environ["Vaeloom_API_KEY"])
 
 query = (client
     .query("documents")
@@ -606,14 +606,14 @@ page = await client.entity("documents").list(
 
 ```typescript
 const updated = await client.entity("documents").update("doc_abc123", {
-  title: "Q4 Financial Report — Final",
+  title: "Q4 Financial Report â€” Final",
   attributes: { approved: true },
 });
 ```
 
 ```python
 updated = await client.entity("documents").update("doc_abc123", {
-    "title": "Q4 Financial Report — Final",
+    "title": "Q4 Financial Report â€” Final",
     "attributes": {"approved": True},
 })
 ```
@@ -634,7 +634,7 @@ await client.entity("documents").delete("doc_abc123")
 const results = await client.entity("documents").batch([
   { op: "create", data: { title: "Doc A", type: "note" } },
   { op: "create", data: { title: "Doc B", type: "note" } },
-  { op: "update", id: "doc_existing", data: { title: "Doc B — Updated" } },
+  { op: "update", id: "doc_existing", data: { title: "Doc B â€” Updated" } },
 ]);
 ```
 
@@ -650,8 +650,8 @@ const task = await client.agent("data-enrichment").run({
     documentId: "doc_abc123",
     enrichFields: ["author", "keywords", "summary"],
   },
-  webhookUrl: "https://myapp.com/webhooks/meridian",
-  webhookSecret: process.env.MERIDIAN_WEBHOOK_SECRET,
+  webhookUrl: "https://myapp.com/webhooks/Vaeloom",
+  webhookSecret: process.env.Vaeloom_WEBHOOK_SECRET,
 });
 // task: { taskId: string; status: "queued" }
 ```
@@ -662,8 +662,8 @@ task = await client.agent("data-enrichment").run({
         "documentId": "doc_abc123",
         "enrichFields": ["author", "keywords", "summary"],
     },
-    "webhookUrl": "https://myapp.com/webhooks/meridian",
-    "webhookSecret": os.environ["MERIDIAN_WEBHOOK_SECRET"],
+    "webhookUrl": "https://myapp.com/webhooks/Vaeloom",
+    "webhookSecret": os.environ["Vaeloom_WEBHOOK_SECRET"],
 })
 ```
 
@@ -701,7 +701,7 @@ await client.tasks().cancel("task_xyz789");
 
 ### 12.5 Webhook Payload
 
-When an agent completes, Meridian POSTs the following payload to your registered webhook URL:
+When an agent completes, Vaeloom POSTs the following payload to your registered webhook URL:
 
 ```json
 {
@@ -724,12 +724,12 @@ When an agent completes, Meridian POSTs the following payload to your registered
 
 ### 13.1 Error Types
 
-All SDK errors extend a base `MeridianError` class, which exposes `statusCode`, `code`, `message`, and `requestId`.
+All SDK errors extend a base `VaeloomError` class, which exposes `statusCode`, `code`, `message`, and `requestId`.
 
 | Error Class             | HTTP Status | When Raised                           |
 |-------------------------|-------------|---------------------------------------|
 | `AuthenticationError`   | 401         | Invalid or expired credentials        |
-| `RateLimitError`        | 429         | Too many requests (see §14)           |
+| `RateLimitError`        | 429         | Too many requests (see Â§14)           |
 | `ValidationError`       | 422         | Request payload failed schema validation |
 | `NotFoundError`         | 404         | Requested resource does not exist     |
 | `ServerError`           | 500+        | Upstream server failure               |
@@ -743,13 +743,13 @@ import {
   RateLimitError,
   ValidationError,
   NotFoundError,
-} from "@meridian/sdk-ts";
+} from "@vaeloom/sdk-ts";
 
 try {
   const doc = await client.entity("documents").get("doc_invalid");
 } catch (error) {
   if (error instanceof AuthenticationError) {
-    console.error("Auth failed — check MERIDIAN_API_KEY");
+    console.error("Auth failed â€” check Vaeloom_API_KEY");
     process.exit(1);
   }
   if (error instanceof RateLimitError) {
@@ -768,12 +768,12 @@ try {
 ```
 
 ```python
-from meridian_sdk.errors import AuthenticationError, RateLimitError, ValidationError, NotFoundError
+from Vaeloom_sdk.errors import AuthenticationError, RateLimitError, ValidationError, NotFoundError
 
 try:
     doc = await client.entity("documents").get("doc_invalid")
 except AuthenticationError:
-    print("Auth failed — check MERIDIAN_API_KEY")
+    print("Auth failed â€” check Vaeloom_API_KEY")
     raise
 except RateLimitError as e:
     print(f"Rate limited, retry after {e.retry_after_ms}ms")
@@ -793,13 +793,13 @@ The SDK retries on transient failures (429, 503, network errors) with exponentia
 | `maxRetries`         | 3       | Maximum number of retries              |
 | `baseDelayMs`        | 500     | Initial delay before first retry       |
 | `maxDelayMs`         | 30_000  | Maximum delay cap                      |
-| `backoffMultiplier`  | 2       | Exponential factor (500 → 1000 → 2000) |
+| `backoffMultiplier`  | 2       | Exponential factor (500 â†’ 1000 â†’ 2000) |
 
 These can be overridden at the client level:
 
 ```typescript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
   maxRetries: 5,
   baseDelayMs: 200,
 });
@@ -808,8 +808,8 @@ const client = new MeridianClient({
 ### 13.4 Timeout Configuration
 
 ```typescript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
   requestTimeoutMs: 60_000,  // Default: 30_000
 });
 ```
@@ -820,7 +820,7 @@ const client = new MeridianClient({
 
 ### 14.1 SDK-Level Rate Limiting
 
-The SDK implements a **token-bucket algorithm** to stay within Meridian API rate limits.
+The SDK implements a **token-bucket algorithm** to stay within Vaeloom API rate limits.
 
 | Limit Type          | Default Rate        | Scope     |
 |---------------------|---------------------|-----------|
@@ -841,8 +841,8 @@ delay = min(baseDelay * 2^(attempt - 1), maxDelay) * (0.5 + random())
 Requests that exceed the rate limit are queued internally rather than dropped:
 
 ```typescript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
   rateLimit: {
     maxQueueSize: 100,    // Maximum queued requests
     onQueueFull: "error", // "error" | "block" | "drop"
@@ -853,8 +853,8 @@ const client = new MeridianClient({
 ### 14.4 Custom Rate Limit Configuration
 
 ```typescript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
   rateLimit: {
     requestsPerSecond: 50,
     burstSize: 100,
@@ -864,8 +864,8 @@ const client = new MeridianClient({
 ```
 
 ```python
-client = MeridianClient(
-    api_key=os.environ["MERIDIAN_API_KEY"],
+client = VaeloomClient(
+    api_key=os.environ["Vaeloom_API_KEY"],
     rate_limit={
         "requests_per_second": 50,
         "burst_size": 100,
@@ -899,17 +899,17 @@ client.on("http:request", (req) => {
 ### 15.3 Environment Isolation
 
 ```typescript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
-  baseUrl: process.env.MERIDIAN_BASE_URL, // Default: https://api.meridian.dev
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
+  baseUrl: process.env.Vaeloom_BASE_URL, // Default: https://api.Vaeloom.dev
 });
 ```
 
 | Environment | Typical `baseUrl`                      |
 |-------------|----------------------------------------|
-| Development| `https://api-dev.meridian.dev`          |
-| Staging    | `https://api-staging.meridian.dev`      |
-| Production | `https://api.meridian.dev`              |
+| Development| `https://api-dev.Vaeloom.dev`          |
+| Staging    | `https://api-staging.Vaeloom.dev`      |
+| Production | `https://api.Vaeloom.dev`              |
 
 ### 15.4 Transport Security
 
@@ -917,9 +917,9 @@ const client = new MeridianClient({
 - Certificate pinning is supported via a custom `httpsAgent`:
 
 ```typescript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
-  httpsAgent: new https.Agent({ ca: MERIDIAN_CA_CERT }),
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
+  httpsAgent: new https.Agent({ ca: Vaeloom_CA_CERT }),
 });
 ```
 
@@ -946,8 +946,8 @@ TCP keep-alive is enabled by default with a 30-second interval.
 Idempotent `GET` requests are cached in-memory for a configurable TTL:
 
 ```typescript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
   cache: {
     enabled: true,
     ttlMs: 5_000,       // 5-second cache
@@ -977,8 +977,8 @@ const results = await client.entity("documents").batch([
 The SDK enforces a configurable concurrency limit to prevent overwhelming both the client and the server.
 
 ```typescript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
   maxConcurrent: 25,
 });
 ```
@@ -1046,11 +1046,11 @@ for await (const batch of stream) {
 
 ### 18.1 SDK Logging
 
-The SDK logs at configurable levels. Logs include request method, path, status code, and duration — but **never** credentials or payload bodies.
+The SDK logs at configurable levels. Logs include request method, path, status code, and duration â€” but **never** credentials or payload bodies.
 
 ```typescript
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
   logLevel: "info", // "debug" | "info" | "warn" | "error" | "silent"
 });
 ```
@@ -1059,8 +1059,8 @@ const client = new MeridianClient({
 import logging
 logging.basicConfig(level=logging.INFO)
 
-client = MeridianClient(
-    api_key=os.environ["MERIDIAN_API_KEY"],
+client = VaeloomClient(
+    api_key=os.environ["Vaeloom_API_KEY"],
     log_level="INFO",
 )
 ```
@@ -1085,7 +1085,7 @@ The SDK emits metrics that can be collected via an event emitter:
 ```typescript
 client.on("metric", (metric) => {
   // metric: { name: string; value: number; tags: Record<string, string> }
-  metricsClient.distribution("meridian.sdk." + metric.name, metric.value, metric.tags);
+  metricsClient.distribution("Vaeloom.sdk." + metric.name, metric.value, metric.tags);
 });
 ```
 
@@ -1117,20 +1117,20 @@ The SDK follows strict [SemVer 2.0.0](https://semver.org/):
 
 | Version Bump | Meaning                                      | Example    |
 |--------------|----------------------------------------------|------------|
-| **Major**    | Breaking API changes, removed functionality  | `1.x → 2.0.0` |
-| **Minor**    | New features, backward-compatible            | `1.0 → 1.1.0` |
-| **Patch**    | Bug fixes, performance improvements          | `1.0.0 → 1.0.1` |
+| **Major**    | Breaking API changes, removed functionality  | `1.x â†’ 2.0.0` |
+| **Minor**    | New features, backward-compatible            | `1.0 â†’ 1.1.0` |
+| **Patch**    | Bug fixes, performance improvements          | `1.0.0 â†’ 1.0.1` |
 
 ### 19.2 Changelog
 
 Each release includes a `CHANGELOG.md` entry with:
 
-- **Added** — New features and endpoints
-- **Changed** — Behavior modifications (backward-compatible)
-- **Deprecated** — Features scheduled for removal
-- **Removed** — Features removed in this version
-- **Fixed** — Bug fixes
-- **Security** — Vulnerability patches
+- **Added** â€” New features and endpoints
+- **Changed** â€” Behavior modifications (backward-compatible)
+- **Deprecated** â€” Features scheduled for removal
+- **Removed** â€” Features removed in this version
+- **Fixed** â€” Bug fixes
+- **Security** â€” Vulnerability patches
 
 ### 19.3 Migration Guides
 
@@ -1138,8 +1138,8 @@ Breaking changes include a migration guide in `MIGRATING.md`:
 
 ```
 MIGRATING.md
-├── 1.x-to-2.0.md
-├── 2.x-to-3.0.md
+â”œâ”€â”€ 1.x-to-2.0.md
+â”œâ”€â”€ 2.x-to-3.0.md
 ```
 
 ### 19.4 Deprecation Policy
@@ -1153,7 +1153,7 @@ MIGRATING.md
 Deprecated features produce a runtime warning once per client instance:
 
 ```text
-[MERIDIAN SDK] DeprecationWarning: entityClient.batch() is deprecated in v1.x.
+[Vaeloom SDK] DeprecationWarning: entityClient.batch() is deprecated in v1.x.
 Use entityClient.bulk() instead. This feature will be removed in v2.0.
 ```
 
@@ -1161,14 +1161,14 @@ Use entityClient.bulk() instead. This feature will be removed in v2.0.
 
 ## 20. Examples
 
-### 20.1 End-to-End: Authenticate → Query → Run Agent → Check Results
+### 20.1 End-to-End: Authenticate â†’ Query â†’ Run Agent â†’ Check Results
 
 ```typescript
-import { MeridianClient, eq, gt } from "@meridian/sdk-ts";
+import { VaeloomClient, eq, gt } from "@vaeloom/sdk-ts";
 
 // 1. Initialise client
-const client = new MeridianClient({
-  apiKey: process.env.MERIDIAN_API_KEY,
+const client = new VaeloomClient({
+  apiKey: process.env.Vaeloom_API_KEY,
   logLevel: "info",
 });
 
@@ -1190,11 +1190,11 @@ const taskIds: string[] = [];
 for (const doc of pendingDocs.data) {
   const task = await agent.run({
     payload: { documentId: doc.id },
-    webhookUrl: "https://myapp.com/webhooks/meridian",
-    webhookSecret: process.env.MERIDIAN_WEBHOOK_SECRET,
+    webhookUrl: "https://myapp.com/webhooks/Vaeloom",
+    webhookSecret: process.env.Vaeloom_WEBHOOK_SECRET,
   });
   taskIds.push(task.taskId);
-  console.log(`Submitted ${doc.id} → task ${task.taskId}`);
+  console.log(`Submitted ${doc.id} â†’ task ${task.taskId}`);
 }
 
 // 4. Poll for completion
@@ -1215,12 +1215,12 @@ console.table(results.map((r) => ({
 ```python
 import os
 import asyncio
-from meridian_sdk import MeridianClient, eq, gt
+from Vaeloom_sdk import VaeloomClient, eq, gt
 
 async def main():
     # 1. Initialise client
-    client = MeridianClient(
-        api_key=os.environ["MERIDIAN_API_KEY"],
+    client = VaeloomClient(
+        api_key=os.environ["Vaeloom_API_KEY"],
         log_level="INFO",
     )
 
@@ -1242,11 +1242,11 @@ async def main():
     for doc in pending_docs.data:
         task = await agent.run({
             "payload": {"documentId": doc["id"]},
-            "webhookUrl": "https://myapp.com/webhooks/meridian",
-            "webhookSecret": os.environ["MERIDIAN_WEBHOOK_SECRET"],
+            "webhookUrl": "https://myapp.com/webhooks/Vaeloom",
+            "webhookSecret": os.environ["Vaeloom_WEBHOOK_SECRET"],
         })
         task_ids.append(task["taskId"])
-        print(f"Submitted {doc['id']} → task {task['taskId']}")
+        print(f"Submitted {doc['id']} â†’ task {task['taskId']}")
 
     # 4. Poll for completion
     results = []
@@ -1282,15 +1282,15 @@ asyncio.run(main())
 Always dispose of the client when shutting down to flush pending requests:
 
 ```typescript
-// TypeScript — client implements AsyncDisposable
-await using client = new MeridianClient({ ... });
+// TypeScript â€” client implements AsyncDisposable
+await using client = new VaeloomClient({ ... });
 // ... work ...
 // Client is automatically disposed when scope exits
 ```
 
 ```python
-# Python — use context manager
-async with MeridianClient(api_key=os.environ["MERIDIAN_API_KEY"]) as client:
+# Python â€” use context manager
+async with VaeloomClient(api_key=os.environ["Vaeloom_API_KEY"]) as client:
     # ... work ...
 ```
 
@@ -1298,7 +1298,7 @@ async with MeridianClient(api_key=os.environ["MERIDIAN_API_KEY"]) as client:
 
 ```typescript
 // Using the mock transport for unit tests
-import { MockTransport } from "@meridian/sdk-ts/testing";
+import { MockTransport } from "@vaeloom/sdk-ts/testing";
 
 const transport = new MockTransport();
 transport.when("POST", "/v1/entities/document").respond(201, {
@@ -1306,7 +1306,7 @@ transport.when("POST", "/v1/entities/document").respond(201, {
   title: "Test Document",
 });
 
-const client = new MeridianClient({
+const client = new VaeloomClient({
   apiKey: "test-key",
   transport, // Inject mock transport
 });
@@ -1347,8 +1347,8 @@ const client = new MeridianClient({
 3. **Maximum page size** of 1,000 records per `pageSize` parameter.
 4. **Browser support** is limited to modern browsers (Chrome 90+, Firefox 90+, Safari 15+, Edge 90+).
 5. **Python SDK** requires Python 3.11 or later (no 3.10 support).
-6. **No WebSocket support** — real-time updates require polling or webhooks.
-7. **No offline mode** — all operations require a network connection to the Meridian API.
+6. **No WebSocket support** â€” real-time updates require polling or webhooks.
+7. **No offline mode** â€” all operations require a network connection to the Vaeloom API.
 
 ---
 
@@ -1374,6 +1374,6 @@ const client = new MeridianClient({
 | **Rate Limiting Guide**           | Rate limit policies, headers, best practices     | [`Backend/Rate-Limiting.md`](./Backend/Rate-Limiting.md) |
 | **REST API Standards**            | Naming conventions, pagination, error contracts  | [`Backend/REST-Standards.md`](./Backend/REST-Standards.md) |
 | **Webhook Guide**                 | Webhook registration, verification, retries      | [`Integration-Guide.md`](./Integration-Guide.md) |
-| **Migration Guide (v1.x → v2.0)**| Breaking changes and upgrade paths               | [`Project/Migration-Guide.md`](./Project/Migration-Guide.md) |
+| **Migration Guide (v1.x â†’ v2.0)**| Breaking changes and upgrade paths               | [`Project/Migration-Guide.md`](./Project/Migration-Guide.md) |
 | **CHANGELOG**                     | Release history and version diffs                | [`Project/Changelog.md`](./Project/Changelog.md) |
 | **OpenAPI Spec**                  | Machine-readable API specification               | [`Backend/openapi.yaml`](./Backend/openapi.yaml) |

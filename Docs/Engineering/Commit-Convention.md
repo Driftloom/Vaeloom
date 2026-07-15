@@ -1,7 +1,7 @@
-# Commit Convention
+﻿# Commit Convention
 
-> **Purpose:** Define commit message conventions for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define commit message conventions for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Commit Architecture
 
@@ -12,20 +12,20 @@ graph TD
     classDef scope fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef rules fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Format["📝 Commit Format"]
-        F["<type>(<scope>): <description><br/><br/>[optional body — explains what & why]<br/><br/>[optional footer — Closes/Fixes #issue]"]
+    subgraph Format["ðŸ“ Commit Format"]
+        F["<type>(<scope>): <description><br/><br/>[optional body â€” explains what & why]<br/><br/>[optional footer â€” Closes/Fixes #issue]"]
     end
 
-    subgraph Types["🏷️ Types"]
+    subgraph Types["ðŸ·ï¸ Types"]
         T1["feat: New feature<br/>fix: Bug fix<br/>chore: Maintenance<br/>docs: Documentation"]
         T2["style: Formatting<br/>refactor: No behavior change<br/>test: Test changes<br/>ci: CI/CD changes"]
     end
 
-    subgraph Scopes["🎯 Scopes"]
+    subgraph Scopes["ðŸŽ¯ Scopes"]
         S1["web: Frontend<br/>api: Backend API<br/>ai: AI Service<br/>infra: Infrastructure<br/>deps: Dependencies<br/>docs: Documentation"]
     end
 
-    subgraph Rules["📋 Rules"]
+    subgraph Rules["ðŸ“‹ Rules"]
         R1["First line < 72 chars"]
         R2["Imperative mood: "Add" not "Added""]
         R3["Capitalize first letter"]
@@ -41,7 +41,7 @@ graph TD
     class R1,R2,R3,R4,R5 rules
 ```
 
-> **Diagram:** Commit convention following conventional commits format — **format** specifies `<type>(<scope>): <desc>` with optional body/footer. **8 types** (feat, fix, chore, docs, style, refactor, test, ci) and **6 scopes** (web, api, ai, infra, deps, docs). **5 rules** ensure readable, consistent messages.
+> **Diagram:** Commit convention following conventional commits format â€” **format** specifies `<type>(<scope>): <desc>` with optional body/footer. **8 types** (feat, fix, chore, docs, style, refactor, test, ci) and **6 scopes** (web, api, ai, infra, deps, docs). **5 rules** ensure readable, consistent messages.
 
 ---
 
@@ -116,33 +116,33 @@ Fixes #89
 
 | Mistake | Consequence |
 |---------|-------------|
-| Writing vague commit messages | "Fix bug", "Update stuff", or "Address PR feedback" provide no context for future readers — a good commit message explains what changed and why |
-| Using past tense in commit subjects | "Added" instead of "Add" breaks the conventional commits convention — the subject line should complete the sentence "This commit will..." |
-| Including too much in a single commit | A commit that changes 20 files across 3 concerns can't be reverted independently — each commit should represent a single logical change |
-| Forgetting the body for non-trivial changes | A one-line commit message for a complex change provides no context for why the change was made — the body should explain motivation and trade-offs |
+| Writing vague commit messages | "Fix bug", "Update stuff", or "Address PR feedback" provide no context for future readers â€” a good commit message explains what changed and why |
+| Using past tense in commit subjects | "Added" instead of "Add" breaks the conventional commits convention â€” the subject line should complete the sentence "This commit will..." |
+| Including too much in a single commit | A commit that changes 20 files across 3 concerns can't be reverted independently â€” each commit should represent a single logical change |
+| Forgetting the body for non-trivial changes | A one-line commit message for a complex change provides no context for why the change was made â€” the body should explain motivation and trade-offs |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Write the subject line as "This commit will..." | "Add document upload endpoint" completes the sentence — "Added document upload endpoint" does not. This convention makes every commit message read naturally |
-| Keep the subject line under 72 characters | 72 characters is the standard git log limit — longer subjects are truncated in terminal output and lose readability |
-| Use the body to explain what and why, not how | The code itself shows how — the body should explain why this approach was chosen and what alternatives were considered |
-| Use a consistent type and scope from the allowed list | `feat(api):`, `fix(ai):`, `docs(readme):` — consistent types enable automated changelog generation and release notes |
+| Write the subject line as "This commit will..." | "Add document upload endpoint" completes the sentence â€” "Added document upload endpoint" does not. This convention makes every commit message read naturally |
+| Keep the subject line under 72 characters | 72 characters is the standard git log limit â€” longer subjects are truncated in terminal output and lose readability |
+| Use the body to explain what and why, not how | The code itself shows how â€” the body should explain why this approach was chosen and what alternatives were considered |
+| Use a consistent type and scope from the allowed list | `feat(api):`, `fix(ai):`, `docs(readme):` â€” consistent types enable automated changelog generation and release notes |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Commit messages exposing vulnerabilities | Commit messages for security fixes should describe the fix abstractly without detailing the exploit path — use "Fix token validation" not "Fix token replay attack by adding nonce" |
-| Sensitive data in commit history | Credentials, API keys, or internal URLs committed by accident are in the git history permanently — use `git filter-branch` or `bfg` to remove them, then rotate affected credentials |
+| Commit messages exposing vulnerabilities | Commit messages for security fixes should describe the fix abstractly without detailing the exploit path â€” use "Fix token validation" not "Fix token replay attack by adding nonce" |
+| Sensitive data in commit history | Credentials, API keys, or internal URLs committed by accident are in the git history permanently â€” use `git filter-branch` or `bfg` to remove them, then rotate affected credentials |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Commit granularity and CI efficiency | Every commit triggers CI — 50 commits with broken intermediate state waste CI resources. Use `git rebase -i` to squash WIP commits before pushing |
-| Commit size and review efficiency | A commit that changes 3 unrelated files is harder to review than 3 commits changing 1 file each — granular commits make `git blame` and `git bisect` more effective |
+| Commit granularity and CI efficiency | Every commit triggers CI â€” 50 commits with broken intermediate state waste CI resources. Use `git rebase -i` to squash WIP commits before pushing |
+| Commit size and review efficiency | A commit that changes 3 unrelated files is harder to review than 3 commits changing 1 file each â€” granular commits make `git blame` and `git bisect` more effective |
 
 ## Workflows
 
@@ -151,7 +151,7 @@ Fixes #89
 3. **Add optional body** explaining what changed and why (not how)
 4. **Add optional footer** referencing issue: `Closes #142` or `Fixes #89`
 5. **Commit locally:** `git commit -m` with the formatted message
-6. **Push and verify:** `git push` — ensure CI passes on the branch
+6. **Push and verify:** `git push` â€” ensure CI passes on the branch
 7. **For WIP commits:** `git rebase -i` to squash before opening PR
 
 ---
@@ -213,15 +213,15 @@ Fixes #89
 
 ## Overview
 
-This document defines the commit message convention used by every Meridian engineer across all services — `apps/web`, `apps/api`, and `apps/ai-service`. Following the Conventional Commits specification, each message includes a type (`feat`, `fix`, `chore`, etc.), an optional scope (`web`, `api`, `ai`, `infra`, `deps`, `docs`), a descriptive subject under 72 characters, and an optional body explaining what changed and why.
+This document defines the commit message convention used by every Vaeloom engineer across all services â€” `apps/web`, `apps/api`, and `apps/ai-service`. Following the Conventional Commits specification, each message includes a type (`feat`, `fix`, `chore`, etc.), an optional scope (`web`, `api`, `ai`, `infra`, `deps`, `docs`), a descriptive subject under 72 characters, and an optional body explaining what changed and why.
 
-Consistent commit messages enable automated changelog generation, semantic version bump detection, and release note creation — all critical for Meridian's bi-weekly release cadence. The convention is enforced through pre-commit hooks (planned Q3 2026) and CI-enforced commitlint gates (planned Q4 2026), but the primary enforcement is developer discipline and code review.
+Consistent commit messages enable automated changelog generation, semantic version bump detection, and release note creation â€” all critical for Vaeloom's bi-weekly release cadence. The convention is enforced through pre-commit hooks (planned Q3 2026) and CI-enforced commitlint gates (planned Q4 2026), but the primary enforcement is developer discipline and code review.
 
-All Meridian engineers are expected to follow this convention for every commit. The branch strategy in `Branch-Strategy.md` and the PR workflow in `PR-Guidelines.md` depend on well-formed commit messages for squash merge descriptions and changelog automation.
+All Vaeloom engineers are expected to follow this convention for every commit. The branch strategy in `Branch-Strategy.md` and the PR workflow in `PR-Guidelines.md` depend on well-formed commit messages for squash merge descriptions and changelog automation.
 
 ## Goals
 
-- Standardize commit messages across all Meridian services for readability and automation
+- Standardize commit messages across all Vaeloom services for readability and automation
 - Enable automated changelog generation and semantic version detection from commit history
 - Ensure every commit is a single logical change that can be independently reverted or cherry-picked
 - Provide clear examples and rules so new engineers write compliant messages from day one
@@ -232,7 +232,7 @@ All Meridian engineers are expected to follow this convention for every commit. 
 ### In Scope
 - Conventional Commits format: `<type>(<scope>): <description>` with optional body and footer
 - Eight commit types: feat, fix, chore, docs, style, refactor, test, ci
-- Six Meridian scopes: web, api, ai, infra, deps, docs
+- Six Vaeloom scopes: web, api, ai, infra, deps, docs
 - Five formatting rules (72-char limit, imperative mood, capitalization, no period, body explains why)
 - Good and bad commit message examples
 - Workflow for staging, writing, amending, and squashing commits
@@ -249,7 +249,7 @@ All Meridian engineers are expected to follow this convention for every commit. 
 ## Examples
 
 ```text
-# Good commit — feature with body explaining what and why
+# Good commit â€” feature with body explaining what and why
 feat(api): add document upload endpoint with queue processing
 
 Implements POST /workspaces/{id}/documents with:
@@ -259,7 +259,7 @@ Implements POST /workspaces/{id}/documents with:
 
 Closes #142
 
-# Good commit — bug fix with rationale
+# Good commit â€” bug fix with rationale
 fix(ai): correct entity merge confidence threshold
 
 The merge threshold was incorrectly set to 0.5 instead of 0.95,
@@ -268,13 +268,13 @@ and added test coverage for edge cases.
 
 Fixes #89
 
-# Good commit — documentation change
+# Good commit â€” documentation change
 docs(readme): update API examples for v2 endpoints
 
-# Bad commit — vague, no context
+# Bad commit â€” vague, no context
 fixed stuff
 
-# Bad commit — past tense, too long
+# Bad commit â€” past tense, too long
 Added new document upload endpoint that processes files through the
 queue and validates them against the permission engine before returning
 the document ID to the caller which then uses it for further processing

@@ -1,20 +1,20 @@
-# Reasoning
+﻿# Reasoning
 
-> **Purpose:** Define the AI reasoning architecture for Meridian's agents
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the AI reasoning architecture for Vaeloom's agents
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Reasoning is how Meridian's agents think — the process by which they turn input and retrieved context into decisions, classifications, and generated content. Every agent follows a consistent Plan → Act → Observe → Reflect → Improve loop, but the reasoning depth varies by task: simple classification tasks use direct output with Claude Haiku (fast and cheap), while complex reasoning tasks (scoring, gap analysis, conflict resolution) use chain-of-thought with Claude Sonnet (capable, auditable). The iteration controller caps the Reflect → Improve cycle at 3 iterations to balance quality and latency.
+Reasoning is how Vaeloom's agents think â€” the process by which they turn input and retrieved context into decisions, classifications, and generated content. Every agent follows a consistent Plan â†’ Act â†’ Observe â†’ Reflect â†’ Improve loop, but the reasoning depth varies by task: simple classification tasks use direct output with Claude Haiku (fast and cheap), while complex reasoning tasks (scoring, gap analysis, conflict resolution) use chain-of-thought with Claude Sonnet (capable, auditable). The iteration controller caps the Reflect â†’ Improve cycle at 3 iterations to balance quality and latency.
 
-This document defines the reasoning architecture, agent-specific reasoning approaches, the agentic loop state machine, model selection by reasoning depth, and the iteration controller. It serves AI engineers designing agent behavior, backend engineers implementing the reasoning service, and QA engineers auditing reasoning traces. The two-path model — simple direct output vs. complex chain-of-thought — optimizes for cost and latency without sacrificing quality where it matters.
+This document defines the reasoning architecture, agent-specific reasoning approaches, the agentic loop state machine, model selection by reasoning depth, and the iteration controller. It serves AI engineers designing agent behavior, backend engineers implementing the reasoning service, and QA engineers auditing reasoning traces. The two-path model â€” simple direct output vs. complex chain-of-thought â€” optimizes for cost and latency without sacrificing quality where it matters.
 
 ## Goals
 
 - Support two-tier reasoning (simple direct output for classification, complex CoT for reasoning tasks) matched to task complexity
-- Cap the Reflect → Improve iteration loop at 3 cycles to prevent runaway agent execution
+- Cap the Reflect â†’ Improve iteration loop at 3 cycles to prevent runaway agent execution
 - Log every reasoning trace with full chain-of-thought for complex tasks to enable post-hoc audit and debugging
 - Achieve sub-3-second latency for simple classification tasks and sub-8-second latency for complex reasoning
 - Match model selection to reasoning depth (Haiku for simple, Sonnet for complex) to optimize cost-quality tradeoff
@@ -42,14 +42,14 @@ Different agents use different reasoning approaches depending on their task:
 stateDiagram-v2
     direction LR
 
-    state Idle : 💤 Waiting for input
-    state Plan : 📋 Determine approach
-    state Act : ⚡ Execute planned action
-    state Observe : 👀 Evaluate result
-    state Reflect : 🤔 Is result correct?
-    state Improve : 🔧 Adjust & retry
-    state Complete : ✅ Task complete
-    state Error : ❌ Max iterations / fatal
+    state Idle : ðŸ’¤ Waiting for input
+    state Plan : ðŸ“‹ Determine approach
+    state Act : âš¡ Execute planned action
+    state Observe : ðŸ‘€ Evaluate result
+    state Reflect : ðŸ¤” Is result correct?
+    state Improve : ðŸ”§ Adjust & retry
+    state Complete : âœ… Task complete
+    state Error : âŒ Max iterations / fatal
 
     [*] --> Idle : Agent ready
     Idle --> Plan : Input received
@@ -58,9 +58,9 @@ stateDiagram-v2
 
     Observe --> Reflect : Result captured
 
-    Reflect --> Complete : ✅ Correct & sufficient
-    Reflect --> Improve : ⚠️ Needs adjustment
-    Reflect --> Act : 🔄 Retry exactly
+    Reflect --> Complete : âœ… Correct & sufficient
+    Reflect --> Improve : âš ï¸ Needs adjustment
+    Reflect --> Act : ðŸ”„ Retry exactly
 
     Improve --> Plan : New approach needed
     Improve --> Act : Same approach, different params
@@ -88,7 +88,7 @@ stateDiagram-v2
 
 ```
 
-> **Diagram:** Every agent follows the same reasoning loop — **Plan → Act → Observe → Reflect → Improve**. The Reflect state determines whether to complete, improve (with a new plan), retry (same approach), or error. Simple classification tasks skip CoT and use direct output with the Haiku model. Complex reasoning uses the Sonnet model with chain-of-thought and full audit logging.
+> **Diagram:** Every agent follows the same reasoning loop â€” **Plan â†’ Act â†’ Observe â†’ Reflect â†’ Improve**. The Reflect state determines whether to complete, improve (with a new plan), retry (same approach), or error. Simple classification tasks skip CoT and use direct output with the Haiku model. Complex reasoning uses the Sonnet model with chain-of-thought and full audit logging.
 
 ---
 
@@ -112,46 +112,46 @@ Different agents use different reasoning approaches depending on their task:
 Every agent follows the same reasoning loop:
 
 ```text
-Plan → Act → Observe → Reflect → Improve
+Plan â†’ Act â†’ Observe â†’ Reflect â†’ Improve
 ```
 
 ## Common Mistakes
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Using chain-of-thought reasoning for simple classification tasks | CoT adds 2-3x token cost and latency for tasks where a direct answer is equally accurate — classification, pattern matching, and simple extraction don't benefit from step-by-step reasoning |
-| Not logging the reasoning trace for audit | Agent decisions that involve multi-step reasoning are impossible to debug or audit if only the final output is recorded — the reasoning chain must be logged for post-hoc review |
-| Allowing infinite retry loops in the Reflect → Improve cycle | An agent that keeps finding ways to improve its output may loop indefinitely — cap the number of iterations in the Reflect → Improve cycle (max 3) and output the best result |
-| Treating all agent tasks with the same reasoning depth | A task like "classify this email" needs a fast, shallow reasoning pass; "score this resume against a job description" needs deep reasoning — match reasoning depth to task complexity |
+| Using chain-of-thought reasoning for simple classification tasks | CoT adds 2-3x token cost and latency for tasks where a direct answer is equally accurate â€” classification, pattern matching, and simple extraction don't benefit from step-by-step reasoning |
+| Not logging the reasoning trace for audit | Agent decisions that involve multi-step reasoning are impossible to debug or audit if only the final output is recorded â€” the reasoning chain must be logged for post-hoc review |
+| Allowing infinite retry loops in the Reflect â†’ Improve cycle | An agent that keeps finding ways to improve its output may loop indefinitely â€” cap the number of iterations in the Reflect â†’ Improve cycle (max 3) and output the best result |
+| Treating all agent tasks with the same reasoning depth | A task like "classify this email" needs a fast, shallow reasoning pass; "score this resume against a job description" needs deep reasoning â€” match reasoning depth to task complexity |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Use direct output (no chain-of-thought) for simple classification tasks | Classification/pattern → Haiku model with direct JSON output — saves 2-3x cost vs CoT without sacrificing accuracy for simple tasks |
-| Log the complete reasoning chain for any task that undergoes the Plan → Act → Observe → Reflect → Improve loop | Full reasoning traces enable debugging when the agent produces incorrect outputs — without the trace, a wrong answer is a black box |
-| Cap the Reflect → Improve cycle at max 3 iterations | Three passes are typically sufficient for iterative improvement — beyond that, diminishing returns and increasing latency suggest the agent should fall back to asking for user clarification |
-| Match model selection to reasoning depth required | Simple reasoning (classification, matching) → Haiku (fast, cheap); complex reasoning (scoring, conflict resolution, gap analysis) → Sonnet (capable, moderate cost) |
+| Use direct output (no chain-of-thought) for simple classification tasks | Classification/pattern â†’ Haiku model with direct JSON output â€” saves 2-3x cost vs CoT without sacrificing accuracy for simple tasks |
+| Log the complete reasoning chain for any task that undergoes the Plan â†’ Act â†’ Observe â†’ Reflect â†’ Improve loop | Full reasoning traces enable debugging when the agent produces incorrect outputs â€” without the trace, a wrong answer is a black box |
+| Cap the Reflect â†’ Improve cycle at max 3 iterations | Three passes are typically sufficient for iterative improvement â€” beyond that, diminishing returns and increasing latency suggest the agent should fall back to asking for user clarification |
+| Match model selection to reasoning depth required | Simple reasoning (classification, matching) â†’ Haiku (fast, cheap); complex reasoning (scoring, conflict resolution, gap analysis) â†’ Sonnet (capable, moderate cost) |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Reasoning trace exposing internal system prompts | If the reasoning chain is logged and later accessible via the audit log, it could reveal the agent's system prompt — ensure reasoning traces are stored separately from user-facing audit logs |
-| CoT hallucination in high-stakes reasoning steps | Chain-of-thought can produce plausible-sounding intermediate reasoning steps that are factually incorrect — the final output must be validated against memory, not just assumed correct because the reasoning path was logical |
-| Incomplete reasoning in the Reflect step masking errors | An agent that reflects "looks correct" without actually verifying the critical step may skip necessary corrections — the Reflect step should have explicit verification criteria, not open-ended self-assessment |
+| Reasoning trace exposing internal system prompts | If the reasoning chain is logged and later accessible via the audit log, it could reveal the agent's system prompt â€” ensure reasoning traces are stored separately from user-facing audit logs |
+| CoT hallucination in high-stakes reasoning steps | Chain-of-thought can produce plausible-sounding intermediate reasoning steps that are factually incorrect â€” the final output must be validated against memory, not just assumed correct because the reasoning path was logical |
+| Incomplete reasoning in the Reflect step masking errors | An agent that reflects "looks correct" without actually verifying the critical step may skip necessary corrections â€” the Reflect step should have explicit verification criteria, not open-ended self-assessment |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| CoT token cost overhead | Chain-of-thought reasoning consumes 2-3x more output tokens than direct generation — for high-volume tasks (email classification, document categorization), use direct output with Haiku instead of CoT with Sonnet |
-| Iterative improvement latency | Each Plan → Act → Observe → Reflect → Improve cycle adds 2-5s of model inference time — budget this into agent latency targets and set appropriate user expectations for complex reasoning tasks |
-| Reasoning trace storage cost | Logging full reasoning traces for every agent action adds storage overhead — set a retention policy (30 days for reasoning traces vs permanent for action records) and compress older traces |
+| CoT token cost overhead | Chain-of-thought reasoning consumes 2-3x more output tokens than direct generation â€” for high-volume tasks (email classification, document categorization), use direct output with Haiku instead of CoT with Sonnet |
+| Iterative improvement latency | Each Plan â†’ Act â†’ Observe â†’ Reflect â†’ Improve cycle adds 2-5s of model inference time â€” budget this into agent latency targets and set appropriate user expectations for complex reasoning tasks |
+| Reasoning trace storage cost | Logging full reasoning traces for every agent action adds storage overhead â€” set a retention policy (30 days for reasoning traces vs permanent for action records) and compress older traces |
 
 ## Scope
 
-This document defines the AI reasoning architecture for Meridian's agents — covering the Plan → Act → Observe → Reflect → Improve loop, reasoning approaches per agent type, model selection by reasoning depth, and iterative improvement limits. Applies to all 28 agents (MVP: 8 agents) across all execution modes. Out of scope: model routing (see [Model-Routing.md](./Model-Routing.md)), prompt engineering (see [Prompt-Engineering.md](./Prompt-Engineering.md)), guardrail validation (see [Guardrails.md](./Guardrails.md)).
+This document defines the AI reasoning architecture for Vaeloom's agents â€” covering the Plan â†’ Act â†’ Observe â†’ Reflect â†’ Improve loop, reasoning approaches per agent type, model selection by reasoning depth, and iterative improvement limits. Applies to all 28 agents (MVP: 8 agents) across all execution modes. Out of scope: model routing (see [Model-Routing.md](./Model-Routing.md)), prompt engineering (see [Prompt-Engineering.md](./Prompt-Engineering.md)), guardrail validation (see [Guardrails.md](./Guardrails.md)).
 
 ---
 
@@ -159,9 +159,9 @@ This document defines the AI reasoning architecture for Meridian's agents — co
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| Reasoner (Complex) | Execute Plan→Act→Observe→Reflect→Improve loop | Claude Sonnet with chain-of-thought | Dedicated for reasoning-heavy agents |
+| Reasoner (Complex) | Execute Planâ†’Actâ†’Observeâ†’Reflectâ†’Improve loop | Claude Sonnet with chain-of-thought | Dedicated for reasoning-heavy agents |
 | Reasoner (Simple) | Direct output classification/matching | Claude Haiku (no CoT) | Shared pool for high-volume, low-complexity tasks |
-| Iteration Controller | Cap the Reflect→Improve cycle at max 3 iterations | Python orchestrator | Per-agent configurable max iterations |
+| Iteration Controller | Cap the Reflectâ†’Improve cycle at max 3 iterations | Python orchestrator | Per-agent configurable max iterations |
 | Reasoning Trace Logger | Capture full reasoning chain for audit | Async event bus | 30-day retention; compressed after 7 days |
 | Model Router Adapter | Select model based on reasoning depth required | Router client library | Stateless; routes per task type |
 
@@ -176,16 +176,16 @@ This document defines the AI reasoning architecture for Meridian's agents — co
 3. Act: Execute first reasoning step via tool call or model query
 4. Observe: Capture result of action
 5. Reflect: Evaluate correctness; is result sufficient?
-6. If correct → Complete: Return result
-7. If needs improvement → Improve: Revise approach or params
-8. Loop Reflect→Improve up to max 3 iterations
+6. If correct â†’ Complete: Return result
+7. If needs improvement â†’ Improve: Revise approach or params
+8. Loop Reflectâ†’Improve up to max 3 iterations
 9. Log complete reasoning trace for audit
 
 ### 2. Simple Classification Workflow (Haiku, direct output)
 
 1. Agent receives input requiring classification or matching
 2. Model returns direct JSON output (no step-by-step reasoning)
-3. No Observe→Reflect→Improve loop needed
+3. No Observeâ†’Reflectâ†’Improve loop needed
 4. Output validated by QA Agent
 5. Trace logged: short (classification decision only)
 
@@ -203,9 +203,9 @@ sequenceDiagram
 
     Note over AG,TL: Complex Reasoning (Sonnet + CoT)
     AG->>RE: Input for multi-step reasoning
-    RE->>RE: Plan → Act (tool call)
+    RE->>RE: Plan â†’ Act (tool call)
     TOOL-->>RE: Result
-    RE->>RE: Observe → Reflect
+    RE->>RE: Observe â†’ Reflect
     RE->>RC: Is result sufficient?
     
     loop Max 3 iterations
@@ -224,19 +224,19 @@ sequenceDiagram
     AG->>TL: Log classification trace
 ```
 
-> **Diagram:** Two reasoning paths — complex tasks (Sonnet + CoT) go through Plan→Act→Observe→Reflect→Improve with max 3 iterations. Simple classification (Haiku) returns direct output without looping. Both paths log traces.
+> **Diagram:** Two reasoning paths â€” complex tasks (Sonnet + CoT) go through Planâ†’Actâ†’Observeâ†’Reflectâ†’Improve with max 3 iterations. Simple classification (Haiku) returns direct output without looping. Both paths log traces.
 
 ---
 
 ## Data Flow
 
 ```text
-Agent Input → Reasoning Depth Classification
-    → [Simple: Classification/Matching] → Haiku → Direct JSON Output → QA Validation
-    → [Complex: Scoring/Conflict/Gap] → Sonnet → Plan→Act→Observe→Reflect→Improve
-    → Complete (best result, max 3 iterations)
-    → Reasoning Trace → Audit Log (30-day retention)
-    → Final Output → QA Validation → Agent Response
+Agent Input â†’ Reasoning Depth Classification
+    â†’ [Simple: Classification/Matching] â†’ Haiku â†’ Direct JSON Output â†’ QA Validation
+    â†’ [Complex: Scoring/Conflict/Gap] â†’ Sonnet â†’ Planâ†’Actâ†’Observeâ†’Reflectâ†’Improve
+    â†’ Complete (best result, max 3 iterations)
+    â†’ Reasoning Trace â†’ Audit Log (30-day retention)
+    â†’ Final Output â†’ QA Validation â†’ Agent Response
 ```
 
 ---
@@ -309,7 +309,7 @@ Agent Input → Reasoning Depth Classification
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `REASONING_MAX_ITERATIONS` | Max Reflect→Improve cycles | 3 | Yes |
+| `REASONING_MAX_ITERATIONS` | Max Reflectâ†’Improve cycles | 3 | Yes |
 | `REASONING_SIMPLE_MODEL` | Model for simple classification | claude-haiku | Yes |
 | `REASONING_COMPLEX_MODEL` | Model for complex reasoning | claude-sonnet | Yes |
 | `REASONING_TRACE_RETENTION_DAYS` | Trace log retention | 30 | Yes |
@@ -331,7 +331,7 @@ result = await reasoner.execute_complex(
     }
 )
 # Iteration 1: Score = 0.65 (gap in years + PyTorch skill)
-# Iteration 2: Identified transferable skills → Score = 0.72
+# Iteration 2: Identified transferable skills â†’ Score = 0.72
 # Iteration 3: Final score = 0.75 with gap analysis
 # Result: { "score": 0.75, "gaps": ["years_experience", "pytorch"], "strengths": ["ml_background"] }
 ```
@@ -343,7 +343,7 @@ result = await reasoner.execute_complex(
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | CoT hallucination creates plausible-sounding but wrong output | Medium | High | Validate final output against memory; do not trust reasoning path alone |
-| Agent loops in Reflect→Improve indefinitely | Low | Medium | Hard cap at max_iterations (3); return best result |
+| Agent loops in Reflectâ†’Improve indefinitely | Low | Medium | Hard cap at max_iterations (3); return best result |
 | Reasoning trace exposes system prompts | Low | High | Traces stored separately from user-facing logs; 30-day retention limit |
 | Simple classification used for complex task | Low | Medium | Reasoning depth classifier must correctly route; fall back to complex on confidence < 0.7 |
 

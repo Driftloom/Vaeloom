@@ -1,16 +1,16 @@
-# Search Architecture
+﻿# Search Architecture
 
-> **Purpose:** Define the search architecture for Meridian — how users and agents find information across documents, memory, knowledge graph, and connected services
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the search architecture for Vaeloom â€” how users and agents find information across documents, memory, knowledge graph, and connected services
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-12
-> **Canonical source:** [`/Docs/Meridian-Complete-Documentation.md#18-global-search`](../../Docs/06-Meridian-Enterprise-Paper.md#18-global-search)
+> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#18-global-search`](../../Docs/06-Vaeloom-Enterprise-Paper.md#18-global-search)
 
 ---
 
 ## Overview
 
-Meridian provides a single, unified search surface that spans documents, memory records, knowledge graph entities, chat history, connected email, calendar events, and code repositories. The search system intelligently routes queries to the appropriate backend (keyword, vector, or graph) based on query characteristics.
+Vaeloom provides a single, unified search surface that spans documents, memory records, knowledge graph entities, chat history, connected email, calendar events, and code repositories. The search system intelligently routes queries to the appropriate backend (keyword, vector, or graph) based on query characteristics.
 
 This document covers the search architecture, backends, ranking algorithm, and query routing strategy.
 
@@ -231,7 +231,7 @@ function typePriority(source: string): number {
 
 ## Data Flow
 
-1. User submits search query through search bar or API — query router captures intent, query text, and workspace context
+1. User submits search query through search bar or API â€” query router captures intent, query text, and workspace context
 2. Router classifies query type (natural language, exact term, relationship, or hybrid) and dispatches to appropriate backends
 3. Each backend (keyword, vector, graph) executes search in parallel with workspace_id filter applied
 4. Results are merged, deduplicated, and scored using the weighted ranking algorithm (relevance 0.5, freshness 0.2, importance 0.15, type priority 0.15)
@@ -299,13 +299,13 @@ function typePriority(source: string): number {
 ### Full-text search across documents
 
 ```bash
-meridian search "React internship requirements" --type documents --limit 10
+Vaeloom search "React internship requirements" --type documents --limit 10
 ```
 
 ### Hybrid search (vector + keyword + graph)
 
 ```typescript
-const results = await meridian.search.hybrid({
+const results = await Vaeloom.search.hybrid({
   query: "machine learning projects",
   filters: { type: "resume", dateRange: { from: "2025-01-01" } }
 });
@@ -314,7 +314,7 @@ const results = await meridian.search.hybrid({
 ### Query the search index API
 
 ```bash
-curl -X POST "https://api.meridian.dev/search" \
+curl -X POST "https://api.Vaeloom.dev/search" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"query": "backend intern", "hybrid": true, "limit": 5}'
 ```
@@ -335,4 +335,4 @@ curl -X POST "https://api.meridian.dev/search" \
 - [`AI/Embeddings.md`](../AI/Embeddings.md)
 - [`AI/Knowledge-Graph.md`](../AI/Knowledge-Graph.md)
 - [`Database/Indexes.md`](../Database/Indexes.md)
-- [`/Docs/06-Meridian-Enterprise-Paper.md#18-global-search`](../../Docs/06-Meridian-Enterprise-Paper.md#18-global-search)
+- [`/Docs/06-Vaeloom-Enterprise-Paper.md#18-global-search`](../../Docs/06-Vaeloom-Enterprise-Paper.md#18-global-search)

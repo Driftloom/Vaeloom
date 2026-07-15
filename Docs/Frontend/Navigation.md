@@ -1,7 +1,7 @@
-# Navigation
+﻿# Navigation
 
-> **Purpose:** Define the navigation architecture for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the navigation architecture for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Frontend Team
 > **Last Updated:** 2026-07-13
 
@@ -13,7 +13,7 @@ graph TD
     classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef mobile fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Primary["🗂️ Primary Navigation (Sidebar)"]
+    subgraph Primary["ðŸ—‚ï¸ Primary Navigation (Sidebar)"]
         direction TB
         N1["Dashboard<br/>/"]
         N2["Workspace<br/>/workspace"]
@@ -22,7 +22,7 @@ graph TD
         N5["Settings<br/>/settings"]
     end
 
-    subgraph Patterns["🔄 Navigation Patterns"]
+    subgraph Patterns["ðŸ”„ Navigation Patterns"]
         P1["Primary: Left sidebar, collapsible"]
         P2["Secondary: Top bar tabs per page"]
         P3["Breadcrumb: Page hierarchy indicator"]
@@ -30,7 +30,7 @@ graph TD
         P5["Deep links: Direct URLs to any resource"]
     end
 
-    subgraph MobileNav["📱 Mobile Navigation"]
+    subgraph MobileNav["ðŸ“± Mobile Navigation"]
         M1["Bottom tab bar<br/>Primary destinations"]
         M2["Hamburger menu<br/>Full sidebar access"]
         M3["Swipe gestures<br/>Back navigation"]
@@ -43,7 +43,7 @@ graph TD
     class M1,M2,M3 mobile
 ```
 
-> **Diagram:** Navigation architecture — **primary sidebar** (5 core routes) → **5 navigation patterns** (sidebar, tabs, breadcrumbs, command palette, deep links) → **mobile adaptation** (bottom tab bar, hamburger menu, swipe gestures).
+> **Diagram:** Navigation architecture â€” **primary sidebar** (5 core routes) â†’ **5 navigation patterns** (sidebar, tabs, breadcrumbs, command palette, deep links) â†’ **mobile adaptation** (bottom tab bar, hamburger menu, swipe gestures).
 
 ---
 
@@ -51,17 +51,17 @@ graph TD
 
 ```text
 Sidebar (persistent across all pages)
-├── Dashboard
-├── Workspace
-├── Memory Graph
-├── Resume & Career
-├── Jobs & Internships
-├── Applications
-├── Chat
-├── Schedule
-├── Connectors
-├── History
-└── Settings
+â”œâ”€â”€ Dashboard
+â”œâ”€â”€ Workspace
+â”œâ”€â”€ Memory Graph
+â”œâ”€â”€ Resume & Career
+â”œâ”€â”€ Jobs & Internships
+â”œâ”€â”€ Applications
+â”œâ”€â”€ Chat
+â”œâ”€â”€ Schedule
+â”œâ”€â”€ Connectors
+â”œâ”€â”€ History
+â””â”€â”€ Settings
 ```
 
 ## Navigation Patterns
@@ -93,24 +93,24 @@ Chat > Memory Agent
 | Mistake | Why It's a Problem |
 |---------|-------------------|
 | Too many items in the primary navigation | A sidebar with 15 links overwhelms users; group related pages (Jobs, Applications, Resume) under section headers |
-| Broken or missing deep-link support | Users should be able to bookmark any page and return to it — deep links are essential for sharing and returning to a specific view |
+| Broken or missing deep-link support | Users should be able to bookmark any page and return to it â€” deep links are essential for sharing and returning to a specific view |
 | No active state indication | Users who don't know which page they're on get lost; the active nav item must be visually distinct from inactive items |
-| Missing breadcrumb navigation on content-heavy pages | Breadcrumbs provide context for how the current page fits into the overall structure — particularly important in multi-level pages like Workspace |
+| Missing breadcrumb navigation on content-heavy pages | Breadcrumbs provide context for how the current page fits into the overall structure â€” particularly important in multi-level pages like Workspace |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
 | Keep the sidebar persistent and collapsible | A persistent sidebar gives users constant orientation; collapsible mode frees screen space for content when needed |
-| Support keyboard shortcuts for common navigation | Cmd+K for command palette, Cmd+B for sidebar toggle — power users navigate faster and appreciate keyboard-first design |
-| Encode page state in URL search params | Filter selections, active tabs, and sidebar state should be reflected in the URL — users can share links with their exact view |
-| Use responsive navigation patterns per device | Mobile gets a bottom tab bar (thumb zone), tablet gets a hamburger, desktop gets a full sidebar — each form factor has different ergonomics |
+| Support keyboard shortcuts for common navigation | Cmd+K for command palette, Cmd+B for sidebar toggle â€” power users navigate faster and appreciate keyboard-first design |
+| Encode page state in URL search params | Filter selections, active tabs, and sidebar state should be reflected in the URL â€” users can share links with their exact view |
+| Use responsive navigation patterns per device | Mobile gets a bottom tab bar (thumb zone), tablet gets a hamburger, desktop gets a full sidebar â€” each form factor has different ergonomics |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Role-based nav item visibility | Navigation items for admin or enterprise features must be conditionally rendered based on user role — never just hidden with CSS |
+| Role-based nav item visibility | Navigation items for admin or enterprise features must be conditionally rendered based on user role â€” never just hidden with CSS |
 | Protected routes with server-side checks | Client-side route guards are insufficient; every protected route must verify permissions server-side (Next.js middleware or API layer) |
 | Breadcrumb path information leakage | Breadcrumbs that reveal internal folder structures or system architecture should be validated against user permissions before display |
 
@@ -118,15 +118,15 @@ Chat > Memory Agent
 
 | Concern | Guideline |
 |---------|-----------|
-| Lazy-load route chunks with Next.js App Router | Each route should load independently — navigating from Dashboard to Memory Graph should only download the Memory Graph bundle, not the entire application |
-| Prefetch likely navigation targets | Use Next.js `prefetch={true}` on primary navigation items (workspace, dashboard) — the browser preloads these routes when the link enters the viewport |
-| Sidebar data as static props | Navigation items rarely change — fetch them server-side and pass as static props rather than triggering a client-side query on every page load |
+| Lazy-load route chunks with Next.js App Router | Each route should load independently â€” navigating from Dashboard to Memory Graph should only download the Memory Graph bundle, not the entire application |
+| Prefetch likely navigation targets | Use Next.js `prefetch={true}` on primary navigation items (workspace, dashboard) â€” the browser preloads these routes when the link enters the viewport |
+| Sidebar data as static props | Navigation items rarely change â€” fetch them server-side and pass as static props rather than triggering a client-side query on every page load |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Role-based nav item visibility | Navigation items for admin or enterprise features must be conditionally rendered based on user role — never just hidden with CSS |
+| Role-based nav item visibility | Navigation items for admin or enterprise features must be conditionally rendered based on user role â€” never just hidden with CSS |
 | Protected routes with server-side checks | Client-side route guards are insufficient; every protected route must verify permissions server-side (Next.js middleware or API layer) |
 | Breadcrumb path information leakage | Breadcrumbs that reveal internal folder structures or system architecture should be validated against user permissions before display |
 
@@ -134,9 +134,9 @@ Chat > Memory Agent
 
 | Concern | Approach |
 |---------|----------|
-| Lazy-load route chunks with Next.js App Router | Each route should load independently — navigating from Dashboard to Memory Graph should only download the Memory Graph bundle |
-| Prefetch likely navigation targets | Use Next.js `prefetch={true}` on primary navigation items (workspace, dashboard) — the browser preloads these routes when the link enters the viewport |
-| Sidebar data as static props | Navigation items rarely change — fetch them server-side and pass as static props rather than triggering a client-side query on every page load |
+| Lazy-load route chunks with Next.js App Router | Each route should load independently â€” navigating from Dashboard to Memory Graph should only download the Memory Graph bundle |
+| Prefetch likely navigation targets | Use Next.js `prefetch={true}` on primary navigation items (workspace, dashboard) â€” the browser preloads these routes when the link enters the viewport |
+| Sidebar data as static props | Navigation items rarely change â€” fetch them server-side and pass as static props rather than triggering a client-side query on every page load |
 
 ## Components
 
@@ -149,10 +149,10 @@ Chat > Memory Agent
 
 ## Workflows
 
-1. **User navigates via sidebar**: User clicks "Memory Graph" in sidebar → Next.js prefetches `/memory-graph` route → router.push triggers transition → new page code-split chunk loads → page content appears (250ms transition) → sidebar active state updates
-2. **Command palette search**: User presses Cmd+K → overlay opens with search input → focus auto-placed in input → user types query → Fuse.js filters across pages, documents, agents, recent items → top 5 results shown → Enter navigates to selected result
-3. **Breadcrumb navigation**: User navigates to Workspace > Career > Resume > "Google SDE" → BreadcrumbTrail parses URL `/workspace/career/resume/variant-google-sde` → renders each segment as clickable link → user clicks "Career" → navigates to parent route
-4. **Mobile bottom tab switch**: User taps "Dashboard" tab → tab navigator switches to dashboard stack → previous tab state preserved (keepAlive) → dashboard content loaded from cache → active tab indicator updates
+1. **User navigates via sidebar**: User clicks "Memory Graph" in sidebar â†’ Next.js prefetches `/memory-graph` route â†’ router.push triggers transition â†’ new page code-split chunk loads â†’ page content appears (250ms transition) â†’ sidebar active state updates
+2. **Command palette search**: User presses Cmd+K â†’ overlay opens with search input â†’ focus auto-placed in input â†’ user types query â†’ Fuse.js filters across pages, documents, agents, recent items â†’ top 5 results shown â†’ Enter navigates to selected result
+3. **Breadcrumb navigation**: User navigates to Workspace > Career > Resume > "Google SDE" â†’ BreadcrumbTrail parses URL `/workspace/career/resume/variant-google-sde` â†’ renders each segment as clickable link â†’ user clicks "Career" â†’ navigates to parent route
+4. **Mobile bottom tab switch**: User taps "Dashboard" tab â†’ tab navigator switches to dashboard stack â†’ previous tab state preserved (keepAlive) â†’ dashboard content loaded from cache â†’ active tab indicator updates
 
 ## Sequence Diagrams
 
@@ -185,11 +185,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: Navigation structure defined in server component → fetched from `user_preferences` for custom sidebar order → role-based filtering applied server-side
-2. **Processing**: URL parsed by Next.js App Router → route segment matched to navigation tree → active state computed from current path → breadcrumb segments extracted from URL params
-3. **Storage**: Sidebar collapse state in localStorage → custom navigation preferences in user profile → route prefetch cache in Next.js client cache
-4. **Retrieval**: Sidebar items rendered as server components → navigation data passed via props → no client-side queries for nav data
-5. **Deletion**: User removes custom sidebar item → preference saved → sidebar re-renders without item
+1. **Ingestion**: Navigation structure defined in server component â†’ fetched from `user_preferences` for custom sidebar order â†’ role-based filtering applied server-side
+2. **Processing**: URL parsed by Next.js App Router â†’ route segment matched to navigation tree â†’ active state computed from current path â†’ breadcrumb segments extracted from URL params
+3. **Storage**: Sidebar collapse state in localStorage â†’ custom navigation preferences in user profile â†’ route prefetch cache in Next.js client cache
+4. **Retrieval**: Sidebar items rendered as server components â†’ navigation data passed via props â†’ no client-side queries for nav data
+5. **Deletion**: User removes custom sidebar item â†’ preference saved â†’ sidebar re-renders without item
 
 ## Scalability
 
@@ -213,10 +213,10 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Route transition time (p95) | > 500ms | Warning | Grafana — Web Vitals (INP) |
-| Command palette search latency | > 100ms | Warning | Grafana — Performance Dashboard |
-| Chunk load failure rate | > 0.1% | Critical | Sentry — Route Chunk Errors |
-| Navigation click-to-paint (p95) | > 300ms | Warning | Grafana — Interaction to Next Paint |
+| Route transition time (p95) | > 500ms | Warning | Grafana â€” Web Vitals (INP) |
+| Command palette search latency | > 100ms | Warning | Grafana â€” Performance Dashboard |
+| Chunk load failure rate | > 0.1% | Critical | Sentry â€” Route Chunk Errors |
+| Navigation click-to-paint (p95) | > 300ms | Warning | Grafana â€” Interaction to Next Paint |
 
 ## Risks
 
@@ -237,9 +237,9 @@ sequenceDiagram
 
 ## Overview
 
-Meridian's navigation architecture is built on a persistent left sidebar that provides constant orientation across all 11 page routes, supplemented by secondary navigation patterns (tabs, breadcrumbs, command palette, deep links) that adapt to content depth and user expertise. The sidebar is collapsible on desktop and transforms to a hamburger menu on mobile, ensuring consistent access regardless of viewport size.
+Vaeloom's navigation architecture is built on a persistent left sidebar that provides constant orientation across all 11 page routes, supplemented by secondary navigation patterns (tabs, breadcrumbs, command palette, deep links) that adapt to content depth and user expertise. The sidebar is collapsible on desktop and transforms to a hamburger menu on mobile, ensuring consistent access regardless of viewport size.
 
-The navigation system is designed for Meridian's information-dense workflows. Breadcrumbs provide context in the deeply nested Workspace page structure (Workspace > Career > Resume > Google SDE variant). The command palette (Cmd+K) enables power users to jump to any page, document, or agent without clicking through menus. Deep links allow users to bookmark any specific resource — a particular memory graph entity, a chat conversation with an agent, or a filtered job search.
+The navigation system is designed for Vaeloom's information-dense workflows. Breadcrumbs provide context in the deeply nested Workspace page structure (Workspace > Career > Resume > Google SDE variant). The command palette (Cmd+K) enables power users to jump to any page, document, or agent without clicking through menus. Deep links allow users to bookmark any specific resource â€” a particular memory graph entity, a chat conversation with an agent, or a filtered job search.
 
 Route transitions use Next.js App Router's automatic code splitting, ensuring that navigating from Dashboard to Memory Graph only loads the Memory Graph JavaScript bundle. Primary navigation items are prefetched when they enter the viewport, making navigation feel instant. Active state indicators in the sidebar and breadcrumbs always reflect the current route, preventing user disorientation.
 
@@ -249,7 +249,7 @@ For mobile users, navigation switches to a bottom tab bar with the four primary 
 
 - Achieve sub-300ms route transition time (p95) through lazy-loaded code chunks and prefetching
 - Enable full keyboard navigation with Cmd+K command palette for all 11 routes
-- Support deep-link navigation to any resource — documents, entities, chats, or filtered views
+- Support deep-link navigation to any resource â€” documents, entities, chats, or filtered views
 - Maintain persistent sidebar state (collapse, scroll position) across sessions
 - Adapt navigation to all form factors: sidebar on desktop, bottom tabs on mobile
 
@@ -353,4 +353,4 @@ function useCommandPalette() {
 
 - [UI Architecture.md](./UI-Architecture.md)
 - [Frontend Architecture.md](./Frontend-Architecture.md)
-- [`/Docs/Meridian-Complete-Documentation.md#8-screens`](../../Docs/Meridian-Complete-Documentation.md#8-screens)
+- [`/Docs/Vaeloom-Complete-Documentation.md#8-screens`](../../Docs/Vaeloom-Complete-Documentation.md#8-screens)

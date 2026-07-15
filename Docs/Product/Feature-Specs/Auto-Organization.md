@@ -1,16 +1,16 @@
-## Header
+﻿## Header
 > **Purpose:** Detailed specification for Auto-Organization
-> **Status:** 🆕 New
+> **Status:** ðŸ†• New
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Auto-Organization solves the core problem that manual filing never happens consistently. When a user uploads files or their connected sources (Gmail, Drive, GitHub, local folder) sync new content, the Organization Agent proposes intelligent file names, folder placements, and tags based on the file's content and the user's existing memory graph. The user reviews and approves these proposals — or rejects them, which teaches the system. Over time, as approval rates climb past a configurable threshold, the agent earns autonomy to apply certain proposal types without asking.
+Auto-Organization solves the core problem that manual filing never happens consistently. When a user uploads files or their connected sources (Gmail, Drive, GitHub, local folder) sync new content, the Organization Agent proposes intelligent file names, folder placements, and tags based on the file's content and the user's existing memory graph. The user reviews and approves these proposals â€” or rejects them, which teaches the system. Over time, as approval rates climb past a configurable threshold, the agent earns autonomy to apply certain proposal types without asking.
 
 The feature operates on every file that enters the system, whether through direct upload, connector sync, or the local folder watcher. It uses the Ingestion pipeline (parsing, OCR, code understanding) to extract structure from the raw file, then the Organization Agent classifies it against the user's existing folder taxonomy and entity graph. Proposals are presented as non-blocking cards in the Workspace screen, grouped by confidence level. The user can approve individually, in bulk, or dismiss with a corrective reason that feeds back into the agent's classification prompt.
 
-This is the user's first sustained interaction with Meridian's agent system. Getting this interaction right — low friction, high trust, clear traceability for every proposal — sets the tone for every subsequent feature. A wrong rename or mis-filed document erodes trust faster than any other failure mode, which is why the system starts in suggest-only mode and earns autonomy slowly based on demonstrated accuracy within the user's specific workspace.
+This is the user's first sustained interaction with Vaeloom's agent system. Getting this interaction right â€” low friction, high trust, clear traceability for every proposal â€” sets the tone for every subsequent feature. A wrong rename or mis-filed document erodes trust faster than any other failure mode, which is why the system starts in suggest-only mode and earns autonomy slowly based on demonstrated accuracy within the user's specific workspace.
 
 ## Goals
 
@@ -75,8 +75,8 @@ This is the user's first sustained interaction with Meridian's agent system. Get
 | Memory Type | Read | Write | Notes |
 |-------------|------|-------|-------|
 | Document | Yes | Yes | Summaries, entities, embeddings written on approval |
-| Profile | No | No | — |
-| Career | No | No | — |
+| Profile | No | No | â€” |
+| Career | No | No | â€” |
 | Episodic | Yes | Yes | File organization events logged |
 | Preference | Yes | Yes | Naming conventions, folder preferences learned |
 | Working | Yes | No | Session context for batch approvals |
@@ -91,7 +91,7 @@ This is the user's first sustained interaction with Meridian's agent system. Get
 | `organization:auto-move` | Autonomous file move without approval | Suggest-only |
 | `organization:archive` | Archiving files | Suggest-only |
 
-Autonomy level: **Suggest** (default) — must propose, never execute. Earns **Full** for specific action types only when approval rate clears the threshold.
+Autonomy level: **Suggest** (default) â€” must propose, never execute. Earns **Full** for specific action types only when approval rate clears the threshold.
 
 ## Error Scenarios
 
@@ -154,20 +154,20 @@ graph TD
     classDef org fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Ingest["📥 Ingestion Pipeline"]
+    subgraph Ingest["ðŸ“¥ Ingestion Pipeline"]
         I1["Upload Handler"]
         I2["Connector Sync"]
         I3["Local Watcher"]
     end
 
-    subgraph Org["⚙️ Organization Agent"]
-        O1["File Classifier<br/>Content → type/category"]
+    subgraph Org["âš™ï¸ Organization Agent"]
+        O1["File Classifier<br/>Content â†’ type/category"]
         O2["Naming Engine<br/>Generate proposed name"]
         O3["Folder Matcher<br/>Match to taxonomy"]
         O4["Confidence Scorer"]
     end
 
-    subgraph Store["💾 Storage & Memory"]
+    subgraph Store["ðŸ’¾ Storage & Memory"]
         S1["Proposals Queue"]
         S2["User Preferences<br/>(naming conventions)"]
         S3["Action Audit Log"]
@@ -178,7 +178,7 @@ graph TD
     O4 --> QA[QA Agent] --> S1
 ```
 
-> **Diagram:** Auto-Organization architecture showing ingestion → classification → naming → matching pipeline with QA validation gate.
+> **Diagram:** Auto-Organization architecture showing ingestion â†’ classification â†’ naming â†’ matching pipeline with QA validation gate.
 
 ## Components
 
@@ -186,10 +186,10 @@ graph TD
 |-----------|---------------|------------|--------------|
 | Ingestion Handler | Accept files from upload, connector sync, or watcher | NestJS + Bull queue | File storage, parsing pipeline |
 | Organization Agent | Classify file, propose name + folder + tags | FastAPI + Claude API | Memory Agent, Taxonomy Store |
-| QA Agent | Validate proposals for hallucination and consistency | FastAPI + LLM eval | — |
-| Proposal Queue | Store pending proposals per user | Redis + PostgreSQL | — |
+| QA Agent | Validate proposals for hallucination and consistency | FastAPI + LLM eval | â€” |
+| Proposal Queue | Store pending proposals per user | Redis + PostgreSQL | â€” |
 | Autonomy Manager | Track approval rates, grant/revoke autonomy | NestJS + PostgreSQL | Proposal Queue |
-| Audit Logger | Record every proposal, approval, rejection, and autonomous action | NestJS + PostgreSQL | — |
+| Audit Logger | Record every proposal, approval, rejection, and autonomous action | NestJS + PostgreSQL | â€” |
 
 ## Workflows
 
@@ -199,7 +199,7 @@ graph TD
 2. Ingestion pipeline parses file and extracts summary, entities, and type
 3. Organization Agent evaluates file content against user's existing folder taxonomy
 4. Agent generates proposed filename, folder path, and tags with confidence score
-5. QA Agent validates proposal — low confidence proposals flagged as "requires review"
+5. QA Agent validates proposal â€” low confidence proposals flagged as "requires review"
 6. Proposal added to user's proposals queue and surfaced in Workspace screen
 7. User approves, rejects (with optional correction), or edits proposal inline
 8. Approved proposals execute immediately: file renamed, moved, tagged
@@ -225,7 +225,7 @@ sequenceDiagram
     OA->>OA: Classify, name, match folder
     OA->>QA: Validate proposal
     QA-->>OA: Approved (confidence: 0.92)
-    OA-->>API: Proposal: resume.pdf → /Career/Resume_2026.pdf
+    OA-->>API: Proposal: resume.pdf â†’ /Career/Resume_2026.pdf
     API-->>FE: Proposal ready
     FE-->>U: "Rename to Resume_2026.pdf in /Career/?"
     U->>FE: Approve
@@ -238,12 +238,12 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **File Arrival:** Upload → Multer → S3 raw storage (key: `workspace_id/raw/{doc_id}`)
-2. **Parsing:** S3 → parsing pipeline → extracted text + entities + summary → `documents` table
-3. **Proposal Generation:** Document summary → Organization Agent → proposal JSON → `agent_actions` table + proposals queue
-4. **Approval:** User action → proposal pulled from queue → file rename/move in S3 → `documents` path updated
-5. **Learning:** User corrections → `memory_records` (Preference type) → next proposal incorporates learned patterns
-6. **Autonomy:** Approval rate counter → threshold check → `permissions` table update → agent now executes certain types autonomously
+1. **File Arrival:** Upload â†’ Multer â†’ S3 raw storage (key: `workspace_id/raw/{doc_id}`)
+2. **Parsing:** S3 â†’ parsing pipeline â†’ extracted text + entities + summary â†’ `documents` table
+3. **Proposal Generation:** Document summary â†’ Organization Agent â†’ proposal JSON â†’ `agent_actions` table + proposals queue
+4. **Approval:** User action â†’ proposal pulled from queue â†’ file rename/move in S3 â†’ `documents` path updated
+5. **Learning:** User corrections â†’ `memory_records` (Preference type) â†’ next proposal incorporates learned patterns
+6. **Autonomy:** Approval rate counter â†’ threshold check â†’ `permissions` table update â†’ agent now executes certain types autonomously
 
 ## Non-Functional Requirements
 
@@ -296,7 +296,7 @@ sequenceDiagram
 
 ```bash
 # Get pending proposals
-curl -X GET https://api.meridian.dev/v1/workspaces/{id}/files/organization/proposals \
+curl -X GET https://api.Vaeloom.dev/v1/workspaces/{id}/files/organization/proposals \
   -H "Authorization: Bearer $TOKEN"
 
 # Response
@@ -314,7 +314,7 @@ curl -X GET https://api.meridian.dev/v1/workspaces/{id}/files/organization/propo
 }
 
 # Approve proposal
-curl -X POST https://api.meridian.dev/v1/workspaces/{id}/files/organization/approve \
+curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/files/organization/approve \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"proposal_ids": ["prop_1"]}'
 ```
@@ -323,10 +323,10 @@ curl -X POST https://api.meridian.dev/v1/workspaces/{id}/files/organization/appr
 
 | Practice | Rationale |
 |----------|-----------|
-| Review proposals early and correct mistakes | Early corrections train the system faster — invest 5 minutes on first 10 proposals to save hours later |
+| Review proposals early and correct mistakes | Early corrections train the system faster â€” invest 5 minutes on first 10 proposals to save hours later |
 | Set a folder template during onboarding | A preferred folder structure gives the Organization Agent a strong baseline; templates can be changed later |
 | Batch approve similar files together | Files of the same type (e.g., all PDF certificates) can be batch-approved to build the approval rate quickly |
-| Use rejection reasons to teach preferences | "Wrong folder" + correct folder is more valuable for learning than a generic rejection — always include corrective feedback |
+| Use rejection reasons to teach preferences | "Wrong folder" + correct folder is more valuable for learning than a generic rejection â€” always include corrective feedback |
 
 ## Limitations
 
@@ -334,7 +334,7 @@ curl -X POST https://api.meridian.dev/v1/workspaces/{id}/files/organization/appr
 |------------|--------|------------|-------------------|
 | Organization is English-only for naming | Non-English filenames may not follow user conventions | User can always edit proposals manually | Multi-language naming support (V2) |
 | Cannot propose folder structure creation | Agent can only match to existing folders, not create new ones | User creates folder structure during onboarding template setup | Agent-proposed new folders with user approval (v1.5) |
-| No cross-user learning | Each user's naming preferences are learned independently | — | Anonymized pattern learning (with opt-in) in Enterprise |
+| No cross-user learning | Each user's naming preferences are learned independently | â€” | Anonymized pattern learning (with opt-in) in Enterprise |
 
 ## Future Improvements
 
@@ -350,5 +350,5 @@ curl -X POST https://api.meridian.dev/v1/workspaces/{id}/files/organization/appr
 - [Features.md](../Features.md)
 - [Master-Resume.md](./Master-Resume.md)
 - [Dashboard.md](./Dashboard.md)
-- `/Docs/Meridian-Complete-Documentation.md#7-features`
+- `/Docs/Vaeloom-Complete-Documentation.md#7-features`
 - `/Docs/AI/AI-Agents.md#agent-roster`

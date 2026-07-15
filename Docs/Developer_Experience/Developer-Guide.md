@@ -1,7 +1,7 @@
-# Developer Guide
+﻿# Developer Guide
 
-> **Purpose:** Comprehensive guide for Meridian developers
-> **Status:** 🆕 New
+> **Purpose:** Comprehensive guide for Vaeloom developers
+> **Status:** ðŸ†• New
 
 ## Developer Guide Architecture
 
@@ -11,26 +11,26 @@ graph TD
     classDef task fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef debug fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Navigation["🗺️ Project Navigation"]
-        N1["apps/web — Next.js frontend"]
-        N2["apps/api — NestJS API (auth/CRUD/permissions)"]
-        N3["apps/ai-service — FastAPI AI (agents/memory/RAG)"]
+    subgraph Navigation["ðŸ—ºï¸ Project Navigation"]
+        N1["apps/web â€” Next.js frontend"]
+        N2["apps/api â€” NestJS API (auth/CRUD/permissions)"]
+        N3["apps/ai-service â€” FastAPI AI (agents/memory/RAG)"]
         N4["packages/shared-types + ui-kit"]
         N5["infra/docker + migrations"]
-        N6["docs/ — All documentation"]
+        N6["docs/ â€” All documentation"]
     end
 
-    subgraph Tasks["📋 Common Tasks"]
-        T1["Add API Endpoint<br/>Route → Validation → Service → Perms → Tests"]
-        T2["Add New Agent<br/>Directory → prompt/tools/handler/permissions<br/>→ Register in Orchestrator → Eval → Tests"]
-        T3["Add Connector<br/>Manifest → OAuth → Sync → Register → Monitor"]
+    subgraph Tasks["ðŸ“‹ Common Tasks"]
+        T1["Add API Endpoint<br/>Route â†’ Validation â†’ Service â†’ Perms â†’ Tests"]
+        T2["Add New Agent<br/>Directory â†’ prompt/tools/handler/permissions<br/>â†’ Register in Orchestrator â†’ Eval â†’ Tests"]
+        T3["Add Connector<br/>Manifest â†’ OAuth â†’ Sync â†’ Register â†’ Monitor"]
     end
 
-    subgraph Debugging["🔍 Debugging Tips"]
-        D1["Agent wrong output: Prompt drift → Check eval tests"]
-        D2["Memory write failing: Schema mismatch → Run migrations"]
-        D3["API 403: Permission missing → Check Permission Engine"]
-        D4["Frontend stale: Cache → Invalidate TanStack Query"]
+    subgraph Debugging["ðŸ” Debugging Tips"]
+        D1["Agent wrong output: Prompt drift â†’ Check eval tests"]
+        D2["Memory write failing: Schema mismatch â†’ Run migrations"]
+        D3["API 403: Permission missing â†’ Check Permission Engine"]
+        D4["Frontend stale: Cache â†’ Invalidate TanStack Query"]
     end
 
     Navigation --> Tasks --> Debugging
@@ -40,7 +40,7 @@ graph TD
     class D1,D2,D3,D4 debug
 ```
 
-> **Diagram:** Developer guide — **project navigation** (6 key directories), **common tasks** (adding API endpoints, agents, connectors with step-by-step flows), **debugging tips** (4 common issues with causes and fixes).
+> **Diagram:** Developer guide â€” **project navigation** (6 key directories), **common tasks** (adding API endpoints, agents, connectors with step-by-step flows), **debugging tips** (4 common issues with causes and fixes).
 
 ---
 
@@ -48,9 +48,9 @@ graph TD
 
 | Path | What It Contains |
 |------|-----------------|
-| `apps/web/` | Next.js frontend — all pages and components |
-| `apps/api/` | NestJS API — auth, CRUD, permissions |
-| `apps/ai-service/` | FastAPI AI service — agents, memory, RAG |
+| `apps/web/` | Next.js frontend â€” all pages and components |
+| `apps/api/` | NestJS API â€” auth, CRUD, permissions |
+| `apps/ai-service/` | FastAPI AI service â€” agents, memory, RAG |
 | `packages/shared-types/` | Shared TypeScript + Python type definitions |
 | `packages/ui-kit/` | Reusable UI components |
 | `infra/docker/` | Docker Compose files for local dev |
@@ -96,34 +96,34 @@ graph TD
 
 | Mistake | Consequence |
 |---------|-------------|
-| Adding logic to controllers instead of services | Controllers should only handle HTTP concerns — logic in controllers is not reusable across different interfaces (REST, events, CLIs) and can't be unit tested independently |
-| Creating new agents without registering them in the Orchestrator | An agent that exists in the filesystem but isn't registered in the Orchestrator never receives requests — this silent failure wastes debugging time |
-| Forgetting to add permission checks for new API endpoints | A new endpoint that returns data without a permission check exposes user data — every endpoint must go through the Permission Engine |
-| Modifying the database schema directly instead of through migrations | Direct schema changes create drift between development and production — the next migration may overwrite the change or fail |
+| Adding logic to controllers instead of services | Controllers should only handle HTTP concerns â€” logic in controllers is not reusable across different interfaces (REST, events, CLIs) and can't be unit tested independently |
+| Creating new agents without registering them in the Orchestrator | An agent that exists in the filesystem but isn't registered in the Orchestrator never receives requests â€” this silent failure wastes debugging time |
+| Forgetting to add permission checks for new API endpoints | A new endpoint that returns data without a permission check exposes user data â€” every endpoint must go through the Permission Engine |
+| Modifying the database schema directly instead of through migrations | Direct schema changes create drift between development and production â€” the next migration may overwrite the change or fail |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Follow the Controller → Service → Repository layering | Each layer has one responsibility — controllers route HTTP, services contain business rules, repositories handle data access. This makes code testable and maintainable |
-| Register every new agent in the Orchestrator | The Orchestrator routes requests to agents — if an agent isn't registered, it's invisible. Add registration as the last step before testing any new agent |
-| Add permission checks and tests for every new endpoint | Every new endpoint should be added to the permission matrix and tested with all roles (owner, admin, member, viewer) — a missing permission check is a security vulnerability |
-| Always create a migration for schema changes | Schema drift between environments causes deployment failures — use Prisma/Alembic to generate migrations for every schema change, no matter how small |
+| Follow the Controller â†’ Service â†’ Repository layering | Each layer has one responsibility â€” controllers route HTTP, services contain business rules, repositories handle data access. This makes code testable and maintainable |
+| Register every new agent in the Orchestrator | The Orchestrator routes requests to agents â€” if an agent isn't registered, it's invisible. Add registration as the last step before testing any new agent |
+| Add permission checks and tests for every new endpoint | Every new endpoint should be added to the permission matrix and tested with all roles (owner, admin, member, viewer) â€” a missing permission check is a security vulnerability |
+| Always create a migration for schema changes | Schema drift between environments causes deployment failures â€” use Prisma/Alembic to generate migrations for every schema change, no matter how small |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| New endpoint permission gaps | Every new API endpoint must go through the middleware stack (auth → permission → rate limit → validation) — bypassing middleware exposes the endpoint to unauthenticated access |
-| Agent action authorization | Agents operate with specific permission scopes — a memory agent should not be able to trigger application submission actions, even if the code path exists |
-| Cross-service data access | The AI Service accesses the database directly — ensure database-level permissions restrict the AI Service user to only the tables and operations it needs |
+| New endpoint permission gaps | Every new API endpoint must go through the middleware stack (auth â†’ permission â†’ rate limit â†’ validation) â€” bypassing middleware exposes the endpoint to unauthenticated access |
+| Agent action authorization | Agents operate with specific permission scopes â€” a memory agent should not be able to trigger application submission actions, even if the code path exists |
+| Cross-service data access | The AI Service accesses the database directly â€” ensure database-level permissions restrict the AI Service user to only the tables and operations it needs |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| N+1 query prevention | When adding a new API endpoint that returns related data, use JOINs or batch loading — loading related entities one-at-a-time causes N+1 query problems |
-| Agent handler timeout limits | Agent handlers that make LLM calls should have explicit timeout limits (default 30s) — an unresponsive LLM call should not block the service handler indefinitely |
+| N+1 query prevention | When adding a new API endpoint that returns related data, use JOINs or batch loading â€” loading related entities one-at-a-time causes N+1 query problems |
+| Agent handler timeout limits | Agent handlers that make LLM calls should have explicit timeout limits (default 30s) â€” an unresponsive LLM call should not block the service handler indefinitely |
 
 ## Error Handling
 
@@ -150,7 +150,7 @@ graph TD
 
 ## Overview
 
-The Developer Guide is the central reference for Meridian developers, covering project navigation across all services, step-by-step workflows for common development tasks (adding API endpoints, agents, and connectors), and targeted debugging tips for frequent issues. It serves as the starting point before diving into service-specific documentation.
+The Developer Guide is the central reference for Vaeloom developers, covering project navigation across all services, step-by-step workflows for common development tasks (adding API endpoints, agents, and connectors), and targeted debugging tips for frequent issues. It serves as the starting point before diving into service-specific documentation.
 
 ---
 

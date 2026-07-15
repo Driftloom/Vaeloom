@@ -1,7 +1,7 @@
-# Queue Architecture
+﻿# Queue Architecture
 
-> **Purpose:** Define the queue and async processing architecture for Meridian — how background jobs are enqueued, processed, retried, and monitored
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the queue and async processing architecture for Vaeloom â€” how background jobs are enqueued, processed, retried, and monitored
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-12
 
@@ -9,7 +9,7 @@
 
 ## Overview
 
-Meridian relies on async processing for document ingestion, agent execution, connector syncs, and scheduled tasks. Queues decouple request submission from processing, allowing the system to handle spikes, retry failures, and prioritize critical work.
+Vaeloom relies on async processing for document ingestion, agent execution, connector syncs, and scheduled tasks. Queues decouple request submission from processing, allowing the system to handle spikes, retry failures, and prioritize critical work.
 
 This document defines the queue structure, job lifecycle, dead letter handling, and monitoring thresholds.
 
@@ -73,14 +73,14 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant P as 📤 Producer<br/>(API / Cron / Agent)
-    participant R as 🗄️ Redis<br/>(BullMQ Backend)
-    participant BS as ⏰ BullMQ Scheduler<br/>(Delayed Jobs)
-    participant W as ⚙️ Worker
-    participant M as 📊 Monitoring
-    participant DL as 💀 Dead Letter
+    participant P as ðŸ“¤ Producer<br/>(API / Cron / Agent)
+    participant R as ðŸ—„ï¸ Redis<br/>(BullMQ Backend)
+    participant BS as â° BullMQ Scheduler<br/>(Delayed Jobs)
+    participant W as âš™ï¸ Worker
+    participant M as ðŸ“Š Monitoring
+    participant DL as ðŸ’€ Dead Letter
 
-    Note over P,DL: ── Standard Job Enqueue & Process ──
+    Note over P,DL: â”€â”€ Standard Job Enqueue & Process â”€â”€
 
     P->>R: LPUSH job to queue list
     P->>R: PUBLISH job:available<br/>on queue channel
@@ -89,38 +89,38 @@ sequenceDiagram
     R-->>W: Return job payload
     W->>W: Execute job logic
 
-    alt ✅ Success
+    alt âœ… Success
         W->>R: ACK job (remove from queue)
         W->>M: Emit metric: duration,<br/>records_processed
         R-->>P: Optional: result callback
 
-    else ❌ Transient Failure
+    else âŒ Transient Failure
         W->>R: NACK job (increment retryCount)
         alt Retries remaining (&lt; 3)
             W->>R: Add to delayed set<br/>with linear backoff
             R-->>BS: Schedule retry at t+0s/30s/5m
-            BS->>R: ZPOPMIN: move delayed → active
+            BS->>R: ZPOPMIN: move delayed â†’ active
             R-->>W: Notify via pub/sub
             W->>R: BLPOP job from queue<br/>process again
 
         else Max retries exceeded
             W->>R: RPUSH to dead letter queue
             R->>DL: Preserve full payload<br/>+ error context
-            DL->>M: 🚨 Alert engineering
+            DL->>M: ðŸš¨ Alert engineering
         end
     end
 
-    Note over P,DL: ── Delayed / Scheduled Jobs ──
+    Note over P,DL: â”€â”€ Delayed / Scheduled Jobs â”€â”€
 
     P->>BS: Schedule job at<br/>specific cron/time
     BS->>R: ZADD: store in<br/>delayed sorted set
     Note over BS: Waits until scheduled time<br/>BullMQ polls every second
-    BS->>R: ZPOPMIN: move delayed → active
+    BS->>R: ZPOPMIN: move delayed â†’ active
     R-->>W: Notify idle workers
     W->>R: BLPOP job from active queue
     W->>W: Process job
 
-    Note over P,DL: ── Pub / Sub Events ──
+    Note over P,DL: â”€â”€ Pub / Sub Events â”€â”€
 
     W->>R: PUBLISH progress:job_id<br/>(percent, stage info)
     R-->>P: SUBSCRIBE progress<br/>events (optional callback)
@@ -128,7 +128,7 @@ sequenceDiagram
     R-->>M: Scrape metrics<br/>Prometheus / CloudWatch
 ```
 
-> **Diagram:** The sequence flows from left to right through three scenarios. **Top:** standard enqueue → pub/sub notification → worker claims job → success or retry → dead letter. **Middle:** delayed jobs scheduled via BullMQ's delayed sorted set with ZADD/ZPOPMIN. **Bottom:** real-time pub/sub events for progress, logs, and metrics.
+> **Diagram:** The sequence flows from left to right through three scenarios. **Top:** standard enqueue â†’ pub/sub notification â†’ worker claims job â†’ success or retry â†’ dead letter. **Middle:** delayed jobs scheduled via BullMQ's delayed sorted set with ZADD/ZPOPMIN. **Bottom:** real-time pub/sub events for progress, logs, and metrics.
 
 ---
 
@@ -147,7 +147,7 @@ sequenceDiagram
 
 | Environment | Technology | Rationale | MVP Migration Path |
 |-------------|------------|-----------|-------------------|
-| MVP | Redis + BullMQ | Simple to operate, already needed for cache | — |
+| MVP | Redis + BullMQ | Simple to operate, already needed for cache | â€” |
 | Enterprise | Kafka | Durable, replayable, multi-consumer | Side-by-side until Kafka proves stable |
 
 ## Job Lifecycle
@@ -173,7 +173,7 @@ graph LR
 | 1 | 0s | Immediate retry |
 | 2 | 30s | Linear |
 | 3 | 5 min | Exponential |
-| > 3 | — | Dead letter queue |
+| > 3 | â€” | Dead letter queue |
 
 ## Dead Letter Queue
 
@@ -181,7 +181,7 @@ Jobs that fail after max retries (3 attempts) go to a dead letter queue for manu
 
 1. **Alert sent** to engineering team via PagerDuty/Slack
 2. **Job payload preserved** with full context (input, error, attempt count)
-3. **Manual review** — engineer inspects the failure, applies fix
+3. **Manual review** â€” engineer inspects the failure, applies fix
 4. **Re-queue** the job after fix is deployed
 
 ## Queue Monitoring
@@ -226,7 +226,7 @@ Jobs that fail after max retries (3 attempts) go to a dead letter queue for manu
 
 | Concern | Mitigation |
 |---------|------------|
-| Job payload contains secrets | Never include secrets in job payloads — use references |
+| Job payload contains secrets | Never include secrets in job payloads â€” use references |
 | Queue injection | Authenticate all producers, validate payload schemas |
 | Dead letter data exposure | DLQ access restricted to engineering team |
 
@@ -283,7 +283,7 @@ Jobs that fail after max retries (3 attempts) go to a dead letter queue for manu
 1. Producer creates a job with payload, job ID, and options (priority, delay, TTL) and adds it to BullMQ
 2. BullMQ stores the job as a Redis hash, adds the job ID to the waiting list, and publishes a job:available event
 3. Idle worker receives the event via Redis pub/sub, claims the job via BLPOP, and moves it to active state
-4. Worker executes the job handler — on success, job is ACKed and removed; on failure, retry count increments
+4. Worker executes the job handler â€” on success, job is ACKed and removed; on failure, retry count increments
 5. After max retries (3), job is moved to the dead letter queue, and an alert is sent to engineering for manual review
 
 ## Scalability
@@ -359,13 +359,13 @@ await queue.enqueue("ingestion", {
 ### Monitor queue depth
 
 ```bash
-meridian queue depth --queue ingestion --window 10m
+Vaeloom queue depth --queue ingestion --window 10m
 ```
 
 ### Reprocess failed jobs
 
 ```bash
-meridian queue retry --queue memory-extraction --max-attempts 3
+Vaeloom queue retry --queue memory-extraction --max-attempts 3
 ```
 
 ### Configure dead letter handling

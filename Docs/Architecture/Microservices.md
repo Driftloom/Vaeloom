@@ -1,7 +1,7 @@
-# Microservices
+﻿# Microservices
 
-> **Purpose:** Define the microservices architecture for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the microservices architecture for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 
 ## Service Architecture
 
@@ -14,7 +14,7 @@ graph TD
     classDef data fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
     classDef comm fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px,stroke-dasharray: 5 3
 
-    subgraph Services["🏗️ Service Decomposition"]
+    subgraph Services["ðŸ—ï¸ Service Decomposition"]
         direction TB
         WEB["apps/web<br/>Next.js SSR<br/>Frontend Team"]
         API["apps/api<br/>NestJS<br/>Backend Team"]
@@ -22,22 +22,22 @@ graph TD
         WRK["infra/worker<br/>BullMQ<br/>Backend Team"]
     end
 
-    subgraph Communication["🔗 Service Communication"]
+    subgraph Communication["ðŸ”— Service Communication"]
         direction TB
-        C1["Synchronous<br/>HTTP/REST\nFrontend → API"]
-        C2["Internal RPC<br/>gRPC / HTTP\nAPI → AI Service"]
-        C3["Async (Event Bus)<br/>Redis → Kafka\nAgent actions"]
-        C4["Streaming<br/>WebSocket\nAgent → Frontend"]
+        C1["Synchronous<br/>HTTP/REST\nFrontend â†’ API"]
+        C2["Internal RPC<br/>gRPC / HTTP\nAPI â†’ AI Service"]
+        C3["Async (Event Bus)<br/>Redis â†’ Kafka\nAgent actions"]
+        C4["Streaming<br/>WebSocket\nAgent â†’ Frontend"]
     end
 
-    subgraph Data_Ownership["🗄️ Data Ownership"]
+    subgraph Data_Ownership["ðŸ—„ï¸ Data Ownership"]
         direction TB
         D1["apps/api owns:<br/>User data, documents,<br/>permissions"]
         D2["apps/ai-service owns:<br/>Memory graph, vector<br/>store, agent state"]
-        D3["🚫 No service directly<br/>accesses another<br/>service's database"]
+        D3["ðŸš« No service directly<br/>accesses another<br/>service's database"]
     end
 
-    subgraph Deployment["🚀 Deployment Strategy"]
+    subgraph Deployment["ðŸš€ Deployment Strategy"]
         direction TB
         DEV["Development:<br/>Docker Compose"]
         STG["Staging:<br/>PaaS (per service)"]
@@ -67,7 +67,7 @@ graph TD
 
 ```
 
-> **Diagram:** Four independently-scalable services communicate through well-defined patterns. **apps/web** talks to **apps/api** via HTTP. **apps/api** calls **apps/ai-service** via gRPC. Both enqueue async work via **infra/worker** through the event bus. WebSocket streaming delivers agent output to the frontend. Each service owns its data — no service directly accesses another's database.
+> **Diagram:** Four independently-scalable services communicate through well-defined patterns. **apps/web** talks to **apps/api** via HTTP. **apps/api** calls **apps/ai-service** via gRPC. Both enqueue async work via **infra/worker** through the event bus. WebSocket streaming delivers agent output to the frontend. Each service owns its data â€” no service directly accesses another's database.
 
 ---
 
@@ -75,19 +75,19 @@ graph TD
 
 | Service | Responsibility | Team | Can Scale Independently |
 |---------|---------------|------|------------------------|
-| `apps/web` | Frontend rendering, SSR | Frontend | ✅ |
-| `apps/api` | Auth, CRUD, permissions | Backend | ✅ |
-| `apps/ai-service` | Agents, memory, RAG | AI | ✅ |
-| `infra/worker` | Background jobs (ingestion, sync) | Backend | ✅ |
+| `apps/web` | Frontend rendering, SSR | Frontend | âœ… |
+| `apps/api` | Auth, CRUD, permissions | Backend | âœ… |
+| `apps/ai-service` | Agents, memory, RAG | AI | âœ… |
+| `infra/worker` | Background jobs (ingestion, sync) | Backend | âœ… |
 
 ## Service Communication
 
 | Pattern | Protocol | Example |
 |---------|----------|---------|
-| Synchronous | HTTP/REST | Frontend → API |
-| Internal RPC | gRPC or HTTP | API → AI Service |
-| Async | Event bus (Redis → Kafka) | Agent action → Event publish |
-| Streaming | WebSocket | Agent output → Frontend |
+| Synchronous | HTTP/REST | Frontend â†’ API |
+| Internal RPC | gRPC or HTTP | API â†’ AI Service |
+| Async | Event bus (Redis â†’ Kafka) | Agent action â†’ Event publish |
+| Streaming | WebSocket | Agent output â†’ Frontend |
 
 ## Service Boundaries
 
@@ -109,35 +109,35 @@ Each service owns its data and exposes it through defined APIs:
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Allowing one service to read another service's database directly | Direct database access between services creates hidden coupling — a schema change in one service breaks the other without any compilation error or API contract violation |
-| Synchronous calls between services for non-critical operations | Every synchronous inter-service call adds latency and failure risk — use async events for anything that doesn't need an immediate response |
-| Deploying all services together as a monolith | If every service is deployed on every change, there's no independence — the whole point of microservices is independent deployability |
-| No service-level monitoring or alerting | When the AI service is slow, operators need to know it's the AI service, not guess — each service must expose health, latency, and error metrics independently |
+| Allowing one service to read another service's database directly | Direct database access between services creates hidden coupling â€” a schema change in one service breaks the other without any compilation error or API contract violation |
+| Synchronous calls between services for non-critical operations | Every synchronous inter-service call adds latency and failure risk â€” use async events for anything that doesn't need an immediate response |
+| Deploying all services together as a monolith | If every service is deployed on every change, there's no independence â€” the whole point of microservices is independent deployability |
+| No service-level monitoring or alerting | When the AI service is slow, operators need to know it's the AI service, not guess â€” each service must expose health, latency, and error metrics independently |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Each service owns its data and exposes it through defined APIs | No service directly accesses another service's database — all cross-service data access goes through the owning service's API |
-| Prefer async event-based communication over synchronous RPC where possible | Use events for document.ingested → memory extraction → resume update chains; use RPC only when the caller needs a synchronous response to continue |
-| Deploy each service independently with its own CI/CD pipeline | A frontend change should not require redeploying the AI service — independent pipelines enable each team to ship at their own cadence |
-| Expose health, readiness, and metrics endpoints per service | Each service reports `/health`, `/ready`, and `/metrics` — the orchestrator uses these for routing decisions, auto-scaling, and alerting |
+| Each service owns its data and exposes it through defined APIs | No service directly accesses another service's database â€” all cross-service data access goes through the owning service's API |
+| Prefer async event-based communication over synchronous RPC where possible | Use events for document.ingested â†’ memory extraction â†’ resume update chains; use RPC only when the caller needs a synchronous response to continue |
+| Deploy each service independently with its own CI/CD pipeline | A frontend change should not require redeploying the AI service â€” independent pipelines enable each team to ship at their own cadence |
+| Expose health, readiness, and metrics endpoints per service | Each service reports `/health`, `/ready`, and `/metrics` â€” the orchestrator uses these for routing decisions, auto-scaling, and alerting |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Service-to-service authentication | Internal services must authenticate each other — use short-lived mTLS certificates or service account tokens; never allow unauthenticated inter-service calls |
-| Cross-service data leakage through shared event bus topics | An event consumer must not receive events from a workspace it does not serve — include `workspace_id` in every event and filter at the consumer level |
-| Dependency confusion in service package management | Each service installs packages from registries — pin exact versions, scan for vulnerabilities, and use a private registry for internal packages to prevent dependency confusion attacks |
+| Service-to-service authentication | Internal services must authenticate each other â€” use short-lived mTLS certificates or service account tokens; never allow unauthenticated inter-service calls |
+| Cross-service data leakage through shared event bus topics | An event consumer must not receive events from a workspace it does not serve â€” include `workspace_id` in every event and filter at the consumer level |
+| Dependency confusion in service package management | Each service installs packages from registries â€” pin exact versions, scan for vulnerabilities, and use a private registry for internal packages to prevent dependency confusion attacks |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Inter-service call latency budget | Each synchronous hop between services adds 5-50ms — for user-facing requests, minimize the number of sequential inter-service calls; parallelize independent calls |
-| Service startup and scaling time | A service that takes 5+ minutes to start is impractical for auto-scaling — optimize Docker images for fast startup (under 30 seconds) so scaling events respond quickly to load changes |
-| Event propagation delay | Events published to the bus are consumed asynchronously — latency-sensitive features (deadline notifications, urgent email alerts) should use a faster path (WebSocket for immediate delivery) and rely on the event bus for durable record-keeping |
+| Inter-service call latency budget | Each synchronous hop between services adds 5-50ms â€” for user-facing requests, minimize the number of sequential inter-service calls; parallelize independent calls |
+| Service startup and scaling time | A service that takes 5+ minutes to start is impractical for auto-scaling â€” optimize Docker images for fast startup (under 30 seconds) so scaling events respond quickly to load changes |
+| Event propagation delay | Events published to the bus are consumed asynchronously â€” latency-sensitive features (deadline notifications, urgent email alerts) should use a faster path (WebSocket for immediate delivery) and rely on the event bus for durable record-keeping |
 
 ## Goals
 
@@ -154,7 +154,7 @@ Each service owns its data and exposes it through defined APIs:
 | Service decomposition into web, API, AI, and worker services | Monolithic deployment alternative |
 | Communication patterns between services (HTTP, gRPC, events, WebSocket) | Internal service implementation details |
 | Data ownership boundaries per service | Shared database access patterns (prohibited) |
-| Deployment environment strategy (Docker Compose → PaaS → K8s) | Infrastructure-as-code provisioning scripts |
+| Deployment environment strategy (Docker Compose â†’ PaaS â†’ K8s) | Infrastructure-as-code provisioning scripts |
 | CI/CD pipeline independence per service | Service-specific build tooling configuration |
 
 ## Functional Requirements
@@ -199,7 +199,7 @@ Each service owns its data and exposes it through defined APIs:
 |-----------|--------------|--------------|---------------|
 | Independent service scaling | 3 instances per service | Auto-scaling groups per service | Global multi-region per service |
 | Worker job types | 5 job types | Dynamic worker registration per job type | Worker pool per job priority tier |
-| gRPC throughput (API → AI) | 100 req/s | Connection multiplexing + streaming | Dedicated gRPC load balancer |
+| gRPC throughput (API â†’ AI) | 100 req/s | Connection multiplexing + streaming | Dedicated gRPC load balancer |
 | Deployment frequency | Daily | Independent per-service deployment | Rolling deployments with canary |
 
 ## Error Handling
@@ -224,9 +224,9 @@ Each service owns its data and exposes it through defined APIs:
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `SERVICE_NAME` | Unique identifier for the service instance | — | Yes |
+| `SERVICE_NAME` | Unique identifier for the service instance | â€” | Yes |
 | `SERVICE_PORT` | Port the service listens on | Per-service default | No |
-| `SERVICE_DISCOVERY_URL` | Service registry URL for dynamic discovery | — | Yes (Enterprise) |
+| `SERVICE_DISCOVERY_URL` | Service registry URL for dynamic discovery | â€” | Yes (Enterprise) |
 | `DEPLOYMENT_ENV` | Current deployment environment (dev/staging/prod) | `development` | No |
 | `HEALTH_CHECK_INTERVAL` | Interval for health check endpoint polling | `30s` | No |
 
@@ -272,7 +272,7 @@ await queue.enqueue("ingestion", {
 ### Check service dependencies
 
 ```bash
-meridian microservice graph --output png
+Vaeloom microservice graph --output png
 ```
 
 ## Future Improvements
@@ -288,4 +288,4 @@ meridian microservice graph --output png
 
 - [Service Architecture.md](./Service-Architecture.md)
 - [Infrastructure.md](./Infrastructure.md)
-- [`/Docs/Meridian-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Meridian-Complete-Documentation.md#135-deployment-architecture)
+- [`/Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture)

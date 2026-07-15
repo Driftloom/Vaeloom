@@ -1,18 +1,18 @@
-# Product Requirements Document (PRD) — Meridian MVP
+﻿# Product Requirements Document (PRD) â€” Vaeloom MVP
 
 | Metadata         | Value                                                                |
 |------------------|----------------------------------------------------------------------|
-| **Purpose**      | Formal product requirements for Meridian MVP — scope, users, features, success criteria |
-| **Status**       | ✅ Enterprise Ready |
+| **Purpose**      | Formal product requirements for Vaeloom MVP â€” scope, users, features, success criteria |
+| **Status**       | âœ… Enterprise Ready |
 | **Owner**        | Product Team |
 | **Last Updated** | 2026-07-15 |
-| **Canonical source** | [`01-Meridian-MVP-Spec.md`](../01-Meridian-MVP-Spec.md) |
+| **Canonical source** | [`01-Vaeloom-MVP-Spec.md`](../01-Vaeloom-MVP-Spec.md) |
 
 ---
 
 ## Overview
 
-This PRD defines **what** Meridian MVP must deliver for students and early-career professionals: a personal intelligence platform that ingests documents, email, and code; builds persistent structured memory; and runs permission-scoped AI agents that organize work, maintain resumes, search jobs, and track deadlines.
+This PRD defines **what** Vaeloom MVP must deliver for students and early-career professionals: a personal intelligence platform that ingests documents, email, and code; builds persistent structured memory; and runs permission-scoped AI agents that organize work, maintain resumes, search jobs, and track deadlines.
 
 This document is the authoritative product requirements layer above implementation specs. Engineering derives technical design from this PRD and the companion [SRS](./SRS.md). Business stakeholders use the companion [BRD](./BRD.md) for ROI and market framing.
 
@@ -48,7 +48,7 @@ This document is the authoritative product requirements layer above implementati
 ```mermaid
 graph TD
     subgraph Users["Primary Users"]
-        U1["Student — CS/Engineering"]
+        U1["Student â€” CS/Engineering"]
         U2["Early-Career Professional"]
     end
 
@@ -86,7 +86,7 @@ graph TD
 | FR-003 | Memory Agent extracts entities and relationships into knowledge graph | P0 | Entities queryable; graph visualized in Memory Graph view |
 | FR-004 | Organization Agent proposes file names, folders, deduplication | P0 | Suggestions shown; user approves before apply |
 | FR-005 | Resume Agent maintains master resume from memory | P0 | Resume updates reflect new achievements within 24h of ingestion |
-| FR-006 | ATS Agent scores resume against job descriptions | P1 | Score 0–100 with keyword gap analysis |
+| FR-006 | ATS Agent scores resume against job descriptions | P1 | Score 0â€“100 with keyword gap analysis |
 | FR-007 | Job Search Agent surfaces ranked opportunities | P1 | Shortlist with match rationale |
 | FR-008 | Gmail Agent classifies mail and detects deadlines | P0 | Deadlines appear in Schedule view |
 | FR-009 | Scheduler Agent detects conflicts and reminders | P1 | Calendar integration; conflict alerts |
@@ -112,9 +112,9 @@ graph TD
 
 | Persona | Job-to-be-Done | MVP Feature Mapping |
 |---------|----------------|---------------------|
-| **Alex — CS Student** | Keep resume current without manual effort | Resume Agent, Memory Agent |
+| **Alex â€” CS Student** | Keep resume current without manual effort | Resume Agent, Memory Agent |
 | **Alex** | Never miss internship deadlines | Gmail Agent, Scheduler Agent |
-| **Jordan — New Grad** | Find relevant jobs quickly | Job Search Agent, ATS Agent |
+| **Jordan â€” New Grad** | Find relevant jobs quickly | Job Search Agent, ATS Agent |
 | **Jordan** | Organize scattered project files | Organization Agent, Workspace |
 
 See [User Personas](./User-Personas.md) and [User Stories](./User-Stories.md).
@@ -124,8 +124,8 @@ See [User Personas](./User-Personas.md) and [User Stories](./User-Stories.md).
 | Metric | MVP Target | Source |
 |--------|------------|--------|
 | Weekly active users (WAU) | 500 beta users | Analytics |
-| Connector attach rate | ≥ 2 connectors/user | Product analytics |
-| Agent suggestion acceptance rate | ≥ 40% | Audit logs |
+| Connector attach rate | â‰¥ 2 connectors/user | Product analytics |
+| Agent suggestion acceptance rate | â‰¥ 40% | Audit logs |
 | Resume freshness | Updated within 7 days of new achievement | Memory timestamps |
 | Time-to-first-value | < 15 minutes from signup | Onboarding funnel |
 
@@ -175,9 +175,9 @@ See [Success Metrics](./Success-Metrics.md).
 
 ## Related Documents
 
-- [BRD](./BRD.md) — Business requirements
-- [SRS](./SRS.md) — Software requirements specification
-- [MVP Spec](../01-Meridian-MVP-Spec.md) — Detailed MVP specification
-- [Features](./Features.md) — Feature catalog
-- [Feature Specs](./Feature-Specs/) — Per-feature implementation docs
-- [Roadmap](./Roadmap.md) — Product timeline
+- [BRD](./BRD.md) â€” Business requirements
+- [SRS](./SRS.md) â€” Software requirements specification
+- [MVP Spec](../01-Vaeloom-MVP-Spec.md) â€” Detailed MVP specification
+- [Features](./Features.md) â€” Feature catalog
+- [Feature Specs](./Feature-Specs/) â€” Per-feature implementation docs
+- [Roadmap](./Roadmap.md) â€” Product timeline

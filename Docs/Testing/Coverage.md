@@ -1,7 +1,7 @@
-# Test Coverage
+﻿# Test Coverage
 
-> **Purpose:** Define test coverage targets and measurement for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define test coverage targets and measurement for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Coverage Architecture
 
@@ -12,7 +12,7 @@ graph TD
     classDef ci fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef exclude fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Targets["🎯 Coverage Targets"]
+    subgraph Targets["ðŸŽ¯ Coverage Targets"]
         direction TB
         T1["apps/web (components)<br/>Line: 80% | Branch: 70%"]
         T2["apps/web (pages)<br/>Line: 70% | Branch: 60%"]
@@ -22,18 +22,18 @@ graph TD
         T6["ai-service (retrieval)<br/>Line: 85% | Branch: 75%"]
     end
 
-    subgraph Tools["🔧 Coverage Tools"]
+    subgraph Tools["ðŸ”§ Coverage Tools"]
         U1["Frontend: Jest + Istanbul<br/>npm test -- --coverage"]
         U2["API: Jest + Istanbul<br/>npm test -- --coverage"]
         U3["AI Service: pytest-cov<br/>--cov=apps/ai-service"]
     end
 
-    subgraph CI["⚙️ CI Enforcement"]
+    subgraph CI["âš™ï¸ CI Enforcement"]
         C1["GitHub Action:<br/>npm run test -- --coverage"]
         C2["Threshold check:<br/>npx jest-coverage-thresholds<br/>--branches 70 --lines 80"]
     end
 
-    subgraph Exclusions["❌ What NOT to Measure"]
+    subgraph Exclusions["âŒ What NOT to Measure"]
         E1["Configuration files<br/>Logic-less"]
         E2["Migration files<br/>One-time execution"]
         E3["Type definitions<br/>No runtime behavior"]
@@ -120,7 +120,7 @@ module.exports = {
 | Mistake | Consequence |
 |---------|-------------|
 | Treating 100% coverage as the goal | Team writes shallow tests to hit targets, missing real bugs |
-| Measuring coverage only at the end of a sprint | Too late to improve — coverage debt accumulates |
+| Measuring coverage only at the end of a sprint | Too late to improve â€” coverage debt accumulates |
 | Ignoring branch coverage in favor of line coverage | Misses untested conditional logic paths |
 
 ## Best Practices
@@ -149,10 +149,10 @@ module.exports = {
 
 ## Workflows
 
-1. **Developer runs tests with coverage**: `npm test -- --coverage` → Jest instruments code with Istanbul → tests execute → coverage report generated → thresholds checked → if below targets, CI fails with line/branch numbers → developer adds missing tests
-2. **Coverage threshold enforcement in CI**: PR pushed → `npm run test -- --coverage` runs → Jest outputs JSON summary → custom script parses `coverage-summary.json` → compares line/branch coverage per module against thresholds → if below, PR blocked with detailed report
-3. **Coverage gap analysis**: Quarterly coverage review → script identifies modules below threshold → sorts by gap severity → generates report with specific uncovered lines → tickets created for critical gaps → team assigns to sprints
-4. **Incremental coverage on PR**: CI runs tests on only changed files (`--changedSince`) → coverage measured only on diff → incremental coverage must meet module target → prevents new code from reducing overall coverage
+1. **Developer runs tests with coverage**: `npm test -- --coverage` â†’ Jest instruments code with Istanbul â†’ tests execute â†’ coverage report generated â†’ thresholds checked â†’ if below targets, CI fails with line/branch numbers â†’ developer adds missing tests
+2. **Coverage threshold enforcement in CI**: PR pushed â†’ `npm run test -- --coverage` runs â†’ Jest outputs JSON summary â†’ custom script parses `coverage-summary.json` â†’ compares line/branch coverage per module against thresholds â†’ if below, PR blocked with detailed report
+3. **Coverage gap analysis**: Quarterly coverage review â†’ script identifies modules below threshold â†’ sorts by gap severity â†’ generates report with specific uncovered lines â†’ tickets created for critical gaps â†’ team assigns to sprints
+4. **Incremental coverage on PR**: CI runs tests on only changed files (`--changedSince`) â†’ coverage measured only on diff â†’ incremental coverage must meet module target â†’ prevents new code from reducing overall coverage
 
 ## Scalability
 
@@ -176,11 +176,11 @@ module.exports = {
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Overall line coverage | < 80% | Warning | Grafana — Code Quality Dashboard |
-| Branch coverage in critical modules (auth, encryption) | < 90% | Critical | Grafana — Security Dashboard |
-| Coverage delta per PR | < -1% | Warning | GitHub Checks — Coverage Report |
-| Modules below threshold | > 3 modules | Warning | Code Quality — Quarterly Review |
-| Time since last full coverage run | > 7 days | Info | CI Pipeline — Coverage Schedule |
+| Overall line coverage | < 80% | Warning | Grafana â€” Code Quality Dashboard |
+| Branch coverage in critical modules (auth, encryption) | < 90% | Critical | Grafana â€” Security Dashboard |
+| Coverage delta per PR | < -1% | Warning | GitHub Checks â€” Coverage Report |
+| Modules below threshold | > 3 modules | Warning | Code Quality â€” Quarterly Review |
+| Time since last full coverage run | > 7 days | Info | CI Pipeline â€” Coverage Schedule |
 
 ## Risks
 
@@ -201,11 +201,11 @@ module.exports = {
 
 ## Overview
 
-Test coverage at Meridian is measured and enforced per module with differentiated targets that reflect each module's criticality and testing complexity. Business logic modules (API services, AI agents) require 90% line coverage, while UI components target 80%. Branch coverage thresholds ensure that conditional logic paths are tested, not just happy-path line execution.
+Test coverage at Vaeloom is measured and enforced per module with differentiated targets that reflect each module's criticality and testing complexity. Business logic modules (API services, AI agents) require 90% line coverage, while UI components target 80%. Branch coverage thresholds ensure that conditional logic paths are tested, not just happy-path line execution.
 
 Coverage is measured using Istanbul (Jest) for TypeScript/JavaScript code and pytest-cov for Python code. These tools instrument the code during test execution and report line, branch, function, and statement coverage. CI enforces minimum thresholds per module through a custom `jest-coverage-thresholds` check that blocks PRs failing to meet targets.
 
-For Meridian's AI service, coverage measurement excludes golden datasets (test data, not code), configuration files, database migrations, type definitions, and seed data. These exclusions ensure that the coverage percentage reflects actual business logic coverage rather than being inflated by non-executable files. The AI agent prompt code itself counts toward coverage targets, ensuring that prompt handling logic is tested.
+For Vaeloom's AI service, coverage measurement excludes golden datasets (test data, not code), configuration files, database migrations, type definitions, and seed data. These exclusions ensure that the coverage percentage reflects actual business logic coverage rather than being inflated by non-executable files. The AI agent prompt code itself counts toward coverage targets, ensuring that prompt handling logic is tested.
 
 Coverage is monitored as a trend over time, not a static snapshot. Quarterly gap analyses identify modules falling below threshold, generate reports of specific uncovered lines, and create tickets for critical gaps. This systematic approach prevents coverage debt from accumulating during rapid feature development.
 
@@ -314,10 +314,10 @@ sequenceDiagram
     CHECK->>CHECK: Compare: lines 82% (target 80%)
     CHECK->>CHECK: Compare: branches 72% (target 75%)
     alt All thresholds met
-        CHECK-->>CI: ✅ Coverage passes
+        CHECK-->>CI: âœ… Coverage passes
         CI-->>DEV: PR proceeds
     else Threshold not met
-        CHECK-->>CI: ❌ Branches 72% < target 75%
+        CHECK-->>CI: âŒ Branches 72% < target 75%
         CI-->>REPORT: Generate uncovered lines report
         REPORT-->>DEV: PR blocked: "Branch coverage 72% in apps/api/services"
     end
@@ -328,7 +328,7 @@ sequenceDiagram
 | Improvement | Priority | Complexity | Timeline |
 |-------------|----------|------------|----------|
 | Mutation testing integration (Stryker) for test quality | Medium | High | Q3 2027 |
-| Test Impact Analysis — run only tests affected by code change | High | High | Q2 2027 |
+| Test Impact Analysis â€” run only tests affected by code change | High | High | Q2 2027 |
 | Automatic test generation for uncovered code paths | Low | High | Q4 2027 |
 | Coverage trend dashboard with ML anomaly detection | Medium | Medium | Q2 2027 |
 

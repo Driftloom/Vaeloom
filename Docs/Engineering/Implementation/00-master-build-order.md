@@ -1,7 +1,7 @@
-# 00 — Master Build Order (MVP)
+﻿# 00 â€” Master Build Order (MVP)
 
-> **Purpose:** Entry-point document defining the complete build sequence for the Meridian MVP. Read this first before any implementation phase.
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Entry-point document defining the complete build sequence for the Vaeloom MVP. Read this first before any implementation phase.
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
@@ -9,11 +9,11 @@
 
 ## Overview
 
-The Master Build Order is the single source of truth for the Meridian MVP implementation sequence. It defines 16 ordered build phases — from foundation infrastructure through deployment — each depending on the phases before it. This document establishes architectural non-negotiables, global conventions, and the definition of "MVP done" that every subsequent phase works toward.
+The Master Build Order is the single source of truth for the Vaeloom MVP implementation sequence. It defines 16 ordered build phases â€” from foundation infrastructure through deployment â€” each depending on the phases before it. This document establishes architectural non-negotiables, global conventions, and the definition of "MVP done" that every subsequent phase works toward.
 
-This file does not contain implementation details; it is the map. Each row in the build-order table below links to a phase-specific implementation guide (files 01–16) that provides full requirements, acceptance criteria, and quality guardrails. Engineers must read this document first, understand the dependency chain, and follow the numbered sequence without skipping ahead.
+This file does not contain implementation details; it is the map. Each row in the build-order table below links to a phase-specific implementation guide (files 01â€“16) that provides full requirements, acceptance criteria, and quality guardrails. Engineers must read this document first, understand the dependency chain, and follow the numbered sequence without skipping ahead.
 
-The companion product documents (`Meridian-Complete-Documentation.md` and `01-Meridian-MVP-Spec.md`) provide the product context and the "why" behind each build decision. This file and those that follow are purely the "how, in order."
+The companion product documents (`Vaeloom-Complete-Documentation.md` and `01-Vaeloom-MVP-Spec.md`) provide the product context and the "why" behind each build decision. This file and those that follow are purely the "how, in order."
 
 ## Goals
 
@@ -52,22 +52,22 @@ graph TD
 ```
 
 ## What you're building
-Meridian: a second brain for a person's education and career. It ingests documents, code, and communications; builds a continuously updated, structured memory of who the person is and what they've done; and runs specialized, permission-scoped agents on top of that memory to organize files, maintain a resume, search for and apply to jobs, and track deadlines. Full product context lives in the companion docs `Meridian-Complete-Documentation.md` and `01-Meridian-MVP-Spec.md` — read those for the "why," this file and the ones after it are the "how, in order."
+Vaeloom: a second brain for a person's education and career. It ingests documents, code, and communications; builds a continuously updated, structured memory of who the person is and what they've done; and runs specialized, permission-scoped agents on top of that memory to organize files, maintain a resume, search for and apply to jobs, and track deadlines. Full product context lives in the companion docs `Vaeloom-Complete-Documentation.md` and `01-Vaeloom-MVP-Spec.md` â€” read those for the "why," this file and the ones after it are the "how, in order."
 
-## Non-negotiable architectural decisions (already made — do not re-litigate)
-- **Agent contract:** every agent shares one structure — fixed mission, declared tool list, explicit memory read/write permissions, a stated default autonomy level (suggest-mode unless stated otherwise), and a required fallback (ask, never guess).
-- **Agentic loop:** Plan → Act → Observe → Reflect → Improve, implemented once in the shared harness (file 05), not reimplemented per agent.
+## Non-negotiable architectural decisions (already made â€” do not re-litigate)
+- **Agent contract:** every agent shares one structure â€” fixed mission, declared tool list, explicit memory read/write permissions, a stated default autonomy level (suggest-mode unless stated otherwise), and a required fallback (ask, never guess).
+- **Agentic loop:** Plan â†’ Act â†’ Observe â†’ Reflect â†’ Improve, implemented once in the shared harness (file 05), not reimplemented per agent.
 - **Memory before features:** every agent action that teaches the system something new is a memory write; every feature is a memory read. If a feature can't be expressed as a read/write against memory, question whether it belongs.
 - **MCP-shaped tools everywhere:** every connector and internal tool is defined with the same shape (name, input schema, output schema, required scope) from day one, even before real MCP transport is wired up.
 - **Suggest-mode by default:** no agent takes a consequential, irreversible action without approval in MVP. Earned autonomy is a v1.5+ concern, not MVP.
 - **Two-service backend split:** `apps/api` (NestJS, TypeScript) owns auth/CRUD/permissions; `apps/ai-service` (FastAPI, Python) owns agents/memory/retrieval. They talk over an internal RPC boundary.
 
 ## Build order
-Run these prompts in order. Each depends on the ones before it. Do not skip ahead — a later file assumes the earlier ones' schemas/interfaces exist.
+Run these prompts in order. Each depends on the ones before it. Do not skip ahead â€” a later file assumes the earlier ones' schemas/interfaces exist.
 
 | # | File | Builds | Depends on |
 |---|---|---|---|
-| 01 | `01-foundation-infra.md` | Repo scaffold, CI, auth, empty services | — |
+| 01 | `01-foundation-infra.md` | Repo scaffold, CI, auth, empty services | â€” |
 | 02 | `02-database-schema.md` | Postgres schema, migrations | 01 |
 | 03 | `03-ingestion-pipeline.md` | File parsing, OCR, extraction, queue | 01, 02 |
 | 04 | `04-memory-system.md` | Memory Agent, knowledge graph, vector store | 02, 03 |
@@ -86,13 +86,13 @@ Run these prompts in order. Each depends on the ones before it. Do not skip ahea
 
 ## Global conventions (apply in every file below)
 - **Languages:** TypeScript (strict mode) for `apps/web` and `apps/api`; Python 3.11+ with full type hints for `apps/ai-service`.
-- **Testing:** every phase ships with tests before being marked done — unit tests minimum, integration tests where a real external dependency (DB, queue) is involved. No phase is "complete" without a green test suite.
-- **Local dev:** every service must run locally via `docker-compose up` with a documented `.env.example` — never require a cloud account to develop against. Secrets in local dev come from `.env` (gitignored); production secrets come from a secrets manager (file 15).
+- **Testing:** every phase ships with tests before being marked done â€” unit tests minimum, integration tests where a real external dependency (DB, queue) is involved. No phase is "complete" without a green test suite.
+- **Local dev:** every service must run locally via `docker-compose up` with a documented `.env.example` â€” never require a cloud account to develop against. Secrets in local dev come from `.env` (gitignored); production secrets come from a secrets manager (file 15).
 - **Commits:** conventional commits (`feat:`, `fix:`, `chore:`), one logical change per commit.
-- **No silent scope creep:** if a prompt file's "Out of scope" section excludes something, do not build it "while you're in there" — flag it as a note instead.
+- **No silent scope creep:** if a prompt file's "Out of scope" section excludes something, do not build it "while you're in there" â€” flag it as a note instead.
 
 ## Definition of "MVP done"
-A new user can sign up, connect at least one source, upload a resume, see it organized and reflected in an always-current master resume, search for and (with approval) apply to a role, and see relevant deadlines surfaced automatically — with zero manual intervention from the engineering team. This is the acceptance bar for file 16.
+A new user can sign up, connect at least one source, upload a resume, see it organized and reflected in an always-current master resume, search for and (with approval) apply to a role, and see relevant deadlines surfaced automatically â€” with zero manual intervention from the engineering team. This is the acceptance bar for file 16.
 
 ## Common Mistakes
 
@@ -114,7 +114,7 @@ A new user can sign up, connect at least one source, upload a resume, see it org
 
 | Concern | Mitigation |
 |---------|------------|
-| Two-service backend introduces a broader attack surface | Enforce the internal RPC boundary strictly — never allow direct service-to-database cross-talk |
+| Two-service backend introduces a broader attack surface | Enforce the internal RPC boundary strictly â€” never allow direct service-to-database cross-talk |
 | Suggest-mode agents could still leak context if untested | Always run guardrail checks before any agent output is returned to a user |
 
 ## Performance Considerations
@@ -134,7 +134,7 @@ A new user can sign up, connect at least one source, upload a resume, see it org
 - Cross-referencing between phases so downstream engineers understand upstream contracts
 
 ### Out of Scope
-- Product specifications and design rationale (covered in `Meridian-Complete-Documentation.md` and `01-Meridian-MVP-Spec.md`)
+- Product specifications and design rationale (covered in `Vaeloom-Complete-Documentation.md` and `01-Vaeloom-MVP-Spec.md`)
 - Enterprise-phase scaling, migration guides, or additional agent roster
 - Performance benchmarking beyond what each phase's acceptance criteria define
 - Multi-region deployment, Kubernetes orchestration, or disaster recovery (planned for enterprise)
@@ -151,7 +151,7 @@ A new user can sign up, connect at least one source, upload a resume, see it org
 grep -r "def retrieve" apps/ai-service/retrieval/
 
 # Run the full build sequence locally
-cd meridian/
+cd Vaeloom/
 docker-compose up -d
 npx prisma migrate dev  # Phase 02
 pytest apps/ai-service/tests/  # Phase validation
@@ -180,7 +180,7 @@ Closes #42"
 
 ## Related Documents
 
-- [01 — Foundation Infrastructure](01-foundation-infra.md) — First build phase: repo scaffold, CI, auth
-- [Architecture System Design](../../Architecture/System-Design.md) — System architecture context
-- [Meridian Complete Documentation](../../Meridian-Complete-Documentation.md) — Full product specification
-- [01-Meridian-MVP-Spec.md](../../01-Meridian-MVP-Spec.md) — MVP product requirements
+- [01 â€” Foundation Infrastructure](01-foundation-infra.md) â€” First build phase: repo scaffold, CI, auth
+- [Architecture System Design](../../Architecture/System-Design.md) â€” System architecture context
+- [Vaeloom Complete Documentation](../../Vaeloom-Complete-Documentation.md) â€” Full product specification
+- [01-Vaeloom-MVP-Spec.md](../../01-Vaeloom-MVP-Spec.md) â€” MVP product requirements

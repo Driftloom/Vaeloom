@@ -1,7 +1,7 @@
-# Support
+﻿# Support
 
-> **Purpose:** Define support processes for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define support processes for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Support Architecture
 
@@ -11,14 +11,14 @@ graph TD
     classDef workflow fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef metric fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Tiers["📋 Support Tiers"]
-        T1["Self-service · All users<br/>Docs/FAQ/In-app help · Instant"]
-        T2["Community · Free users<br/>Discord/GitHub · < 24h"]
-        T3["Standard · Pro users<br/>Email/Chat · < 8h"]
-        T4["Priority · Enterprise<br/>Dedicated Slack/Phone · < 1h"]
+    subgraph Tiers["ðŸ“‹ Support Tiers"]
+        T1["Self-service Â· All users<br/>Docs/FAQ/In-app help Â· Instant"]
+        T2["Community Â· Free users<br/>Discord/GitHub Â· < 24h"]
+        T3["Standard Â· Pro users<br/>Email/Chat Â· < 8h"]
+        T4["Priority Â· Enterprise<br/>Dedicated Slack/Phone Â· < 1h"]
     end
 
-    subgraph Workflow["🔄 Escalation Workflow"]
+    subgraph Workflow["ðŸ”„ Escalation Workflow"]
         W1["User submits ticket"]
         W2["Auto-categorization + Priority"]
         W3["Tier 1: Self-service resolution"]
@@ -27,14 +27,14 @@ graph TD
         W6["Resolution confirmation"]
     end
 
-    subgraph Escalation["📊 Escalation Matrix"]
-        E1["Bug reports: Triage→Investigate→Fix"]
-        E2["Feature requests: Log→Prioritize→Implement"]
-        E3["Data issues: Scope→Recover→Root cause"]
-        E4["Security: Immediate escalate→Fix→Post-mortem"]
+    subgraph Escalation["ðŸ“Š Escalation Matrix"]
+        E1["Bug reports: Triageâ†’Investigateâ†’Fix"]
+        E2["Feature requests: Logâ†’Prioritizeâ†’Implement"]
+        E3["Data issues: Scopeâ†’Recoverâ†’Root cause"]
+        E4["Security: Immediate escalateâ†’Fixâ†’Post-mortem"]
     end
 
-    subgraph Metrics["📈 Support Metrics"]
+    subgraph Metrics["ðŸ“ˆ Support Metrics"]
         M1["First response: < 1h priority / < 24h standard"]
         M2["Resolution: < 4h priority / < 48h standard"]
         M3["CSAT: > 4.5 out of 5.0"]
@@ -50,7 +50,7 @@ graph TD
     class M1,M2,M3,M4 metric
 ```
 
-> **Diagram:** Support architecture — **4 tiers** (self-service instant → community 24h → standard 8h → priority 1h) → **6-step workflow** (ticket → categorize → escalate: T1/T2/T3 → resolve) → **escalation matrix** (bugs, features, data, security) → **metrics** (response time, resolution, CSAT, escalation rate).
+> **Diagram:** Support architecture â€” **4 tiers** (self-service instant â†’ community 24h â†’ standard 8h â†’ priority 1h) â†’ **6-step workflow** (ticket â†’ categorize â†’ escalate: T1/T2/T3 â†’ resolve) â†’ **escalation matrix** (bugs, features, data, security) â†’ **metrics** (response time, resolution, CSAT, escalation rate).
 
 ---
 
@@ -66,11 +66,11 @@ graph TD
 ## Support Workflow
 
 ```text
-User submits ticket → Auto-categorization → Priority assignment
-    → Tier 1: Self-service resolution
-    → Tier 2: Support team (standard issues)
-    → Tier 3: Engineering team (bugs, escalations)
-    → Resolution confirmation
+User submits ticket â†’ Auto-categorization â†’ Priority assignment
+    â†’ Tier 1: Self-service resolution
+    â†’ Tier 2: Support team (standard issues)
+    â†’ Tier 3: Engineering team (bugs, escalations)
+    â†’ Resolution confirmation
 ```
 
 ## Common Support Categories
@@ -106,60 +106,60 @@ User submits ticket → Auto-categorization → Priority assignment
 
 | Mistake | Consequence |
 |---------|-------------|
-| First-line support without escalation criteria documented | A support agent who can't determine if an issue is a bug, feature request, or security concern escalates to the wrong team — document clear categorization criteria for each issue type |
-| Support metrics that measure speed over quality | A 30-second first response time is meaningless if the response is "we'll look into it" — measure resolution quality (CSAT) alongside speed, and prioritize accuracy over quick replies |
-| Self-service documentation that isn't kept current | FAQ and help docs that reference outdated features or UI layouts confuse users and generate more support tickets — audit and update self-service docs on a monthly cycle |
+| First-line support without escalation criteria documented | A support agent who can't determine if an issue is a bug, feature request, or security concern escalates to the wrong team â€” document clear categorization criteria for each issue type |
+| Support metrics that measure speed over quality | A 30-second first response time is meaningless if the response is "we'll look into it" â€” measure resolution quality (CSAT) alongside speed, and prioritize accuracy over quick replies |
+| Self-service documentation that isn't kept current | FAQ and help docs that reference outdated features or UI layouts confuse users and generate more support tickets â€” audit and update self-service docs on a monthly cycle |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Implement a clear escalation matrix with SLAs per tier | Users should know what to expect at each tier — self-service (instant), community (24h), standard (8h), priority (1h). Document these SLAs and track compliance |
-| Track support metrics that balance speed and quality | Response time, resolution time, CSAT, and escalation rate together give a complete picture — optimizing one metric alone (e.g., response time) can hurt the others |
-| Maintain a living FAQ that reflects actual support tickets | FAQ sections should be based on real user questions, not what the team assumes users will ask — review the top 10 support tickets each month and update the FAQ accordingly |
+| Implement a clear escalation matrix with SLAs per tier | Users should know what to expect at each tier â€” self-service (instant), community (24h), standard (8h), priority (1h). Document these SLAs and track compliance |
+| Track support metrics that balance speed and quality | Response time, resolution time, CSAT, and escalation rate together give a complete picture â€” optimizing one metric alone (e.g., response time) can hurt the others |
+| Maintain a living FAQ that reflects actual support tickets | FAQ sections should be based on real user questions, not what the team assumes users will ask â€” review the top 10 support tickets each month and update the FAQ accordingly |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Support agents with excessive data access | A support agent investigating a user issue shouldn't have access to other users' data — implement role-based access for support tools that scopes access to the requesting user's workspace only |
-| Sensitive data shared through support channels | Users may share passwords, API keys, or personal data in support tickets — implement automated redaction of sensitive patterns (email, tokens, keys) in the ticketing system |
-| Social engineering attacks on support | An attacker posing as a user could request password resets or data exports — verify identity through at least two factors before fulfilling any account-changing requests |
+| Support agents with excessive data access | A support agent investigating a user issue shouldn't have access to other users' data â€” implement role-based access for support tools that scopes access to the requesting user's workspace only |
+| Sensitive data shared through support channels | Users may share passwords, API keys, or personal data in support tickets â€” implement automated redaction of sensitive patterns (email, tokens, keys) in the ticketing system |
+| Social engineering attacks on support | An attacker posing as a user could request password resets or data exports â€” verify identity through at least two factors before fulfilling any account-changing requests |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Support ticket volume spiking after incidents | After any service disruption, ticket volume typically spikes 10-50x — have an incident communication template ready that proactively answers the most common questions to preempt ticket creation |
-| SLA tracking overhead consuming support time | Manually tracking response and resolution SLAs for every ticket adds overhead — automate SLA tracking in the ticketing system with dashboard alerts for approaching violations |
-| Self-service resolution rates dropping due to stale content | If the FAQ and help docs don't cover new features, resolution rates drop and tier-1 tickets increase — measure self-service resolution rate monthly and investigate drops as a content freshness issue |
+| Support ticket volume spiking after incidents | After any service disruption, ticket volume typically spikes 10-50x â€” have an incident communication template ready that proactively answers the most common questions to preempt ticket creation |
+| SLA tracking overhead consuming support time | Manually tracking response and resolution SLAs for every ticket adds overhead â€” automate SLA tracking in the ticketing system with dashboard alerts for approaching violations |
+| Self-service resolution rates dropping due to stale content | If the FAQ and help docs don't cover new features, resolution rates drop and tier-1 tickets increase â€” measure self-service resolution rate monthly and investigate drops as a content freshness issue |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Support agents with excessive data access | A support agent investigating a user issue shouldn't have access to other users' data — implement role-based access for support tools that scopes access to the requesting user's workspace only |
-| Sensitive data shared through support channels | Users may share passwords, API keys, or personal data in support tickets — implement automated redaction of sensitive patterns (email, tokens, keys) in the ticketing system |
-| Social engineering attacks on support | An attacker posing as a user could request password resets or data exports — verify identity through at least two factors before fulfilling any account-changing requests |
+| Support agents with excessive data access | A support agent investigating a user issue shouldn't have access to other users' data â€” implement role-based access for support tools that scopes access to the requesting user's workspace only |
+| Sensitive data shared through support channels | Users may share passwords, API keys, or personal data in support tickets â€” implement automated redaction of sensitive patterns (email, tokens, keys) in the ticketing system |
+| Social engineering attacks on support | An attacker posing as a user could request password resets or data exports â€” verify identity through at least two factors before fulfilling any account-changing requests |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Support ticket volume spiking after incidents | After any service disruption, ticket volume typically spikes 10-50x — have an incident communication template ready that proactively answers the most common questions to preempt ticket creation |
-| SLA tracking overhead consuming support time | Manually tracking response and resolution SLAs for every ticket adds overhead — automate SLA tracking in the ticketing system with dashboard alerts for approaching violations |
-| Self-service resolution rates dropping due to stale content | If the FAQ and help docs don't cover new features, resolution rates drop and tier-1 tickets increase — measure self-service resolution rate monthly and investigate drops as a content freshness issue |
+| Support ticket volume spiking after incidents | After any service disruption, ticket volume typically spikes 10-50x â€” have an incident communication template ready that proactively answers the most common questions to preempt ticket creation |
+| SLA tracking overhead consuming support time | Manually tracking response and resolution SLAs for every ticket adds overhead â€” automate SLA tracking in the ticketing system with dashboard alerts for approaching violations |
+| Self-service resolution rates dropping due to stale content | If the FAQ and help docs don't cover new features, resolution rates drop and tier-1 tickets increase â€” measure self-service resolution rate monthly and investigate drops as a content freshness issue |
 
 ## Workflows
 
 1. **User submits ticket** via in-app chat, email, or community forum
 2. **Auto-categorization:** System classifies by category (account, connector, agent, data, billing, technical)
-3. **Tier assignment:** Self-service (FAQ match) → Tier 1 (support team) → Tier 2 (engineering for bugs)
-4. **Initial response:** Within SLA (1h priority, 24h standard) — acknowledge and set expectations
-5. **Investigation:** Check logs, user account, workspace data — identify root cause
-6. **Resolution:** Tier 1 fixes common issues → Tier 2 fixes bugs → Tier 3 (engineering for escalations)
-7. **Confirmation:** Verify resolution with user → close ticket → log in knowledge base
-8. **Post-resolution:** Update FAQ if common issue → CSAT survey → trend analysis
+3. **Tier assignment:** Self-service (FAQ match) â†’ Tier 1 (support team) â†’ Tier 2 (engineering for bugs)
+4. **Initial response:** Within SLA (1h priority, 24h standard) â€” acknowledge and set expectations
+5. **Investigation:** Check logs, user account, workspace data â€” identify root cause
+6. **Resolution:** Tier 1 fixes common issues â†’ Tier 2 fixes bugs â†’ Tier 3 (engineering for escalations)
+7. **Confirmation:** Verify resolution with user â†’ close ticket â†’ log in knowledge base
+8. **Post-resolution:** Update FAQ if common issue â†’ CSAT survey â†’ trend analysis
 
 ---
 
@@ -221,13 +221,13 @@ User submits ticket → Auto-categorization → Priority assignment
 
 ## Overview
 
-Support defines the multi-tier customer support framework for the Meridian platform, spanning self-service documentation to dedicated enterprise support. It establishes escalation paths, response SLAs per tier, common support categories, and the metrics that measure support quality — first response time, resolution time, customer satisfaction, and escalation rate.
+Support defines the multi-tier customer support framework for the Vaeloom platform, spanning self-service documentation to dedicated enterprise support. It establishes escalation paths, response SLAs per tier, common support categories, and the metrics that measure support quality â€” first response time, resolution time, customer satisfaction, and escalation rate.
 
-This document is written for support engineers, product managers, and the operations team who design and staff Meridian's support operation. It provides the structure needed to scale support from a single part-time resource to a multi-tier organization serving thousands of users.
+This document is written for support engineers, product managers, and the operations team who design and staff Vaeloom's support operation. It provides the structure needed to scale support from a single part-time resource to a multi-tier organization serving thousands of users.
 
-For a second-brain AI platform, support is uniquely nuanced because issues often involve agent behavior, knowledge graph state, and connector data synchronization — problems that are hard to reproduce and require deep product understanding. The escalation matrix in this document ensures that connector failures, agent misbehavior, and data quality issues are routed to the right engineering team without unnecessary back-and-forth.
+For a second-brain AI platform, support is uniquely nuanced because issues often involve agent behavior, knowledge graph state, and connector data synchronization â€” problems that are hard to reproduce and require deep product understanding. The escalation matrix in this document ensures that connector failures, agent misbehavior, and data quality issues are routed to the right engineering team without unnecessary back-and-forth.
 
-A well-designed support operation is Meridian's first line of defense against churn. Users who experience a support interaction that is fast, empathetic, and effective are significantly more likely to remain engaged with the platform. Conversely, slow or unhelpful support erodes trust in the platform's reliability and value proposition.
+A well-designed support operation is Vaeloom's first line of defense against churn. Users who experience a support interaction that is fast, empathetic, and effective are significantly more likely to remain engaged with the platform. Conversely, slow or unhelpful support erodes trust in the platform's reliability and value proposition.
 
 ## Goals
 
@@ -242,7 +242,7 @@ A well-designed support operation is Meridian's first line of defense against ch
 ### In Scope
 - Four-tier support structure with audience definitions, channels, and response time SLAs: self-service, community, standard, and priority
 - Support workflow from ticket submission through auto-categorization, tier assignment, investigation, resolution, and post-resolution follow-up
-- Common support categories: account, connectors, agent behavior, data, billing, and technical — with typical issues and resolution tiers
+- Common support categories: account, connectors, agent behavior, data, billing, and technical â€” with typical issues and resolution tiers
 - Escalation matrix for bug reports, feature requests, data issues, and security concerns across three support tiers
 - Support metrics with targets: first response time, resolution time, CSAT, escalation rate, and self-service resolution rate
 - Error handling for mis-categorized tickets, SLA breaches, unresolved issues, and agent escalation failures
@@ -262,7 +262,7 @@ A well-designed support operation is Meridian's first line of defense against ch
 
 ```bash
 # Submit a support ticket via API
-curl -X POST https://api.meridian.dev/v1/support/tickets \
+curl -X POST https://api.Vaeloom.dev/v1/support/tickets \
   -H "Authorization: Bearer $API_TOKEN" \
   -d '{
     "category": "connector",
@@ -299,7 +299,7 @@ support_tiers:
 
 ```bash
 # Check ticket status
-curl -s "https://api.meridian.dev/v1/support/tickets/TKT-12345" \
+curl -s "https://api.Vaeloom.dev/v1/support/tickets/TKT-12345" \
   -H "Authorization: Bearer $API_TOKEN" | jq '{status, assigned_to, sla_remaining}'
 ```
 

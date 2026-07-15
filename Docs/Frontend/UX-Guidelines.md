@@ -1,7 +1,7 @@
-# UX Guidelines
+﻿# UX Guidelines
 
-> **Purpose:** Define UX principles and guidelines for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define UX principles and guidelines for Vaeloom
+> **Status:** ðŸ†• New
 
 ## UX Architecture
 
@@ -11,24 +11,24 @@ graph TD
     classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef mobile fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Principles["🎯 Core UX Principles"]
+    subgraph Principles["ðŸŽ¯ Core UX Principles"]
         direction TB
         R1["Proactive, Never Intrusive<br/>Batch notifications, dismissible"]
         R2["Trust Through Transparency<br/>Activity log, reasoning, explainability"]
-        R3["Progressive Disclosure<br/>Dashboard first → Advanced gradually"]
+        R3["Progressive Disclosure<br/>Dashboard first â†’ Advanced gradually"]
         R4["Consistent Feedback Loop<br/>Every action acknowledged"]
     end
 
-    subgraph Patterns["🔄 Interaction Patterns"]
+    subgraph Patterns["ðŸ”„ Interaction Patterns"]
         direction TB
-        P1["Agent proposals → Card UI + Diff view"]
-        P2["File organization → Batch approval + Undo"]
-        P3["Job matches → Swipe / Approve / Reject"]
-        P4["Chat citations → Clickable source refs"]
-        P5["Settings → Per-agent autonomy sliders"]
+        P1["Agent proposals â†’ Card UI + Diff view"]
+        P2["File organization â†’ Batch approval + Undo"]
+        P3["Job matches â†’ Swipe / Approve / Reject"]
+        P4["Chat citations â†’ Clickable source refs"]
+        P5["Settings â†’ Per-agent autonomy sliders"]
     end
 
-    subgraph Mobile["📱 Mobile Considerations"]
+    subgraph Mobile["ðŸ“± Mobile Considerations"]
         M1["MVP: Web-first (responsive)"]
         M2["V2: Mobile companion app<br/>Notifications + quick capture"]
         M3["V3: Full mobile app"]
@@ -41,7 +41,7 @@ graph TD
     class M1,M2,M3 mobile
 ```
 
-> **Diagram:** UX foundations — **4 core principles** (proactive, transparent, progressive, consistent) drive **5 interaction patterns** (proposal cards, batch approval, swipe jobs, chat citations, autonomy sliders). **Mobile strategy** follows a phased approach: responsive web → companion app → full mobile app.
+> **Diagram:** UX foundations â€” **4 core principles** (proactive, transparent, progressive, consistent) drive **5 interaction patterns** (proposal cards, batch approval, swipe jobs, chat citations, autonomy sliders). **Mobile strategy** follows a phased approach: responsive web â†’ companion app â†’ full mobile app.
 
 ---
 
@@ -61,7 +61,7 @@ Show the dashboard first. Reveal agent details, memory graph, and advanced setti
 
 ### 4. Consistent Feedback Loop
 
-Every user action — approve, reject, correct, edit — has visible feedback. The system acknowledges and adapts.
+Every user action â€” approve, reject, correct, edit â€” has visible feedback. The system acknowledges and adapts.
 
 ## Interaction Patterns
 
@@ -83,51 +83,51 @@ Every user action — approve, reject, correct, edit — has visible feedback. T
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Too many notifications competing for attention | Users habituate to constant alerts and ignore all of them — batch notifications by priority and let users configure frequency |
+| Too many notifications competing for attention | Users habituate to constant alerts and ignore all of them â€” batch notifications by priority and let users configure frequency |
 | No undo for consequential actions | Agent proposals for file moves, renames, or job applications without a recovery path destroy user trust instantly |
-| Hiding important features behind discovery | If a user has to guess that something exists, it might as well not exist — key capabilities should be visible, not buried in menus |
-| Inconsistent feedback for similar actions | Approving a proposal should feel the same everywhere — different animations, tones, or confirmation patterns confuse users |
+| Hiding important features behind discovery | If a user has to guess that something exists, it might as well not exist â€” key capabilities should be visible, not buried in menus |
+| Inconsistent feedback for similar actions | Approving a proposal should feel the same everywhere â€” different animations, tones, or confirmation patterns confuse users |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
 | Progressive disclosure of complexity | New users see Dashboard and basic actions; advanced features (memory graph editing, per-agent autonomy settings) reveal themselves with engagement |
-| Provide clear, immediate feedback for every action | Every button press, form submit, and proposal response must produce visible feedback within 100ms — silence is interpreted as failure |
-| Give users control over their data | One-click "export everything" and "delete everything" should be visible and unconditional from day one — not hidden in a settings submenu |
+| Provide clear, immediate feedback for every action | Every button press, form submit, and proposal response must produce visible feedback within 100ms â€” silence is interpreted as failure |
+| Give users control over their data | One-click "export everything" and "delete everything" should be visible and unconditional from day one â€” not hidden in a settings submenu |
 | Support undo for all destructive actions | Any action that modifies user data (file renames, organization proposals, application submissions) must have an undo mechanism with a visible timeline |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Privacy in notification previews | Notification content (email subjects, document summaries) should not display sensitive information in OS-level notification banners — use generic titles with "Tap to view" |
+| Privacy in notification previews | Notification content (email subjects, document summaries) should not display sensitive information in OS-level notification banners â€” use generic titles with "Tap to view" |
 | Data exposure in search previews | Global search results can expose document snippets that reveal sensitive information; scope search preview text based on the user's permission level |
-| Session timeout feedback | When a session expires, preserve the user's work-in-progress (form drafts, pending approvals) and explain what happened — don't just redirect to login |
+| Session timeout feedback | When a session expires, preserve the user's work-in-progress (form drafts, pending approvals) and explain what happened â€” don't just redirect to login |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Perceived performance with skeleton screens | Show skeleton screens matching final layout within 300ms of navigation — users perceive sub-second skeleton loading as faster than a blank page with a spinner |
-| Optimistic UI for common operations | When a user approves a proposal, update the UI immediately and sync in the background — the 200-500ms saved per action makes the product feel responsive |
-| Predictive prefetching of likely next actions | After a user approves a file organization proposal, prefetch the Workspace page data — users who navigate there next see instant content |
+| Perceived performance with skeleton screens | Show skeleton screens matching final layout within 300ms of navigation â€” users perceive sub-second skeleton loading as faster than a blank page with a spinner |
+| Optimistic UI for common operations | When a user approves a proposal, update the UI immediately and sync in the background â€” the 200-500ms saved per action makes the product feel responsive |
+| Predictive prefetching of likely next actions | After a user approves a file organization proposal, prefetch the Workspace page data â€” users who navigate there next see instant content |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Privacy in notification previews | Notification content (email subjects, document summaries) should not display sensitive information in OS-level notification banners — use generic titles with "Tap to view" |
+| Privacy in notification previews | Notification content (email subjects, document summaries) should not display sensitive information in OS-level notification banners â€” use generic titles with "Tap to view" |
 | Data exposure in search previews | Global search results can expose document snippets that reveal sensitive information; scope search preview text based on user's permission level |
-| Session timeout feedback | When a session expires, preserve the user's work-in-progress (form drafts, pending approvals) and explain what happened — don't just redirect to login |
+| Session timeout feedback | When a session expires, preserve the user's work-in-progress (form drafts, pending approvals) and explain what happened â€” don't just redirect to login |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Perceived performance with skeleton screens | Show skeleton screens matching final layout within 300ms of navigation — users perceive sub-second skeleton loading as faster than a blank page with a spinner |
-| Optimistic UI for common operations | When a user approves a proposal, update the UI immediately and sync in the background — the 200-500ms saved per action makes the product feel responsive |
-| Predictive prefetching of likely next actions | After a user approves a file organization proposal, prefetch the Workspace page data — users who navigate there next see instant content |
+| Perceived performance with skeleton screens | Show skeleton screens matching final layout within 300ms of navigation â€” users perceive sub-second skeleton loading as faster than a blank page with a spinner |
+| Optimistic UI for common operations | When a user approves a proposal, update the UI immediately and sync in the background â€” the 200-500ms saved per action makes the product feel responsive |
+| Predictive prefetching of likely next actions | After a user approves a file organization proposal, prefetch the Workspace page data â€” users who navigate there next see instant content |
 
 ## Components
 
@@ -140,10 +140,10 @@ Every user action — approve, reject, correct, edit — has visible feedback. T
 
 ## Workflows
 
-1. **Proposal review and approval**: Agent proposes file rename → ProposalCard appears with diff view (original → proposed) → user reviews changes → clicks "Approve" → optimistic UI hides card → server renames file → success toast appears → activity log updated
-2. **Progressive disclosure onboarding**: New user signs up → sees simplified dashboard with 3 widgets → tooltip prompts "Try connecting Gmail" → user connects → new widgets appear → over 2 weeks, advanced features gradually become visible
-3. **Undo destructive action**: Agent organizes 10 files → user reviews batch in proposal → approves → 5 files moved → "Undo" banner appears (15s window) → user clicks "Undo" → files restored → agent notified of reversal
-4. **Notification batched delivery**: 3 agent actions complete within 2 minutes → NotificationCenter batches them into single summary toast → "3 files organized" with expandable details → user expands → sees individual actions → dismisses all
+1. **Proposal review and approval**: Agent proposes file rename â†’ ProposalCard appears with diff view (original â†’ proposed) â†’ user reviews changes â†’ clicks "Approve" â†’ optimistic UI hides card â†’ server renames file â†’ success toast appears â†’ activity log updated
+2. **Progressive disclosure onboarding**: New user signs up â†’ sees simplified dashboard with 3 widgets â†’ tooltip prompts "Try connecting Gmail" â†’ user connects â†’ new widgets appear â†’ over 2 weeks, advanced features gradually become visible
+3. **Undo destructive action**: Agent organizes 10 files â†’ user reviews batch in proposal â†’ approves â†’ 5 files moved â†’ "Undo" banner appears (15s window) â†’ user clicks "Undo" â†’ files restored â†’ agent notified of reversal
+4. **Notification batched delivery**: 3 agent actions complete within 2 minutes â†’ NotificationCenter batches them into single summary toast â†’ "3 files organized" with expandable details â†’ user expands â†’ sees individual actions â†’ dismisses all
 
 ## Sequence Diagrams
 
@@ -151,10 +151,10 @@ Every user action — approve, reject, correct, edit — has visible feedback. T
 sequenceDiagram
     participant U as User
     participant PC as ProposalCard
-    participant API as Meridian API
+    participant API as Vaeloom API
     participant AL as ActivityLog
 
-    U->>PC: View proposal: "Rename resume.pdf → Resume_2026.pdf"
+    U->>PC: View proposal: "Rename resume.pdf â†’ Resume_2026.pdf"
     PC->>PC: Show diff view (original vs proposed)
     U->>PC: Click "Approve"
     PC->>API: POST /proposals/5/approve
@@ -173,11 +173,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: Agent actions generate proposal events → events stored in `agent_actions` table → WebSocket broadcasts to connected clients → UI shows proposal card or notification
-2. **Processing**: User response (approve/reject) sent to server → server executes action → if undo requested, server reverses with compensating action → all actions logged to activity log
-3. **Storage**: User preferences (autonomy sliders, notification settings) stored in `user_preferences` JSONB → notification queue managed in Redis → activity log in PostgreSQL with 90-day retention
-4. **Retrieval**: Dashboard queries `/dashboard/summary` for widget data → ActivityLog queries paginated endpoint → proposals fetched via `useQuery(['proposals', workspaceId])`
-5. **Deletion**: User deletes workspace → all activity logs purged → proposals cancelled → notification queue cleared
+1. **Ingestion**: Agent actions generate proposal events â†’ events stored in `agent_actions` table â†’ WebSocket broadcasts to connected clients â†’ UI shows proposal card or notification
+2. **Processing**: User response (approve/reject) sent to server â†’ server executes action â†’ if undo requested, server reverses with compensating action â†’ all actions logged to activity log
+3. **Storage**: User preferences (autonomy sliders, notification settings) stored in `user_preferences` JSONB â†’ notification queue managed in Redis â†’ activity log in PostgreSQL with 90-day retention
+4. **Retrieval**: Dashboard queries `/dashboard/summary` for widget data â†’ ActivityLog queries paginated endpoint â†’ proposals fetched via `useQuery(['proposals', workspaceId])`
+5. **Deletion**: User deletes workspace â†’ all activity logs purged â†’ proposals cancelled â†’ notification queue cleared
 
 ## Scalability
 
@@ -192,7 +192,7 @@ sequenceDiagram
 
 | Scenario | Detection | Mitigation | Recovery |
 |----------|-----------|------------|----------|
-| Proposal approval fails on server | POST returns 4xx/5xx | Rollback optimistic UI; show retry banner | User taps "Retry" → re-sends approval |
+| Proposal approval fails on server | POST returns 4xx/5xx | Rollback optimistic UI; show retry banner | User taps "Retry" â†’ re-sends approval |
 | Undo window expires | 15s timer runs out | Show "Undo expired" message; offer manual revert option | User manually reverts via file context menu |
 | Notifications overwhelm user | > 10 notifications in 5 minutes | Batch into single digest notification; show count | User configures notification frequency in settings |
 | Agent proposed action is no longer valid | Server rejects proposal as stale | Show "This proposal is no longer available" | Remove proposal card from UI; log to analytics |
@@ -201,11 +201,11 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| User proposal approval rate | < 40% | Warning | Amplitude — Agent Engagement |
-| Undo frequency | > 20% of actions undone | Info | Amplitude — UX Analytics |
-| Notification opt-out rate | > 5% per month | Warning | Product — Retention Dashboard |
-| Time-to-first-action for new users | > 7 days | Critical | Amplitude — Onboarding Funnel |
-| Activity log query latency (p95) | > 200ms | Warning | Grafana — API Dashboard |
+| User proposal approval rate | < 40% | Warning | Amplitude â€” Agent Engagement |
+| Undo frequency | > 20% of actions undone | Info | Amplitude â€” UX Analytics |
+| Notification opt-out rate | > 5% per month | Warning | Product â€” Retention Dashboard |
+| Time-to-first-action for new users | > 7 days | Critical | Amplitude â€” Onboarding Funnel |
+| Activity log query latency (p95) | > 200ms | Warning | Grafana â€” API Dashboard |
 
 ## Risks
 
@@ -226,13 +226,13 @@ sequenceDiagram
 
 ## Overview
 
-Meridian's UX guidelines define how the application interacts with users across every touchpoint — from the dashboard that greets them on login to the agent proposals that organize their files and the chat interface that answers their questions. The guiding philosophy is "Proactive, Never Intrusive": the system suggests and notifies but never demands attention, batching notifications by priority and making every alert dismissible.
+Vaeloom's UX guidelines define how the application interacts with users across every touchpoint â€” from the dashboard that greets them on login to the agent proposals that organize their files and the chat interface that answers their questions. The guiding philosophy is "Proactive, Never Intrusive": the system suggests and notifies but never demands attention, batching notifications by priority and making every alert dismissible.
 
-Trust Through Transparency is the second pillar — every agent action is visible in the activity log, every suggestion shows its reasoning, and every autonomous action is explainable. When an AI agent proposes renaming a file or applying to a job, the user sees not just the proposal but the reasoning behind it. This transparency is critical for building trust in autonomous AI actions.
+Trust Through Transparency is the second pillar â€” every agent action is visible in the activity log, every suggestion shows its reasoning, and every autonomous action is explainable. When an AI agent proposes renaming a file or applying to a job, the user sees not just the proposal but the reasoning behind it. This transparency is critical for building trust in autonomous AI actions.
 
-Progressive Disclosure ensures new users aren't overwhelmed. The dashboard starts with 3-4 core widgets and reveals advanced features (memory graph editing, per-agent autonomy sliders, custom automation rules) as the user's engagement deepens over weeks. The Consistent Feedback Loop principle means every user action — approve, reject, correct, edit — has visible feedback within 100ms. Silence is interpreted as failure.
+Progressive Disclosure ensures new users aren't overwhelmed. The dashboard starts with 3-4 core widgets and reveals advanced features (memory graph editing, per-agent autonomy sliders, custom automation rules) as the user's engagement deepens over weeks. The Consistent Feedback Loop principle means every user action â€” approve, reject, correct, edit â€” has visible feedback within 100ms. Silence is interpreted as failure.
 
-For Meridian's AI-driven workflows, these principles materialize in specific interaction patterns. Proposal cards show a visual diff of what will change before the user commits. Batch operations support undo with a 15-second window. Chat citations are clickable source references that let users verify information. Settings provide per-agent autonomy sliders, letting users decide how much authority each agent has.
+For Vaeloom's AI-driven workflows, these principles materialize in specific interaction patterns. Proposal cards show a visual diff of what will change before the user commits. Batch operations support undo with a 15-second window. Chat citations are clickable source references that let users verify information. Settings provide per-agent autonomy sliders, letting users decide how much authority each agent has.
 
 ## Goals
 
@@ -368,4 +368,4 @@ function AutonomySlider({ agent, value, onChange }: AutonomySliderProps) {
 
 - [UI Architecture.md](./UI-Architecture.md)
 - [Accessibility.md](./Accessibility.md)
-- [`/Docs/01-Meridian-MVP-Spec.md#10-v1-pages`](../../Docs/01-Meridian-MVP-Spec.md#10-v1-pages)
+- [`/Docs/01-Vaeloom-MVP-Spec.md#10-v1-pages`](../../Docs/01-Vaeloom-MVP-Spec.md#10-v1-pages)

@@ -1,7 +1,7 @@
-# Logging
+﻿# Logging
 
-> **Purpose:** Define logging standards for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define logging standards for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Log Pipeline
 
@@ -13,19 +13,19 @@ graph LR
     classDef rules fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef store fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Producers["📤 Log Producers"]
+    subgraph Producers["ðŸ“¤ Log Producers"]
         direction TB
-        P1["apps/web<br/>Next.js → stdout"]
-        P2["apps/api<br/>NestJS → stdout"]
-        P3["apps/ai-service<br/>FastAPI → stdout"]
-        P4["infra/worker<br/>BullMQ → stdout"]
+        P1["apps/web<br/>Next.js â†’ stdout"]
+        P2["apps/api<br/>NestJS â†’ stdout"]
+        P3["apps/ai-service<br/>FastAPI â†’ stdout"]
+        P4["infra/worker<br/>BullMQ â†’ stdout"]
     end
 
-    subgraph Format["📋 Structured JSON Format"]
+    subgraph Format["ðŸ“‹ Structured JSON Format"]
         F1["{<br/>  level, timestamp, service,<br/>  action, duration_ms,<br/>  trace_id, ...<br/>}"]
     end
 
-    subgraph Levels["📊 Log Levels"]
+    subgraph Levels["ðŸ“Š Log Levels"]
         L1["DEBUG: Development only"]
         L2["INFO: Normal operations"]
         L3["WARN: Potential issues"]
@@ -33,16 +33,16 @@ graph LR
         L5["FATAL: Service failures"]
     end
 
-    subgraph Rules["✅ Log / ❌ Don't Log"]
-        R1["✅ Request ID, trace ID"]
-        R2["✅ Agent actions, decisions"]
-        R3["✅ API status, errors"]
-        R4["❌ Passwords, secrets"]
-        R5["❌ Personal content"]
-        R6["❌ OAuth tokens, API keys"]
+    subgraph Rules["âœ… Log / âŒ Don't Log"]
+        R1["âœ… Request ID, trace ID"]
+        R2["âœ… Agent actions, decisions"]
+        R3["âœ… API status, errors"]
+        R4["âŒ Passwords, secrets"]
+        R5["âŒ Personal content"]
+        R6["âŒ OAuth tokens, API keys"]
     end
 
-    subgraph Aggregation["🏪 Log Aggregation"]
+    subgraph Aggregation["ðŸª Log Aggregation"]
         A1["Dev: Console / tail -f"]
         A2["Staging: Hosted aggregator"]
         A3["Prod: Hosted + long-term archive"]
@@ -62,7 +62,7 @@ graph LR
 
 ```
 
-> **Diagram:** All services emit structured JSON logs to stdout. The pipeline flows through **format** (standard JSON schema), **log levels** (debug → fatal), **rules** (what to include vs exclude), and **aggregation** (environment-specific: console for dev, hosted aggregator for staging/prod with long-term archive). Logs are queryable via `grok` for debugging and incident response.
+> **Diagram:** All services emit structured JSON logs to stdout. The pipeline flows through **format** (standard JSON schema), **log levels** (debug â†’ fatal), **rules** (what to include vs exclude), and **aggregation** (environment-specific: console for dev, hosted aggregator for staging/prod with long-term archive). Logs are queryable via `grok` for debugging and incident response.
 
 ---
 
@@ -96,7 +96,7 @@ All services emit structured JSON logs:
 
 ## What to Log
 
-| ✅ Log | ❌ Don't Log |
+| âœ… Log | âŒ Don't Log |
 |--------|--------------|
 | Request ID and trace ID | Passwords or secrets |
 | Agent actions and decisions | Personal document content |
@@ -129,49 +129,49 @@ grok "duration_ms > 5000"
 
 | Mistake | Consequence |
 |---------|-------------|
-| Logging at inconsistent levels across services | If the API logs errors at `error` but the AI service logs the same severity as `warn`, aggregating and filtering logs becomes unreliable — define and enforce a cross-service logging level standard with clear examples of when to use each level |
-| Logging sensitive data in production | A `console.log(request.body)` that captures a user's OAuth token or document content creates a compliance violation — implement automated log scrubbing that redacts known patterns (tokens, emails, API keys) before writing to the log store |
-| No structured log format across services | If the API logs JSON but the AI service logs plain text, you can't query across services — enforce a single structured JSON schema across all services with required fields (level, timestamp, service, trace_id, message) |
+| Logging at inconsistent levels across services | If the API logs errors at `error` but the AI service logs the same severity as `warn`, aggregating and filtering logs becomes unreliable â€” define and enforce a cross-service logging level standard with clear examples of when to use each level |
+| Logging sensitive data in production | A `console.log(request.body)` that captures a user's OAuth token or document content creates a compliance violation â€” implement automated log scrubbing that redacts known patterns (tokens, emails, API keys) before writing to the log store |
+| No structured log format across services | If the API logs JSON but the AI service logs plain text, you can't query across services â€” enforce a single structured JSON schema across all services with required fields (level, timestamp, service, trace_id, message) |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
 | Define a consistent JSON log schema enforced across all services | A shared schema with required fields (level, timestamp, service, trace_id, message) and optional fields (action, duration_ms, agent) enables cross-service log queries and correlation |
-| Automate log scrubbing for sensitive data patterns | Manual redaction is unreliable — use log shippers or collectors that apply regex patterns to mask emails, tokens, API keys, and PII before logs reach the aggregation system |
-| Use structured JSON logs, not plain text | JSON logs are machine-parseable and queryable — plain text logs require human reading and can't be automatically correlated across services. Enforce JSON format at the logging framework level |
+| Automate log scrubbing for sensitive data patterns | Manual redaction is unreliable â€” use log shippers or collectors that apply regex patterns to mask emails, tokens, API keys, and PII before logs reach the aggregation system |
+| Use structured JSON logs, not plain text | JSON logs are machine-parseable and queryable â€” plain text logs require human reading and can't be automatically correlated across services. Enforce JSON format at the logging framework level |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Log aggregation stores becoming a data breach target | A log store containing months of structured data is a high-value target for attackers — encrypt logs at rest, apply retention limits per data sensitivity, and audit access to the log aggregation system |
-| Log injection attacks exploiting unescaped input | An attacker who injects a crafted string into a log field can manipulate log parsers — escape or sanitize all user-supplied values before including them in log messages |
-| Long log retention creating compliance liability | Storing debug-level logs for 2 years creates unnecessary exposure — apply tiered retention: error logs 1 year, info logs 30 days, debug logs 7 days. Implement deletion policies that meet compliance without over-retaining |
+| Log aggregation stores becoming a data breach target | A log store containing months of structured data is a high-value target for attackers â€” encrypt logs at rest, apply retention limits per data sensitivity, and audit access to the log aggregation system |
+| Log injection attacks exploiting unescaped input | An attacker who injects a crafted string into a log field can manipulate log parsers â€” escape or sanitize all user-supplied values before including them in log messages |
+| Long log retention creating compliance liability | Storing debug-level logs for 2 years creates unnecessary exposure â€” apply tiered retention: error logs 1 year, info logs 30 days, debug logs 7 days. Implement deletion policies that meet compliance without over-retaining |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Synchronous logging blocking the request path | Writing logs synchronously on every request adds latency — use async logging libraries that buffer log entries and flush them in the background without blocking the application thread |
-| Log volume growing linearly with traffic | At 1000 req/s with 2KB structured logs per request, log ingestion grows 170GB/day — implement adaptive sampling that reduces log verbosity during high traffic and increases during low traffic to maintain a manageable daily volume |
-| Log aggregation queries becoming slow at scale | Querying 90 days of logs at per-second granularity across multiple services can take 30+ seconds — use log aggregation indexes on common query fields (service, level, trace_id) and consider daily index rollover for faster searches |
+| Synchronous logging blocking the request path | Writing logs synchronously on every request adds latency â€” use async logging libraries that buffer log entries and flush them in the background without blocking the application thread |
+| Log volume growing linearly with traffic | At 1000 req/s with 2KB structured logs per request, log ingestion grows 170GB/day â€” implement adaptive sampling that reduces log verbosity during high traffic and increases during low traffic to maintain a manageable daily volume |
+| Log aggregation queries becoming slow at scale | Querying 90 days of logs at per-second granularity across multiple services can take 30+ seconds â€” use log aggregation indexes on common query fields (service, level, trace_id) and consider daily index rollover for faster searches |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Log aggregation stores becoming a data breach target | A log store containing months of structured data is a high-value target for attackers — encrypt logs at rest, apply retention limits per data sensitivity, and audit access to the log aggregation system |
-| Log injection attacks exploiting unescaped input | An attacker who injects a crafted string into a log field can manipulate log parsers — escape or sanitize all user-supplied values before including them in log messages |
-| Long log retention creating compliance liability | Storing debug-level logs for 2 years creates unnecessary exposure — apply tiered retention: error logs 1 year, info logs 30 days, debug logs 7 days. Implement deletion policies that meet compliance without over-retaining |
+| Log aggregation stores becoming a data breach target | A log store containing months of structured data is a high-value target for attackers â€” encrypt logs at rest, apply retention limits per data sensitivity, and audit access to the log aggregation system |
+| Log injection attacks exploiting unescaped input | An attacker who injects a crafted string into a log field can manipulate log parsers â€” escape or sanitize all user-supplied values before including them in log messages |
+| Long log retention creating compliance liability | Storing debug-level logs for 2 years creates unnecessary exposure â€” apply tiered retention: error logs 1 year, info logs 30 days, debug logs 7 days. Implement deletion policies that meet compliance without over-retaining |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Synchronous logging blocking the request path | Writing logs synchronously on every request adds latency — use async logging libraries that buffer log entries and flush them in the background without blocking the application thread |
-| Log volume growing linearly with traffic | At 1000 req/s with 2KB structured logs per request, log ingestion grows 170GB/day — implement adaptive sampling that reduces log verbosity during high traffic and increases during low traffic to maintain a manageable daily volume |
-| Log aggregation queries becoming slow at scale | Querying 90 days of logs at per-second granularity across multiple services can take 30+ seconds — use log aggregation indexes on common query fields (service, level, trace_id) and consider daily index rollover for faster searches |
+| Synchronous logging blocking the request path | Writing logs synchronously on every request adds latency â€” use async logging libraries that buffer log entries and flush them in the background without blocking the application thread |
+| Log volume growing linearly with traffic | At 1000 req/s with 2KB structured logs per request, log ingestion grows 170GB/day â€” implement adaptive sampling that reduces log verbosity during high traffic and increases during low traffic to maintain a manageable daily volume |
+| Log aggregation queries becoming slow at scale | Querying 90 days of logs at per-second granularity across multiple services can take 30+ seconds â€” use log aggregation indexes on common query fields (service, level, trace_id) and consider daily index rollover for faster searches |
 
 ## Components
 
@@ -236,7 +236,7 @@ grok "duration_ms > 5000"
 | `LOG_FORMAT` | Log output format | `json` | No |
 | `LOG_SAMPLE_RATE` | Sampling rate for debug logs | `1.0` | No |
 | `LOG_RETENTION_DAYS` | Days to retain logs | `30` | No |
-| `LOG_AGGREGATOR_ENDPOINT` | Log collector endpoint | — | Yes (prod) |
+| `LOG_AGGREGATOR_ENDPOINT` | Log collector endpoint | â€” | Yes (prod) |
 
 ---
 
@@ -253,11 +253,11 @@ grok "duration_ms > 5000"
 
 ## Overview
 
-Meridian's logging system provides a unified, structured logging pipeline across all services — web (Next.js), API (NestJS), AI service (FastAPI), and background workers (BullMQ). Every service emits structured JSON logs to stdout following a shared schema that includes level, timestamp, service name, trace ID, and action-specific attributes.
+Vaeloom's logging system provides a unified, structured logging pipeline across all services â€” web (Next.js), API (NestJS), AI service (FastAPI), and background workers (BullMQ). Every service emits structured JSON logs to stdout following a shared schema that includes level, timestamp, service name, trace ID, and action-specific attributes.
 
 This document defines the log format, severity levels, data governance rules (what to log and what never to log), aggregation strategy per environment, and query patterns for debugging and incident response. The primary audience is developers instrumenting services and engineers operating the log pipeline.
 
-Within the Meridian observability stack, logging provides the detailed, queryable record of individual events that complements monitoring (aggregate metrics) and tracing (request-level spans). A consistent structured log format across all services enables cross-service correlation and rapid root cause analysis during incidents.
+Within the Vaeloom observability stack, logging provides the detailed, queryable record of individual events that complements monitoring (aggregate metrics) and tracing (request-level spans). A consistent structured log format across all services enables cross-service correlation and rapid root cause analysis during incidents.
 
 Enterprise-grade logging requires a balance between completeness and cost. Structured JSON enables machine parsing and automated analysis, but log volume grows linearly with traffic. Adaptive sampling, tiered retention (debug: 7 days, info: 30 days, error: 1 year), and automated sanitization of sensitive data ensure the logging system remains useful, compliant, and cost-effective.
 
@@ -265,7 +265,7 @@ Enterprise-grade logging requires a balance between completeness and cost. Struc
 
 ## Goals
 
-- Establish a shared structured JSON log schema enforced across all Meridian services
+- Establish a shared structured JSON log schema enforced across all Vaeloom services
 - Define clear log level semantics (debug, info, warn, error, fatal) with consistent usage guidance
 - Implement automated log sanitization to prevent PII, tokens, and secrets from reaching log storage
 - Achieve sub-10ms async log emission without blocking application request paths
@@ -315,36 +315,36 @@ sequenceDiagram
     QRY-->>SVC: Display results with context
 ```
 
-> **Diagram:** Log pipeline — service emits structured JSON, sanitization layer redacts sensitive patterns, async batch export to collector, indexed storage for fast querying.
+> **Diagram:** Log pipeline â€” service emits structured JSON, sanitization layer redacts sensitive patterns, async batch export to collector, indexed storage for fast querying.
 
 ---
 
 ## Examples
 
 ```yaml
-# Meridian structured logging configuration
+# Vaeloom structured logging configuration
 logging:
   level: info
   format: json
   outputs:
     - type: stdout
     - type: file
-      path: /var/log/meridian/app.log
+      path: /var/log/Vaeloom/app.log
       max_size: 100MB
       max_files: 7
 ```
 
 ```bash
-# Tail Meridian logs with structured filtering
-meridian logs tail --service api-gateway --level error --since 10m
+# Tail Vaeloom logs with structured filtering
+Vaeloom logs tail --service api-gateway --level error --since 10m
 
 # Export logs for auditing
-meridian logs export --from 2025-01-01 --to 2025-01-31 --format json > audit.json
+Vaeloom logs export --from 2025-01-01 --to 2025-01-31 --format json > audit.json
 ```
 
 ```typescript
 // Programmatic log access via SDK
-import { Logs } from '@meridian/sdk';
+import { Logs } from '@vaeloom/sdk';
 
 const logs = await Logs.query({
   service: 'worker',
@@ -364,7 +364,7 @@ for (const entry of logs) {
 | Adaptive log level by service and traffic | High | Medium | Q1 2027 |
 | Automated log sanitization pipeline | High | Medium | Q4 2026 |
 | Centralized log viewer for all environments | Medium | Low | Q4 2026 |
-| Log-based alerting (log → metric → alert) | Medium | Medium | Q1 2027 |
+| Log-based alerting (log â†’ metric â†’ alert) | Medium | Medium | Q1 2027 |
 | AI-powered log pattern detection | Low | High | Q2 2027 |
 
 ## Related Documents

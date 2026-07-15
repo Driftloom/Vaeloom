@@ -1,7 +1,7 @@
-# Regression Testing
+﻿# Regression Testing
 
-> **Purpose:** Define regression testing practices for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define regression testing practices for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Regression Test Architecture
 
@@ -12,7 +12,7 @@ graph TD
     classDef select fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef visual fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Triggers["🚦 Regression Test Triggers"]
+    subgraph Triggers["ðŸš¦ Regression Test Triggers"]
         direction TB
         R1["Bug Fix<br/>Add test case for the fixed bug"]
         R2["Feature Addition<br/>Run full regression suite"]
@@ -21,13 +21,13 @@ graph TD
         R5["Model Provider Change<br/>Run all AI eval tests"]
     end
 
-    subgraph Suite["🧪 Regression Test Suite"]
+    subgraph Suite["ðŸ§ª Regression Test Suite"]
         S1["npm run test:regression<br/>Frontend + API"]
         S2["pytest tests/regression/<br/>AI Service"]
         S3["python -m eval.test_golden --all<br/>Golden dataset regression"]
     end
 
-    subgraph Selection["🎯 Targeted Test Selection"]
+    subgraph Selection["ðŸŽ¯ Targeted Test Selection"]
         T1["Frontend Component<br/>Unit tests + visual regression"]
         T2["API Endpoint<br/>Unit + integration tests"]
         T3["Agent Prompt<br/>Golden dataset + adversarial"]
@@ -35,7 +35,7 @@ graph TD
         T5["Connector Integration<br/>Integration tests"]
     end
 
-    subgraph Visual["📸 Visual Regression"]
+    subgraph Visual["ðŸ“¸ Visual Regression"]
         V1["Playwright screenshot comparison<br/>maxDiffPixelRatio: 0.001<br/>(< 0.1% pixel difference)"]
     end
 
@@ -144,10 +144,10 @@ test('dashboard renders consistently', async ({ page }) => {
 
 ## Workflows
 
-1. **Bug fix triggers regression test**: Bug reported → developer fixes code → adds test case reproducing the bug → `npm run test:regression` runs full suite → verifies fix passes → ensures no existing tests break → PR merged with all checks green
-2. **Feature addition with selective regression**: New feature implemented → CI determines affected modules (Test Impact Analysis) → runs only affected module tests + critical integration tests → if pass, runs full regression suite in parallel → full results reported
-3. **Visual regression on UI change**: Frontend component modified → Playwright screenshot comparison runs → `maxDiffPixelRatio: 0.001` threshold checked → if diffs found, screenshots uploaded to visual review dashboard → reviewer approves or rejects changes → approved changes become new baseline
-4. **Prompt change regression**: AI agent prompt updated → golden dataset regression suite runs (`python -m eval.test_golden --all`) → all 50 golden tests must pass at > 90% tolerance → adversarial tests (20) must pass at 100% → if regression, prompt revision required
+1. **Bug fix triggers regression test**: Bug reported â†’ developer fixes code â†’ adds test case reproducing the bug â†’ `npm run test:regression` runs full suite â†’ verifies fix passes â†’ ensures no existing tests break â†’ PR merged with all checks green
+2. **Feature addition with selective regression**: New feature implemented â†’ CI determines affected modules (Test Impact Analysis) â†’ runs only affected module tests + critical integration tests â†’ if pass, runs full regression suite in parallel â†’ full results reported
+3. **Visual regression on UI change**: Frontend component modified â†’ Playwright screenshot comparison runs â†’ `maxDiffPixelRatio: 0.001` threshold checked â†’ if diffs found, screenshots uploaded to visual review dashboard â†’ reviewer approves or rejects changes â†’ approved changes become new baseline
+4. **Prompt change regression**: AI agent prompt updated â†’ golden dataset regression suite runs (`python -m eval.test_golden --all`) â†’ all 50 golden tests must pass at > 90% tolerance â†’ adversarial tests (20) must pass at 100% â†’ if regression, prompt revision required
 
 ## Scalability
 
@@ -171,11 +171,11 @@ test('dashboard renders consistently', async ({ page }) => {
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Regression test pass rate | < 99% | Critical | Grafana — Test Dashboard |
-| Visual regression review queue | > 10 pending approvals | Warning | Chromatic — Review Dashboard |
-| Golden dataset regression rate | > 5% of prompt changes | Warning | Grafana — AI Eval Dashboard |
-| Regression escape to production | > 0 per release | Critical | Product — Bug Tracker |
-| Regression suite runtime | > 30 min | Warning | CI Pipeline — Test Duration |
+| Regression test pass rate | < 99% | Critical | Grafana â€” Test Dashboard |
+| Visual regression review queue | > 10 pending approvals | Warning | Chromatic â€” Review Dashboard |
+| Golden dataset regression rate | > 5% of prompt changes | Warning | Grafana â€” AI Eval Dashboard |
+| Regression escape to production | > 0 per release | Critical | Product â€” Bug Tracker |
+| Regression suite runtime | > 30 min | Warning | CI Pipeline â€” Test Duration |
 
 ## Risks
 
@@ -196,11 +196,11 @@ test('dashboard renders consistently', async ({ page }) => {
 
 ## Overview
 
-Regression testing at Meridian ensures that code changes, dependency updates, and prompt modifications don't break existing functionality. Five triggers initiate regression tests: bug fixes (add the failing case and verify), feature additions (run full regression suite), dependency updates (run affected module tests), prompt changes (run golden dataset tests), and model provider changes (run all AI evaluation tests).
+Regression testing at Vaeloom ensures that code changes, dependency updates, and prompt modifications don't break existing functionality. Five triggers initiate regression tests: bug fixes (add the failing case and verify), feature additions (run full regression suite), dependency updates (run affected module tests), prompt changes (run golden dataset tests), and model provider changes (run all AI evaluation tests).
 
-The regression test suite is organized by test type rather than by trigger — unit tests for frontend components and API endpoints, integration tests for service boundaries, golden dataset tests for AI agent prompts, and visual regression tests for UI changes. Targeted test selection based on change impact determines which tests run on each PR, balancing fast feedback with comprehensive coverage.
+The regression test suite is organized by test type rather than by trigger â€” unit tests for frontend components and API endpoints, integration tests for service boundaries, golden dataset tests for AI agent prompts, and visual regression tests for UI changes. Targeted test selection based on change impact determines which tests run on each PR, balancing fast feedback with comprehensive coverage.
 
-For Meridian's AI agents, regression testing is critical for maintaining prompt quality over time. Every bug fix that involves an AI agent prompt must add the failing case to the golden dataset, verify the fix passes, and then run all existing golden tests to ensure no regression. This "fix it, prove it, don't break anything else" cycle prevents the common AI anti-pattern of fixing one bug while introducing two new ones.
+For Vaeloom's AI agents, regression testing is critical for maintaining prompt quality over time. Every bug fix that involves an AI agent prompt must add the failing case to the golden dataset, verify the fix passes, and then run all existing golden tests to ensure no regression. This "fix it, prove it, don't break anything else" cycle prevents the common AI anti-pattern of fixing one bug while introducing two new ones.
 
 Visual regression testing via Playwright screenshot comparison catches unintended UI changes. With a `maxDiffPixelRatio` of 0.001 (0.1% pixel difference tolerance), the system flags even subtle visual regressions while tolerating anti-aliasing differences. Screenshots are captured on every frontend component change and reviewed through a visual review dashboard.
 
@@ -219,7 +219,7 @@ Visual regression testing via Playwright screenshot comparison catches unintende
 - Selective regression test execution based on change impact analysis
 - Golden dataset regression for all AI agent prompts on every prompt change
 - Playwright visual regression with screenshot comparison (0.1% pixel diff tolerance)
-- Bug-fix regression pattern: add case → verify fix → run full suite
+- Bug-fix regression pattern: add case â†’ verify fix â†’ run full suite
 - Test impact analysis to minimize per-PR regression test runtime
 
 ### Out of Scope
@@ -245,15 +245,15 @@ sequenceDiagram
     SUITE->>GOLDEN: Run golden dataset regression
     GOLDEN->>GOLDEN: 50 tests + new bug-fix case
     alt All pass
-        GOLDEN-->>SUITE: ✅ 51/51 tests pass
+        GOLDEN-->>SUITE: âœ… 51/51 tests pass
         SUITE-->>REPORT: Generate pass report
-        REPORT-->>CI: ✅ Regression suite passed
+        REPORT-->>CI: âœ… Regression suite passed
         CI-->>DEV: PR approved
     else New test fails other golden cases
-        GOLDEN-->>SUITE: ❌ 49/51 — fix broke existing case
+        GOLDEN-->>SUITE: âŒ 49/51 â€” fix broke existing case
         SUITE-->>REPORT: Generate failure breakdown
-        REPORT-->>CI: ❌ Prompt change caused regression
-        CI-->>DEV: Fix required — prompt broke other cases
+        REPORT-->>CI: âŒ Prompt change caused regression
+        CI-->>DEV: Fix required â€” prompt broke other cases
     end
 ```
 

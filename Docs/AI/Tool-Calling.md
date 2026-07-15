@@ -1,15 +1,15 @@
-# Tool Calling
+﻿# Tool Calling
 
-> **Purpose:** Define the tool-calling architecture for Meridian's AI agents
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the tool-calling architecture for Vaeloom's AI agents
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Tool calling is how Meridian's agents interact with the external world — reading and writing memory, querying connected services (Gmail, GitHub), and executing actions on behalf of users. Every tool call must pass through the Permission Engine before execution, ensuring the agent has the required scope for the action. The Tool Executor handles the call with configurable retry logic: 3 attempts with exponential backoff for transient failures, 2 attempts respecting Retry-After for rate limits, and zero retries for permission or input errors.
+Tool calling is how Vaeloom's agents interact with the external world â€” reading and writing memory, querying connected services (Gmail, GitHub), and executing actions on behalf of users. Every tool call must pass through the Permission Engine before execution, ensuring the agent has the required scope for the action. The Tool Executor handles the call with configurable retry logic: 3 attempts with exponential backoff for transient failures, 2 attempts respecting Retry-After for rate limits, and zero retries for permission or input errors.
 
-This document defines the tool definition format (MCP-shaped), permission checking, execution flow with retry logic, tool categories (Memory Read/Write, Connector Read/Write, System), and audit logging. It serves AI engineers defining agent tool lists, platform engineers implementing the execution layer, and security engineers auditing tool usage. All tool calls are logged to an append-only audit log with metadata (tool name, duration, success/failure) — never payload content.
+This document defines the tool definition format (MCP-shaped), permission checking, execution flow with retry logic, tool categories (Memory Read/Write, Connector Read/Write, System), and audit logging. It serves AI engineers defining agent tool lists, platform engineers implementing the execution layer, and security engineers auditing tool usage. All tool calls are logged to an append-only audit log with metadata (tool name, duration, success/failure) â€” never payload content.
 
 ## Goals
 
@@ -25,30 +25,30 @@ This document defines the tool definition format (MCP-shaped), permission checki
 
 ```mermaid
 sequenceDiagram
-    participant AG as 🤖 Agent
-    participant PERM as 🔐 Permission Engine
-    participant TOOL as 🛠️ Tool Executor
-    participant EXT as 🌐 External Service
-    participant LOG as 📋 Audit Log
+    participant AG as ðŸ¤– Agent
+    participant PERM as ðŸ” Permission Engine
+    participant TOOL as ðŸ› ï¸ Tool Executor
+    participant EXT as ðŸŒ External Service
+    participant LOG as ðŸ“‹ Audit Log
 
-    Note over AG,LOG: ── Permission Check ──
+    Note over AG,LOG: â”€â”€ Permission Check â”€â”€
 
     AG->>PERM: Tool request<br/>name + params + agent_id
     PERM->>PERM: Check required_scope<br/>vs agent's permissions
 
-    alt ✅ Permission Granted
+    alt âœ… Permission Granted
         PERM-->>AG: Scope verified
         AG->>TOOL: Execute tool<br/>with validated params
         TOOL->>EXT: Call external API<br/>(search_gmail / create_file)
 
-        Note over TOOL,EXT: ── Execution & Retry ──
+        Note over TOOL,EXT: â”€â”€ Execution & Retry â”€â”€
 
-        alt ✅ Success
+        alt âœ… Success
             EXT-->>TOOL: Result payload
             TOOL-->>AG: Formatted result
             AG->>LOG: Log: tool_call succeeded<br/>duration, result_size
 
-        else ❌ Transient Failure (network)
+        else âŒ Transient Failure (network)
             EXT-->>TOOL: Timeout / 5xx
             TOOL->>TOOL: Retry (1/3)<br/>Exponential backoff: 1s
             EXT-->>TOOL: Still failing
@@ -56,7 +56,7 @@ sequenceDiagram
             EXT-->>TOOL: Success on retry 3
             TOOL-->>AG: Result (with retry metadata)
 
-        else ❌ Rate Limited
+        else âŒ Rate Limited
             EXT-->>TOOL: 429 + Retry-After: 30
             TOOL->>TOOL: Wait Retry-After<br/>Retry (1/2)
             alt Succeeds
@@ -65,20 +65,20 @@ sequenceDiagram
                 TOOL-->>AG: Rate limit exceeded<br/>Reschedule job
             end
 
-        else ❌ Fatal Error
+        else âŒ Fatal Error
             EXT-->>TOOL: 4xx / auth failure
             TOOL-->>AG: Error result<br/>no retry
         end
 
-    else ❌ Permission Denied
-        PERM-->>AG: ❌ Denied: missing scope
+    else âŒ Permission Denied
+        PERM-->>AG: âŒ Denied: missing scope
         PERM->>LOG: Log: permission_denied<br/>agent_id, tool, requested_scope
         AG->>LOG: Log: agent notified of denial
         Note over AG,LOG: Agent must handle gracefully<br/>Never retry permission failures
     end
 ```
 
-> **Diagram:** The tool execution flow starts with a **permission check** — the Permission Engine validates the agent's scope before any execution. If granted, the Tool Executor handles the call with **retry logic**: 3 retries with exponential backoff for transient failures, 2 retries respecting `Retry-After` for rate limits, and zero retries for permission or input errors. Every call is logged to the append-only audit log.
+> **Diagram:** The tool execution flow starts with a **permission check** â€” the Permission Engine validates the agent's scope before any execution. If granted, the Tool Executor handles the call with **retry logic**: 3 retries with exponential backoff for transient failures, 2 retries respecting `Retry-After` for rate limits, and zero retries for permission or input errors. Every call is logged to the append-only audit log.
 
 ---
 
@@ -119,46 +119,46 @@ Every tool follows the MCP-shaped format:
 ## Tool Execution Flow
 
 ```text
-Agent → Tool Request → Permission Engine Check → Tool Execution → Result → Agent
+Agent â†’ Tool Request â†’ Permission Engine Check â†’ Tool Execution â†’ Result â†’ Agent
 ```
 
 ## Common Mistakes
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Retrying permission-denied tool calls | A permission failure will never succeed on retry — retrying wastes time and resources; the agent must handle the denial gracefully and inform the user |
-| No timeout on external tool calls | An external service (Gmail API, GitHub API) that hangs indefinitely blocks the agent — every tool must have a configured timeout with a defined fallback behavior |
-| Calling tools with unsanitized user input | User-provided values passed directly to tool parameters could cause injection or unexpected behavior — validate and sanitize all inputs before passing to tool executors |
-| Logging tool call payloads containing sensitive data | Tool call parameters and results may contain user data, file contents, or PII — log metadata (tool name, duration, success/failure) but not payload content unless explicitly needed for audit |
+| Retrying permission-denied tool calls | A permission failure will never succeed on retry â€” retrying wastes time and resources; the agent must handle the denial gracefully and inform the user |
+| No timeout on external tool calls | An external service (Gmail API, GitHub API) that hangs indefinitely blocks the agent â€” every tool must have a configured timeout with a defined fallback behavior |
+| Calling tools with unsanitized user input | User-provided values passed directly to tool parameters could cause injection or unexpected behavior â€” validate and sanitize all inputs before passing to tool executors |
+| Logging tool call payloads containing sensitive data | Tool call parameters and results may contain user data, file contents, or PII â€” log metadata (tool name, duration, success/failure) but not payload content unless explicitly needed for audit |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Never retry a permission-denied tool call — log and escalate | Permission failures indicate a configuration or access issue, not a transient error — the agent should report the denial and stop, not retry indefinitely |
-| Set explicit timeouts per tool category | Connector read tools (5s), connector write tools (10s), memory tools (2s), system tools (1s) — each category has different expected latency and timeout thresholds |
-| Validate tool parameters against the tool's input schema before calling | Schema validation catches missing required fields, wrong types, and out-of-range values before the tool executes — prevents half-executed tool calls with partial data |
-| Log tool call metadata, not payload content | Record agent_id, tool_name, duration_ms, success/failure, and error_message — skip logging the actual parameters and results unless the tool is specifically auditable (e.g., `draft_email`) |
+| Never retry a permission-denied tool call â€” log and escalate | Permission failures indicate a configuration or access issue, not a transient error â€” the agent should report the denial and stop, not retry indefinitely |
+| Set explicit timeouts per tool category | Connector read tools (5s), connector write tools (10s), memory tools (2s), system tools (1s) â€” each category has different expected latency and timeout thresholds |
+| Validate tool parameters against the tool's input schema before calling | Schema validation catches missing required fields, wrong types, and out-of-range values before the tool executes â€” prevents half-executed tool calls with partial data |
+| Log tool call metadata, not payload content | Record agent_id, tool_name, duration_ms, success/failure, and error_message â€” skip logging the actual parameters and results unless the tool is specifically auditable (e.g., `draft_email`) |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Tool calling without permission scope verification | Every tool call must pass through the Permission Engine, not just at startup — an agent whose permissions are revoked mid-session should be blocked on the next tool call |
-| Agent calling a tool that modifies data in read-only mode | An agent running in read-only (suggest) mode should be blocked from calling write-scoped tools at the Permission Engine level — not just instructed not to in the prompt |
-| Tool execution order manipulation | An agent could call multiple tools in a sequence that achieves a restricted result (e.g., read + write in separate calls to bypass a combined restriction) — the Permission Engine must evaluate composite actions |
+| Tool calling without permission scope verification | Every tool call must pass through the Permission Engine, not just at startup â€” an agent whose permissions are revoked mid-session should be blocked on the next tool call |
+| Agent calling a tool that modifies data in read-only mode | An agent running in read-only (suggest) mode should be blocked from calling write-scoped tools at the Permission Engine level â€” not just instructed not to in the prompt |
+| Tool execution order manipulation | An agent could call multiple tools in a sequence that achieves a restricted result (e.g., read + write in separate calls to bypass a combined restriction) â€” the Permission Engine must evaluate composite actions |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Retry backoff strategy for transient failures | Use exponential backoff with jitter: 1s → 2s → 4s with ±500ms random jitter — prevents thundering herd when a service recovers and all agents retry simultaneously |
-| Tool response caching for read-only operations | Read-only tools (search, list, get) with identical parameters should cache results for 5-60s depending on data freshness needs — reduces external API calls and agent latency |
-| Rate-limit-aware scheduling for API calls | External APIs (Gmail, GitHub) have per-second rate limits — distribute tool calls across the rate limit window rather than batching them all at once, which triggers 429 responses and retries |
+| Retry backoff strategy for transient failures | Use exponential backoff with jitter: 1s â†’ 2s â†’ 4s with Â±500ms random jitter â€” prevents thundering herd when a service recovers and all agents retry simultaneously |
+| Tool response caching for read-only operations | Read-only tools (search, list, get) with identical parameters should cache results for 5-60s depending on data freshness needs â€” reduces external API calls and agent latency |
+| Rate-limit-aware scheduling for API calls | External APIs (Gmail, GitHub) have per-second rate limits â€” distribute tool calls across the rate limit window rather than batching them all at once, which triggers 429 responses and retries |
 
 ## Scope
 
-This document defines the tool-calling architecture for Meridian's AI agents — covering the tool definition format, permission checking, execution flow with retry logic, tool categories, and audit logging. Applies to all tool calls made by all agents across all environments. Out of scope: MCP integration specifics (see [MCP.md](./MCP.md)), permission model details (see [Guardrails.md](./Guardrails.md)), QA Agent validation (see [Guardrails.md](./Guardrails.md#qa-agent-architecture)).
+This document defines the tool-calling architecture for Vaeloom's AI agents â€” covering the tool definition format, permission checking, execution flow with retry logic, tool categories, and audit logging. Applies to all tool calls made by all agents across all environments. Out of scope: MCP integration specifics (see [MCP.md](./MCP.md)), permission model details (see [Guardrails.md](./Guardrails.md)), QA Agent validation (see [Guardrails.md](./Guardrails.md#qa-agent-architecture)).
 
 ---
 
@@ -240,27 +240,27 @@ sequenceDiagram
             AG->>AL: Log (tool, duration, success=false)
         end
     else Denied
-        PE-->>AG: ❌ Permission denied
+        PE-->>AG: âŒ Permission denied
         PE->>AL: Log (denied: agent, tool, scope)
         Note over AG: Never retry permission failures
     end
 ```
 
-> **Diagram:** Tool calling flow — permission check → execution with retry loop (3 attempts with exponential backoff) → audit logging. Permission failures are never retried.
+> **Diagram:** Tool calling flow â€” permission check â†’ execution with retry loop (3 attempts with exponential backoff) â†’ audit logging. Permission failures are never retried.
 
 ---
 
 ## Data Flow
 
 ```text
-Agent → Tool Request (name + params + agent_id)
-    → Permission Engine (required_scope vs agent permissions)
-    → [DENIED] → Audit Log (denied) → Agent (handle gracefully)
-    → [GRANTED] → Tool Executor → Schema Validation
-    → External Service → [Success] → Response → Agent
-    → [Transient Error] → Retry (3x, backoff 1s/2s/4s)
-    → [All Failed] → Error → Agent
-    → Audit Log (tool_name, duration_ms, success)
+Agent â†’ Tool Request (name + params + agent_id)
+    â†’ Permission Engine (required_scope vs agent permissions)
+    â†’ [DENIED] â†’ Audit Log (denied) â†’ Agent (handle gracefully)
+    â†’ [GRANTED] â†’ Tool Executor â†’ Schema Validation
+    â†’ External Service â†’ [Success] â†’ Response â†’ Agent
+    â†’ [Transient Error] â†’ Retry (3x, backoff 1s/2s/4s)
+    â†’ [All Failed] â†’ Error â†’ Agent
+    â†’ Audit Log (tool_name, duration_ms, success)
 ```
 
 ---
@@ -303,7 +303,7 @@ Agent → Tool Request (name + params + agent_id)
 | Scenario | Detection | Mitigation | Recovery |
 |----------|-----------|------------|----------|
 | Permission denied | Permission Engine returns deny | Return error to agent; do NOT retry | Agent handles gracefully; log for audit |
-| Transient API failure | 5xx / timeout | Retry (3x) with exponential backoff | Circuit breaker: 5 failures → 60s cooldown |
+| Transient API failure | 5xx / timeout | Retry (3x) with exponential backoff | Circuit breaker: 5 failures â†’ 60s cooldown |
 | Rate limit hit (429) | 429 response | Wait Retry-After header; retry once | If fails again: reschedule as batch job |
 | Tool params fail schema validation | Validation error | Return error with specific invalid param | Agent revises params and retries |
 
@@ -404,4 +404,4 @@ Agent → Tool Request (name + params + agent_id)
 
 - [MCP.md](./MCP.md)
 - [AI Agents.md](./AI-Agents.md)
-- [`/Docs/Meridian-Complete-Documentation.md#5-ai-agents`](../../Docs/Meridian-Complete-Documentation.md#5-ai-agents)
+- [`/Docs/Vaeloom-Complete-Documentation.md#5-ai-agents`](../../Docs/Vaeloom-Complete-Documentation.md#5-ai-agents)

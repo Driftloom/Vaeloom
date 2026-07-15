@@ -1,7 +1,7 @@
-# Disaster Recovery
+﻿# Disaster Recovery
 
-> **Purpose:** Define disaster recovery procedures for Meridian — ensuring data integrity and service continuity across failure scenarios
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define disaster recovery procedures for Vaeloom â€” ensuring data integrity and service continuity across failure scenarios
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-12
 
@@ -9,7 +9,7 @@
 
 ## Overview
 
-Meridian's disaster recovery strategy follows a tiered approach based on data criticality and recovery speed. The strategy covers database recovery, service restoration, backup verification, and multi-region failover for enterprise deployments.
+Vaeloom's disaster recovery strategy follows a tiered approach based on data criticality and recovery speed. The strategy covers database recovery, service restoration, backup verification, and multi-region failover for enterprise deployments.
 
 This document defines RTO/RPO targets, backup strategies, recovery procedures, and testing schedules.
 
@@ -93,19 +93,19 @@ gantt
 
 ```bash
 # Full restore from daily backup
-pg_restore -h localhost -U meridian -d meridian_db \
+pg_restore -h localhost -U Vaeloom -d Vaeloom_db \
   --clean --if-exists \
   --jobs=4 \
-  s3://meridian-backups/db/2026-07-12/meridian_db.dump
+  s3://Vaeloom-backups/db/2026-07-12/Vaeloom_db.dump
 
 # Point-in-time recovery (to specific second)
-pg_restore -h localhost -U meridian -d meridian_db \
+pg_restore -h localhost -U Vaeloom -d Vaeloom_db \
   --clean --if-exists \
   --target-time "2026-07-12 14:30:00 UTC" \
-  s3://meridian-backups/db/2026-07-12/meridian_db.dump
+  s3://Vaeloom-backups/db/2026-07-12/Vaeloom_db.dump
 
 # Verify data integrity after restore
-psql -h localhost -U meridian -d meridian_db -c "
+psql -h localhost -U Vaeloom -d Vaeloom_db -c "
   SELECT COUNT(*) as total_users FROM users;
   SELECT COUNT(*) as total_docs FROM documents;
   SELECT COUNT(*) as total_memories FROM memory_records;
@@ -116,19 +116,19 @@ psql -h localhost -U meridian -d meridian_db -c "
 
 ```bash
 # PaaS (MVP): redeploy from last known good version
-flyctl deploy apps/api --image ghcr.io/meridian/api:v1.2.3
-flyctl deploy apps/web --image ghcr.io/meridian/web:v1.2.3
-flyctl deploy apps/ai-service --image ghcr.io/meridian/ai-service:v1.2.3
+flyctl deploy apps/api --image ghcr.io/Vaeloom/api:v1.2.3
+flyctl deploy apps/web --image ghcr.io/Vaeloom/web:v1.2.3
+flyctl deploy apps/ai-service --image ghcr.io/Vaeloom/ai-service:v1.2.3
 
 # K8s (Enterprise): rollout undo
-kubectl rollout undo deployment/meridian-api -n meridian
-kubectl rollout undo deployment/meridian-web -n meridian
-kubectl rollout undo deployment/meridian-ai -n meridian
+kubectl rollout undo deployment/Vaeloom-api -n Vaeloom
+kubectl rollout undo deployment/Vaeloom-web -n Vaeloom
+kubectl rollout undo deployment/Vaeloom-ai -n Vaeloom
 
 # Verify all services are healthy
-curl -f https://api.meridian.dev/v1/health && \
+curl -f https://api.Vaeloom.dev/v1/health && \
   echo "API healthy" || \
-  echo "API recovery failed — escalate"
+  echo "API recovery failed â€” escalate"
 ```
 
 ### Tier 3: Cross-Region Failover
@@ -136,14 +136,14 @@ curl -f https://api.meridian.dev/v1/health && \
 ```bash
 # 1. Promote read-replica to primary
 aws rds promote-read-replica \
-  --db-instance-identifier meridian-db-replica
+  --db-instance-identifier Vaeloom-db-replica
 
 # 2. Update DNS to point to failover region
-# (Managed via Route53 health checks — automatic)
+# (Managed via Route53 health checks â€” automatic)
 
 # 3. Verify all services in failover region
-curl -f https://api.meridian.dev/v1/health && \
-  curl -f https://meridian.dev && \
+curl -f https://api.Vaeloom.dev/v1/health && \
+  curl -f https://Vaeloom.dev && \
   echo "Failover successful"
 ```
 
@@ -163,9 +163,9 @@ curl -f https://api.meridian.dev/v1/health && \
 |----------|-----------|
 | Automate recovery procedures | Manual recovery is error-prone under pressure |
 | Test restores, not just backups | A backup that can't be restored is worthless |
-| Document runbooks in version control | Runbooks stale quickly — keep them with code |
+| Document runbooks in version control | Runbooks stale quickly â€” keep them with code |
 | Cross-region for critical data | Single region = single point of failure |
-| Immutable infrastructure | Redeploy, don't repair — reduces recovery time |
+| Immutable infrastructure | Redeploy, don't repair â€” reduces recovery time |
 
 ## Common Mistakes
 
@@ -248,7 +248,7 @@ curl -f https://api.meridian.dev/v1/health && \
 1. Daily full PostgreSQL backup runs at 01:00 UTC using pg_dump with compression and parallel jobs, uploaded to S3
 2. Continuous WAL archiving streams every transaction to S3 in near-real-time, providing sub-5-minute RPO
 3. On critical failure, the Restore Engine pulls the latest full backup and replays WAL to the target point-in-time
-4. Data integrity verification queries run automatically — if checks pass, traffic is routed to the restored database
+4. Data integrity verification queries run automatically â€” if checks pass, traffic is routed to the restored database
 5. For cross-region failover, the read replica in the secondary region is promoted to primary and DNS records are updated via health check automation
 
 ## Scalability
@@ -285,7 +285,7 @@ curl -f https://api.meridian.dev/v1/health && \
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| DR_BACKUP_BUCKET | S3 bucket for database backups | meridian-backups | Yes |
+| DR_BACKUP_BUCKET | S3 bucket for database backups | Vaeloom-backups | Yes |
 | DR_BACKUP_RETENTION_DAYS | Daily backup retention period | 30 | Yes |
 | DR_WAL_ARCHIVE_INTERVAL_SECONDS | WAL archive upload frequency | 60 | Yes |
 | DR_CROSS_REGION_TARGET | Secondary region for backup replication | us-west-2 | Yes |
@@ -315,25 +315,25 @@ curl -f https://api.meridian.dev/v1/health && \
 ### Trigger a database restore
 
 ```bash
-meridian dr restore --type database --backup-id bk_20260713 --target production
+Vaeloom dr restore --type database --backup-id bk_20260713 --target production
 ```
 
 ### Verify backup integrity
 
 ```bash
-meridian dr verify --backup-id bk_20260713 --checksum sha256
+Vaeloom dr verify --backup-id bk_20260713 --checksum sha256
 ```
 
 ### Run a DR drill
 
 ```bash
-meridian dr drill --scenario region-failure --staging
+Vaeloom dr drill --scenario region-failure --staging
 ```
 
 ### Check RTO/RPO status
 
 ```bash
-meridian dr status --format table
+Vaeloom dr status --format table
 ```
 
 ## Future Improvements

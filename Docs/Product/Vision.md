@@ -1,22 +1,22 @@
-# Vision
+﻿# Vision
 
-> **Purpose:** Define the long-term strategic vision for Meridian as a personal intelligence platform
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the long-term strategic vision for Vaeloom as a personal intelligence platform
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-12
-> **Canonical source:** [`/Docs/Meridian-Complete-Documentation.md#1-what-is-meridian`](../../Docs/Meridian-Complete-Documentation.md#1-what-is-meridian)
+> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#1-what-is-Vaeloom`](../../Docs/Vaeloom-Complete-Documentation.md#1-what-is-Vaeloom)
 
 ---
 
 ## Overview
 
-Meridian's vision is to become the single, continuously learning intelligence layer that sits underneath everything a person does professionally and academically. Not a workspace app with AI bolted on. Not a chatbot with a long context window. An operating layer for a person's intellectual and professional life — built around a memory that compounds rather than resets every session.
+Vaeloom's vision is to become the single, continuously learning intelligence layer that sits underneath everything a person does professionally and academically. Not a workspace app with AI bolted on. Not a chatbot with a long context window. An operating layer for a person's intellectual and professional life â€” built around a memory that compounds rather than resets every session.
 
 This document defines the 5-year vision, the product philosophy that guides every decision, and the measurable milestones that mark progress toward that vision.
 
 ## Vision Statement
 
-> A person's knowledge, work, and career should not live scattered across forty disconnected apps, each with no memory of the others. Meridian is one place that knows their education, their projects, their skills, their conversations, their applications, and their goals — and uses that knowledge to act on their behalf, with their permission, for years.
+> A person's knowledge, work, and career should not live scattered across forty disconnected apps, each with no memory of the others. Vaeloom is one place that knows their education, their projects, their skills, their conversations, their applications, and their goals â€” and uses that knowledge to act on their behalf, with their permission, for years.
 
 ## Product Philosophy
 
@@ -48,7 +48,7 @@ graph LR
 
 ```mermaid
 gantt
-    title Meridian Vision Timeline
+    title Vaeloom Vision Timeline
     dateFormat  YYYY-MM
     axisFormat  %Y
     
@@ -90,7 +90,7 @@ Existing tools solve individual problems in isolation:
 | Note apps | Knowledge capture | Automatic linking |
 | AI chatbots | Conversation | Persistent memory |
 
-Meridian's differentiator: **One memory, many views. Each view makes every other view smarter.**
+Vaeloom's differentiator: **One memory, many views. Each view makes every other view smarter.**
 
 ## Goals
 
@@ -98,7 +98,7 @@ Meridian's differentiator: **One memory, many views. Each view makes every other
 - Complete MVP core loop proving the vision thesis within 12 months of project start
 - Secure first enterprise design partner within 18 months of MVP launch
 - Demonstrate compounding value: Month 6 users show 3x higher engagement than Month 1 users of same cohort
-- Maintain vision consistency across all external communications — no mixed messaging about product category
+- Maintain vision consistency across all external communications â€” no mixed messaging about product category
 
 ## Scope
 
@@ -111,8 +111,8 @@ Meridian's differentiator: **One memory, many views. Each view makes every other
 
 ### Vision Decision Filter Workflow
 
-1. New initiative proposed — team lead presents to product council
-2. First question: "Does this initiative align with Meridian's vision as defined in this document?"
+1. New initiative proposed â€” team lead presents to product council
+2. First question: "Does this initiative align with Vaeloom's vision as defined in this document?"
 3. If yes: proceed to strategy and resource estimation
 4. If maybe: schedule vision alignment workshop with stakeholders
 5. If no: reject, with documented reasoning
@@ -145,7 +145,7 @@ Meridian's differentiator: **One memory, many views. Each view makes every other
 
 ```bash
 # Check feature against vision
-curl -s -X POST https://api.meridian.dev/v1/admin/vision-check \
+curl -s -X POST https://api.Vaeloom.dev/v1/admin/vision-check \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{"initiative": "Add AI resume builder", "vision_principle": "memory_is_product"}' | jq '.score'
 ```
@@ -172,7 +172,7 @@ curl -s -X POST https://api.meridian.dev/v1/admin/vision-check \
 | Practice | Why |
 |----------|-----|
 | Lead with the problem, not the solution | Users connect with "my resume is always outdated" before "memory layer with agentic RAG" |
-| Use the "one brain" metaphor consistently | "Chat is one view into your Meridian brain" builds a mental model |
+| Use the "one brain" metaphor consistently | "Chat is one view into your Vaeloom brain" builds a mental model |
 | Show compounding value over time | Month 1 value is organization; Month 6 is career intelligence |
 | Emphasize trust architecture | "Nothing happens without your approval" addresses the core objection |
 
@@ -180,9 +180,9 @@ curl -s -X POST https://api.meridian.dev/v1/admin/vision-check \
 
 | Practice | Why |
 |----------|-----|
-| Revisit the vision document quarterly | A vision that isn't reviewed drifts from reality — schedule a quarterly vision review with the founding team to validate or adjust direction |
-| Use the vision as a decision filter | When facing a product or strategy decision, ask "does this align with our vision?" — the vision document should be the first test any major initiative passes |
-| Share the vision broadly across the team | A vision that lives in a doc and isn't discussed doesn't guide behavior — include vision alignment in kickoffs, retrospectives, and quarterly planning |
+| Revisit the vision document quarterly | A vision that isn't reviewed drifts from reality â€” schedule a quarterly vision review with the founding team to validate or adjust direction |
+| Use the vision as a decision filter | When facing a product or strategy decision, ask "does this align with our vision?" â€” the vision document should be the first test any major initiative passes |
+| Share the vision broadly across the team | A vision that lives in a doc and isn't discussed doesn't guide behavior â€” include vision alignment in kickoffs, retrospectives, and quarterly planning |
 
 ## Common Mistakes
 
@@ -191,7 +191,7 @@ curl -s -X POST https://api.meridian.dev/v1/admin/vision-check \
 | Calling it "AI-powered" first | Users expect chatbot, not memory system |
 | Listing features before philosophy | No cohesive product story |
 | Skipping the trust explanation | Users assume their data is being used without consent |
-| Comparing to ChatGPT | Wrong category — we're a memory system with agents attached |
+| Comparing to ChatGPT | Wrong category â€” we're a memory system with agents attached |
 
 ## Security Considerations
 
@@ -207,7 +207,7 @@ curl -s -X POST https://api.meridian.dev/v1/admin/vision-check \
 |---------|------------|
 | Vision docs with multiple Mermaid diagrams (philosophy + Gantt) can be heavy | Use simplified inline diagrams and link to detailed architecture docs for depth |
 | The five-year Gantt chart adds significant rendering complexity | Consider a simplified timeline view as the primary diagram with expandable detail |
-| Long-term vision docs are accessed frequently at onboarding | Cache at the documentation site level — vision content changes infrequently |
+| Long-term vision docs are accessed frequently at onboarding | Cache at the documentation site level â€” vision content changes infrequently |
 
 ## Related Documents
 
@@ -216,4 +216,4 @@ curl -s -X POST https://api.meridian.dev/v1/admin/vision-check \
 - [Problem.md](./Problem.md)
 - [Goals.md](./Goals.md)
 - [Roadmap.md](./Roadmap.md)
-- [`/Docs/Meridian-Complete-Documentation.md#1-what-is-meridian`](../../Docs/Meridian-Complete-Documentation.md#1-what-is-meridian)
+- [`/Docs/Vaeloom-Complete-Documentation.md#1-what-is-Vaeloom`](../../Docs/Vaeloom-Complete-Documentation.md#1-what-is-Vaeloom)

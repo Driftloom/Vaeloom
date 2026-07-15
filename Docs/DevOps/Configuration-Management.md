@@ -1,7 +1,7 @@
-# Configuration Management
+﻿# Configuration Management
 
-> **Purpose:** Define the configuration management strategy, tooling, and standards for all Meridian services across environments
-> **Status:** 🆕 New
+> **Purpose:** Define the configuration management strategy, tooling, and standards for all Vaeloom services across environments
+> **Status:** ðŸ†• New
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
@@ -9,11 +9,11 @@
 
 ## Overview
 
-Meridian's configuration management system governs how application settings, secrets, feature flags, and environment variables are defined, validated, distributed, and consumed across the entire service mesh. As a multi-service platform spanning `apps/web` (Next.js), `apps/api` (Node.js/Express), `apps/ai-service` (FastAPI), `apps/memory` (vector/graph store), and supporting infrastructure (Redis, Postgres, RabbitMQ), a cohesive configuration strategy is essential to prevent drift, reduce deployment failures, and ensure security.
+Vaeloom's configuration management system governs how application settings, secrets, feature flags, and environment variables are defined, validated, distributed, and consumed across the entire service mesh. As a multi-service platform spanning `apps/web` (Next.js), `apps/api` (Node.js/Express), `apps/ai-service` (FastAPI), `apps/memory` (vector/graph store), and supporting infrastructure (Redis, Postgres, RabbitMQ), a cohesive configuration strategy is essential to prevent drift, reduce deployment failures, and ensure security.
 
-This document defines the four-layer config pipeline — **Source → Validation → Distribution → Injection → Runtime** — covering every environment from local development to production. It establishes a centralized configuration schema registry, environment variable conventions, ConfigMap definitions, feature flag semantics, and secret management practices.
+This document defines the four-layer config pipeline â€” **Source â†’ Validation â†’ Distribution â†’ Injection â†’ Runtime** â€” covering every environment from local development to production. It establishes a centralized configuration schema registry, environment variable conventions, ConfigMap definitions, feature flag semantics, and secret management practices.
 
-Readers should understand Meridian's service architecture and deployment environments before reading. Configuration management is critical because misconfiguration is the leading cause of production incidents in distributed systems, and secrets exposure is the most common vector for security breaches.
+Readers should understand Vaeloom's service architecture and deployment environments before reading. Configuration management is critical because misconfiguration is the leading cause of production incidents in distributed systems, and secrets exposure is the most common vector for security breaches.
 
 ---
 
@@ -21,7 +21,7 @@ Readers should understand Meridian's service architecture and deployment environ
 
 - Establish a single source of truth for all configuration across environments with clear inheritance and override rules
 - Automate config validation at CI time to catch missing or malformed values before deployment
-- Secure secrets through vault integration, encryption, and strict access controls — ensuring secrets never appear in logs, env dumps, or error messages
+- Secure secrets through vault integration, encryption, and strict access controls â€” ensuring secrets never appear in logs, env dumps, or error messages
 - Enable gradual feature rollouts with percentage-based targeting, A/B testing, and kill switches
 - Provide auditability and observability through config change logging, drift detection, and flag usage telemetry
 
@@ -83,7 +83,7 @@ graph LR
 
     subgraph Injection["4. Injection"]
         APP_ENV["Process Environment<br/>process.env / os.environ"]
-        CONFIG_CLIENT["Config Client<br/>meridian-config SDK"]
+        CONFIG_CLIENT["Config Client<br/>Vaeloom-config SDK"]
         FLAG_CLIENT["Flag Client<br/>LDClient / custom SDK"]
     end
 
@@ -139,7 +139,7 @@ graph LR
     class SERVICE_WEB,SERVICE_API,SERVICE_AI,SERVICE_MEM,INFRA runtime
 ```
 
-> **Diagram:** Configuration pipeline flows from four source types through CI validation, then distribution via Kubernetes/Helm/Docker Compose, injection into process environments and config clients, and finally consumed by all Meridian services at runtime.
+> **Diagram:** Configuration pipeline flows from four source types through CI validation, then distribution via Kubernetes/Helm/Docker Compose, injection into process environments and config clients, and finally consumed by all Vaeloom services at runtime.
 
 ---
 
@@ -152,7 +152,7 @@ graph LR
 | ConfigMaps | Kubernetes-native non-sensitive config distribution | `ConfigMap` + `envFrom` | Staging, Production |
 | Feature Flag Service | Dynamic flag evaluation, percentage rollouts, targeting | LaunchDarkly / custom REST + SSE | Staging, Production |
 | Secret Store | Encrypted storage and rotation of sensitive values | HashiCorp Vault / AWS Secrets Manager | All non-local |
-| Config Client SDK | Runtime config hydration, validation, and reload hooks | `meridian-config` internal package | TypeScript, Python |
+| Config Client SDK | Runtime config hydration, validation, and reload hooks | `Vaeloom-config` internal package | TypeScript, Python |
 
 ---
 
@@ -167,7 +167,7 @@ graph LR
 .env.test             # Test environment overrides
 ```
 
-Loading order (last wins): `.env` → `.env.<environment>` → `.env.local`
+Loading order (last wins): `.env` â†’ `.env.<environment>` â†’ `.env.local`
 
 ### ConfigMaps (Staging / Production)
 
@@ -179,14 +179,14 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: api-config
-  namespace: meridian-staging
+  namespace: Vaeloom-staging
 data:
   NODE_ENV: "staging"
   LOG_LEVEL: "info"
   API_PORT: "4000"
   RATE_LIMIT_WINDOW_MS: "60000"
   RATE_LIMIT_MAX_REQUESTS: "100"
-  REDIS_HOST: "redis.meridian-staging.svc.cluster.local"
+  REDIS_HOST: "redis.Vaeloom-staging.svc.cluster.local"
   REDIS_PORT: "6379"
 ```
 
@@ -196,7 +196,7 @@ Sensitive values (DB credentials, API keys, JWT secrets, encryption keys) are st
 
 ### Feature Flag Service
 
-Runtime-evaluated boolean or multivariate flags served by LaunchDarkly (or a lightweight custom alternative). Flags are NOT stored in ConfigMaps or `.env` files — they are managed through the flag service UI/API.
+Runtime-evaluated boolean or multivariate flags served by LaunchDarkly (or a lightweight custom alternative). Flags are NOT stored in ConfigMaps or `.env` files â€” they are managed through the flag service UI/API.
 
 ---
 
@@ -228,7 +228,7 @@ graph BT
 |------|-------------|
 | **Shape inheritance** | All config keys present in `local` must exist in `dev`, `staging`, and `production` (may have different values) |
 | **Override only** | Upper environments override specific values; they do not redefine the entire config |
-| **Secrets isolation** | Secrets are NEVER inherited — each environment has its own vault path |
+| **Secrets isolation** | Secrets are NEVER inherited â€” each environment has its own vault path |
 | **Feature flag sync** | Flags are created in `dev`, promoted to `staging` for validation, then enabled in `production` |
 | **Drift detection** | CI compares config keys across environments weekly and alerts on discrepancies |
 
@@ -249,8 +249,8 @@ graph BT
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Meridian Config Schema",
-  "description": "Global config schema for all Meridian services",
+  "title": "Vaeloom Config Schema",
+  "description": "Global config schema for all Vaeloom services",
   "type": "object",
   "required": [
     "NODE_ENV",
@@ -361,7 +361,7 @@ graph BT
 ### Runtime Validation
 
 ```typescript
-// apps/packages/meridian-config/src/validate.ts
+// apps/packages/Vaeloom-config/src/validate.ts
 import { z } from "zod";
 
 const ConfigSchema = z.object({
@@ -378,9 +378,9 @@ const ConfigSchema = z.object({
   ENCRYPTION_KEY: z.string().min(32),
 });
 
-export type MeridianConfig = z.infer<typeof ConfigSchema>;
+export type VaeloomConfig = z.infer<typeof ConfigSchema>;
 
-export function validateConfig(env: Record<string, string | undefined>): MeridianConfig {
+export function validateConfig(env: Record<string, string | undefined>): VaeloomConfig {
   const result = ConfigSchema.safeParse(env);
   if (!result.success) {
     const missing = result.error.issues
@@ -399,7 +399,7 @@ export function validateConfig(env: Record<string, string | undefined>): Meridia
 # apps/ai-service/app/config.py
 from pydantic import BaseSettings, Field, validator
 
-class MeridianSettings(BaseSettings):
+class VaeloomSettings(BaseSettings):
     node_env: str = Field("local", alias="NODE_ENV")
     log_level: str = Field("info", alias="LOG_LEVEL")
     api_port: int = Field(8000, alias="API_PORT")
@@ -433,10 +433,10 @@ graph LR
     classDef pod fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef audit fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph Vault["🔐 Vault Cluster"]
+    subgraph Vault["ðŸ” Vault Cluster"]
         V1["Vault Server<br/>HA mode"]
         V2["Transit Engine<br/>Encryption"]
-        V3["KV Engine v2<br/>Path: secret/meridian/*"]
+        V3["KV Engine v2<br/>Path: secret/Vaeloom/*"]
     end
 
     subgraph K8S["Kubernetes"]
@@ -468,9 +468,9 @@ graph LR
 
 | Path Pattern | Example | Accessible By |
 |-------------|---------|---------------|
-| `secret/meridian/{env}/shared/*` | `secret/meridian/production/shared/smtp` | All services |
-| `secret/meridian/{env}/{service}/*` | `secret/meridian/production/api/db` | Service-specific IAM role |
-| `secret/meridian/{env}/infra/*` | `secret/meridian/production/infra/redis` | Infrastructure components |
+| `secret/Vaeloom/{env}/shared/*` | `secret/Vaeloom/production/shared/smtp` | All services |
+| `secret/Vaeloom/{env}/{service}/*` | `secret/Vaeloom/production/api/db` | Service-specific IAM role |
+| `secret/Vaeloom/{env}/infra/*` | `secret/Vaeloom/production/infra/redis` | Infrastructure components |
 
 ### Rotation Policy
 
@@ -516,7 +516,7 @@ interface FeatureFlag {
 |-------|-----------|----------------|----------|---------------------|
 | **Internal dogfood** | 5% | Team members, internal IPs | 1-2 days | No P1 errors |
 | **Beta** | 25% | Opt-in users, specific user segments | 3-5 days | Error rate < baseline |
-| **Gradual rollout** | 50% → 75% → 90% | Random percentage, exclude critical paths | 5-7 days | All metrics stable |
+| **Gradual rollout** | 50% â†’ 75% â†’ 90% | Random percentage, exclude critical paths | 5-7 days | All metrics stable |
 | **General availability** | 100% | All users | Ongoing | Remove flag code next sprint |
 
 ### Targeting Rules
@@ -528,7 +528,7 @@ interface FeatureFlag {
     {
       "description": "Internal team always sees it",
       "clauses": [
-        { "attribute": "email", "op": "endsWith", "values": ["@meridian.dev"] }
+        { "attribute": "email", "op": "endsWith", "values": ["@vaeloom.dev"] }
       ],
       "serve": { "variation": true }
     },
@@ -586,7 +586,7 @@ interface FeatureFlag {
 
 **Startup Validation Failure Behavior:**
 
-All Meridian services follow a **fail-fast** model for configuration: if required config is missing or invalid, the service process exits immediately with a non-zero exit code and a descriptive error message to stdout/stderr. This prevents services from running in a degraded or insecure state.
+All Vaeloom services follow a **fail-fast** model for configuration: if required config is missing or invalid, the service process exits immediately with a non-zero exit code and a descriptive error message to stdout/stderr. This prevents services from running in a degraded or insecure state.
 
 ---
 
@@ -645,20 +645,20 @@ graph LR
 
 ```bash
 # Rollback a ConfigMap to previous version
-kubectl rollout undo configmap api-config -n meridian-production
+kubectl rollout undo configmap api-config -n Vaeloom-production
 
 # Rollback a Helm release (includes config)
-helm rollback meridian-api 1 --namespace meridian-production
+helm rollback Vaeloom-api 1 --namespace Vaeloom-production
 
 # Restore vault secrets from versioned KV
-vault kv rollback -version=5 secret/meridian/production/api/db
+vault kv rollback -version=5 secret/Vaeloom/production/api/db
 ```
 
 ---
 
 ## Examples
 
-### Full Config — `apps/api`
+### Full Config â€” `apps/api`
 
 ```yaml
 # apps/api/config/production.yaml
@@ -667,21 +667,21 @@ LOG_LEVEL: "warn"
 API_PORT: 8080
 RATE_LIMIT_WINDOW_MS: 60000
 RATE_LIMIT_MAX_REQUESTS: 100
-CORS_ORIGINS: "https://app.meridian.ai,https://*.meridian.ai"
+CORS_ORIGINS: "https://app.Vaeloom.ai,https://*.Vaeloom.ai"
 BODY_LIMIT: "10mb"
 TRUST_PROXY: 2
 HEALTH_CHECK_PATH: "/health"
 SHUTDOWN_TIMEOUT_MS: 30000
 
 # Redis
-REDIS_HOST: "redis.meridian-prod.svc.cluster.local"
+REDIS_HOST: "redis.Vaeloom-prod.svc.cluster.local"
 REDIS_PORT: 6379
 REDIS_TLS_ENABLED: true
 REDIS_POOL_MIN: 5
 REDIS_POOL_MAX: 50
 
 # Database (values sourced from Vault at runtime)
-# DB_URL: postgresql://user:pass@db.internal:5432/meridian?sslmode=require
+# DB_URL: postgresql://user:pass@db.internal:5432/Vaeloom?sslmode=require
 DB_POOL_SIZE: 50
 DB_CONNECTION_TIMEOUT_MS: 5000
 DB_IDLE_TIMEOUT_MS: 30000
@@ -690,19 +690,19 @@ DB_MAX_RETRIES: 3
 # Auth
 JWT_ALGORITHM: "RS256"
 JWT_EXPIRY_SECONDS: 3600
-JWT_ISSUER: "meridian-auth.prod"
+JWT_ISSUER: "Vaeloom-auth.prod"
 
 # AI Service
-AI_SERVICE_URL: "http://ai-service.meridian-prod.svc.cluster.local:8000"
+AI_SERVICE_URL: "http://ai-service.Vaeloom-prod.svc.cluster.local:8000"
 AI_TIMEOUT_MS: 30000
 AI_MAX_RETRIES: 2
 
 # Observability
-OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.meridian-prod.svc.cluster.local:4318"
-SENTRY_DSN: "https://sentry-key@sentry.meridian.ai/prod"
+OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.Vaeloom-prod.svc.cluster.local:4318"
+SENTRY_DSN: "https://sentry-key@sentry.Vaeloom.ai/prod"
 ```
 
-### Full Config — `apps/ai-service`
+### Full Config â€” `apps/ai-service`
 
 ```yaml
 # apps/ai-service/config/production.yaml
@@ -727,36 +727,36 @@ INFERENCE_MAX_RETRIES: 2
 FALLBACK_MODEL: "gpt-4o-mini"
 
 # Memory (vector store)
-VECTOR_STORE_URL: "http://qdrant.meridian-prod.svc.cluster.local:6333"
+VECTOR_STORE_URL: "http://qdrant.Vaeloom-prod.svc.cluster.local:6333"
 VECTOR_DIMENSION: 1536
 VECTOR_SEARCH_TOP_K: 20
 VECTOR_SEARCH_SCORE_THRESHOLD: 0.75
 
 # Graph (knowledge graph)
-GRAPH_DB_URL: "bolt://neo4j.meridian-prod.svc.cluster.local:7687"
+GRAPH_DB_URL: "bolt://neo4j.Vaeloom-prod.svc.cluster.local:7687"
 
 # Rate limiting
 RATE_LIMIT_TOKENS_PER_MINUTE: 1000
 RATE_LIMIT_BURST: 50
 ```
 
-### Full Config — `apps/web`
+### Full Config â€” `apps/web`
 
 ```yaml
 # apps/web/config/production.yaml
 NODE_ENV: "production"
 LOG_LEVEL: "warn"
-NEXT_PUBLIC_API_URL: "https://api.meridian.ai"
-NEXT_PUBLIC_WS_URL: "wss://ws.meridian.ai"
-NEXT_PUBLIC_APP_URL: "https://app.meridian.ai"
-NEXT_PUBLIC_SENTRY_DSN: "https://sentry-key@sentry.meridian.ai/prod"
+NEXT_PUBLIC_API_URL: "https://api.Vaeloom.ai"
+NEXT_PUBLIC_WS_URL: "wss://ws.Vaeloom.ai"
+NEXT_PUBLIC_APP_URL: "https://app.Vaeloom.ai"
+NEXT_PUBLIC_SENTRY_DSN: "https://sentry-key@sentry.Vaeloom.ai/prod"
 NEXT_PUBLIC_POSTHOG_KEY: "phc_prod_key"
 NEXT_PUBLIC_POSTHOG_HOST: "https://app.posthog.com"
 NEXT_PUBLIC_LAUNCHDARKLY_CLIENT_ID: "ld-prod-client-id"
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_clerk_key"
 
 # Server-side only (never exposed to client)
-API_INTERNAL_URL: "http://api.meridian-prod.svc.cluster.local:8080"
+API_INTERNAL_URL: "http://api.Vaeloom-prod.svc.cluster.local:8080"
 SESSION_SECRET: "session-secret-from-vault"
 CSRF_SECRET: "csrf-secret-from-vault"
 REVALIDATION_TOKEN: "reval-token-from-vault"
@@ -778,7 +778,7 @@ REVALIDATION_TOKEN: "reval-token-from-vault"
     {
       "name": "Internal users",
       "clauses": [
-        { "attribute": "email", "op": "endsWith", "values": ["@meridian.dev"] }
+        { "attribute": "email", "op": "endsWith", "values": ["@vaeloom.dev"] }
       ],
       "serve": { "variation": true }
     },
@@ -794,7 +794,7 @@ REVALIDATION_TOKEN: "reval-token-from-vault"
 
 ```typescript
 // apps/web/lib/config.ts
-import { validateConfig } from "@meridian/config";
+import { validateConfig } from "@vaeloom/config";
 
 export const config = validateConfig(process.env);
 
@@ -804,9 +804,9 @@ const dbPool = config.DB_POOL_SIZE;
 
 ```python
 # apps/ai-service/app/main.py
-from app.config import MeridianSettings
+from app.config import VaeloomSettings
 
-settings = MeridianSettings()
+settings = VaeloomSettings()
 # Usage in service
 redis_host = settings.redis_host
 ```
@@ -817,16 +817,16 @@ redis_host = settings.redis_host
 
 | # | Practice | Rationale |
 |---|----------|-----------|
-| 1 | **Principle of least privilege** — Each service gets only the secrets and config keys it needs | Limits blast radius of a compromised service |
-| 2 | **Config as code** — All config changes go through PR review and CI validation | Prevents manual mistakes and provides audit trail |
-| 3 | **Validate before deploying** — CI blocks deployment on schema or interpolation failures | Catches misconfiguration before it reaches production |
-| 4 | **Never hardcode defaults** — Always use environment variables or a config file | Enables environment-specific overrides without code changes |
-| 5 | **Prefix public variables** — Use `NEXT_PUBLIC_` convention for client-exposed vars | Prevents accidental server secret exposure in browser bundles |
-| 6 | **Use descriptive flag keys** — Include feature name and area in flag key (`ai-agent-streaming` not `flag-42`) | Makes flag purpose self-documenting in monitoring and code |
-| 7 | **Remove expired flags** — Delete flag code and flag definition within one sprint of full rollout | Prevents technical debt and confusing dead code paths |
-| 8 | **Pin config versions** — Use Git SHA references for config in deployment manifests | Enables deterministic rollback to any known-good state |
-| 9 | **Document every config key** — Maintain schema with descriptions and examples | Reduces onboarding time and prevents incorrect values |
-| 10 | **Test config changes in isolation** — Deploy config changes to staging at least 24h before production | Provides buffer to detect environment-specific issues |
+| 1 | **Principle of least privilege** â€” Each service gets only the secrets and config keys it needs | Limits blast radius of a compromised service |
+| 2 | **Config as code** â€” All config changes go through PR review and CI validation | Prevents manual mistakes and provides audit trail |
+| 3 | **Validate before deploying** â€” CI blocks deployment on schema or interpolation failures | Catches misconfiguration before it reaches production |
+| 4 | **Never hardcode defaults** â€” Always use environment variables or a config file | Enables environment-specific overrides without code changes |
+| 5 | **Prefix public variables** â€” Use `NEXT_PUBLIC_` convention for client-exposed vars | Prevents accidental server secret exposure in browser bundles |
+| 6 | **Use descriptive flag keys** â€” Include feature name and area in flag key (`ai-agent-streaming` not `flag-42`) | Makes flag purpose self-documenting in monitoring and code |
+| 7 | **Remove expired flags** â€” Delete flag code and flag definition within one sprint of full rollout | Prevents technical debt and confusing dead code paths |
+| 8 | **Pin config versions** â€” Use Git SHA references for config in deployment manifests | Enables deterministic rollback to any known-good state |
+| 9 | **Document every config key** â€” Maintain schema with descriptions and examples | Reduces onboarding time and prevents incorrect values |
+| 10 | **Test config changes in isolation** â€” Deploy config changes to staging at least 24h before production | Provides buffer to detect environment-specific issues |
 
 ---
 
@@ -848,13 +848,13 @@ redis_host = settings.redis_host
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| **Config drift between environments** | Medium | High — bugs that bypass staging testing | Weekly drift detection CI job; cross-env key parity enforcement |
-| **Stale feature flags accumulate** | High | Medium — dead code, confusion, technical debt | Quarterly flag cleanup review; auto-archive flags with zero evaluations for 30 days |
-| **Secret rotation causes outage** | Low | Critical — all services lose DB/auth access | Dynamic secrets with TTLs; dual-key grace periods; rotation tested in staging first |
-| **Config schema breaking change** | Medium | High — services fail to start after deploying | Schema validation in CI; backward-compatible changes only; deprecation notices |
-| **Developer accidentally commits real secrets** | Low | Critical — credential exposed in Git history | Pre-commit hooks with `git-secrets`; `.env` in `.gitignore`; GitHub secret scanning |
-| **Vault cluster becomes unavailable** | Low | Critical — new pods cannot fetch secrets | Vault HA mode with standby; cached secrets on pod startup with TTL grace period |
-| **Flag service latency degrades request** | Medium | Medium — increased p99 latency for flag evaluation | Client-side flag caching with TTL; circuit breaker falls back to code defaults |
+| **Config drift between environments** | Medium | High â€” bugs that bypass staging testing | Weekly drift detection CI job; cross-env key parity enforcement |
+| **Stale feature flags accumulate** | High | Medium â€” dead code, confusion, technical debt | Quarterly flag cleanup review; auto-archive flags with zero evaluations for 30 days |
+| **Secret rotation causes outage** | Low | Critical â€” all services lose DB/auth access | Dynamic secrets with TTLs; dual-key grace periods; rotation tested in staging first |
+| **Config schema breaking change** | Medium | High â€” services fail to start after deploying | Schema validation in CI; backward-compatible changes only; deprecation notices |
+| **Developer accidentally commits real secrets** | Low | Critical â€” credential exposed in Git history | Pre-commit hooks with `git-secrets`; `.env` in `.gitignore`; GitHub secret scanning |
+| **Vault cluster becomes unavailable** | Low | Critical â€” new pods cannot fetch secrets | Vault HA mode with standby; cached secrets on pod startup with TTL grace period |
+| **Flag service latency degrades request** | Medium | Medium â€” increased p99 latency for flag evaluation | Client-side flag caching with TTL; circuit breaker falls back to code defaults |
 
 ---
 
@@ -886,7 +886,7 @@ sequenceDiagram
     CI->>VAL: Validate schema (JSON Schema / zod)
     VAL-->>CI: Schema valid / invalid
     alt Schema Invalid
-        CI-->>PR: ❌ Block - missing or malformed config
+        CI-->>PR: âŒ Block - missing or malformed config
     else Schema Valid
         CI->>K8S: Update ConfigMap / Secret
         K8S->>K8S: Roll out new config
@@ -900,7 +900,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Config change lifecycle — PR triggers CI validation against schema, validated configs deploy to Kubernetes ConfigMaps, applications validate at startup and fail fast on mismatch.
+> **Diagram:** Config change lifecycle â€” PR triggers CI validation against schema, validated configs deploy to Kubernetes ConfigMaps, applications validate at startup and fail fast on mismatch.
 
 ---
 
@@ -908,26 +908,26 @@ sequenceDiagram
 
 | Improvement | Priority | Complexity | Timeline |
 |-------------|----------|------------|----------|
-| **Real-time config reload** — File watcher or sidecar agent detects config changes and signals service reload without restart | High | High | Q1 2027 |
-| **GitOps config management** — Config changes merged to `main` auto-sync to environments via ArgoCD/Flux | High | Medium | Q4 2026 |
-| **Automatic drift remediation** — Detected drift between environments is automatically corrected to match the source of truth | Medium | High | Q2 2027 |
-| **Config validation in local dev** — Pre-commit hook runs schema validation on local config changes | Medium | Low | Q3 2026 |
-| **Self-healing vault agent** — Vault agent retries with exponential backoff and reports stale secret warnings | Medium | Medium | Q3 2026 |
-| **A/B test analysis integration** — Feature flag evaluation data piped directly to PostHog/Amplitude for automated analysis | Medium | Medium | Q4 2026 |
-| **Schema auto-generation** — Type-safe config types auto-generated from JSON Schema for all service languages | Low | Medium | Q4 2026 |
-| **Config diff UI** — Web UI to compare config values across environments at a glance | Low | Medium | Q1 2027 |
+| **Real-time config reload** â€” File watcher or sidecar agent detects config changes and signals service reload without restart | High | High | Q1 2027 |
+| **GitOps config management** â€” Config changes merged to `main` auto-sync to environments via ArgoCD/Flux | High | Medium | Q4 2026 |
+| **Automatic drift remediation** â€” Detected drift between environments is automatically corrected to match the source of truth | Medium | High | Q2 2027 |
+| **Config validation in local dev** â€” Pre-commit hook runs schema validation on local config changes | Medium | Low | Q3 2026 |
+| **Self-healing vault agent** â€” Vault agent retries with exponential backoff and reports stale secret warnings | Medium | Medium | Q3 2026 |
+| **A/B test analysis integration** â€” Feature flag evaluation data piped directly to PostHog/Amplitude for automated analysis | Medium | Medium | Q4 2026 |
+| **Schema auto-generation** â€” Type-safe config types auto-generated from JSON Schema for all service languages | Low | Medium | Q4 2026 |
+| **Config diff UI** â€” Web UI to compare config values across environments at a glance | Low | Medium | Q1 2027 |
 
 ---
 
 ## Related Documents
 
-- [`./Deployment.md`](./Deployment.md) — Deployment strategy and environment promotion
-- [`./Docker.md`](./Docker.md) — Docker configuration and build standards
-- [`./CI-CD.md`](./CI-CD.md) — CI/CD pipeline definitions
-- [`./Kubernetes.md`](./Kubernetes.md) — Kubernetes deployment and ConfigMap definitions
-- [`./Terraform.md`](./Terraform.md) — Infrastructure provisioning and Terraform variable management
-- [`../Security/IAM.md`](../Security/IAM.md) — Identity, access management, and Vault integration
-- [`../Security/Encryption.md`](../Security/Encryption.md) — Encryption standards for data at rest and in transit
-- [`../Architecture/Microservices.md`](../Architecture/Microservices.md) — Service architecture and inter-service communication
-- [`../Engineering/Implementation/16-deployment-infrastructure.md`](../Engineering/Implementation/16-deployment-infrastructure.md) — Detailed deployment infrastructure design
-- [`../Testing/Security-Testing.md`](../Testing/Security-Testing.md) — Security testing practices including config injection tests
+- [`./Deployment.md`](./Deployment.md) â€” Deployment strategy and environment promotion
+- [`./Docker.md`](./Docker.md) â€” Docker configuration and build standards
+- [`./CI-CD.md`](./CI-CD.md) â€” CI/CD pipeline definitions
+- [`./Kubernetes.md`](./Kubernetes.md) â€” Kubernetes deployment and ConfigMap definitions
+- [`./Terraform.md`](./Terraform.md) â€” Infrastructure provisioning and Terraform variable management
+- [`../Security/IAM.md`](../Security/IAM.md) â€” Identity, access management, and Vault integration
+- [`../Security/Encryption.md`](../Security/Encryption.md) â€” Encryption standards for data at rest and in transit
+- [`../Architecture/Microservices.md`](../Architecture/Microservices.md) â€” Service architecture and inter-service communication
+- [`../Engineering/Implementation/16-deployment-infrastructure.md`](../Engineering/Implementation/16-deployment-infrastructure.md) â€” Detailed deployment infrastructure design
+- [`../Testing/Security-Testing.md`](../Testing/Security-Testing.md) â€” Security testing practices including config injection tests

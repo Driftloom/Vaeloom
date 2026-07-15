@@ -1,7 +1,7 @@
-# Performance Testing
+﻿# Performance Testing
 
-> **Purpose:** Define performance testing practices for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define performance testing practices for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Performance Test Architecture
 
@@ -11,7 +11,7 @@ graph TD
     classDef scenario fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef budget fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Types["📊 Performance Test Types"]
+    subgraph Types["ðŸ“Š Performance Test Types"]
         direction TB
         T1["Load Test<br/>Behavior under expected load<br/>k6 scenarios/api-load.js"]
         T2["Stress Test<br/>Breaking point identification<br/>k6 scenarios/stress.js"]
@@ -20,12 +20,12 @@ graph TD
         T5["Scalability Test<br/>Linear scaling verification<br/>k6 + cluster metrics"]
     end
 
-    subgraph Scenarios["📋 Load Scenarios"]
-        S1["Normal Load<br/>100 users → 5m ramp → 20m hold → 5m cooldown<br/>Threshold: p95 < 500ms, p99 < 2s"]
-        S2["Peak Load<br/>500 users → 2m ramp → 5m hold → 2m cooldown<br/>Threshold: < 1% error rate"]
+    subgraph Scenarios["ðŸ“‹ Load Scenarios"]
+        S1["Normal Load<br/>100 users â†’ 5m ramp â†’ 20m hold â†’ 5m cooldown<br/>Threshold: p95 < 500ms, p99 < 2s"]
+        S2["Peak Load<br/>500 users â†’ 2m ramp â†’ 5m hold â†’ 2m cooldown<br/>Threshold: < 1% error rate"]
     end
 
-    subgraph Budgets["🎯 Performance Budgets"]
+    subgraph Budgets["ðŸŽ¯ Performance Budgets"]
         B1["API p99 latency<br/>< 500ms<br/>Measured by: k6"]
         B2["Agent p99 latency<br/>< 10s<br/>Measured by: AI tracing"]
         B3["Page load<br/>< 2s<br/>Measured by: Lighthouse CI"]
@@ -74,7 +74,7 @@ export const options = {
 };
 
 export default function () {
-  const res = http.get('https://api.meridian.dev/v1/health');
+  const res = http.get('https://api.Vaeloom.dev/v1/health');
   check(res, { 'status is 200': (r) => r.status === 200 });
   sleep(1);
 }
@@ -129,16 +129,16 @@ export const options = {
 
 | Concern | Approach |
 |---------|----------|
-| Test environment resource contention | Running performance tests alongside other workloads skews results — use dedicated or ephemeral environments for accurate benchmarking |
-| Cold-start latency measurement | First request after deployment is significantly slower — measure both steady-state and cold-start latency separately and track both in dashboards |
-| Baseline comparison drift over time | Performance baselines become outdated as infrastructure changes — regenerate baselines after every significant infrastructure or dependency update |
+| Test environment resource contention | Running performance tests alongside other workloads skews results â€” use dedicated or ephemeral environments for accurate benchmarking |
+| Cold-start latency measurement | First request after deployment is significantly slower â€” measure both steady-state and cold-start latency separately and track both in dashboards |
+| Baseline comparison drift over time | Performance baselines become outdated as infrastructure changes â€” regenerate baselines after every significant infrastructure or dependency update |
 
 ## Workflows
 
-1. **Performance test baseline establishment**: Run normal load test against staging → collect all metrics (API latency, agent latency, page load, DB query time) → store as baseline v1.0 → label with git commit SHA → subsequent runs compared against this baseline
-2. **Performance regression detection in CI**: PR merged → performance test suite triggered → k6 runs load test against staging → results compared against baseline → if any metric exceeds budget (e.g., API p99 > 500ms), CI fails → developer notified with regression report
-3. **Agent performance profiling**: Memory Agent invoked with test document → OpenTelemetry trace captured → agent processing time measured separately from LLM API call time → breakdown: prompt building (50ms), LLM call (2s), response parsing (30ms) → bottleneck identified (LLM call) → optimization explored
-4. **Performance budget enforcement**: Lighthouse CI runs on every PR → measures LCP, TBT, CLS → compares against budgets (`lcp: 2s, tbt: 200ms, cls: 0.1`) → if budget exceeded, PR check fails with detailed breakdown → developer optimizes and re-runs
+1. **Performance test baseline establishment**: Run normal load test against staging â†’ collect all metrics (API latency, agent latency, page load, DB query time) â†’ store as baseline v1.0 â†’ label with git commit SHA â†’ subsequent runs compared against this baseline
+2. **Performance regression detection in CI**: PR merged â†’ performance test suite triggered â†’ k6 runs load test against staging â†’ results compared against baseline â†’ if any metric exceeds budget (e.g., API p99 > 500ms), CI fails â†’ developer notified with regression report
+3. **Agent performance profiling**: Memory Agent invoked with test document â†’ OpenTelemetry trace captured â†’ agent processing time measured separately from LLM API call time â†’ breakdown: prompt building (50ms), LLM call (2s), response parsing (30ms) â†’ bottleneck identified (LLM call) â†’ optimization explored
+4. **Performance budget enforcement**: Lighthouse CI runs on every PR â†’ measures LCP, TBT, CLS â†’ compares against budgets (`lcp: 2s, tbt: 200ms, cls: 0.1`) â†’ if budget exceeded, PR check fails with detailed breakdown â†’ developer optimizes and re-runs
 
 ## Scalability
 
@@ -147,7 +147,7 @@ export const options = {
 | Performance test types | 5 (load, stress, endurance, spike, scalability) | 10 types adding cold-start, steady-state, background-job, API gateway, CDN | 25+ types with AI-identified performance patterns |
 | Performance baselines stored | 50 | 500 with automated regression detection | Trend dashboard with ML anomaly detection |
 | Agent performance traces | 100 per day | 10,000 with sampling and aggregation | Continuous profiling with eBPF |
-| Lighthouse CI runs per PR | 3 pages × 3 runs | 10 pages × 3 runs with per-component budgets | Full page inventory with dynamic budget generation |
+| Lighthouse CI runs per PR | 3 pages Ã— 3 runs | 10 pages Ã— 3 runs with per-component budgets | Full page inventory with dynamic budget generation |
 
 ## Error Handling
 
@@ -162,11 +162,11 @@ export const options = {
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| API p99 latency vs baseline | > 20% increase | Critical | Grafana — Performance Dashboard |
-| Agent p99 latency | > 10s | Warning | Grafana — AI Performance |
-| Lighthouse LCP | > 2.0s | Warning | Grafana — Web Vitals |
-| DB query p99 | > 100ms | Warning | Grafana — Database Dashboard |
-| Performance budget violation rate | > 1 per week | Info | Product — Performance Tracker |
+| API p99 latency vs baseline | > 20% increase | Critical | Grafana â€” Performance Dashboard |
+| Agent p99 latency | > 10s | Warning | Grafana â€” AI Performance |
+| Lighthouse LCP | > 2.0s | Warning | Grafana â€” Web Vitals |
+| DB query p99 | > 100ms | Warning | Grafana â€” Database Dashboard |
+| Performance budget violation rate | > 1 per week | Info | Product â€” Performance Tracker |
 
 ## Risks
 
@@ -186,11 +186,11 @@ export const options = {
 
 ## Overview
 
-Performance testing at Meridian ensures that the platform meets latency, throughput, and responsiveness targets for every operation — from API requests and database queries to AI agent processing and page loads. Five test types (load, stress, endurance, spike, scalability) provide comprehensive coverage of different performance dimensions, each with specific ramp-up patterns and success thresholds.
+Performance testing at Vaeloom ensures that the platform meets latency, throughput, and responsiveness targets for every operation â€” from API requests and database queries to AI agent processing and page loads. Five test types (load, stress, endurance, spike, scalability) provide comprehensive coverage of different performance dimensions, each with specific ramp-up patterns and success thresholds.
 
 Performance budgets define concrete targets for every critical operation: API p99 latency under 500ms, AI agent p99 processing under 10 seconds, page load under 2 seconds (Lighthouse LCP), and database query p99 under 100ms. These budgets are enforced in CI through automated performance test runs that compare results against stored baselines, blocking deployments on regression.
 
-For Meridian's AI agents, performance measurement separates LLM API call time from internal processing time (prompt building, response parsing). This breakdown is critical for identifying where optimization effort should be focused — if the bottleneck is the LLM API call, the solution differs from a prompt construction bottleneck. OpenTelemetry traces capture this breakdown for every agent invocation.
+For Vaeloom's AI agents, performance measurement separates LLM API call time from internal processing time (prompt building, response parsing). This breakdown is critical for identifying where optimization effort should be focused â€” if the bottleneck is the LLM API call, the solution differs from a prompt construction bottleneck. OpenTelemetry traces capture this breakdown for every agent invocation.
 
 Performance baselines are versioned alongside the codebase, labeled with git commit SHAs, and regenerated after every significant infrastructure or dependency update. This ensures that performance comparisons remain valid as the environment evolves. Quarterly budget reviews adjust targets based on feature complexity and device capability changes.
 
@@ -235,10 +235,10 @@ sequenceDiagram
     BASELINE-->>K6: Baseline metrics (p95: 320ms, p99: 450ms)
     K6->>K6: Compare current vs baseline
     alt No regression (current p99: 440ms < 500ms budget)
-        K6-->>CI: ✅ Performance within budget
+        K6-->>CI: âœ… Performance within budget
     else Regression (current p99: 680ms > 20% over baseline)
         K6-->>REPORT: Generate regression report
-        REPORT-->>CI: ❌ Performance regression: p99 680ms vs 450ms baseline
+        REPORT-->>CI: âŒ Performance regression: p99 680ms vs 450ms baseline
         CI-->>CI: Block deployment
     end
 ```
@@ -273,7 +273,7 @@ export const options = {
 };
 
 export default function () {
-  const res = http.get('https://api.meridian.dev/v1/health');
+  const res = http.get('https://api.Vaeloom.dev/v1/health');
   check(res, { 'status is 200': (r) => r.status === 200 });
   sleep(1);
 }

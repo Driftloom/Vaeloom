@@ -1,15 +1,15 @@
-# Accessibility
+﻿# Accessibility
 
-> **Purpose:** Define accessibility standards for Meridian
-> **Status:** 🆕 New — audit planned before launch
+> **Purpose:** Define accessibility standards for Vaeloom
+> **Status:** ðŸ†• New â€” audit planned before launch
 
 ## Overview
 
-Meridian's accessibility framework ensures the platform is usable by all users, including those with disabilities. This document defines the accessibility standards, audit procedures, and remediation workflows that guarantee WCAG 2.2 AA compliance across all user interfaces.
+Vaeloom's accessibility framework ensures the platform is usable by all users, including those with disabilities. This document defines the accessibility standards, audit procedures, and remediation workflows that guarantee WCAG 2.2 AA compliance across all user interfaces.
 
-The accessibility strategy covers the web application, mobile companion, and agent interaction surfaces — including screen reader compatibility, keyboard navigation, color contrast, focus management, and reduced motion support. Every UI component in the Meridian design system is required to pass automated and manual accessibility checks before release.
+The accessibility strategy covers the web application, mobile companion, and agent interaction surfaces â€” including screen reader compatibility, keyboard navigation, color contrast, focus management, and reduced motion support. Every UI component in the Vaeloom design system is required to pass automated and manual accessibility checks before release.
 
-Accessibility is a core quality attribute for Meridian, not an afterthought. As an education and career platform, Meridian serves diverse users with varying abilities who rely on assistive technologies. Meeting WCAG 2.2 AA standards is a product requirement for public launch.
+Accessibility is a core quality attribute for Vaeloom, not an afterthought. As an education and career platform, Vaeloom serves diverse users with varying abilities who rely on assistive technologies. Meeting WCAG 2.2 AA standards is a product requirement for public launch.
 
 ## Accessibility Architecture
 
@@ -19,7 +19,7 @@ graph TD
     classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef audit fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Standards["📋 WCAG Standards"]
+    subgraph Standards["ðŸ“‹ WCAG Standards"]
         direction TB
         S1["Keyboard Navigation<br/>WCAG 2.1.1<br/>All actions via keyboard"]
         S2["Screen Reader Support<br/>WCAG 4.1.2<br/>ARIA labels + roles + landmarks"]
@@ -29,7 +29,7 @@ graph TD
         S6["Text Resizing<br/>WCAG 1.4.4<br/>Functional at 200% zoom"]
     end
 
-    subgraph Patterns["🖥️ UI Accessibility Patterns"]
+    subgraph Patterns["ðŸ–¥ï¸ UI Accessibility Patterns"]
         P1["Proposal cards<br/>Keyboard approve/reject"]
         P2["Memory graph<br/>Alt text-based navigation"]
         P3["File viewer<br/>Screen reader summaries"]
@@ -37,7 +37,7 @@ graph TD
         P5["Dashboard<br/>Skip-to-content link"]
     end
 
-    subgraph Audit["📅 Audit Schedule"]
+    subgraph Audit["ðŸ“… Audit Schedule"]
         A1["Phase 6 (pre-launch): Full WCAG audit"]
         A2["Phase 6: Screen reader testing<br/>NVDA + VoiceOver"]
         A3["Quarterly post-launch: Regression audit"]
@@ -50,13 +50,13 @@ graph TD
     class A1,A2,A3 audit
 ```
 
-> **Diagram:** Accessibility strategy follows **6 WCAG 2.2 AA standards** → **5 UI-specific accessibility patterns** → **audit schedule** (pre-launch full audit + quarterly regression). Target is AA minimum with AAA where practical.
+> **Diagram:** Accessibility strategy follows **6 WCAG 2.2 AA standards** â†’ **5 UI-specific accessibility patterns** â†’ **audit schedule** (pre-launch full audit + quarterly regression). Target is AA minimum with AAA where practical.
 
 ---
 
 ## Standards
 
-Meridian targets **WCAG 2.2 AA** compliance as the minimum bar, with AAA where practical.
+Vaeloom targets **WCAG 2.2 AA** compliance as the minimum bar, with AAA where practical.
 
 ## Key Requirements
 
@@ -94,7 +94,7 @@ Meridian targets **WCAG 2.2 AA** compliance as the minimum bar, with AAA where p
 | Relying only on color to convey state | Colorblind users cannot distinguish states; always pair with icons or text labels |
 | Missing alt text on interactive elements | Screen readers cannot navigate or understand the purpose of unlabeled controls |
 | No visible focus indicators | Keyboard-only users lose their place; WCAG 2.4.7 requires visible focus |
-| Skipping heading hierarchy | Screen reader navigation depends on proper h1→h2→h3 structure; skipping levels causes confusion |
+| Skipping heading hierarchy | Screen reader navigation depends on proper h1â†’h2â†’h3 structure; skipping levels causes confusion |
 
 ## Best Practices
 
@@ -109,49 +109,49 @@ Meridian targets **WCAG 2.2 AA** compliance as the minimum bar, with AAA where p
 
 | Concern | Mitigation |
 |---------|------------|
-| Focus management in modal dialogs | Trap focus within open modals; return focus to trigger element on close — prevents keyboard-based UI confusion |
-| Dynamic content announcements | Use `aria-live` regions with appropriate politeness settings — avoid flooding screen readers with sensitive information |
+| Focus management in modal dialogs | Trap focus within open modals; return focus to trigger element on close â€” prevents keyboard-based UI confusion |
+| Dynamic content announcements | Use `aria-live` regions with appropriate politeness settings â€” avoid flooding screen readers with sensitive information |
 | Accessible error disclosure | Error messages should guide resolution without revealing internal system details (stack traces, query structures) |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Screen reader overhead | Minimize DOM size — large DOM trees increase accessibility tree computation time, especially on low-end devices |
+| Screen reader overhead | Minimize DOM size â€” large DOM trees increase accessibility tree computation time, especially on low-end devices |
 | Animation impact on assistive tech | `prefers-reduced-motion` animations still compute in the accessibility tree; use `display: none` rather than opacity:0 for truly hidden elements |
-| Audit tool runtime | Run accessibility audits as part of CI, not just at build time — automated axe-core scans add ~200ms per page but catch regressions early |
+| Audit tool runtime | Run accessibility audits as part of CI, not just at build time â€” automated axe-core scans add ~200ms per page but catch regressions early |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Focus management in modal dialogs | Trap focus within open modals; return focus to trigger element on close — prevents keyboard-based UI confusion |
-| Dynamic content announcements | Use `aria-live` regions with appropriate politeness settings — avoid flooding screen readers with sensitive information |
+| Focus management in modal dialogs | Trap focus within open modals; return focus to trigger element on close â€” prevents keyboard-based UI confusion |
+| Dynamic content announcements | Use `aria-live` regions with appropriate politeness settings â€” avoid flooding screen readers with sensitive information |
 | Accessible error disclosure | Error messages should guide resolution without revealing internal system details (stack traces, query structures) |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Screen reader overhead | Minimize DOM size — large DOM trees increase accessibility tree computation time, especially on low-end devices |
+| Screen reader overhead | Minimize DOM size â€” large DOM trees increase accessibility tree computation time, especially on low-end devices |
 | Animation impact on assistive tech | `prefers-reduced-motion` animations still compute in the accessibility tree; use `display: none` rather than opacity:0 for truly hidden elements |
-| Audit tool runtime | Run accessibility audits as part of CI, not just at build time — automated axe-core scans add ~200ms per page but catch regressions early |
+| Audit tool runtime | Run accessibility audits as part of CI, not just at build time â€” automated axe-core scans add ~200ms per page but catch regressions early |
 
 ## Components
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| SkipToContent | Provide keyboard bypass of navigation blocks | React + CSS | Static — one instance per page |
+| SkipToContent | Provide keyboard bypass of navigation blocks | React + CSS | Static â€” one instance per page |
 | FocusTrapModal | Trap keyboard focus within open dialogs | React + useCallback | Instance per modal; portals for overlay stacking |
 | AriaAnnouncer | Broadcast dynamic content changes to screen readers | React + aria-live region | Singleton via Context; debounced to avoid flooding |
 | ColorContrastValidator | Verify all theme tokens meet WCAG 4.5:1 | CSS custom properties + CI check | Build-time scan of all token pairs; runs per PR |
 
 ## Workflows
 
-1. **User navigates via keyboard**: Focus lands on skip-to-content link → Enter activates skip → Focus moves to `<main>` landmark
-2. **Modal dialog opens**: Focus is trapped inside modal → Tab cycles through modal controls → Escape closes modal → Focus returns to trigger element
-3. **Screen reader encounters dynamic content**: Agent proposal accepted → AriaAnnouncer broadcasts "Proposal approved" via polite live region → User hears update without interruption
-4. **Color contrast audit in CI**: Push to PR triggers axe-core scan → Contrast checker verifies all token pairs against 4.5:1 → Failing PR is blocked with detailed report
+1. **User navigates via keyboard**: Focus lands on skip-to-content link â†’ Enter activates skip â†’ Focus moves to `<main>` landmark
+2. **Modal dialog opens**: Focus is trapped inside modal â†’ Tab cycles through modal controls â†’ Escape closes modal â†’ Focus returns to trigger element
+3. **Screen reader encounters dynamic content**: Agent proposal accepted â†’ AriaAnnouncer broadcasts "Proposal approved" via polite live region â†’ User hears update without interruption
+4. **Color contrast audit in CI**: Push to PR triggers axe-core scan â†’ Contrast checker verifies all token pairs against 4.5:1 â†’ Failing PR is blocked with detailed report
 
 ## Sequence Diagrams
 
@@ -178,11 +178,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: Content uploaded by user or fetched by connectors → stored in encrypted blob storage → metadata written to PostgreSQL
-2. **Processing**: AI agents analyze content → extract entities, classifications, and relationships → golden dataset validates extraction accuracy → results written to memory graph
-3. **Storage**: Accessibility metadata (ARIA labels, alt text, focus order) stored alongside document metadata in PostgreSQL → theme contrast values defined in CSS custom properties
-4. **Retrieval**: Page components query accessibility data via TanStack Query → AriaAnnouncer receives content updates through WebSocket → screen reader interprets live regions
-5. **Deletion**: User deletes document → all associated accessibility metadata purged → aria-live region broadcasts confirmation → focus moved to appropriate location
+1. **Ingestion**: Content uploaded by user or fetched by connectors â†’ stored in encrypted blob storage â†’ metadata written to PostgreSQL
+2. **Processing**: AI agents analyze content â†’ extract entities, classifications, and relationships â†’ golden dataset validates extraction accuracy â†’ results written to memory graph
+3. **Storage**: Accessibility metadata (ARIA labels, alt text, focus order) stored alongside document metadata in PostgreSQL â†’ theme contrast values defined in CSS custom properties
+4. **Retrieval**: Page components query accessibility data via TanStack Query â†’ AriaAnnouncer receives content updates through WebSocket â†’ screen reader interprets live regions
+5. **Deletion**: User deletes document â†’ all associated accessibility metadata purged â†’ aria-live region broadcasts confirmation â†’ focus moved to appropriate location
 
 ## Scalability
 
@@ -206,10 +206,10 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| axe-core violation count in CI | > 0 new violations | Critical | GitHub Checks — a11y report |
-| Lighthouse accessibility score | < 90 | Warning | Grafana — Frontend Performance |
-| Screen reader regression reports | Any manually filed bug | High | Sentry — a11y tag |
-| Color contrast compliance ratio | < 100% of token pairs | Warning | CI pipeline — contrast check step |
+| axe-core violation count in CI | > 0 new violations | Critical | GitHub Checks â€” a11y report |
+| Lighthouse accessibility score | < 90 | Warning | Grafana â€” Frontend Performance |
+| Screen reader regression reports | Any manually filed bug | High | Sentry â€” a11y tag |
+| Color contrast compliance ratio | < 100% of token pairs | Warning | CI pipeline â€” contrast check step |
 
 ## Risks
 
@@ -330,4 +330,4 @@ function FocusTrapModal({ isOpen, onClose, children }: FocusTrapModalProps) {
 
 - [UX Guidelines.md](./UX-Guidelines.md)
 - [Frontend Architecture.md](./Frontend-Architecture.md)
-- [`/Docs/Meridian-Complete-Documentation.md#15-gap-analysis`](../../Docs/Meridian-Complete-Documentation.md#15-gap-analysis)
+- [`/Docs/Vaeloom-Complete-Documentation.md#15-gap-analysis`](../../Docs/Vaeloom-Complete-Documentation.md#15-gap-analysis)

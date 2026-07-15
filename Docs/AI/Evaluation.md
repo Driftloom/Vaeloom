@@ -1,16 +1,16 @@
-# Evaluation
+﻿# Evaluation
 
-> **Purpose:** Define the AI evaluation framework for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the AI evaluation framework for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 > **Canonical source:** [`/Docs/Engineering/Implementation/10-evaluation-framework.md`](../../Docs/Engineering/Implementation/10-evaluation-framework.md)
 
 ## Overview
 
-The AI evaluation framework is Meridian's quality gate for every agent prompt change — ensuring that prompt updates improve or maintain accuracy before reaching production. Each agent has a golden dataset of labeled examples, edge case tests, and regression tests that must pass before deployment proceeds through CI gates at PR → staging → production. Without rigorous evaluation, prompt changes risk silent regressions that degrade user experience.
+The AI evaluation framework is Vaeloom's quality gate for every agent prompt change â€” ensuring that prompt updates improve or maintain accuracy before reaching production. Each agent has a golden dataset of labeled examples, edge case tests, and regression tests that must pass before deployment proceeds through CI gates at PR â†’ staging â†’ production. Without rigorous evaluation, prompt changes risk silent regressions that degrade user experience.
 
-This document defines the evaluation pipeline, per-agent accuracy targets, golden dataset management, CI gate configuration, and monitor-phase regression detection. It serves AI engineers who author prompts, platform engineers who maintain the CI pipeline, and QA engineers who audit evaluation results. The framework is designed to grow monotonically — every production edge case adds a test case that protects against future regressions.
+This document defines the evaluation pipeline, per-agent accuracy targets, golden dataset management, CI gate configuration, and monitor-phase regression detection. It serves AI engineers who author prompts, platform engineers who maintain the CI pipeline, and QA engineers who audit evaluation results. The framework is designed to grow monotonically â€” every production edge case adds a test case that protects against future regressions.
 
 ## Goals
 
@@ -31,7 +31,7 @@ graph TD
     classDef deploy fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef monitor fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Test["🧪 Test Phase"]
+    subgraph Test["ðŸ§ª Test Phase"]
         direction TB
         T1["Golden Dataset<br/>10-500 examples per agent"]
         T2["Edge Cases<br/>Empty, ambiguous, adversarial"]
@@ -39,21 +39,21 @@ graph TD
         T4["Run evals<br/><code>python -m eval.run_all</code>"]
     end
 
-    subgraph Gate["🚦 CI Gate Phase"]
+    subgraph Gate["ðŸš¦ CI Gate Phase"]
         direction TB
         G1["PR Gate<br/>Unit + Integration tests"]
         G2["Staging Gate<br/>All evals must pass"]
         G3["Production Gate<br/>All evals + regression check"]
     end
 
-    subgraph Deploy["🚀 Deploy Phase"]
+    subgraph Deploy["ðŸš€ Deploy Phase"]
         direction TB
         D1["Deploy to staging<br/>with eval report"]
         D2["Shadow deploy to prod<br/>compare vs baseline"]
         D3["Full production rollout<br/>monitor accuracy"]
     end
 
-    subgraph Monitor["📊 Monitor Phase"]
+    subgraph Monitor["ðŸ“Š Monitor Phase"]
         direction TB
         M1["Track accuracy<br/>release over release"]
         M2["Flag regressions<br/>auto-revert if drop > 2%"]
@@ -81,7 +81,7 @@ graph TD
 
 ```
 
-> **Diagram:** The evaluation pipeline flows through four phases. **Test** runs golden datasets, edge cases, and regressions. **CI Gates** block at PR → Staging → Production, with failures looping back to testing. **Deploy** rolls out progressively through staging shadow to full production. **Monitor** tracks accuracy over time and auto-reverts if metrics drop more than 2%. The golden dataset is continuously updated with new edge cases discovered in production.
+> **Diagram:** The evaluation pipeline flows through four phases. **Test** runs golden datasets, edge cases, and regressions. **CI Gates** block at PR â†’ Staging â†’ Production, with failures looping back to testing. **Deploy** rolls out progressively through staging shadow to full production. **Monitor** tracks accuracy over time and auto-reverts if metrics drop more than 2%. The golden dataset is continuously updated with new edge cases discovered in production.
 
 ---
 
@@ -106,39 +106,39 @@ Every agent has associated evaluation tests that must pass before deployment.
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Creating golden datasets that only cover happy paths | A golden dataset with only well-formed, unambiguous inputs trains no resistance to edge cases — the model passes eval but fails in production on the first unexpected input |
-| Using the same eval dataset for prompt iteration without expanding it | Iterating a prompt against the same 50 examples makes the prompt overly specialized to those examples — every round of iteration should add new test cases discovered from production edge cases |
-| No regression test suite for previously-fixed bugs | A bug that was fixed in v2 of a prompt can silently reappear in v4 if there's no regression test that catches it — every bug fix must include a corresponding regression test |
-| Automatically passing the CI gate when eval scores are borderline | A prompt scoring 90.5% against a 90% threshold should be reviewed, not auto-approved — borderline passes hide gradual quality degradation over multiple releases |
+| Creating golden datasets that only cover happy paths | A golden dataset with only well-formed, unambiguous inputs trains no resistance to edge cases â€” the model passes eval but fails in production on the first unexpected input |
+| Using the same eval dataset for prompt iteration without expanding it | Iterating a prompt against the same 50 examples makes the prompt overly specialized to those examples â€” every round of iteration should add new test cases discovered from production edge cases |
+| No regression test suite for previously-fixed bugs | A bug that was fixed in v2 of a prompt can silently reappear in v4 if there's no regression test that catches it â€” every bug fix must include a corresponding regression test |
+| Automatically passing the CI gate when eval scores are borderline | A prompt scoring 90.5% against a 90% threshold should be reviewed, not auto-approved â€” borderline passes hide gradual quality degradation over multiple releases |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Build golden datasets with 30% edge cases, 10% adversarial inputs | A robust eval suite includes ambiguous inputs, empty inputs, contradictory data, and intentionally adversarial prompts — not just ideal document examples |
-| Expand the eval dataset with every production edge case discovered | When an agent produces a wrong answer in production, add that input-output pair to the eval dataset — the dataset should grow monotonically over time |
-| Maintain a regression test suite that must pass before any prompt deploy | Each bug fix or production incident adds a regression test case — a prompt version that fails a regression test cannot be deployed, no matter its score on the golden dataset |
-| Require manual review for any eval score within 2% of the threshold | Scores in the 88-92% range for a 90% threshold need human judgment — the reviewer decides whether the score reflects genuine quality or dataset bias |
+| Build golden datasets with 30% edge cases, 10% adversarial inputs | A robust eval suite includes ambiguous inputs, empty inputs, contradictory data, and intentionally adversarial prompts â€” not just ideal document examples |
+| Expand the eval dataset with every production edge case discovered | When an agent produces a wrong answer in production, add that input-output pair to the eval dataset â€” the dataset should grow monotonically over time |
+| Maintain a regression test suite that must pass before any prompt deploy | Each bug fix or production incident adds a regression test case â€” a prompt version that fails a regression test cannot be deployed, no matter its score on the golden dataset |
+| Require manual review for any eval score within 2% of the threshold | Scores in the 88-92% range for a 90% threshold need human judgment â€” the reviewer decides whether the score reflects genuine quality or dataset bias |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Eval data leaking user information | Golden datasets created from real user data must be anonymized — remove PII, workspace IDs, and identifying details before adding to the eval suite |
-| Adversarial test cases revealing system vulnerabilities | Eval datasets containing adversarial prompts that successfully bypass guardrails are sensitive — access to these datasets should be restricted to the engineering and security teams |
-| Eval score drift masking model degradation | A prompt that passes eval today but shows declining scores over time may indicate model drift or data distribution changes — monitor eval score trends, not just pass/fail status |
+| Eval data leaking user information | Golden datasets created from real user data must be anonymized â€” remove PII, workspace IDs, and identifying details before adding to the eval suite |
+| Adversarial test cases revealing system vulnerabilities | Eval datasets containing adversarial prompts that successfully bypass guardrails are sensitive â€” access to these datasets should be restricted to the engineering and security teams |
+| Eval score drift masking model degradation | A prompt that passes eval today but shows declining scores over time may indicate model drift or data distribution changes â€” monitor eval score trends, not just pass/fail status |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Eval suite runtime | Running 500+ golden dataset evaluations against an LLM API can take 10+ minutes — optimize eval run time by parallelizing independent tests and caching identical prompt evaluations |
-| CI gate eval timeout | Eval suites that run as CI gates must complete within the CI pipeline's timeout (typically 30 minutes) — split the full eval suite into a fast CI gate (critical paths only) and a comprehensive nightly run |
-| Eval dataset size management | Golden datasets that grow to 1000+ examples slow down evaluation — periodically prune low-value test cases (those that have never failed across 10+ prompt versions) to keep eval runtime manageable |
+| Eval suite runtime | Running 500+ golden dataset evaluations against an LLM API can take 10+ minutes â€” optimize eval run time by parallelizing independent tests and caching identical prompt evaluations |
+| CI gate eval timeout | Eval suites that run as CI gates must complete within the CI pipeline's timeout (typically 30 minutes) â€” split the full eval suite into a fast CI gate (critical paths only) and a comprehensive nightly run |
+| Eval dataset size management | Golden datasets that grow to 1000+ examples slow down evaluation â€” periodically prune low-value test cases (those that have never failed across 10+ prompt versions) to keep eval runtime manageable |
 
 ## Scope
 
-This document defines the AI evaluation framework for Meridian — covering golden datasets, CI gates, deployment verification, and monitor-phase regression detection. It applies to all agents (MVP: 8 agents, Enterprise: 28 agents) and all prompt versions deployed to any environment. Out of scope: prompt structure standards (see [Prompt-Standards.md](./Prompt-Standards.md)), prompt engineering lifecycle (see [Prompt-Engineering.md](./Prompt-Engineering.md)).
+This document defines the AI evaluation framework for Vaeloom â€” covering golden datasets, CI gates, deployment verification, and monitor-phase regression detection. It applies to all agents (MVP: 8 agents, Enterprise: 28 agents) and all prompt versions deployed to any environment. Out of scope: prompt structure standards (see [Prompt-Standards.md](./Prompt-Standards.md)), prompt engineering lifecycle (see [Prompt-Engineering.md](./Prompt-Engineering.md)).
 
 ---
 
@@ -166,9 +166,9 @@ This document defines the AI evaluation framework for Meridian — covering gold
 
 ### 2. CI Gate Workflow
 
-1. PR created → fast gate runs critical-path evals (10% of dataset)
-2. PR merged to staging → staging gate runs all evals (100% of dataset)
-3. Deployment to production → production gate runs full evals + regression check
+1. PR created â†’ fast gate runs critical-path evals (10% of dataset)
+2. PR merged to staging â†’ staging gate runs all evals (100% of dataset)
+3. Deployment to production â†’ production gate runs full evals + regression check
 4. Any gate failure: block deployment, notify team, link to eval report
 
 ### 3. Regression Detection Workflow
@@ -206,22 +206,22 @@ sequenceDiagram
     CI->>DEPLOY: Deploy to staging
     Note over DEPLOY: 24h shadow observation
     DEPLOY->>CI: Confirm stability
-    CI->>DEPLOY: Deploy to production (10% → 100%)
+    CI->>DEPLOY: Deploy to production (10% â†’ 100%)
 ```
 
-> **Diagram:** The eval CI pipeline showing fast gate (critical 10%) → full gate (100% + regression) → staging deploy → production rollout. Any failure at any gate blocks deployment.
+> **Diagram:** The eval CI pipeline showing fast gate (critical 10%) â†’ full gate (100% + regression) â†’ staging deploy â†’ production rollout. Any failure at any gate blocks deployment.
 
 ---
 
 ## Data Flow
 
 ```text
-Prompt Change → Fast Gate (10% critical dataset)
-    → Full Gate (100% dataset + regression suite)
-    → Staging Shadow Deploy (24h)
-    → Production Deploy (10% → 50% → 100%)
-    → Monitor Phase (release-over-release accuracy)
-    → Regression Detection (auto-revert if drop > 2%)
+Prompt Change â†’ Fast Gate (10% critical dataset)
+    â†’ Full Gate (100% dataset + regression suite)
+    â†’ Staging Shadow Deploy (24h)
+    â†’ Production Deploy (10% â†’ 50% â†’ 100%)
+    â†’ Monitor Phase (release-over-release accuracy)
+    â†’ Regression Detection (auto-revert if drop > 2%)
 ```
 
 **Data flow description:** Each prompt change flows through escalating validation gates. The monitor phase continuously compares accuracy metrics, auto-reverting if regression exceeds 2%.
@@ -328,9 +328,9 @@ python -m eval.compare --baseline v1.2.0 --candidate v1.3.0
 | Practice | Rationale | Enforcement |
 |----------|-----------|-------------|
 | Build golden datasets with 30% edge cases, 10% adversarial | Robust eval includes ambiguous and adversarial inputs, not just happy paths | Automated check in eval runner |
-| Expand eval dataset with every production edge case | Each production incident adds a test case — dataset grows monotonically | PR template includes eval dataset update checkbox |
+| Expand eval dataset with every production edge case | Each production incident adds a test case â€” dataset grows monotonically | PR template includes eval dataset update checkbox |
 | Require manual review for scores within 2% of threshold | Borderline passes hide gradual quality degradation | Eval report flags borderline passes for human review |
-| Pin model versions for reproducible eval | Model provider changes can shift scores — pin prevents false regression | Model version pinned in eval config |
+| Pin model versions for reproducible eval | Model provider changes can shift scores â€” pin prevents false regression | Model version pinned in eval config |
 
 ---
 
@@ -361,7 +361,7 @@ python -m eval.compare --baseline v1.2.0 --candidate v1.3.0
 | Improvement | Priority | Complexity | Timeline |
 |-------------|----------|------------|----------|
 | Automated golden dataset generation from production logs | High | High | Phase 2 (Q4 2026) |
-| Incremental eval — only test changed prompts | High | Medium | Phase 2 (Q4 2026) |
+| Incremental eval â€” only test changed prompts | High | Medium | Phase 2 (Q4 2026) |
 | Adversarial eval suite for prompt injection testing | Medium | High | Phase 3 (Q1 2027) |
 | Multi-agent integration eval scenarios | Low | High | Phase 4 (Q2 2027) |
 | Continuous eval in production (shadow scoring) | Medium | Medium | Phase 3 (Q1 2027) |

@@ -1,7 +1,7 @@
-# Docker
+﻿# Docker
 
-> **Purpose:** Define Docker configuration standards for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define Docker configuration standards for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Build Architecture
 
@@ -13,20 +13,20 @@ graph TD
     classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef best fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph AppWeb["🌐 apps/web (Next.js) — Multi-stage Build"]
+    subgraph AppWeb["ðŸŒ apps/web (Next.js) â€” Multi-stage Build"]
         direction TB
         W1["Stage: base<br/>node:20-alpine<br/>npm ci --production"]
         W2["Stage: build<br/>npm run build"]
         W3["Stage: production<br/>Copy .next + node_modules<br/>EXPOSE 3000<br/>CMD: npm start"]
     end
 
-    subgraph AIService["🧠 apps/ai-service (FastAPI) — Multi-stage Build"]
+    subgraph AIService["ðŸ§  apps/ai-service (FastAPI) â€” Multi-stage Build"]
         direction TB
         A1["Stage: base<br/>python:3.11-slim<br/>pip install -r requirements.txt"]
         A2["Stage: production<br/>Copy app code<br/>EXPOSE 8000<br/>CMD: uvicorn main:app"]
     end
 
-    subgraph Compose["🐳 Docker Compose — Local Development"]
+    subgraph Compose["ðŸ³ Docker Compose â€” Local Development"]
         direction TB
         C1["postgres:16<br/>Port 5432<br/>Volume: pgdata"]
         C2["redis:7-alpine<br/>Port 6379<br/>AOF enabled"]
@@ -35,7 +35,7 @@ graph TD
         C5["web<br/>Port 3000<br/>Depends: api"]
     end
 
-    subgraph Practices["✅ Best Practices"]
+    subgraph Practices["âœ… Best Practices"]
         P1["Alpine-based images<br/>Smaller size, fewer vulns"]
         P2["Multi-stage builds<br/>Separate deps from runtime"]
         P3["Pin versions<br/>Reproducible builds"]
@@ -56,7 +56,7 @@ graph TD
 
 ```
 
-> **Diagram:** Docker build architecture showing multi-stage builds for web (3 stages: base → build → production) and AI service (2 stages: base → production). **Docker Compose** orchestrates 5 services for local development with dependency chains. **Best Practices** guide image optimization, security, and build performance.
+> **Diagram:** Docker build architecture showing multi-stage builds for web (3 stages: base â†’ build â†’ production) and AI service (2 stages: base â†’ production). **Docker Compose** orchestrates 5 services for local development with dependency chains. **Best Practices** guide image optimization, security, and build performance.
 
 ---
 
@@ -104,9 +104,9 @@ services:
   postgres:
     image: postgis/postgis:16
     environment:
-      POSTGRES_DB: meridian
-      POSTGRES_USER: meridian
-      POSTGRES_PASSWORD: meridian
+      POSTGRES_DB: Vaeloom
+      POSTGRES_USER: Vaeloom
+      POSTGRES_PASSWORD: Vaeloom
     ports: ["5432:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -120,7 +120,7 @@ services:
     build: ./apps/api
     ports: ["4000:4000"]
     environment:
-      DATABASE_URL: postgresql://meridian:meridian@postgres:5432/meridian_db
+      DATABASE_URL: postgresql://Vaeloom:Vaeloom@postgres:5432/Vaeloom_db
       REDIS_URL: redis://redis:6379
     depends_on: [postgres, redis]
 
@@ -128,7 +128,7 @@ services:
     build: ./apps/ai-service
     ports: ["8000:8000"]
     environment:
-      DATABASE_URL: postgresql://meridian:meridian@postgres:5432/meridian_db
+      DATABASE_URL: postgresql://Vaeloom:Vaeloom@postgres:5432/Vaeloom_db
       REDIS_URL: redis://redis:6379
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     depends_on: [postgres, redis]
@@ -146,49 +146,49 @@ volumes:
 
 | Mistake | Consequence |
 |---------|-------------|
-| Using `latest` tag for base images | `FROM node:latest` or `FROM python:latest` means builds are non-deterministic — a base image update can introduce breaking changes. Pin to specific versions (`node:20-alpine`, `python:3.11-slim`) with automated update PRs via Dependabot |
-| Installing dev dependencies in production images | `npm install` instead of `npm ci --only=production` includes testing libraries and build tools that increase image size and attack surface — always use production-only dependency installation in final stages |
-| Running containers as root | A container running as root can be exploited to gain host access — always create and switch to a non-root user in the Dockerfile, and drop all unnecessary Linux capabilities |
+| Using `latest` tag for base images | `FROM node:latest` or `FROM python:latest` means builds are non-deterministic â€” a base image update can introduce breaking changes. Pin to specific versions (`node:20-alpine`, `python:3.11-slim`) with automated update PRs via Dependabot |
+| Installing dev dependencies in production images | `npm install` instead of `npm ci --only=production` includes testing libraries and build tools that increase image size and attack surface â€” always use production-only dependency installation in final stages |
+| Running containers as root | A container running as root can be exploited to gain host access â€” always create and switch to a non-root user in the Dockerfile, and drop all unnecessary Linux capabilities |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Pin base image versions and use Dependabot for automated updates | Non-deterministic builds break in production when a base image changes — pinning versions ensures reproducible builds. Use Dependabot or Renovate to automatically open PRs for updated base images |
-| Use multi-stage builds to keep production images small | Build dependencies (TypeScript compiler, npm dev packages, Python build tools) are not needed at runtime — multi-stage builds copy only the production artifacts to the final image, reducing size by 60-80% |
-| Run containers as a non-root user with minimal capabilities | A root container that's compromised gives the attacker full host access — always add a non-root user and drop all capabilities except those explicitly required by the application |
+| Pin base image versions and use Dependabot for automated updates | Non-deterministic builds break in production when a base image changes â€” pinning versions ensures reproducible builds. Use Dependabot or Renovate to automatically open PRs for updated base images |
+| Use multi-stage builds to keep production images small | Build dependencies (TypeScript compiler, npm dev packages, Python build tools) are not needed at runtime â€” multi-stage builds copy only the production artifacts to the final image, reducing size by 60-80% |
+| Run containers as a non-root user with minimal capabilities | A root container that's compromised gives the attacker full host access â€” always add a non-root user and drop all capabilities except those explicitly required by the application |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Base images with known vulnerabilities | `node:20-alpine` may ship with vulnerabilities in its packages — regularly scan images with vulnerability scanning tools, and rebuild images when base images are patched |
-| Build cache exposing secrets in image layers | Secrets used during `RUN` commands (API keys, npm tokens) persist in image layers even if deleted — use Docker BuildKit's `--secret` flag or `ARG` with multi-stage builds to exclude secrets from final images |
-| Unbounded layers creating large attack surface | Each `RUN` instruction creates a new layer — combine related commands into single `RUN` statements and remove package manager caches to minimize image layers |
+| Base images with known vulnerabilities | `node:20-alpine` may ship with vulnerabilities in its packages â€” regularly scan images with vulnerability scanning tools, and rebuild images when base images are patched |
+| Build cache exposing secrets in image layers | Secrets used during `RUN` commands (API keys, npm tokens) persist in image layers even if deleted â€” use Docker BuildKit's `--secret` flag or `ARG` with multi-stage builds to exclude secrets from final images |
+| Unbounded layers creating large attack surface | Each `RUN` instruction creates a new layer â€” combine related commands into single `RUN` statements and remove package manager caches to minimize image layers |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Large image sizes slowing deployment | A 1GB Docker image takes 30-60s to download on cold start, delaying autoscaling — optimize with multi-stage builds (App: ~300MB, AI: ~500MB), Alpine base images, and removing package manager caches |
-| Docker layer caching inefficiency in CI | If package files change on every commit, the `npm install` layer is always invalidated and must reinstall — separate `package.json` copy from source code copy to maximize layer caching |
-| Development Compose services consuming host resources | Docker Compose with 5+ services (postgres, redis, api, ai-service, web) consumes 4GB+ RAM on developer machines — allow developers to run only the services they need and use cloud-hosted dependencies where practical |
+| Large image sizes slowing deployment | A 1GB Docker image takes 30-60s to download on cold start, delaying autoscaling â€” optimize with multi-stage builds (App: ~300MB, AI: ~500MB), Alpine base images, and removing package manager caches |
+| Docker layer caching inefficiency in CI | If package files change on every commit, the `npm install` layer is always invalidated and must reinstall â€” separate `package.json` copy from source code copy to maximize layer caching |
+| Development Compose services consuming host resources | Docker Compose with 5+ services (postgres, redis, api, ai-service, web) consumes 4GB+ RAM on developer machines â€” allow developers to run only the services they need and use cloud-hosted dependencies where practical |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Base images with known vulnerabilities | `node:20-alpine` may ship with vulnerabilities in its packages — regularly scan images with vulnerability scanning tools, and rebuild images when base images are patched |
-| Build cache exposing secrets in image layers | Secrets used during `RUN` commands (API keys, npm tokens) persist in image layers even if deleted — use Docker BuildKit's `--secret` flag or `ARG` with multi-stage builds to exclude secrets from final images |
-| Unbounded layers creating large attack surface | Each `RUN` instruction creates a new layer — combine related commands into single `RUN` statements and remove package manager caches to minimize image layers |
+| Base images with known vulnerabilities | `node:20-alpine` may ship with vulnerabilities in its packages â€” regularly scan images with vulnerability scanning tools, and rebuild images when base images are patched |
+| Build cache exposing secrets in image layers | Secrets used during `RUN` commands (API keys, npm tokens) persist in image layers even if deleted â€” use Docker BuildKit's `--secret` flag or `ARG` with multi-stage builds to exclude secrets from final images |
+| Unbounded layers creating large attack surface | Each `RUN` instruction creates a new layer â€” combine related commands into single `RUN` statements and remove package manager caches to minimize image layers |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Large image sizes slowing deployment | A 1GB Docker image takes 30-60s to download on cold start, delaying autoscaling — optimize with multi-stage builds (App: ~300MB, AI: ~500MB), Alpine base images, and removing package manager caches |
-| Docker layer caching inefficiency in CI | If package files change on every commit, the `npm install` layer is always invalidated and must reinstall — separate `package.json` copy from source code copy to maximize layer caching |
-| Development Compose services consuming host resources | Docker Compose with 5+ services (postgres, redis, api, ai-service, web) consumes 4GB+ RAM on developer machines — allow developers to run only the services they need and use cloud-hosted dependencies where practical |
+| Large image sizes slowing deployment | A 1GB Docker image takes 30-60s to download on cold start, delaying autoscaling â€” optimize with multi-stage builds (App: ~300MB, AI: ~500MB), Alpine base images, and removing package manager caches |
+| Docker layer caching inefficiency in CI | If package files change on every commit, the `npm install` layer is always invalidated and must reinstall â€” separate `package.json` copy from source code copy to maximize layer caching |
+| Development Compose services consuming host resources | Docker Compose with 5+ services (postgres, redis, api, ai-service, web) consumes 4GB+ RAM on developer machines â€” allow developers to run only the services they need and use cloud-hosted dependencies where practical |
 
 ## Components
 
@@ -240,7 +240,7 @@ volumes:
 |-------------|--------|---------|--------------|
 | Development | `docker compose up` | Developer starts work | Services respond on expected ports |
 | Staging | CI build + push to registry | Merge to main | Smoke tests pass on staging |
-| Production | CI build + push → deploy | Release tag or approval | Health check + error rate monitoring |
+| Production | CI build + push â†’ deploy | Release tag or approval | Health check + error rate monitoring |
 | Rollback | Deploy previous image tag | Post-deploy issue | Rollback confirmed in health checks |
 
 ---
@@ -253,7 +253,7 @@ volumes:
 | `PYTHON_VERSION` | Python base image version | `3.11-slim` | No |
 | `APP_PORT` | Application container port | `3000` (web), `4000` (api), `8000` (ai) | No |
 | `DOCKER_BUILDKIT` | Enable BuildKit for faster builds | `1` | No |
-| `COMPOSE_PROFILES` | Docker Compose service profile | — | No |
+| `COMPOSE_PROFILES` | Docker Compose service profile | â€” | No |
 
 ---
 
@@ -270,13 +270,13 @@ volumes:
 
 ## Overview
 
-Meridian uses Docker for application packaging and deployment across all environments. Each service — web (Next.js), API (NestJS), and AI service (FastAPI) — has a dedicated multi-stage Dockerfile that optimizes for small image size, fast builds, and minimal attack surface. Docker Compose orchestrates local development environments.
+Vaeloom uses Docker for application packaging and deployment across all environments. Each service â€” web (Next.js), API (NestJS), and AI service (FastAPI) â€” has a dedicated multi-stage Dockerfile that optimizes for small image size, fast builds, and minimal attack surface. Docker Compose orchestrates local development environments.
 
-This document covers the Dockerfile standards, multi-stage build architecture, Docker Compose configuration for local development, security practices, and performance optimizations. The primary audience is developers and DevOps engineers building and deploying Meridian services.
+This document covers the Dockerfile standards, multi-stage build architecture, Docker Compose configuration for local development, security practices, and performance optimizations. The primary audience is developers and DevOps engineers building and deploying Vaeloom services.
 
-Within the Meridian platform, Docker images are the unit of deployment — they are built in CI, signed with Cosign, pushed to a container registry, and deployed to staging and production environments. Consistent Docker standards ensure reproducible builds, fast deployment cycles, and a secure runtime environment.
+Within the Vaeloom platform, Docker images are the unit of deployment â€” they are built in CI, signed with Cosign, pushed to a container registry, and deployed to staging and production environments. Consistent Docker standards ensure reproducible builds, fast deployment cycles, and a secure runtime environment.
 
-Proper containerization is critical for Meridian's deployment velocity and security posture. Multi-stage builds keep production images under 500MB, Alpine-based base images reduce the vulnerability surface, and non-root user enforcement prevents container escape attacks.
+Proper containerization is critical for Vaeloom's deployment velocity and security posture. Multi-stage builds keep production images under 500MB, Alpine-based base images reduce the vulnerability surface, and non-root user enforcement prevents container escape attacks.
 
 ---
 
@@ -293,7 +293,7 @@ Proper containerization is critical for Meridian's deployment velocity and secur
 ## Scope
 
 ### In Scope
-- Multi-stage Dockerfiles for all Meridian services (web, API, AI service)
+- Multi-stage Dockerfiles for all Vaeloom services (web, API, AI service)
 - Docker Compose configuration for local development with PostgreSQL, Redis, and all services
 - Image tagging conventions (SHA-based immutable tags for deploy, `:latest` as alias)
 - Docker layer caching strategy for CI pipeline optimization
@@ -304,7 +304,7 @@ Proper containerization is critical for Meridian's deployment velocity and secur
 - Container image signing and verification (covered in [Container-Signing.md](./Container-Signing.md))
 - Container vulnerability scanning (covered in [SBOM-Policy.md](./SBOM-Policy.md))
 - Container registry management (covered in [Deployment.md](./Deployment.md))
-- Production Docker Compose usage (development only — production uses K8s or PaaS)
+- Production Docker Compose usage (development only â€” production uses K8s or PaaS)
 
 ---
 
@@ -315,7 +315,7 @@ Proper containerization is critical for Meridian's deployment velocity and secur
 ```dockerfile
 FROM node:20-alpine AS deps
 WORKDIR /app
-# Dependencies layer — only invalidates when package.json changes
+# Dependencies layer â€” only invalidates when package.json changes
 COPY package.json package-lock.json ./
 RUN npm ci --only=production
 
@@ -379,7 +379,7 @@ sequenceDiagram
     K8S->>K8S: Run container (non-root user)
 ```
 
-> **Diagram:** Docker build lifecycle — multi-stage build in CI (base, build, production), push to registry with SHA tag, then pull and run in Kubernetes with security hardening.
+> **Diagram:** Docker build lifecycle â€” multi-stage build in CI (base, build, production), push to registry with SHA tag, then pull and run in Kubernetes with security hardening.
 
 ---
 

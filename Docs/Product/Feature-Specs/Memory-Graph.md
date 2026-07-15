@@ -1,16 +1,16 @@
-## Header
+﻿## Header
 > **Purpose:** Detailed specification for Memory Graph Explorer
-> **Status:** 🆕 New
+> **Status:** ðŸ†• New
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-The Memory Graph Explorer is an interactive visualization of the user's knowledge graph — every entity the system knows about (skills, projects, organizations, people, certificates, events, jobs, courses, publications) and the relationships between them. Unlike a traditional file browser or database view, the graph is a navigable canvas the user can pan, zoom, and click through to explore what Meridian knows about them, how entities connect, and where gaps exist. It is both a transparency tool ("show me what the system thinks I know") and a direct manipulation interface for correcting the system's understanding.
+The Memory Graph Explorer is an interactive visualization of the user's knowledge graph â€” every entity the system knows about (skills, projects, organizations, people, certificates, events, jobs, courses, publications) and the relationships between them. Unlike a traditional file browser or database view, the graph is a navigable canvas the user can pan, zoom, and click through to explore what Vaeloom knows about them, how entities connect, and where gaps exist. It is both a transparency tool ("show me what the system thinks I know") and a direct manipulation interface for correcting the system's understanding.
 
 The graph renders entities as labeled nodes with type-specific icons and colors. Relationships appear as directed edges with labels and confidence indicators. Users can click a node to see its detail panel (properties, source provenance, confidence score), drag to explore connected nodes, or search for a specific entity. From the detail panel, users can correct entity properties (e.g., fix a skill name), merge two entities that should be the same, delete an incorrect entity, or add a missing relationship between two known entities. Every correction writes back to the underlying memory stores through the Memory Agent.
 
-This is the only screen in Meridian where users directly interact with the memory layer itself. Every other feature reads and writes through agents; the Memory Graph exposes the raw material. The design prioritizes clarity and discoverability over density — the default view shows a focused subgraph centered on the most important entities, and the user expands outward by clicking. Performance targets are aggressive because the graph can grow to thousands of nodes over months of use, and the interaction (pan, zoom, click) must feel instantaneous to be useful.
+This is the only screen in Vaeloom where users directly interact with the memory layer itself. Every other feature reads and writes through agents; the Memory Graph exposes the raw material. The design prioritizes clarity and discoverability over density â€” the default view shows a focused subgraph centered on the most important entities, and the user expands outward by clicking. Performance targets are aggressive because the graph can grow to thousands of nodes over months of use, and the interaction (pan, zoom, click) must feel instantaneous to be useful.
 
 ## Goals
 
@@ -22,7 +22,7 @@ This is the only screen in Meridian where users directly interact with the memor
 
 ## User Story
 
-"As a student who wants to trust Meridian, I want to see everything the system knows about me and how it's connected so that I can verify it's correct and fix anything that's wrong before the system uses it to generate resumes or search for jobs."
+"As a student who wants to trust Vaeloom, I want to see everything the system knows about me and how it's connected so that I can verify it's correct and fix anything that's wrong before the system uses it to generate resumes or search for jobs."
 
 ## Acceptance Criteria
 
@@ -49,7 +49,7 @@ This is the only screen in Meridian where users directly interact with the memor
 | `agent_actions` | `id`, `workspace_id`, `agent_name`, `action_type`, `input_ref`, `output_ref` | Correction and merge audit log |
 | `documents` | `id`, `workspace_id`, `path`, `summary` | Source documents for memory records |
 
-All entities and relationships are read from the existing graph schema (§11.2).
+All entities and relationships are read from the existing graph schema (Â§11.2).
 
 ## API Endpoints
 
@@ -93,17 +93,17 @@ All entities and relationships are read from the existing graph schema (§11.2).
 | `memory:write:merge` | Merge two entities | Granted (with confirmation) |
 | `memory:write:delete` | Delete an entity | Granted (with undo window) |
 
-Autonomy level: **Read-only** for the graph itself (visualization). **Full** for user-initiated corrections (user explicitly triggers every action — this is direct manipulation, not agent autonomy).
+Autonomy level: **Read-only** for the graph itself (visualization). **Full** for user-initiated corrections (user explicitly triggers every action â€” this is direct manipulation, not agent autonomy).
 
 ## Error Scenarios
 
 | Scenario | Error | User Impact | Recovery |
 |----------|-------|-------------|----------|
-| Graph query for large subgraph times out | Partial render | Renders available nodes; "Some connections hidden — zoom in" indicator | Paginate by viewport; deeper nodes load on zoom |
-| Merge conflicts (two entities have contradictory properties) | Merge blocked | "Cannot auto-merge — conflicting properties" with side-by-side diff | User manually resolves each conflict |
+| Graph query for large subgraph times out | Partial render | Renders available nodes; "Some connections hidden â€” zoom in" indicator | Paginate by viewport; deeper nodes load on zoom |
+| Merge conflicts (two entities have contradictory properties) | Merge blocked | "Cannot auto-merge â€” conflicting properties" with side-by-side diff | User manually resolves each conflict |
 | Entity deletion with incoming relationships | Cascade warning | "This will also delete N relationships" confirmation dialog | User confirms or cancels; undo available for 30 days |
-| Correction write fails due to concurrent edit | Optimistic lock | "Entity was modified — refresh and retry" | Reload entity detail, apply correction again |
-| Search finds no matching entity | No results | "No matching entities — adjust your search" | Suggest search by type or browse by category |
+| Correction write fails due to concurrent edit | Optimistic lock | "Entity was modified â€” refresh and retry" | Reload entity detail, apply correction again |
+| Search finds no matching entity | No results | "No matching entities â€” adjust your search" | Suggest search by type or browse by category |
 
 ## Performance Budgets
 
@@ -130,7 +130,7 @@ Autonomy level: **Read-only** for the graph itself (visualization). **Full** for
 
 - **Loading:** Force-directed layout animation; nodes appear with fade-in as they're positioned; progress indicator for large graphs
 - **Empty:** "Your knowledge graph is empty. Upload documents or connect sources to start building your graph." Empty canvas with animated connection-line placeholder
-- **Error:** Graph section unrenderable nodes marked with "Error loading" badge in dimmed state; retry button on failed subgraph; full failure shows "Unable to load graph — check your connection"
+- **Error:** Graph section unrenderable nodes marked with "Error loading" badge in dimmed state; retry button on failed subgraph; full failure shows "Unable to load graph â€” check your connection"
 - **Edge cases:** Isolated nodes (no relationships) shown in a "Disconnected" section off to the side; nodes with >50 relationships show expanded children as a separate mini-graph on click to avoid visual clutter; entity with very long name is truncated with ellipsis, full name on hover; extremely dense subgraph (>200 nodes in viewport) uses clustering to group similar nodes with count badges; deleted entities shown in "Recently deleted" section for undo
 
 ## Risks
@@ -170,7 +170,7 @@ graph TD
     MA --> MEM[(memory_records)]
 ```
 
-> **Diagram:** Memory Graph architecture — user interacts with graph viewport → force-directed layout + clustering → detail panel → entity editor → Memory Agent writes back.
+> **Diagram:** Memory Graph architecture â€” user interacts with graph viewport â†’ force-directed layout + clustering â†’ detail panel â†’ entity editor â†’ Memory Agent writes back.
 
 ## Components
 
@@ -221,11 +221,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Graph Load:** Workspace ID → query `entities` + `relationships` → limit to 500 highest-importance nodes → return to renderer
-2. **Viewport:** Camera position → server requests nodes in viewport bounds (if lazy loading enabled)
-3. **Search:** Query → `entities.canonical_name` + `aliases[]` ILIKE match → focused graph centered on result
-4. **Correction:** User edit → `entities` row updated → `agent_actions` audit log written → override flag set (higher weight than extraction)
-5. **Merge:** Entity A + Entity B → relationship consolidation → redundant entity soft-deleted → new unified entity
+1. **Graph Load:** Workspace ID â†’ query `entities` + `relationships` â†’ limit to 500 highest-importance nodes â†’ return to renderer
+2. **Viewport:** Camera position â†’ server requests nodes in viewport bounds (if lazy loading enabled)
+3. **Search:** Query â†’ `entities.canonical_name` + `aliases[]` ILIKE match â†’ focused graph centered on result
+4. **Correction:** User edit â†’ `entities` row updated â†’ `agent_actions` audit log written â†’ override flag set (higher weight than extraction)
+5. **Merge:** Entity A + Entity B â†’ relationship consolidation â†’ redundant entity soft-deleted â†’ new unified entity
 
 ## Non-Functional Requirements
 
@@ -276,16 +276,16 @@ sequenceDiagram
 
 ```bash
 # Get graph data
-curl -X GET https://api.meridian.dev/v1/workspaces/{id}/memory/graph \
+curl -X GET https://api.Vaeloom.dev/v1/workspaces/{id}/memory/graph \
   -H "Authorization: Bearer $TOKEN"
 
 # Correct entity name
-curl -X PATCH https://api.meridian.dev/v1/workspaces/{id}/memory/entity/{entity_id} \
+curl -X PATCH https://api.Vaeloom.dev/v1/workspaces/{id}/memory/entity/{entity_id} \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"canonical_name": "React.js"}'
 
 # Merge two entities
-curl -X POST https://api.meridian.dev/v1/workspaces/{id}/memory/entity/{entity_id}/merge \
+curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/memory/entity/{entity_id}/merge \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"target_entity_id": "entity_456"}'
 ```
@@ -295,9 +295,9 @@ curl -X POST https://api.meridian.dev/v1/workspaces/{id}/memory/entity/{entity_i
 | Practice | Rationale |
 |----------|-----------|
 | Review your graph weekly to correct extraction errors | Early correction prevents the system from building incorrect relationships on top of wrong entities |
-| Merge duplicate entities as soon as you spot them | Duplicate entities fragment the graph — merging them improves every agent's accuracy immediately |
-| Add missing relationships between known entities | A relationship you add manually is more reliable than an automated one — it also teaches the extraction pipeline |
-| Check source provenance before editing | Click through to source documents to verify an entity before correcting it — ensures edits are based on facts |
+| Merge duplicate entities as soon as you spot them | Duplicate entities fragment the graph â€” merging them improves every agent's accuracy immediately |
+| Add missing relationships between known entities | A relationship you add manually is more reliable than an automated one â€” it also teaches the extraction pipeline |
+| Check source provenance before editing | Click through to source documents to verify an entity before correcting it â€” ensures edits are based on facts |
 
 ## Limitations
 
@@ -320,6 +320,6 @@ curl -X POST https://api.meridian.dev/v1/workspaces/{id}/memory/entity/{entity_i
 
 - [Features.md](../Features.md)
 - [Global-Search.md](./Global-Search.md)
-- `/Docs/Meridian-Complete-Documentation.md#6-memory-system`
+- `/Docs/Vaeloom-Complete-Documentation.md#6-memory-system`
 - `/Docs/AI/Knowledge-Graph.md`
 - `/Docs/AI/Memory.md`

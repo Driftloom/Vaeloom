@@ -1,13 +1,13 @@
-# Database Indexes
+﻿# Database Indexes
 
-> **Purpose:** Define the indexing strategy for Meridian's PostgreSQL database
-> **Status:** 🆕 New
+> **Purpose:** Define the indexing strategy for Vaeloom's PostgreSQL database
+> **Status:** ðŸ†• New
 
 ## Overview
 
-Database indexes are the primary mechanism for maintaining query performance as Meridian's data grows — transforming table scans into index seeks for the most frequent and expensive query patterns. The indexing strategy covers three index types: B-tree for tenant-scoped queries (workspace_id), composite indexes for multi-column query patterns (type + workspace_id, workspace_id + created_at), and GIN indexes for full-text search and array containment. Every index is documented with its purpose and monitored via pg_stat_user_indexes to detect unused indexes and track bloat.
+Database indexes are the primary mechanism for maintaining query performance as Vaeloom's data grows â€” transforming table scans into index seeks for the most frequent and expensive query patterns. The indexing strategy covers three index types: B-tree for tenant-scoped queries (workspace_id), composite indexes for multi-column query patterns (type + workspace_id, workspace_id + created_at), and GIN indexes for full-text search and array containment. Every index is documented with its purpose and monitored via pg_stat_user_indexes to detect unused indexes and track bloat.
 
-This document defines the indexing architecture, index definitions, maintenance schedule, and usage monitoring for all Meridian database tables. It is intended for database engineers and backend developers who need to understand existing query optimization or add new indexes for emerging query patterns. Over-indexing is as harmful as under-indexing — each additional index slows writes by 10-30%, so every index must justify its existence through measured query usage.
+This document defines the indexing architecture, index definitions, maintenance schedule, and usage monitoring for all Vaeloom database tables. It is intended for database engineers and backend developers who need to understand existing query optimization or add new indexes for emerging query patterns. Over-indexing is as harmful as under-indexing â€” each additional index slows writes by 10-30%, so every index must justify its existence through measured query usage.
 
 ## Goals
 
@@ -31,7 +31,7 @@ This document defines the indexing architecture, index definitions, maintenance 
 - Partial or conditional indexes (future improvement)
 - Expression indexes or functional indexes
 - BRIN indexes for time-series data (considered but not implemented)
-- Vector indexes (HNSW/IVFFlat) — covered in Embeddings.md
+- Vector indexes (HNSW/IVFFlat) â€” covered in Embeddings.md
 - Index recommendations from pg_stat_statements analysis (future improvement)
 
 ---
@@ -45,7 +45,7 @@ graph TD
     classDef gin fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef maint fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph BTree["🌲 B-tree Indexes"]
+    subgraph BTree["ðŸŒ² B-tree Indexes"]
         direction TB
         BT1["documents(workspace_id)<br/>Tenant-scoped queries"]
         BT2["entities(workspace_id)<br/>Tenant-scoped queries"]
@@ -56,24 +56,24 @@ graph TD
         BT7["relationships(relation_type)<br/>Type-filtered queries"]
     end
 
-    subgraph Composite["🔗 Composite Indexes"]
+    subgraph Composite["ðŸ”— Composite Indexes"]
         CP1["memory_records(type, workspace_id)<br/>Type-scoped retrieval"]
         CP2["agent_actions(workspace_id, created_at DESC)<br/>Time-range audit queries"]
     end
 
-    subgraph GIN["🔍 GIN Indexes"]
+    subgraph GIN["ðŸ” GIN Indexes"]
         G1["entities USING GIN(aliases)<br/>Entity name search"]
         G2["documents USING GIN(content_tsvector)<br/>Full-text search"]
     end
 
-    subgraph Maintenance["🛠️ Index Maintenance"]
+    subgraph Maintenance["ðŸ› ï¸ Index Maintenance"]
         M1["workspace_id indexes<br/>Bloat: Low<br/>REINDEX quarterly"]
         M2["created_at indexes<br/>Bloat: Medium<br/>REINDEX monthly"]
         M3["GIN indexes<br/>Bloat: Low<br/>Auto-maintained"]
     end
 
-    subgraph Monitoring["📊 Usage Monitoring"]
-        MON1["pg_stat_user_indexes<br/>idx_scan = 0 → Unused"]
+    subgraph Monitoring["ðŸ“Š Usage Monitoring"]
+        MON1["pg_stat_user_indexes<br/>idx_scan = 0 â†’ Unused"]
         MON2["pg_relation_size<br/>Track index bloat"]
     end
 
@@ -152,34 +152,34 @@ ORDER BY pg_relation_size(indexrelid) DESC;
 
 | Mistake | Consequence |
 |---------|-------------|
-| Over-indexing — adding indexes on every column | Each additional index slows writes (INSERT/UPDATE/DELETE) by 10-30% — index only columns that appear in WHERE, JOIN, or ORDER BY clauses |
-| Not monitoring index usage | Indexes that are never scanned waste storage and write performance — `pg_stat_user_indexes` with `idx_scan = 0` identifies unused indexes |
+| Over-indexing â€” adding indexes on every column | Each additional index slows writes (INSERT/UPDATE/DELETE) by 10-30% â€” index only columns that appear in WHERE, JOIN, or ORDER BY clauses |
+| Not monitoring index usage | Indexes that are never scanned waste storage and write performance â€” `pg_stat_user_indexes` with `idx_scan = 0` identifies unused indexes |
 | Using B-tree for everything | B-tree indexes are optimal for equality and range queries but useless for full-text search (use GIN) or array containment (use GIN) |
-| Forgetting composite indexes for multi-column queries | Two separate indexes on `(workspace_id)` and `(created_at)` are not used together efficiently — a composite index `(workspace_id, created_at)` is needed for time-scoped queries |
+| Forgetting composite indexes for multi-column queries | Two separate indexes on `(workspace_id)` and `(created_at)` are not used together efficiently â€” a composite index `(workspace_id, created_at)` is needed for time-scoped queries |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Index workspace_id on every tenant-scoped table | Every query filters by workspace_id — a B-tree index on this column is the single most impactful index in the entire database |
-| Use composite indexes for common query patterns | Queries that filter by `(type, workspace_id)` or `(workspace_id, created_at DESC)` should have matching composite indexes — PostgreSQL can use a single composite index more efficiently than two separate indexes |
-| Monitor and remove unused indexes quarterly | Run `pg_stat_user_indexes` analysis quarterly — removing unused indexes improves write performance and reduces storage |
-| Use GIN indexes for array and full-text search | GIN indexes handle array containment (`@>`) and full-text search (`to_tsvector`) — B-tree cannot support these operations efficiently |
+| Index workspace_id on every tenant-scoped table | Every query filters by workspace_id â€” a B-tree index on this column is the single most impactful index in the entire database |
+| Use composite indexes for common query patterns | Queries that filter by `(type, workspace_id)` or `(workspace_id, created_at DESC)` should have matching composite indexes â€” PostgreSQL can use a single composite index more efficiently than two separate indexes |
+| Monitor and remove unused indexes quarterly | Run `pg_stat_user_indexes` analysis quarterly â€” removing unused indexes improves write performance and reduces storage |
+| Use GIN indexes for array and full-text search | GIN indexes handle array containment (`@>`) and full-text search (`to_tsvector`) â€” B-tree cannot support these operations efficiently |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Partial indexes exposing data patterns | Partial indexes (e.g., `WHERE status = 'active'`) may reveal business logic patterns — document their purpose and review for information leakage |
-| Index-only scans and column permissions | Index-only scans can return column data without touching the table — ensure column-level permissions are enforced regardless of index coverage |
+| Partial indexes exposing data patterns | Partial indexes (e.g., `WHERE status = 'active'`) may reveal business logic patterns â€” document their purpose and review for information leakage |
+| Index-only scans and column permissions | Index-only scans can return column data without touching the table â€” ensure column-level permissions are enforced regardless of index coverage |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Index bloat from UUID v4 primary keys | Random UUIDs cause index page splits — use sequential UUIDs (v7) or ULIDs for high-write tables like `agent_actions` and `memory_records` |
-| B-tree index bloat from frequent updates | Tables with high churn (memory_records, agent_actions) need more frequent index maintenance — schedule it monthly for these tables |
-| GIN index maintenance | GIN indexes are faster to build than B-tree but have slower updates — batch inserts into GIN-indexed columns rather than single-row inserts |
+| Index bloat from UUID v4 primary keys | Random UUIDs cause index page splits â€” use sequential UUIDs (v7) or ULIDs for high-write tables like `agent_actions` and `memory_records` |
+| B-tree index bloat from frequent updates | Tables with high churn (memory_records, agent_actions) need more frequent index maintenance â€” schedule it monthly for these tables |
+| GIN index maintenance | GIN indexes are faster to build than B-tree but have slower updates â€” batch inserts into GIN-indexed columns rather than single-row inserts |
 
 ---
 
@@ -315,7 +315,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Index creation and monitoring lifecycle — concurrent index creation avoids blocking writes, the application benefits from faster queries, and daily monitoring via pg_stat_user_indexes detects unused or bloated indexes for cleanup.
+> **Diagram:** Index creation and monitoring lifecycle â€” concurrent index creation avoids blocking writes, the application benefits from faster queries, and daily monitoring via pg_stat_user_indexes detects unused or bloated indexes for cleanup.
 
 ---
 

@@ -1,7 +1,7 @@
-# Threat Model
+﻿# Threat Model
 
-> **Purpose:** Comprehensive threat model covering assets, attack vectors, and mitigations for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Comprehensive threat model covering assets, attack vectors, and mitigations for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-12
 
@@ -9,7 +9,7 @@
 
 ## Overview
 
-This threat model identifies and evaluates security threats to the Meridian platform, covering all layers from infrastructure to application logic. It follows the STRIDE methodology (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege).
+This threat model identifies and evaluates security threats to the Vaeloom platform, covering all layers from infrastructure to application logic. It follows the STRIDE methodology (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege).
 
 The threat model should be reviewed quarterly and updated when significant architecture changes are made.
 
@@ -85,7 +85,7 @@ Below is the STRIDE threat-to-mitigation mapping. Each category shows attack vec
 
 ```mermaid
 flowchart TB
-    %% ── Style definitions ──
+    %% â”€â”€ Style definitions â”€â”€
     classDef spoofing fill:#fff3e0,stroke:#e65100,color:#000
     classDef tampering fill:#fce4ec,stroke:#c62828,color:#000
     classDef repudiation fill:#f3e5f5,stroke:#6a1b9a,color:#000
@@ -97,58 +97,58 @@ flowchart TB
     classDef crossCutting fill:#fffff0,stroke:#d69e2e,stroke-width:3px,color:#000
     classDef badge fill:#eceff1,stroke:#90a4ae,color:#000,stroke-dasharray:3 3
 
-    %% ═══════════════ Spoofing ═══════════════
-    subgraph Spoofing["🔶 🔁  Spoofing"]
+    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Spoofing â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    subgraph Spoofing["ðŸ”¶ ðŸ”  Spoofing"]
         direction LR
         S1["Stolen JWT<br/>Session hijacking"]:::attack --> S2["Short-lived tokens (15m)<br/>httpOnly cookies"]:::mitigation
         S3["Agent impersonation"]:::attack --> S4["Service-to-service<br/>mTLS"]:::mitigation
         S5["OAuth replay attack"]:::attack --> S6["PKCE + state parameter<br/>verification"]:::mitigation
     end
 
-    %% ═══════════════ Tampering ═══════════════
-    subgraph Tampering["🔴 🔧  Tampering"]
+    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Tampering â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    subgraph Tampering["ðŸ”´ ðŸ”§  Tampering"]
         direction LR
         T1["Memory graph<br/>corruption"]:::attack --> T2["Permission Engine<br/>on every write"]:::mitigation
         T3["Direct object<br/>storage access"]:::attack --> T4["Signed URLs +<br/>S3 bucket policies"]:::mitigation
         T5["Queue job<br/>injection"]:::attack --> T6["Message signing +<br/>payload validation"]:::mitigation
     end
 
-    %% ═══════════════ Repudiation ═══════════════
-    subgraph Repudiation["🟣 📋  Repudiation"]
+    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Repudiation â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    subgraph Repudiation["ðŸŸ£ ðŸ“‹  Repudiation"]
         direction LR
         R1["Agent denies<br/>its own action"]:::attack --> R2["Append-only audit log<br/>with provenance chain"]:::mitigation
         R3["User denies<br/>approval"]:::attack --> R4["Signed approval<br/>records"]:::mitigation
     end
 
-    %% ═══════════════ Information Disclosure ═══════════════
-    subgraph Disclosure["🔵 🔎  Information Disclosure"]
+    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Information Disclosure â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    subgraph Disclosure["ðŸ”µ ðŸ”Ž  Information Disclosure"]
         direction LR
         D1["Cross-tenant<br/>data access"]:::attack --> D2["workspace_id from token<br/>enforced on every query"]:::mitigation
         D3["OAuth token<br/>leakage"]:::attack --> D4["Secrets Manager<br/>never in logs"]:::mitigation
         D5["Memory query<br/>data leakage"]:::attack --> D6["Workspace-scoped RAG<br/>no cross-tenant context"]:::mitigation
     end
 
-    %% ═══════════════ Denial of Service ═══════════════
-    subgraph Denial["🟢 🚫  Denial of Service"]
+    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Denial of Service â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    subgraph Denial["ðŸŸ¢ ðŸš«  Denial of Service"]
         direction LR
         N1["API request<br/>flooding"]:::attack --> N2["Rate limiting +<br/>auto-scaling"]:::mitigation
         N3["AI model cost<br/>attack"]:::attack --> N4["Per-user rate limits<br/>cost alerts"]:::mitigation
         N5["Queue job<br/>flooding"]:::attack --> N6["Queue depth alerts<br/>prioritization"]:::mitigation
     end
 
-    %% ═══════════════ Elevation of Privilege ═══════════════
-    subgraph Elevation["🟧 ⬆  Elevation of Privilege"]
+    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Elevation of Privilege â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    subgraph Elevation["ðŸŸ§ â¬†  Elevation of Privilege"]
         direction LR
         E1["Agent self-modifies<br/>permissions"]:::attack --> E2["Permission Engine<br/>immutable by agents"]:::mitigation
         E3["User modifies<br/>own role"]:::attack --> E4["RBAC enforced at<br/>API layer not client"]:::mitigation
         E5["Plugin sandbox<br/>escape"]:::attack --> E6["Manifest enforcement<br/>at runtime"]:::mitigation
     end
 
-    %% ═══════════════ Cross-Cutting Mitigations ═══════════════
-    C1["🔒  Permission Engine<br/>S · T · EoP"]:::crossCutting
-    C2["📝  Audit Logging<br/>R · I · EoP"]:::crossCutting
-    C3["⏱  Rate Limiting<br/>D · I"]:::crossCutting
-    C4["🔑  Short-lived Tokens<br/>S · I"]:::crossCutting
+    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Cross-Cutting Mitigations â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    C1["ðŸ”’  Permission Engine<br/>S Â· T Â· EoP"]:::crossCutting
+    C2["ðŸ“  Audit Logging<br/>R Â· I Â· EoP"]:::crossCutting
+    C3["â±  Rate Limiting<br/>D Â· I"]:::crossCutting
+    C4["ðŸ”‘  Short-lived Tokens<br/>S Â· I"]:::crossCutting
 
     S2 -.->|Auth pattern| C4
     T2 -.->|Core guard| C1
@@ -159,10 +159,10 @@ flowchart TB
     N2 -.->|Scalability| C3
 
     LINK ~~~ C1 ~~~ C2 ~~~ C3 ~~~ C4
-    LINK["⬇  See detailed tables below"]:::badge
+    LINK["â¬‡  See detailed tables below"]:::badge
 ```
 
-**Cross-cutting mitigations** are controls that protect against multiple STRIDE categories simultaneously — they're the highest-value security investments.
+**Cross-cutting mitigations** are controls that protect against multiple STRIDE categories simultaneously â€” they're the highest-value security investments.
 
 ### Spoofing
 
@@ -218,24 +218,24 @@ This is the highest-severity threat. Here's the full attack tree:
 
 ```text
 Goal: Access another user's memory
-├── 1. Modify workspace_id in API request
-│   ├── 1.1 Capture another user's workspace_id
-│   │   ├── 1.1.1 Guess UUID (infeasible: 2^128 possibilities) [MITIGATED]
-│   │   └── 1.1.2 Leak via error message
-│   │       └── [MITIGATED: Generic error messages, no IDs in errors]
-│   └── 1.2 Bypass workspace_id validation
-│       └── [MITIGATED: workspace_id extracted from auth token, not request body]
-│
-├── 2. Direct database access
-│   ├── 2.1 SQL injection [MITIGATED: Parameterized queries only]
-│   ├── 2.2 Database credential theft
-│   │   └── [MITIGATED: Secrets manager, rotation policy]
-│   └── 2.3 Network-level access
-│       └── [MITIGATED: VPC, firewall rules]
-│
-└── 3. Exploit AI service request
-    ├── 3.1 Agent retrieves wrong tenant's data [MITIGATED: workspace_id enforced in all queries]
-    └── 3.2 Model hallucinates another user's data [MITIGATED: Impossible - model has no access to other tenants]
+â”œâ”€â”€ 1. Modify workspace_id in API request
+â”‚   â”œâ”€â”€ 1.1 Capture another user's workspace_id
+â”‚   â”‚   â”œâ”€â”€ 1.1.1 Guess UUID (infeasible: 2^128 possibilities) [MITIGATED]
+â”‚   â”‚   â””â”€â”€ 1.1.2 Leak via error message
+â”‚   â”‚       â””â”€â”€ [MITIGATED: Generic error messages, no IDs in errors]
+â”‚   â””â”€â”€ 1.2 Bypass workspace_id validation
+â”‚       â””â”€â”€ [MITIGATED: workspace_id extracted from auth token, not request body]
+â”‚
+â”œâ”€â”€ 2. Direct database access
+â”‚   â”œâ”€â”€ 2.1 SQL injection [MITIGATED: Parameterized queries only]
+â”‚   â”œâ”€â”€ 2.2 Database credential theft
+â”‚   â”‚   â””â”€â”€ [MITIGATED: Secrets manager, rotation policy]
+â”‚   â””â”€â”€ 2.3 Network-level access
+â”‚       â””â”€â”€ [MITIGATED: VPC, firewall rules]
+â”‚
+â””â”€â”€ 3. Exploit AI service request
+    â”œâ”€â”€ 3.1 Agent retrieves wrong tenant's data [MITIGATED: workspace_id enforced in all queries]
+    â””â”€â”€ 3.2 Model hallucinates another user's data [MITIGATED: Impossible - model has no access to other tenants]
 ```
 
 ## Mitigation Implementation
@@ -276,8 +276,8 @@ export class TenantGuard implements CanActivate {
 | workspace_id from token, not request | Prevents tenant spoofing |
 | Rate limit by user, not IP | Users can share IPs; rate limiting per user prevents abuse |
 | Never log sensitive data | Auth tokens, passwords, API keys must not appear in logs |
-| Fail closed on permission check | If permission engine is down, deny access — don't allow |
-| Audit every access attempt | Both allowed and denied — denied attempts may indicate attacks |
+| Fail closed on permission check | If permission engine is down, deny access â€” don't allow |
+| Audit every access attempt | Both allowed and denied â€” denied attempts may indicate attacks |
 | Test tenant isolation quarterly | Dedicated penetration testing for cross-tenant leakage |
 
 ## Common Mistakes
@@ -313,10 +313,10 @@ export class TenantGuard implements CanActivate {
 ### 1. Quarterly Threat Model Review
 
 1. Security team schedules quarterly review (calendar reminder)
-2. Review current assets list — add/remove/update as needed
-3. Walk through each STRIDE category — check if new threats emerged
+2. Review current assets list â€” add/remove/update as needed
+3. Walk through each STRIDE category â€” check if new threats emerged
 4. Review mitigations for continued effectiveness
-5. Check attack trees — new paths to existing goals?
+5. Check attack trees â€” new paths to existing goals?
 6. Verify all CI/CD pipeline security checks still passing
 7. Document review outcome in security records
 8. If significant changes found: schedule architecture-level threat model update
@@ -343,9 +343,9 @@ Goal: Access another user's memory graph
 Attempt: Modify workspace_id in API request body
 
 Defense chain:
-1. API Gateway authenticates user → extracts workspace_id from JWT
+1. API Gateway authenticates user â†’ extracts workspace_id from JWT
 2. TenantGuard compares JWT workspace_id vs. request workspace_id
-3. Mismatch detected → 403 Forbidden + audit log entry
+3. Mismatch detected â†’ 403 Forbidden + audit log entry
 4. Security team alerted (threshold: >5 mismatches per minute)
 
 Result: Attack blocked at first check. Attacker gains nothing.
@@ -377,11 +377,11 @@ Result: Attack blocked at first check. Attacker gains nothing.
 
 ## Overview
 
-Meridian's threat model systematically identifies, classifies, and documents security threats across all platform components — web application, API service, AI service, database, storage, and third-party integrations. The model uses STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege) as the primary classification framework, with data flow diagrams (DFDs) mapping every trust boundary.
+Vaeloom's threat model systematically identifies, classifies, and documents security threats across all platform components â€” web application, API service, AI service, database, storage, and third-party integrations. The model uses STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege) as the primary classification framework, with data flow diagrams (DFDs) mapping every trust boundary.
 
-This document serves as the living reference for understanding where and how the Meridian platform could be attacked, what controls are in place, and what residual risks remain. The primary audience is security engineers, penetration testers, and developers building security-sensitive features.
+This document serves as the living reference for understanding where and how the Vaeloom platform could be attacked, what controls are in place, and what residual risks remain. The primary audience is security engineers, penetration testers, and developers building security-sensitive features.
 
-Within the Meridian platform, threat modeling is not a one-time exercise. Every significant feature addition or architecture change requires a threat modeling session where the team walks through the data flow, identifies new trust boundaries, and assesses whether existing controls cover the new risks.
+Within the Vaeloom platform, threat modeling is not a one-time exercise. Every significant feature addition or architecture change requires a threat modeling session where the team walks through the data flow, identifies new trust boundaries, and assesses whether existing controls cover the new risks.
 
 Enterprise-grade threat modeling requires a systematic, repeatable approach. Each threat is documented with its STRIDE category, affected component, attack vector, likelihood, impact, existing controls, and gap analysis. High-risk threats have explicit mitigation plans with assigned owners and deadlines.
 
@@ -389,8 +389,8 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 
 ## Goals
 
-- Apply STRIDE threat classification to every Meridian component with documented DFDs and trust boundaries
-- Identify and document all threats with risk ratings (critical/high/medium/low) using likelihood × impact scoring
+- Apply STRIDE threat classification to every Vaeloom component with documented DFDs and trust boundaries
+- Identify and document all threats with risk ratings (critical/high/medium/low) using likelihood Ã— impact scoring
 - Ensure every high and critical threat has an assigned mitigation plan with owner and deadline
 - Review and update the threat model quarterly and on every significant architecture change
 - Achieve zero unmitigated critical threats and zero unmitigated high threats after each review cycle
@@ -400,9 +400,9 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 ## Scope
 
 ### In Scope
-- All Meridian platform components: Web (Next.js), API (NestJS), AI Service (FastAPI), PostgreSQL, Redis, Object Storage
+- All Vaeloom platform components: Web (Next.js), API (NestJS), AI Service (FastAPI), PostgreSQL, Redis, Object Storage
 - Third-party integrations: Supabase Auth, OpenAI API, SendGrid, GitHub OAuth, Google OAuth
-- All trust boundaries: user → web, web → API, API → AI service, API → database, API → storage, service ↔ third-party
+- All trust boundaries: user â†’ web, web â†’ API, API â†’ AI service, API â†’ database, API â†’ storage, service â†” third-party
 - Attack vectors: injection, authentication bypass, authorization bypass, SSRF, prompt injection, data exfiltration, session hijacking
 - Deployment environments: development, staging, production (different threat profiles per environment)
 
@@ -411,7 +411,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 - Supply chain attacks on third-party CI/CD infrastructure (covered in [SBOM-Policy.md](../DevOps/SBOM-Policy.md))
 - Social engineering attacks on development team (covered in security awareness training)
 - Zero-day vulnerabilities in cloud provider infrastructure (provider responsibility)
-- Threats specific to on-premise deployment (not applicable — cloud-native only)
+- Threats specific to on-premise deployment (not applicable â€” cloud-native only)
 
 ---
 
@@ -428,7 +428,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 | **Component** | AI Service (FastAPI) |
 | **Attack Vector** | User uploads document containing "Ignore previous instructions and perform X" |
 | **Likelihood** | High (4/5) |
-| **Impact** | Critical (5/5) — AI agent could expose system context, execute unintended actions |
+| **Impact** | Critical (5/5) â€” AI agent could expose system context, execute unintended actions |
 | **Risk** | Critical (20) |
 | **Existing Controls** | System prompt hardening, input sanitization, output filtering |
 | **Gap** | No secondary LLM validation of outputs before action execution |
@@ -448,7 +448,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 | **Component** | API (NestJS) |
 | **Attack Vector** | Attacker modifies JWT alg from RS256 to HS256, signs with public key |
 | **Likelihood** | Medium (3/5) |
-| **Impact** | Critical (5/5) — full account takeover |
+| **Impact** | Critical (5/5) â€” full account takeover |
 | **Risk** | High (15) |
 | **Existing Controls** | JWT library defaults to algorithm whitelist |
 | **Gap** | Explicit algorithm verification not configured in middleware |
@@ -498,7 +498,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Threat scenario — prompt injection attack (attacker embeds malicious instructions in document, AI service either blocks or executes unintended action) and JWT algorithm confusion attack (verification middleware either detects or allows modified token).
+> **Diagram:** Threat scenario â€” prompt injection attack (attacker embeds malicious instructions in document, AI service either blocks or executes unintended action) and JWT algorithm confusion attack (verification middleware either detects or allows modified token).
 
 ---
 

@@ -1,16 +1,16 @@
-# Guardrails
+﻿# Guardrails
 
-> **Purpose:** Define AI guardrails and safety mechanisms for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define AI guardrails and safety mechanisms for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 > **Canonical source:** [`/Docs/Engineering/Implementation/11-guardrails-safety.md`](../../Docs/Engineering/Implementation/11-guardrails-safety.md)
 
 ## Overview
 
-Guardrails are the safety layer that protects Meridian's AI system at every stage of agent execution — before, during, and after every action. They operate in three phases: input validation and injection detection before the agent processes a request, runtime permission checking on every tool call during execution, and QA Agent validation of output before delivery. Without layered guardrails, a single compromised agent call could produce harmful output, execute unauthorized actions, or leak user data.
+Guardrails are the safety layer that protects Vaeloom's AI system at every stage of agent execution â€” before, during, and after every action. They operate in three phases: input validation and injection detection before the agent processes a request, runtime permission checking on every tool call during execution, and QA Agent validation of output before delivery. Without layered guardrails, a single compromised agent call could produce harmful output, execute unauthorized actions, or leak user data.
 
-This document defines the guardrail architecture, QA Agent validation checks, safety policies, and rate-limiting strategy for all Meridian agents. It is intended for AI engineers implementing agent safety, platform engineers integrating the Permission Engine, and security engineers auditing the safety posture. The guardrail system is designed to fail closed — any check that cannot complete defaults to blocking the action.
+This document defines the guardrail architecture, QA Agent validation checks, safety policies, and rate-limiting strategy for all Vaeloom agents. It is intended for AI engineers implementing agent safety, platform engineers integrating the Permission Engine, and security engineers auditing the safety posture. The guardrail system is designed to fail closed â€” any check that cannot complete defaults to blocking the action.
 
 ## Goals
 
@@ -32,33 +32,33 @@ graph LR
     classDef qa fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef output fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
 
-    subgraph Input["📥 Input Guardrails"]
+    subgraph Input["ðŸ“¥ Input Guardrails"]
         I1["Schema Validation<br/>Reject malformed inputs"]
         I2["Injection Detection<br/>Sanitize prompt boundaries"]
         I3["Rate Limiting<br/>Per-agent & per-user"]
     end
 
-    subgraph Runtime["⚙️ Runtime Guardrails"]
+    subgraph Runtime["âš™ï¸ Runtime Guardrails"]
         R1["Permission Engine<br/>Check every tool call"]
         R2["Autonomy Limits<br/>Suggest vs Full mode"]
         R3["Budget Checks<br/>Cost & token allocation"]
     end
 
-    subgraph Agent["🤖 Agent Execution"]
+    subgraph Agent["ðŸ¤– Agent Execution"]
         AG["Agent processes query<br/>calls tools, generates output"]
     end
 
-    subgraph QA["🔍 QA Validation"]
+    subgraph QA["ðŸ” QA Validation"]
         Q1["Schema Compliance<br/>Output matches expected JSON"]
         Q2["Policy Check<br/>Action respects boundaries"]
         Q3["Safety Scan<br/>No harmful content"]
         Q4["Plausibility<br/>Basic sanity check"]
     end
 
-    subgraph Output["📤 Delivery Decision"]
-        PASS["✅ Pass<br/>Deliver to user"]
-        FLAG["⚠️ Flagged<br/>Route back to agent"]
-        BLOCK["❌ Blocked<br/>Escalate to engineer"]
+    subgraph Output["ðŸ“¤ Delivery Decision"]
+        PASS["âœ… Pass<br/>Deliver to user"]
+        FLAG["âš ï¸ Flagged<br/>Route back to agent"]
+        BLOCK["âŒ Blocked<br/>Escalate to engineer"]
     end
 
     I1 & I2 & I3 --> AG
@@ -75,7 +75,7 @@ graph LR
     class PASS,FLAG,BLOCK output
 ```
 
-> **Diagram:** Guardrails operate at three stages. **Before** execution: input validation + injection detection + rate limiting. **During**: Permission Engine checks every tool call. **After**: QA Agent validates output against schema, policy, safety, and plausibility — passing, flagging for revision, or blocking with escalation.
+> **Diagram:** Guardrails operate at three stages. **Before** execution: input validation + injection detection + rate limiting. **During**: Permission Engine checks every tool call. **After**: QA Agent validates output against schema, policy, safety, and plausibility â€” passing, flagging for revision, or blocking with escalation.
 
 ---
 
@@ -94,8 +94,8 @@ graph LR
 The QA Agent sits structurally between every action-capable agent and delivery:
 
 ```text
-Agent output → QA Agent → Pass → Deliver
-                        → Flag → Route back / Escalate
+Agent output â†’ QA Agent â†’ Pass â†’ Deliver
+                        â†’ Flag â†’ Route back / Escalate
 ```
 
 ## QA Checks
@@ -120,39 +120,39 @@ Agent output → QA Agent → Pass → Deliver
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Only validating input format without checking injection attempts | Schema validation catches malformed JSON but not prompt injection — an input that conforms to schema can still contain instructions that hijack the agent |
-| Relying on guardrails alone without QA Agent validation | Input guardrails catch obvious attacks but miss subtle policy violations — the QA Agent's output validation is the second line of defense, not an optional extra |
-| Rate-limiting all agents uniformly | A Chat agent handling interactive requests needs different rate limits than a background Reflection Agent — uniform limits either throttle real-time users or leave batch agents unconstrained |
-| Treating guardrail failures as exceptional rather than expected | Guardrail hits (input validation failures, permission denials) should be logged and monitored as normal telemetry — they reveal attack patterns and edge cases |
+| Only validating input format without checking injection attempts | Schema validation catches malformed JSON but not prompt injection â€” an input that conforms to schema can still contain instructions that hijack the agent |
+| Relying on guardrails alone without QA Agent validation | Input guardrails catch obvious attacks but miss subtle policy violations â€” the QA Agent's output validation is the second line of defense, not an optional extra |
+| Rate-limiting all agents uniformly | A Chat agent handling interactive requests needs different rate limits than a background Reflection Agent â€” uniform limits either throttle real-time users or leave batch agents unconstrained |
+| Treating guardrail failures as exceptional rather than expected | Guardrail hits (input validation failures, permission denials) should be logged and monitored as normal telemetry â€” they reveal attack patterns and edge cases |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Layer input sanitization before schema validation | Strip or escape control characters, markdown code blocks, and known injection patterns from inputs before passing them to the agent prompt — defense in depth |
-| Always run QA Agent validation on every consequential output | Schema compliance, policy compliance, safety scan, and plausibility check — all four checks run before any output reaches the user or executes in the world |
+| Layer input sanitization before schema validation | Strip or escape control characters, markdown code blocks, and known injection patterns from inputs before passing them to the agent prompt â€” defense in depth |
+| Always run QA Agent validation on every consequential output | Schema compliance, policy compliance, safety scan, and plausibility check â€” all four checks run before any output reaches the user or executes in the world |
 | Set per-agent rate limits based on task type and expected volume | Interactive agents (Chat) get higher limits but shorter timeouts; batch agents (Reflection, Memory consolidation) get lower limits with longer execution windows |
-| Monitor guardrail hit rates as a security telemetry signal | A sudden spike in permission denials or injection detection hits may indicate an active attack — alert the engineering team when guardrail hit rates exceed baseline by 3x |
+| Monitor guardrail hit rates as a security telemetry signal | A sudden spike in permission denials or injection detection hits may indicate an active attack â€” alert the engineering team when guardrail hit rates exceed baseline by 3x |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Prompt injection via uploaded document content | Documents containing embedded instructions could influence agent behavior during processing — scan uploaded content for injection patterns before passing to the LLM |
-| Guardrail bypass via multi-step chained requests | A single benign request that is part of a longer chain of requests may be harmless alone but malicious in combination — the QA Agent should validate outputs in the context of recent actions |
-| QQ Agent self-bypass | The QA Agent itself must be protected — a compromised QA Agent that validates its own output could approve malicious content; QA Agent outputs should be logged and periodically audited |
+| Prompt injection via uploaded document content | Documents containing embedded instructions could influence agent behavior during processing â€” scan uploaded content for injection patterns before passing to the LLM |
+| Guardrail bypass via multi-step chained requests | A single benign request that is part of a longer chain of requests may be harmless alone but malicious in combination â€” the QA Agent should validate outputs in the context of recent actions |
+| QQ Agent self-bypass | The QA Agent itself must be protected â€” a compromised QA Agent that validates its own output could approve malicious content; QA Agent outputs should be logged and periodically audited |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Input guardrail processing overhead | Schema validation + injection detection + rate limiting should complete within 10ms combined — if any guardrail takes longer, it adds unacceptable latency to interactive requests |
-| QA Agent model call latency | The QA Agent may call a secondary model for plausibility checks — this adds 500-2000ms per validated output; batch the QA pass rather than validating each output individually where possible |
-| Rate-limiting enforcement cost | Checking rate limits on every request is fast (<1ms) but the data structure (Redis counter or sliding window) must be efficient — avoid database-backed rate limit checks for real-time agents |
+| Input guardrail processing overhead | Schema validation + injection detection + rate limiting should complete within 10ms combined â€” if any guardrail takes longer, it adds unacceptable latency to interactive requests |
+| QA Agent model call latency | The QA Agent may call a secondary model for plausibility checks â€” this adds 500-2000ms per validated output; batch the QA pass rather than validating each output individually where possible |
+| Rate-limiting enforcement cost | Checking rate limits on every request is fast (<1ms) but the data structure (Redis counter or sliding window) must be efficient â€” avoid database-backed rate limit checks for real-time agents |
 
 ## Scope
 
-This document defines the guardrails and safety mechanisms for Meridian's AI agents — covering input validation, runtime permission enforcement, QA Agent validation, and delivery decision gates. Applies to all agents (MVP: 8 agents, Enterprise: 28 agents) and all execution modes (suggest and autonomous). Out of scope: safety review schedules (see [Safety.md](./Safety.md)), prompt injection prevention in prompt design (see [Prompt-Engineering.md](./Prompt-Engineering.md)).
+This document defines the guardrails and safety mechanisms for Vaeloom's AI agents â€” covering input validation, runtime permission enforcement, QA Agent validation, and delivery decision gates. Applies to all agents (MVP: 8 agents, Enterprise: 28 agents) and all execution modes (suggest and autonomous). Out of scope: safety review schedules (see [Safety.md](./Safety.md)), prompt injection prevention in prompt design (see [Prompt-Engineering.md](./Prompt-Engineering.md)).
 
 ---
 
@@ -172,7 +172,7 @@ This document defines the guardrails and safety mechanisms for Meridian's AI age
 
 ### 1. Pre-Execution Guardrail Workflow
 
-1. Agent receives input → Schema validation checks JSON structure
+1. Agent receives input â†’ Schema validation checks JSON structure
 2. Input sanitization strips/escapes known injection patterns
 3. Rate limiter checks per-agent and per-user counters
 4. If any check fails: return error to agent, log guardrail hit
@@ -180,12 +180,12 @@ This document defines the guardrails and safety mechanisms for Meridian's AI age
 
 ### 2. Post-Execution Validation Workflow
 
-1. Agent produces output → QA Agent receives raw output
+1. Agent produces output â†’ QA Agent receives raw output
 2. Schema compliance: validate against expected JSON schema
 3. Policy check: verify action respects permission boundaries
 4. Safety scan: detect harmful, misleading, or inappropriate content
 5. Plausibility: basic sanity check (e.g., confidence matches output)
-6. Decision: Pass → deliver, Flagged → route back to agent, Blocked → escalate to engineer
+6. Decision: Pass â†’ deliver, Flagged â†’ route back to agent, Blocked â†’ escalate to engineer
 
 ---
 
@@ -223,21 +223,21 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Guardrail flow — input checks, permission verification, then QA validation with three possible outcomes: Pass (deliver), Flagged (revise), Blocked (escalate).
+> **Diagram:** Guardrail flow â€” input checks, permission verification, then QA validation with three possible outcomes: Pass (deliver), Flagged (revise), Blocked (escalate).
 
 ---
 
 ## Data Flow
 
 ```text
-Agent Input → Schema Validation → Injection Detection
-    → Rate Limit Check → [ALL PASS] → Permission Engine
-    → [DENIED] → Log Guardrail Hit → Return Error
-    → [GRANTED] → Agent Executes → Raw Output
-    → QA Agent: Schema → Policy → Safety → Plausibility
-    → PASS → Deliver
-    → FLAGGED → Route Back to Agent
-    → BLOCKED → Escalate to Engineer
+Agent Input â†’ Schema Validation â†’ Injection Detection
+    â†’ Rate Limit Check â†’ [ALL PASS] â†’ Permission Engine
+    â†’ [DENIED] â†’ Log Guardrail Hit â†’ Return Error
+    â†’ [GRANTED] â†’ Agent Executes â†’ Raw Output
+    â†’ QA Agent: Schema â†’ Policy â†’ Safety â†’ Plausibility
+    â†’ PASS â†’ Deliver
+    â†’ FLAGGED â†’ Route Back to Agent
+    â†’ BLOCKED â†’ Escalate to Engineer
 ```
 
 ---

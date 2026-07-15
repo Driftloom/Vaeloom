@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Fix MD051 broken link fragments in docs that have mismatched TOC anchors.
 
@@ -15,7 +15,7 @@ DOCS_DIR = Path("docs")
 # Files with broken fragments and their link:heading mappings
 # Format: {file_rel_path: [(fragment_id, heading_text_to_match), ...]}
 FIXES = {
-    "docs/05-Meridian-MVP-Spec.md": [
+    "docs/05-Vaeloom-MVP-Spec.md": [
         ("s1", "1. One-liner"),
         ("s2", "2. The problem"),
         ("s3", "3. Product philosophy"),
@@ -31,8 +31,8 @@ FIXES = {
         ("s13", "13. Build phases"),
         ("s14", "14. What"),
     ],
-    "docs/Meridian-Documentation-Site.md": [
-        ("what-is-meridian", "What Is Meridian"),
+    "docs/Vaeloom-Documentation-Site.md": [
+        ("what-is-Vaeloom", "What Is Vaeloom"),
         ("the-product-story", "The Product Story"),
         ("how-it-works", "How It Works"),
         ("features", "Features"),
@@ -50,7 +50,7 @@ FIXES = {
         ("project-summary", "Project Summary"),
         ("glossary", "Glossary"),
     ],
-    "docs/Meridian-Enterprise-Paper.md": [
+    "docs/Vaeloom-Enterprise-Paper.md": [
         ("executive-summary", "Executive Summary"),
         ("product-overview", "Product Overview"),
         ("user-journey", "User Journey"),
@@ -76,7 +76,7 @@ FIXES = {
         ("from-mvp-to-enterprise-migration-path", "MVP to Enterprise"),
         ("appendix-glossary", "Glossary"),
     ],
-    "docs/Meridian-How-It-Works-Visual.md": [
+    "docs/Vaeloom-How-It-Works-Visual.md": [
         ("intro", "What Is It"),
         ("how-it-works", "How It Works"),
         ("architecture", "Architecture"),
@@ -132,14 +132,14 @@ def add_anchor_to_heading(content, fragment_id):
             # Check if this heading text matches our fragment's target
             # (We match broadly: any heading that's at the right section)
             if fragment_id.startswith(tuple('123456789')):
-                # Numbered fragment like "1-service-..." — match heading with that number
+                # Numbered fragment like "1-service-..." â€” match heading with that number
                 num = fragment_id.split('-')[0]
                 if stripped.lstrip('# ').startswith(f"{num}."):
                     lines[i] = line.rstrip() + f" {{#{fragment_id}}}"
                     modified = True
                     break
             else:
-                # Text fragment — match by key text
+                # Text fragment â€” match by key text
                 match_words = fragment_id.replace('-', ' ').replace('--', ' ').lower().split()
                 heading_words = stripped.lstrip('# ').lower().split()
                 # Count how many key words match

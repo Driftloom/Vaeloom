@@ -1,7 +1,7 @@
-# Alerting
+﻿# Alerting
 
-> **Purpose:** Define alerting rules and procedures for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define alerting rules and procedures for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Alert Architecture
 
@@ -13,39 +13,39 @@ graph TD
     classDef p4 fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
     classDef fatigue fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Tiers["🔔 Alert Tiers"]
+    subgraph Tiers["ðŸ”” Alert Tiers"]
         direction TB
-        P1_SVC["P1 — Critical<br/>Response: < 15 min<br/>Channel: PagerDuty + SMS"]
-        P2_SVC["P2 — High<br/>Response: < 30 min<br/>Channel: Slack #alerts"]
-        P3_SVC["P3 — Medium<br/>Response: < 2 hours<br/>Channel: Slack #alerts"]
-        P4_SVC["P4 — Low<br/>Response: Next business day<br/>Channel: GitHub issue"]
+        P1_SVC["P1 â€” Critical<br/>Response: < 15 min<br/>Channel: PagerDuty + SMS"]
+        P2_SVC["P2 â€” High<br/>Response: < 30 min<br/>Channel: Slack #alerts"]
+        P3_SVC["P3 â€” Medium<br/>Response: < 2 hours<br/>Channel: Slack #alerts"]
+        P4_SVC["P4 â€” Low<br/>Response: Next business day<br/>Channel: GitHub issue"]
     end
 
-    subgraph Rules_Avail["📡 Availability Alerts"]
-        RA1["API down<br/>health != ok for 1 min → P1"]
-        RA2["AI Service down<br/>health != ok for 2 min → P1"]
-        RA3["Database unreachable<br/>30s connection failure → P1"]
+    subgraph Rules_Avail["ðŸ“¡ Availability Alerts"]
+        RA1["API down<br/>health != ok for 1 min â†’ P1"]
+        RA2["AI Service down<br/>health != ok for 2 min â†’ P1"]
+        RA3["Database unreachable<br/>30s connection failure â†’ P1"]
     end
 
-    subgraph Rules_Perf["⚡ Performance Alerts"]
-        RP1["High API latency<br/>p99 > 2s for 5 min → P2"]
-        RP2["High AI latency<br/>p99 > 10s for 5 min → P2"]
-        RP3["Queue backlog<br/>depth > 1000 for 10 min → P2"]
+    subgraph Rules_Perf["âš¡ Performance Alerts"]
+        RP1["High API latency<br/>p99 > 2s for 5 min â†’ P2"]
+        RP2["High AI latency<br/>p99 > 10s for 5 min â†’ P2"]
+        RP3["Queue backlog<br/>depth > 1000 for 10 min â†’ P2"]
     end
 
-    subgraph Rules_Error["❌ Error Rate Alerts"]
-        RE1["High error rate<br/>> 5% for 5 min → P2"]
-        RE2["Agent failure rate<br/>> 10% for 5 min → P2"]
-        RE3["Auth failures spike<br/>> 20% increase → P3"]
+    subgraph Rules_Error["âŒ Error Rate Alerts"]
+        RE1["High error rate<br/>> 5% for 5 min â†’ P2"]
+        RE2["Agent failure rate<br/>> 10% for 5 min â†’ P2"]
+        RE3["Auth failures spike<br/>> 20% increase â†’ P3"]
     end
 
-    subgraph Rules_Biz["📊 Business Alerts"]
-        RB1["Connectors degraded<br/>> 10% degraded → P3"]
-        RB2["Ingestion stalled<br/>0 docs for 30 min → P3"]
-        RB3["Memory writes stopped<br/>0 for 15 min → P2"]
+    subgraph Rules_Biz["ðŸ“Š Business Alerts"]
+        RB1["Connectors degraded<br/>> 10% degraded â†’ P3"]
+        RB2["Ingestion stalled<br/>0 docs for 30 min â†’ P3"]
+        RB3["Memory writes stopped<br/>0 for 15 min â†’ P2"]
     end
 
-    subgraph Fatigue["🧠 Alert Fatigue Prevention"]
+    subgraph Fatigue["ðŸ§  Alert Fatigue Prevention"]
         F1["Threshold tuning<br/>Review accuracy monthly"]
         F2["Alert grouping<br/>Group during incidents"]
         F3["Auto-resolve<br/>Clear when condition clears"]
@@ -118,7 +118,7 @@ graph TD
 ## Alert Response Workflow
 
 ```text
-Alert Fires → Acknowledged (within SLA) → Triage → Mitigate → Resolve → Post-mortem
+Alert Fires â†’ Acknowledged (within SLA) â†’ Triage â†’ Mitigate â†’ Resolve â†’ Post-mortem
 ```
 
 ## Alert Fatigue Prevention
@@ -134,41 +134,41 @@ Alert Fires → Acknowledged (within SLA) → Triage → Mitigate → Resolve �
 
 | Mistake | Consequence |
 |---------|-------------|
-| Alerting on symptoms rather than causes | An alert for "high CPU" tells you something is wrong but not what — alert on user-impacting signals (latency, error rate, throughput) and let the runbook guide root cause investigation |
-| Alert thresholds that are too sensitive | A p99 latency spike that lasts 30 seconds triggers a PagerDuty call at 3 AM — every alert should have a minimum duration before firing to filter out transient blips. Set evaluation windows of at least 1-5 minutes |
-| Alerts without runbooks | An alert that says "high error rate" with no link to a runbook leaves the on-call engineer guessing — every alert rule must have a documented runbook that describes diagnosis and mitigation steps |
+| Alerting on symptoms rather than causes | An alert for "high CPU" tells you something is wrong but not what â€” alert on user-impacting signals (latency, error rate, throughput) and let the runbook guide root cause investigation |
+| Alert thresholds that are too sensitive | A p99 latency spike that lasts 30 seconds triggers a PagerDuty call at 3 AM â€” every alert should have a minimum duration before firing to filter out transient blips. Set evaluation windows of at least 1-5 minutes |
+| Alerts without runbooks | An alert that says "high error rate" with no link to a runbook leaves the on-call engineer guessing â€” every alert rule must have a documented runbook that describes diagnosis and mitigation steps |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Alert on user-facing signals (latency, errors, availability) not system internals | CPU and memory are internal details — users care about slow pages and errors. Alert on the metrics that directly impact the user experience |
-| Every alert must have a documented runbook | An alert without a runbook is noise — the on-call engineer shouldn't have to guess what to do. Link every alert rule to a runbook that contains diagnosis and mitigation procedures |
-| Set evaluation windows to filter transient issues | A 30-second latency spike isn't worth a PagerDuty call — require sustained conditions (1-5 minutes) before alerting to distinguish noise from real problems |
+| Alert on user-facing signals (latency, errors, availability) not system internals | CPU and memory are internal details â€” users care about slow pages and errors. Alert on the metrics that directly impact the user experience |
+| Every alert must have a documented runbook | An alert without a runbook is noise â€” the on-call engineer shouldn't have to guess what to do. Link every alert rule to a runbook that contains diagnosis and mitigation procedures |
+| Set evaluation windows to filter transient issues | A 30-second latency spike isn't worth a PagerDuty call â€” require sustained conditions (1-5 minutes) before alerting to distinguish noise from real problems |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Alerting channels leaking sensitive system information | An alert message that includes database names, internal IPs, or error stack traces in a Slack or PagerDuty notification exposes internals — sanitize alert messages to include only safe metadata |
-| Attackers using alert fatigue to hide malicious activity | An attacker generating noise alerts can desensitize the on-call team before a real attack — monitor alert volumes for unusual patterns that may indicate a deliberate fatigue attack |
-| Alert handling systems as an attack vector | PagerDuty webhooks, Slack bot tokens, or monitoring API keys that are compromised can be used to manipulate alerts — secure alerting infrastructure with the same rigor as production services |
+| Alerting channels leaking sensitive system information | An alert message that includes database names, internal IPs, or error stack traces in a Slack or PagerDuty notification exposes internals â€” sanitize alert messages to include only safe metadata |
+| Attackers using alert fatigue to hide malicious activity | An attacker generating noise alerts can desensitize the on-call team before a real attack â€” monitor alert volumes for unusual patterns that may indicate a deliberate fatigue attack |
+| Alert handling systems as an attack vector | PagerDuty webhooks, Slack bot tokens, or monitoring API keys that are compromised can be used to manipulate alerts â€” secure alerting infrastructure with the same rigor as production services |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Alerting channels leaking sensitive system information | An alert message that includes database names, internal IPs, or error stack traces in a Slack or PagerDuty notification exposes internals — sanitize alert messages to include only safe metadata |
-| Attackers using alert fatigue to hide malicious activity | An attacker generating noise alerts can desensitize the on-call team before a real attack — monitor alert volumes for unusual patterns that may indicate a deliberate fatigue attack |
-| Alert handling systems as an attack vector | PagerDuty webhooks, Slack bot tokens, or monitoring API keys that are compromised can be used to manipulate alerts — secure alerting infrastructure with the same rigor as production services |
+| Alerting channels leaking sensitive system information | An alert message that includes database names, internal IPs, or error stack traces in a Slack or PagerDuty notification exposes internals â€” sanitize alert messages to include only safe metadata |
+| Attackers using alert fatigue to hide malicious activity | An attacker generating noise alerts can desensitize the on-call team before a real attack â€” monitor alert volumes for unusual patterns that may indicate a deliberate fatigue attack |
+| Alert handling systems as an attack vector | PagerDuty webhooks, Slack bot tokens, or monitoring API keys that are compromised can be used to manipulate alerts â€” secure alerting infrastructure with the same rigor as production services |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Alert rule evaluation overhead at scale | Evaluating hundreds of alert rules against high-frequency metrics can consume significant CPU — use alert rule aggregation that groups similar metrics and evaluates at coarser intervals for non-critical alerts |
-| Alert notification storm during cascading failures | A single root cause can trigger dozens of related alerts — implement alert deduplication and grouping to collapse related alerts into a single notification with affected-context |
-| PagerDuty webhook latency delaying critical alerts | Webhook delivery can take 30-60 seconds during peak hours — use PagerDuty's Events API v2 with high-urgency for critical alerts and set up a secondary notification channel as backup |
+| Alert rule evaluation overhead at scale | Evaluating hundreds of alert rules against high-frequency metrics can consume significant CPU â€” use alert rule aggregation that groups similar metrics and evaluates at coarser intervals for non-critical alerts |
+| Alert notification storm during cascading failures | A single root cause can trigger dozens of related alerts â€” implement alert deduplication and grouping to collapse related alerts into a single notification with affected-context |
+| PagerDuty webhook latency delaying critical alerts | Webhook delivery can take 30-60 seconds during peak hours â€” use PagerDuty's Events API v2 with high-urgency for critical alerts and set up a secondary notification channel as backup |
 
 ## Components
 
@@ -176,7 +176,7 @@ Alert Fires → Acknowledged (within SLA) → Triage → Mitigate → Resolve �
 |-----------|---------------|------------|----------------|
 | Alert Manager | Rule evaluation, deduplication, routing | Prometheus Alertmanager / AWS CloudWatch | Cluster mode for HA |
 | Notification Router | Deliver alerts to correct channel | PagerDuty Events API + Slack webhooks | Regional endpoints |
-| Alert Generator | Metric → alert rule evaluation | Prometheus rules / CloudWatch alarms | Per-service alert rules |
+| Alert Generator | Metric â†’ alert rule evaluation | Prometheus rules / CloudWatch alarms | Per-service alert rules |
 | Maintenance Window Manager | Suppress alerts during known maintenance | Config file with time ranges | Automated via calendar integration |
 
 ---
@@ -229,8 +229,8 @@ Alert Fires → Acknowledged (within SLA) → Triage → Mitigate → Resolve �
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `PAGERDUTY_SERVICE_ID` | PagerDuty integration ID | — | Yes |
-| `SLACK_WEBHOOK_URL` | Slack alert channel webhook | — | Yes |
+| `PAGERDUTY_SERVICE_ID` | PagerDuty integration ID | â€” | Yes |
+| `SLACK_WEBHOOK_URL` | Slack alert channel webhook | â€” | Yes |
 | `ALERT_EVALUATION_INTERVAL` | How often to evaluate rules | `60s` | No |
 | `MAINTENANCE_WINDOW_START` | Daily quiet hours start | `03:00` UTC | No |
 | `ALERT_DEDUP_WINDOW` | Time window for deduplication | `300s` | No |
@@ -250,19 +250,19 @@ Alert Fires → Acknowledged (within SLA) → Triage → Mitigate → Resolve �
 
 ## Overview
 
-Meridian's alerting system provides tiered, automated notification of service health events across all environments. This document defines the alert severity classifications (P1–P4), rule definitions for availability, performance, error rate, and business metrics, and the response workflows that ensure incidents are addressed within SLA boundaries.
+Vaeloom's alerting system provides tiered, automated notification of service health events across all environments. This document defines the alert severity classifications (P1â€“P4), rule definitions for availability, performance, error rate, and business metrics, and the response workflows that ensure incidents are addressed within SLA boundaries.
 
-The primary audience includes on-call engineers, SRE team members, and DevOps engineers responsible for maintaining Meridian service health. The alerting system integrates with Prometheus Alertmanager and AWS CloudWatch as metric sources, routing through PagerDuty (P1–P2) and Slack (P3–P4) to ensure the right team is notified with the right urgency.
+The primary audience includes on-call engineers, SRE team members, and DevOps engineers responsible for maintaining Vaeloom service health. The alerting system integrates with Prometheus Alertmanager and AWS CloudWatch as metric sources, routing through PagerDuty (P1â€“P2) and Slack (P3â€“P4) to ensure the right team is notified with the right urgency.
 
-Within the Meridian observability stack, alerting is the action layer that follows monitoring and logging — monitoring detects anomalies, logging provides context, and alerting triggers the human response. A well-tuned alerting system distinguishes between transient noise and genuine service degradation, minimizing alert fatigue while ensuring critical issues are never missed.
+Within the Vaeloom observability stack, alerting is the action layer that follows monitoring and logging â€” monitoring detects anomalies, logging provides context, and alerting triggers the human response. A well-tuned alerting system distinguishes between transient noise and genuine service degradation, minimizing alert fatigue while ensuring critical issues are never missed.
 
-Reliable alerting is essential for maintaining Meridian's SLA commitments. Every alert rule must have a documented runbook, an evaluation window that filters transient spikes, and a post-incident review cadence that continuously improves threshold accuracy and reduces false positives.
+Reliable alerting is essential for maintaining Vaeloom's SLA commitments. Every alert rule must have a documented runbook, an evaluation window that filters transient spikes, and a post-incident review cadence that continuously improves threshold accuracy and reduces false positives.
 
 ---
 
 ## Goals
 
-- Classify all alerts into four severity tiers (P1–P4) with defined response times and escalation paths
+- Classify all alerts into four severity tiers (P1â€“P4) with defined response times and escalation paths
 - Ensure every alert rule has a corresponding runbook with diagnosis and mitigation steps
 - Minimize alert fatigue through threshold tuning, deduplication, grouping, and auto-resolve
 - Achieve sub-60-second detection-to-notification latency for P1 events
@@ -275,7 +275,7 @@ Reliable alerting is essential for maintaining Meridian's SLA commitments. Every
 ### In Scope
 - Alert severity definitions: P1 (Critical), P2 (High), P3 (Medium), P4 (Low)
 - Alert rules for availability, performance, error rate, and business health
-- Notification routing to PagerDuty (P1–P2) and Slack (P3–P4)
+- Notification routing to PagerDuty (P1â€“P2) and Slack (P3â€“P4)
 - Alert fatigue prevention strategies (threshold tuning, grouping, auto-resolve, maintenance windows)
 - Alert response workflow with acknowledgment and escalation
 - Alert rule configuration via Terraform and config files
@@ -296,7 +296,7 @@ Reliable alerting is essential for maintaining Meridian's SLA commitments. Every
 ```yaml
 # prometheus-rules/api-alerts.yml
 groups:
-  - name: meridian-api
+  - name: Vaeloom-api
     rules:
       - alert: HighAPILatency
         expr: histogram_quantile(0.99, rate(api_request_duration_seconds_bucket[5m])) > 2
@@ -305,7 +305,7 @@ groups:
           severity: P2
         annotations:
           summary: "API p99 latency above 2s for 5 minutes"
-          runbook: "https://runbooks.meridian.dev/api/high-latency"
+          runbook: "https://runbooks.Vaeloom.dev/api/high-latency"
 ```
 
 ### Example 2: Creating a CloudWatch Alarm (AWS CDK)
@@ -316,7 +316,7 @@ import * as actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 
 const alarm = new cloudwatch.Alarm(this, 'AIServiceDown', {
   metric: new cloudwatch.Metric({
-    namespace: 'Meridian/AIService',
+    namespace: 'Vaeloom/AIService',
     metricName: 'HealthCheck',
     statistic: 'min',
     period: Duration.minutes(1),
@@ -369,7 +369,7 @@ sequenceDiagram
     AM->>AM: Auto-resolve when condition clears
 ```
 
-> **Diagram:** Alert flow from metric evaluation through deduplication and routing to PagerDuty (P1–P2) or Slack (P3–P4), with acknowledgment, runbook-guided mitigation, and auto-resolve on condition clearance.
+> **Diagram:** Alert flow from metric evaluation through deduplication and routing to PagerDuty (P1â€“P2) or Slack (P3â€“P4), with acknowledgment, runbook-guided mitigation, and auto-resolve on condition clearance.
 
 ---
 

@@ -1,15 +1,15 @@
-# Inference Pipeline
+﻿# Inference Pipeline
 
-> **Purpose:** Define the AI inference pipeline for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the AI inference pipeline for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-The inference pipeline is the end-to-end execution path for every AI agent request in Meridian — from the moment an agent submits a request through queue prioritization, model routing, context assembly, LLM inference, output validation, and final response delivery. The pipeline processes requests through three priority tiers (real-time, normal, batch) and operates within a strict 10-second total latency budget. Every stage has a hard timeout with automatic fallback to the next stage.
+The inference pipeline is the end-to-end execution path for every AI agent request in Vaeloom â€” from the moment an agent submits a request through queue prioritization, model routing, context assembly, LLM inference, output validation, and final response delivery. The pipeline processes requests through three priority tiers (real-time, normal, batch) and operates within a strict 10-second total latency budget. Every stage has a hard timeout with automatic fallback to the next stage.
 
-This document defines the seven pipeline stages, latency budgets per stage, degraded mode operation, and the request lifecycle from submission to validated response. It is intended for platform engineers operating the inference service, AI engineers optimizing pipeline performance, and SRE teams monitoring pipeline health. The pipeline is designed for graceful degradation — if any stage fails, the system falls back to alternative models or returns partial results rather than failing entirely.
+This document defines the seven pipeline stages, latency budgets per stage, degraded mode operation, and the request lifecycle from submission to validated response. It is intended for platform engineers operating the inference service, AI engineers optimizing pipeline performance, and SRE teams monitoring pipeline health. The pipeline is designed for graceful degradation â€” if any stage fails, the system falls back to alternative models or returns partial results rather than failing entirely.
 
 ## Goals
 
@@ -25,19 +25,19 @@ This document defines the seven pipeline stages, latency budgets per stage, degr
 
 ```mermaid
 sequenceDiagram
-    participant AG as 🤖 Agent
-    participant Q as 🎯 Queue
-    participant MR as 🔀 Model Router
-    participant RAG as 📚 Agentic RAG
-    participant LLM as 🧠 LLM
-    participant QA as ✅ QA Agent
+    participant AG as ðŸ¤– Agent
+    participant Q as ðŸŽ¯ Queue
+    participant MR as ðŸ”€ Model Router
+    participant RAG as ðŸ“š Agentic RAG
+    participant LLM as ðŸ§  LLM
+    participant QA as âœ… QA Agent
 
     AG->>Q: Send request<br/>task_type + priority + input
     Q->>Q: Prioritize by type<br/>Real-time > Normal > Batch
     Q->>MR: Dequeue for routing
 
     MR->>MR: Select model by<br/>task_type + priority + cost
-    Note over MR: Classification → Haiku<br/>Reasoning → Sonnet<br/>Generation → Sonnet/GPT-4o
+    Note over MR: Classification â†’ Haiku<br/>Reasoning â†’ Sonnet<br/>Generation â†’ Sonnet/GPT-4o
 
     MR->>RAG: Request context assembly
     RAG->>RAG: Hybrid search<br/>vector + keyword + graph
@@ -50,9 +50,9 @@ sequenceDiagram
 
     MR->>QA: Validate output
     QA->>QA: Schema + policy + safety<br/>checks
-    alt ✅ Pass
+    alt âœ… Pass
         QA-->>AG: Validated response
-    else ❌ Flagged
+    else âŒ Flagged
         QA-->>AG: Revision request<br/>with error details
     end
 
@@ -79,7 +79,7 @@ Requests are queued by priority:
 
 Model Router selects the appropriate model based on:
 
-- Task type (classification → Haiku, reasoning → Sonnet)
+- Task type (classification â†’ Haiku, reasoning â†’ Sonnet)
 - Priority (real-time gets faster model)
 - Cost budget (per-agent monthly allocation)
 
@@ -126,39 +126,39 @@ Validated output returned to agent or user.
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| No timeout on the inference stage | A model that hangs or produces an excessively long response blocks the entire pipeline — every stage must have a hard timeout with a fallback path |
-| Overfilling the context budget with retrieved documents | Retrieving 50 documents when only 5 are relevant wastes tokens, increases latency, and dilutes signal — the model's attention scatters across irrelevant content |
-| Treating all requests with the same queue priority | A user waiting for a chat response should not wait behind a batch document ingestion job — priority queues prevent interactive requests from being queued behind batch work |
-| No output validation for structured responses | A model that returns malformed JSON or an invalid schema forces the agent to retry or fail — validate the output format before passing it to the caller |
+| No timeout on the inference stage | A model that hangs or produces an excessively long response blocks the entire pipeline â€” every stage must have a hard timeout with a fallback path |
+| Overfilling the context budget with retrieved documents | Retrieving 50 documents when only 5 are relevant wastes tokens, increases latency, and dilutes signal â€” the model's attention scatters across irrelevant content |
+| Treating all requests with the same queue priority | A user waiting for a chat response should not wait behind a batch document ingestion job â€” priority queues prevent interactive requests from being queued behind batch work |
+| No output validation for structured responses | A model that returns malformed JSON or an invalid schema forces the agent to retry or fail â€” validate the output format before passing it to the caller |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Set hard timeouts per pipeline stage with automatic fallback | Queue 100ms, context assembly 2s, inference 5s, validation 1s — if a stage times out, escalate to the next stage or return a graceful error |
+| Set hard timeouts per pipeline stage with automatic fallback | Queue 100ms, context assembly 2s, inference 5s, validation 1s â€” if a stage times out, escalate to the next stage or return a graceful error |
 | Prune retrieved context to the top 5-10 most relevant items | Hybrid search returns many results; prune aggressively to the items with the highest combined relevance + freshness + importance scores before sending to the model |
-| Use priority queues with interactive > normal > batch tiers | Real-time user requests preempt scheduled agent passes and background ingestion — prevents a bulk job from degrading the interactive experience |
+| Use priority queues with interactive > normal > batch tiers | Real-time user requests preempt scheduled agent passes and background ingestion â€” prevents a bulk job from degrading the interactive experience |
 | Validate structured outputs against the expected JSON schema before returning | If the model returns invalid JSON or missing required fields, retry with a stricter prompt rather than propagating malformed data downstream |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Context assembly including unauthorized documents | The retrieval layer must respect permission scopes — a context assembly query should never return documents the requesting agent does not have permission to read |
-| Model prompt injection via retrieved context | If a retrieved document contains prompt injection content, it can influence the model's behavior — sanitize retrieved text for known injection patterns before inserting into the prompt |
-| Queue priority manipulation | The queue priority field should be set by the caller's identity and task type, not by the request payload — a user should not be able to manually set their request to "high" priority |
+| Context assembly including unauthorized documents | The retrieval layer must respect permission scopes â€” a context assembly query should never return documents the requesting agent does not have permission to read |
+| Model prompt injection via retrieved context | If a retrieved document contains prompt injection content, it can influence the model's behavior â€” sanitize retrieved text for known injection patterns before inserting into the prompt |
+| Queue priority manipulation | The queue priority field should be set by the caller's identity and task type, not by the request payload â€” a user should not be able to manually set their request to "high" priority |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Context assembly as the primary latency bottleneck | Hybrid search across vector + keyword + graph stores can take 1-2s — optimize by running the three searches in parallel and combining results rather than sequentially |
+| Context assembly as the primary latency bottleneck | Hybrid search across vector + keyword + graph stores can take 1-2s â€” optimize by running the three searches in parallel and combining results rather than sequentially |
 | Inference stage dominating the total latency budget | At 5s, inference is 50%+ of the total <10s budget; cache identical queries, use shorter context for simple tasks, and consider streaming partial results for chat interactions |
-| Queue backpressure under high load | When all worker threads are busy, incoming requests pile up — implement a circuit breaker that returns a "Service busy, retry after N seconds" response rather than queuing indefinitely |
+| Queue backpressure under high load | When all worker threads are busy, incoming requests pile up â€” implement a circuit breaker that returns a "Service busy, retry after N seconds" response rather than queuing indefinitely |
 
 ## Scope
 
-This document defines the AI inference pipeline for Meridian — covering queue prioritization, model routing, context assembly, inference execution, output validation, and latency budgets. Applies to all agent inference requests across MVP and Enterprise deployments. Out of scope: model selection criteria (see [Model-Routing.md](./Model-Routing.md)), guardrail details (see [Guardrails.md](./Guardrails.md)), context retrieval specifics (see [Agentic-RAG.md](./Agentic-RAG.md)).
+This document defines the AI inference pipeline for Vaeloom â€” covering queue prioritization, model routing, context assembly, inference execution, output validation, and latency budgets. Applies to all agent inference requests across MVP and Enterprise deployments. Out of scope: model selection criteria (see [Model-Routing.md](./Model-Routing.md)), guardrail details (see [Guardrails.md](./Guardrails.md)), context retrieval specifics (see [Agentic-RAG.md](./Agentic-RAG.md)).
 
 ---
 
@@ -190,7 +190,7 @@ This document defines the AI inference pipeline for Meridian — covering queue 
 
 1. Primary model unavailable or times out
 2. Model Router checks fallback chain
-3. Falls back to next model in chain (e.g., Sonnet → GPT-4o)
+3. Falls back to next model in chain (e.g., Sonnet â†’ GPT-4o)
 4. If all models fail: queue for retry with exponential backoff
 5. Notify agent to enter degraded mode (suggest-only, no autonomous actions)
 
@@ -199,12 +199,12 @@ This document defines the AI inference pipeline for Meridian — covering queue 
 ## Data Flow
 
 ```text
-Agent Request → Queue (Prioritize: interactive > normal > batch)
-    → Model Router (Select model by task type + cost)
-    → Agentic RAG (Context assembly: vector + keyword + graph)
-    → LLM Gateway (Inference with timeout + auto-retry)
-    → QA Client (Validate: schema + policy + safety)
-    → Validated Response → Agent
+Agent Request â†’ Queue (Prioritize: interactive > normal > batch)
+    â†’ Model Router (Select model by task type + cost)
+    â†’ Agentic RAG (Context assembly: vector + keyword + graph)
+    â†’ LLM Gateway (Inference with timeout + auto-retry)
+    â†’ QA Client (Validate: schema + policy + safety)
+    â†’ Validated Response â†’ Agent
 ```
 
 **Data flow description:** Requests flow through priority queue, model selection, context assembly, inference, and output validation. The total latency budget is 10 seconds across all stages.
@@ -341,7 +341,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Full inference pipeline flow — queue prioritization, model routing, context assembly, LLM inference with fallback, and QA validation before delivery to the requesting agent.
+> **Diagram:** Full inference pipeline flow â€” queue prioritization, model routing, context assembly, LLM inference with fallback, and QA validation before delivery to the requesting agent.
 
 ---
 

@@ -1,22 +1,22 @@
-# 14 — Frontend & Workspace UI (MVP)
+﻿# 14 â€” Frontend & Workspace UI (MVP)
 
-> **Purpose:** Build the Next.js frontend covering all MVP screens — the phase where the product becomes something a real user can actually use.
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Build the Next.js frontend covering all MVP screens â€” the phase where the product becomes something a real user can actually use.
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-The Frontend Workspace is the user-facing face of Meridian, built in Next.js with the App Router. It replaces the placeholder dashboard from Phase 01 with 11 fully realized screens: Dashboard, Workspace (file browser), Memory Graph, Resume editor, Jobs shortlist, Applications kanban board, Chat thread, Schedule, Connectors management, History audit log, and Settings. Every screen consumes the API from Phase 13 — no screen talks directly to a database or agent.
+The Frontend Workspace is the user-facing face of Vaeloom, built in Next.js with the App Router. It replaces the placeholder dashboard from Phase 01 with 11 fully realized screens: Dashboard, Workspace (file browser), Memory Graph, Resume editor, Jobs shortlist, Applications kanban board, Chat thread, Schedule, Connectors management, History audit log, and Settings. Every screen consumes the API from Phase 13 â€” no screen talks directly to a database or agent.
 
-The design system follows the established Meridian visual identity: dark theme by default, deep ink backgrounds, periwinkle-blue accents, coral highlights, Space Grotesk for display type, and IBM Plex Mono for labels. Every screen has explicit empty states (e.g., a fresh workspace with zero files) and error states (API unreachable, permission denied). Approval flows — where users accept or reject agent proposals — are designed as first-class, low-friction interactions, since this is the primary interaction loop for most of the product.
+The design system follows the established Vaeloom visual identity: dark theme by default, deep ink backgrounds, periwinkle-blue accents, coral highlights, Space Grotesk for display type, and IBM Plex Mono for labels. Every screen has explicit empty states (e.g., a fresh workspace with zero files) and error states (API unreachable, permission denied). Approval flows â€” where users accept or reject agent proposals â€” are designed as first-class, low-friction interactions, since this is the primary interaction loop for most of the product.
 
-Keyboard navigation works across all screens, and the full MVP user journey (sign up → connect source → upload resume → see organization → approve job match → track application) flows end to end against the real API with no mocked data.
+Keyboard navigation works across all screens, and the full MVP user journey (sign up â†’ connect source â†’ upload resume â†’ see organization â†’ approve job match â†’ track application) flows end to end against the real API with no mocked data.
 
 ## Goals
 
 1. Build 11 MVP screens including Dashboard, Workspace, Memory Graph, Resume, Jobs, Applications, Chat, Schedule, Connectors, History, and Settings
-2. Implement the dark-theme Meridian design system consistently across all screens
+2. Implement the dark-theme Vaeloom design system consistently across all screens
 3. Create explicit empty states, error states, and approval flows for every screen
 4. Ensure the full MVP user journey works end-to-end against the real API with no mocked data
 5. Provide basic keyboard navigation across all screens
@@ -68,37 +68,37 @@ graph TD
 ```
 
 ## Context
-Read `13-api-backend.md` first — every screen here consumes that API, nothing talks to a database or agent directly from the frontend. This phase is where the product becomes something a real user can actually use.
+Read `13-api-backend.md` first â€” every screen here consumes that API, nothing talks to a database or agent directly from the frontend. This phase is where the product becomes something a real user can actually use.
 
 ## Objective
 Build the Next.js frontend covering every MVP screen, replacing the placeholder Dashboard from file 01.
 
 ## Requirements
 
-**Design system:** dark theme by default (reuse the established Meridian visual identity if design files are available in the repo/docs: deep ink background, periwinkle-blue accent, coral highlight, Space Grotesk for display type, IBM Plex Mono for labels/data) — consistent branding across every screen, not a generic admin-dashboard template look. Reference the design tokens in `Meridian-Documentation-Site.html` / `Meridian-How-It-Works-Visual.html` if present in the project for exact values.
+**Design system:** dark theme by default (reuse the established Vaeloom visual identity if design files are available in the repo/docs: deep ink background, periwinkle-blue accent, coral highlight, Space Grotesk for display type, IBM Plex Mono for labels/data) â€” consistent branding across every screen, not a generic admin-dashboard template look. Reference the design tokens in `Vaeloom-Documentation-Site.html` / `Vaeloom-How-It-Works-Visual.html` if present in the project for exact values.
 
 **Screens to build:**
-- **Dashboard** — aggregated summary (memory growth, active applications, upcoming deadlines, recent activity, suggestions) — read-only composition of other screens' data, no unique logic of its own.
-- **Workspace** — file/folder browser, in-app viewer (PDF, image, text minimum for MVP), Organization Agent proposal approval cards.
-- **Memory Graph** — a navigable (not just illustrative) view of the knowledge graph; clicking a node shows its connections and source documents.
-- **Resume** — rich text/structured editor for the master resume, variant picker, gap-fill question prompts inline.
-- **Jobs** — ranked shortlist cards with fit reasons, approve/reject actions.
-- **Applications** — status board (kanban-style: shortlisted → tailoring → submitted → interviewing → offer/rejected).
-- **Chat** — message thread with the Orchestrator, showing which agent responded and citing sources (file 06's provenance).
-- **Schedule** — calendar + list view, conflict flags visible.
-- **Connectors** — connection cards with status, connect/revoke actions.
-- **History** — filterable `agent_actions` log (audit trail from file 12).
-- **Settings** — per-agent autonomy level controls, data export/delete buttons (file 15).
+- **Dashboard** â€” aggregated summary (memory growth, active applications, upcoming deadlines, recent activity, suggestions) â€” read-only composition of other screens' data, no unique logic of its own.
+- **Workspace** â€” file/folder browser, in-app viewer (PDF, image, text minimum for MVP), Organization Agent proposal approval cards.
+- **Memory Graph** â€” a navigable (not just illustrative) view of the knowledge graph; clicking a node shows its connections and source documents.
+- **Resume** â€” rich text/structured editor for the master resume, variant picker, gap-fill question prompts inline.
+- **Jobs** â€” ranked shortlist cards with fit reasons, approve/reject actions.
+- **Applications** â€” status board (kanban-style: shortlisted â†’ tailoring â†’ submitted â†’ interviewing â†’ offer/rejected).
+- **Chat** â€” message thread with the Orchestrator, showing which agent responded and citing sources (file 06's provenance).
+- **Schedule** â€” calendar + list view, conflict flags visible.
+- **Connectors** â€” connection cards with status, connect/revoke actions.
+- **History** â€” filterable `agent_actions` log (audit trail from file 12).
+- **Settings** â€” per-agent autonomy level controls, data export/delete buttons (file 15).
 
-**Empty and error states:** every screen needs an explicit empty state (e.g. Workspace with zero files yet) and error state (API unreachable, permission denied) — not a blank white screen or an unhandled exception.
+**Empty and error states:** every screen needs an explicit empty state (e.g. Workspace with zero files yet) and error state (API unreachable, permission denied) â€” not a blank white screen or an unhandled exception.
 
-**Approval flows:** anywhere an agent proposes a suggest-mode action (Organization Agent renames, Job Search Agent shortlist, Application Agent submission), the UI must make approve/reject a first-class, low-friction action — this is the primary interaction loop for most of the product, it should never feel buried.
+**Approval flows:** anywhere an agent proposes a suggest-mode action (Organization Agent renames, Job Search Agent shortlist, Application Agent submission), the UI must make approve/reject a first-class, low-friction action â€” this is the primary interaction loop for most of the product, it should never feel buried.
 
 ## Out of scope
 Admin console, Analytics screen, Developer Mode/Plugin management UI, full accessibility audit pass (a basic keyboard-navigable pass is expected, a formal audit is enterprise phase), mobile app (a companion, not full parity).
 
 ## Acceptance criteria
-- [ ] A full click-through of the MVP user journey (sign up → connect a source → upload a resume → see it organized → see the master resume update → search for and approve a job match → see it on the Applications board) works against the real API with no mocked data.
+- [ ] A full click-through of the MVP user journey (sign up â†’ connect a source â†’ upload a resume â†’ see it organized â†’ see the master resume update â†’ search for and approve a job match â†’ see it on the Applications board) works against the real API with no mocked data.
 - [ ] Every screen has a tested empty state and error state.
 - [ ] Approval/rejection of any proposed agent action updates both the UI and the underlying `agent_actions` record correctly.
 - [ ] Basic keyboard navigation works across all screens (tab order, focus states, no mouse-only interactions).
@@ -116,7 +116,7 @@ Admin console, Analytics screen, Developer Mode/Plugin management UI, full acces
 | Practice | Why |
 |----------|-----|
 | Build against the real API from day one (not mocked data) | Catches API contract mismatches early, not during the integration phase |
-| Implement approval flows as first-class UI components | Approve/reject is the most frequent user action — it should be a single click, not a multi-step form |
+| Implement approval flows as first-class UI components | Approve/reject is the most frequent user action â€” it should be a single click, not a multi-step form |
 | Test every screen's empty state by loading with a fresh workspace | The first-run experience must feel intentional, not broken |
 
 ## Security Considerations
@@ -139,7 +139,7 @@ Admin console, Analytics screen, Developer Mode/Plugin management UI, full acces
 
 ### In Scope
 - 11 MVP screens built with Next.js App Router: Dashboard, Workspace, Memory Graph, Resume, Jobs, Applications, Chat, Schedule, Connectors, History, Settings
-- Dark-theme Meridian design system across all screens (deep ink background, periwinkle-blue accent, coral highlight, Space Grotesk + IBM Plex Mono)
+- Dark-theme Vaeloom design system across all screens (deep ink background, periwinkle-blue accent, coral highlight, Space Grotesk + IBM Plex Mono)
 - Empty states and error states for every screen
 - First-class approval flows (approve/reject) for agent proposals as low-friction interactions
 - Keyboard navigation across all screens (tab order, focus states, no mouse-only interactions)
@@ -157,7 +157,7 @@ Admin console, Analytics screen, Developer Mode/Plugin management UI, full acces
 ## Examples
 
 ```typescript
-// Workspace page — file browser with Organization Agent proposals
+// Workspace page â€” file browser with Organization Agent proposals
 export default async function WorkspacePage({
     params: { workspaceId },
 }: { params: { workspaceId: string } }) {
@@ -171,7 +171,7 @@ export default async function WorkspacePage({
                 <ProposalPanel>
                     {proposals.map((p) => (
                         <ProposalCard key={p.id}>
-                            <p>Rename <Code>{p.originalName}</Code> → <Code>{p.suggestedName}</Code></p>
+                            <p>Rename <Code>{p.originalName}</Code> â†’ <Code>{p.suggestedName}</Code></p>
                             <div className="approval-actions">
                                 <Button variant="primary" onClick={() => api.approveProposal(p.id)}>
                                     Approve
@@ -190,7 +190,7 @@ export default async function WorkspacePage({
 ```
 
 ```typescript
-// Approval flow — first-class interaction
+// Approval flow â€” first-class interaction
 // apps/web/components/approval/ProposalCard.tsx
 export function ProposalCard({ proposal, onApprove, onReject }: ProposalCardProps) {
     return (
@@ -213,7 +213,7 @@ export function ProposalCard({ proposal, onApprove, onReject }: ProposalCardProp
 ```
 
 ```typescript
-// Empty state component — shown when workspace has no documents yet
+// Empty state component â€” shown when workspace has no documents yet
 export function EmptyState({ title, description, action }: EmptyStateProps) {
     return (
         <div className="empty-state" role="status">
@@ -240,6 +240,6 @@ export function EmptyState({ title, description, action }: EmptyStateProps) {
 
 ## Related Documents
 
-- [13 — API Backend](13-api-backend.md) — All screens consume this API
-- [08 — Specialist Agents](08-specialist-agents.md) — Agent proposals surfaced in approval flows
-- [12 — Observability & Tracing](12-observability-tracing.md) — History screen consuming audit log
+- [13 â€” API Backend](13-api-backend.md) â€” All screens consume this API
+- [08 â€” Specialist Agents](08-specialist-agents.md) â€” Agent proposals surfaced in approval flows
+- [12 â€” Observability & Tracing](12-observability-tracing.md) â€” History screen consuming audit log

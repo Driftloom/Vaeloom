@@ -1,52 +1,52 @@
-# User Journey
+﻿# User Journey
 
-> **Purpose:** Define the end-to-end user journey through Meridian
-> **Canonical source:** [`/Docs/06-Meridian-Enterprise-Paper.md#3-user-journey`](../../Docs/06-Meridian-Enterprise-Paper.md#3-user-journey)
+> **Purpose:** Define the end-to-end user journey through Vaeloom
+> **Canonical source:** [`/Docs/06-Vaeloom-Enterprise-Paper.md#3-user-journey`](../../Docs/06-Vaeloom-Enterprise-Paper.md#3-user-journey)
 
 ## Onboarding Journey Map
 
 ```mermaid
 journey
-    title User Onboarding — Signup through First Value
+    title User Onboarding â€” Signup through First Value
 
-    section 🚪 1. Sign Up
-        Discover Meridian: 8: User
+    section ðŸšª 1. Sign Up
+        Discover Vaeloom: 8: User
         Visit landing page: 7: User
         Sign up (email / SSO): 5: User
         Verify email: 3: User
         Welcome screen: 9: System
 
-    section 🔧 2. Setup
+    section ðŸ”§ 2. Setup
         Create workspace: 6: User
         Choose identity (personal / org): 5: User
-        Seed memory (optional — upload resume): 4: User
+        Seed memory (optional â€” upload resume): 4: User
         Connect first source (Gmail / GitHub): 6: User
         OAuth consent & permissions: 3: User
         Initial sync begins: 7: System
 
-    section ⚡ 3. First Value
+    section âš¡ 3. First Value
         First sync completes: 8: System
         First agent proposal appears: 9: System
         Approve / reject proposal: 7: User
         See organized workspace: 9: System
-        "Aha moment" — understand the value: 9: User
+        "Aha moment" â€” understand the value: 9: User
 
-    section 📅 4. Daily Rhythm
+    section ðŸ“… 4. Daily Rhythm
         Background sync runs automatically: 7: System
         Daily notification (deadlines / suggestions): 6: System
         Quick approvals & corrections: 7: User
         Ask questions via chat: 8: User
         Personalized recommendations: 8: System
 
-    section 🌱 5. Deepening
+    section ðŸŒ± 5. Deepening
         Second connector added: 5: User
         Memory graph grows: 7: System
         Agent autonomy increases: 6: System
-        Trust built — less manual review: 8: User
+        Trust built â€” less manual review: 8: User
         System shifts from tool to partner: 8: User
 ```
 
-> **Chart:** The user's emotional journey from signup through first value. Excitement peaks at the **First Sync** and **First Proposal** — this is the "aha moment" where the user understands Meridian's value. The setup phase has the lowest scores due to OAuth friction and seed data decisions. Daily rhythm stabilizes with high satisfaction as the system runs autonomously and the user trusts it more over time.
+> **Chart:** The user's emotional journey from signup through first value. Excitement peaks at the **First Sync** and **First Proposal** â€” this is the "aha moment" where the user understands Vaeloom's value. The setup phase has the lowest scores due to OAuth friction and seed data decisions. Daily rhythm stabilizes with high satisfaction as the system runs autonomously and the user trusts it more over time.
 
 ---
 
@@ -58,11 +58,11 @@ User signs up via email or SSO. Identity decision: personal vs. organization-pro
 
 ### Stage 2: Workspace Creation
 
-New workspace provisioned: isolated memory namespace, default folder taxonomy, blank knowledge graph. Nothing pre-populated — Meridian builds understanding from what the user actually connects.
+New workspace provisioned: isolated memory namespace, default folder taxonomy, blank knowledge graph. Nothing pre-populated â€” Vaeloom builds understanding from what the user actually connects.
 
 ### Stage 3: Memory Initialization
 
-Optional seed flow: upload a resume, connect one or two sources. Not required — Meridian works from zero — but gives the memory system useful signal from day one.
+Optional seed flow: upload a resume, connect one or two sources. Not required â€” Vaeloom works from zero â€” but gives the memory system useful signal from day one.
 
 ### Stage 4: Connector Setup
 
@@ -70,7 +70,7 @@ Connect Gmail, GitHub, Drive, local folder, VS Code. Each is a distinct, scoped 
 
 ### Stage 5: Daily Usage
 
-System runs in the background. User's active time is spent in short, high-value interactions — approving file moves, picking job matches, asking specific questions.
+System runs in the background. User's active time is spent in short, high-value interactions â€” approving file moves, picking job matches, asking specific questions.
 
 ### Stage 6: Continuous Learning
 
@@ -78,7 +78,7 @@ Every approval, correction, and rejection is written to Preference Memory. The s
 
 ### Stage 7: Long-Term Personalization
 
-Over months and years, Meridian shifts from "organizes my stuff" to "knows my trajectory."
+Over months and years, Vaeloom shifts from "organizes my stuff" to "knows my trajectory."
 
 ## Day 1 vs. Month 6
 
@@ -94,33 +94,33 @@ Over months and years, Meridian shifts from "organizes my stuff" to "knows my tr
 
 | Mistake | Consequence |
 |---------|-------------|
-| Designing the ideal journey, not the real one | The happy path (user signs up, connects sources, sees value) is never the user's actual path — edge cases dominate |
-| Ignoring the emotional low points | The chart shows OAuth consent as the lowest score — designing better consent UX improves the entire journey more than polishing the already-good parts |
-| Making assumptions about user motivation | Assuming users will "naturally" connect more sources over time — in reality, users need explicit prompts and clear benefits |
-| One journey for all personas | A student's onboarding differs from a professional's — the journey must have persona-aware branching |
+| Designing the ideal journey, not the real one | The happy path (user signs up, connects sources, sees value) is never the user's actual path â€” edge cases dominate |
+| Ignoring the emotional low points | The chart shows OAuth consent as the lowest score â€” designing better consent UX improves the entire journey more than polishing the already-good parts |
+| Making assumptions about user motivation | Assuming users will "naturally" connect more sources over time â€” in reality, users need explicit prompts and clear benefits |
+| One journey for all personas | A student's onboarding differs from a professional's â€” the journey must have persona-aware branching |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Map the emotional journey, not just the functional one | The chart shows satisfaction scores — users remember how the product made them feel, not what steps they took |
-| Design for the lowest-scoring moments | The biggest improvement opportunity is where the journey score dips — invest in OAuth UX, not the welcome screen |
-| Define "aha moment" explicitly | The "First Proposal" is the aha moment — every upstream step should be measured by how quickly users reach this point |
-| Measure journey completion rates | Track what percentage of users complete each stage — a drop-off at Stage 4 (Connector Setup) means the OAuth flow needs work |
+| Map the emotional journey, not just the functional one | The chart shows satisfaction scores â€” users remember how the product made them feel, not what steps they took |
+| Design for the lowest-scoring moments | The biggest improvement opportunity is where the journey score dips â€” invest in OAuth UX, not the welcome screen |
+| Define "aha moment" explicitly | The "First Proposal" is the aha moment â€” every upstream step should be measured by how quickly users reach this point |
+| Measure journey completion rates | Track what percentage of users complete each stage â€” a drop-off at Stage 4 (Connector Setup) means the OAuth flow needs work |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| OAuth consent transparency | Users grant OAuth permissions during the lowest-sentiment moment — provide clear, jargon-free explanations of what each scope allows |
+| OAuth consent transparency | Users grant OAuth permissions during the lowest-sentiment moment â€” provide clear, jargon-free explanations of what each scope allows |
 | Seed data upload handling | Uploaded resumes and documents during seed flow must be treated with the same encryption and isolation as all user data |
-| Journey analytics privacy | Funnel analysis and drop-off tracking must be aggregated — never attribute specific drop-off events to identifiable users |
+| Journey analytics privacy | Funnel analysis and drop-off tracking must be aggregated â€” never attribute specific drop-off events to identifiable users |
 
 ## Overview
 
-The User Journey document maps the emotional and functional experience of a Meridian user from first discovery through long-term partnership. Unlike a traditional user flow diagram that shows only functional steps, this journey map tracks user satisfaction scores at each stage, identifying the critical "aha moment" where the user understands Meridian's value and the friction points where users are most likely to drop off.
+The User Journey document maps the emotional and functional experience of a Vaeloom user from first discovery through long-term partnership. Unlike a traditional user flow diagram that shows only functional steps, this journey map tracks user satisfaction scores at each stage, identifying the critical "aha moment" where the user understands Vaeloom's value and the friction points where users are most likely to drop off.
 
-The journey is divided into 7 stages spanning signup through months of continuous use. Each stage has specific design goals, known failure modes, and optimization opportunities. The lowest-scoring moments — particularly the OAuth consent flow during connector setup — represent the highest-leverage improvement opportunities for overall user experience.
+The journey is divided into 7 stages spanning signup through months of continuous use. Each stage has specific design goals, known failure modes, and optimization opportunities. The lowest-scoring moments â€” particularly the OAuth consent flow during connector setup â€” represent the highest-leverage improvement opportunities for overall user experience.
 
 ## Goals
 
@@ -193,7 +193,7 @@ The journey is divided into 7 stages spanning signup through months of continuou
 
 ```bash
 # Check journey completion rates
-curl -s "https://api.meridian.dev/v1/admin/journey/funnel?cohort=2026-07" \
+curl -s "https://api.Vaeloom.dev/v1/admin/journey/funnel?cohort=2026-07" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq '.stages[] | {stage, completion_rate}'
 ```
 
@@ -218,8 +218,8 @@ curl -s "https://api.meridian.dev/v1/admin/journey/funnel?cohort=2026-07" \
 
 | Consideration | Approach |
 |--------------|----------|
-| First sync speed | The first connector sync is the highest-expectation moment — prioritize time-to-first-completed-sync over sync depth |
-| Background sync impact | Daily sync must not degrade user device or browser performance — use idle-time scheduling and throttle network usage |
+| First sync speed | The first connector sync is the highest-expectation moment â€” prioritize time-to-first-completed-sync over sync depth |
+| Background sync impact | Daily sync must not degrade user device or browser performance â€” use idle-time scheduling and throttle network usage |
 
 ## Related Documents
 
@@ -228,4 +228,4 @@ curl -s "https://api.meridian.dev/v1/admin/journey/funnel?cohort=2026-07" \
 - [Problem.md](./Problem.md)
 - [Vision.md](./Vision.md)
 - [Success Metrics.md](./Success-Metrics.md)
-- [`/Docs/06-Meridian-Enterprise-Paper.md#3-user-journey`](../../Docs/06-Meridian-Enterprise-Paper.md#3-user-journey)
+- [`/Docs/06-Vaeloom-Enterprise-Paper.md#3-user-journey`](../../Docs/06-Vaeloom-Enterprise-Paper.md#3-user-journey)

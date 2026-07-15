@@ -1,7 +1,7 @@
-# CI/CD Pipeline
+﻿# CI/CD Pipeline
 
-> **Purpose:** Define the continuous integration and continuous deployment pipeline for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the continuous integration and continuous deployment pipeline for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-12
 
@@ -9,7 +9,7 @@
 
 ## Overview
 
-Meridian uses **GitHub Actions** for CI/CD across all environments. Every pull request triggers linting, testing, and building. Merges to `main` automatically deploy to staging. Production deploys require manual approval after staging verification.
+Vaeloom uses **GitHub Actions** for CI/CD across all environments. Every pull request triggers linting, testing, and building. Merges to `main` automatically deploy to staging. Production deploys require manual approval after staging verification.
 
 This document covers the complete pipeline architecture, stage definitions, environment strategies, and operational procedures.
 
@@ -118,7 +118,7 @@ jobs:
       postgres:
         image: postgis/postgis:16
         env:
-          POSTGRES_DB: meridian_test
+          POSTGRES_DB: Vaeloom_test
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
         ports:
@@ -186,8 +186,8 @@ jobs:
           context: apps/api
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
-            ghcr.io/meridian/api:latest
-            ghcr.io/meridian/api:${{ github.sha }}
+            ghcr.io/Vaeloom/api:latest
+            ghcr.io/Vaeloom/api:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
@@ -197,8 +197,8 @@ jobs:
           context: apps/ai-service
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
-            ghcr.io/meridian/ai-service:latest
-            ghcr.io/meridian/ai-service:${{ github.sha }}
+            ghcr.io/Vaeloom/ai-service:latest
+            ghcr.io/Vaeloom/ai-service:${{ github.sha }}
       
       - name: Build & Push Web
         uses: docker/build-push-action@v5
@@ -206,8 +206,8 @@ jobs:
           context: apps/web
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
-            ghcr.io/meridian/web:latest
-            ghcr.io/meridian/web:${{ github.sha }}
+            ghcr.io/Vaeloom/web:latest
+            ghcr.io/Vaeloom/web:${{ github.sha }}
 ```
 
 ### Stage 4: Deploy Staging
@@ -221,26 +221,26 @@ jobs:
     steps:
       - name: Deploy to Fly.io
         run: |
-          flyctl deploy apps/web --app meridian-web-staging \
-            --image ghcr.io/meridian/web:${{ github.sha }}
-          flyctl deploy apps/api --app meridian-api-staging \
-            --image ghcr.io/meridian/api:${{ github.sha }}
-          flyctl deploy ai-service --app meridian-ai-staging \
-            --image ghcr.io/meridian/ai-service:${{ github.sha }}
+          flyctl deploy apps/web --app Vaeloom-web-staging \
+            --image ghcr.io/Vaeloom/web:${{ github.sha }}
+          flyctl deploy apps/api --app Vaeloom-api-staging \
+            --image ghcr.io/Vaeloom/api:${{ github.sha }}
+          flyctl deploy ai-service --app Vaeloom-ai-staging \
+            --image ghcr.io/Vaeloom/ai-service:${{ github.sha }}
 ```
 
 ## Deployment Strategy
 
 | Environment | Trigger | Approval | Rollback Method | Zero Downtime |
 |-------------|---------|----------|-----------------|---------------|
-| Staging | Merge to `main` | Automatic | Re-deploy previous version | ✅ (rolling) |
-| Production | Manual after staging | Required (GitHub env) | Revert image tag | ✅ (blue-green) |
+| Staging | Merge to `main` | Automatic | Re-deploy previous version | âœ… (rolling) |
+| Production | Manual after staging | Required (GitHub env) | Revert image tag | âœ… (blue-green) |
 
 ## Rollback Procedure
 
 ```bash
 # Immediate rollback (if deployed < 1 hour ago)
-flyctl deploy apps/api --image ghcr.io/meridian/api:$PREVIOUS_SHA
+flyctl deploy apps/api --image ghcr.io/Vaeloom/api:$PREVIOUS_SHA
 
 # Git revert + redeploy (if deployed > 1 hour ago)
 git revert HEAD
@@ -248,9 +248,9 @@ git push origin main
 # CI/CD handles staging deploy; manual approval for production
 
 # Verify rollback
-curl -f https://api.meridian.dev/v1/health && \
+curl -f https://api.Vaeloom.dev/v1/health && \
   echo "Rollback successful" || \
-  echo "Rollback failed — escalate"
+  echo "Rollback failed â€” escalate"
 ```
 
 ## Best Practices
@@ -261,7 +261,7 @@ curl -f https://api.meridian.dev/v1/health && \
 | Cache dependencies between runs | Reduces CI time by 40-60% |
 | Fail fast: lint before test | Fail in 30s instead of 5 min for formatting issues |
 | Use Docker layer caching | Reduces build time by 50-70% |
-| Immutable tags (SHA-based) | Never reuse `:latest` — always SHA for traceability |
+| Immutable tags (SHA-based) | Never reuse `:latest` â€” always SHA for traceability |
 | Smoke tests after deploy | Verify deployment before traffic hits it |
 
 ## Common Mistakes
@@ -271,7 +271,7 @@ curl -f https://api.meridian.dev/v1/health && \
 | Long-lived feature branches | Merge conflicts, CI drift | Merge to develop within 3 days |
 | Skipping tests for "urgent" fixes | Regression in production | Tests must pass; add test exemption workflow for emergencies |
 | Docker `:latest` tags | Unknown what's deployed | Always use SHA tags; `:latest` is an alias, not a deployment target |
-| No smoke tests | Successful deploy ≠ working app | Smoke test after every deploy (critical endpoints) |
+| No smoke tests | Successful deploy â‰  working app | Smoke test after every deploy (critical endpoints) |
 
 ## Performance Considerations
 
@@ -353,11 +353,11 @@ curl -f https://api.meridian.dev/v1/health && \
 
 ## Data Flow
 
-1. **PR Trigger** — Developer opens/updates pull request; GitHub Actions triggers CI workflow with checkout, Node.js/Python setup, and dependency installation using cached node_modules
-2. **Parallel Stage Execution** — Lint (ESLint, Ruff, Prettier) and Type Check run in parallel; if both pass, test stage starts with PostgreSQL and Redis service containers for integration tests
-3. **Build and Push** — On merge to main with all tests passing, Docker multi-stage build creates production images; each image is tagged with commit SHA and pushed to ghcr.io with Cosign signature
-4. **Staging Deploy** — CD workflow deploys new images to staging using rolling update; health check probes verify each service instance before routing traffic
-5. **Post-Deploy Verification** — Smoke tests run against staging endpoints (health, auth, CRUD); if successful, notification sent via Slack with deployment summary and approval button for production
+1. **PR Trigger** â€” Developer opens/updates pull request; GitHub Actions triggers CI workflow with checkout, Node.js/Python setup, and dependency installation using cached node_modules
+2. **Parallel Stage Execution** â€” Lint (ESLint, Ruff, Prettier) and Type Check run in parallel; if both pass, test stage starts with PostgreSQL and Redis service containers for integration tests
+3. **Build and Push** â€” On merge to main with all tests passing, Docker multi-stage build creates production images; each image is tagged with commit SHA and pushed to ghcr.io with Cosign signature
+4. **Staging Deploy** â€” CD workflow deploys new images to staging using rolling update; health check probes verify each service instance before routing traffic
+5. **Post-Deploy Verification** â€” Smoke tests run against staging endpoints (health, auth, CRUD); if successful, notification sent via Slack with deployment summary and approval button for production
 
 ## Scalability
 
@@ -397,12 +397,12 @@ curl -f https://api.meridian.dev/v1/health && \
 |----------|---------|---------|----------|
 | CI_NODE_VERSION | Node.js version for CI | 20 | Yes |
 | CI_PYTHON_VERSION | Python version for CI | 3.11 | Yes |
-| DOCKER_REGISTRY | Container registry URL | ghcr.io/meridian | Yes |
+| DOCKER_REGISTRY | Container registry URL | ghcr.io/Vaeloom | Yes |
 | COVERAGE_THRESHOLD | Minimum line coverage percentage | 80 | No |
 | TEST_RETRIES | Number of test retries for flaky tests | 2 | No |
 | DEPLOY_TIMEOUT | Deployment timeout in minutes | 15 | No |
 | SMOKE_TEST_ENDPOINTS | Comma-separated health endpoints | /health,/v1/health | No |
-| SLACK_WEBHOOK | Deployment notification channel | — | No |
+| SLACK_WEBHOOK | Deployment notification channel | â€” | No |
 | CACHE_PREFIX | Cache key prefix for dependency caching | v1 | No |
 
 ## Risks
@@ -430,11 +430,11 @@ curl -f https://api.meridian.dev/v1/health && \
 
 ```bash
 # View pending deployment approvals
-gh api repos/meridian/meridian/actions/workflows/deploy.yml/runs \
+gh api repos/Vaeloom/Vaeloom/actions/workflows/deploy.yml/runs \
   --jq '.workflow_runs[] | select(.status=="waiting") | {id, head_branch, created_at}'
 
 # Approve a production deployment
-gh api repos/meridian/meridian/actions/runs/RUN_ID/approve \
+gh api repos/Vaeloom/Vaeloom/actions/runs/RUN_ID/approve \
   -X POST
 ```
 

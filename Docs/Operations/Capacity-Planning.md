@@ -1,7 +1,7 @@
-# Capacity Planning
+﻿# Capacity Planning
 
-> **Purpose:** Define capacity planning procedures for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define capacity planning procedures for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Capacity Planning Architecture
 
@@ -12,32 +12,32 @@ graph TD
     classDef resource fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef trigger fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Cadence["📅 Planning Cadence"]
+    subgraph Cadence["ðŸ“… Planning Cadence"]
         C1["Weekly<br/>Infrastructure metrics review<br/>CPU, memory, storage"]
         C2["Monthly<br/>Growth trend analysis<br/>Users, storage"]
         C3["Quarterly<br/>Formal capacity review<br/>All resources + budget"]
     end
 
-    subgraph Growth["📈 Growth Projections (MVP)"]
-        G1["Month 1: 100 users · 5K docs · 20K memories"]
-        G2["Month 3: 500 users · 50K docs · 200K memories"]
-        G3["Month 6: 2K users · 500K docs · 2M memories"]
-        G4["Month 12: 10K users · 5M docs · 20M memories"]
+    subgraph Growth["ðŸ“ˆ Growth Projections (MVP)"]
+        G1["Month 1: 100 users Â· 5K docs Â· 20K memories"]
+        G2["Month 3: 500 users Â· 50K docs Â· 200K memories"]
+        G3["Month 6: 2K users Â· 500K docs Â· 2M memories"]
+        G4["Month 12: 10K users Â· 5M docs Â· 20M memories"]
     end
 
-    subgraph Resources["🔧 Resource Planning"]
-        R1["Web: 2→4 instances<br/>Trigger: CPU > 70% 1wk"]
-        R2["API: 2→4 instances<br/>Trigger: Latency p99 > 1s"]
-        R3["AI: 1→3-4 instances<br/>Trigger: Queue depth > 500"]
-        R4["PG storage: 10GB→100GB<br/>Trigger: > 70% capacity"]
-        R5["Redis: 1GB→4GB<br/>Trigger: > 80% used"]
+    subgraph Resources["ðŸ”§ Resource Planning"]
+        R1["Web: 2â†’4 instances<br/>Trigger: CPU > 70% 1wk"]
+        R2["API: 2â†’4 instances<br/>Trigger: Latency p99 > 1s"]
+        R3["AI: 1â†’3-4 instances<br/>Trigger: Queue depth > 500"]
+        R4["PG storage: 10GBâ†’100GB<br/>Trigger: > 70% capacity"]
+        R5["Redis: 1GBâ†’4GB<br/>Trigger: > 80% used"]
     end
 
-    subgraph Triggers["🚦 Scaling Triggers"]
-        T1["Compute: CPU > 70% for 10min → Auto-scale"]
-        T2["Database: Connections > 80% → Auto-scale"]
-        T3["Storage: > 70% → Manual review"]
-        T4["Cache: Memory > 80% or eviction > 1% → Add nodes"]
+    subgraph Triggers["ðŸš¦ Scaling Triggers"]
+        T1["Compute: CPU > 70% for 10min â†’ Auto-scale"]
+        T2["Database: Connections > 80% â†’ Auto-scale"]
+        T3["Storage: > 70% â†’ Manual review"]
+        T4["Cache: Memory > 80% or eviction > 1% â†’ Add nodes"]
     end
 
     Cadence --> Growth --> Resources --> Triggers
@@ -48,7 +48,7 @@ graph TD
     class T1,T2,T3,T4 trigger
 ```
 
-> **Diagram:** Capacity planning—**3 cadences** (weekly/monthly/quarterly) → **MVP growth projections** (100→10K users, 5K→5M docs over 12 months) → **resource planning** (instance counts, storage, memory) → **scaling triggers** (auto-scale: CPU/connections; manual review: storage).
+> **Diagram:** Capacity planningâ€”**3 cadences** (weekly/monthly/quarterly) â†’ **MVP growth projections** (100â†’10K users, 5Kâ†’5M docs over 12 months) â†’ **resource planning** (instance counts, storage, memory) â†’ **scaling triggers** (auto-scale: CPU/connections; manual review: storage).
 
 ---
 
@@ -86,66 +86,66 @@ graph TD
 |----------|---------------------|----------------------|
 | Compute | CPU > 70% for 10 min | Growth > 50% month-over-month |
 | Database | Connections > 80% | Storage > 70% |
-| Storage | — | > 70% capacity |
+| Storage | â€” | > 70% capacity |
 | Cache | Memory > 80% | Eviction rate > 1% |
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
-| Planning capacity based on averages instead of peaks | Average utilization hides spikes — a service at 50% average CPU may hit 95% during peak hours. Plan for p95/p99 utilization, not averages, to avoid surprise capacity shortages |
-| One-size-fits-all growth projections that don't account for product changes | Launching a new feature (Gmail connector, resume builder) can double storage growth overnight — update growth projections monthly, not quarterly, and incorporate upcoming feature roadmaps |
-| Manual capacity reviews that happen too late | A quarterly capacity review means you could be 3 months into a capacity crisis before anyone notices — implement automated capacity alerts that trigger between review cycles |
+| Planning capacity based on averages instead of peaks | Average utilization hides spikes â€” a service at 50% average CPU may hit 95% during peak hours. Plan for p95/p99 utilization, not averages, to avoid surprise capacity shortages |
+| One-size-fits-all growth projections that don't account for product changes | Launching a new feature (Gmail connector, resume builder) can double storage growth overnight â€” update growth projections monthly, not quarterly, and incorporate upcoming feature roadmaps |
+| Manual capacity reviews that happen too late | A quarterly capacity review means you could be 3 months into a capacity crisis before anyone notices â€” implement automated capacity alerts that trigger between review cycles |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Use percentile-based planning (p95/p99) rather than averages | Averages hide peaks — planning for p95 utilization ensures you have headroom for spikes without over-provisioning for the absolute maximum |
-| Update growth projections monthly with feature roadmap inputs | Quarterly reviews miss mid-cycle growth from product launches and user acquisition campaigns — tie capacity projection updates to the product release calendar |
-| Automate capacity alerts between review cycles | Set automated thresholds (CPU > 70%, storage > 70%) that trigger a review even if the quarterly review is weeks away — don't wait for the next scheduled meeting |
+| Use percentile-based planning (p95/p99) rather than averages | Averages hide peaks â€” planning for p95 utilization ensures you have headroom for spikes without over-provisioning for the absolute maximum |
+| Update growth projections monthly with feature roadmap inputs | Quarterly reviews miss mid-cycle growth from product launches and user acquisition campaigns â€” tie capacity projection updates to the product release calendar |
+| Automate capacity alerts between review cycles | Set automated thresholds (CPU > 70%, storage > 70%) that trigger a review even if the quarterly review is weeks away â€” don't wait for the next scheduled meeting |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Capacity planning data revealing growth strategy | Detailed capacity projections (user counts, storage growth, feature adoption) are business-sensitive — limit access to capacity planning documents and dashboards |
-| Auto-scaling policies that can be exploited for resource exhaustion | An attacker who triggers auto-scale (through API abuse or fabricated load) could drive up infrastructure costs — set hard caps on maximum scale and require manual approval above thresholds |
-| Capacity testing in staging exposing internal architecture | Load test results published to a shared dashboard reveal instance counts, database sharding, and scaling limits — restrict capacity test results to the engineering team |
+| Capacity planning data revealing growth strategy | Detailed capacity projections (user counts, storage growth, feature adoption) are business-sensitive â€” limit access to capacity planning documents and dashboards |
+| Auto-scaling policies that can be exploited for resource exhaustion | An attacker who triggers auto-scale (through API abuse or fabricated load) could drive up infrastructure costs â€” set hard caps on maximum scale and require manual approval above thresholds |
+| Capacity testing in staging exposing internal architecture | Load test results published to a shared dashboard reveal instance counts, database sharding, and scaling limits â€” restrict capacity test results to the engineering team |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Over-provisioning to avoid capacity reviews | Without reliable capacity forecasting, teams over-provision "to be safe" — this wastes 20-40% of infrastructure spend. Right-size based on actual metrics, not fear |
-| Scaling triggers that are too sensitive causing oscillation | Auto-scaling that reacts to every 5-minute CPU spike creates a "scale up, scale down" cycle that costs more than a stable configuration — add cooldown periods and require sustained thresholds before scaling |
-| Database storage planning missing index and WAL growth | Planning only for data size (documents, records) misses the 20-30% overhead from indexes, WAL logs, and temporary query tables — add a buffer of at least 30% over projected data size |
+| Over-provisioning to avoid capacity reviews | Without reliable capacity forecasting, teams over-provision "to be safe" â€” this wastes 20-40% of infrastructure spend. Right-size based on actual metrics, not fear |
+| Scaling triggers that are too sensitive causing oscillation | Auto-scaling that reacts to every 5-minute CPU spike creates a "scale up, scale down" cycle that costs more than a stable configuration â€” add cooldown periods and require sustained thresholds before scaling |
+| Database storage planning missing index and WAL growth | Planning only for data size (documents, records) misses the 20-30% overhead from indexes, WAL logs, and temporary query tables â€” add a buffer of at least 30% over projected data size |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Capacity planning data revealing growth strategy | Detailed capacity projections (user counts, storage growth, feature adoption) are business-sensitive — limit access to capacity planning documents and dashboards |
-| Auto-scaling policies that can be exploited for resource exhaustion | An attacker who triggers auto-scale (through API abuse or fabricated load) could drive up infrastructure costs — set hard caps on maximum scale and require manual approval above thresholds |
-| Capacity testing in staging exposing internal architecture | Load test results published to a shared dashboard reveal instance counts, database sharding, and scaling limits — restrict capacity test results to the engineering team |
+| Capacity planning data revealing growth strategy | Detailed capacity projections (user counts, storage growth, feature adoption) are business-sensitive â€” limit access to capacity planning documents and dashboards |
+| Auto-scaling policies that can be exploited for resource exhaustion | An attacker who triggers auto-scale (through API abuse or fabricated load) could drive up infrastructure costs â€” set hard caps on maximum scale and require manual approval above thresholds |
+| Capacity testing in staging exposing internal architecture | Load test results published to a shared dashboard reveal instance counts, database sharding, and scaling limits â€” restrict capacity test results to the engineering team |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Over-provisioning to avoid capacity reviews | Without reliable capacity forecasting, teams over-provision "to be safe" — this wastes 20-40% of infrastructure spend. Right-size based on actual metrics, not fear |
-| Scaling triggers that are too sensitive causing oscillation | Auto-scaling that reacts to every 5-minute CPU spike creates a "scale up, scale down" cycle that costs more than a stable configuration — add cooldown periods and require sustained thresholds before scaling |
-| Database storage planning missing index and WAL growth | Planning only for data size (documents, records) misses the 20-30% overhead from indexes, WAL logs, and temporary query tables — add a buffer of at least 30% over projected data size |
+| Over-provisioning to avoid capacity reviews | Without reliable capacity forecasting, teams over-provision "to be safe" â€” this wastes 20-40% of infrastructure spend. Right-size based on actual metrics, not fear |
+| Scaling triggers that are too sensitive causing oscillation | Auto-scaling that reacts to every 5-minute CPU spike creates a "scale up, scale down" cycle that costs more than a stable configuration â€” add cooldown periods and require sustained thresholds before scaling |
+| Database storage planning missing index and WAL growth | Planning only for data size (documents, records) misses the 20-30% overhead from indexes, WAL logs, and temporary query tables â€” add a buffer of at least 30% over projected data size |
 
 ## Workflows
 
-1. **Weekly metrics review:** Check CPU, memory, storage usage across all services — compare against triggers
+1. **Weekly metrics review:** Check CPU, memory, storage usage across all services â€” compare against triggers
 2. **Monthly growth analysis:** Update growth projections with actual user/document/storage data
 3. **Quarterly capacity review:** Full formal review of all resources, budget, and growth trends
 4. **Auto-scaling event:** Triggered when CPU > 70% (10 min), connections > 80%, or memory > 80%
 5. **Manual scaling decision:** When auto-scaling triggers sustained > 50% month-over-month growth
 6. **Budget adjustment:** Update infrastructure budget based on projected growth
-7. **Capacity alert:** When any resource exceeds 80% capacity — immediate review
+7. **Capacity alert:** When any resource exceeds 80% capacity â€” immediate review
 
 ---
 
@@ -207,17 +207,17 @@ graph TD
 
 ## Overview
 
-Capacity Planning establishes the framework for ensuring Meridian's infrastructure can support projected user growth, document volume, and AI inference demand without degradation. It defines planning cadences, growth projections, resource plans, and automated scaling triggers that keep the platform responsive as it scales from 100 to 10,000 active users over the first 12 months.
+Capacity Planning establishes the framework for ensuring Vaeloom's infrastructure can support projected user growth, document volume, and AI inference demand without degradation. It defines planning cadences, growth projections, resource plans, and automated scaling triggers that keep the platform responsive as it scales from 100 to 10,000 active users over the first 12 months.
 
 This document is intended for the DevOps team, engineering leads, and finance stakeholders who need to make data-driven decisions about infrastructure investment. It bridges the gap between product growth forecasts and operational resource allocation.
 
-For a second-brain AI platform like Meridian, capacity planning is especially critical because AI inference costs dominate the spend profile (50-60% of total) and the knowledge graph grows superlinearly with user activity. Every document ingested, memory record created, and agent action executed consumes compute, storage, and AI tokens that must be provisioned in advance.
+For a second-brain AI platform like Vaeloom, capacity planning is especially critical because AI inference costs dominate the spend profile (50-60% of total) and the knowledge graph grows superlinearly with user activity. Every document ingested, memory record created, and agent action executed consumes compute, storage, and AI tokens that must be provisioned in advance.
 
-A capacity shortage at the wrong moment — during a user onboarding spike after a product launch, for example — can degrade agent responsiveness, delay document processing, and erode user trust in the platform's core value proposition of always-current context.
+A capacity shortage at the wrong moment â€” during a user onboarding spike after a product launch, for example â€” can degrade agent responsiveness, delay document processing, and erode user trust in the platform's core value proposition of always-current context.
 
 ## Goals
 
-- Project infrastructure growth across compute, storage, database, and cache dimensions based on Meridian's 12-month user and document growth model (100 to 10K users, 5K to 5M documents)
+- Project infrastructure growth across compute, storage, database, and cache dimensions based on Vaeloom's 12-month user and document growth model (100 to 10K users, 5K to 5M documents)
 - Define automated and manual scaling triggers with clear thresholds for CPU, connection pool utilization, storage capacity, and memory usage
 - Establish a three-tier planning cadence (weekly metrics review, monthly trend analysis, quarterly formal review) that catches growth surprises before they become capacity crises
 - Align infrastructure budget with projected growth, ensuring AI inference capacity scales ahead of agent action demand
@@ -226,7 +226,7 @@ A capacity shortage at the wrong moment — during a user onboarding spike after
 ## Scope
 
 ### In Scope
-- Growth projections for all Meridian resource dimensions: active users, documents stored, memory records, agent actions per day, and total storage over months 1–12
+- Growth projections for all Vaeloom resource dimensions: active users, documents stored, memory records, agent actions per day, and total storage over months 1â€“12
 - Resource plans per service: web instances, API instances, AI service instances, PostgreSQL storage, and Redis memory with current, 3-month, and action-trigger thresholds
 - Automated scaling triggers for compute (CPU > 70%), database (connections > 80%), and cache (memory > 80%) with sustained duration requirements
 - Weekly, monthly, and quarterly capacity review cadences with defined scope and participants
@@ -248,7 +248,7 @@ A capacity shortage at the wrong moment — during a user onboarding spike after
 
 ```bash
 # Check current resource utilization
-curl -s https://api.meridian.dev/v1/admin/capacity/status \
+curl -s https://api.Vaeloom.dev/v1/admin/capacity/status \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq '.resources[] | {name, usage_pct, threshold}'
 ```
 

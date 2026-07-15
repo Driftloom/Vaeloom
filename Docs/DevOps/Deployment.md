@@ -1,14 +1,14 @@
-# Deployment
+﻿# Deployment
 
-> **Purpose:** Define deployment strategy and procedures for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define deployment strategy and procedures for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Canonical source:** [`/Docs/Engineering/Implementation/16-deployment-infrastructure.md`](../../Docs/Engineering/Implementation/16-deployment-infrastructure.md)
 
 ## Network Topology
 
 ```mermaid
 graph TD
-    %% ─── Class Definitions ───
+    %% â”€â”€â”€ Class Definitions â”€â”€â”€
     classDef dev fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
     classDef staging fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef prod fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
@@ -16,63 +16,63 @@ graph TD
     classDef db fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
     classDef ci fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1.5px
 
-    %% ─── Internet / Users ───
-    subgraph Internet["🌐 Internet"]
-        U1["👤 Browser User"]
-        U2["🤖 External API<br/>Gmail / GitHub / Slack"]
-        U3["🔄 Webhook Callback"]
+    %% â”€â”€â”€ Internet / Users â”€â”€â”€
+    subgraph Internet["ðŸŒ Internet"]
+        U1["ðŸ‘¤ Browser User"]
+        U2["ðŸ¤– External API<br/>Gmail / GitHub / Slack"]
+        U3["ðŸ”„ Webhook Callback"]
     end
 
-    %% ─── Edge Layer ───
-    subgraph Edge["🛡️ Edge Layer"]
+    %% â”€â”€â”€ Edge Layer â”€â”€â”€
+    subgraph Edge["ðŸ›¡ï¸ Edge Layer"]
         direction TB
         DNS["DNS<br/>Cloudflare / Route53"] --> WAF["WAF + CDN<br/>CloudFront / Cloudflare"]
         WAF --> LB["Load Balancer<br/>ALB / Nginx"]
         WAF --> R53["SSL Termination<br/>ACM / Let's Encrypt"]
     end
 
-    %% ─── Production ───
-    subgraph Prod["🚀 Production (us-east-1)"]
+    %% â”€â”€â”€ Production â”€â”€â”€
+    subgraph Prod["ðŸš€ Production (us-east-1)"]
         direction TB
         PROD_API["API Service<br/>x6 instances<br/>Fly.io / ECS"]
         PROD_WORKER["Background Workers<br/>x4 instances"]
         PROD_CRON["Cron Scheduler<br/>1 instance"]
         PROD_PG[("PostgreSQL<br/>Primary + Standby")]
         PROD_REDIS[("Redis<br/>Cluster 3 nodes")]
-        PROD_S3["☁️ Object Storage<br/>S3 / R2"]
-        PROD_SM["🔐 Secrets Manager<br/>AWS / GCP"]
-        PROD_MON["📊 Monitoring<br/>Datadog / Grafana"]
+        PROD_S3["â˜ï¸ Object Storage<br/>S3 / R2"]
+        PROD_SM["ðŸ” Secrets Manager<br/>AWS / GCP"]
+        PROD_MON["ðŸ“Š Monitoring<br/>Datadog / Grafana"]
     end
 
-    %% ─── Staging ───
-    subgraph Stage["🧪 Staging (us-east-1)"]
+    %% â”€â”€â”€ Staging â”€â”€â”€
+    subgraph Stage["ðŸ§ª Staging (us-east-1)"]
         direction TB
         STG_API["API Service<br/>x2 instances"]
         STG_WORKER["Background Workers<br/>x1 instance"]
         STG_PG[("PostgreSQL<br/>Single instance")]
         STG_REDIS[("Redis<br/>Single instance")]
-        STG_S3["☁️ Object Storage<br/>S3 / R2"]
+        STG_S3["â˜ï¸ Object Storage<br/>S3 / R2"]
     end
 
-    %% ─── Development ───
-    subgraph Dev["💻 Development (Local)"]
+    %% â”€â”€â”€ Development â”€â”€â”€
+    subgraph Dev["ðŸ’» Development (Local)"]
         direction TB
         DEV_API["Local API<br/>next dev / nodemon"]
         DEV_PG[("PostgreSQL<br/>Docker:5432")]
         DEV_REDIS[("Redis<br/>Docker:6379")]
-        DEV_MINIO["☁️ MinIO<br/>Local S3 mock"]
-        DEV_DB_GUI["🛠️ Adminer / pgAdmin<br/>Local:8080"]
+        DEV_MINIO["â˜ï¸ MinIO<br/>Local S3 mock"]
+        DEV_DB_GUI["ðŸ› ï¸ Adminer / pgAdmin<br/>Local:8080"]
     end
 
-    %% ─── CI/CD ───
-    subgraph CICD["🔁 CI Pipeline"]
+    %% â”€â”€â”€ CI/CD â”€â”€â”€
+    subgraph CICD["ðŸ” CI Pipeline"]
         direction TB
         GIT["GitHub / GitLab"] --> CI["CI Runner<br/>Lint + Test + Build"]
         CI --> REGISTRY["Container Registry<br/>Docker Hub / ECR"]
         REGISTRY --> CD["CD Deploy<br/>Fly.io / ArgoCD"]
     end
 
-    %% ─── Network connections ───
+    %% â”€â”€â”€ Network connections â”€â”€â”€
     U1 & U2 & U3 -->|HTTPS:443| DNS
     LB -->|:443| PROD_API & STG_API
     PROD_API -->|:5432| PROD_PG
@@ -97,7 +97,7 @@ graph TD
 
     PROD_PG -.->|streaming replication| STG_PG
 
-    %% ─── Apply styles ───
+    %% â”€â”€â”€ Apply styles â”€â”€â”€
     class U1,U2,U3 edge
     class DNS,WAF,LB,R53 edge
     class PROD_API,PROD_WORKER,PROD_CRON prod
@@ -108,7 +108,7 @@ graph TD
     class GIT,CI,REGISTRY,CD ci
 ```
 
-> **Diagram:** Network topology spans five zones. **Internet** (🌐) routes through **Edge Layer** (🛡️) — DNS → WAF/CDN → Load Balancer → SSL termination — before reaching **Production** (🚀) or **Staging** (🧪). Production runs 6 API instances + 4 workers + clustered PostgreSQL/Redis. Staging mirrors production at smaller scale. **Development** (💻) uses local Docker containers (PostgreSQL, Redis, MinIO). **CI/CD** (🔁) builds and deploys via container registry.
+> **Diagram:** Network topology spans five zones. **Internet** (ðŸŒ) routes through **Edge Layer** (ðŸ›¡ï¸) â€” DNS â†’ WAF/CDN â†’ Load Balancer â†’ SSL termination â€” before reaching **Production** (ðŸš€) or **Staging** (ðŸ§ª). Production runs 6 API instances + 4 workers + clustered PostgreSQL/Redis. Staging mirrors production at smaller scale. **Development** (ðŸ’») uses local Docker containers (PostgreSQL, Redis, MinIO). **CI/CD** (ðŸ”) builds and deploys via container registry.
 
 ---
 
@@ -117,15 +117,15 @@ graph TD
 | Environment | URL | Purpose | Deploy Trigger |
 |-------------|-----|---------|---------------|
 | Development | localhost | Local development | Manual |
-| Staging | staging.meridian.dev | Integration testing | Push to main |
-| Production | meridian.dev | Live user traffic | Manual release |
+| Staging | staging.Vaeloom.dev | Integration testing | Push to main |
+| Production | Vaeloom.dev | Live user traffic | Manual release |
 
 ## Deployment Strategy
 
 | Strategy | MVP | Enterprise |
 |----------|-----|------------|
 | Method | Rolling deploy | Blue-green |
-| Zero downtime | ✅ (PaaS built-in) | ✅ (K8s) |
+| Zero downtime | âœ… (PaaS built-in) | âœ… (K8s) |
 | Rollback | Instant (previous version) | Load balancer switch |
 | Canary | Manual (staging first) | Automated (%-based traffic) |
 
@@ -148,7 +148,7 @@ graph LR
 
 ```bash
 # Option 1: Revert to previous version
-flyctl deploy apps/api --image meridian-api:v1.2.3
+flyctl deploy apps/api --image Vaeloom-api:v1.2.3
 
 # Option 2: Git revert + redeploy
 git revert HEAD
@@ -161,49 +161,49 @@ git push origin main
 
 | Mistake | Consequence |
 |---------|-------------|
-| Deploying to production without staging verification | A change that goes directly from dev to production bypasses integration testing — always deploy to staging first, run smoke tests, and only then promote to production with a manual approval gate |
-| Rollback procedures that haven't been tested | A rollback that hasn't been rehearsed will fail under pressure — test rollback procedures quarterly by deliberately deploying a bad release to staging and executing the rollback |
-| Environment drift between staging and production | Different configuration values, secret versions, or dependency versions between staging and prod cause "it worked in staging" failures — use identical deployment pipelines for both environments with environment-specific variables injected at deploy time |
+| Deploying to production without staging verification | A change that goes directly from dev to production bypasses integration testing â€” always deploy to staging first, run smoke tests, and only then promote to production with a manual approval gate |
+| Rollback procedures that haven't been tested | A rollback that hasn't been rehearsed will fail under pressure â€” test rollback procedures quarterly by deliberately deploying a bad release to staging and executing the rollback |
+| Environment drift between staging and production | Different configuration values, secret versions, or dependency versions between staging and prod cause "it worked in staging" failures â€” use identical deployment pipelines for both environments with environment-specific variables injected at deploy time |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Always validate in staging before promoting to production | Staging should mirror production as closely as possible — a staging pass gives confidence that the deployment won't cause production issues. Use the same CI/CD pipeline for both with a manual approval gate for production |
-| Test rollback procedures as part of the deployment pipeline | A rollback that works in a drill will work under pressure — include a rollback step in the staging deployment pipeline that runs every time, proving that the rollback path is always functional |
-| Keep staging and production environments as identical as possible | Environment drift is the #1 cause of "it worked in staging" failures — use the same Docker images, the same CI pipeline, and the same infrastructure-as-code templates for both environments |
+| Always validate in staging before promoting to production | Staging should mirror production as closely as possible â€” a staging pass gives confidence that the deployment won't cause production issues. Use the same CI/CD pipeline for both with a manual approval gate for production |
+| Test rollback procedures as part of the deployment pipeline | A rollback that works in a drill will work under pressure â€” include a rollback step in the staging deployment pipeline that runs every time, proving that the rollback path is always functional |
+| Keep staging and production environments as identical as possible | Environment drift is the #1 cause of "it worked in staging" failures â€” use the same Docker images, the same CI pipeline, and the same infrastructure-as-code templates for both environments |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Deploy credentials stored in CI/CD configuration | A deploy token stored as a plaintext CI/CD variable can be extracted from build logs or exported to vulnerable downstream steps — use temporary credentials with scoped permissions that are generated at deploy time, not stored permanently |
-| Production secrets accessible from staging pipelines | A CI/CD pipeline configured to deploy to staging that has access to production secrets can accidentally expose them — separate staging and production environments with different secret stores and different CI/CD credentials |
-| Deployment artifacts that aren't signed | An unsigned Docker image deployed to production could be a tampered version — sign container images and verify signatures in the deployment pipeline before allowing them to run in production |
+| Deploy credentials stored in CI/CD configuration | A deploy token stored as a plaintext CI/CD variable can be extracted from build logs or exported to vulnerable downstream steps â€” use temporary credentials with scoped permissions that are generated at deploy time, not stored permanently |
+| Production secrets accessible from staging pipelines | A CI/CD pipeline configured to deploy to staging that has access to production secrets can accidentally expose them â€” separate staging and production environments with different secret stores and different CI/CD credentials |
+| Deployment artifacts that aren't signed | An unsigned Docker image deployed to production could be a tampered version â€” sign container images and verify signatures in the deployment pipeline before allowing them to run in production |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Deployment latency slowing feature delivery | A deployment pipeline that takes 30 minutes blocks team velocity — optimize build times with layer caching (Docker), parallel test stages, and deployment streaming that doesn't require full CI completion for staging deploys |
-| Rolling deployments causing temporary performance degradation | During a rolling update, both old and new versions serve traffic — if the new version has different performance characteristics (higher latency, more database connections), it can degrade the overall experience. Monitor performance deltas during rolling deployments |
-| Blue-green deployment resource costs doubling | Maintaining two full production environments (blue + green) doubles infrastructure costs — use percentage-based canary deploys instead of full blue-green for MVP, reserving blue-green for Enterprise with dedicated budgets |
+| Deployment latency slowing feature delivery | A deployment pipeline that takes 30 minutes blocks team velocity â€” optimize build times with layer caching (Docker), parallel test stages, and deployment streaming that doesn't require full CI completion for staging deploys |
+| Rolling deployments causing temporary performance degradation | During a rolling update, both old and new versions serve traffic â€” if the new version has different performance characteristics (higher latency, more database connections), it can degrade the overall experience. Monitor performance deltas during rolling deployments |
+| Blue-green deployment resource costs doubling | Maintaining two full production environments (blue + green) doubles infrastructure costs â€” use percentage-based canary deploys instead of full blue-green for MVP, reserving blue-green for Enterprise with dedicated budgets |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Deploy credentials stored in CI/CD configuration | A deploy token stored as a plaintext CI/CD variable can be extracted from build logs or exported to vulnerable downstream steps — use temporary credentials with scoped permissions that are generated at deploy time, not stored permanently |
-| Production secrets accessible from staging pipelines | A CI/CD pipeline configured to deploy to staging that has access to production secrets can accidentally expose them — separate staging and production environments with different secret stores and different CI/CD credentials |
-| Deployment artifacts that aren't signed | An unsigned Docker image deployed to production could be a tampered version — sign container images and verify signatures in the deployment pipeline before allowing them to run in production |
+| Deploy credentials stored in CI/CD configuration | A deploy token stored as a plaintext CI/CD variable can be extracted from build logs or exported to vulnerable downstream steps â€” use temporary credentials with scoped permissions that are generated at deploy time, not stored permanently |
+| Production secrets accessible from staging pipelines | A CI/CD pipeline configured to deploy to staging that has access to production secrets can accidentally expose them â€” separate staging and production environments with different secret stores and different CI/CD credentials |
+| Deployment artifacts that aren't signed | An unsigned Docker image deployed to production could be a tampered version â€” sign container images and verify signatures in the deployment pipeline before allowing them to run in production |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Deployment latency slowing feature delivery | A deployment pipeline that takes 30 minutes blocks team velocity — optimize build times with layer caching (Docker), parallel test stages, and deployment streaming that doesn't require full CI completion for staging deploys |
-| Rolling deployments causing temporary performance degradation | During a rolling update, both old and new versions serve traffic — if the new version has different performance characteristics (higher latency, more database connections), it can degrade the overall experience. Monitor performance deltas during rolling deployments |
-| Blue-green deployment resource costs doubling | Maintaining two full production environments (blue + green) doubles infrastructure costs — use percentage-based canary deploys instead of full blue-green for MVP, reserving blue-green for Enterprise with dedicated budgets |
+| Deployment latency slowing feature delivery | A deployment pipeline that takes 30 minutes blocks team velocity â€” optimize build times with layer caching (Docker), parallel test stages, and deployment streaming that doesn't require full CI completion for staging deploys |
+| Rolling deployments causing temporary performance degradation | During a rolling update, both old and new versions serve traffic â€” if the new version has different performance characteristics (higher latency, more database connections), it can degrade the overall experience. Monitor performance deltas during rolling deployments |
+| Blue-green deployment resource costs doubling | Maintaining two full production environments (blue + green) doubles infrastructure costs â€” use percentage-based canary deploys instead of full blue-green for MVP, reserving blue-green for Enterprise with dedicated budgets |
 
 ## Goals
 
@@ -268,11 +268,11 @@ git push origin main
 
 ## Data Flow
 
-1. **Code Merge** — Developer merges PR to main branch; GitHub webhook triggers CI pipeline which runs lint, type check, unit tests, and integration tests in parallel stages
-2. **Image Build and Push** — Successful tests trigger Docker multi-stage build; images are pushed to container registry with immutable SHA tags and signed with Cosign
-3. **Staging Deployment** — CD pipeline deploys new images to staging environment using rolling update; health checks verify each instance before proceeding to next
-4. **Smoke Tests and Approval** — Post-deploy smoke tests run against staging critical endpoints (health, auth, CRUD); if all pass, notification sent to approver for production gate
-5. **Production Deployment** — Approved deployment promoted to production using blue-green strategy; live traffic switched to new version after health verification; old version retained for 1 hour for instant rollback
+1. **Code Merge** â€” Developer merges PR to main branch; GitHub webhook triggers CI pipeline which runs lint, type check, unit tests, and integration tests in parallel stages
+2. **Image Build and Push** â€” Successful tests trigger Docker multi-stage build; images are pushed to container registry with immutable SHA tags and signed with Cosign
+3. **Staging Deployment** â€” CD pipeline deploys new images to staging environment using rolling update; health checks verify each instance before proceeding to next
+4. **Smoke Tests and Approval** â€” Post-deploy smoke tests run against staging critical endpoints (health, auth, CRUD); if all pass, notification sent to approver for production gate
+5. **Production Deployment** â€” Approved deployment promoted to production using blue-green strategy; live traffic switched to new version after health verification; old version retained for 1 hour for instant rollback
 
 ## Scalability
 
@@ -340,11 +340,11 @@ git push origin main
 
 ## Overview
 
-Meridian's deployment strategy defines how code moves from development through staging to production across the entire service mesh — including the web frontend (Next.js), core API (NestJS), AI service (FastAPI), and supporting infrastructure (PostgreSQL, Redis, RabbitMQ). This document covers the three deployment environments, the rolling and blue-green strategies, CI/CD integration, and rollback procedures.
+Vaeloom's deployment strategy defines how code moves from development through staging to production across the entire service mesh â€” including the web frontend (Next.js), core API (NestJS), AI service (FastAPI), and supporting infrastructure (PostgreSQL, Redis, RabbitMQ). This document covers the three deployment environments, the rolling and blue-green strategies, CI/CD integration, and rollback procedures.
 
-The primary audience includes DevOps engineers and SRE team members responsible for deploying and operating Meridian services. Readers should understand Meridian's service architecture and CI/CD pipeline before reading this document.
+The primary audience includes DevOps engineers and SRE team members responsible for deploying and operating Vaeloom services. Readers should understand Vaeloom's service architecture and CI/CD pipeline before reading this document.
 
-Within the Meridian platform, deployment is the final stage of the CI/CD lifecycle that transforms verified artifacts into running services. A robust deployment strategy with zero-downtime rolling updates, automated smoke tests, and instant rollback capability is essential for maintaining the platform's availability SLAs and enabling rapid, safe feature delivery.
+Within the Vaeloom platform, deployment is the final stage of the CI/CD lifecycle that transforms verified artifacts into running services. A robust deployment strategy with zero-downtime rolling updates, automated smoke tests, and instant rollback capability is essential for maintaining the platform's availability SLAs and enabling rapid, safe feature delivery.
 
 Enterprise-grade deployment requires environment parity between staging and production to eliminate "it worked in staging" failures, immutable SHA-based image tags for traceable deployments, and signed container images that are verified before admission to production clusters.
 
@@ -359,14 +359,14 @@ Enterprise-grade deployment requires environment parity between staging and prod
 kubectl apply -f k8s/production/green-deployment.yaml
 
 # Wait for green to be healthy
-kubectl rollout status deployment/meridian-api-green -n meridian-prod
+kubectl rollout status deployment/Vaeloom-api-green -n Vaeloom-prod
 
 # Switch traffic to green
-kubectl patch service meridian-api -n meridian-prod \
+kubectl patch service Vaeloom-api -n Vaeloom-prod \
   --patch '{"spec":{"selector":{"version":"green"}}}'
 
 # Monitor for 15 minutes, then delete blue
-kubectl delete deployment meridian-api-blue -n meridian-prod
+kubectl delete deployment Vaeloom-api-blue -n Vaeloom-prod
 ```
 
 ### Example 2: Deployment Verification with Health Checks
@@ -374,9 +374,9 @@ kubectl delete deployment meridian-api-blue -n meridian-prod
 ```bash
 # Smoke test critical endpoints after deployment
 ENDPOINTS=(
-  "https://api.meridian.dev/v1/health"
-  "https://api.meridian.dev/v1/health/ready"
-  "https://app.meridian.dev/api/health"
+  "https://api.Vaeloom.dev/v1/health"
+  "https://api.Vaeloom.dev/v1/health/ready"
+  "https://app.Vaeloom.dev/api/health"
 )
 for ep in "${ENDPOINTS[@]}"; do
   status=$(curl -s -o /dev/null -w "%{http_code}" "$ep")
@@ -404,7 +404,7 @@ sequenceDiagram
     CI->>CI: Build & push signed image
     CI->>STG: Deploy to staging (rolling update)
     STG->>STG: Health check + smoke tests
-    STG-->>CI: ✅ Staging verified
+    STG-->>CI: âœ… Staging verified
 
     CI->>DEV: Request production approval
     DEV->>CI: Approve production deploy
@@ -416,7 +416,7 @@ sequenceDiagram
         MON->>PROD: Revert to previous version
         PROD-->>CI: Rollback complete
     else All healthy
-        MON-->>CI: ✅ Deployment complete
+        MON-->>CI: âœ… Deployment complete
     end
 ```
 

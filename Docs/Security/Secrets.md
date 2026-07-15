@@ -1,7 +1,7 @@
-# Secrets Management
+﻿# Secrets Management
 
-> **Purpose:** Define secrets management strategy for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define secrets management strategy for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
 
@@ -9,13 +9,13 @@
 
 ```mermaid
 sequenceDiagram
-    participant DEV as 👨‍💻 Developer / CI
-    participant SM as 🗄️ Secrets Manager
-    participant APP as 🚀 Application
-    participant TGT as 🎯 Target Service<br/>(DB / API / Redis)
-    participant MON as 📊 Monitoring
+    participant DEV as ðŸ‘¨â€ðŸ’» Developer / CI
+    participant SM as ðŸ—„ï¸ Secrets Manager
+    participant APP as ðŸš€ Application
+    participant TGT as ðŸŽ¯ Target Service<br/>(DB / API / Redis)
+    participant MON as ðŸ“Š Monitoring
 
-    Note over DEV,MON: ── 1. Secret Creation ──
+    Note over DEV,MON: â”€â”€ 1. Secret Creation â”€â”€
 
     DEV->>SM: PUT /secrets/:name<br/>{ value: "sk-...", version: 1 }
     SM->>SM: Encrypt at rest (AES-256-GCM)<br/>Store with version, metadata, timestamps
@@ -25,7 +25,7 @@ sequenceDiagram
     SM-->>APP: Return decrypted value
     APP->>APP: Cache in memory (no disk)<br/>Auto-refresh if rotation detected
 
-    Note over DEV,MON: ── 2. Secret Rotation ──
+    Note over DEV,MON: â”€â”€ 2. Secret Rotation â”€â”€
 
     SM->>SM: Rotation trigger:<br/>scheduled / manual / expiry
     SM->>SM: Generate new version<br/>(version + 1, new value)
@@ -37,11 +37,11 @@ sequenceDiagram
     APP->>APP: Swap in-memory cache<br/>Keep old for draining connections
     APP->>MON: Emit metric:<br/>secret_rotated, duration
     alt Rotation failed
-        SM->>MON: 🚨 Rotation failure alert
+        SM->>MON: ðŸš¨ Rotation failure alert
         SM->>SM: Keep previous version active<br/>Retry rotation in 5 min
     end
 
-    Note over DEV,MON: ── 3. Secret Revocation ──
+    Note over DEV,MON: â”€â”€ 3. Secret Revocation â”€â”€
 
     DEV->>SM: Mark secret as REVOKED<br/>reason: compromise / incident
     SM->>SM: Immediately disable<br/>All versions marked as revoked
@@ -52,12 +52,12 @@ sequenceDiagram
         APP->>TGT: Update connection with new secret
         MON->>MON: Verify all services healthy
     else No replacement
-        SM-->>APP: Return error — no fallback
-        APP->>MON: 🚨 Critical: app has no valid secret
+        SM-->>APP: Return error â€” no fallback
+        APP->>MON: ðŸš¨ Critical: app has no valid secret
         APP->>APP: Graceful shutdown / degraded mode
     end
 
-    Note over DEV,MON: ── 4. Secret Audit ──
+    Note over DEV,MON: â”€â”€ 4. Secret Audit â”€â”€
 
     DEV->>SM: List all secrets<br/>check versions, last rotation
     SM-->>DEV: Return audit report
@@ -66,7 +66,7 @@ sequenceDiagram
     DEV->>SM: Schedule rotation for flagged
 ```
 
-> **Diagram:** The secrets lifecycle covers four scenarios. **Creation:** developer stores encrypted secret → app loads at startup → caches in memory. **Rotation:** new version generated → target updated → app refreshes → old connections drain. **Revocation:** immediate disable → force refresh → graceful degradation if no fallback. **Audit:** list → verify age → schedule rotation for stale secrets.
+> **Diagram:** The secrets lifecycle covers four scenarios. **Creation:** developer stores encrypted secret â†’ app loads at startup â†’ caches in memory. **Rotation:** new version generated â†’ target updated â†’ app refreshes â†’ old connections drain. **Revocation:** immediate disable â†’ force refresh â†’ graceful degradation if no fallback. **Audit:** list â†’ verify age â†’ schedule rotation for stale secrets.
 
 ---
 
@@ -121,13 +121,13 @@ openssl rand -base64 32 | tr -d '\n' > new-secret.txt
 flyctl secrets set DATABASE_PASSWORD=$(cat new-secret.txt)
 
 # 3. Rotate in database
-psql -h localhost -U admin -c "ALTER USER meridian WITH PASSWORD '$(cat new-secret.txt)';"
+psql -h localhost -U admin -c "ALTER USER Vaeloom WITH PASSWORD '$(cat new-secret.txt)';"
 
 # 4. Restart services
 flyctl restart apps/api
 
 # 5. Verify
-curl https://api.meridian.dev/v1/health
+curl https://api.Vaeloom.dev/v1/health
 
 # 6. Cleanup
 rm new-secret.txt
@@ -137,53 +137,53 @@ rm new-secret.txt
 
 | Mistake | Consequence |
 |---------|-------------|
-| Loading secrets from environment variables at runtime instead of startup | Reading `process.env` on every request means a configuration change could expose secrets to a concurrent request — load all secrets once at application startup and cache in memory |
-| Storing secrets in version control | A `.env` file or hardcoded API key committed to git is exposed to every developer who has access to the repository — use `.env` only for local development, never commit it, and scan for accidental commits with pre-push hooks |
-| Using the same secret across environments | A development API key that gets exposed in CI logs exposes the production key if they're the same — use separate secrets per environment with different values and access controls |
+| Loading secrets from environment variables at runtime instead of startup | Reading `process.env` on every request means a configuration change could expose secrets to a concurrent request â€” load all secrets once at application startup and cache in memory |
+| Storing secrets in version control | A `.env` file or hardcoded API key committed to git is exposed to every developer who has access to the repository â€” use `.env` only for local development, never commit it, and scan for accidental commits with pre-push hooks |
+| Using the same secret across environments | A development API key that gets exposed in CI logs exposes the production key if they're the same â€” use separate secrets per environment with different values and access controls |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Load secrets once at startup, cache in memory, never read from env at runtime | Reading from environment variables at runtime introduces timing windows and makes it harder to audit secret access — load during initialization and swap references on rotation |
-| Use a secrets manager with automatic rotation for production | Cloud secrets managers (AWS Secrets Manager, GCP Secret Manager) provide encryption, access logging, and rotation — don't manage secrets in configuration files |
-| Implement a secret rotation strategy with verification steps | After rotating a secret, verify that all services are using the new value before retiring the old one — use a blue/green approach where old secrets are valid during a drain period |
+| Load secrets once at startup, cache in memory, never read from env at runtime | Reading from environment variables at runtime introduces timing windows and makes it harder to audit secret access â€” load during initialization and swap references on rotation |
+| Use a secrets manager with automatic rotation for production | Cloud secrets managers (AWS Secrets Manager, GCP Secret Manager) provide encryption, access logging, and rotation â€” don't manage secrets in configuration files |
+| Implement a secret rotation strategy with verification steps | After rotating a secret, verify that all services are using the new value before retiring the old one â€” use a blue/green approach where old secrets are valid during a drain period |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Secrets exposed through error messages and stack traces | An unhandled exception that includes a connection string or API key in the error message leaks to log aggregation — sanitize all error outputs to redact known secret patterns |
-| Secrets in application memory dumps | A crash dump of a service that loaded secrets into memory can leak them — use isolated memory for secret storage and zero out after use where possible |
-| Privilege escalation via secrets manager access | A developer with access to the staging secrets manager could read production secrets if permissions aren't scoped — enforce strict IAM separation between environments and audit all secret access |
+| Secrets exposed through error messages and stack traces | An unhandled exception that includes a connection string or API key in the error message leaks to log aggregation â€” sanitize all error outputs to redact known secret patterns |
+| Secrets in application memory dumps | A crash dump of a service that loaded secrets into memory can leak them â€” use isolated memory for secret storage and zero out after use where possible |
+| Privilege escalation via secrets manager access | A developer with access to the staging secrets manager could read production secrets if permissions aren't scoped â€” enforce strict IAM separation between environments and audit all secret access |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Secrets manager API latency on every request | Calling AWS Secrets Manager or GCP Secret Manager on every request adds 50-200ms — load secrets once at startup into memory and refresh only on rotation notifications |
-| Secret rotation causing connection storms | Rotating a database password causes all service instances to reconnect simultaneously — implement staggered rotation where instances reconnect over a drain window, not all at once |
-| Encryption overhead for secrets at rest | Cloud secrets managers encrypt at rest by default, but custom secret storage (e.g., encrypted files) adds CPU overhead — use managed secrets manager services that handle encryption transparently |
+| Secrets manager API latency on every request | Calling AWS Secrets Manager or GCP Secret Manager on every request adds 50-200ms â€” load secrets once at startup into memory and refresh only on rotation notifications |
+| Secret rotation causing connection storms | Rotating a database password causes all service instances to reconnect simultaneously â€” implement staggered rotation where instances reconnect over a drain window, not all at once |
+| Encryption overhead for secrets at rest | Cloud secrets managers encrypt at rest by default, but custom secret storage (e.g., encrypted files) adds CPU overhead â€” use managed secrets manager services that handle encryption transparently |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Secrets exposed through error messages and stack traces | An unhandled exception that includes a connection string or API key in the error message leaks to log aggregation — sanitize all error outputs to redact known secret patterns |
-| Secrets in application memory dumps | A crash dump of a service that loaded secrets into memory can leak them — use isolated memory for secret storage and zero out after use where possible |
-| Privilege escalation via secrets manager access | A developer with access to the staging secrets manager could read production secrets if permissions aren't scoped — enforce strict IAM separation between environments and audit all secret access |
+| Secrets exposed through error messages and stack traces | An unhandled exception that includes a connection string or API key in the error message leaks to log aggregation â€” sanitize all error outputs to redact known secret patterns |
+| Secrets in application memory dumps | A crash dump of a service that loaded secrets into memory can leak them â€” use isolated memory for secret storage and zero out after use where possible |
+| Privilege escalation via secrets manager access | A developer with access to the staging secrets manager could read production secrets if permissions aren't scoped â€” enforce strict IAM separation between environments and audit all secret access |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Secrets manager API latency on every request | Calling secrets manager on every request adds 50-200ms — load secrets once at startup into memory and refresh only on rotation notifications |
-| Secret rotation causing connection storms | Rotating a database password causes all service instances to reconnect simultaneously — implement staggered rotation where instances reconnect over a drain window, not all at once |
-| Encryption overhead for secrets at rest | Cloud secrets managers encrypt at rest by default, but custom secret storage (e.g., encrypted files) adds CPU overhead — use managed secrets manager services that handle encryption transparently |
+| Secrets manager API latency on every request | Calling secrets manager on every request adds 50-200ms â€” load secrets once at startup into memory and refresh only on rotation notifications |
+| Secret rotation causing connection storms | Rotating a database password causes all service instances to reconnect simultaneously â€” implement staggered rotation where instances reconnect over a drain window, not all at once |
+| Encryption overhead for secrets at rest | Cloud secrets managers encrypt at rest by default, but custom secret storage (e.g., encrypted files) adds CPU overhead â€” use managed secrets manager services that handle encryption transparently |
 
 ## Scope
 
-This document defines the secrets management strategy for Meridian — covering secrets types, storage locations, access patterns, rotation procedures, and lifecycle management (creation, rotation, revocation, audit). Applies to all environments (development, staging, production). Out of scope: encryption of secrets at rest (see [Encryption.md](./Encryption.md)), IAM for secrets manager access (see [IAM.md](./IAM.md)).
+This document defines the secrets management strategy for Vaeloom â€” covering secrets types, storage locations, access patterns, rotation procedures, and lifecycle management (creation, rotation, revocation, audit). Applies to all environments (development, staging, production). Out of scope: encryption of secrets at rest (see [Encryption.md](./Encryption.md)), IAM for secrets manager access (see [IAM.md](./IAM.md)).
 
 ---
 
@@ -263,27 +263,27 @@ sequenceDiagram
     SM->>AUD: Log rotation event
 ```
 
-> **Diagram:** Secrets lifecycle — creation (encrypted at rest), startup loading (cached in memory), rotation (new version, lazy refresh, connection drain). All events logged for audit.
+> **Diagram:** Secrets lifecycle â€” creation (encrypted at rest), startup loading (cached in memory), rotation (new version, lazy refresh, connection drain). All events logged for audit.
 
 ---
 
 ## Data Flow
 
 ```text
-Creation: Developer → Secrets Manager (encrypt + version)
-    → Application startup (load by ARN → cache in memory)
+Creation: Developer â†’ Secrets Manager (encrypt + version)
+    â†’ Application startup (load by ARN â†’ cache in memory)
     
-Rotation: Secrets Manager → New version generated
-    → Target service updated (DB/API)
-    → Application notified → Lazy refresh
-    → Old connections drain → New value active
+Rotation: Secrets Manager â†’ New version generated
+    â†’ Target service updated (DB/API)
+    â†’ Application notified â†’ Lazy refresh
+    â†’ Old connections drain â†’ New value active
     
-Revocation: Admin → Mark secret REVOKED
-    → Application force refresh → Replacement loaded
-    → No replacement → Graceful shutdown / degraded mode
+Revocation: Admin â†’ Mark secret REVOKED
+    â†’ Application force refresh â†’ Replacement loaded
+    â†’ No replacement â†’ Graceful shutdown / degraded mode
     
-Audit: Developer → List all secrets → Check rotation age
-    → Flag stale secrets → Schedule rotation
+Audit: Developer â†’ List all secrets â†’ Check rotation age
+    â†’ Flag stale secrets â†’ Schedule rotation
 ```
 
 ---
@@ -377,13 +377,13 @@ openssl rand -base64 32 | tr -d '\n' > new-db-password.txt
 flyctl secrets set DATABASE_PASSWORD=$(cat new-db-password.txt)
 
 # 3. Rotate in database (if applicable)
-psql -h localhost -U admin -c "ALTER USER meridian WITH PASSWORD '$(cat new-db-password.txt)';"
+psql -h localhost -U admin -c "ALTER USER Vaeloom WITH PASSWORD '$(cat new-db-password.txt)';"
 
 # 4. Restart services to pick up new secret
 flyctl restart apps/api
 
 # 5. Verify
-curl https://api.meridian.dev/v1/health
+curl https://api.Vaeloom.dev/v1/health
 
 # 6. Cleanup
 rm new-db-password.txt
@@ -414,11 +414,11 @@ rm new-db-password.txt
 
 ## Overview
 
-Meridian manages secrets (API keys, database credentials, JWT signing keys, third-party tokens) using a tiered vault strategy. Environment-specific secrets are stored in production-grade vaults (AWS Secrets Manager or HashiCorp Vault) and injected into services at runtime. Local development and CI secrets are managed through environment variables with strict `.env` governance.
+Vaeloom manages secrets (API keys, database credentials, JWT signing keys, third-party tokens) using a tiered vault strategy. Environment-specific secrets are stored in production-grade vaults (AWS Secrets Manager or HashiCorp Vault) and injected into services at runtime. Local development and CI secrets are managed through environment variables with strict `.env` governance.
 
 This document defines the secret lifecycle, storage tiers, access control, rotation policies, and emergency procedures for secret compromise. The primary audience is DevOps engineers managing secret infrastructure and developers using secrets in their services.
 
-Within the Meridian platform, secrets fall into three tiers: Tier 1 (platform credentials — DB passwords, JWT keys, encryption keys), Tier 2 (third-party tokens — OpenAI API key, SendGrid API key, OAuth client secrets), and Tier 3 (CI/CD secrets — Docker registry tokens, deployment SSH keys). Each tier has distinct access, rotation, and audit requirements.
+Within the Vaeloom platform, secrets fall into three tiers: Tier 1 (platform credentials â€” DB passwords, JWT keys, encryption keys), Tier 2 (third-party tokens â€” OpenAI API key, SendGrid API key, OAuth client secrets), and Tier 3 (CI/CD secrets â€” Docker registry tokens, deployment SSH keys). Each tier has distinct access, rotation, and audit requirements.
 
 Enterprise-grade secret management requires a zero-trust approach: secrets are never hardcoded, never committed to source control, never logged, and always rotated on a defined schedule or on suspicion of compromise. Access to secrets is audited, time-limited, and role-scoped.
 
@@ -442,12 +442,12 @@ Enterprise-grade secret management requires a zero-trust approach: secrets are n
 - Access control: RBAC with read/write/admin roles, time-limited emergency access
 - Rotation policies: automatic rotation schedule per tier, manual rotation trigger on compromise
 - Secret patterns in code: `process.env.VAULT_SECRET_NAME`, SDK-based retrieval, no environment variable in production code paths
-- Emergency procedures: suspected compromise → immediate rotation → incident report
+- Emergency procedures: suspected compromise â†’ immediate rotation â†’ incident report
 - Local development: `.env.local` files with `.gitignore` enforcement, developer-specific secrets
 
 ### Out of Scope
 - Certificate management and PKI infrastructure (planned for future)
-- Service mesh secrets (Istio mTLS certificates — covered in future service mesh deployment)
+- Service mesh secrets (Istio mTLS certificates â€” covered in future service mesh deployment)
 - Database encryption at rest keys (managed by cloud provider)
 - User password hashing and management (handled by Supabase Auth)
 - Build-time signing keys (covered in [Container-Signing.md](../DevOps/Container-Signing.md))
@@ -460,7 +460,7 @@ Enterprise-grade secret management requires a zero-trust approach: secrets are n
 
 ```bash
 # .env.local (never committed)
-DATABASE_URL="postgresql://dev_user:dev_pass@localhost:5432/meridian_dev"
+DATABASE_URL="postgresql://dev_user:dev_pass@localhost:5432/Vaeloom_dev"
 OPENAI_API_KEY="sk-dev-..."
 JWT_SECRET="dev-jwt-secret-do-not-use-in-prod"
 NEXT_PUBLIC_SUPABASE_URL="http://localhost:54321"
@@ -482,7 +482,7 @@ const secrets = new SecretsManager({ region: 'us-east-1' });
 
 async function getDatabaseUrl(): Promise<string> {
   const response = await secrets.getSecretValue({
-    SecretId: `meridian/${process.env.ENVIRONMENT}/database-url`,
+    SecretId: `Vaeloom/${process.env.ENVIRONMENT}/database-url`,
   });
 
   if (!response.SecretString) {
@@ -526,7 +526,7 @@ sequenceDiagram
     OPS->>SVC: Force restart with new secret
 ```
 
-> **Diagram:** Secret lifecycle — services request secrets from vault with RBAC + audit logging, rotation workers periodically rotate secrets and signal services to reload, emergency rotation revokes all versions and forces service restart.
+> **Diagram:** Secret lifecycle â€” services request secrets from vault with RBAC + audit logging, rotation workers periodically rotate secrets and signal services to reload, emergency rotation revokes all versions and forces service restart.
 
 ---
 

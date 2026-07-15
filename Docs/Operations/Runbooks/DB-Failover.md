@@ -1,13 +1,13 @@
-# DB Failover Runbook
+﻿# DB Failover Runbook
 
-> **Purpose:** Step-by-step runbook for detecting and executing PostgreSQL database failover in Meridian
-> **Status:** 🆕 New
+> **Purpose:** Step-by-step runbook for detecting and executing PostgreSQL database failover in Vaeloom
+> **Status:** ðŸ†• New
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Meridian uses PostgreSQL with streaming replication for high availability. The primary database runs as a Multi-AZ RDS instance (AWS) with a read replica in the secondary region (us-west-2). This runbook covers automated failover detection, manual failover steps, and rollback procedures.
+Vaeloom uses PostgreSQL with streaming replication for high availability. The primary database runs as a Multi-AZ RDS instance (AWS) with a read replica in the secondary region (us-west-2). This runbook covers automated failover detection, manual failover steps, and rollback procedures.
 
 **RTO:** 5 minutes (automated), 15 minutes (manual)
 **RPO:** <1 minute (streaming replication)
@@ -22,13 +22,13 @@ graph TD
     classDef action fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
     classDef monitor fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph PrimaryRegion["Primary Region — us-east-1"]
+    subgraph PrimaryRegion["Primary Region â€” us-east-1"]
         PG1["PostgreSQL Primary<br/>RDS Multi-AZ<br/>Writes + reads"]
         WAL["WAL Archives<br/>S3 bucket (encrypted)"]
         MON["Monitoring<br/>CloudWatch + pg_stat_replication"]
     end
 
-    subgraph SecondaryRegion["Secondary Region — us-west-2"]
+    subgraph SecondaryRegion["Secondary Region â€” us-west-2"]
         PG2["PostgreSQL Replica<br/>Cross-region read replica<br/>Streaming replication"]
         PROMO["Promotion Candidate<br/>Ready for failover"]
     end
@@ -75,18 +75,18 @@ graph TD
 
 ```bash
 # Check replication status
-psql -h $PRIMARY_HOST -d meridian -c "SELECT * FROM pg_stat_replication;"
+psql -h $PRIMARY_HOST -d Vaeloom -c "SELECT * FROM pg_stat_replication;"
 
 # Check replica lag (seconds)
-psql -h $REPLICA_HOST -d meridian -c "
+psql -h $REPLICA_HOST -d Vaeloom -c "
   SELECT now() - pg_last_xact_replay_timestamp() AS replica_lag;
 "
 
 # Check WAL position
-psql -h $PRIMARY_HOST -d meridian -c "
+psql -h $PRIMARY_HOST -d Vaeloom -c "
   SELECT pg_current_wal_lsn(), pg_walfile_name(pg_current_wal_lsn());
 "
-psql -h $REPLICA_HOST -d meridian -c "
+psql -h $REPLICA_HOST -d Vaeloom -c "
   SELECT pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn();
 "
 
@@ -104,12 +104,12 @@ pg_isready -h $PRIMARY_HOST -p 5432
 # Expected: "no response" or connection refused
 
 # 2. Check WAL streaming position on replica
-WAL_LSN=$(psql -h $REPLICA_HOST -d meridian -Atc \
+WAL_LSN=$(psql -h $REPLICA_HOST -d Vaeloom -Atc \
   "SELECT pg_last_wal_replay_lsn();")
 echo "Last replayed LSN: $WAL_LSN"
 
 # 3. Verify no active connections to primary
-psql -h $PRIMARY_HOST -d meridian -c "SELECT count(*) FROM pg_stat_activity;" \
+psql -h $PRIMARY_HOST -d Vaeloom -c "SELECT count(*) FROM pg_stat_activity;" \
   || echo "Primary confirmed down"
 ```
 
@@ -119,18 +119,18 @@ psql -h $PRIMARY_HOST -d meridian -c "SELECT count(*) FROM pg_stat_activity;" \
 # 1. Promote the replica
 # For RDS: Use AWS CLI to promote read replica
 aws rds promote-read-replica \
-  --db-instance-identifier meridian-db-replica \
+  --db-instance-identifier Vaeloom-db-replica \
   --region us-west-2
 
 # For self-managed: Run on replica server
 # sudo -u postgres pg_ctl promote -D /var/lib/postgresql/data
 
 # 2. Verify promotion
-psql -h $REPLICA_HOST -d meridian -c "SELECT pg_is_in_recovery();"
+psql -h $REPLICA_HOST -d Vaeloom -c "SELECT pg_is_in_recovery();"
 # Expected: "f" (false = not in recovery = primary)
 
 # 3. Enable WAL archiving on new primary
-psql -h $REPLICA_HOST -d meridian -c "SELECT pg_walfile_name(pg_current_wal_lsn());"
+psql -h $REPLICA_HOST -d Vaeloom -c "SELECT pg_walfile_name(pg_current_wal_lsn());"
 ```
 
 ### Step 3: Update Connection Configuration
@@ -138,7 +138,7 @@ psql -h $REPLICA_HOST -d meridian -c "SELECT pg_walfile_name(pg_current_wal_lsn(
 ```bash
 # 1. Update Secrets Manager with new primary endpoint
 aws secretsmanager put-secret-value \
-  --secret-id meridian/database/primary \
+  --secret-id Vaeloom/database/primary \
   --secret-string "{\"host\":\"$REPLICA_HOST\",\"port\":5432}" \
   --region us-east-1
 
@@ -154,19 +154,19 @@ tail -n 100 /var/log/application/app.log | grep "db_connected"
 
 ```bash
 # 1. Write test
-psql -h $REPLICA_HOST -d meridian -c "
+psql -h $REPLICA_HOST -d Vaeloom -c "
   INSERT INTO _system.health_check (checked_at) VALUES (now());
 "
 
 # 2. Read test
-psql -h $REPLICA_HOST -d meridian -c \
+psql -h $REPLICA_HOST -d Vaeloom -c \
   "SELECT * FROM _system.health_check ORDER BY checked_at DESC LIMIT 1;"
 
 # 3. Application health endpoint
-curl -f https://api.meridian.dev/v1/health
+curl -f https://api.Vaeloom.dev/v1/health
 
 # 4. Verify replication to any remaining replicas
-psql -h $REPLICA_HOST -d meridian -c "SELECT * FROM pg_stat_replication;"
+psql -h $REPLICA_HOST -d Vaeloom -c "SELECT * FROM pg_stat_replication;"
 ```
 
 ## Automated Failover
@@ -183,7 +183,7 @@ psql -h $REPLICA_HOST -d meridian -c "SELECT * FROM pg_stat_replication;"
 
 # Manual override: Set SSM parameter to block auto-failover
 aws ssm put-parameter \
-  --name /meridian/database/auto-failover-blocked \
+  --name /Vaeloom/database/auto-failover-blocked \
   --value "true" \
   --type String \
   --overwrite
@@ -197,8 +197,8 @@ If the original primary recovers and needs to be reinstated:
 # 1. Set up old primary as replica of new primary
 # For RDS: Create new read replica from new primary
 aws rds create-db-instance-read-replica \
-  --db-instance-identifier meridian-db-replica-v2 \
-  --source-db-instance-identifier meridian-db-primary-promoted \
+  --db-instance-identifier Vaeloom-db-replica-v2 \
+  --source-db-instance-identifier Vaeloom-db-primary-promoted \
   --region us-west-2
 
 # 2. Wait for replication to catch up
@@ -253,11 +253,11 @@ aws rds create-db-instance-read-replica \
 ## Workflows
 
 1. **Detect failure:** CloudWatch alarm (replica lag > 30s, connection failures, write failures, RDS instance degraded)
-2. **Verify primary status:** Confirm primary unreachable via `pg_isready` → check last WAL position on replica
+2. **Verify primary status:** Confirm primary unreachable via `pg_isready` â†’ check last WAL position on replica
 3. **Decide failover:** Automated (3 consecutive health check failures, no response in 5 min) or manual (IC decision)
-4. **Promote replica:** `aws rds promote-read-replica` → verify `pg_is_in_recovery` returns false
-5. **Update connection strings:** Secrets Manager → PgBouncer reload → verify apps connecting to new primary
-6. **Verify reads + writes:** Insert health check row → read it back → check app health endpoint
+4. **Promote replica:** `aws rds promote-read-replica` â†’ verify `pg_is_in_recovery` returns false
+5. **Update connection strings:** Secrets Manager â†’ PgBouncer reload â†’ verify apps connecting to new primary
+6. **Verify reads + writes:** Insert health check row â†’ read it back â†’ check app health endpoint
 7. **Create new replica:** Provision new read replica in secondary region for future failover
 8. **Post-mortem:** Document timeline, data loss (if any), action items to prevent recurrence
 
@@ -322,7 +322,7 @@ aws rds create-db-instance-read-replica \
 ## Goals
 
 - Achieve automated database failover within 5 minutes (RTO) when the primary PostgreSQL instance becomes unavailable, with less than 1 minute of data loss (RPO) through streaming replication
-- Provide clear manual failover procedures with verification steps at each stage — primary failure confirmation, replica promotion, connection string update, and read/write verification — for scenarios where automated failover does not trigger
+- Provide clear manual failover procedures with verification steps at each stage â€” primary failure confirmation, replica promotion, connection string update, and read/write verification â€” for scenarios where automated failover does not trigger
 - Maintain cross-region disaster recovery capability by keeping a warm read replica in us-west-2 with continuous WAL streaming from the primary in us-east-1
 - Ensure rollback procedures are documented and tested quarterly so the team can safely reinstate the original primary if the failover was triggered by a network partition rather than an actual primary failure
 - Prevent split-brain scenarios by enforcing single-writer PostgreSQL architecture and monitoring replication lag at 30-second alert thresholds
@@ -351,14 +351,14 @@ aws rds create-db-instance-read-replica \
 
 ```bash
 # Check replication status on primary
-psql -h $PRIMARY_HOST -d meridian -c "SELECT * FROM pg_stat_replication;"
+psql -h $PRIMARY_HOST -d Vaeloom -c "SELECT * FROM pg_stat_replication;"
 
 # Check replica lag
-psql -h $REPLICA_HOST -d meridian -c \
+psql -h $REPLICA_HOST -d Vaeloom -c \
   "SELECT now() - pg_last_xact_replay_timestamp() AS replica_lag;"
 
 # Check WAL position
-psql -h $PRIMARY_HOST -d meridian -c \
+psql -h $PRIMARY_HOST -d Vaeloom -c \
   "SELECT pg_current_wal_lsn(), pg_walfile_name(pg_current_wal_lsn());"
 ```
 
@@ -367,16 +367,16 @@ psql -h $PRIMARY_HOST -d meridian -c \
 ```bash
 # Promote cross-region read replica to primary
 aws rds promote-read-replica \
-  --db-instance-identifier meridian-db-replica \
+  --db-instance-identifier Vaeloom-db-replica \
   --region us-west-2
 
 # Verify promotion succeeded
-psql -h $REPLICA_HOST -d meridian -c "SELECT pg_is_in_recovery();"
+psql -h $REPLICA_HOST -d Vaeloom -c "SELECT pg_is_in_recovery();"
 # Expected: "f" (false = not in recovery = primary)
 
 # Update connection string in Secrets Manager
 aws secretsmanager put-secret-value \
-  --secret-id meridian/database/primary \
+  --secret-id Vaeloom/database/primary \
   --secret-string "{\"host\":\"$NEW_PRIMARY_HOST\",\"port\":5432}" \
   --region us-east-1
 ```

@@ -1,4 +1,4 @@
-Meridian · Agent Workflow
+﻿Vaeloom Â· Agent Workflow
 
 | Metadata         | Value                                                                |
 |------------------|----------------------------------------------------------------------|
@@ -9,20 +9,20 @@ Meridian · Agent Workflow
 
 ## Overview
 
-This document traces a single end-to-end flow through Meridian's agent system: a student uploads a resume draft, the system processes it through the Organization Agent, Memory Agent, and Resume Agent, then responds to a job search request by routing through the Job Search Agent, ATS Agent, and Application Agent — all feeding back into memory. The same 10-step memory loop runs underneath every feature.
+This document traces a single end-to-end flow through Vaeloom's agent system: a student uploads a resume draft, the system processes it through the Organization Agent, Memory Agent, and Resume Agent, then responds to a job search request by routing through the Job Search Agent, ATS Agent, and Application Agent â€” all feeding back into memory. The same 10-step memory loop runs underneath every feature.
 
 ## Goals
 
-- **Trace a complete user scenario** — from file upload to application outcome
-- **Show agent handoffs and data flow** — what reads from and writes to memory at each step
-- **Illustrate the feedback loop** — how application outcomes make future searches smarter
-- **Document the permission and approval gates** — where the user confirms versus where agents act autonomously
+- **Trace a complete user scenario** â€” from file upload to application outcome
+- **Show agent handoffs and data flow** â€” what reads from and writes to memory at each step
+- **Illustrate the feedback loop** â€” how application outcomes make future searches smarter
+- **Document the permission and approval gates** â€” where the user confirms versus where agents act autonomously
 
 # One file in, one application out
 
 The same memory loop runs underneath every feature. This is what actually happens between a student uploading a resume draft and an application landing in front of a recruiter.
 
-**Scenario:** A student drags **Resume\_draft\_v3.pdf** into Meridian, then later asks: "find me backend internships."
+**Scenario:** A student drags **Resume\_draft\_v3.pdf** into Vaeloom, then later asks: "find me backend internships."
 
 ```mermaid
 graph TD
@@ -35,21 +35,21 @@ graph TD
     classDef apply fill:#c8e6c9,stroke:#1b5e20,color:#000,stroke-width:2px
 
     T["1. File uploaded<br/>Resume draft dragged in"]:::trigger
-    O["2. Organization Agent<br/>Reads, names, files it<br/>→ Proposes rename + folder"]:::org
-    MEM["3. Memory Agent<br/>Extracts & merges into graph<br/>→ Skills, projects, education"]:::memory
-    R["4. Resume Agent<br/>Updates master resume<br/>→ Folds in new content"]:::resume
-    U["5. User: Find me backend internships<br/>→ Orchestrator routes request"]:::trigger
-    J["6. Job Search Agent<br/>Searches, ranks, shortlists<br/>→ Returns 8 ranked roles"]:::search
-    ATS["7. ATS Agent<br/>Scores fit per role<br/>→ 78% match, 2 suggested edits"]:::ats
+    O["2. Organization Agent<br/>Reads, names, files it<br/>â†’ Proposes rename + folder"]:::org
+    MEM["3. Memory Agent<br/>Extracts & merges into graph<br/>â†’ Skills, projects, education"]:::memory
+    R["4. Resume Agent<br/>Updates master resume<br/>â†’ Folds in new content"]:::resume
+    U["5. User: Find me backend internships<br/>â†’ Orchestrator routes request"]:::trigger
+    J["6. Job Search Agent<br/>Searches, ranks, shortlists<br/>â†’ Returns 8 ranked roles"]:::search
+    ATS["7. ATS Agent<br/>Scores fit per role<br/>â†’ 78% match, 2 suggested edits"]:::ats
     AP["8. User picks 3 of 8 to pursue"]:::trigger
-    APP["9. Application Agent<br/>Tailors + submits each app<br/>→ Resume + cover letter per role"]:::apply
-    FB["10. Outcome feeds the next loop<br/>Interview / rejection → logged→ Episodic memory updated"]:::memory
+    APP["9. Application Agent<br/>Tailors + submits each app<br/>â†’ Resume + cover letter per role"]:::apply
+    FB["10. Outcome feeds the next loop<br/>Interview / rejection â†’ loggedâ†’ Episodic memory updated"]:::memory
 
     T --> O --> MEM --> R --> U --> J --> ATS --> AP --> APP --> FB
     FB -.->|feedback loop| MEM & R & J
 ```
 
-> **Diagram:** End-to-end agent workflow from file upload to application outcome. **10 sequential steps** flow left-to-right: file trigger → Organization Agent (name/file) → Memory Agent (extract/merge) → Resume Agent (update master) → User request → Job Search Agent (search/rank) → ATS Agent (score) → User picks → Application Agent (tailor/submit) → Memory Agent logs outcome. The **feedback loop** closes back to memory, making future searches smarter.
+> **Diagram:** End-to-end agent workflow from file upload to application outcome. **10 sequential steps** flow left-to-right: file trigger â†’ Organization Agent (name/file) â†’ Memory Agent (extract/merge) â†’ Resume Agent (update master) â†’ User request â†’ Job Search Agent (search/rank) â†’ ATS Agent (score) â†’ User picks â†’ Application Agent (tailor/submit) â†’ Memory Agent logs outcome. The **feedback loop** closes back to memory, making future searches smarter.
 
 ---
 
@@ -102,7 +102,7 @@ USER
 
 ## "Find me backend internships"
 
-A normal chat request — the Orchestrator routes it to the Job Search Agent.
+A normal chat request â€” the Orchestrator routes it to the Job Search Agent.
 
 reads: working memory (conversation)
 
@@ -123,7 +123,7 @@ ATS AGENT
 
 ## Scores fit per role
 
-For each shortlisted role: 78% match, missing keywords "Docker," "system design," suggests two specific resume edits — shown as a diff, not applied automatically.
+For each shortlisted role: 78% match, missing keywords "Docker," "system design," suggests two specific resume edits â€” shown as a diff, not applied automatically.
 
 reads: master resume, job description
 
@@ -139,12 +139,12 @@ Nothing leaves the system until this point. The user selects which roles to actu
 
 APPLICATION AGENT
 
-## Tailors and submits — or hands off
+## Tailors and submits â€” or hands off
 
 Builds a tailored resume + cover letter per role. Where the platform has an official API, applies directly. Where it doesn't, deep-links the user to the listing with documents ready to attach, rather than scraping the form.
 
 reads: master resume, ATS suggestions
-writes: career memory — application + status
+writes: career memory â€” application + status
 
 10
 
@@ -152,7 +152,7 @@ MEMORY AGENT
 
 ## Outcome feeds the next loop
 
-Whatever happens next — interview, rejection, silence — gets logged. The next time the Job Search Agent ranks roles, this outcome is part of what it's reading.
+Whatever happens next â€” interview, rejection, silence â€” gets logged. The next time the Job Search Agent ranks roles, this outcome is part of what it's reading.
 
 writes: episodic memory, preference memory
 
@@ -162,7 +162,7 @@ writes: episodic memory, preference memory
 
 ### In Scope
 - End-to-end agent workflow from file upload to application outcome
-- Agent handoffs: Organization Agent → Memory Agent → Resume Agent → Job Search Agent → ATS Agent → Application Agent
+- Agent handoffs: Organization Agent â†’ Memory Agent â†’ Resume Agent â†’ Job Search Agent â†’ ATS Agent â†’ Application Agent
 - Memory read/write permissions at each step of the workflow
 - User approval gates and permission boundaries
 - Feedback loop where outcomes feed back into memory for future searches
@@ -180,13 +180,13 @@ writes: episodic memory, preference memory
 ### Trigger agent from a file upload
 
 ```bash
-meridian workflow run --trigger upload --file resume.pdf
+Vaeloom workflow run --trigger upload --file resume.pdf
 ```
 
 ### Orchestrate a multi-agent pipeline
 
 ```typescript
-await meridian.workflow.create({
+await Vaeloom.workflow.create({
   steps: [
     { agent: "organization", action: "classify" },
     { agent: "memory", action: "extract" },
@@ -198,7 +198,7 @@ await meridian.workflow.create({
 ### Check agent execution status
 
 ```bash
-meridian workflow status --id wf_abc123
+Vaeloom workflow status --id wf_abc123
 ```
 
 ## Future Improvements
@@ -213,7 +213,7 @@ meridian workflow status --id wf_abc123
 
 | Document | Description |
 |----------|-------------|
-| [MVP Product Spec](01-Meridian-MVP-Spec.md) | Full MVP product specification |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | Full MVP product specification |
 | [System Architecture](02-system-architecture.md) | Six-layer architecture that supports agent orchestration |
 | [Memory & Knowledge Graph](04-memory-knowledge-graph.md) | Memory system agents read from and write to |
-| [Enterprise Product Vision](06-Meridian-Enterprise-Paper.md) | Enterprise-scale agent roster expansion |
+| [Enterprise Product Vision](06-Vaeloom-Enterprise-Paper.md) | Enterprise-scale agent roster expansion |

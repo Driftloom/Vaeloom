@@ -1,13 +1,13 @@
-# Database Partitioning
+﻿# Database Partitioning
 
-> **Purpose:** Define the partitioning strategy for Meridian's database
-> **Status:** 🆕 New
+> **Purpose:** Define the partitioning strategy for Vaeloom's database
+> **Status:** ðŸ†• New
 
 ## Overview
 
-Database partitioning is Meridian's strategy for maintaining query performance and manageability at Enterprise scale — splitting large tables into smaller, independent physical storage units while keeping a single logical table interface. Three tables are candidates for partitioning when they cross defined thresholds: agent_actions (range partition by created_at monthly at 100M+ rows), memory_records (hash partition by workspace_id into 256 partitions at 50M+ rows), and documents (hash partition by workspace_id into 256 partitions at 10M+ rows). Partitioning is not applied at MVP scale — indexes alone are simpler and faster below these thresholds.
+Database partitioning is Vaeloom's strategy for maintaining query performance and manageability at Enterprise scale â€” splitting large tables into smaller, independent physical storage units while keeping a single logical table interface. Three tables are candidates for partitioning when they cross defined thresholds: agent_actions (range partition by created_at monthly at 100M+ rows), memory_records (hash partition by workspace_id into 256 partitions at 50M+ rows), and documents (hash partition by workspace_id into 256 partitions at 10M+ rows). Partitioning is not applied at MVP scale â€” indexes alone are simpler and faster below these thresholds.
 
-This document defines the partitioning triggers, strategy per table, implementation SQL, partition management (automated creation, detach, archive), and monitoring. It is intended for database engineers planning the enterprise scaling roadmap and SRE engineers managing partition lifecycle. The golden rule: partition only when indexes are no longer sufficient — premature partitioning adds complexity without benefit.
+This document defines the partitioning triggers, strategy per table, implementation SQL, partition management (automated creation, detach, archive), and monitoring. It is intended for database engineers planning the enterprise scaling roadmap and SRE engineers managing partition lifecycle. The golden rule: partition only when indexes are no longer sufficient â€” premature partitioning adds complexity without benefit.
 
 ## Goals
 
@@ -28,9 +28,9 @@ This document defines the partitioning triggers, strategy per table, implementat
 - Error handling for missing partitions, imbalance, and archival failures
 
 **Out of Scope:**
-- Sub-partitioning (hash + range) — future improvement
-- pg_partman integration — future improvement (currently using custom cron)
-- Tiered storage with tablespace-per-partition — future improvement
+- Sub-partitioning (hash + range) â€” future improvement
+- pg_partman integration â€” future improvement (currently using custom cron)
+- Tiered storage with tablespace-per-partition â€” future improvement
 - Partitioning of non-PostgreSQL stores (AGE graph, pgvector, Qdrant)
 - Dynamic partition count resizing (hash modulus change requires rebuild)
 
@@ -45,14 +45,14 @@ graph TD
     classDef hash fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef mgmt fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Triggers["🚦 Partition Thresholds (Enterprise)"]
+    subgraph Triggers["ðŸš¦ Partition Thresholds (Enterprise)"]
         direction TB
         TR1["agent_actions > 100M rows<br/>~10M/1K users/year"]
         TR2["memory_records > 50M rows<br/>~5M/1K users/year"]
         TR3["documents > 10M rows<br/>~1M/1K users/year"]
     end
 
-    subgraph RangePartitions["📅 Range Partitioning (by time)"]
+    subgraph RangePartitions["ðŸ“… Range Partitioning (by time)"]
         direction TB
         RP1["Table: agent_actions<br/>Partition key: created_at<br/>Type: RANGE (monthly)"]
         RP2["Partition: agent_actions_2026_07<br/>FOR VALUES FROM ('2026-07-01')<br/>TO ('2026-08-01')"]
@@ -60,7 +60,7 @@ graph TD
         RP4["New partition added monthly via cron"]
     end
 
-    subgraph HashPartitions["🔀 Hash Partitioning (by workspace)"]
+    subgraph HashPartitions["ðŸ”€ Hash Partitioning (by workspace)"]
         direction TB
         HP1["Table: memory_records<br/>Partition key: workspace_id<br/>Type: HASH (256)"]
         HP2["Table: documents<br/>Partition key: workspace_id<br/>Type: HASH (256)"]
@@ -69,7 +69,7 @@ graph TD
         HP5["Even distribution across partitions"]
     end
 
-    subgraph Management["🔄 Partition Management"]
+    subgraph Management["ðŸ”„ Partition Management"]
         direction TB
         M1["Add new partition:<br/>CREATE TABLE ... PARTITION OF"]
         M2["Detach old partition:<br/>ALTER TABLE DETACH PARTITION"]
@@ -157,34 +157,34 @@ ALTER TABLE agent_actions DETACH PARTITION agent_actions_2021;
 
 | Mistake | Consequence |
 |---------|-------------|
-| Partitioning too early — before reaching scale thresholds | Partitioning adds complexity to queries, migrations, and maintenance — if a table has fewer than 10M rows, indexes alone are simpler and faster |
-| Choosing the wrong partition key | Partitioning by `created_at` for queries that filter by `workspace_id` means every query scans all partitions — the partition key must match the primary query filter |
-| Creating too many partitions | 256 hash partitions per table means 256 index scans per query — partition count should balance query performance (fewer is better) with manageability (smaller partitions are easier to archive) |
-| Forgetting to add new time partitions proactively | If no cron job adds next month's partition, writes to the parent table fail — automate partition creation at least 1 week before the current partition fills |
+| Partitioning too early â€” before reaching scale thresholds | Partitioning adds complexity to queries, migrations, and maintenance â€” if a table has fewer than 10M rows, indexes alone are simpler and faster |
+| Choosing the wrong partition key | Partitioning by `created_at` for queries that filter by `workspace_id` means every query scans all partitions â€” the partition key must match the primary query filter |
+| Creating too many partitions | 256 hash partitions per table means 256 index scans per query â€” partition count should balance query performance (fewer is better) with manageability (smaller partitions are easier to archive) |
+| Forgetting to add new time partitions proactively | If no cron job adds next month's partition, writes to the parent table fail â€” automate partition creation at least 1 week before the current partition fills |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Partition only when indexes are no longer sufficient | Indexes on workspace_id handle queries efficiently up to 10-50M rows — partition only when index size approaches available RAM or maintenance windows become constrained |
-| Match partition key to the most frequent query filter | Range partitioning on created_at serves time-range queries (audit log) — hash partitioning on workspace_id serves tenant-scoped queries (memory_records, documents) |
+| Partition only when indexes are no longer sufficient | Indexes on workspace_id handle queries efficiently up to 10-50M rows â€” partition only when index size approaches available RAM or maintenance windows become constrained |
+| Match partition key to the most frequent query filter | Range partitioning on created_at serves time-range queries (audit log) â€” hash partitioning on workspace_id serves tenant-scoped queries (memory_records, documents) |
 | Automate partition management with a cron job | A monthly cron that creates next month's range partition and detaches partitions older than retention prevents both write failures and storage bloat |
-| Use hash partitioning for evenly-distributed data | Hash by workspace_id distributes rows evenly across partitions — range by created_at is only even if data arrives at a constant rate |
+| Use hash partitioning for evenly-distributed data | Hash by workspace_id distributes rows evenly across partitions â€” range by created_at is only even if data arrives at a constant rate |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Cross-partition queries bypassing workspace isolation | A query without a WHERE clause on the partition key scans all partitions — ensure application queries always include the partition key in filters |
-| Detached partition data retention | Detached partitions contain historical user data — apply the same access controls and retention policies as the main table before archiving or deleting |
+| Cross-partition queries bypassing workspace isolation | A query without a WHERE clause on the partition key scans all partitions â€” ensure application queries always include the partition key in filters |
+| Detached partition data retention | Detached partitions contain historical user data â€” apply the same access controls and retention policies as the main table before archiving or deleting |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Partition pruning efficiency | PostgreSQL prunes partitions at planning time — the query planner must be able to determine which partitions to scan from the WHERE clause. Avoid functions or CASTs on partition keys |
-| Hash partition count trade-off | More partitions = more planner overhead and more open file handles. 256 is a reasonable maximum — 16-64 is sufficient for most workloads |
-| Index overhead per partition | Each partition has its own set of indexes — 256 partitions × 3 indexes each = 768 index maintenance operations. Factor this into maintenance window planning |
+| Partition pruning efficiency | PostgreSQL prunes partitions at planning time â€” the query planner must be able to determine which partitions to scan from the WHERE clause. Avoid functions or CASTs on partition keys |
+| Hash partition count trade-off | More partitions = more planner overhead and more open file handles. 256 is a reasonable maximum â€” 16-64 is sufficient for most workloads |
+| Index overhead per partition | Each partition has its own set of indexes â€” 256 partitions Ã— 3 indexes each = 768 index maintenance operations. Factor this into maintenance window planning |
 
 ---
 
@@ -202,10 +202,10 @@ ALTER TABLE agent_actions DETACH PARTITION agent_actions_2021;
 
 | Dimension | Current Limit | 10x Strategy | 100x Strategy |
 |-----------|---------------|--------------|---------------|
-| Partitions per table | 256 (hash) | Partition pruning at plan time; 256 is manageable | Sub-partitioning (hash by workspace → range by time) |
+| Partitions per table | 256 (hash) | Partition pruning at plan time; 256 is manageable | Sub-partitioning (hash by workspace â†’ range by time) |
 | Query performance with partitioning | No benefit until threshold reached | Partition pruning reduces scan by partition count | More partitions = more planner overhead; balance at 256 |
 | Partition management operations | Monthly cron for range partitions | Automate with pg_partman extension | Self-managing partition lifecycle with policies |
-| Data archival from partitions | Detach → archive to cold storage | Parallel detach of old partitions | Automated tiered storage (tablespace per partition) |
+| Data archival from partitions | Detach â†’ archive to cold storage | Parallel detach of old partitions | Automated tiered storage (tablespace per partition) |
 
 ---
 
@@ -319,10 +319,10 @@ sequenceDiagram
     DB->>DB: Partition pruning
     DB-->>APP: Scan only '2026_07' partition
 
-    Note over DB: Hash: workspace_id='ws_abc' → hash('ws_abc') mod 256 = partition_142
+    Note over DB: Hash: workspace_id='ws_abc' â†’ hash('ws_abc') mod 256 = partition_142
 
     APP->>DB: INSERT memory record (workspace_id='ws_abc')
-    DB->>DB: Hash workspace_id → partition_142
+    DB->>DB: Hash workspace_id â†’ partition_142
     DB-->>APP: Inserted
 
     loop Monthly
@@ -340,7 +340,7 @@ sequenceDiagram
     CRON->>DB: DROP TABLE agent_actions_2026_06
 ```
 
-> **Diagram:** Partition lifecycle — queries benefit from automatic partition pruning (range: date-clause selects only relevant month; hash: workspace_id routes to one partition). The partition manager cron creates future partitions 2 weeks ahead and detaches old partitions for archival after retention is exceeded.
+> **Diagram:** Partition lifecycle â€” queries benefit from automatic partition pruning (range: date-clause selects only relevant month; hash: workspace_id routes to one partition). The partition manager cron creates future partitions 2 weeks ahead and detaches old partitions for archival after retention is exceeded.
 
 ---
 
@@ -350,7 +350,7 @@ sequenceDiagram
 |-------------|----------|------------|----------|
 | pg_partman for automated partition lifecycle management | High | Medium | Q1 2027 |
 | Sub-partitioning (hash + range) for time-based archival of tenant data | Medium | High | Q2 2027 |
-| Tiered storage with tablespace per partition tier (hot/SSD → warm/HDD → cold/S3) | Low | High | Q3 2027 |
+| Tiered storage with tablespace per partition tier (hot/SSD â†’ warm/HDD â†’ cold/S3) | Low | High | Q3 2027 |
 | Partition fill rate prediction and auto-scaling | Low | Medium | Q2 2027 |
 
 ---

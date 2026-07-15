@@ -1,4 +1,4 @@
-[What Is It](#intro)
+﻿[What Is It](#intro)
 [How It Works](#how-it-works)
 [Architecture](#architecture)
 [Agent Orchestration](#orchestration)
@@ -6,22 +6,22 @@
 [Implementation](#implementation)
 [Roadmap](#roadmap)
 
-Meridian · Visual Overview
+Vaeloom Â· Visual Overview
 
 | Metadata         | Value                                                                |
 |------------------|----------------------------------------------------------------------|
-| **Purpose**      | Visual overview of Meridian — what it is, how it works, and how we build it |
+| **Purpose**      | Visual overview of Vaeloom â€” what it is, how it works, and how we build it |
 | **Status**       | Living document |
 | **Owner**        | Product Team |
 | **Last Updated** | 2026-07-13 |
 
 ## Overview
 
-Meridian connects to the places you already keep your stuff — email, Drive, GitHub, a laptop folder — reads what's there, organizes it without being asked, and remembers it permanently. That memory powers agents that keep your resume current, track deadlines, and search for and apply to jobs with your approval. This is a visual-first walkthrough covering the problem, architecture, agent orchestration, memory system, implementation plan, and roadmap.
+Vaeloom connects to the places you already keep your stuff â€” email, Drive, GitHub, a laptop folder â€” reads what's there, organizes it without being asked, and remembers it permanently. That memory powers agents that keep your resume current, track deadlines, and search for and apply to jobs with your approval. This is a visual-first walkthrough covering the problem, architecture, agent orchestration, memory system, implementation plan, and roadmap.
 
 ## Goals
 
-- Provide a visual-first walkthrough of the Meridian system
+- Provide a visual-first walkthrough of the Vaeloom system
 - Explain the problem, architecture, agent orchestration, and memory system in an accessible way
 - Communicate the implementation plan and roadmap visually
 - Serve as a high-level overview for stakeholders, new team members, and investors
@@ -43,53 +43,53 @@ Meridian connects to the places you already keep your stuff — email, Drive, Gi
 
 # A second brain for your education and career {#intro}
 
-Meridian connects to the places you already keep your stuff — email, Drive, GitHub, a laptop folder — reads what's there, organizes it without being asked, and remembers it permanently. That memory powers agents that keep your resume current, track deadlines, and search for and apply to jobs with your approval.
+Vaeloom connects to the places you already keep your stuff â€” email, Drive, GitHub, a laptop folder â€” reads what's there, organizes it without being asked, and remembers it permanently. That memory powers agents that keep your resume current, track deadlines, and search for and apply to jobs with your approval.
 
 THE PROBLEM
 
 ## Everything's scattered {#architecture}
 
-Resumes, certificates, emails, code — spread across a dozen tools, none of which know about the others. Rebuilding the picture by hand is work nobody has time for.
+Resumes, certificates, emails, code â€” spread across a dozen tools, none of which know about the others. Rebuilding the picture by hand is work nobody has time for.
 
 WHAT IT IS
 
 ### A memory system, not a chatbot {#orchestration}
 
-Chat is one view into it. The real product is a continuously updated, structured memory of who you are and what you've done — everything else is built on top.
+Chat is one view into it. The real product is a continuously updated, structured memory of who you are and what you've done â€” everything else is built on top.
 
 WHO IT'S FOR
 
 ### Students first, then anyone building a career {#implementation}
 
-Students are the sharpest pain point — then job seekers, early-career professionals, researchers, developers, and eventually institutions.
+Students are the sharpest pain point â€” then job seekers, early-career professionals, researchers, developers, and eventually institutions.
 
 WHAT'S DIFFERENT
 
 ### One brain, many views {#roadmap}
 
-Resume, job matches, reminders — all generated from the same memory. Every feature makes every other feature smarter, because they all read and write the same brain.
+Resume, job matches, reminders â€” all generated from the same memory. Every feature makes every other feature smarter, because they all read and write the same brain.
 
 How It Works
 
 ## One continuous loop, start to finish
 
-Every one of these stages writes into the same memory — that's what makes stage 9 smarter every time stages 1–8 run again.
+Every one of these stages writes into the same memory â€” that's what makes stage 9 smarter every time stages 1â€“8 run again.
 
 1
 
 ONBOARDING
 
-### Sign up → workspace provisioned
+### Sign up â†’ workspace provisioned
 
-A clean, empty memory namespace is created. Nothing is pre-populated — Meridian builds understanding from what you actually connect and upload, not assumptions.
+A clean, empty memory namespace is created. Nothing is pre-populated â€” Vaeloom builds understanding from what you actually connect and upload, not assumptions.
 
 2
 
 CONNECT
 
-#### Connect accounts — each one scoped
+#### Connect accounts â€” each one scoped
 
-Gmail, GitHub, Drive, a local folder, VS Code. Each connection is a separate, explicit, read-only-by-default grant — never one "connect everything" switch.
+Gmail, GitHub, Drive, a local folder, VS Code. Each connection is a separate, explicit, read-only-by-default grant â€” never one "connect everything" switch.
 
 3
 
@@ -103,9 +103,9 @@ Direct upload, connector sync, or a watched local folder. Every new or changed f
 
 AI PROCESSING
 
-#### Parse → OCR → extract
+#### Parse â†’ OCR â†’ extract
 
-Document parsing, OCR for scanned certificates, code understanding for repos, semantic extraction for everything — the raw file becomes structured, meaningful content.
+Document parsing, OCR for scanned certificates, code understanding for repos, semantic extraction for everything â€” the raw file becomes structured, meaningful content.
 
 5
 
@@ -113,7 +113,7 @@ MEMORY + KNOWLEDGE GRAPH
 
 #### Entities extracted, linked, remembered
 
-Skills, projects, organizations, dates — extracted, deduplicated, and connected into the knowledge graph. This is the moment a file stops being "a file" and becomes part of what Meridian knows about you.
+Skills, projects, organizations, dates â€” extracted, deduplicated, and connected into the knowledge graph. This is the moment a file stops being "a file" and becomes part of what Vaeloom knows about you.
 
 6
 
@@ -121,7 +121,7 @@ AGENTS ACTIVATE
 
 #### Specialist agents read the new memory
 
-Organization, Resume, ATS, Job Search, Gmail, Scheduler — each reads what's relevant to it and proposes an update, a suggestion, or a match.
+Organization, Resume, ATS, Job Search, Gmail, Scheduler â€” each reads what's relevant to it and proposes an update, a suggestion, or a match.
 
 7
 
@@ -129,15 +129,15 @@ AUTOMATION + DASHBOARD
 
 #### It runs without being asked {#how-it-works}
 
-Scheduled Gmail passes, deadline extraction, proactive suggestions — all surfaced on one Dashboard, so your active time is spent approving, not maintaining.
+Scheduled Gmail passes, deadline extraction, proactive suggestions â€” all surfaced on one Dashboard, so your active time is spent approving, not maintaining.
 
 8
 
 CAREER INTELLIGENCE
 
-#### Resume → job search → tailored applications
+#### Resume â†’ job search â†’ tailored applications
 
-The always-current resume feeds ATS scoring, which feeds ranked job matches, which — after your approval — become tailored, submitted applications.
+The always-current resume feeds ATS scoring, which feeds ranked job matches, which â€” after your approval â€” become tailored, submitted applications.
 
 9
 
@@ -145,13 +145,13 @@ COMPOUNDING
 
 #### The outcome feeds back into memory
 
-An interview, a rejection, a correction you made — all of it is written back. The next loop through stages 1–8 starts from a slightly smarter memory than the last one.
+An interview, a rejection, a correction you made â€” all of it is written back. The next loop through stages 1â€“8 starts from a slightly smarter memory than the last one.
 
 System Architecture
 
 ## Eight layers, one spine of memory
 
-Every layer exists to feed the one at the center. Interfaces and connectors bring data in; agents act on it; everything that happens gets written back to memory — which is what every layer above ultimately reads from.
+Every layer exists to feed the one at the center. Interfaces and connectors bring data in; agents act on it; everything that happens gets written back to memory â€” which is what every layer above ultimately reads from.
 
 01
 
@@ -171,9 +171,9 @@ MobileNotifications, quick capture
 
 ### Connectors & Plugins
 
-Scoped, OAuth-based — read-only until you grant more.
+Scoped, OAuth-based â€” read-only until you grant more.
 
-Gmail · GitHub · DriveOfficial OAuth, scoped tokens
+Gmail Â· GitHub Â· DriveOfficial OAuth, scoped tokens
 
 Local FolderOne directory, not full disk
 
@@ -195,15 +195,15 @@ Semantic ExtractorEntities, relationships
 
 ### Agent Orchestration
 
-Specialized agents, each scoped to one job — full detail in the next section.
+Specialized agents, each scoped to one job â€” full detail in the next section.
 
 OrchestratorRoutes every request
 
-7 specialist agentsOrganization, Resume, ATS, Job Search…
+7 specialist agentsOrganization, Resume, ATS, Job Searchâ€¦
 
 05
 
-### Memory & Knowledge — CORE
+### Memory & Knowledge â€” CORE
 
 Everything above reads from and writes to this layer. This is the actual product.
 
@@ -249,20 +249,20 @@ Agent Orchestration
 
 ## One router, eight specialists
 
-Nothing calls another agent directly. Every request — from you or from a schedule — goes through the Orchestrator, which routes it to the right specialist and enforces permissions on the way.
+Nothing calls another agent directly. Every request â€” from you or from a schedule â€” goes through the Orchestrator, which routes it to the right specialist and enforces permissions on the way.
 
 ```mermaid
 graph TD
-    O["🧠 Orchestrator<br/>Routes every request"]
+    O["ðŸ§  Orchestrator<br/>Routes every request"]
 
-    OA["📁 Organization Agent<br/>Names & files documents"]
-    MA["🧬 Memory Agent<br/>Extracts & merges into the graph"]
-    RA["📄 Resume Agent<br/>Maintains the master resume"]
-    ATS["📊 ATS Agent<br/>Scores fit vs. job description"]
-    JS["🔍 Job Search Agent<br/>Finds & ranks opportunities"]
-    APP["📤 Application Agent<br/>Tailors & submits, with approval"]
-    GA["✉️ Gmail Agent<br/>Classifies mail, deadlines"]
-    SA["📅 Scheduler Agent<br/>Deadlines & conflict checks"]
+    OA["ðŸ“ Organization Agent<br/>Names & files documents"]
+    MA["ðŸ§¬ Memory Agent<br/>Extracts & merges into the graph"]
+    RA["ðŸ“„ Resume Agent<br/>Maintains the master resume"]
+    ATS["ðŸ“Š ATS Agent<br/>Scores fit vs. job description"]
+    JS["ðŸ” Job Search Agent<br/>Finds & ranks opportunities"]
+    APP["ðŸ“¤ Application Agent<br/>Tailors & submits, with approval"]
+    GA["âœ‰ï¸ Gmail Agent<br/>Classifies mail, deadlines"]
+    SA["ðŸ“… Scheduler Agent<br/>Deadlines & conflict checks"]
 
     O --> OA
     O --> MA
@@ -273,7 +273,7 @@ graph TD
     O --> GA
     O --> SA
 
-    OA -->|Write| MEM["💾 Memory Layer"]
+    OA -->|Write| MEM["ðŸ’¾ Memory Layer"]
     MA -->|Read/Write| MEM
     RA -->|Read| MEM
     JS -->|Read| MEM
@@ -290,11 +290,11 @@ graph TD
     class MEM memory
 ```
 
-Agent Workflow — A Real Sequence
+Agent Workflow â€” A Real Sequence
 
 ## One file in, one application out
 
-A student drags **Resume\_draft\_v3.pdf** into Meridian, then later asks: "find me backend internships." This is everything that happens between those two moments.
+A student drags **Resume\_draft\_v3.pdf** into Vaeloom, then later asks: "find me backend internships." This is everything that happens between those two moments.
 
 1
 
@@ -302,7 +302,7 @@ ORGANIZATION AGENT
 
 ### Reads, names, files it
 
-Recognizes it as a resume, detects it's a newer version of an existing one, proposes a rename and a move — shown as a diff, nothing applied silently.
+Recognizes it as a resume, detects it's a newer version of an existing one, proposes a rename and a move â€” shown as a diff, nothing applied silently.
 
 2
 
@@ -334,7 +334,7 @@ ATS AGENT
 
 #### Scores fit per role
 
-78% match, missing keywords "Docker," "system design," two specific resume edits suggested — never applied automatically.
+78% match, missing keywords "Docker," "system design," two specific resume edits suggested â€” never applied automatically.
 
 6
 
@@ -348,7 +348,7 @@ Nothing leaves the system until this point. You choose which roles to actually a
 
 APPLICATION AGENT
 
-#### Tailors and submits — or hands off
+#### Tailors and submits â€” or hands off
 
 Where the platform has an official API, applies directly. Where it doesn't, deep-links you to the listing with documents ready to attach.
 
@@ -358,7 +358,7 @@ MEMORY AGENT
 
 #### The outcome feeds the next loop
 
-Interview, rejection, silence — whatever happens gets logged. Next time roles are ranked, this outcome is part of what's read.
+Interview, rejection, silence â€” whatever happens gets logged. Next time roles are ranked, this outcome is part of what's read.
 
 <a id="memory"></a>
 
@@ -366,7 +366,7 @@ Memory System
 
 ## One graph, six kinds of memory
 
-Every agent reads from and writes to the same underlying graph — this is what makes the resume, the job search, and the chat all feel like they "know" the same person.
+Every agent reads from and writes to the same underlying graph â€” this is what makes the resume, the job search, and the chat all feel like they "know" the same person.
 
 Knowledge
 Graph
@@ -407,19 +407,19 @@ Read path
 
 ### Agentic RAG retrieval
 
-When an agent needs context, it doesn't run one fixed search — it picks a strategy for the question in front of it.
+When an agent needs context, it doesn't run one fixed search â€” it picks a strategy for the question in front of it.
 
 Query from an agent
 
-↓
+â†“
 
-Hybrid search — vector + keyword + graph traversal
+Hybrid search â€” vector + keyword + graph traversal
 
-↓
+â†“
 
 Re-rank by relevance, recency, confidence
 
-↓
+â†“
 
 Assembled context returned to agent
 
@@ -427,37 +427,37 @@ Write path
 
 ### How memory gets updated
 
-Every agent action is a potential memory update — no manual linking required, ever.
+Every agent action is a potential memory update â€” no manual linking required, ever.
 
 New info from any agent
 
-↓
+â†“
 
 Extract entities & facts
 
-↓
+â†“
 
 Dedup / merge against existing nodes
 
-↓
+â†“
 
 Write to graph + vector store, consolidate over time
 
 Creation
 
-→
+â†’
 
 Retrieval
 
-→
+â†’
 
 Evolution
 
-→
+â†’
 
 Consolidation
 
-→
+â†’
 
 Permanence
 
@@ -465,21 +465,21 @@ How We're Going To Build It
 
 ## Seven phases, nothing to enterprise until the core loop is proven
 
-Each phase has one exit criterion before the next begins. Multi-tenancy and the plugin ecosystem are deliberately last — not first.
+Each phase has one exit criterion before the next begins. Multi-tenancy and the plugin ecosystem are deliberately last â€” not first.
 
 00
 
 ### Infrastructure & Scaffolding
 
-Deployable skeleton — auth, empty services, CI pipeline — before any feature work begins.
+Deployable skeleton â€” auth, empty services, CI pipeline â€” before any feature work begins.
 
-Complexity: SMilestone: sign up → empty workspace
+Complexity: SMilestone: sign up â†’ empty workspace
 
 01
 
 #### Ingestion & Memory Foundation
 
-File upload → parse → extract → queryable memory record. The whole product depends on this being right.
+File upload â†’ parse â†’ extract â†’ queryable memory record. The whole product depends on this being right.
 
 Complexity: LMilestone: correct entities extracted from a real resume
 
@@ -487,7 +487,7 @@ Complexity: LMilestone: correct entities extracted from a real resume
 
 #### Organization Agent & Workspace
 
-The user-facing file organization experience — naming, foldering, approval flow, archive.
+The user-facing file organization experience â€” naming, foldering, approval flow, archive.
 
 Complexity: MMilestone: >90% proposal approval rate
 
@@ -495,7 +495,7 @@ Complexity: MMilestone: >90% proposal approval rate
 
 #### Resume & ATS
 
-The first "wow" feature — a resume that writes itself, plus ATS scoring against a job description.
+The first "wow" feature â€” a resume that writes itself, plus ATS scoring against a job description.
 
 Complexity: MMilestone: tailored variant in under a minute
 
@@ -511,7 +511,7 @@ Complexity: LMilestone: query to submitted application in one session
 
 #### Communication & Time
 
-Gmail Agent (scheduled + push hook) and Scheduler Agent — closing the loop on time-sensitive info.
+Gmail Agent (scheduled + push hook) and Scheduler Agent â€” closing the loop on time-sensitive info.
 
 Complexity: MMilestone: urgent mail surfaces within minutes
 
@@ -519,13 +519,13 @@ Complexity: MMilestone: urgent mail surfaces within minutes
 
 #### Polish, Autonomy, Dashboard, Settings
 
-The trust-building layer — Dashboard, audit log, per-agent autonomy settings, data export/delete.
+The trust-building layer â€” Dashboard, audit log, per-agent autonomy settings, data export/delete.
 
 Complexity: MMilestone: public MVP launch
 
 07
 
-#### Enterprise — POST-MVP
+#### Enterprise â€” POST-MVP
 
 Multi-tenancy, the consent model, SSO, Admin console, Plugin SDK + MCP ecosystem, Marketplace.
 
@@ -535,17 +535,17 @@ Deployment Architecture
 
 ## How the pieces actually run
 
-Background workers (ingestion, scheduled agent passes) run as separate processes from the request-serving API — a large connector sync never competes with an interactive chat request.
+Background workers (ingestion, scheduled agent passes) run as separate processes from the request-serving API â€” a large connector sync never competes with an interactive chat request.
 
 CDN / Load Balancer
 
-↓
+â†“
 
 Web App (Next.js)
 
 Core API (NestJS)
 
-↓
+â†“
 
 AI Service (FastAPI)
 
@@ -553,29 +553,29 @@ Redis (queue + cache)
 
 Postgres (+ graph + vector)
 
-↓
+â†“
 
 Model Provider (Claude API)
 
 ### Tech stack, by layer
 
-FrontendReact · Next.js · Tailwind · TanStack Query
+FrontendReact Â· Next.js Â· Tailwind Â· TanStack Query
 
-Core APINode.js · TypeScript · NestJS
+Core APINode.js Â· TypeScript Â· NestJS
 
-AI / AgentsPython · FastAPI · Claude API
+AI / AgentsPython Â· FastAPI Â· Claude API
 
 RelationalPostgreSQL
 
-GraphApache AGE → Neo4j at scale
+GraphApache AGE â†’ Neo4j at scale
 
-Vectorpgvector → Qdrant at scale
+Vectorpgvector â†’ Qdrant at scale
 
-SearchMeilisearch → OpenSearch at scale
+SearchMeilisearch â†’ OpenSearch at scale
 
-Queue / CacheRedis + BullMQ → Kafka at scale
+Queue / CacheRedis + BullMQ â†’ Kafka at scale
 
-DeployPaaS → Kubernetes at scale
+DeployPaaS â†’ Kubernetes at scale
 
 ObservabilityOpenTelemetry + hosted APM
 
@@ -583,7 +583,7 @@ Roadmap
 
 ## Where this goes from here
 
-Each stage's exit criterion is what earns the next one — nothing here is a fixed calendar date.
+Each stage's exit criterion is what earns the next one â€” nothing here is a fixed calendar date.
 
 Now
 
@@ -621,7 +621,7 @@ Future
 
 Personal Digital Twin, Autonomous Career Manager, AI Mentor, Life Timeline Intelligence, Personal AI APIs.
 
-MERIDIAN · VISUAL OVERVIEW · WHAT IT IS, HOW IT WORKS, HOW WE BUILD IT
+Vaeloom Â· VISUAL OVERVIEW Â· WHAT IT IS, HOW IT WORKS, HOW WE BUILD IT
 
 ---
 
@@ -630,34 +630,34 @@ MERIDIAN · VISUAL OVERVIEW · WHAT IT IS, HOW IT WORKS, HOW WE BUILD IT
 ### Launch the visual walkthrough
 
 ```bash
-meridian tutorial start
+Vaeloom tutorial start
 ```
 
 ### View the architecture diagram
 
 ```bash
-meridian tutorial show --section architecture
+Vaeloom tutorial show --section architecture
 ```
 
 ### Step through the agent workflow
 
 ```bash
-meridian tutorial step --module "resume-to-application"
+Vaeloom tutorial step --module "resume-to-application"
 ```
 
 ### Export visuals as a PDF
 
 ```bash
-meridian tutorial export --format pdf --output walkthrough.pdf
+Vaeloom tutorial export --format pdf --output walkthrough.pdf
 ```
 
 ## Future Improvements
 
-- **Animated flow diagrams** — convert static Mermaid diagrams to animated step-through walkthroughs
-- **Interactive prototype links** — embed clickable prototype hotspots for each major screen
-- **Video narration** — add narrated screencast for each visual section
-- **PDF export** — generate a downloadable PDF version of the visual overview
-- **Localized versions** — translate visual content for international student audiences
+- **Animated flow diagrams** â€” convert static Mermaid diagrams to animated step-through walkthroughs
+- **Interactive prototype links** â€” embed clickable prototype hotspots for each major screen
+- **Video narration** â€” add narrated screencast for each visual section
+- **PDF export** â€” generate a downloadable PDF version of the visual overview
+- **Localized versions** â€” translate visual content for international student audiences
 
 ---
 
@@ -665,7 +665,7 @@ meridian tutorial export --format pdf --output walkthrough.pdf
 
 | Document | Description |
 |----------|-------------|
-| [Complete Documentation](Meridian-Complete-Documentation.md) | Full linear product and engineering reference |
-| [MVP Product Spec](01-Meridian-MVP-Spec.md) | v1/MVP product scope |
+| [Complete Documentation](Vaeloom-Complete-Documentation.md) | Full linear product and engineering reference |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1/MVP product scope |
 | [System Architecture](02-system-architecture.md) | Six-layer architecture diagram |
 | [Memory & Knowledge Graph](04-memory-knowledge-graph.md) | Memory system visual breakdown |

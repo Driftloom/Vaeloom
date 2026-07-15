@@ -1,7 +1,7 @@
-# Product Strategy
+﻿# Product Strategy
 
-> **Purpose:** Define the product strategy and approach for Meridian
-> **Canonical source:** [`/Docs/01-Meridian-MVP-Spec.md#3-product-philosophy`](../../Docs/01-Meridian-MVP-Spec.md#3-product-philosophy)
+> **Purpose:** Define the product strategy and approach for Vaeloom
+> **Canonical source:** [`/Docs/01-Vaeloom-MVP-Spec.md#3-product-philosophy`](../../Docs/01-Vaeloom-MVP-Spec.md#3-product-philosophy)
 
 ## Strategy Architecture
 
@@ -11,20 +11,20 @@ graph TD
     classDef gtm fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef moat fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Commitments["🎯 Core Commitments"]
+    subgraph Commitments["ðŸŽ¯ Core Commitments"]
         C1["Memory before features<br/>UI on shallow memory < plain UI on deep memory"]
-        C2["Consent is architecture<br/>Not a settings page — core data model concept"]
+        C2["Consent is architecture<br/>Not a settings page â€” core data model concept"]
         C3["Earned autonomy compounds<br/>More autonomy where demonstrated correct"]
     end
 
-    subgraph GTM["🚀 Go-to-Market Strategy"]
+    subgraph GTM["ðŸš€ Go-to-Market Strategy"]
         G1["MVP: Individual students<br/>Free tier, campus word-of-mouth"]
         G2["v1.5: Early-career professionals<br/>Paid tier, referral program"]
         G3["V2: Job seekers, freelancers<br/>Content marketing, partnerships"]
         G4["Enterprise: Universities, companies<br/>Direct sales, design partner program"]
     end
 
-    subgraph Moat["🛡️ Competitive Moat"]
+    subgraph Moat["ðŸ›¡ï¸ Competitive Moat"]
         M["Compounding memory<br/>Longer use = better features<br/>= higher switching cost"]
     end
 
@@ -35,17 +35,17 @@ graph TD
     class M moat
 ```
 
-> **Diagram:** Product strategy — **3 core commitments** (memory-first, consent-as-architecture, earned autonomy) → **4-phase go-to-market** (MVP→v1.5→V2→Enterprise targeting specific segments) → **competitive moat** (compounding memory — longer use improves everything).
+> **Diagram:** Product strategy â€” **3 core commitments** (memory-first, consent-as-architecture, earned autonomy) â†’ **4-phase go-to-market** (MVPâ†’v1.5â†’V2â†’Enterprise targeting specific segments) â†’ **competitive moat** (compounding memory â€” longer use improves everything).
 
 ---
 
 ## Core Strategy
 
-Meridian's strategy is built on three commitments:
+Vaeloom's strategy is built on three commitments:
 
 1. **Memory before features.** A flashier UI on a shallow memory loses to a plain UI on a deep one. Every new feature is evaluated by what it teaches the memory system, not just what it shows the user.
-2. **Consent is the architecture, not a settings page.** Permission scopes, autonomy levels, and audit trails are core data-model concepts, present in every agent and every connector from the schema up — not a layer added later for compliance.
-3. **Earned autonomy compounds.** The system starts conservative everywhere and becomes more autonomous only where it has demonstrated it's right — per agent, per user, per action type.
+2. **Consent is the architecture, not a settings page.** Permission scopes, autonomy levels, and audit trails are core data-model concepts, present in every agent and every connector from the schema up â€” not a layer added later for compliance.
+3. **Earned autonomy compounds.** The system starts conservative everywhere and becomes more autonomous only where it has demonstrated it's right â€” per agent, per user, per action type.
 
 ## Go-to-Market Strategy
 
@@ -58,38 +58,38 @@ Meridian's strategy is built on three commitments:
 
 ## Competitive Moat
 
-Meridian's moat isn't any single feature — resume builders, job boards, and note apps are all individually replicable. The moat is the **compounding memory**: the longer a person uses Meridian, the better every feature gets, and the more painful it becomes to start over somewhere else.
+Vaeloom's moat isn't any single feature â€” resume builders, job boards, and note apps are all individually replicable. The moat is the **compounding memory**: the longer a person uses Vaeloom, the better every feature gets, and the more painful it becomes to start over somewhere else.
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
-| Confusing strategy with tactics | A list of features to build is a roadmap, not a strategy — strategy is *what you choose not to do* |
-| Chasing competitors instead of users | Copying a competitor's feature doesn't create differentiation — it makes your product more like theirs |
-| Strategy without resource constraints | A strategy that assumes unlimited engineering time isn't a strategy — it's a wish list |
-| Setting strategy once and never revisiting | Market conditions, user feedback, and competitive landscape shift — quarterly strategy reviews prevent drift |
+| Confusing strategy with tactics | A list of features to build is a roadmap, not a strategy â€” strategy is *what you choose not to do* |
+| Chasing competitors instead of users | Copying a competitor's feature doesn't create differentiation â€” it makes your product more like theirs |
+| Strategy without resource constraints | A strategy that assumes unlimited engineering time isn't a strategy â€” it's a wish list |
+| Setting strategy once and never revisiting | Market conditions, user feedback, and competitive landscape shift â€” quarterly strategy reviews prevent drift |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Strategy is about what you won't do | Meridian won't build a resume builder without memory — that constraint, not the feature list, is the strategy |
-| Let principles replace rules | "Memory before features" is a principle — it guides decisions without needing a playbook for every edge case |
-| Align strategy with user lifecycle | The go-to-market phases (MVP → v1.5 → V2 → Enterprise) should follow user maturity, not calendar dates |
+| Strategy is about what you won't do | Vaeloom won't build a resume builder without memory â€” that constraint, not the feature list, is the strategy |
+| Let principles replace rules | "Memory before features" is a principle â€” it guides decisions without needing a playbook for every edge case |
+| Align strategy with user lifecycle | The go-to-market phases (MVP â†’ v1.5 â†’ V2 â†’ Enterprise) should follow user maturity, not calendar dates |
 | Review strategy against actual data | Stale strategy assumptions ("users want X") should be replaced with real usage data from each phase |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Strategy document confidentiality | Product strategy documents contain competitive positioning and launch timing — access should be need-to-know |
-| Partner program data | Design partner programs generate strategy-shaping feedback — partner identity and feedback must be aggregated |
+| Strategy document confidentiality | Product strategy documents contain competitive positioning and launch timing â€” access should be need-to-know |
+| Partner program data | Design partner programs generate strategy-shaping feedback â€” partner identity and feedback must be aggregated |
 
 ## Overview
 
-Meridian's product strategy is built on three foundational commitments that distinguish it from every competitor in the market: memory before features, consent as architecture, and earned autonomy. These commitments are not marketing claims — they are engineering constraints that shape every architectural decision, from the data model through the agent permission system. The strategy also defines a four-phase go-to-market approach targeting increasingly mature user segments, and identifies the compounding memory moat that protects Meridian from single-feature competitors.
+Vaeloom's product strategy is built on three foundational commitments that distinguish it from every competitor in the market: memory before features, consent as architecture, and earned autonomy. These commitments are not marketing claims â€” they are engineering constraints that shape every architectural decision, from the data model through the agent permission system. The strategy also defines a four-phase go-to-market approach targeting increasingly mature user segments, and identifies the compounding memory moat that protects Vaeloom from single-feature competitors.
 
-The strategy is designed to answer the question "what won't we do?" as much as "what will we do?" By choosing memory depth over feature breadth, Meridian deliberately limits its initial feature set to ensure every feature compounds the system's understanding of the user. A flashier UI on shallow memory loses to a plain UI on deep, compounding memory — this principle guides every priority decision.
+The strategy is designed to answer the question "what won't we do?" as much as "what will we do?" By choosing memory depth over feature breadth, Vaeloom deliberately limits its initial feature set to ensure every feature compounds the system's understanding of the user. A flashier UI on shallow memory loses to a plain UI on deep, compounding memory â€” this principle guides every priority decision.
 
 ## Goals
 
@@ -144,7 +144,7 @@ The strategy is designed to answer the question "what won't we do?" as much as "
 
 ```bash
 # Evaluate a proposed feature against strategy
-curl -s -X POST https://api.meridian.dev/v1/admin/strategy-check \
+curl -s -X POST https://api.Vaeloom.dev/v1/admin/strategy-check \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{"feature": "file_tagging", "principle": "memory_before_features"}' | jq '.passes'
 ```
@@ -169,7 +169,7 @@ curl -s -X POST https://api.meridian.dev/v1/admin/strategy-check \
 
 | Consideration | Approach |
 |--------------|----------|
-| Phase transitions | The strategy depends on phased rollout — data infrastructure must scale incrementally without rewrites at each phase boundary |
+| Phase transitions | The strategy depends on phased rollout â€” data infrastructure must scale incrementally without rewrites at each phase boundary |
 
 ## Related Documents
 

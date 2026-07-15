@@ -1,10 +1,10 @@
-# Incident Response Plan
+﻿# Incident Response Plan
 
 > **Purpose:** Standard procedures for detecting, responding to, and recovering from production incidents
 > **Status:** Active
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
-> **Applies to:** Meridian platform — MVP and Enterprise deployments
+> **Applies to:** Vaeloom platform â€” MVP and Enterprise deployments
 
 ---
 
@@ -21,7 +21,7 @@
 
 ## 1. Incident Severity Levels {#1-incident-severity-levels}
 
-### SEV-1: Critical — System Down or Data Loss
+### SEV-1: Critical â€” System Down or Data Loss
 
 | Criteria | Response |
 |----------|----------|
@@ -32,7 +32,7 @@
 
 **Response:** On-call engineer immediately. All other work suspended. CTO notified within 15 minutes.
 
-### SEV-2: High — Major Feature Degraded
+### SEV-2: High â€” Major Feature Degraded
 
 | Criteria | Response |
 |----------|----------|
@@ -43,18 +43,18 @@
 
 **Response:** On-call engineer within 30 min. Feature team notified within 1 hour.
 
-### SEV-3: Medium — Partial Degradation
+### SEV-3: Medium â€” Partial Degradation
 
 | Criteria | Response |
 |----------|----------|
 | Non-critical feature degraded (dashboard widgets, history page) | < 2 hours to acknowledge |
 | Connector failure affecting < 5% of users | < 2 hours to acknowledge |
 | Agent approval rate dropping below 70% (model quality issue) | < 2 hours to acknowledge |
-| Slightly elevated error rates (1–5%) | < 2 hours to acknowledge |
+| Slightly elevated error rates (1â€“5%) | < 2 hours to acknowledge |
 
 **Response:** Engineering team notified within 2 hours. Addressed in next deployment.
 
-### SEV-4: Low — Cosmetic or Minor
+### SEV-4: Low â€” Cosmetic or Minor
 
 | Criteria | Response |
 |----------|----------|
@@ -95,11 +95,11 @@
 
 ## 3. Incident Response Workflow {#3-incident-response-workflow}
 
-The incident response lifecycle is a **closed loop** — every incident feeds back into system improvements. Below is the end-to-end flow from detection through post-mortem.
+The incident response lifecycle is a **closed loop** â€” every incident feeds back into system improvements. Below is the end-to-end flow from detection through post-mortem.
 
 ```mermaid
 flowchart TB
-    %% ── Style definitions ──
+    %% â”€â”€ Style definitions â”€â”€
     classDef detect fill:#e3f2fd,stroke:#1565c0,color:#000
     classDef triage fill:#fff3e0,stroke:#e65100,color:#000
     classDef mitigate fill:#fce4ec,stroke:#c62828,color:#000
@@ -108,8 +108,8 @@ flowchart TB
     classDef decision fill:#fffde7,stroke:#f9a825,color:#000
     classDef external fill:#eceff1,stroke:#37474f,color:#000,stroke-dasharray:5 5
 
-    %% ── Subgraph: Detect ──
-    subgraph Detect["🟦 1 — Detect"]
+    %% â”€â”€ Subgraph: Detect â”€â”€
+    subgraph Detect["ðŸŸ¦ 1 â€” Detect"]
         direction TB
         D1[Monitoring Alert] --> D2{Is this real?}
         D3[User Report] --> D2
@@ -117,19 +117,19 @@ flowchart TB
         D2 -->|False alarm| D5[Resolve & document]
     end
 
-    %% ── Subgraph: Triage ──
-    subgraph Triage["🟧 2 — Triage"]
+    %% â”€â”€ Subgraph: Triage â”€â”€
+    subgraph Triage["ðŸŸ§ 2 â€” Triage"]
         direction TB
         T1[On-call acknowledges] --> T2[Assess severity]
         T2 -->|SEV-1/2| T3[Declare incident]
         T2 -->|SEV-3/4| T4[Create ticket]
         T3 --> T5[Assign roles:
-        IC · SME · Scribe]
+        IC Â· SME Â· Scribe]
         T4 --> T6[Handle in sprint]
     end
 
-    %% ── Subgraph: Mitigate ──
-    subgraph Mitigate["🟥 3 — Mitigate"]
+    %% â”€â”€ Subgraph: Mitigate â”€â”€
+    subgraph Mitigate["ðŸŸ¥ 3 â€” Mitigate"]
         direction TB
         M1[Open #incident-XXX] --> M2{Can we contain?}
         M2 -->|Rollback| M3[Deploy previous version]
@@ -145,8 +145,8 @@ flowchart TB
         M9 --> M2
     end
 
-    %% ── Subgraph: Recover ──
-    subgraph Recover["🟩 4 — Recover"]
+    %% â”€â”€ Subgraph: Recover â”€â”€
+    subgraph Recover["ðŸŸ© 4 â€” Recover"]
         direction TB
         R1[Apply permanent fix] --> R2[Run smoke tests]
         R2 --> R3[Re-enable disabled
@@ -154,8 +154,8 @@ flowchart TB
         R3 --> R4[Monitor for 1 hour]
     end
 
-    %% ── Subgraph: Post-Mortem ──
-    subgraph PostMortem["🟪 5 — Post-Mortem"]
+    %% â”€â”€ Subgraph: Post-Mortem â”€â”€
+    subgraph PostMortem["ðŸŸª 5 â€” Post-Mortem"]
         direction TB
         P1[Write post-mortem
         within 48h] --> P2[Identify root cause
@@ -165,7 +165,7 @@ flowchart TB
         deadlines]
     end
 
-    %% ── Edges ──
+    %% â”€â”€ Edges â”€â”€
     D5 -->|False alarm| D1
     D4 --> T1
     T3 -->|SEV-1/2| M1
@@ -173,14 +173,14 @@ flowchart TB
     M8 --> R1
     R4 --> P1
 
-    %% ── Feedback loop ──
+    %% â”€â”€ Feedback loop â”€â”€
     P4 -.->|Action items complete|    I1["Update runbooks<br/>and monitoring"]
     I1 -.->|Improves detection| D1
     I1 -.->|Improves mitigation| M2
 
-    %% ── Phase durations ──
-    I2["⏱ SLA: SEV-1 &lt; 15m · SEV-2 &lt; 30m"]:::external
-    I3["⏱ Post-mortem within 48 hours"]:::external
+    %% â”€â”€ Phase durations â”€â”€
+    I2["â± SLA: SEV-1 &lt; 15m Â· SEV-2 &lt; 30m"]:::external
+    I3["â± Post-mortem within 48 hours"]:::external
 
     %% Apply styles
     class D1,D3,D4,D5 detect
@@ -194,11 +194,11 @@ flowchart TB
 
 | Phase | Objective | SLA |
 |-------|-----------|-----|
-| 1 — Detect | Identify potential issue via alert or user report | Varies by severity |
-| 2 — Triage | Assess severity, assign roles, declare or defer | SEV-1/2: immediate, SEV-3: < 2h |
-| 3 — Mitigate | Contain impact (rollback, feature flag, scale) | Continuous until resolved |
-| 4 — Recover | Apply permanent fix, verify, restore full service | Post-mitigation |
-| 5 — Post-Mortem | Root cause, action items, blameless improvement | Within 48 hours |
+| 1 â€” Detect | Identify potential issue via alert or user report | Varies by severity |
+| 2 â€” Triage | Assess severity, assign roles, declare or defer | SEV-1/2: immediate, SEV-3: < 2h |
+| 3 â€” Mitigate | Contain impact (rollback, feature flag, scale) | Continuous until resolved |
+| 4 â€” Recover | Apply permanent fix, verify, restore full service | Post-mitigation |
+| 5 â€” Post-Mortem | Root cause, action items, blameless improvement | Within 48 hours |
 
 ### Phase 1: Detect & Acknowledge
 
@@ -213,10 +213,10 @@ flowchart TD
     E -->|False alarm| H[Resolve alert]
 ```
 
-1. **Alert fires** — via PagerDuty, Slack, or monitoring dashboard
-2. **Acknowledge within SLA** — based on severity level
-3. **Verify the alert** — is this a real issue or a false positive?
-4. **Determine severity** — use severity definitions in §1
+1. **Alert fires** â€” via PagerDuty, Slack, or monitoring dashboard
+2. **Acknowledge within SLA** â€” based on severity level
+3. **Verify the alert** â€” is this a real issue or a false positive?
+4. **Determine severity** â€” use severity definitions in Â§1
 
 ### Phase 2: Triage & Mitigate
 
@@ -232,27 +232,27 @@ flowchart TD
     H --> D
 ```
 
-1. **Open incident channel** — `#incident-XXX` in Slack
-2. **Determine impact** — which users, which features, data at risk?
-3. **Mitigate first** — rollback, feature flag, or disable the affected component
-4. **Verify mitigation** — check health endpoints, error rates return to baseline
-5. **Escalate if needed** — if mitigation fails, escalate to additional SMEs
+1. **Open incident channel** â€” `#incident-XXX` in Slack
+2. **Determine impact** â€” which users, which features, data at risk?
+3. **Mitigate first** â€” rollback, feature flag, or disable the affected component
+4. **Verify mitigation** â€” check health endpoints, error rates return to baseline
+5. **Escalate if needed** â€” if mitigation fails, escalate to additional SMEs
 
 ### Phase 3: Recover
 
-1. **Apply fix** — deploy the permanent fix
-2. **Verify fix** — run smoke tests, check error rates for 10+ minutes
-3. **Confirm data integrity** — verify no data loss or corruption occurred
-4. **Restore normal operations** — enable feature flags, re-enable disabled features
-5. **Monitor** — increased monitoring for 1 hour post-resolution
+1. **Apply fix** â€” deploy the permanent fix
+2. **Verify fix** â€” run smoke tests, check error rates for 10+ minutes
+3. **Confirm data integrity** â€” verify no data loss or corruption occurred
+4. **Restore normal operations** â€” enable feature flags, re-enable disabled features
+5. **Monitor** â€” increased monitoring for 1 hour post-resolution
 
 ### Phase 4: Learn
 
-1. **Write post-mortem** — within 48 hours of resolution
-2. **Identify root cause** — use 5 Whys or similar technique
-3. **Define action items** — prevent recurrence, improve detection, improve response
-4. **Assign owners** — each action item has a named owner and deadline
-5. **Share learnings** — post to `#learnings` Slack channel
+1. **Write post-mortem** â€” within 48 hours of resolution
+2. **Identify root cause** â€” use 5 Whys or similar technique
+3. **Define action items** â€” prevent recurrence, improve detection, improve response
+4. **Assign owners** â€” each action item has a named owner and deadline
+5. **Share learnings** â€” post to `#learnings` Slack channel
 
 ---
 
@@ -261,7 +261,7 @@ flowchart TD
 ### 4.1 Incident declared (internal)
 
 ```text
-🚨 INCIDENT DECLARED — SEV-[1/2]
+ðŸš¨ INCIDENT DECLARED â€” SEV-[1/2]
 Incident ID: INC-XXX
 Time: [UTC timestamp]
 Severity: SEV-[1/2]
@@ -278,7 +278,7 @@ Commander: @name
 ### 4.2 Status update (internal)
 
 ```text
-🔄 INCIDENT UPDATE — INC-XXX
+ðŸ”„ INCIDENT UPDATE â€” INC-XXX
 Time: [UTC timestamp]
 Current status: [investigating / fix in progress / mitigated / resolved]
 
@@ -290,7 +290,7 @@ Next update: [time or milestone]
 ### 4.3 User-facing message
 
 ```text
-[Meridian Status]
+[Vaeloom Status]
 We're currently experiencing [brief description of issue].
 Markdown features [affected features] are [affected behavior].
 
@@ -303,15 +303,15 @@ Estimated resolution: [ETA or "TBD"]
 ### 4.4 Post-resolution summary
 
 ```text
-✅ INCIDENT RESOLVED — INC-XXX
+âœ… INCIDENT RESOLVED â€” INC-XXX
 Time: [UTC timestamp]
 Duration: [X hours Y minutes]
 
 Root cause: [brief root cause]
 Fix: [what was done]
 Action items:
-- [ ] [action item 1] — owner, deadline
-- [ ] [action item 2] — owner, deadline
+- [ ] [action item 1] â€” owner, deadline
+- [ ] [action item 2] â€” owner, deadline
 
 Full post-mortem: [link to document]
 ```
@@ -326,11 +326,11 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. ✅ Check if other agents are also failing (indicates API-level issue vs. per-agent issue)
-2. ✅ Switch to fallback model in model router configuration
-3. ✅ If no fallback model available, disable agent auto-processing, switch to degraded mode
-4. ✅ Notify users: "AI features are temporarily operating in manual mode"
-5. ⬜ Post-mortem: review fallback coverage, add additional model provider
+1. âœ… Check if other agents are also failing (indicates API-level issue vs. per-agent issue)
+2. âœ… Switch to fallback model in model router configuration
+3. âœ… If no fallback model available, disable agent auto-processing, switch to degraded mode
+4. âœ… Notify users: "AI features are temporarily operating in manual mode"
+5. â¬œ Post-mortem: review fallback coverage, add additional model provider
 
 ### 5.2 Database connection pool exhaustion
 
@@ -338,10 +338,10 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. ✅ Kill long-running queries: `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'active' AND now() - query_start > interval '5 minutes'`
-2. ✅ Increase pool size temporarily if running low on total connections
-3. ✅ Restart affected services to clear connection pools
-4. ⬜ Post-mortem: review query patterns, add connection pooling limits
+1. âœ… Kill long-running queries: `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'active' AND now() - query_start > interval '5 minutes'`
+2. âœ… Increase pool size temporarily if running low on total connections
+3. âœ… Restart affected services to clear connection pools
+4. â¬œ Post-mortem: review query patterns, add connection pooling limits
 
 ### 5.3 Memory Agent incorrect merge (data quality)
 
@@ -349,10 +349,10 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. ✅ Identify the scope of incorrect merges (time range, entity types affected)
-2. ✅ Revert merges: restore from most recent backup of entities/relationships tables
-3. ✅ Block the Memory Agent from re-processing those documents until fix is deployed
-4. ⬜ Post-mortem: review merge confidence thresholds, add additional validation
+1. âœ… Identify the scope of incorrect merges (time range, entity types affected)
+2. âœ… Revert merges: restore from most recent backup of entities/relationships tables
+3. âœ… Block the Memory Agent from re-processing those documents until fix is deployed
+4. â¬œ Post-mortem: review merge confidence thresholds, add additional validation
 
 ### 5.4 Queue backlog
 
@@ -360,11 +360,11 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. ✅ Check queue depth in Redis
-2. ✅ Increase worker concurrency if resources allow
-3. ✅ If backlog > 10K items, prioritize by recency (process newest first)
-4. ✅ Consider dropping non-critical queue items (e.g., old file re-processing)
-5. ⬜ Post-mortem: review scaling triggers, add auto-scaling
+1. âœ… Check queue depth in Redis
+2. âœ… Increase worker concurrency if resources allow
+3. âœ… If backlog > 10K items, prioritize by recency (process newest first)
+4. âœ… Consider dropping non-critical queue items (e.g., old file re-processing)
+5. â¬œ Post-mortem: review scaling triggers, add auto-scaling
 
 ### 5.5 Security incident (breach / unauthorized access)
 
@@ -372,12 +372,12 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. ✅ **IMMEDIATE:** Revoke compromised tokens / API keys
-2. ✅ **IMMEDIATE:** Block suspicious IPs at load balancer level
-3. ✅ **IMMEDIATE:** Rotate any secrets the incident touches
-4. ✅ Audit access logs to determine scope of exposure
-5. ✅ Notify affected users within legal requirements
-6. ⬜ Post-mortem: full security review, penetration testing, compliance notification
+1. âœ… **IMMEDIATE:** Revoke compromised tokens / API keys
+2. âœ… **IMMEDIATE:** Block suspicious IPs at load balancer level
+3. âœ… **IMMEDIATE:** Rotate any secrets the incident touches
+4. âœ… Audit access logs to determine scope of exposure
+5. âœ… Notify affected users within legal requirements
+6. â¬œ Post-mortem: full security review, penetration testing, compliance notification
 
 ### 5.6 Connector outage (Gmail, GitHub, etc.)
 
@@ -385,10 +385,10 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. ✅ Check if it's a provider-side outage (Google status page, GitHub status page)
-2. ✅ If provider issue: update connector status to "degraded," notify affected users
-3. ✅ If token issue: prompt re-authentication for affected users
-4. ⬜ Post-mortem: review token refresh logic, add earlier warning before expiry
+1. âœ… Check if it's a provider-side outage (Google status page, GitHub status page)
+2. âœ… If provider issue: update connector status to "degraded," notify affected users
+3. âœ… If token issue: prompt re-authentication for affected users
+4. â¬œ Post-mortem: review token refresh logic, add earlier warning before expiry
 
 ---
 
@@ -466,10 +466,10 @@ Full post-mortem: [link to document]
 ## Incident Response Quick Reference Card
 
 ```text
-🔴 SEV-1: < 15 min response    | ALL hands
-🟠 SEV-2: < 30 min response    | Feature team
-🟡 SEV-3: < 2 hour response    | Engineering
-🟢 SEV-4: Next business day     | Sprint cycle
+ðŸ”´ SEV-1: < 15 min response    | ALL hands
+ðŸŸ  SEV-2: < 30 min response    | Feature team
+ðŸŸ¡ SEV-3: < 2 hour response    | Engineering
+ðŸŸ¢ SEV-4: Next business day     | Sprint cycle
 
 1. ACKNOWLEDGE the alert
 2. DECLARE severity in #incidents
@@ -483,60 +483,60 @@ Full post-mortem: [link to document]
 
 | Mistake | Consequence |
 |---------|-------------|
-| Investigating before mitigating | Teams spend 20 minutes diagnosing root cause when a rollback or feature flag would restore service in 2 minutes — mitigate first, investigate after impact is contained |
-| Incident response that isn't practiced | A team that has never run a SEV-1 drill will fumble role assignments, miss communication templates, and escalate late — run quarterly tabletop exercises for SEV-1 and SEV-2 scenarios |
-| Post-mortems without action items | A post-mortem that identifies root causes but doesn't assign owners and deadlines is just documentation — every action item needs a named owner and a due date, tracked to completion |
+| Investigating before mitigating | Teams spend 20 minutes diagnosing root cause when a rollback or feature flag would restore service in 2 minutes â€” mitigate first, investigate after impact is contained |
+| Incident response that isn't practiced | A team that has never run a SEV-1 drill will fumble role assignments, miss communication templates, and escalate late â€” run quarterly tabletop exercises for SEV-1 and SEV-2 scenarios |
+| Post-mortems without action items | A post-mortem that identifies root causes but doesn't assign owners and deadlines is just documentation â€” every action item needs a named owner and a due date, tracked to completion |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Always mitigate before investigating | The first action should be rollback, feature flag, or disable — not root cause analysis. Investigation happens after impact is contained. This minimizes user-facing downtime |
-| Practice incident response with regular drills | Quarterly tabletop exercises build muscle memory for role assignments, communication templates, and escalation paths — teams that practice recover 2-3x faster |
-| Write post-mortems within 48 hours while details are fresh | Memory of incident details fades quickly — 48 hours is the maximum window to capture an accurate timeline, root cause analysis, and action items |
+| Always mitigate before investigating | The first action should be rollback, feature flag, or disable â€” not root cause analysis. Investigation happens after impact is contained. This minimizes user-facing downtime |
+| Practice incident response with regular drills | Quarterly tabletop exercises build muscle memory for role assignments, communication templates, and escalation paths â€” teams that practice recover 2-3x faster |
+| Write post-mortems within 48 hours while details are fresh | Memory of incident details fades quickly â€” 48 hours is the maximum window to capture an accurate timeline, root cause analysis, and action items |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Incident communication leaking sensitive data | A status page post that reveals internal IPs, database names, or the scope of a breach violates security policy — use pre-approved communication templates that avoid technical details |
-| Post-mortem documents exposing vulnerabilities | A post-mortem that describes "how we were hacked" in detail becomes a blueprint for attackers — redact specific exploit details and keep full versions in a restricted-access system |
-| Incident responders making changes under panic without review | During a SEV-1, engineers may apply hotfixes that bypass normal review — require a synchronous peer review for any production change, even during incidents |
+| Incident communication leaking sensitive data | A status page post that reveals internal IPs, database names, or the scope of a breach violates security policy â€” use pre-approved communication templates that avoid technical details |
+| Post-mortem documents exposing vulnerabilities | A post-mortem that describes "how we were hacked" in detail becomes a blueprint for attackers â€” redact specific exploit details and keep full versions in a restricted-access system |
+| Incident responders making changes under panic without review | During a SEV-1, engineers may apply hotfixes that bypass normal review â€” require a synchronous peer review for any production change, even during incidents |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Incident response tooling adding latency during critical moments | The incident response system (PagerDuty, Slack) itself can become a bottleneck during a major incident — if the alerting pipeline is slow, responders are delayed. Test alert delivery latency monthly |
-| Communication overhead slowing down resolution | Too many people in the incident channel asking "what's happening" creates noise that slows the IC — enforce a strict roles-based communication model where only the IC and Communicator post updates |
-| Post-incident recovery causing further degradation | Restarting services or failing over after an incident can trigger cascading failures — stagger recovery steps and verify health after each step before proceeding to the next |
+| Incident response tooling adding latency during critical moments | The incident response system (PagerDuty, Slack) itself can become a bottleneck during a major incident â€” if the alerting pipeline is slow, responders are delayed. Test alert delivery latency monthly |
+| Communication overhead slowing down resolution | Too many people in the incident channel asking "what's happening" creates noise that slows the IC â€” enforce a strict roles-based communication model where only the IC and Communicator post updates |
+| Post-incident recovery causing further degradation | Restarting services or failing over after an incident can trigger cascading failures â€” stagger recovery steps and verify health after each step before proceeding to the next |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Incident communication leaking sensitive data | A status page post that reveals internal IPs, database names, or the scope of a breach violates security policy — use pre-approved communication templates that avoid technical details |
-| Post-mortem documents exposing vulnerabilities | A post-mortem that describes "how we were hacked" in detail becomes a blueprint for attackers — redact specific exploit details and keep full versions in a restricted-access system |
-| Incident responders making changes under panic without review | During a SEV-1, engineers may apply hotfixes that bypass normal review — require a synchronous peer review for any production change, even during incidents |
+| Incident communication leaking sensitive data | A status page post that reveals internal IPs, database names, or the scope of a breach violates security policy â€” use pre-approved communication templates that avoid technical details |
+| Post-mortem documents exposing vulnerabilities | A post-mortem that describes "how we were hacked" in detail becomes a blueprint for attackers â€” redact specific exploit details and keep full versions in a restricted-access system |
+| Incident responders making changes under panic without review | During a SEV-1, engineers may apply hotfixes that bypass normal review â€” require a synchronous peer review for any production change, even during incidents |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Incident response tooling adding latency during critical moments | The incident response system (PagerDuty, Slack) itself can become a bottleneck during a major incident — if the alerting pipeline is slow, responders are delayed. Test alert delivery latency monthly |
-| Communication overhead slowing down resolution | Too many people in the incident channel asking "what's happening" creates noise that slows the IC — enforce a strict roles-based communication model where only the IC and Communicator post updates |
-| Post-incident recovery causing further degradation | Restarting services or failing over after an incident can trigger cascading failures — stagger recovery steps and verify health after each step before proceeding to the next |
+| Incident response tooling adding latency during critical moments | The incident response system (PagerDuty, Slack) itself can become a bottleneck during a major incident â€” if the alerting pipeline is slow, responders are delayed. Test alert delivery latency monthly |
+| Communication overhead slowing down resolution | Too many people in the incident channel asking "what's happening" creates noise that slows the IC â€” enforce a strict roles-based communication model where only the IC and Communicator post updates |
+| Post-incident recovery causing further degradation | Restarting services or failing over after an incident can trigger cascading failures â€” stagger recovery steps and verify health after each step before proceeding to the next |
 
 ## Workflows
 
-1. **Alert fires** — PagerDuty, monitoring dashboard, or user report triggers detection
-2. **Acknowledge alert** — within SLA based on severity (SEV-1: < 15 min, SEV-2: < 30 min)
-3. **Triage** — assess severity → declare incident or create ticket → assign roles (IC, SME, Scribe, Communicator)
-4. **Mitigate** — rollback, feature flag disable, scale out, or block traffic — mitigate before investigating root cause
-5. **Verify mitigation** — health checks return OK, error rate returns to baseline
-6. **Recover** — apply permanent fix → run smoke tests → re-enable disabled features → monitor for 1 hour
-7. **Post-mortem** — write within 48 hours → identify root cause (5 Whys) → define action items → assign owners
-8. **Follow-up** — complete action items → update runbooks → improve monitoring → close incident
+1. **Alert fires** â€” PagerDuty, monitoring dashboard, or user report triggers detection
+2. **Acknowledge alert** â€” within SLA based on severity (SEV-1: < 15 min, SEV-2: < 30 min)
+3. **Triage** â€” assess severity â†’ declare incident or create ticket â†’ assign roles (IC, SME, Scribe, Communicator)
+4. **Mitigate** â€” rollback, feature flag disable, scale out, or block traffic â€” mitigate before investigating root cause
+5. **Verify mitigation** â€” health checks return OK, error rate returns to baseline
+6. **Recover** â€” apply permanent fix â†’ run smoke tests â†’ re-enable disabled features â†’ monitor for 1 hour
+7. **Post-mortem** â€” write within 48 hours â†’ identify root cause (5 Whys) â†’ define action items â†’ assign owners
+8. **Follow-up** â€” complete action items â†’ update runbooks â†’ improve monitoring â†’ close incident
 
 ---
 
@@ -598,30 +598,30 @@ Full post-mortem: [link to document]
 
 ## Overview
 
-The Incident Response Plan defines the standard procedures for detecting, responding to, and recovering from production incidents on the Meridian platform. It establishes severity classifications, role assignments, communication templates, and a closed-loop workflow that ensures every incident feeds back into system improvements.
+The Incident Response Plan defines the standard procedures for detecting, responding to, and recovering from production incidents on the Vaeloom platform. It establishes severity classifications, role assignments, communication templates, and a closed-loop workflow that ensures every incident feeds back into system improvements.
 
-This document is designed for the entire engineering organization — from on-call engineers who triage alerts to incident commanders who coordinate response and subject-matter experts who drive mitigation. The plan applies to both the MVP PaaS deployment and the enterprise Kubernetes deployment of Meridian.
+This document is designed for the entire engineering organization â€” from on-call engineers who triage alerts to incident commanders who coordinate response and subject-matter experts who drive mitigation. The plan applies to both the MVP PaaS deployment and the enterprise Kubernetes deployment of Vaeloom.
 
-Meridian's value as a second-brain AI for education and career depends on uninterrupted access to user knowledge graphs, agent-driven workflows, and connector data synchronization. An incident that degrades the memory agent, blocks document ingestion, or disrupts AI inference directly impacts users' ability to manage their professional development. This plan prioritizes mitigation before investigation to minimize user-facing impact.
+Vaeloom's value as a second-brain AI for education and career depends on uninterrupted access to user knowledge graphs, agent-driven workflows, and connector data synchronization. An incident that degrades the memory agent, blocks document ingestion, or disrupts AI inference directly impacts users' ability to manage their professional development. This plan prioritizes mitigation before investigation to minimize user-facing impact.
 
-Every incident is an opportunity to improve the system. The post-mortem process codified here ensures blameless root-cause analysis, actionable follow-ups, and continuous hardening of Meridian's operational resilience.
+Every incident is an opportunity to improve the system. The post-mortem process codified here ensures blameless root-cause analysis, actionable follow-ups, and continuous hardening of Vaeloom's operational resilience.
 
 ## Goals
 
-- Classify incidents by severity (SEV-1 through SEV-4) with clear criteria, response SLAs, and escalation paths specific to Meridian's AI agent ecosystem
+- Classify incidents by severity (SEV-1 through SEV-4) with clear criteria, response SLAs, and escalation paths specific to Vaeloom's AI agent ecosystem
 - Define incident response roles (Incident Commander, SME, Communicator, Scribe) with explicit responsibilities for coordination, technical mitigation, and stakeholder communication
-- Establish a closed-loop response workflow — detect, triage, mitigate, recover, post-mortem — that minimizes user-facing downtime and prevents recurrence
+- Establish a closed-loop response workflow â€” detect, triage, mitigate, recover, post-mortem â€” that minimizes user-facing downtime and prevents recurrence
 - Provide ready-to-use communication templates for internal status updates, user-facing messages, and post-resolution summaries
-- Document runbooks for common Meridian-specific scenarios: AI model API outage, database connection exhaustion, memory agent merge errors, queue backlogs, security incidents, and connector failures
+- Document runbooks for common Vaeloom-specific scenarios: AI model API outage, database connection exhaustion, memory agent merge errors, queue backlogs, security incidents, and connector failures
 
 ## Scope
 
 ### In Scope
-- Incident severity definitions (SEV-1 through SEV-4) with response time SLAs for all Meridian services including AI agent system, API, database, and connectors
+- Incident severity definitions (SEV-1 through SEV-4) with response time SLAs for all Vaeloom services including AI agent system, API, database, and connectors
 - Incident response roles and responsibilities with hand-off procedures
 - End-to-end incident response workflow from detection through post-mortem with SLA targets per phase
 - Communication templates for internal incident declaration, status updates, user-facing messages, and post-resolution summaries
-- Common incident scenarios specific to Meridian: AI model API outage, database connection pool exhaustion, Memory Agent incorrect merge, queue backlog, security breach, and connector outage
+- Common incident scenarios specific to Vaeloom: AI model API outage, database connection pool exhaustion, Memory Agent incorrect merge, queue backlog, security breach, and connector outage
 - Post-mortem process with template, timeline documentation, 5 Whys root-cause analysis, and action item tracking
 - Blameless culture principles and incident response quick reference card
 
@@ -640,7 +640,7 @@ Every incident is an opportunity to improve the system. The post-mortem process 
 
 ```bash
 # Declare a SEV-1 incident via API
-curl -X POST https://api.meridian.dev/v1/admin/incidents \
+curl -X POST https://api.Vaeloom.dev/v1/admin/incidents \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "severity": "SEV-1",
@@ -654,7 +654,7 @@ curl -X POST https://api.meridian.dev/v1/admin/incidents \
 
 ```bash
 # View current alerts
-curl -s https://api.meridian.dev/v1/admin/alerts/active \
+curl -s https://api.Vaeloom.dev/v1/admin/alerts/active \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq '.alerts[] | {name, severity, status}'
 ```
 
@@ -687,9 +687,9 @@ incident:
 
 ## Related Documents
 
-- [Operations Runbook](./01-operations-runbook.md) — Standard operating procedures
-- [DevOps README](../DevOps/README.md) — Deployment infrastructure and monitoring
-- [Security README](../Security/README.md) — Security incident procedures and compliance
-- [Business Continuity Plan](../Operations/Business-Continuity-Plan.md) — DR and continuity planning
+- [Operations Runbook](./01-operations-runbook.md) â€” Standard operating procedures
+- [DevOps README](../DevOps/README.md) â€” Deployment infrastructure and monitoring
+- [Security README](../Security/README.md) â€” Security incident procedures and compliance
+- [Business Continuity Plan](../Operations/Business-Continuity-Plan.md) â€” DR and continuity planning
 
-*Maintained by the Meridian engineering team. Last updated: Q4 2026.*
+*Maintained by the Vaeloom engineering team. Last updated: Q4 2026.*

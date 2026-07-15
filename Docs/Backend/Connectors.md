@@ -1,7 +1,7 @@
-# Connectors
+﻿# Connectors
 
-> **Purpose:** Define the connector architecture for external service integration — OAuth token lifecycle, sync scheduling, rate limiting, and error recovery
-> **Status:** 🆕 New
+> **Purpose:** Define the connector architecture for external service integration â€” OAuth token lifecycle, sync scheduling, rate limiting, and error recovery
+> **Status:** ðŸ†• New
 > **Owner:** Backend Team
 > **Last Updated:** 2026-07-12
 
@@ -9,21 +9,21 @@
 
 ## Overview
 
-Connectors are the bridge between Meridian and external services (Gmail, Google Calendar, GitHub, Slack, etc.). Each connector manages its own OAuth credentials, sync schedule, and data transformation pipeline. This document covers the two critical lifecycle paths: **OAuth token management** and **data sync execution**.
+Connectors are the bridge between Vaeloom and external services (Gmail, Google Calendar, GitHub, Slack, etc.). Each connector manages its own OAuth credentials, sync schedule, and data transformation pipeline. This document covers the two critical lifecycle paths: **OAuth token management** and **data sync execution**.
 
 ## Connector Sync & Token Lifecycle
 
 ```mermaid
 graph TD
-    %% ─── Class Definitions ───
+    %% â”€â”€â”€ Class Definitions â”€â”€â”€
     classDef auth fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
     classDef sync fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef refresh fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef process fill:#c8e6c9,stroke:#1b5e20,color:#000,stroke-width:2px
     classDef health fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px,stroke-dasharray: 5 3
 
-    %% ─── Phase 1: OAuth Authorization ───
-    subgraph Auth["🔐 1. OAuth Authorization"]
+    %% â”€â”€â”€ Phase 1: OAuth Authorization â”€â”€â”€
+    subgraph Auth["ðŸ” 1. OAuth Authorization"]
         direction TB
         A1["User clicks<br/>\"Connect Service\""] --> A2["Redirect to provider<br/>OAuth consent screen"]
         A2 --> A3["User grants scopes<br/>(e.g. gmail.readonly)"]
@@ -32,57 +32,57 @@ graph TD
         A5 --> A6["Encrypt & store tokens<br/>in Secrets Manager<br/>(workspace_id, connector_id)"]
     end
 
-    %% ─── Phase 2: Token Refresh ───
-    subgraph Refresh["🔄 2. Token Refresh"]
+    %% â”€â”€â”€ Phase 2: Token Refresh â”€â”€â”€
+    subgraph Refresh["ðŸ”„ 2. Token Refresh"]
         direction TB
         R1{"Access token<br/>expired / expiring?"}
-        R1 -->|No| R2["✅ Token valid<br/>proceed with sync"]
+        R1 -->|No| R2["âœ… Token valid<br/>proceed with sync"]
         R1 -->|Yes| R3["Request new access_token<br/>using refresh_token"]
         R3 --> R4{"Refresh succeeded?"}
         R4 -->|Yes| R5["Update stored access_token<br/>+ new expires_in<br/>reset retry counter"]
         R4 -->|No| R6{"Retries left?<br/>max 2"}
         R6 -->|Yes| R7["Wait 5s backoff<br/>retry refresh"]
         R7 --> R3
-        R6 -->|No| R8["❌ Token revoked / expired<br/>Mark connector as degraded"]
+        R6 -->|No| R8["âŒ Token revoked / expired<br/>Mark connector as degraded"]
         R8 --> R9["Notify user:<br/>\"Re-connect service\" "]
     end
 
-    %% ─── Phase 3: Sync Execution ───
-    subgraph Sync["📥 3. Sync Execution"]
+    %% â”€â”€â”€ Phase 3: Sync Execution â”€â”€â”€
+    subgraph Sync["ðŸ“¥ 3. Sync Execution"]
         direction TB
         S1["Sync triggered<br/>cron / manual / webhook"] --> S2["Load connector config<br/>+ stored tokens"]
         S2 --> S3["Decrypt tokens<br/>attach to API client"]
         S3 --> S4["Call external API<br/>(list messages / events)"]
         S4 --> S5{"Rate limited?<br/>(429 / 403)"}
         S5 -->|No| S6["Process response<br/>paginate if more"]
-        S5 -->|Yes| S7["Parse Retry-After header<br/>backoff: 30s → 2m → 5m"]
+        S5 -->|Yes| S7["Parse Retry-After header<br/>backoff: 30s â†’ 2m â†’ 5m"]
         S7 --> S8{"Retries left?<br/>max 3"}
         S8 -->|Yes| S9["Wait & retry request"]
         S9 --> S4
         S8 -->|No| S10["Abort sync run<br/>mark as rate_limited"]
     end
 
-    %% ─── Phase 4: Data Processing ───
-    subgraph Process["⚙️ 4. Data Processing"]
+    %% â”€â”€â”€ Phase 4: Data Processing â”€â”€â”€
+    subgraph Process["âš™ï¸ 4. Data Processing"]
         direction TB
         S6 --> P1["Enqueue items for<br/>classification pipeline"]
         P1 --> P2["Deduplicate by<br/>external_id + workspace_id"]
         P2 --> P3["Classify: email / event /<br/>notification / thread"]
-        P3 --> P4["Extract entities<br/>→ Memory Agent"]
+        P3 --> P4["Extract entities<br/>â†’ Memory Agent"]
         P4 --> P5{"More pages?"}
         P5 -->|Yes| S4
-        P5 -->|No| P6["✅ Sync complete<br/>update last_sync_at<br/>record item count"]
+        P5 -->|No| P6["âœ… Sync complete<br/>update last_sync_at<br/>record item count"]
     end
 
-    %% ─── Phase 5: Health & Monitoring ───
-    subgraph Health["📈 5. Health & Monitoring"]
+    %% â”€â”€â”€ Phase 5: Health & Monitoring â”€â”€â”€
+    subgraph Health["ðŸ“ˆ 5. Health & Monitoring"]
         direction TB
         H1["Emit metrics:<br/>sync_duration, items_processed,<br/>errors, rate_limits"] --> H2["Push to<br/>Prometheus / CloudWatch"]
         H3["Structured logs:<br/>connector_id, attempt,<br/>error, page_token"] --> H4["Ship to<br/>ELK / Loki"]
         H5["Alert triggers:<br/>degraded > 24h,<br/>sync failures > 5"] --> H6["PagerDuty / Slack<br/>notification"]
     end
 
-    %% ─── Cross-cutting connections ───
+    %% â”€â”€â”€ Cross-cutting connections â”€â”€â”€
     A6 -.-> R1
     R2 -.-> S1
     R5 -.-> S1
@@ -92,7 +92,7 @@ graph TD
     S10 -.-> H1
     R8 -.-> H3
 
-    %% ─── Apply styles ───
+    %% â”€â”€â”€ Apply styles â”€â”€â”€
     class A1,A2,A3,A4,A5,A6 auth
     class R1,R2,R3,R4,R5,R6,R7,R8,R9 refresh
     class S1,S2,S3,S4,S5,S6,S7,S8,S9,S10 sync
@@ -100,7 +100,7 @@ graph TD
     class H1,H2,H3,H4,H5,H6 health
 ```
 
-> **Diagram:** The connector lifecycle spans five phases. **OAuth Authorization** (🔐) obtains tokens via the OAuth consent flow. **Token Refresh** (🔄) transparently refreshes expired tokens with up to 2 retries before degrading. **Sync Execution** (📥) fetches data from the external API with rate-limit handling (3 retries, respecting `Retry-After`). **Data Processing** (⚙️) deduplicates, classifies, and enqueues items for the memory pipeline. **Health & Monitoring** (📈) collects metrics and alerts on prolonged degradation.
+> **Diagram:** The connector lifecycle spans five phases. **OAuth Authorization** (ðŸ”) obtains tokens via the OAuth consent flow. **Token Refresh** (ðŸ”„) transparently refreshes expired tokens with up to 2 retries before degrading. **Sync Execution** (ðŸ“¥) fetches data from the external API with rate-limit handling (3 retries, respecting `Retry-After`). **Data Processing** (âš™ï¸) deduplicates, classifies, and enqueues items for the memory pipeline. **Health & Monitoring** (ðŸ“ˆ) collects metrics and alerts on prolonged degradation.
 
 ---
 
@@ -127,54 +127,54 @@ graph TD
 
 | Error | Action | Recovery |
 |-------|--------|----------|
-| `401 Unauthorized` | Attempt token refresh | Auto — refresh succeeds |
-| `400 invalid_grant` | Mark connector degraded | Manual — user re-authorizes |
-| `429 Too Many Requests` | Backoff with `Retry-After` | Auto — next sync cycle |
-| `5xx Server Error` | Retry up to 3 times | Auto — exponential backoff |
-| Network timeout | Retry up to 2 times | Auto — immediate retry |
+| `401 Unauthorized` | Attempt token refresh | Auto â€” refresh succeeds |
+| `400 invalid_grant` | Mark connector degraded | Manual â€” user re-authorizes |
+| `429 Too Many Requests` | Backoff with `Retry-After` | Auto â€” next sync cycle |
+| `5xx Server Error` | Retry up to 3 times | Auto â€” exponential backoff |
+| Network timeout | Retry up to 2 times | Auto â€” immediate retry |
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
 | Storing refresh tokens in the database instead of a secrets manager | A database breach exposes long-lived credentials that can regenerate access tokens indefinitely |
-| Ignoring the Retry-After header on rate limit responses | Retrying immediately after a 429 compounds the rate limit violation — respect Retry-After and back off |
-| Not handling token revocation events | Providers can revoke tokens at any time (user revokes access, password change) — without handling this, connectors silently fail |
-| Using the same OAuth scopes for all connectors | Each connector should request the minimum scopes needed — Gmail only needs `gmail.readonly`, not calendar or contacts scopes |
+| Ignoring the Retry-After header on rate limit responses | Retrying immediately after a 429 compounds the rate limit violation â€” respect Retry-After and back off |
+| Not handling token revocation events | Providers can revoke tokens at any time (user revokes access, password change) â€” without handling this, connectors silently fail |
+| Using the same OAuth scopes for all connectors | Each connector should request the minimum scopes needed â€” Gmail only needs `gmail.readonly`, not calendar or contacts scopes |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Store tokens in a secrets manager with encryption at rest | Secrets managers provide encryption, access auditing, and automatic rotation — never store tokens in application code or database rows |
-| Implement exponential backoff with Retry-After respect | External APIs have unpredictable load — respecting Retry-After headers and backing off exponentially prevents connector bans |
-| Mark connectors as degraded after repeated failures | A connector that has failed 3 consecutive syncs should be surfaced to the user — silent failures erode trust in the system |
-| Log every sync attempt with connector_id and page_token | Debugging connector failures without per-request tracing is nearly impossible — structured logs are essential for connector reliability |
+| Store tokens in a secrets manager with encryption at rest | Secrets managers provide encryption, access auditing, and automatic rotation â€” never store tokens in application code or database rows |
+| Implement exponential backoff with Retry-After respect | External APIs have unpredictable load â€” respecting Retry-After headers and backing off exponentially prevents connector bans |
+| Mark connectors as degraded after repeated failures | A connector that has failed 3 consecutive syncs should be surfaced to the user â€” silent failures erode trust in the system |
+| Log every sync attempt with connector_id and page_token | Debugging connector failures without per-request tracing is nearly impossible â€” structured logs are essential for connector reliability |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Token leakage in request logs | OAuth tokens passed in URLs or logged as part of request headers can be captured in log aggregation systems — sanitize all log output to redact `access_token` and `refresh_token` values |
-| OAuth redirect URI validation bypass | If the redirect URI accepts wildcards or open redirects, an attacker can intercept the authorization code — validate redirect URIs against an allow-list with exact path matching |
-| Token scope escalation | A connector with `gmail.readonly` scope requesting `gmail.modify`-level access could escalate if the token is reused — each connector must use a token scoped only to its declared permissions |
+| Token leakage in request logs | OAuth tokens passed in URLs or logged as part of request headers can be captured in log aggregation systems â€” sanitize all log output to redact `access_token` and `refresh_token` values |
+| OAuth redirect URI validation bypass | If the redirect URI accepts wildcards or open redirects, an attacker can intercept the authorization code â€” validate redirect URIs against an allow-list with exact path matching |
+| Token scope escalation | A connector with `gmail.readonly` scope requesting `gmail.modify`-level access could escalate if the token is reused â€” each connector must use a token scoped only to its declared permissions |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Token refresh latency stalling sync | If every sync starts with a token refresh (2-3 network round trips), sync duration doubles — check token expiry locally before attempting refresh and batch multiple connector refreshes |
-| Sync pagination with high item counts | External APIs with 10K+ items (GitHub notifications, Gmail threads) can take minutes to paginate through — use parallel page fetching when the API supports it and set a max items per sync |
-| Rate limit backoff increasing total sync time | Aggressive rate limit backoff (30s→2m→5m) on a connector with many items can push sync beyond the schedule window — distribute connector syncs across the window to avoid overlapping |
+| Token refresh latency stalling sync | If every sync starts with a token refresh (2-3 network round trips), sync duration doubles â€” check token expiry locally before attempting refresh and batch multiple connector refreshes |
+| Sync pagination with high item counts | External APIs with 10K+ items (GitHub notifications, Gmail threads) can take minutes to paginate through â€” use parallel page fetching when the API supports it and set a max items per sync |
+| Rate limit backoff increasing total sync time | Aggressive rate limit backoff (30sâ†’2mâ†’5m) on a connector with many items can push sync beyond the schedule window â€” distribute connector syncs across the window to avoid overlapping |
 
 ---
 
 ## Goals
 
-1. **Reliable external data ingestion** — Connect Meridian to external services (Gmail, Calendar, GitHub, Slack) with automatic sync, retry, and error recovery
-2. **Secure credential management** — Store OAuth tokens in Secrets Manager with encryption at rest; never expose tokens to application code or logs
-3. **Transparent sync lifecycle** — Surface connector health, last sync time, and error states to users so they trust the integration
-4. **Graceful degradation** — Mark connectors as degraded after repeated failures instead of silently breaking; notify users to re-authorize
+1. **Reliable external data ingestion** â€” Connect Vaeloom to external services (Gmail, Calendar, GitHub, Slack) with automatic sync, retry, and error recovery
+2. **Secure credential management** â€” Store OAuth tokens in Secrets Manager with encryption at rest; never expose tokens to application code or logs
+3. **Transparent sync lifecycle** â€” Surface connector health, last sync time, and error states to users so they trust the integration
+4. **Graceful degradation** â€” Mark connectors as degraded after repeated failures instead of silently breaking; notify users to re-authorize
 
 ---
 
@@ -228,7 +228,7 @@ graph TD
 ```mermaid
 sequenceDiagram
     participant User as User
-    participant UI as Meridian UI
+    participant UI as Vaeloom UI
     participant API as API Service
     participant Auth as Auth Provider
     participant SM as Secrets Manager
@@ -244,18 +244,18 @@ sequenceDiagram
     API->>SM: Encrypt and store tokens (workspace_id, connector_id)
     SM-->>API: Token stored
     API-->>UI: Gmail connected
-    UI-->>User: ✅ Connected
+    UI-->>User: âœ… Connected
 
     Note over API,SM: Token stored with workspace isolation
 ```
-> **Diagram:** Connector OAuth flow — User initiates connection via UI, API orchestrates OAuth consent with the external provider, receives tokens, encrypts them, and stores in Secrets Manager scoped to workspace.
+> **Diagram:** Connector OAuth flow â€” User initiates connection via UI, API orchestrates OAuth consent with the external provider, receives tokens, encrypts them, and stores in Secrets Manager scoped to workspace.
 
 ---
 
 ## Data Flow
 
 ```text
-1. User initiates connector connection via UI → API receives OAuth request
+1. User initiates connector connection via UI â†’ API receives OAuth request
 2. API redirects user to external OAuth consent screen with scoped permissions
 3. User grants permission; external provider returns authorization code to API callback
 4. API exchanges authorization code for access_token + refresh_token + expires_in
@@ -314,9 +314,9 @@ sequenceDiagram
 
 | Scenario | Detection | Mitigation | Recovery |
 |----------|-----------|------------|----------|
-| Token expired on sync start | API returns 401 on first request | Attempt transparent token refresh (up to 2 retries) | If refresh fails → mark connector degraded; notify user to re-authorize |
-| Rate limit (429) | External API returns 429 | Parse Retry-After header; backoff 30s → 2m → 5m | After max retries → abort sync; retry next cycle |
-| External API unavailable (5xx) | 500/503 response | Retry up to 3 times with exponential backoff (5s, 15s, 45s) | After max retries → skip sync cycle; alert if consecutive > 3 |
+| Token expired on sync start | API returns 401 on first request | Attempt transparent token refresh (up to 2 retries) | If refresh fails â†’ mark connector degraded; notify user to re-authorize |
+| Rate limit (429) | External API returns 429 | Parse Retry-After header; backoff 30s â†’ 2m â†’ 5m | After max retries â†’ abort sync; retry next cycle |
+| External API unavailable (5xx) | 500/503 response | Retry up to 3 times with exponential backoff (5s, 15s, 45s) | After max retries â†’ skip sync cycle; alert if consecutive > 3 |
 | Network timeout | Request exceeds 30s timeout | Retry up to 2 times | Mark as degraded after 3 consecutive timeouts |
 | Token revoked by user | Refresh returns 400 invalid_grant | Mark connector as revoked; notify user | User must re-authorize via OAuth flow |
 
@@ -340,7 +340,7 @@ sequenceDiagram
 | Environment | Method | Trigger | Verification |
 |-------------|--------|---------|--------------|
 | Development | Docker Compose with mock external APIs | Git push to feature branch | Integration tests: OAuth flow + sync + token refresh |
-| Staging | Deployed with worker pool (1 replica per connector type) | PR merged to main | End-to-end test: connect Gmail → sync → verify items in DB |
+| Staging | Deployed with worker pool (1 replica per connector type) | PR merged to main | End-to-end test: connect Gmail â†’ sync â†’ verify items in DB |
 | Production | Auto-scaled worker pool (2-4 replicas per type) | Tagged release via CI/CD | Canary: verify sync success rate > 98% for 5 min |
 
 ---
@@ -363,8 +363,8 @@ sequenceDiagram
 | Limitation | Impact | Workaround | Future Resolution |
 |------------|--------|------------|-------------------|
 | No real-time sync for most connectors | Data is stale up to 6 hours between syncs | Webhook/push support for Gmail; manual sync button | Implement webhook receivers for all major connectors |
-| No reverse sync (Meridian → External) | Cannot push data to external services | Manual export feature | Add bidirectional sync for supported connectors |
-| OAuth only — no API key or service account auth | Headless connectors (CI/CD) require user context | API key alternative for read-only GitHub access | Support service account authentication for enterprise |
+| No reverse sync (Vaeloom â†’ External) | Cannot push data to external services | Manual export feature | Add bidirectional sync for supported connectors |
+| OAuth only â€” no API key or service account auth | Headless connectors (CI/CD) require user context | API key alternative for read-only GitHub access | Support service account authentication for enterprise |
 
 ---
 
@@ -372,7 +372,7 @@ sequenceDiagram
 
 ```typescript
 // Configure a Google Drive connector
-import { Connector } from '@meridian/connectors';
+import { Connector } from '@vaeloom/connectors';
 
 const driveConnector = new Connector('google_drive', {
   clientId: process.env.GOOGLE_CLIENT_ID,
@@ -385,7 +385,7 @@ await driveConnector.sync();
 
 ```python
 # Trigger a connector sync via API
-from meridian import Client
+from Vaeloom import Client
 
 client = Client()
 sync = client.connectors.trigger_sync(
@@ -397,8 +397,8 @@ print(f"Sync {sync.id} started \u2014 {sync.files_queued} files queued")
 
 ```bash
 # List available connectors
-meridian connectors list --workspace ws_abc123
-meridian connectors sync --id conn_42 --full-refresh
+Vaeloom connectors list --workspace ws_abc123
+Vaeloom connectors sync --id conn_42 --full-refresh
 ```
 
 ## Future Improvements
@@ -415,9 +415,9 @@ meridian connectors sync --id conn_42 --full-refresh
 
 ## Related Documents
 
-- [`Authentication.md`](./Authentication.md) — OAuth flow details
-- [`Authorization.md`](./Authorization.md) — Permission model
-- [`Cron-Jobs.md`](./Cron-Jobs.md) — Sync scheduling
-- [`Workers.md`](./Workers.md) — Async processing
+- [`Authentication.md`](./Authentication.md) â€” OAuth flow details
+- [`Authorization.md`](./Authorization.md) â€” Permission model
+- [`Cron-Jobs.md`](./Cron-Jobs.md) â€” Sync scheduling
+- [`Workers.md`](./Workers.md) â€” Async processing
 - [`Security/Security-Architecture.md`](../Security/Security-Architecture.md)
 - [`DevOps/Monitoring.md`](../DevOps/Monitoring.md)

@@ -1,7 +1,7 @@
-# GraphQL
+﻿# GraphQL
 
-> **Purpose:** Define GraphQL strategy for Meridian — when and why we'd use it
-> **Status:** 🆕 New — REST is primary; GraphQL evaluated for specific use cases
+> **Purpose:** Define GraphQL strategy for Vaeloom â€” when and why we'd use it
+> **Status:** ðŸ†• New â€” REST is primary; GraphQL evaluated for specific use cases
 
 ## GraphQL Strategy
 
@@ -11,11 +11,11 @@ graph TD
     classDef graphql fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef decision fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Primary[\"⚡ Primary: REST API\"]\n        P1[\"All MVP endpoints are REST<br/>Workspaces, Documents, Resume,<br/>Applications, Memory, Chat\"]\n        P2[\"Resource-oriented: POST/GET/PATCH/DELETE\"]\n        P3[\"Simple, cacheable, tool-friendly<br/>for AI agents using function calling\"]\n    end
+    subgraph Primary[\"âš¡ Primary: REST API\"]\n        P1[\"All MVP endpoints are REST<br/>Workspaces, Documents, Resume,<br/>Applications, Memory, Chat\"]\n        P2[\"Resource-oriented: POST/GET/PATCH/DELETE\"]\n        P3[\"Simple, cacheable, tool-friendly<br/>for AI agents using function calling\"]\n    end
 
-    subgraph GraphQL[\"🔷 GraphQL (When Needed)\"]\n        G1[\"Dashboard aggregation<br/>Single query for 8+ widgets<br/>with different data sources\"]\n        G2[\"Knowledge graph exploration<br/>Nested entity + relationship queries<br/>Variable depth traversal\"]\n        G3[\"Public API / third-party integrations<br/>Flexible querying for plugin SDK\"]\n    end
+    subgraph GraphQL[\"ðŸ”· GraphQL (When Needed)\"]\n        G1[\"Dashboard aggregation<br/>Single query for 8+ widgets<br/>with different data sources\"]\n        G2[\"Knowledge graph exploration<br/>Nested entity + relationship queries<br/>Variable depth traversal\"]\n        G3[\"Public API / third-party integrations<br/>Flexible querying for plugin SDK\"]\n    end
 
-    subgraph Decision[\"📊 Decision Framework\"]\n        D1[\"Data sources: 1-2 → REST<br/>3+ → GraphQL\"]\n        D2[\"Query pattern: Fixed → REST<br/>Variable/exploratory → GraphQL\"]\n        D3[\"Client: Internal SPA → REST<br/>External plugins → GraphQL\"]\n        D4[\"Performance: REST with multiple<br/>roundtrips → GraphQL batching\"]\n    end
+    subgraph Decision[\"ðŸ“Š Decision Framework\"]\n        D1[\"Data sources: 1-2 â†’ REST<br/>3+ â†’ GraphQL\"]\n        D2[\"Query pattern: Fixed â†’ REST<br/>Variable/exploratory â†’ GraphQL\"]\n        D3[\"Client: Internal SPA â†’ REST<br/>External plugins â†’ GraphQL\"]\n        D4[\"Performance: REST with multiple<br/>roundtrips â†’ GraphQL batching\"]\n    end
 
     Primary --> Decision
     GraphQL --> Decision
@@ -25,13 +25,13 @@ graph TD
     class D1,D2,D3,D4 decision
 ```
 
-> **Diagram:** GraphQL strategy — **REST is primary** for all MVP endpoints (workspaces, documents, resume, applications, memory, chat). **GraphQL considered** for dashboard aggregation (8+ data sources), knowledge graph exploration (nested entity queries), and public API/plugin SDK. **Decision framework** guides when to choose each: 1-2 data sources → REST, 3+ → GraphQL; fixed patterns → REST, exploratory → GraphQL.
+> **Diagram:** GraphQL strategy â€” **REST is primary** for all MVP endpoints (workspaces, documents, resume, applications, memory, chat). **GraphQL considered** for dashboard aggregation (8+ data sources), knowledge graph exploration (nested entity queries), and public API/plugin SDK. **Decision framework** guides when to choose each: 1-2 data sources â†’ REST, 3+ â†’ GraphQL; fixed patterns â†’ REST, exploratory â†’ GraphQL.
 
 ---
 
 ## Primary API: REST
 
-Meridian's primary API is REST. All MVP endpoints follow REST conventions (see [`REST-Standards.md`](./REST-Standards.md)):
+Vaeloom's primary API is REST. All MVP endpoints follow REST conventions (see [`REST-Standards.md`](./REST-Standards.md)):
 
 - Resource-oriented URLs: `/workspaces/{id}/documents`
 - Standard HTTP methods: GET, POST, PATCH, DELETE
@@ -99,17 +99,17 @@ export const typeDefs = gql`
 
 | Mistake | Consequence |
 |---------|-------------|
-| Adding GraphQL before REST is proven | GraphQL adds schema management, resolver complexity, and caching challenges — start with REST for MVP and add GraphQL only when the need is validated |
-| Using GraphQL for everything | Standard CRUD (documents, users, connectors) is simpler and more cacheable with REST — GraphQL adds unnecessary complexity for fixed query patterns |
-| Not implementing query complexity analysis | A malicious or careless client can request deeply nested queries that exhaust database connections and LLM credits — limit query depth and cost |
-| Skipping CDN caching for GraphQL | GraphQL POST requests are not cacheable by default — use persisted queries or Apollo's cache control directives to enable CDN caching |
+| Adding GraphQL before REST is proven | GraphQL adds schema management, resolver complexity, and caching challenges â€” start with REST for MVP and add GraphQL only when the need is validated |
+| Using GraphQL for everything | Standard CRUD (documents, users, connectors) is simpler and more cacheable with REST â€” GraphQL adds unnecessary complexity for fixed query patterns |
+| Not implementing query complexity analysis | A malicious or careless client can request deeply nested queries that exhaust database connections and LLM credits â€” limit query depth and cost |
+| Skipping CDN caching for GraphQL | GraphQL POST requests are not cacheable by default â€” use persisted queries or Apollo's cache control directives to enable CDN caching |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Keep REST as primary; evaluate GraphQL per use case | Dashboard aggregation (8+ data sources) and knowledge graph traversal (nested entity queries) are good GraphQL candidates — standard CRUD stays REST |
-| Implement query complexity scoring | Assign a cost to each field and reject queries that exceed a complexity budget — prevents abusive queries before they hit the database |
+| Keep REST as primary; evaluate GraphQL per use case | Dashboard aggregation (8+ data sources) and knowledge graph traversal (nested entity queries) are good GraphQL candidates â€” standard CRUD stays REST |
+| Implement query complexity scoring | Assign a cost to each field and reject queries that exceed a complexity budget â€” prevents abusive queries before they hit the database |
 | Use persisted queries for production | Persisted queries (stored server-side, referenced by hash) prevent arbitrary query execution and make responses CDN-cacheable |
 | Delegate GraphQL to a gateway layer | A standalone GraphQL gateway that delegates to REST microservices avoids coupling client query patterns to internal service architecture |
 
@@ -117,25 +117,25 @@ export const typeDefs = gql`
 
 | Concern | Mitigation |
 |---------|------------|
-| Malicious query depth attacks | A deeply nested query (`user → posts → comments → user → ...`) can exhaust database connections — limit query depth to 5 levels and use query complexity analysis to reject expensive queries before execution |
-| Unauthorized field access through introspection | GraphQL introspection exposes the entire schema, including internal fields and deprecated mutations — disable introspection in production or restrict it to authenticated admins |
-| Data leakage through error messages | GraphQL errors often include stack traces and partial data — configure the error formatter to return only safe messages in production and log full errors server-side |
+| Malicious query depth attacks | A deeply nested query (`user â†’ posts â†’ comments â†’ user â†’ ...`) can exhaust database connections â€” limit query depth to 5 levels and use query complexity analysis to reject expensive queries before execution |
+| Unauthorized field access through introspection | GraphQL introspection exposes the entire schema, including internal fields and deprecated mutations â€” disable introspection in production or restrict it to authenticated admins |
+| Data leakage through error messages | GraphQL errors often include stack traces and partial data â€” configure the error formatter to return only safe messages in production and log full errors server-side |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| N+1 resolver problem causing excessive DB queries | A resolver that fetches a user's documents, then each document's comments individually creates N+1 database queries — use DataLoader to batch and cache per-request database fetches |
-| Query complexity and depth limiting response time | A query requesting all dashboard widgets with nested relationships can take seconds to resolve — set query complexity budgets and timeouts per resolver to prevent runaway queries |
-| Serialization overhead for deeply nested GraphQL responses | GraphQL responses with 5+ levels of nesting can take 100ms+ to serialize — use response caching at the gateway layer and limit response depth at the schema level |
+| N+1 resolver problem causing excessive DB queries | A resolver that fetches a user's documents, then each document's comments individually creates N+1 database queries â€” use DataLoader to batch and cache per-request database fetches |
+| Query complexity and depth limiting response time | A query requesting all dashboard widgets with nested relationships can take seconds to resolve â€” set query complexity budgets and timeouts per resolver to prevent runaway queries |
+| Serialization overhead for deeply nested GraphQL responses | GraphQL responses with 5+ levels of nesting can take 100ms+ to serialize â€” use response caching at the gateway layer and limit response depth at the schema level |
 
 ---
 
 ## Goals
 
-1. **Evaluate GraphQL pragmatically** — Keep REST as the primary API; adopt GraphQL only when it solves a concrete problem (dashboard aggregation, knowledge graph traversal, public SDK)
-2. **Avoid premature adoption** — Do not introduce GraphQL complexity before MVP validates the need
-3. **Defensible migration path** — If GraphQL is adopted, layer it as a standalone gateway that delegates to existing REST services
+1. **Evaluate GraphQL pragmatically** â€” Keep REST as the primary API; adopt GraphQL only when it solves a concrete problem (dashboard aggregation, knowledge graph traversal, public SDK)
+2. **Avoid premature adoption** â€” Do not introduce GraphQL complexity before MVP validates the need
+3. **Defensible migration path** â€” If GraphQL is adopted, layer it as a standalone gateway that delegates to existing REST services
 
 ---
 
@@ -202,7 +202,7 @@ sequenceDiagram
     GW->>GW: Aggregate responses
     GW-->>C: Dashboard { documents, memorySummary, agents }
 ```
-> **Diagram:** GraphQL gateway delegates to REST services — Dashboard query fans out to 3 REST endpoints (documents, memory, agents), aggregates results, and returns a single response. JWT auth and query complexity are checked at the gateway level.
+> **Diagram:** GraphQL gateway delegates to REST services â€” Dashboard query fans out to 3 REST endpoints (documents, memory, agents), aggregates results, and returns a single response. JWT auth and query complexity are checked at the gateway level.
 
 ---
 
@@ -322,12 +322,12 @@ const query = `
   }
 `;
 
-const data = await meridian.graphql(query, { workspaceId: 'ws_abc123' });
+const data = await Vaeloom.graphql(query, { workspaceId: 'ws_abc123' });
 ```
 
 ```python
 # Execute a GraphQL mutation
-from meridian import Client
+from Vaeloom import Client
 
 client = Client()
 mutation = """
@@ -340,8 +340,8 @@ result = client.graphql.execute(mutation, {"id": "doc_99", "title": "New Name"})
 
 ```bash
 # Introspect the GraphQL schema
-curl -X POST "https://api.meridian.ai/graphql" \
-  -H "X-API-Key: $MERIDIAN_API_KEY" \
+curl -X POST "https://api.Vaeloom.ai/graphql" \
+  -H "X-API-Key: $Vaeloom_API_KEY" \
   -d '{"query": "{ __schema { types { name } } }"}'
 ```
 

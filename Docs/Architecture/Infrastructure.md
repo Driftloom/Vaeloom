@@ -1,7 +1,7 @@
-# Infrastructure
+﻿# Infrastructure
 
-> **Purpose:** Define the infrastructure architecture for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the infrastructure architecture for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 
 ## Infrastructure Diagram
 
@@ -15,11 +15,11 @@ graph TD
     classDef external fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px,stroke-dasharray: 5 3
     classDef monitoring fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Edge_layer["🌐 Edge Layer"]
+    subgraph Edge_layer["ðŸŒ Edge Layer"]
         LB["CDN / Load Balancer<br/>Cloudflare / ALB"]
     end
 
-    subgraph Compute["⚙️ Compute Layer"]
+    subgraph Compute["âš™ï¸ Compute Layer"]
         direction TB
         WEB["apps/web<br/>Next.js (SSR)"]
         API["apps/api<br/>NestJS"]
@@ -27,18 +27,18 @@ graph TD
         WORKER["infra/worker<br/>BullMQ workers"]
     end
 
-    subgraph Data["💾 Data Layer"]
+    subgraph Data["ðŸ’¾ Data Layer"]
         PG["( PostgreSQL<br/>+ AGE + pgvector )"]
         REDIS["( Redis<br/>Queue + Cache )"]
-        S3["☁️ Object Storage<br/>S3 / R2"]
+        S3["â˜ï¸ Object Storage<br/>S3 / R2"]
     end
 
-    subgraph Monitoring["📊 Monitoring Layer"]
+    subgraph Monitoring["ðŸ“Š Monitoring Layer"]
         OTEL["OpenTelemetry<br/>Traces + Metrics + Logs"]
         APM["APM / Grafana<br/>Dashboards + Alerts"]
     end
 
-    subgraph External["🔗 External Services"]
+    subgraph External["ðŸ”— External Services"]
         CLAUDE["Claude API<br/>Anthropic"]
         OPENAI["OpenAI API<br/>GPT-4o + Embeddings"]
         EMAIL["Email Service<br/>Resend / SES"]
@@ -92,35 +92,35 @@ graph TD
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Using the same environment configuration for staging and production | Staging with production data or credentials risks data leaks and accidental production changes — environments must be fully isolated with separate credentials, databases, and secrets |
-| Manual infrastructure changes that aren't reflected in code | A manual change to a production database or load balancer that isn't committed to Terraform or configuration files creates "drift" — the next automated deploy may overwrite the manual change or break silently |
-| No health check endpoints for orchestration | Auto-scaling and load balancing depend on health checks — without `/health` and `/ready` endpoints, the orchestrator can't distinguish between a service that's starting up and one that's unhealthy |
-| Ignoring cost monitoring from day one | Infrastructure costs can grow unexpectedly — a runaway AI service or unoptimized database can multiply the monthly bill by 10x before anyone notices |
+| Using the same environment configuration for staging and production | Staging with production data or credentials risks data leaks and accidental production changes â€” environments must be fully isolated with separate credentials, databases, and secrets |
+| Manual infrastructure changes that aren't reflected in code | A manual change to a production database or load balancer that isn't committed to Terraform or configuration files creates "drift" â€” the next automated deploy may overwrite the manual change or break silently |
+| No health check endpoints for orchestration | Auto-scaling and load balancing depend on health checks â€” without `/health` and `/ready` endpoints, the orchestrator can't distinguish between a service that's starting up and one that's unhealthy |
+| Ignoring cost monitoring from day one | Infrastructure costs can grow unexpectedly â€” a runaway AI service or unoptimized database can multiply the monthly bill by 10x before anyone notices |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Maintain fully isolated environments with separate credentials | Staging, production, and development environments must have separate databases, storage buckets, and API credentials — never share credentials or data across environments |
-| Define all infrastructure as code (IaC) using Terraform or equivalent | Every database, bucket, queue, and load balancer configuration is version-controlled and deployable — manual changes should trigger an alert and be reverted to match the IaC definition |
-| Implement `/health` (liveness) and `/ready` (readiness) endpoints per service | Liveness checks tell the orchestrator the process is alive; readiness checks tell it the service can accept traffic — different endpoints enable graceful startup and shutdown |
-| Set cost budgets and alerts from the first deployment | Configure budget alerts at 50%, 80%, and 100% of expected monthly cost — a sudden spike (runaway container, database burst) triggers an alert before it becomes a billing surprise |
+| Maintain fully isolated environments with separate credentials | Staging, production, and development environments must have separate databases, storage buckets, and API credentials â€” never share credentials or data across environments |
+| Define all infrastructure as code (IaC) using Terraform or equivalent | Every database, bucket, queue, and load balancer configuration is version-controlled and deployable â€” manual changes should trigger an alert and be reverted to match the IaC definition |
+| Implement `/health` (liveness) and `/ready` (readiness) endpoints per service | Liveness checks tell the orchestrator the process is alive; readiness checks tell it the service can accept traffic â€” different endpoints enable graceful startup and shutdown |
+| Set cost budgets and alerts from the first deployment | Configure budget alerts at 50%, 80%, and 100% of expected monthly cost â€” a sudden spike (runaway container, database burst) triggers an alert before it becomes a billing surprise |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Secrets in environment variables exposed via logs or error pages | Environment variables containing database passwords or API keys can be leaked through error pages, log files, or process inspection — use a dedicated secrets manager (Vault, AWS Secrets Manager) with runtime injection |
-| Unpatched container images with known vulnerabilities | Base images used in Dockerfiles accumulate CVEs over time — use minimal base images, run nightly vulnerability scans, and rebuild images weekly, and rebuild images weekly to pick up security patches |
-| Overly permissive network policies between services | In a microservice architecture, services should only be able to communicate with the services they need — use network policies (Kubernetes NetworkPolicies or security groups) to enforce least-privilege networking |
+| Secrets in environment variables exposed via logs or error pages | Environment variables containing database passwords or API keys can be leaked through error pages, log files, or process inspection â€” use a dedicated secrets manager (Vault, AWS Secrets Manager) with runtime injection |
+| Unpatched container images with known vulnerabilities | Base images used in Dockerfiles accumulate CVEs over time â€” use minimal base images, run nightly vulnerability scans, and rebuild images weekly, and rebuild images weekly to pick up security patches |
+| Overly permissive network policies between services | In a microservice architecture, services should only be able to communicate with the services they need â€” use network policies (Kubernetes NetworkPolicies or security groups) to enforce least-privilege networking |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Cold start latency in PaaS/serverless environments | PaaS platforms may spin down idle services after inactivity — the first request after idle triggers a cold start (5-30s); configure minimum instance counts to keep at least one warm instance per service |
-| Database connection limits under scale | Each service instance opens connections to PostgreSQL — at 10 web instances × 20 connections each = 200 connections, which may exceed the database's max_connections; use PgBouncer for connection pooling |
-| Monitoring overhead vs value | OpenTelemetry collection adds ~5% CPU overhead per service — this is acceptable for debugging and alerting; if monitoring overhead exceeds 10%, sample traces rather than collecting 100% of requests |
+| Cold start latency in PaaS/serverless environments | PaaS platforms may spin down idle services after inactivity â€” the first request after idle triggers a cold start (5-30s); configure minimum instance counts to keep at least one warm instance per service |
+| Database connection limits under scale | Each service instance opens connections to PostgreSQL â€” at 10 web instances Ã— 20 connections each = 200 connections, which may exceed the database's max_connections; use PgBouncer for connection pooling |
+| Monitoring overhead vs value | OpenTelemetry collection adds ~5% CPU overhead per service â€” this is acceptable for debugging and alerting; if monitoring overhead exceeds 10%, sample traces rather than collecting 100% of requests |
 
 ## Goals
 
@@ -164,8 +164,8 @@ graph TD
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
 | Edge Layer | CDN, load balancing, DDoS protection, TLS termination | Cloudflare / ALB | Global anycast network |
-| Compute Layer | Application runtime for web, API, AI, and worker services | PaaS (Render/Fly.io) → K8s | Horizontal auto-scaling per service |
-| Data Layer | Relational storage, caching, object storage, queues | PostgreSQL, Redis, S3/R2 | Vertical → read replicas → partitioning |
+| Compute Layer | Application runtime for web, API, AI, and worker services | PaaS (Render/Fly.io) â†’ K8s | Horizontal auto-scaling per service |
+| Data Layer | Relational storage, caching, object storage, queues | PostgreSQL, Redis, S3/R2 | Vertical â†’ read replicas â†’ partitioning |
 | Monitoring Layer | Distributed tracing, metric collection, log aggregation, dashboards | OpenTelemetry + Grafana | Expanded retention for enterprise |
 
 ## Data Flow
@@ -208,10 +208,10 @@ graph TD
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `CLOUDFLARE_API_TOKEN` | API token for CDN/DNS configuration | — | Yes |
+| `CLOUDFLARE_API_TOKEN` | API token for CDN/DNS configuration | â€” | Yes |
 | `DB_BACKUP_SCHEDULE` | Cron schedule for automatic database backups | `0 3 * * *` | No |
-| `OTEL_EXPORTER_ENDPOINT` | OpenTelemetry collector endpoint URL | — | Yes |
-| `COST_BUDGET_MONTHLY` | Monthly infrastructure budget in USD | — | Yes |
+| `OTEL_EXPORTER_ENDPOINT` | OpenTelemetry collector endpoint URL | â€” | Yes |
+| `COST_BUDGET_MONTHLY` | Monthly infrastructure budget in USD | â€” | Yes |
 | `ENVIRONMENT_NAME` | Current deployment environment identifier | `development` | No |
 
 ## Risks
@@ -236,25 +236,25 @@ graph TD
 ### Deploy infrastructure stack
 
 ```bash
-meridian infra deploy --environment staging --services api,ai-service
+Vaeloom infra deploy --environment staging --services api,ai-service
 ```
 
 ### Check resource utilization
 
 ```bash
-meridian infra stats --service ai-service --metric cpu,memory --window 1h
+Vaeloom infra stats --service ai-service --metric cpu,memory --window 1h
 ```
 
 ### Scale a service
 
 ```bash
-meridian infra scale --service worker --replicas 5 --reason "queue backlog"
+Vaeloom infra scale --service worker --replicas 5 --reason "queue backlog"
 ```
 
 ### View infrastructure as code
 
 ```hcl
-resource "meridian_service" "ai" {
+resource "Vaeloom_service" "ai" {
   name    = "ai-service"
   runtime = "fastapi"
   scaling = { min: 2, max: 10, metric: "queue_depth" }

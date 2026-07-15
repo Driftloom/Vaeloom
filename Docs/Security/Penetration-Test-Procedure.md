@@ -1,13 +1,13 @@
-# Penetration Test Procedure
+﻿# Penetration Test Procedure
 
-> **Purpose:** Define the methodology, scope, schedule, and reporting requirements for Meridian penetration testing
-> **Status:** 🆕 New
+> **Purpose:** Define the methodology, scope, schedule, and reporting requirements for Vaeloom penetration testing
+> **Status:** ðŸ†• New
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Meridian maintains a formal penetration testing program consisting of quarterly automated scans and annual full-scope manual penetration tests conducted by an independent third-party firm. Testing covers the API, web application, AI service infrastructure, and cloud environment.
+Vaeloom maintains a formal penetration testing program consisting of quarterly automated scans and annual full-scope manual penetration tests conducted by an independent third-party firm. Testing covers the API, web application, AI service infrastructure, and cloud environment.
 
 This document defines the testing methodology (OWASP WSTG, NIST SP 800-115), tooling, scope boundaries, reporting template, and remediation SLAs. All findings are tracked in a shared register with severity-based deadlines.
 
@@ -41,9 +41,9 @@ graph TD
     classDef tool fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
     subgraph InScope["In Scope"]
-        API["API<br/>api.meridian.dev/v1/*"]
-        WEB["Web Application<br/>app.meridian.dev"]
-        AI["AI Service<br/>ai.meridian.dev<br/>Inference endpoints"]
+        API["API<br/>api.Vaeloom.dev/v1/*"]
+        WEB["Web Application<br/>app.Vaeloom.dev"]
+        AI["AI Service<br/>ai.Vaeloom.dev<br/>Inference endpoints"]
         INFRA["Infrastructure<br/>Kubernetes, Databases<br/>Cloud (AWS/GCP/Fly.io)"]
         AUTH["Authentication<br/>Clerk/Auth0 integration<br/>SAML/OIDC SSO"]
     end
@@ -87,12 +87,12 @@ graph TD
 ### NIST SP 800-115 Phases
 
 ```text
-Phase 1: Planning            → Define scope, rules of engagement, contacts
-Phase 2: Discovery           → Reconnaissance, port scanning, service enumeration
-Phase 3: Vulnerability Scan  → Automated + manual vulnerability assessment
-Phase 4: Exploitation        → Proof-of-concept exploitation (authorized targets)
-Phase 5: Post-Exploitation   → Privilege escalation, lateral movement assessment
-Phase 6: Reporting           → Findings, evidence, remediation recommendations
+Phase 1: Planning            â†’ Define scope, rules of engagement, contacts
+Phase 2: Discovery           â†’ Reconnaissance, port scanning, service enumeration
+Phase 3: Vulnerability Scan  â†’ Automated + manual vulnerability assessment
+Phase 4: Exploitation        â†’ Proof-of-concept exploitation (authorized targets)
+Phase 5: Post-Exploitation   â†’ Privilege escalation, lateral movement assessment
+Phase 6: Reporting           â†’ Findings, evidence, remediation recommendations
 ```
 
 ## Reporting Template
@@ -144,10 +144,10 @@ Each penetration test produces a structured report with the following sections:
 
 | Severity | CVSS Range | SLA | Retest Required |
 |----------|-----------|-----|-----------------|
-| Critical | 9.0–10.0 | 24 hours to mitigate | Yes |
-| High | 7.0–8.9 | 7 days | Yes |
-| Medium | 4.0–6.9 | 30 days | Yes |
-| Low | 0.1–3.9 | Next release | No |
+| Critical | 9.0â€“10.0 | 24 hours to mitigate | Yes |
+| High | 7.0â€“8.9 | 7 days | Yes |
+| Medium | 4.0â€“6.9 | 30 days | Yes |
+| Low | 0.1â€“3.9 | Next release | No |
 
 ## Best Practices
 
@@ -189,7 +189,7 @@ Each penetration test produces a structured report with the following sections:
 
 ## Scope
 
-This document defines the penetration testing methodology, schedule, scope, reporting template, and remediation SLAs for Meridian. It covers automated quarterly scans and annual full-scope manual penetration tests conducted by independent third-party firms. Applies to the API, web application, AI service infrastructure, and cloud environment. Out of scope: social engineering (separate engagement), physical security of data centers, DoS/DDoS testing, third-party services.
+This document defines the penetration testing methodology, schedule, scope, reporting template, and remediation SLAs for Vaeloom. It covers automated quarterly scans and annual full-scope manual penetration tests conducted by independent third-party firms. Applies to the API, web application, AI service infrastructure, and cloud environment. Out of scope: social engineering (separate engagement), physical security of data centers, DoS/DDoS testing, third-party services.
 
 ---
 
@@ -278,25 +278,25 @@ sequenceDiagram
     AGG->>SEC: Full scan report
 ```
 
-> **Diagram:** Automated quarterly scan workflow — three scanners run in parallel (ZAP, nuclei, truffleHog), results aggregated and de-duplicated, critical findings immediately page security team with 24h SLA.
+> **Diagram:** Automated quarterly scan workflow â€” three scanners run in parallel (ZAP, nuclei, truffleHog), results aggregated and de-duplicated, critical findings immediately page security team with 24h SLA.
 
 ---
 
 ## Data Flow
 
 ```text
-Quarterly Scan Trigger → Parallel: ZAP (10m) + nuclei (30m) + truffleHog (5m)
-    → Aggregator: Dedup + CVSS scoring + severity tagging
-    → [Critical] → Page Security Team (24h SLA)
-    → [High] → Assign remediation (7d SLA)
-    → [Medium] → Assign remediation (30d SLA)
-    → [Low] → Next release
-    → Report → Compliance Records
+Quarterly Scan Trigger â†’ Parallel: ZAP (10m) + nuclei (30m) + truffleHog (5m)
+    â†’ Aggregator: Dedup + CVSS scoring + severity tagging
+    â†’ [Critical] â†’ Page Security Team (24h SLA)
+    â†’ [High] â†’ Assign remediation (7d SLA)
+    â†’ [Medium] â†’ Assign remediation (30d SLA)
+    â†’ [Low] â†’ Next release
+    â†’ Report â†’ Compliance Records
     
-Annual Manual PT → Firm selection → Scope definition
-    → 2-3 week engagement → Draft report → Review
-    → Enter findings → Assign remediation → Retest
-    → Final report → Compliance Records
+Annual Manual PT â†’ Firm selection â†’ Scope definition
+    â†’ 2-3 week engagement â†’ Draft report â†’ Review
+    â†’ Enter findings â†’ Assign remediation â†’ Retest
+    â†’ Final report â†’ Compliance Records
 ```
 
 ---
@@ -388,7 +388,7 @@ Annual Manual PT → Firm selection → Scope definition
 ## Finding PT-2026-042
 - **Severity:** Critical (CVSS 9.8)
 - **Title:** SQL Injection in User Search Endpoint
-- **Affected Asset:** api.meridian.dev/v1/users/search
+- **Affected Asset:** api.Vaeloom.dev/v1/users/search
 - **CWE:** CWE-89
 - **Description:** The `q` parameter in `/v1/users/search` is directly concatenated into SQL queries without parameterization.
 - **Steps to Reproduce:** `GET /v1/users/search?q=' OR 1=1--`
@@ -425,7 +425,7 @@ Annual Manual PT → Firm selection → Scope definition
 
 ## Goals
 
-- Conduct a systematic penetration test covering all Meridian services (web, API, AI service) twice per year
+- Conduct a systematic penetration test covering all Vaeloom services (web, API, AI service) twice per year
 - Identify and classify vulnerabilities using the OWASP Top 10 (2021) and OWASP ASVS frameworks
 - Achieve zero critical and zero high findings at the conclusion of each remediation cycle
 - Test both authenticated (user + admin) and unauthenticated access scenarios
@@ -472,7 +472,7 @@ print(token)
 "
 
 # Test with modified payload
-curl -H "Authorization: Bearer $MODIFIED_JWT" https://api.meridian.dev/admin/users
+curl -H "Authorization: Bearer $MODIFIED_JWT" https://api.Vaeloom.dev/admin/users
 # Expected: 401 Unauthorized or 403 Forbidden
 ```
 
@@ -480,12 +480,12 @@ curl -H "Authorization: Bearer $MODIFIED_JWT" https://api.meridian.dev/admin/use
 
 ```bash
 # Authenticate as alice
-ALICE_TOKEN=$(curl -s -X POST https://api.meridian.dev/auth/login \
+ALICE_TOKEN=$(curl -s -X POST https://api.Vaeloom.dev/auth/login \
   -d '{"email":"alice@test.com","password":"test123"}' | jq -r '.token')
 
 # Try to access bob's document
 curl -H "Authorization: Bearer $ALICE_TOKEN" \
-  https://api.meridian.dev/api/documents/doc_bob123
+  https://api.Vaeloom.dev/api/documents/doc_bob123
 # Expected: 404 Not Found or 403 Forbidden (not 200 with bob's data)
 ```
 
@@ -524,7 +524,7 @@ sequenceDiagram
     AI-->>TEST: Refused harmful request
 ```
 
-> **Diagram:** Penetration test phases — reconnaissance, authentication testing, authorization testing (IDOR, privilege escalation), injection testing (SQL, NoSQL, prompt injection). Each test verifies the security control actually blocks the attack.
+> **Diagram:** Penetration test phases â€” reconnaissance, authentication testing, authorization testing (IDOR, privilege escalation), injection testing (SQL, NoSQL, prompt injection). Each test verifies the security control actually blocks the attack.
 
 ---
 

@@ -1,4 +1,4 @@
-# Enterprise
+﻿# Enterprise
 
 > **Purpose:** Enterprise features, multi-tenancy, consent model, and the full enterprise product vision
 > **Status:** Active
@@ -7,7 +7,7 @@
 
 ## Overview
 
-The Enterprise directory documents Meridian's enterprise product vision, multi-tenant architecture, consent model, and enterprise build prompts. These documents define how Meridian scales from individual accounts to organization-provisioned enterprise deployments.
+The Enterprise directory documents Vaeloom's enterprise product vision, multi-tenant architecture, consent model, and enterprise build prompts. These documents define how Vaeloom scales from individual accounts to organization-provisioned enterprise deployments.
 
 Key topics include the enterprise product vision, enterprise architecture with AI components, the multi-tenant and consent model, enterprise build prompts, and future innovations. The MVP-to-enterprise migration path ensures schema forward-compatibility and a clear growth trajectory from 8 to 28 agents and 6 to 20+ memory types.
 
@@ -17,15 +17,15 @@ The consent model is a critical architectural component that enables tenant-prov
 
 | Document | Location | Status |
 |----------|----------|--------|
-| Enterprise Product Vision | [`/Docs/06-Meridian-Enterprise-Paper.md`](../../Docs/06-Meridian-Enterprise-Paper.md) | ✅ Excellent |
-| Enterprise Architecture (AI) | [`/Docs/06-Meridian-Enterprise-Paper.md#20-ai-architecture`](../../Docs/06-Meridian-Enterprise-Paper.md#20-ai-architecture) | ✅ Excellent |
-| Multi-Tenant & Consent Model | [`/Docs/06-Meridian-Enterprise-Paper.md#192-the-consent-model`](../../Docs/06-Meridian-Enterprise-Paper.md#192-the-consent-model) | ✅ Good |
-| Enterprise Build Prompts | [`/Documents/build-prompts/enterprise/`](../../Documents/build-prompts/enterprise/) | ✅ Good |
-| Enterprise Future Innovations | [`/Docs/06-Meridian-Enterprise-Paper.md#21-future-innovations`](../../Docs/06-Meridian-Enterprise-Paper.md#21-future-innovations) | ✅ Good |
+| Enterprise Product Vision | [`/Docs/06-Vaeloom-Enterprise-Paper.md`](../../Docs/06-Vaeloom-Enterprise-Paper.md) | âœ… Excellent |
+| Enterprise Architecture (AI) | [`/Docs/06-Vaeloom-Enterprise-Paper.md#20-ai-architecture`](../../Docs/06-Vaeloom-Enterprise-Paper.md#20-ai-architecture) | âœ… Excellent |
+| Multi-Tenant & Consent Model | [`/Docs/06-Vaeloom-Enterprise-Paper.md#192-the-consent-model`](../../Docs/06-Vaeloom-Enterprise-Paper.md#192-the-consent-model) | âœ… Good |
+| Enterprise Build Prompts | [`/Documents/build-prompts/enterprise/`](../../Documents/build-prompts/enterprise/) | âœ… Good |
+| Enterprise Future Innovations | [`/Docs/06-Vaeloom-Enterprise-Paper.md#21-future-innovations`](../../Docs/06-Vaeloom-Enterprise-Paper.md#21-future-innovations) | âœ… Good |
 
 ```mermaid
 graph LR
-    subgraph MVP["📱 MVP"]
+    subgraph MVP["ðŸ“± MVP"]
         M1["Individual Accounts"]
         M2["Email/Password Auth"]
         M3["5 Core Connectors"]
@@ -34,14 +34,14 @@ graph LR
         M6["Internal Tools Only"]
     end
 
-    subgraph Scale["⬆️ Growth Path"]
+    subgraph Scale["â¬†ï¸ Growth Path"]
         S1["Schema Forward-Compatible"]
         S2["Agent Roster Grows"]
         S3["MCP-Shaped from Day One"]
         S4["Permission Model Scales"]
     end
 
-    subgraph Enterprise["🏢 Enterprise"]
+    subgraph Enterprise["ðŸ¢ Enterprise"]
         E1["Individual + Org-Provisioned"]
         E2["+ SAML/OIDC SSO"]
         E3["25+ Connectors + Plugin SDK"]
@@ -83,20 +83,20 @@ The consent model makes enterprise (tenant-provisioned) accounts work without co
 
 - Organization can provision accounts and set policy boundaries
 - Organization **cannot** read individual memory contents without explicit, granular, revocable consent
-- Consent revoked → organization access reduced going forward (not retroactive)
+- Consent revoked â†’ organization access reduced going forward (not retroactive)
 
 ## Migration path from MVP
 
 The MVP and Enterprise designs share the same architecture at two points in time:
 
-1. Memory schema is forward-compatible (6 types → 20+ types)
+1. Memory schema is forward-compatible (6 types â†’ 20+ types)
 2. Agent roster grows, never replaces
 3. Connector shape is consistent (MCP-shaped from day one)
-4. Permission model scales (suggest-mode → consent model → RBAC)
+4. Permission model scales (suggest-mode â†’ consent model â†’ RBAC)
 
 ## Goals
 
-- Provide a high-level entry point to Meridian's enterprise product vision and architecture
+- Provide a high-level entry point to Vaeloom's enterprise product vision and architecture
 - Document the MVP-to-enterprise migration path and schema forward-compatibility
 - Define the consent model that enables org-provisioned accounts while preserving individual memory ownership
 - Index all enterprise-related documentation for easy navigation
@@ -125,9 +125,9 @@ The MVP and Enterprise designs share the same architecture at two points in time
 
 ```bash
 # Enterprise deployment
-meridian enterprise init --cluster-size 5
-meridian enterprise config set --key sso.saml.enabled --value true
-meridian enterprise audit-log export --from 2025-01-01 --to 2025-06-30
+Vaeloom enterprise init --cluster-size 5
+Vaeloom enterprise config set --key sso.saml.enabled --value true
+Vaeloom enterprise audit-log export --from 2025-01-01 --to 2025-06-30
 ```
 
 ```yaml
@@ -142,8 +142,8 @@ sso:
 
 ```bash
 # Enterprise license management
-meridian enterprise license validate
-meridian enterprise usage report --month 2025-06
+Vaeloom enterprise license validate
+Vaeloom enterprise usage report --month 2025-06
 ```
 
 ## Future Improvements
@@ -156,13 +156,13 @@ meridian enterprise usage report --month 2025-06
 
 ## Related categories
 
-- [`Product/`](../Product/) — MVP product spec (foundation)
-- [`Security/`](../Security/) — Enterprise security and compliance
-- [`Architecture/`](../Architecture/) — Enterprise architecture foundations
-- [`Operations/`](../Operations/) — Runbooks for enterprise operations
+- [`Product/`](../Product/) â€” MVP product spec (foundation)
+- [`Security/`](../Security/) â€” Enterprise security and compliance
+- [`Architecture/`](../Architecture/) â€” Enterprise architecture foundations
+- [`Operations/`](../Operations/) â€” Runbooks for enterprise operations
 
 ## Related Documents
 
-- [Enterprise Product Vision](../06-Meridian-Enterprise-Paper.md) — Full enterprise paper
-- [Enterprise Architecture](./Enterprise-Architecture.md) — Multi-tenant deep dive
-- [Security Overview](../Security/README.md) — Enterprise security and compliance
+- [Enterprise Product Vision](../06-Vaeloom-Enterprise-Paper.md) â€” Full enterprise paper
+- [Enterprise Architecture](./Enterprise-Architecture.md) â€” Multi-tenant deep dive
+- [Security Overview](../Security/README.md) â€” Enterprise security and compliance

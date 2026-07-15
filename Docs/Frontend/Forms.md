@@ -1,7 +1,7 @@
-# Forms
+﻿# Forms
 
-> **Purpose:** Define form standards and patterns for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define form standards and patterns for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Form Architecture
 
@@ -11,19 +11,19 @@ graph TD
     classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef state fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Tools["🔧 Form Libraries"]
+    subgraph Tools["ðŸ”§ Form Libraries"]
         T1["React Hook Form<br/>Complex forms (resume, settings)"]
         T2["Native HTML forms<br/>Simple forms (search, filters)"]
     end
 
-    subgraph Patterns["🔄 Form Patterns"]
+    subgraph Patterns["ðŸ”„ Form Patterns"]
         P1["Inline Validation<br/>Validate on blur + submit"]
         P2["Debounced Save<br/>Auto-save with 2s debounce"]
         P3["Multi-step Wizard<br/>Onboarding flow"]
         P4["Batch Actions<br/>Approve/reject multiple"]
     end
 
-    subgraph StateMachine["📊 Form State Flow"]
+    subgraph StateMachine["ðŸ“Š Form State Flow"]
         S1["Idle"] --> S2["Typing"]
         S2 --> S3["Validating"]
         S3 --> S4["Valid / Error"]
@@ -31,7 +31,7 @@ graph TD
         S5 --> S6["Success / Error"]
     end
 
-    subgraph Validation["✅ Validation Rules"]
+    subgraph Validation["âœ… Validation Rules"]
         V1["Email: Format + uniqueness (async)"]
         V2["URL: Format + reachability"]
         V3["Date: Valid + not in past"]
@@ -48,7 +48,7 @@ graph TD
     class V1,V2,V3,V4,V5 validation
 ```
 
-> **Diagram:** Form architecture — **2 libraries** (React Hook Form for complex, native for simple) → **4 patterns** (inline validation, debounced save, multi-step, batch actions) → **state flow** (Idle → Typing → Validating → Submit → Success/Error). **Validation rules** per field type ensure data quality.
+> **Diagram:** Form architecture â€” **2 libraries** (React Hook Form for complex, native for simple) â†’ **4 patterns** (inline validation, debounced save, multi-step, batch actions) â†’ **state flow** (Idle â†’ Typing â†’ Validating â†’ Submit â†’ Success/Error). **Validation rules** per field type ensure data quality.
 
 ---
 
@@ -79,7 +79,7 @@ graph TD
 ## Form States
 
 ```text
-Idle → Typing → Validating → Valid / Error → Submitting → Success / Error
+Idle â†’ Typing â†’ Validating â†’ Valid / Error â†’ Submitting â†’ Success / Error
 ```
 
 ## Error Display
@@ -87,14 +87,14 @@ Idle → Typing → Validating → Valid / Error → Submitting → Success / Er
 - Inline error below the field
 - Summary error at top of form
 - Error must be specific and actionable:
-  - ❌ "Invalid input"
-  - ✅ "Please enter a valid email address"
+  - âŒ "Invalid input"
+  - âœ… "Please enter a valid email address"
 
 ## Common Mistakes
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| No inline validation until form submission | Users fill out an entire form only to discover errors on submit — validate each field on blur so issues are caught early |
+| No inline validation until form submission | Users fill out an entire form only to discover errors on submit â€” validate each field on blur so issues are caught early |
 | Too many required fields in a single form | Cognitive load increases with every field; break long forms into multi-step wizards with progress indicators |
 | No auto-save or draft recovery | Losing form content due to a navigation or browser crash without recovery is one of the most frustrating UX failures |
 | Generic or unhelpful error messages | "Invalid input" doesn't tell the user what to fix; messages should be specific and prescriptive, e.g., "Email must include @domain.com" |
@@ -104,57 +104,57 @@ Idle → Typing → Validating → Valid / Error → Submitting → Success / Er
 | Practice | Rationale |
 |----------|-----------|
 | Validate on blur + debounced async checks | Inline validation on blur catches typos early; async checks (e.g., email uniqueness) should debounce to 300ms to avoid overwhelming the server |
-| Auto-save drafts with 2-second debounce | For multi-field forms like the resume editor, auto-save every 2 seconds of inactivity — users never lose work even if they close the tab |
-| Progressive disclosure for complex forms | Start with essential fields; reveal optional or advanced fields as the user progresses — reduces intimidation and abandonment |
-| Support full keyboard navigation | Tab order should follow visual order; enter should submit; escape should close — no mouse-dependent interactions in form flows |
+| Auto-save drafts with 2-second debounce | For multi-field forms like the resume editor, auto-save every 2 seconds of inactivity â€” users never lose work even if they close the tab |
+| Progressive disclosure for complex forms | Start with essential fields; reveal optional or advanced fields as the user progresses â€” reduces intimidation and abandonment |
+| Support full keyboard navigation | Tab order should follow visual order; enter should submit; escape should close â€” no mouse-dependent interactions in form flows |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| CSRF on form submissions | Every state-changing form (settings, applications, resume edits) must include a CSRF token validated server-side — particularly important for OAuth-based auth flows |
-| Input sanitization on all text fields | Sanitize all user input before rendering it anywhere in the UI (chart labels, document summaries, proposal previews) — prevent stored XSS |
+| CSRF on form submissions | Every state-changing form (settings, applications, resume edits) must include a CSRF token validated server-side â€” particularly important for OAuth-based auth flows |
+| Input sanitization on all text fields | Sanitize all user input before rendering it anywhere in the UI (chart labels, document summaries, proposal previews) â€” prevent stored XSS |
 | Rate limiting on form submissions | Application forms, connection requests, and bulk actions should be rate-limited per user to prevent automated abuse or accidental mass submissions |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Field-level async validation | Debounce async validators (email uniqueness, URL reachability) to 300ms — avoid firing a network request on every keystroke |
+| Field-level async validation | Debounce async validators (email uniqueness, URL reachability) to 300ms â€” avoid firing a network request on every keystroke |
 | Form-level debounced auto-save | Use a 2-second debounce on form state changes before triggering auto-save; frequent updates (character-by-character) waste server resources and degrade UX |
-| Lazy-load complex form sections | Multi-step forms should load each step's validation schemas and dependencies only when the user reaches that step — saves initial bundle size |
+| Lazy-load complex form sections | Multi-step forms should load each step's validation schemas and dependencies only when the user reaches that step â€” saves initial bundle size |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| CSRF on form submissions | Every state-changing form (settings, applications, resume edits) must include a CSRF token validated server-side — particularly important for OAuth-based auth flows |
-| Input sanitization on all text fields | Sanitize all user input before rendering it anywhere in the UI (chart labels, document summaries, proposal previews) — prevent stored XSS |
+| CSRF on form submissions | Every state-changing form (settings, applications, resume edits) must include a CSRF token validated server-side â€” particularly important for OAuth-based auth flows |
+| Input sanitization on all text fields | Sanitize all user input before rendering it anywhere in the UI (chart labels, document summaries, proposal previews) â€” prevent stored XSS |
 | Rate limiting on form submissions | Application forms, connection requests, and bulk actions should be rate-limited per user to prevent automated abuse or accidental mass submissions |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Field-level async validation | Debounce async validators (email uniqueness, URL reachability) to 300ms — avoid firing a network request on every keystroke |
+| Field-level async validation | Debounce async validators (email uniqueness, URL reachability) to 300ms â€” avoid firing a network request on every keystroke |
 | Form-level debounced auto-save | Use a 2-second debounce on form state changes before triggering auto-save; frequent updates (character-by-character) waste server resources and degrade UX |
-| Lazy-load complex form sections | Multi-step forms should load each step's validation schemas and dependencies only when the user reaches that step — saves initial bundle size |
+| Lazy-load complex form sections | Multi-step forms should load each step's validation schemas and dependencies only when the user reaches that step â€” saves initial bundle size |
 
 ## Components
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| FormField | Base input with label, validation, error display | React Hook Form + Controller | Generic — wraps any input type; configurable via props |
+| FormField | Base input with label, validation, error display | React Hook Form + Controller | Generic â€” wraps any input type; configurable via props |
 | ResumeEditor | Multi-section resume form with auto-save | React Hook Form + debounce | Instance per resume; sections lazy-loaded |
 | MultiStepWizard | Onboarding flow with progress tracker | React Context + RHF | Singleton per wizard; step state managed in URL params |
 | ProposalBatchActions | Bulk approve/reject interface | TanStack Mutation + optimistic UI | Instance per batch; paginated at 20 proposals per page |
 
 ## Workflows
 
-1. **Form validation on blur**: User types in email field → focus leaves field (blur) → inline validation fires → email format regex test runs → if invalid, error message appears below field → if valid, no feedback shown
-2. **Debounced auto-save**: User edits resume section → 2 seconds of inactivity → debounce timer fires → changed fields serialized → PATCH request sent → save indicator shows "Saved" → on error, "Save failed — retrying" shown
-3. **Multi-step form submission**: User completes step 1 → "Next" validates step 1 → if valid, step 2 renders from lazy-loaded chunk → progress bar advances → user completes final step → all steps submitted as single POST
-4. **Batch proposal approval**: User selects 5 proposals → clicks "Approve All" → optimistic UI marks all as approved → API processes batch → on success, toast confirms → on partial failure, failed items highlighted for retry
+1. **Form validation on blur**: User types in email field â†’ focus leaves field (blur) â†’ inline validation fires â†’ email format regex test runs â†’ if invalid, error message appears below field â†’ if valid, no feedback shown
+2. **Debounced auto-save**: User edits resume section â†’ 2 seconds of inactivity â†’ debounce timer fires â†’ changed fields serialized â†’ PATCH request sent â†’ save indicator shows "Saved" â†’ on error, "Save failed â€” retrying" shown
+3. **Multi-step form submission**: User completes step 1 â†’ "Next" validates step 1 â†’ if valid, step 2 renders from lazy-loaded chunk â†’ progress bar advances â†’ user completes final step â†’ all steps submitted as single POST
+4. **Batch proposal approval**: User selects 5 proposals â†’ clicks "Approve All" â†’ optimistic UI marks all as approved â†’ API processes batch â†’ on success, toast confirms â†’ on partial failure, failed items highlighted for retry
 
 ## Sequence Diagrams
 
@@ -163,16 +163,16 @@ sequenceDiagram
     participant U as User
     participant F as Form Component
     participant RHF as React Hook Form
-    participant API as Meridian API
+    participant API as Vaeloom API
 
     U->>F: Type email address
     U->>F: Blur (focus leaves field)
     F->>RHF: trigger('email') validation
     RHF->>RHF: Check email regex pattern
     alt Valid email
-        RHF-->>F: ✅ No errors
+        RHF-->>F: âœ… No errors
     else Invalid email
-        RHF-->>F: ❌ "Please enter a valid email"
+        RHF-->>F: âŒ "Please enter a valid email"
         F-->>U: Inline error below field
     end
 
@@ -186,18 +186,18 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: User types into form fields → React Hook Form manages uncontrolled inputs via refs → value changes trigger validation rules → on blur, field-level validation runs
-2. **Processing**: Debounce timer (2s) collects form state → serializes to JSON → PATCH request sent to API → server validates and persists → response updates form state
-3. **Storage**: Form state held in React Hook Form's internal store → auto-save drafts persisted to PostgreSQL (`resume_drafts` table) → draft recovery on page reload via `GET /resumes/{id}/draft`
-4. **Retrieval**: Page mounts → API fetches existing data → React Hook Form `reset()` populates form fields → auto-save drafts restored from server on load
-5. **Deletion**: Form discard → confirmation dialog → API deletes draft if exists → form state reset → redirected away
+1. **Ingestion**: User types into form fields â†’ React Hook Form manages uncontrolled inputs via refs â†’ value changes trigger validation rules â†’ on blur, field-level validation runs
+2. **Processing**: Debounce timer (2s) collects form state â†’ serializes to JSON â†’ PATCH request sent to API â†’ server validates and persists â†’ response updates form state
+3. **Storage**: Form state held in React Hook Form's internal store â†’ auto-save drafts persisted to PostgreSQL (`resume_drafts` table) â†’ draft recovery on page reload via `GET /resumes/{id}/draft`
+4. **Retrieval**: Page mounts â†’ API fetches existing data â†’ React Hook Form `reset()` populates form fields â†’ auto-save drafts restored from server on load
+5. **Deletion**: Form discard â†’ confirmation dialog â†’ API deletes draft if exists â†’ form state reset â†’ redirected away
 
 ## Scalability
 
 | Dimension | Current Limit | 10x Strategy | 100x Strategy |
 |-----------|---------------|--------------|---------------|
 | Fields per form | 20 | Virtual scroll for long forms; section lazy-loading | AI-adaptive form that shows only relevant fields based on user profile |
-| Concurrent auto-save requests | 1 per form | Queue with debounce (discards intermediate states) | Delta-patch — send only changed fields instead of full form |
+| Concurrent auto-save requests | 1 per form | Queue with debounce (discards intermediate states) | Delta-patch â€” send only changed fields instead of full form |
 | Multi-step wizard steps | 5 | Lazy-load step components; preload next step on current completion | Server-driven wizard flow based on user responses |
 | Batch action items | 50 | Process in chunks of 10 with progress indicator | Streaming batch processing via SSE |
 
@@ -205,20 +205,20 @@ sequenceDiagram
 
 | Scenario | Detection | Mitigation | Recovery |
 |----------|-----------|------------|----------|
-| Auto-save fails (network error) | PATCH returns 4xx/5xx | Show "Save failed — retrying" indicator; retry with exponential backoff | On success, update indicator to "Saved"; on permanent failure, show manual save prompt |
-| File upload exceeds 10MB | Client-side validation catches before upload | Show "File too large — max 10MB" with file size displayed | User selects smaller file; upload resets |
-| Multi-step validation error on final submit | Server-side validation fails | Show summary of all errors with links to each step | User clicks error link → auto-scrolls to field → fixes and resubmits |
+| Auto-save fails (network error) | PATCH returns 4xx/5xx | Show "Save failed â€” retrying" indicator; retry with exponential backoff | On success, update indicator to "Saved"; on permanent failure, show manual save prompt |
+| File upload exceeds 10MB | Client-side validation catches before upload | Show "File too large â€” max 10MB" with file size displayed | User selects smaller file; upload resets |
+| Multi-step validation error on final submit | Server-side validation fails | Show summary of all errors with links to each step | User clicks error link â†’ auto-scrolls to field â†’ fixes and resubmits |
 | CSRF token expired | POST returns 403 | Automatically refresh token via dedicated endpoint | Retry submission with new token |
 
 ## Monitoring
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Form submission error rate | > 2% | Critical | Grafana — API Errors |
-| Auto-save latency (p95) | > 1s | Warning | Grafana — Performance Dashboard |
-| Abandonment rate on multi-step forms | > 40% | Warning | Amplitude — Form Analytics |
-| CSRF token refresh rate | > 5% of submissions | Warning | Sentry — Security Events |
-| File upload failure rate | > 1% | Warning | Grafana — Upload Dashboard |
+| Form submission error rate | > 2% | Critical | Grafana â€” API Errors |
+| Auto-save latency (p95) | > 1s | Warning | Grafana â€” Performance Dashboard |
+| Abandonment rate on multi-step forms | > 40% | Warning | Amplitude â€” Form Analytics |
+| CSRF token refresh rate | > 5% of submissions | Warning | Sentry â€” Security Events |
+| File upload failure rate | > 1% | Warning | Grafana â€” Upload Dashboard |
 
 ## Risks
 
@@ -239,13 +239,13 @@ sequenceDiagram
 
 ## Overview
 
-Meridian's form system handles data entry across the application — from simple search filters to the complex multi-section resume editor with 50+ fields. Forms are built with React Hook Form for complex cases (providing uncontrolled inputs, schema validation, and field-level error management) and native HTML forms for simple cases (search, filters, quick actions).
+Vaeloom's form system handles data entry across the application â€” from simple search filters to the complex multi-section resume editor with 50+ fields. Forms are built with React Hook Form for complex cases (providing uncontrolled inputs, schema validation, and field-level error management) and native HTML forms for simple cases (search, filters, quick actions).
 
 The form architecture follows four core patterns: inline validation on blur and submit for immediate user feedback, debounced auto-save for multi-field forms to prevent data loss, multi-step wizards with progress tracking for complex onboarding flows, and batch action interfaces for approving or rejecting multiple proposals simultaneously. Each pattern is mapped to specific user workflows.
 
-For Meridian's resume editor — one of the most form-intensive features — the debounced auto-save pattern is critical. As users edit their professional summaries, work experiences, and skill lists, every 2 seconds of inactivity triggers a background save. If the user closes the tab or navigates away, their changes are recovered on return. This pattern eliminates the anxiety of losing hours of resume editing work.
+For Vaeloom's resume editor â€” one of the most form-intensive features â€” the debounced auto-save pattern is critical. As users edit their professional summaries, work experiences, and skill lists, every 2 seconds of inactivity triggers a background save. If the user closes the tab or navigates away, their changes are recovered on return. This pattern eliminates the anxiety of losing hours of resume editing work.
 
-Validation is a first-class concern, not an afterthought. Every field type has specific validation rules: email format + async uniqueness, URL format + reachability, valid dates that aren't in the past, file type + size limits under 10MB, and text length limits with required-field enforcement. Error messages are specific and actionable — never "Invalid input" but always "Please enter a valid email address."
+Validation is a first-class concern, not an afterthought. Every field type has specific validation rules: email format + async uniqueness, URL format + reachability, valid dates that aren't in the past, file type + size limits under 10MB, and text length limits with required-field enforcement. Error messages are specific and actionable â€” never "Invalid input" but always "Please enter a valid email address."
 
 ## Goals
 

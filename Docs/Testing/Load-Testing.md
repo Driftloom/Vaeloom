@@ -1,7 +1,7 @@
-# Load Testing
+﻿# Load Testing
 
-> **Purpose:** Define load testing strategy for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define load testing strategy for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Load Testing Architecture
 
@@ -12,7 +12,7 @@ graph TD
     classDef tool fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef success fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Goals["🎯 Load Testing Goals"]
+    subgraph Goals["ðŸŽ¯ Load Testing Goals"]
         direction TB
         G1["API throughput<br/>1000 req/s"]
         G2["Concurrent users<br/>1000 active sessions"]
@@ -20,20 +20,20 @@ graph TD
         G4["Agent response under load<br/>< 15s p99"]
     end
 
-    subgraph Scenarios["📋 Test Scenarios"]
+    subgraph Scenarios["ðŸ“‹ Test Scenarios"]
         direction TB
         S1["Normal Load<br/>100 concurrent users<br/>80/20 read/write mix<br/>Duration: 30 min"]
         S2["Peak Load<br/>1000 concurrent users<br/>Burst writes (exam season)<br/>Duration: 15 min"]
         S3["Stress Test<br/>Gradual increase to failure<br/>Identify breaking points<br/>2x normal load target"]
     end
 
-    subgraph Tools["🔧 Load Testing Tools"]
+    subgraph Tools["ðŸ”§ Load Testing Tools"]
         T1["k6<br/>API load testing<br/>k6 run scenarios/api-load.js"]
         T2["Locust<br/>User simulation<br/>locust -f scenarios/user-flow.py"]
         T3["Artillery<br/>Spike testing<br/>artillery run scenarios/spike.yml"]
     end
 
-    subgraph Criteria["✅ Success Criteria"]
+    subgraph Criteria["âœ… Success Criteria"]
         C1["API latency p99<br/>Pass: < 1s | Warn: 1-3s | Fail: > 3s"]
         C2["Error rate<br/>Pass: < 0.1% | Warn: 0.1-1% | Fail: > 1%"]
         C3["Throughput<br/>Pass: > 80% | Warn: 50-80% | Fail: < 50%"]
@@ -48,7 +48,7 @@ graph TD
     class C1,C2,C3,C4 success
 ```
 
-> **Diagram:** Load testing strategy flows from **goals** (throughput, concurrency, ingestion, agent response) → **scenarios** (normal, peak, stress) → **tools** (k6, Locust, Artillery) → **success criteria** with pass/warn/fail thresholds.
+> **Diagram:** Load testing strategy flows from **goals** (throughput, concurrency, ingestion, agent response) â†’ **scenarios** (normal, peak, stress) â†’ **tools** (k6, Locust, Artillery) â†’ **success criteria** with pass/warn/fail thresholds.
 
 ---
 
@@ -134,16 +134,16 @@ graph TD
 
 ## Workflows
 
-1. **Normal load test execution**: QA engineer configures k6 script with 100 concurrent users → 80/20 read/write mix → 5m ramp-up → 20m steady state → 5m cooldown → monitors API latency, error rate, and resource usage → compares against success criteria → generates HTML report
-2. **Peak load simulation (exam season)**: 1000 concurrent users with burst writes (file uploads, application submissions) → 2m ramp-up → 15m peak → monitors database connection pool utilization → verifies graceful degradation (no crashes, queued writes) → identifies bottleneck
-3. **Stress test to find breaking point**: Gradual user increase from 100 to 2000 over 30m → system metrics monitored → breaking point identified (where latency exceeds 3s or error rate > 1%) → documented as "maximum sustainable load" → capacity planning adjusted
-4. **Load test result analysis**: k6 outputs JSON results → parsed by reporting script → compared against baseline from previous run → trends plotted in Grafana → regression identified → root cause investigation opened
+1. **Normal load test execution**: QA engineer configures k6 script with 100 concurrent users â†’ 80/20 read/write mix â†’ 5m ramp-up â†’ 20m steady state â†’ 5m cooldown â†’ monitors API latency, error rate, and resource usage â†’ compares against success criteria â†’ generates HTML report
+2. **Peak load simulation (exam season)**: 1000 concurrent users with burst writes (file uploads, application submissions) â†’ 2m ramp-up â†’ 15m peak â†’ monitors database connection pool utilization â†’ verifies graceful degradation (no crashes, queued writes) â†’ identifies bottleneck
+3. **Stress test to find breaking point**: Gradual user increase from 100 to 2000 over 30m â†’ system metrics monitored â†’ breaking point identified (where latency exceeds 3s or error rate > 1%) â†’ documented as "maximum sustainable load" â†’ capacity planning adjusted
+4. **Load test result analysis**: k6 outputs JSON results â†’ parsed by reporting script â†’ compared against baseline from previous run â†’ trends plotted in Grafana â†’ regression identified â†’ root cause investigation opened
 
 ## Scalability
 
 | Dimension | Current Limit | 10x Strategy | 100x Strategy |
 |-----------|---------------|--------------|---------------|
-| Concurrent virtual users | 1,000 | 10,000 with distributed k6 runners (10 instances × 1000 users) | 100,000+ with cloud-based load generation across 3 regions |
+| Concurrent virtual users | 1,000 | 10,000 with distributed k6 runners (10 instances Ã— 1000 users) | 100,000+ with cloud-based load generation across 3 regions |
 | Test scenario complexity | 3 scenarios (normal, peak, stress) | 10 scenarios including spike, soak, and chaos patterns | ML-generated load profiles from production traffic patterns |
 | Metrics collected per run | 15 | 50+ with custom k6 metrics and application-level tracing | Full distributed tracing correlation during load tests |
 | Concurrent test reports stored | 100 | 1,000 with automated trend analysis | Infinite with tiered storage (hot/cold/archive) |
@@ -161,11 +161,11 @@ graph TD
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| API p99 latency under load | > 1s at 1000 users | Critical | Grafana — Load Test Dashboard |
-| Error rate during peak | > 0.1% | Warning | Grafana — API Errors |
-| Database connection pool utilization | > 80% | Warning | Grafana — Database Dashboard |
-| Load generator resource usage | > 85% CPU | Warning | CI Pipeline — Load Test Infra |
-| Throughput degradation from baseline | > 20% drop | Critical | Grafana — Performance Trends |
+| API p99 latency under load | > 1s at 1000 users | Critical | Grafana â€” Load Test Dashboard |
+| Error rate during peak | > 0.1% | Warning | Grafana â€” API Errors |
+| Database connection pool utilization | > 80% | Warning | Grafana â€” Database Dashboard |
+| Load generator resource usage | > 85% CPU | Warning | CI Pipeline â€” Load Test Infra |
+| Throughput degradation from baseline | > 20% drop | Critical | Grafana â€” Performance Trends |
 
 ## Risks
 
@@ -186,11 +186,11 @@ graph TD
 
 ## Overview
 
-Load testing at Meridian validates that the platform can handle expected traffic patterns and identifies breaking points before they reach production. The system targets 1,000 requests per second API throughput, 1,000 concurrent active sessions, 100 documents ingested per minute, and sub-15-second p99 agent response times under load. These targets are validated through three load scenarios — normal, peak, and stress — run against production-like staging environments.
+Load testing at Vaeloom validates that the platform can handle expected traffic patterns and identifies breaking points before they reach production. The system targets 1,000 requests per second API throughput, 1,000 concurrent active sessions, 100 documents ingested per minute, and sub-15-second p99 agent response times under load. These targets are validated through three load scenarios â€” normal, peak, and stress â€” run against production-like staging environments.
 
 Three tools cover different load testing needs: k6 for API-level load testing with precise metrics, Locust for user-simulation scenarios with Python-based behavior modeling, and Artillery for spike testing with rapid traffic surges. Each scenario follows a structured ramp-up/hold/ramp-down pattern to observe how the system behaves under gradual load increases, sustained peak traffic, and recovery.
 
-For Meridian's AI agents, load testing is particularly important. Agent response times under load (p99 < 15s) ensure that users aren't left waiting for proposals during peak usage periods like exam season or graduation application deadlines. Document ingestion throughput (100 files/min) validates that the pipeline from upload through AI processing to organized storage can keep pace with user demand.
+For Vaeloom's AI agents, load testing is particularly important. Agent response times under load (p99 < 15s) ensure that users aren't left waiting for proposals during peak usage periods like exam season or graduation application deadlines. Document ingestion throughput (100 files/min) validates that the pipeline from upload through AI processing to organized storage can keep pace with user demand.
 
 Success criteria use a three-tier rating system per metric: Pass (green), Warn (yellow), and Fail (red). API p99 latency under 1 second passes, 1-3 seconds warns, and over 3 seconds fails. Error rates under 0.1% pass, 0.1-1% warn, and over 1% fail. Database connection pool utilization under 70% passes, 70-85% warns, and over 85% fails.
 
@@ -240,7 +240,7 @@ export const options = {
 };
 
 export default function () {
-  const res = http.get('https://staging.meridian.dev/v1/health');
+  const res = http.get('https://staging.Vaeloom.dev/v1/health');
   check(res, { 'status is 200': (r) => r.status === 200 });
   sleep(1);
 }
@@ -266,7 +266,7 @@ export default function () {
     name: `upload-${__VU}-${Date.now()}.pdf`,
     content: 'fake-file-content',
   });
-  const res = http.post('https://staging.meridian.dev/v1/documents', payload, {
+  const res = http.post('https://staging.Vaeloom.dev/v1/documents', payload, {
     headers: { 'Content-Type': 'application/json' },
   });
   check(res, { 'status is 201': (r) => r.status === 201 });
@@ -284,19 +284,19 @@ sequenceDiagram
     participant MON as Monitoring
 
     QA->>K6: k6 run scenarios/api-load.js
-    K6->>K6: Ramp up: 0→100 users (5min)
+    K6->>K6: Ramp up: 0â†’100 users (5min)
     K6->>TARGET: 100 concurrent req/s
     TARGET-->>K6: Responses
     K6->>MON: Collect metrics
     K6->>K6: Hold: 100 users (20min)
     K6->>TARGET: Steady load
-    K6->>K6: Ramp down: 100→0 (5min)
+    K6->>K6: Ramp down: 100â†’0 (5min)
     K6->>K6: Compute results
     K6-->>QA: HTML report
     alt Thresholds met
-        QA->>QA: ✅ Load test passed
+        QA->>QA: âœ… Load test passed
     else Thresholds exceeded
-        QA->>QA: ❌ p99 latency 2.4s > 2s threshold
+        QA->>QA: âŒ p99 latency 2.4s > 2s threshold
         QA->>QA: Investigate bottleneck
     end
 ```

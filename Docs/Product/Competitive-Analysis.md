@@ -1,33 +1,33 @@
-# Competitive Analysis
+﻿# Competitive Analysis
 
-> **Purpose:** Analyze the competitive landscape for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Analyze the competitive landscape for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Competitive Landscape
 
-| Category | Competitors | Meridian Advantage |
+| Category | Competitors | Vaeloom Advantage |
 |----------|-------------|-------------------|
-| Resume builders | Rezi, Novoresume, Kickresume | Meridian builds resumes from real activity, not manual input |
-| Job boards | LinkedIn, Indeed, Naukri, Internshala | Meridian ranks by personal fit, not generic algorithms |
-| Note/knowledge tools | Notion, Obsidian, Roam | Meridian links automatically via agents, not manual effort |
-| AI assistants | ChatGPT, Claude, Copilot | Meridian has persistent memory of THIS person |
-| File storage | Google Drive, Dropbox, OneDrive | Meridian organizes by meaning, not folder hierarchy |
-| Career services | Handshake, Symplicity, VMock | Meridian provides continuous daily support, not periodic sessions |
+| Resume builders | Rezi, Novoresume, Kickresume | Vaeloom builds resumes from real activity, not manual input |
+| Job boards | LinkedIn, Indeed, Naukri, Internshala | Vaeloom ranks by personal fit, not generic algorithms |
+| Note/knowledge tools | Notion, Obsidian, Roam | Vaeloom links automatically via agents, not manual effort |
+| AI assistants | ChatGPT, Claude, Copilot | Vaeloom has persistent memory of THIS person |
+| File storage | Google Drive, Dropbox, OneDrive | Vaeloom organizes by meaning, not folder hierarchy |
+| Career services | Handshake, Symplicity, VMock | Vaeloom provides continuous daily support, not periodic sessions |
 
 ## Head-to-Head Comparison
 
-### Meridian vs. Traditional Resume Builders
+### Vaeloom vs. Traditional Resume Builders
 
-| Aspect | Resume Builders | Meridian |
+| Aspect | Resume Builders | Vaeloom |
 |--------|----------------|----------|
 | Data source | Manual input | Real activity (docs, emails, code) |
 | Updates | User-initiated | Continuous, automatic |
 | Personalization | Template-based | Skill-graph-driven |
 | ATS optimization | Manual | Automatic per job description |
 
-### Meridian vs. ChatGPT/Claude
+### Vaeloom vs. ChatGPT/Claude
 
-| Aspect | AI Chatbots | Meridian |
+| Aspect | AI Chatbots | Vaeloom |
 |--------|-------------|----------|
 | Memory | Session-only (or limited) | Persistent knowledge graph |
 | Data sources | User types everything | Automatic from connectors |
@@ -38,15 +38,15 @@
 
 ```mermaid
 quadrantChart
-    title Competitive Landscape — Price vs. Capability
+    title Competitive Landscape â€” Price vs. Capability
     x-axis "Low Price" --> "High Price"
     y-axis "Low Capability" --> "High Capability"
-    quadrant-1 "💎 Premium"
-    quadrant-2 "🌟 Sweet Spot"
-    quadrant-3 "🛠️ Basic Tools"
-    quadrant-4 "💸 Overpriced"
+    quadrant-1 "ðŸ’Ž Premium"
+    quadrant-2 "ðŸŒŸ Sweet Spot"
+    quadrant-3 "ðŸ› ï¸ Basic Tools"
+    quadrant-4 "ðŸ’¸ Overpriced"
 
-    "Meridian": [0.52, 0.78]
+    "Vaeloom": [0.52, 0.78]
     "Notion": [0.25, 0.50]
     "Obsidian": [0.05, 0.42]
     "Roam": [0.35, 0.48]
@@ -63,16 +63,16 @@ quadrantChart
     "Kickresume": [0.15, 0.18]
 ```
 
-> **Chart:** Meridian occupies the **Sweet Spot** quadrant — high capability at mid-range price. AI assistants (ChatGPT, Claude) cluster nearby but lack persistent memory. Note tools (Notion, Obsidian, Roam) offer moderate capability at low-to-mid price. Job boards (LinkedIn, Indeed) and resume builders (Rezi, Novoresume) sit in the **Basic Tools** quadrant — useful but limited. No competitor combines automated organization, persistent memory, and proactive agents at this price point.
+> **Chart:** Vaeloom occupies the **Sweet Spot** quadrant â€” high capability at mid-range price. AI assistants (ChatGPT, Claude) cluster nearby but lack persistent memory. Note tools (Notion, Obsidian, Roam) offer moderate capability at low-to-mid price. Job boards (LinkedIn, Indeed) and resume builders (Rezi, Novoresume) sit in the **Basic Tools** quadrant â€” useful but limited. No competitor combines automated organization, persistent memory, and proactive agents at this price point.
 
-Meridian occupies the **automated organization + persistent memory** quadrant that no existing product fills.
+Vaeloom occupies the **automated organization + persistent memory** quadrant that no existing product fills.
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
 | Comparing against the wrong competitive set | Positioning against resume builders when the real alternative is "doing nothing" or "using nothing" |
-| Over-indexing on feature comparison tables | Users don't choose products by feature count — they choose by which product understands their problem |
+| Over-indexing on feature comparison tables | Users don't choose products by feature count â€” they choose by which product understands their problem |
 | Ignoring indirect competitors | ChatGPT and Claude are not direct competitors today, but they train user expectations about AI |
 | Cherry-picking advantages | A competitive analysis that only shows strengths is a marketing document, not strategy input |
 
@@ -81,29 +81,29 @@ Meridian occupies the **automated organization + persistent memory** quadrant th
 | Practice | Why |
 |----------|-----|
 | Segment competitors by user need, not category | Resume builders, job boards, and note apps compete for different moments in the user journey |
-| Update competitive analysis quarterly | The AI assistant landscape changes rapidly — stale analysis drives bad decisions |
+| Update competitive analysis quarterly | The AI assistant landscape changes rapidly â€” stale analysis drives bad decisions |
 | Include indirect and adjacent competitors | Products that users reach for instead of yours (even if different category) are competitors |
-| Map to user personas | Each persona faces a different competitive set — student vs. professional vs. enterprise |
+| Map to user personas | Each persona faces a different competitive set â€” student vs. professional vs. enterprise |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Competitive data aggregation | When analyzing competitor products, do not store user credentials or scraped user data — only public information |
+| Competitive data aggregation | When analyzing competitor products, do not store user credentials or scraped user data â€” only public information |
 | Benchmark data sensitivity | Any user-permissioned benchmark comparisons must be anonymized and aggregated |
 
 ## Overview
 
-Meridian operates in a competitive landscape that spans resume builders, job boards, note/knowledge tools, AI assistants, file storage platforms, and career services. No existing product combines automated organization, persistent structured memory, and proactive specialist agents into a single platform for career and academic lifecycle management. This competitive analysis examines direct and indirect competitors across six categories, maps the market position using a price-capability quadrant, and identifies the strategic implications for Meridian's go-to-market and product decisions.
+Vaeloom operates in a competitive landscape that spans resume builders, job boards, note/knowledge tools, AI assistants, file storage platforms, and career services. No existing product combines automated organization, persistent structured memory, and proactive specialist agents into a single platform for career and academic lifecycle management. This competitive analysis examines direct and indirect competitors across six categories, maps the market position using a price-capability quadrant, and identifies the strategic implications for Vaeloom's go-to-market and product decisions.
 
-The analysis is organized by the user need each competitor type addresses rather than by product category, reflecting the reality that users don't choose among "resume builders" — they choose among "ways to solve my career documentation problem." Meridian's core competitive advantage is compounding memory: the longer a user stays, the more every feature improves, creating a switching cost that no single-category competitor can replicate.
+The analysis is organized by the user need each competitor type addresses rather than by product category, reflecting the reality that users don't choose among "resume builders" â€” they choose among "ways to solve my career documentation problem." Vaeloom's core competitive advantage is compounding memory: the longer a user stays, the more every feature improves, creating a switching cost that no single-category competitor can replicate.
 
 This document should be updated quarterly as the AI assistant and career technology landscape evolves rapidly. Competitors highlighted here include Rezi, Novoresume, Kickresume, LinkedIn, Indeed, Naukri, Internshala, Notion, Obsidian, Roam, ChatGPT, Claude, Microsoft Copilot, Google Drive, Dropbox, OneDrive, Handshake, Symplicity, and VMock.
 
 ## Goals
 
 - Maintain clear differentiation from at least 4 of the 6 competitor categories at all times
-- Ensure no single competitor category can replicate Meridian's full value proposition within 12 months
+- Ensure no single competitor category can replicate Vaeloom's full value proposition within 12 months
 - Track competitor feature releases monthly to identify convergence risks early
 - Achieve top-3 mindshare in the "AI career platform" category within 18 months of launch
 - Publish refreshed competitive analysis quarterly with actionable strategic recommendations
@@ -113,7 +113,7 @@ This document should be updated quarterly as the AI assistant and career technol
 | | |
 |---|---|
 | **In Scope** | Direct competitors (resume builders, career services); indirect competitors (AI assistants, note apps, file storage); adjacent competitors (job boards, professional networks); feature-by-feature comparison; market position mapping; strategic implications for product roadmap |
-| **Out of Scope** | Financial analysis of competitors (funding, revenue); internal HR/payroll platforms (Workday, BambooHR); learning management systems (Canvas, Blackboard); applicant tracking systems (Greenhouse, Lever) — these are integration targets, not competitors |
+| **Out of Scope** | Financial analysis of competitors (funding, revenue); internal HR/payroll platforms (Workday, BambooHR); learning management systems (Canvas, Blackboard); applicant tracking systems (Greenhouse, Lever) â€” these are integration targets, not competitors |
 
 ## Workflows
 
@@ -146,14 +146,14 @@ This document should be updated quarterly as the AI assistant and career technol
       "category": "AI assistant",
       "price": 20,
       "capability": 0.65,
-      "meridian_advantage": "Persistent memory vs session-only"
+      "Vaeloom_advantage": "Persistent memory vs session-only"
     },
     {
       "name": "Rezi",
       "category": "resume builder",
       "price": 15,
       "capability": 0.30,
-      "meridian_advantage": "Built from real activity, not manual input"
+      "Vaeloom_advantage": "Built from real activity, not manual input"
     }
   ]
 }
@@ -163,7 +163,7 @@ This document should be updated quarterly as the AI assistant and career technol
 
 ```bash
 # Fetch competitive monitoring data
-curl -s https://api.meridian.dev/v1/admin/competitive-intel \
+curl -s https://api.Vaeloom.dev/v1/admin/competitive-intel \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq '.recent_changes'
 ```
 
@@ -198,4 +198,4 @@ curl -s https://api.meridian.dev/v1/admin/competitive-intel \
 - [Business Model.md](./Business-Model.md)
 - [Vision.md](./Vision.md)
 - [Problem.md](./Problem.md)
-- [`/Docs/06-Meridian-Enterprise-Paper.md#19-why-current-solutions-fail`](../../Docs/06-Meridian-Enterprise-Paper.md#19-why-current-solutions-fail)
+- [`/Docs/06-Vaeloom-Enterprise-Paper.md#19-why-current-solutions-fail`](../../Docs/06-Vaeloom-Enterprise-Paper.md#19-why-current-solutions-fail)

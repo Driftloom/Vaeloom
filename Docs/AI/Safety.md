@@ -1,15 +1,15 @@
-# AI Safety
+﻿# AI Safety
 
-> **Purpose:** Define AI safety mechanisms for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define AI safety mechanisms for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-AI safety is the foundational constraint layer for Meridian's agent system — ensuring that autonomous AI agents operate within strict boundaries that protect user data, prevent unauthorized actions, and maintain human oversight. Safety is implemented as a five-layer architecture: pre-action guardrails (input validation, injection detection, permission checks), during-action monitoring (error rates, approval tracking, anomaly detection), post-action audit (append-only logs, undo capability), scheduled safety reviews (weekly to quarterly), and a set of permanently prohibited actions that no agent can ever perform.
+AI safety is the foundational constraint layer for Vaeloom's agent system â€” ensuring that autonomous AI agents operate within strict boundaries that protect user data, prevent unauthorized actions, and maintain human oversight. Safety is implemented as a five-layer architecture: pre-action guardrails (input validation, injection detection, permission checks), during-action monitoring (error rates, approval tracking, anomaly detection), post-action audit (append-only logs, undo capability), scheduled safety reviews (weekly to quarterly), and a set of permanently prohibited actions that no agent can ever perform.
 
-This document defines the safety principles, layered architecture, prohibited capabilities, safety review cadence, and escalation workflows for all Meridian agents. It is intended for AI engineers, security engineers, product managers, and compliance teams who need to understand and audit Meridian's AI safety posture. The system defaults to suggest-mode for every agent — autonomy must be earned through demonstrated accuracy and user trust.
+This document defines the safety principles, layered architecture, prohibited capabilities, safety review cadence, and escalation workflows for all Vaeloom agents. It is intended for AI engineers, security engineers, product managers, and compliance teams who need to understand and audit Vaeloom's AI safety posture. The system defaults to suggest-mode for every agent â€” autonomy must be earned through demonstrated accuracy and user trust.
 
 ## Goals
 
@@ -17,7 +17,7 @@ This document defines the safety principles, layered architecture, prohibited ca
 - Enforce five permanently prohibited capabilities: no file deletion, no unreviewed email, no permission modification, no spending, no cross-user access
 - Maintain an append-only audit log of every agent action with full provenance for post-hoc review
 - Detect and automatically reduce agent autonomy on anomaly detection scores exceeding threshold
-- Run safety reviews at three tiers — weekly (engineering), monthly (engineering + product), quarterly (engineering + security)
+- Run safety reviews at three tiers â€” weekly (engineering), monthly (engineering + product), quarterly (engineering + security)
 
 ---
 
@@ -31,7 +31,7 @@ graph TD
     classDef review fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
     classDef prohibit fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
 
-    subgraph Pre["🛡️ Pre-Action: Guardrails"]
+    subgraph Pre["ðŸ›¡ï¸ Pre-Action: Guardrails"]
         direction TB
         P1["Input Validation<br/>Schema check on all inputs"]
         P2["Injection Detection<br/>Sanitize boundaries"]
@@ -39,7 +39,7 @@ graph TD
         P4["Rate Limiting<br/>Per-agent & per-user"]
     end
 
-    subgraph During["📊 During Action: Monitoring"]
+    subgraph During["ðŸ“Š During Action: Monitoring"]
         direction TB
         D1["Error Rate Monitoring<br/>Real-time alerting"]
         D2["Approval Tracking<br/>Suggest vs auto ratio"]
@@ -47,27 +47,27 @@ graph TD
         D4["Cost Monitoring<br/>Spike detection"]
     end
 
-    subgraph Post["📋 Post-Action: Audit"]
+    subgraph Post["ðŸ“‹ Post-Action: Audit"]
         direction TB
         O1["Append-Only Audit Log<br/>Every action recorded"]
         O2["Undo / Revert<br/>User can reverse actions"]
         O3["Post-Hoc Review<br/>Pattern analysis"]
     end
 
-    subgraph Reviews["🔍 Safety Reviews"]
+    subgraph Reviews["ðŸ” Safety Reviews"]
         direction TB
-        R1["🟢 Weekly<br/>Approval rates, errors<br/>Engineering team"]
-        R2["🟡 Monthly<br/>Incident review<br/>Engineering + Product"]
-        R3["🔴 Quarterly<br/>Full safety audit<br/>Engineering + Security"]
+        R1["ðŸŸ¢ Weekly<br/>Approval rates, errors<br/>Engineering team"]
+        R2["ðŸŸ¡ Monthly<br/>Incident review<br/>Engineering + Product"]
+        R3["ðŸ”´ Quarterly<br/>Full safety audit<br/>Engineering + Security"]
     end
 
-    subgraph Prohibited["🚫 Prohibited Actions"]
+    subgraph Prohibited["ðŸš« Prohibited Actions"]
         direction TB
-        H1["❌ Delete files<br/>Archive only"]
-        H2["❌ Send email w/o review<br/>Approval required"]
-        H3["❌ Modify permissions<br/>Never allowed"]
-        H4["❌ Spend money<br/>Strict limits + approval"]
-        H5["❌ Access other users<br/>Privacy violation"]
+        H1["âŒ Delete files<br/>Archive only"]
+        H2["âŒ Send email w/o review<br/>Approval required"]
+        H3["âŒ Modify permissions<br/>Never allowed"]
+        H4["âŒ Spend money<br/>Strict limits + approval"]
+        H5["âŒ Access other users<br/>Privacy violation"]
     end
 
     P1 & P2 & P3 & P4 --> D1 & D2 & D3 & D4
@@ -84,7 +84,7 @@ graph TD
 
 ```
 
-> **Diagram:** Safety operates across five layers. **Pre-Action** guardrails validate inputs, detect injection, check permissions, and rate-limit. **During Action** monitors error rates, approvals, anomalies, and costs in real-time. **Post-Action** audit logs every action in an append-only log, enables undo, and runs pattern analysis. **Safety Reviews** escalate from weekly (engineering) to quarterly (full audit with security team). **Prohibited Actions** constrain the entire system — agents can never delete files, send unreviewed email, modify permissions, spend money, or access other users' data.
+> **Diagram:** Safety operates across five layers. **Pre-Action** guardrails validate inputs, detect injection, check permissions, and rate-limit. **During Action** monitors error rates, approvals, anomalies, and costs in real-time. **Post-Action** audit logs every action in an append-only log, enables undo, and runs pattern analysis. **Safety Reviews** escalate from weekly (engineering) to quarterly (full audit with security team). **Prohibited Actions** constrain the entire system â€” agents can never delete files, send unreviewed email, modify permissions, spend money, or access other users' data.
 
 ---
 
@@ -96,7 +96,7 @@ graph TD
 | Reversibility | All autonomous actions are reversible |
 | Auditability | Every action is logged with provenance |
 | Transparency | Every suggestion shows its reasoning |
-| Conservatism | When uncertain, agents ask — never guess |
+| Conservatism | When uncertain, agents ask â€” never guess |
 
 ## Safety Mechanisms
 
@@ -127,39 +127,39 @@ graph TD
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Granting autonomy before the agent has proven accuracy | Autonomy should be earned per-agent based on approval rate history — granting full autonomy to a new untested agent risks consequential errors before trust is established |
+| Granting autonomy before the agent has proven accuracy | Autonomy should be earned per-agent based on approval rate history â€” granting full autonomy to a new untested agent risks consequential errors before trust is established |
 | Silently handling low-confidence outputs | Agents that guess rather than asking when uncertain create plausible-sounding but wrong results that erode user trust faster than an honest "I don't know" |
-| No review process for autonomy threshold changes | Autonomy levels should require human review to increase — an agent that modified its own autonomy level could bypass the safety model entirely |
-| Assuming suggest-mode alone is sufficient safety | Suggest-mode prevents execution without approval but doesn't prevent the agent from generating harmful or misleading proposals — the QA Agent must still validate before showing to the user |
+| No review process for autonomy threshold changes | Autonomy levels should require human review to increase â€” an agent that modified its own autonomy level could bypass the safety model entirely |
+| Assuming suggest-mode alone is sufficient safety | Suggest-mode prevents execution without approval but doesn't prevent the agent from generating harmful or misleading proposals â€” the QA Agent must still validate before showing to the user |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Default every new agent to suggest-mode, grant autonomy per-agent based on track record | An agent with a 95% approval rate after 100 proposals may earn autonomy for specific actions — each agent and action type starts from zero trust |
-| Require agents to ask the user when output confidence is below 80% | Guessing creates hard-to-detect errors that compound over time — a clear "I'm not sure" with a specific question is always safer than a confident wrong answer |
+| Default every new agent to suggest-mode, grant autonomy per-agent based on track record | An agent with a 95% approval rate after 100 proposals may earn autonomy for specific actions â€” each agent and action type starts from zero trust |
+| Require agents to ask the user when output confidence is below 80% | Guessing creates hard-to-detect errors that compound over time â€” a clear "I'm not sure" with a specific question is always safer than a confident wrong answer |
 | Log every autonomy event for audit trail | Tracking autonomy grants, revocations, and the agent behavior that triggered them enables post-hoc safety reviews and pattern analysis |
-| Implement a kill-switch per agent that a user can trigger at any time | Even an agent that has earned full autonomy should be instantly switchable back to suggest-mode by the user — the user always retains override authority |
+| Implement a kill-switch per agent that a user can trigger at any time | Even an agent that has earned full autonomy should be instantly switchable back to suggest-mode by the user â€” the user always retains override authority |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Agent self-modification of safety rules | No agent should be able to modify its own permission scopes, autonomy level, or safety policies — these are immutable from the agent's perspective and only changeable through the Permission Engine |
-| Cross-agent contamination of safety state | One agent being compromised should not reduce safety for other agents — each agent's permission scope and autonomy level are independently enforced and audited |
-| Audit log tampering | The agent action audit log must be append-only and immutable — a compromised agent should not be able to delete or modify its past action records to hide malicious behavior |
+| Agent self-modification of safety rules | No agent should be able to modify its own permission scopes, autonomy level, or safety policies â€” these are immutable from the agent's perspective and only changeable through the Permission Engine |
+| Cross-agent contamination of safety state | One agent being compromised should not reduce safety for other agents â€” each agent's permission scope and autonomy level are independently enforced and audited |
+| Audit log tampering | The agent action audit log must be append-only and immutable â€” a compromised agent should not be able to delete or modify its past action records to hide malicious behavior |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| QA Agent validation latency | The QA Agent sits inline between every action-capable agent and delivery — validate that its checks complete within 1s to avoid becoming a bottleneck in the agent execution pipeline |
-| Audit log write throughput | Every agent action, permission check, and QA decision writes to the audit log — ensure the write path is asynchronous (event-bus-based) to avoid blocking agent execution on log writes |
+| QA Agent validation latency | The QA Agent sits inline between every action-capable agent and delivery â€” validate that its checks complete within 1s to avoid becoming a bottleneck in the agent execution pipeline |
+| Audit log write throughput | Every agent action, permission check, and QA decision writes to the audit log â€” ensure the write path is asynchronous (event-bus-based) to avoid blocking agent execution on log writes |
 | Safety review frequency vs cost | Weekly safety reviews are appropriate for MVP; as the agent count grows to 28+ agents, automated safety dashboards can reduce manual review overhead while maintaining coverage |
 
 ## Scope
 
-This document defines the AI safety mechanisms for Meridian — covering safety principles, pre/during/post-action controls, prohibited capabilities, and safety review schedules. Applies to all agents across all environments (development, staging, production). Out of scope: guardrail implementation details (see [Guardrails.md](./Guardrails.md)), QA Agent architecture (see [Guardrails.md](./Guardrails.md#qa-agent-architecture)), permission model (see [IAM.md](../Security/IAM.md)).
+This document defines the AI safety mechanisms for Vaeloom â€” covering safety principles, pre/during/post-action controls, prohibited capabilities, and safety review schedules. Applies to all agents across all environments (development, staging, production). Out of scope: guardrail implementation details (see [Guardrails.md](./Guardrails.md)), QA Agent architecture (see [Guardrails.md](./Guardrails.md#qa-agent-architecture)), permission model (see [IAM.md](../Security/IAM.md)).
 
 ---
 
@@ -235,19 +235,19 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Agent safety flow — pre-action guardrails verify input and permissions, suggest-mode requires user approval, during-action monitors for anomalies, and all actions are logged to the append-only audit log.
+> **Diagram:** Agent safety flow â€” pre-action guardrails verify input and permissions, suggest-mode requires user approval, during-action monitors for anomalies, and all actions are logged to the append-only audit log.
 
 ---
 
 ## Data Flow
 
 ```text
-Agent Proposal → Pre-Action Guardrails (input + injection + rate limit)
-    → Permission Engine (scope check)
-    → Suggest Mode? → User Approval Required
-    → Execute → During-Action Monitor (error + cost + anomaly)
-    → Post-Action Audit Log (append-only)
-    → Safety Review (weekly → monthly → quarterly)
+Agent Proposal â†’ Pre-Action Guardrails (input + injection + rate limit)
+    â†’ Permission Engine (scope check)
+    â†’ Suggest Mode? â†’ User Approval Required
+    â†’ Execute â†’ During-Action Monitor (error + cost + anomaly)
+    â†’ Post-Action Audit Log (append-only)
+    â†’ Safety Review (weekly â†’ monthly â†’ quarterly)
 ```
 
 ---
@@ -363,7 +363,7 @@ if result.mode == "suggest":
 | Agent self-modifies safety rules | Low | Critical | Permission Engine is immutable by agents; audit logs detect attempts |
 | Kill switch not effective for runaway agent | Low | High | Kill switch at Permission Engine level (not agent level); applied at next tool call |
 | Anomaly detection misses sophisticated attack | Medium | High | Layered approach: guardrails + monitoring + post-hoc review |
-| Safety review fatigue (too many alerts) | Medium | Medium | Tiered alerting: weekly (engineering) → quarterly (security) |
+| Safety review fatigue (too many alerts) | Medium | Medium | Tiered alerting: weekly (engineering) â†’ quarterly (security) |
 
 ---
 

@@ -1,7 +1,7 @@
-# Caching Architecture
+﻿# Caching Architecture
 
-> **Purpose:** Define the caching strategy for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the caching strategy for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
@@ -15,15 +15,15 @@ graph TD
     classDef db fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef miss fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Client["🌐 Browser Layer"]
+    subgraph Client["ðŸŒ Browser Layer"]
         B1["HTTP Cache<br/>Static assets (JS, CSS, images)"]
     end
 
-    subgraph Edge["🛡️ Edge / CDN Layer"]
+    subgraph Edge["ðŸ›¡ï¸ Edge / CDN Layer"]
         C1["Cloudflare / Fastly<br/>Static pages, images<br/>Per-asset TTL"]
     end
 
-    subgraph App["⚡ Application Layer (Redis)"]
+    subgraph App["âš¡ Application Layer (Redis)"]
         direction TB
         R1["Dashboard Data<br/>~10KB/user<br/>Event-invalidated"]
         R2["Resume Renders<br/>~50KB/variant<br/>Pre-warmed on deploy"]
@@ -31,16 +31,16 @@ graph TD
         R4["Search Results<br/>~2KB/query<br/>TTL: 1 min"]
     end
 
-    subgraph Database["💾 Database Layer"]
+    subgraph Database["ðŸ’¾ Database Layer"]
         PG["( PostgreSQL<br/>Shared buffers<br/>LRU eviction )"]
     end
 
-    subgraph Invalidation["📨 Event-Based Invalidation"]
+    subgraph Invalidation["ðŸ“¨ Event-Based Invalidation"]
         direction TB
-        E1["document.ingested →<br/>Document list, workspace"]
-        E2["memory.updated →<br/>Dashboard, resume, graph"]
-        E3["application.submitted →<br/>App list, stats"]
-        E4["schedule.conflict →<br/>Schedule view, deadlines"]
+        E1["document.ingested â†’<br/>Document list, workspace"]
+        E2["memory.updated â†’<br/>Dashboard, resume, graph"]
+        E3["application.submitted â†’<br/>App list, stats"]
+        E4["schedule.conflict â†’<br/>Schedule view, deadlines"]
     end
 
     B1 -->|Cache MISS| C1
@@ -61,7 +61,7 @@ graph TD
 
 ```
 
-> **Diagram:** Cache follows a layered architecture — Browser → CDN → Redis → PostgreSQL. On a MISS at any layer, the next layer is queried and the result is cached upstream. **Event-based invalidation** replaces TTL-based expiry: when `document.ingested`, `memory.updated`, etc. fire, only the affected cache keys are invalidated rather than relying on fixed timeouts.
+> **Diagram:** Cache follows a layered architecture â€” Browser â†’ CDN â†’ Redis â†’ PostgreSQL. On a MISS at any layer, the next layer is queried and the result is cached upstream. **Event-based invalidation** replaces TTL-based expiry: when `document.ingested`, `memory.updated`, etc. fire, only the affected cache keys are invalidated rather than relying on fixed timeouts.
 
 ---
 
@@ -88,8 +88,8 @@ Event-based invalidation (not time-based):
 ## Cache-Aside Pattern
 
 ```text
-Request → Check Cache → Hit → Return
-                      → Miss → Query DB → Store in Cache → Return
+Request â†’ Check Cache â†’ Hit â†’ Return
+                      â†’ Miss â†’ Query DB â†’ Store in Cache â†’ Return
 ```
 
 ## Cache Warming
@@ -113,35 +113,35 @@ On deploy, pre-warm critical caches:
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Using TTL-based expiry instead of event-based invalidation | Time-based cache expiry means data can be stale for up to the TTL duration — event-based invalidation ensures the cache is updated immediately when the underlying data changes |
-| Caching data that is rarely read but frequently written | If a cache entry is updated every 5 minutes but read once per hour, caching adds write overhead without meaningful read benefit — only cache data with a high read-to-write ratio |
-| No cache warming on deploy | After a deploy, all cache entries are cold — the first users after deploy experience slow responses because every request triggers a full database query before populating the cache |
-| Caching user-specific data at the CDN layer | CDNs cache data per URL, not per user — dashboard data, resume renders, and other user-specific content should be cached in Redis, not at the CDN, to avoid serving User A's data to User B |
+| Using TTL-based expiry instead of event-based invalidation | Time-based cache expiry means data can be stale for up to the TTL duration â€” event-based invalidation ensures the cache is updated immediately when the underlying data changes |
+| Caching data that is rarely read but frequently written | If a cache entry is updated every 5 minutes but read once per hour, caching adds write overhead without meaningful read benefit â€” only cache data with a high read-to-write ratio |
+| No cache warming on deploy | After a deploy, all cache entries are cold â€” the first users after deploy experience slow responses because every request triggers a full database query before populating the cache |
+| Caching user-specific data at the CDN layer | CDNs cache data per URL, not per user â€” dashboard data, resume renders, and other user-specific content should be cached in Redis, not at the CDN, to avoid serving User A's data to User B |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Invalidate cache on the relevant event, not on a timer | When `document.ingested` fires, invalidate the document list cache key — the next read fetches fresh data. No TTL guessing needed |
-| Only cache data where read frequency significantly exceeds write frequency | Measure read/write ratio per data type — cache data with >10:1 read/write ratio; bypass cache for data written more frequently than it's read |
+| Invalidate cache on the relevant event, not on a timer | When `document.ingested` fires, invalidate the document list cache key â€” the next read fetches fresh data. No TTL guessing needed |
+| Only cache data where read frequency significantly exceeds write frequency | Measure read/write ratio per data type â€” cache data with >10:1 read/write ratio; bypass cache for data written more frequently than it's read |
 | Pre-warm critical cache entries immediately after deploy | On a new deploy, trigger a warm-up job that populates the most-frequently-accessed cache keys (dashboard aggregates, resume templates) before users arrive |
-| Cache user-specific data in Redis, not in CDN or browser | Use Redis with workspace_id-scoped keys for user-specific cache data — CDN caching is appropriate for static assets and public content only |
+| Cache user-specific data in Redis, not in CDN or browser | Use Redis with workspace_id-scoped keys for user-specific cache data â€” CDN caching is appropriate for static assets and public content only |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Cache poisoning via key collision | A crafted cache key could overwrite another user's cache entry — scope all cache keys by workspace_id or user_id to prevent cross-user cache contamination |
-| Stale cached data after permission change | If a user's permissions are revoked, cached data from before revocation could still be served — include permission checks in the cache validation step, not just in the database query |
-| Cached sensitive data in shared environments | CDN and browser caches may persist on shared machines — ensure user-specific data carries `Cache-Control: private` headers to prevent storage in shared caches |
+| Cache poisoning via key collision | A crafted cache key could overwrite another user's cache entry â€” scope all cache keys by workspace_id or user_id to prevent cross-user cache contamination |
+| Stale cached data after permission change | If a user's permissions are revoked, cached data from before revocation could still be served â€” include permission checks in the cache validation step, not just in the database query |
+| Cached sensitive data in shared environments | CDN and browser caches may persist on shared machines â€” ensure user-specific data carries `Cache-Control: private` headers to prevent storage in shared caches |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Cache stampede on key expiry | When a popular cache key expires, multiple simultaneous requests all trigger database queries — use a mutex or "probabilistic early expiration" (refresh the cache early when it's approaching expiry) to prevent stampede |
-| Memory fragmentation in Redis | Redis stores data in memory — large cache entries (resume renders at 50KB each) for many users can cause memory fragmentation; set the Redis LRU eviction policy and monitor used_memory_rss vs used_memory |
-| Serialization overhead for complex cache values | Storing complex nested JSON objects in Redis requires serialization/deserialization on every read/write — for high-throughput cache keys, consider simpler data structures (hash, string) over complex objects |
+| Cache stampede on key expiry | When a popular cache key expires, multiple simultaneous requests all trigger database queries â€” use a mutex or "probabilistic early expiration" (refresh the cache early when it's approaching expiry) to prevent stampede |
+| Memory fragmentation in Redis | Redis stores data in memory â€” large cache entries (resume renders at 50KB each) for many users can cause memory fragmentation; set the Redis LRU eviction policy and monitor used_memory_rss vs used_memory |
+| Serialization overhead for complex cache values | Storing complex nested JSON objects in Redis requires serialization/deserialization on every read/write â€” for high-throughput cache keys, consider simpler data structures (hash, string) over complex objects |
 
 ## Goals
 
@@ -194,7 +194,7 @@ On deploy, pre-warm critical caches:
 ## Data Flow
 
 1. Application receives a request and computes the cache key incorporating workspace_id and data type
-2. Cache key is looked up in Redis — on hit, the value is deserialized and returned immediately
+2. Cache key is looked up in Redis â€” on hit, the value is deserialized and returned immediately
 3. On cache miss, the application queries PostgreSQL, serializes the result, and stores it in Redis with an expiry
 4. When a domain event fires (document.ingested, memory.updated), the invalidation listener receives it
 5. Listener computes all affected cache keys and issues DEL commands to Redis, ensuring next read fetches fresh data
@@ -253,26 +253,26 @@ On deploy, pre-warm critical caches:
 | Redis is single-threaded for command execution | Throughput capped per node on complex commands | Use pipelining, avoid O(N) commands like KEYS | Redis 7+ I/O threads, cluster sharding |
 | Cache keys have no built-in expiry beyond TTL | Stale keys accumulate without event invalidation | Always set TTL as safety net | Background key expiration sweeper job |
 | No built-in cross-region replication in Redis Cluster | Multi-region requires separate Redis clusters | Application-level dual-write | Redis Enterprise active-active geo-replication |
-| 50KB resume renders consume significant memory per entry | Reduced total cache capacity | Compress large values with LZ4 | Tiered cache — hot in Redis, warm in SSD |
+| 50KB resume renders consume significant memory per entry | Reduced total cache capacity | Compress large values with LZ4 | Tiered cache â€” hot in Redis, warm in SSD |
 
 ## Examples
 
 ### Set cache TTL for dashboard data
 
 ```bash
-meridian cache configure --key dashboard --ttl 300 --strategy event-invalidate
+Vaeloom cache configure --key dashboard --ttl 300 --strategy event-invalidate
 ```
 
 ### Invalidate cache on memory update
 
 ```bash
-meridian cache invalidate --pattern "dashboard:*" --reason "memory.updated"
+Vaeloom cache invalidate --pattern "dashboard:*" --reason "memory.updated"
 ```
 
 ### Check cache hit rate
 
 ```bash
-meridian cache stats --layer application --format json
+Vaeloom cache stats --layer application --format json
 ```
 
 ### Configure Redis connection
@@ -296,4 +296,4 @@ cache.configure_policy("dashboard_data", ttl=300, eviction="allkeys-lru")
 
 - [Queue.md](./Queue.md)
 - [Performance.md](./Performance.md)
-- [`/Docs/Meridian-Complete-Documentation.md#47-queues-workers-and-caching`](../../Docs/Meridian-Complete-Documentation.md#47-queues-workers-and-caching)
+- [`/Docs/Vaeloom-Complete-Documentation.md#47-queues-workers-and-caching`](../../Docs/Vaeloom-Complete-Documentation.md#47-queues-workers-and-caching)

@@ -1,13 +1,13 @@
-# Container Signing
+﻿# Container Signing
 
-> **Purpose:** Define the container image signing policy using Cosign, key management via KMS, and verification requirements for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define the container image signing policy using Cosign, key management via KMS, and verification requirements for Vaeloom
+> **Status:** ðŸ†• New
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-All Meridian container images are signed using **Cosign** (part of the Sigstore project) before being admitted to production. Signatures are generated using keys managed through cloud KMS (AWS KMS or GCP Cloud KMS), with automatic key rotation. Verification is enforced at the deployment pipeline level — unsigned images are rejected before reaching Kubernetes.
+All Vaeloom container images are signed using **Cosign** (part of the Sigstore project) before being admitted to production. Signatures are generated using keys managed through cloud KMS (AWS KMS or GCP Cloud KMS), with automatic key rotation. Verification is enforced at the deployment pipeline level â€” unsigned images are rejected before reaching Kubernetes.
 
 This policy covers key generation, signing workflow, verification gates, key rotation, and incident response for compromised keys.
 
@@ -29,24 +29,24 @@ graph LR
     end
 
     subgraph KMS["Key Management"]
-        KEY1["KMS Key<br/>Primary: meridian-cosign-v1"]
-        KEY2["KMS Key<br/>Secondary: meridian-cosign-v2"]
+        KEY1["KMS Key<br/>Primary: Vaeloom-cosign-v1"]
+        KEY2["KMS Key<br/>Secondary: Vaeloom-cosign-v2"]
         ROTATION["Automatic Rotation<br/>Every 90 days"]
         ACCESS["IAM Restricted<br/>CI service account only"]
     end
 
     subgraph Registry["Container Registry"]
-        IMG["meridian/api:sha-abc123<br/>Container image"]
-        SIG["meridian/api:sha-abc123.sig<br/>Cosign signature"]
-        ATT["meridian/api:sha-abc123.att<br/>SBOM attestation"]
+        IMG["Vaeloom/api:sha-abc123<br/>Container image"]
+        SIG["Vaeloom/api:sha-abc123.sig<br/>Cosign signature"]
+        ATT["Vaeloom/api:sha-abc123.att<br/>SBOM attestation"]
     end
 
     subgraph Verify["Deployment Verification"]
         POL["Admission Policy<br/>Kyverno / OPA Gatekeeper"]
         VERIFY_IMG["Cosign Verify<br/>Check signature"]
         VERIFY_ATT["Cosign Verify-Attestation<br/>Check SBOM"]
-        REJECT["⛔ Reject if unsigned<br/>or invalid signature"]
-        APPROVE["✅ Allow deployment"]
+        REJECT["â›” Reject if unsigned<br/>or invalid signature"]
+        APPROVE["âœ… Allow deployment"]
     end
 
     BUILD --> SIGN --> ATTACH
@@ -79,10 +79,10 @@ graph LR
 ```bash
 # Generate a key pair using KMS
 # AWS KMS:
-cosign generate-key-pair --kms aws://kms/us-east-1/meridian-cosign-v1
+cosign generate-key-pair --kms aws://kms/us-east-1/Vaeloom-cosign-v1
 
 # GCP Cloud KMS:
-cosign generate-key-pair --kms gcpkms://projects/meridian/locations/global/keyRings/cosign/cryptoKeys/meridian-cosign-v1
+cosign generate-key-pair --kms gcpkms://projects/Vaeloom/locations/global/keyRings/cosign/cryptoKeys/Vaeloom-cosign-v1
 ```
 
 ### Key Properties
@@ -100,21 +100,21 @@ cosign generate-key-pair --kms gcpkms://projects/meridian/locations/global/keyRi
 
 ```bash
 # 1. Build image
-docker build -t meridian/api:sha-abc123 .
+docker build -t Vaeloom/api:sha-abc123 .
 
 # 2. Sign with Cosign using KMS
-cosign sign --key aws://kms/us-east-1/meridian-cosign-v1 \
-  meridian/api:sha-abc123
+cosign sign --key aws://kms/us-east-1/Vaeloom-cosign-v1 \
+  Vaeloom/api:sha-abc123
 
 # 3. Attach SBOM
-cosign attest --key aws://kms/us-east-1/meridian-cosign-v1 \
+cosign attest --key aws://kms/us-east-1/Vaeloom-cosign-v1 \
   --predicate sbom.spdx.json \
   --type spdx \
-  meridian/api:sha-abc123
+  Vaeloom/api:sha-abc123
 
 # 4. Push image + signatures
-docker push meridian/api:sha-abc123
-cosign copy meridian/api:sha-abc123 meridian/api:sha-abc123
+docker push Vaeloom/api:sha-abc123
+cosign copy Vaeloom/api:sha-abc123 Vaeloom/api:sha-abc123
 ```
 
 ## Verification (Deployment Gate)
@@ -136,11 +136,11 @@ spec:
             - Pod
       verifyImages:
         - imageReferences:
-            - "meridian/*"
+            - "Vaeloom/*"
           attestors:
             - entries:
                 - keys:
-                    kms: "awskms:///arn:aws:kms:us-east-1:123456789:key/meridian-cosign-v1"
+                    kms: "awskms:///arn:aws:kms:us-east-1:123456789:key/Vaeloom-cosign-v1"
           requiredAttestations:
             - predicateType: "spdx.dev/sbom"
 ```
@@ -156,12 +156,12 @@ sequenceDiagram
     participant REG as Container Registry
 
     OP->>TF: Update Terraform: increment key version
-    TF->>KMS: Create new KMS key (meridian-cosign-v2)
+    TF->>KMS: Create new KMS key (Vaeloom-cosign-v2)
     KMS-->>TF: New key ARN
     TF->>CI: Update CI secret with new key ARN
 
     Note over CI: Next build uses new key
-    CI->>KMS: Sign with meridian-cosign-v2
+    CI->>KMS: Sign with Vaeloom-cosign-v2
     CI->>REG: Push image + v2 signature
 
     Note over OP: Grace period (7 days)
@@ -271,9 +271,9 @@ sequenceDiagram
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `COSIGN_KEY_ARN` | KMS key ARN for signing | — | Yes |
-| `COSIGN_VERIFICATION_KEY` | Public key for admission verification | — | Yes |
-| `SIGNING_IMAGE_PATTERN` | Image glob pattern to sign | `meridian/*` | No |
+| `COSIGN_KEY_ARN` | KMS key ARN for signing | â€” | Yes |
+| `COSIGN_VERIFICATION_KEY` | Public key for admission verification | â€” | Yes |
+| `SIGNING_IMAGE_PATTERN` | Image glob pattern to sign | `Vaeloom/*` | No |
 | `KEY_ROTATION_DAYS` | Key rotation interval | `90` | No |
 | `GRACE_PERIOD_DAYS` | Old key acceptance period | `7` | No |
 
@@ -311,7 +311,7 @@ sequenceDiagram
 
 ### Out of Scope
 - Keyless signing via Sigstore Fulcio (planned for future)
-- Signing of non-container artifacts (Helm charts, configs — planned for future)
+- Signing of non-container artifacts (Helm charts, configs â€” planned for future)
 - Container image vulnerability scanning (covered in [SBOM-Policy.md](./SBOM-Policy.md))
 - Container registry management (covered in [Docker.md](./Docker.md))
 - Infrastructure key management infrastructure (covered in [Terraform.md](./Terraform.md))
@@ -324,13 +324,13 @@ sequenceDiagram
 
 ```bash
 # Verify a signed image using Cosign with KMS key
-cosign verify --key aws://kms/us-east-1/meridian-cosign-v1 \
-  ghcr.io/meridian/api:sha-abc123
+cosign verify --key aws://kms/us-east-1/Vaeloom-cosign-v1 \
+  ghcr.io/Vaeloom/api:sha-abc123
 
 # Verify SBOM attestation
-cosign verify-attestation --key aws://kms/us-east-1/meridian-cosign-v1 \
+cosign verify-attestation --key aws://kms/us-east-1/Vaeloom-cosign-v1 \
   --type spdx \
-  ghcr.io/meridian/api:sha-abc123
+  ghcr.io/Vaeloom/api:sha-abc123
 ```
 
 ### Example 2: Checking Signatures in CI Pipeline
@@ -340,8 +340,8 @@ cosign verify-attestation --key aws://kms/us-east-1/meridian-cosign-v1 \
 - name: Verify image signature
   run: |
     cosign verify \
-      --key aws://kms/us-east-1/meridian-cosign-v1 \
-      ghcr.io/meridian/ai-service:${{ github.sha }} || \
+      --key aws://kms/us-east-1/Vaeloom-cosign-v1 \
+      ghcr.io/Vaeloom/ai-service:${{ github.sha }} || \
       { echo "Image signature verification failed"; exit 1; }
 ```
 

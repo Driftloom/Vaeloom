@@ -1,7 +1,7 @@
-# Compliance
+﻿# Compliance
 
-> **Purpose:** Define compliance requirements and posture for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define compliance requirements and posture for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
 
@@ -14,7 +14,7 @@ graph TD
     classDef roadmap fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef register fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Frameworks["📜 Compliance Frameworks"]
+    subgraph Frameworks["ðŸ“œ Compliance Frameworks"]
         direction TB
         F1["GDPR<br/>EU users<br/>Status: Designed-in"]
         F2["CCPA<br/>California users<br/>Status: Compatible"]
@@ -22,7 +22,7 @@ graph TD
         F4["FERPA<br/>US education<br/>Status: Planned (Phase 7)"]
     end
 
-    subgraph ByDesign["🏗️ Compliance by Design"]
+    subgraph ByDesign["ðŸ—ï¸ Compliance by Design"]
         D1["Consent Management<br/>Permission Engine enforces"]
         D2["Data Minimization<br/>Only essential data stored"]
         D3["Purpose Limitation<br/>Declared per connector/agent"]
@@ -30,18 +30,18 @@ graph TD
         D5["Data Residency<br/>Regional store options"]
     end
 
-    subgraph Roadmap["🗺️ Compliance Roadmap"]
+    subgraph Roadmap["ðŸ—ºï¸ Compliance Roadmap"]
         R1["MVP<br/>GDPR-ready by design<br/>No formal certification"]
         R2["V2<br/>SOC 2 Type I audit<br/>Formal review"]
         R3["V3<br/>SOC 2 Type II audit<br/>Sustained compliance"]
         R4["Enterprise<br/>Customer-specific<br/>Custom requirements"]
     end
 
-    subgraph Register["📝 Data Processing Register"]
-        G1["📄 Document analysis<br/>User docs → Anthropic<br/>User-controlled retention"]
-        G2["📧 Email classification<br/>Email content → Anthropic<br/>30-day retention"]
-        G3["💼 Job search<br/>Career data → Platforms<br/>User-controlled"]
-        G4["🔌 Plugin execution<br/>Per plugin scope<br/>Per plugin policy"]
+    subgraph Register["ðŸ“ Data Processing Register"]
+        G1["ðŸ“„ Document analysis<br/>User docs â†’ Anthropic<br/>User-controlled retention"]
+        G2["ðŸ“§ Email classification<br/>Email content â†’ Anthropic<br/>30-day retention"]
+        G3["ðŸ’¼ Job search<br/>Career data â†’ Platforms<br/>User-controlled"]
+        G4["ðŸ”Œ Plugin execution<br/>Per plugin scope<br/>Per plugin policy"]
     end
 
     Frameworks --> ByDesign
@@ -54,7 +54,7 @@ graph TD
     class G1,G2,G3,G4 register
 ```
 
-> **Diagram:** Compliance architecture organized by **frameworks** (GDPR/CCPA/SOC 2/FERPA with status), **by-design principles** (consent, minimization, purpose, storage, residency), **roadmap** (MVP → V2 → V3 → Enterprise), and **data processing register** showing data categories, third-party processors, and retention periods.
+> **Diagram:** Compliance architecture organized by **frameworks** (GDPR/CCPA/SOC 2/FERPA with status), **by-design principles** (consent, minimization, purpose, storage, residency), **roadmap** (MVP â†’ V2 â†’ V3 â†’ Enterprise), and **data processing register** showing data categories, third-party processors, and retention periods.
 
 ---
 
@@ -69,7 +69,7 @@ graph TD
 
 ## Compliance by Design
 
-Meridian's architecture is designed with compliance as a core constraint, not an afterthought:
+Vaeloom's architecture is designed with compliance as a core constraint, not an afterthought:
 
 | Requirement | Design Decision |
 |-------------|----------------|
@@ -101,53 +101,53 @@ Meridian's architecture is designed with compliance as a core constraint, not an
 
 | Mistake | Consequence |
 |---------|-------------|
-| Treating compliance as a single milestone | SOC 2 Type I is a point-in-time assessment — teams that stop improving after certification fail Type II audits. Build a continuous compliance program, not a checkbox exercise |
-| Compliance documentation that doesn't match the actual system | The data processing register lists what the system should do, not what it actually does — conduct regular gap analyses between documented compliance posture and deployed infrastructure |
-| Ignoring regional compliance differences | GDPR readiness doesn't automatically mean CCPA or FERPA compliance — each framework has unique requirements (CCPA's right to opt-out, FERPA's parent rights) that need separate handling |
+| Treating compliance as a single milestone | SOC 2 Type I is a point-in-time assessment â€” teams that stop improving after certification fail Type II audits. Build a continuous compliance program, not a checkbox exercise |
+| Compliance documentation that doesn't match the actual system | The data processing register lists what the system should do, not what it actually does â€” conduct regular gap analyses between documented compliance posture and deployed infrastructure |
+| Ignoring regional compliance differences | GDPR readiness doesn't automatically mean CCPA or FERPA compliance â€” each framework has unique requirements (CCPA's right to opt-out, FERPA's parent rights) that need separate handling |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Build compliance into the design phase, not as a retrofit | Compliance requirements that surface after implementation are expensive to fix — include compliance review in the architecture decision process for every new feature |
-| Maintain a living data processing register | The register must be updated whenever a new data type, processor, or processing purpose is added — tie register updates to the feature rollout process |
-| Automate compliance evidence collection | Manual evidence gathering for SOC 2 is time-consuming and error-prone — use continuous compliance tools that collect evidence from infrastructure-as-code, logs, and configurations automatically |
+| Build compliance into the design phase, not as a retrofit | Compliance requirements that surface after implementation are expensive to fix â€” include compliance review in the architecture decision process for every new feature |
+| Maintain a living data processing register | The register must be updated whenever a new data type, processor, or processing purpose is added â€” tie register updates to the feature rollout process |
+| Automate compliance evidence collection | Manual evidence gathering for SOC 2 is time-consuming and error-prone â€” use continuous compliance tools that collect evidence from infrastructure-as-code, logs, and configurations automatically |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Compliance frameworks that conflict with each other | GDPR requires data minimization while SOC 2 requires comprehensive logging — reconcile conflicting requirements by logging metadata (not content) and applying retention limits |
-| Third-party processor compliance gaps | An AI model provider or cloud host may have a data breach that affects your compliance posture — conduct annual third-party security reviews and maintain DPA agreements |
-| Compliance drift during rapid development | Fast feature development can introduce data handling practices that don't match compliance docs — include a compliance review gate in the CI/CD pipeline for data-related changes |
+| Compliance frameworks that conflict with each other | GDPR requires data minimization while SOC 2 requires comprehensive logging â€” reconcile conflicting requirements by logging metadata (not content) and applying retention limits |
+| Third-party processor compliance gaps | An AI model provider or cloud host may have a data breach that affects your compliance posture â€” conduct annual third-party security reviews and maintain DPA agreements |
+| Compliance drift during rapid development | Fast feature development can introduce data handling practices that don't match compliance docs â€” include a compliance review gate in the CI/CD pipeline for data-related changes |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Compliance logging overhead on every transaction | SOC 2 and GDPR both require detailed audit trails — each transaction generates multiple log entries. Batch compliance log writes and use async ingestion to avoid impacting transaction latency |
-| Data retention policies increasing storage costs | GDPR's "right to erasure" requires deletion, while SOC 2 requires 7-year retention — tier data by sensitivity: logs in cold storage, user data in hot storage with deletion scheduling |
-| Regional data residency adding network latency | Data that must stay in EU regions while AI processing is in US regions adds 50-100ms — colocate processing and storage within the same region and replicate only aggregated/encrypted data across regions |
+| Compliance logging overhead on every transaction | SOC 2 and GDPR both require detailed audit trails â€” each transaction generates multiple log entries. Batch compliance log writes and use async ingestion to avoid impacting transaction latency |
+| Data retention policies increasing storage costs | GDPR's "right to erasure" requires deletion, while SOC 2 requires 7-year retention â€” tier data by sensitivity: logs in cold storage, user data in hot storage with deletion scheduling |
+| Regional data residency adding network latency | Data that must stay in EU regions while AI processing is in US regions adds 50-100ms â€” colocate processing and storage within the same region and replicate only aggregated/encrypted data across regions |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Compliance frameworks that conflict with each other | GDPR requires data minimization while SOC 2 requires comprehensive logging — reconcile conflicting requirements by logging metadata (not content) and applying retention limits |
-| Third-party processor compliance gaps | An AI model provider or cloud host may have a data breach that affects your compliance posture — conduct annual third-party security reviews and maintain DPA agreements |
-| Compliance drift during rapid development | Fast feature development can introduce data handling practices that don't match compliance docs — include a compliance review gate in the CI/CD pipeline for data-related changes |
+| Compliance frameworks that conflict with each other | GDPR requires data minimization while SOC 2 requires comprehensive logging â€” reconcile conflicting requirements by logging metadata (not content) and applying retention limits |
+| Third-party processor compliance gaps | An AI model provider or cloud host may have a data breach that affects your compliance posture â€” conduct annual third-party security reviews and maintain DPA agreements |
+| Compliance drift during rapid development | Fast feature development can introduce data handling practices that don't match compliance docs â€” include a compliance review gate in the CI/CD pipeline for data-related changes |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Compliance logging overhead on every transaction | SOC 2 and GDPR both require detailed audit trails — each transaction generates multiple log entries. Batch compliance log writes and use async ingestion to avoid impacting transaction latency |
-| Data retention policies increasing storage costs | GDPR's "right to erasure" requires deletion, while SOC 2 requires 7-year retention — tier data by sensitivity: logs in cold storage, user data in hot storage with deletion scheduling |
-| Regional data residency adding network latency | Data that must stay in EU regions while AI processing is in US regions adds 50-100ms — colocate processing and storage within the same region and replicate only aggregated/encrypted data across regions |
+| Compliance logging overhead on every transaction | SOC 2 and GDPR both require detailed audit trails â€” each transaction generates multiple log entries. Batch compliance log writes and use async ingestion to avoid impacting transaction latency |
+| Data retention policies increasing storage costs | GDPR's "right to erasure" requires deletion, while SOC 2 requires 7-year retention â€” tier data by sensitivity: logs in cold storage, user data in hot storage with deletion scheduling |
+| Regional data residency adding network latency | Data that must stay in EU regions while AI processing is in US regions adds 50-100ms â€” colocate processing and storage within the same region and replicate only aggregated/encrypted data across regions |
 
 ## Overview
 
-Meridian maintains compliance with multiple regulatory frameworks (GDPR, CCPA, SOC 2, FERPA) through a privacy-by-design architecture that embeds consent management, data minimization, purpose limitation, and storage limitation into every layer. A living data processing register maps all data flows to their legal bases, retention periods, and third-party processors.
+Vaeloom maintains compliance with multiple regulatory frameworks (GDPR, CCPA, SOC 2, FERPA) through a privacy-by-design architecture that embeds consent management, data minimization, purpose limitation, and storage limitation into every layer. A living data processing register maps all data flows to their legal bases, retention periods, and third-party processors.
 
 ---
 
@@ -163,7 +163,7 @@ Meridian maintains compliance with multiple regulatory frameworks (GDPR, CCPA, S
 
 ## Scope
 
-This document defines the compliance requirements and posture for Meridian — covering applicable frameworks (GDPR, CCPA, SOC 2, FERPA), compliance-by-design principles, roadmap, and data processing register. Applies to all data processing activities for all users across all regions. Out of scope: specific GDPR implementation details (see [GDPR.md](./GDPR.md)), privacy principles (see [Privacy.md](./Privacy.md)), audit logging implementation (see [Audit-Logs.md](./Audit-Logs.md)).
+This document defines the compliance requirements and posture for Vaeloom â€” covering applicable frameworks (GDPR, CCPA, SOC 2, FERPA), compliance-by-design principles, roadmap, and data processing register. Applies to all data processing activities for all users across all regions. Out of scope: specific GDPR implementation details (see [GDPR.md](./GDPR.md)), privacy principles (see [Privacy.md](./Privacy.md)), audit logging implementation (see [Audit-Logs.md](./Audit-Logs.md)).
 
 ---
 
@@ -233,24 +233,24 @@ sequenceDiagram
     
     U->>PS: Request data deletion
     PS->>DEL: Orchestrate cascading deletion
-    DEL->>DEL: Delete primary DB → caches → backups → analytics
+    DEL->>DEL: Delete primary DB â†’ caches â†’ backups â†’ analytics
     DEL-->>U: Deletion confirmed
     DEL->>REG: Update deletion record
 ```
 
-> **Diagram:** Consent management and deletion flows — granular consent recorded in register; deletion cascades across all storage tiers with confirmation.
+> **Diagram:** Consent management and deletion flows â€” granular consent recorded in register; deletion cascades across all storage tiers with confirmation.
 
 ---
 
 ## Data Flow
 
 ```text
-User → Connect Connector → Granular Consent Prompt
-    → Consent Recorded (register with timestamp + version)
-    → Permission Engine enforces on every access
-    → Revocation → Future data stop (not retroactive)
-    → Deletion Request → Cascading Delete (DB → caches → backups → analytics)
-    → Confirmation → Update Register
+User â†’ Connect Connector â†’ Granular Consent Prompt
+    â†’ Consent Recorded (register with timestamp + version)
+    â†’ Permission Engine enforces on every access
+    â†’ Revocation â†’ Future data stop (not retroactive)
+    â†’ Deletion Request â†’ Cascading Delete (DB â†’ caches â†’ backups â†’ analytics)
+    â†’ Confirmation â†’ Update Register
 ```
 
 ---
@@ -382,4 +382,4 @@ allowed = await compliance.check_consent(
 - [GDPR.md](./GDPR.md)
 - [Privacy.md](./Privacy.md)
 - [Audit Logs.md](./Audit-Logs.md)
-- [`/Docs/06-Meridian-Enterprise-Paper.md#19-security--compliance`](../../Docs/06-Meridian-Enterprise-Paper.md#19-security--compliance)
+- [`/Docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance`](../../Docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance)

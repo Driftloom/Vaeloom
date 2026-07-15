@@ -1,7 +1,7 @@
-# Role-Based Access Control (RBAC)
+﻿# Role-Based Access Control (RBAC)
 
-> **Purpose:** Define RBAC model for Meridian (Enterprise)
-> **Status:** 🆕 New
+> **Purpose:** Define RBAC model for Vaeloom (Enterprise)
+> **Status:** ðŸ†• New
 
 ## RBAC Architecture
 
@@ -13,27 +13,27 @@ graph TD
     classDef viewer fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
     classDef support fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Roles["👤 RBAC Roles (Enterprise)"]
+    subgraph Roles["ðŸ‘¤ RBAC Roles (Enterprise)"]
         direction TB
-        RO["owner<br/>Full control · Own workspace"]
-        RA["admin<br/>User mgmt, settings, billing · Tenant"]
-        RM["member<br/>Standard features · Workspace"]
-        RV["viewer<br/>Read-only · Workspace"]
-        RS["support<br/>Audit, connectors, troubleshooting · Tenant"]
+        RO["owner<br/>Full control Â· Own workspace"]
+        RA["admin<br/>User mgmt, settings, billing Â· Tenant"]
+        RM["member<br/>Standard features Â· Workspace"]
+        RV["viewer<br/>Read-only Â· Workspace"]
+        RS["support<br/>Audit, connectors, troubleshooting Â· Tenant"]
     end
 
-    subgraph Matrix["📋 Permission Matrix"]
+    subgraph Matrix["ðŸ“‹ Permission Matrix"]
         direction TB
-        M1["Documents: Owner CRUD → Viewer Read"]
-        M2["Connectors: Owner CRUD → Viewer Read"]
-        M3["Settings: Owner CRUD → Admin CRUD → Member Read"]
-        M4["Users: Owner+Admin CRUD → Member Read"]
-        M5["Billing: Owner CRUD → Admin Read"]
-        M6["Audit logs: Owner+Admin Read → Support Read"]
-        M7["Agents: Owner Full → Member Use"]
+        M1["Documents: Owner CRUD â†’ Viewer Read"]
+        M2["Connectors: Owner CRUD â†’ Viewer Read"]
+        M3["Settings: Owner CRUD â†’ Admin CRUD â†’ Member Read"]
+        M4["Users: Owner+Admin CRUD â†’ Member Read"]
+        M5["Billing: Owner CRUD â†’ Admin Read"]
+        M6["Audit logs: Owner+Admin Read â†’ Support Read"]
+        M7["Agents: Owner Full â†’ Member Use"]
     end
 
-    subgraph Assignment["📝 Role Assignment Schema"]
+    subgraph Assignment["ðŸ“ Role Assignment Schema"]
         AS1["userId: string<br/>role: owner|admin|member|viewer|support<br/>scope: workspace|tenant<br/>grantedBy: string<br/>grantedAt: Date<br/>expiresAt?: Date"]
     end
 
@@ -48,7 +48,7 @@ graph TD
     class AS1 assignment
 ```
 
-> **Diagram:** RBAC architecture — **5 roles** (owner→support) with scope, **permission matrix** across 7 resource types (Documents→Agents), **role assignment schema** with userId, role, scope, grant info, and optional expiry.
+> **Diagram:** RBAC architecture â€” **5 roles** (ownerâ†’support) with scope, **permission matrix** across 7 resource types (Documentsâ†’Agents), **role assignment schema** with userId, role, scope, grant info, and optional expiry.
 
 ---
 
@@ -72,10 +72,10 @@ RBAC is an **enterprise feature** (Phase 7). MVP uses per-workspace scoping with
 |----------|-------|-------|--------|--------|---------|
 | Documents | CRUD | CRUD | CRUD | Read | Read |
 | Connectors | CRUD | CRUD | CRUD | Read | Read |
-| Settings | CRUD | CRUD | Read | — | — |
-| Users | CRUD | CRUD | Read | — | — |
-| Billing | CRUD | Read | — | — | — |
-| Audit logs | Read | Read | Own actions | — | Read |
+| Settings | CRUD | CRUD | Read | â€” | â€” |
+| Users | CRUD | CRUD | Read | â€” | â€” |
+| Billing | CRUD | Read | â€” | â€” | â€” |
+| Audit logs | Read | Read | Own actions | â€” | Read |
 | Agents | Full | Configure | Use | Use | Read |
 
 ## Role Assignment
@@ -95,10 +95,10 @@ interface RoleAssignment {
 
 | Mistake | Consequence |
 |---------|-------------|
-| Role explosion — creating too many granular roles | 20+ roles with subtle differences become impossible to manage and audit — users end up with incorrect role assignments |
-| Using roles for both authentication and authorization | Roles should define access levels, not identity — mixing identity ("is a student") with access ("can edit documents") creates fragile permission models |
-| Granting roles without expiry | Temporary collaborators or interns keep access indefinitely — every role assignment should have an optional expiry date |
-| Assigning roles at the wrong scope | A workspace-level "admin" role should not grant tenant-level billing access — role scope (workspace vs. tenant) must be explicit in the schema |
+| Role explosion â€” creating too many granular roles | 20+ roles with subtle differences become impossible to manage and audit â€” users end up with incorrect role assignments |
+| Using roles for both authentication and authorization | Roles should define access levels, not identity â€” mixing identity ("is a student") with access ("can edit documents") creates fragile permission models |
+| Granting roles without expiry | Temporary collaborators or interns keep access indefinitely â€” every role assignment should have an optional expiry date |
+| Assigning roles at the wrong scope | A workspace-level "admin" role should not grant tenant-level billing access â€” role scope (workspace vs. tenant) must be explicit in the schema |
 
 ## Best Practices
 
@@ -106,33 +106,33 @@ interface RoleAssignment {
 |----------|-----|
 | Keep roles to 5-7 at most | A small set of clearly defined roles (owner, admin, member, viewer, support) is easier to audit and maintain than dozens of granular roles |
 | Use attribute-based conditions within roles | Instead of creating a "read-only admin" role, use the ABAC layer to add context conditions to the existing admin role |
-| Assign the minimum role needed | A user who only needs to view documents gets "viewer," not "member" — escalations should be requested and approved, not assumed |
-| Audit role assignments regularly | Automated reports of users with admin or owner roles should be reviewed monthly — stale privileged access is a security risk |
+| Assign the minimum role needed | A user who only needs to view documents gets "viewer," not "member" â€” escalations should be requested and approved, not assumed |
+| Audit role assignments regularly | Automated reports of users with admin or owner roles should be reviewed monthly â€” stale privileged access is a security risk |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Role escalation through transitive group membership | A user who is a "viewer" in an organization but a "member" of a sub-group could inherit permissions from the more permissive role — flatten role resolution to the least privileged assignment when roles conflict |
-| Permission matrix drift over time | As new resources and actions are added (e.g., a new "export" action), only the owner role may be updated — add new actions to all appropriate roles in the matrix before deployment |
-| Stale role assignments persisting after user offboarding | A terminated user with active role assignments retains access until their session expires — integrate role deactivation with the identity provider and invalidate sessions on role revocation |
+| Role escalation through transitive group membership | A user who is a "viewer" in an organization but a "member" of a sub-group could inherit permissions from the more permissive role â€” flatten role resolution to the least privileged assignment when roles conflict |
+| Permission matrix drift over time | As new resources and actions are added (e.g., a new "export" action), only the owner role may be updated â€” add new actions to all appropriate roles in the matrix before deployment |
+| Stale role assignments persisting after user offboarding | A terminated user with active role assignments retains access until their session expires â€” integrate role deactivation with the identity provider and invalidate sessions on role revocation |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Role lookup latency with inheritance chains | Resolving a user's effective permissions across role groups and inheritance chains requires multiple DB queries — cache resolved role assignments per user with a TTL of 5-15 minutes |
-| Permission matrix evaluation at scale | Computing a user's permissions across the full matrix (7 resource types × 5 roles) on every request adds latency — pre-compute and cache the effective permission set on login and role change |
-| Role listing overhead for admin UIs | An admin dashboard that lists all users with their resolved roles fetches N×M rows — use a denormalized role-view materialized query or Redis cache for admin-facing role lists |
+| Role lookup latency with inheritance chains | Resolving a user's effective permissions across role groups and inheritance chains requires multiple DB queries â€” cache resolved role assignments per user with a TTL of 5-15 minutes |
+| Permission matrix evaluation at scale | Computing a user's permissions across the full matrix (7 resource types Ã— 5 roles) on every request adds latency â€” pre-compute and cache the effective permission set on login and role change |
+| Role listing overhead for admin UIs | An admin dashboard that lists all users with their resolved roles fetches NÃ—M rows â€” use a denormalized role-view materialized query or Redis cache for admin-facing role lists |
 
 ---
 
 ## Goals
 
-1. **Enterprise-grade access control** — Provide role-based access control as an enterprise feature (Phase 7) that works alongside the ABAC permission engine
-2. **Clear role hierarchy** — Define 5 distinct roles (owner, admin, member, viewer, support) with explicit permission matrices per resource type
-3. **Scope-aware assignments** — Support both workspace-scoped and tenant-scoped role assignments with optional expiry
-4. **Least-privilege enforcement** — Roles start with minimum permissions; assignments include optional expiry dates
+1. **Enterprise-grade access control** â€” Provide role-based access control as an enterprise feature (Phase 7) that works alongside the ABAC permission engine
+2. **Clear role hierarchy** â€” Define 5 distinct roles (owner, admin, member, viewer, support) with explicit permission matrices per resource type
+3. **Scope-aware assignments** â€” Support both workspace-scoped and tenant-scoped role assignments with optional expiry
+4. **Least-privilege enforcement** â€” Roles start with minimum permissions; assignments include optional expiry dates
 
 ---
 
@@ -199,9 +199,9 @@ sequenceDiagram
     API->>AL: Log role assignment event
     API-->>Admin: 201 Created
 
-    Note over RBAC,ABAC: Role assigned → ABAC attribute updated<br/>for next permission evaluation
+    Note over RBAC,ABAC: Role assigned â†’ ABAC attribute updated<br/>for next permission evaluation
 ```
-> **Diagram:** RBAC role assignment — Admin assigns "admin" role to a user; RBAC service persists the assignment, invalidates the user's permission cache, syncs with ABAC for attribute mapping, and logs the event.
+> **Diagram:** RBAC role assignment â€” Admin assigns "admin" role to a user; RBAC service persists the assignment, invalidates the user's permission cache, syncs with ABAC for attribute mapping, and logs the event.
 
 ---
 
@@ -214,7 +214,7 @@ sequenceDiagram
 4. User's cached permission set invalidated (Redis key deleted)
 5. ABAC Permission Engine notified of role change for attribute sync
 6. On subsequent request: user's role fetched from cache or DB
-7. Role mapped to permission matrix → resolved to (resource × action) permissions
+7. Role mapped to permission matrix â†’ resolved to (resource Ã— action) permissions
 8. If user has multiple role assignments: resolve to least privileged
 9. If assignment expired: treat as if no assignment exists
 10. Every role change logged to audit trail (assignment, modification, revocation)
@@ -250,7 +250,7 @@ sequenceDiagram
 | Dimension | Current Limit | 10x Strategy | 100x Strategy |
 |-----------|---------------|--------------|---------------|
 | Role assignments per tenant | 1000 | Composite index on (scope_type, scope_id) | Partition role_assignments by tenant_id |
-| Permission matrix size | 7 resources × 5 roles | Cache entire matrix in Redis (< 5KB) | CDN-cached permission matrix for edge nodes |
+| Permission matrix size | 7 resources Ã— 5 roles | Cache entire matrix in Redis (< 5KB) | CDN-cached permission matrix for edge nodes |
 | Concurrent role evaluations | 500/s per node | Cached resolved permissions per user | Distributed permission cache with local hot cache |
 | Audit log volume | 10K changes/month | Partition by month | Archive > 12 months to cold storage |
 
@@ -284,7 +284,7 @@ sequenceDiagram
 | Environment | Method | Trigger | Verification |
 |-------------|--------|---------|--------------|
 | Development | RBAC as NestJS module (feature-flagged) | Git push | Unit tests: all 5 roles verified against permission matrix |
-| Staging | Deployed with admin API (feature-flagged) | PR merged to main | Integration test: assign role → verify permission change |
+| Staging | Deployed with admin API (feature-flagged) | PR merged to main | Integration test: assign role â†’ verify permission change |
 | Production | Enabled for enterprise tenants only | Feature flag per tenant | Canary: verify role assignment creates correct ABAC attribute |
 
 ---
@@ -315,7 +315,7 @@ sequenceDiagram
 
 ```typescript
 // Define a custom RBAC role
-import { RBAC } from '@meridian/auth';
+import { RBAC } from '@vaeloom/auth';
 
 const role = RBAC.createRole({
   name: 'workspace_admin',
@@ -328,7 +328,7 @@ const role = RBAC.createRole({
 
 ```python
 # Assign role to a user
-from meridian.access_control import RBACManager
+from Vaeloom.access_control import RBACManager
 
 rbac = RBACManager()
 rbac.assign_role("user_42", "workspace_admin", scope="workspace:ws_abc123")
@@ -336,8 +336,8 @@ rbac.assign_role("user_42", "workspace_admin", scope="workspace:ws_abc123")
 
 ```bash
 # Verify a user's role
-curl -X GET "https://api.meridian.ai/v1/users/user_42/roles" \
-  -H "X-API-Key: $MERIDIAN_API_KEY"
+curl -X GET "https://api.Vaeloom.ai/v1/users/user_42/roles" \
+  -H "X-API-Key: $Vaeloom_API_KEY"
 ```
 
 ## Future Improvements
@@ -347,7 +347,7 @@ curl -X GET "https://api.meridian.ai/v1/users/user_42/roles" \
 | Custom role builder with permission matrix designer | High | High | Q1 2027 |
 | Organization-level role inheritance | Medium | Medium | Q2 2027 |
 | RBAC for Pro tier (small-team multi-workspace) | Low | Medium | Q2 2027 |
-| Role-based SSO group mapping (SAML assertion → role) | Medium | Medium | Q1 2027 |
+| Role-based SSO group mapping (SAML assertion â†’ role) | Medium | Medium | Q1 2027 |
 | Role assignment approval workflows | Low | High | Q3 2027 |
 
 ---

@@ -1,7 +1,7 @@
-# Charts & Data Visualization
+﻿# Charts & Data Visualization
 
-> **Purpose:** Define chart and visualization standards for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define chart and visualization standards for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Chart Architecture
 
@@ -11,14 +11,14 @@ graph TD
     classDef chart fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef guide fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Libraries["📚 Charting Libraries"]
+    subgraph Libraries["ðŸ“š Charting Libraries"]
         direction TB
         L1["Recharts (Primary)<br/>Standard: line, bar, pie"]
         L2["D3.js (Complex)<br/>Custom: knowledge graph viz"]
         L3["CSS/SVG (Simple)<br/>Sparklines, badges, indicators"]
     end
 
-    subgraph Types["📊 Chart Types"]
+    subgraph Types["ðŸ“Š Chart Types"]
         T1["Line Chart<br/>Trends over time<br/>Knowledge growth, app volume"]
         T2["Bar Chart<br/>Comparisons<br/>Apps per platform, skills by category"]
         T3["Pie / Donut<br/>Proportions<br/>Memory type distribution"]
@@ -26,7 +26,7 @@ graph TD
         T5["Network Graph<br/>Relationships<br/>Knowledge graph (D3.js)"]
     end
 
-    subgraph Guidelines["📐 Chart Guidelines"]
+    subgraph Guidelines["ðŸ“ Chart Guidelines"]
         G1["Accessibility: Text alternatives in tables"]
         G2["Responsive: Resize with container"]
         G3["Colors: Use theme tokens, not custom"]
@@ -41,7 +41,7 @@ graph TD
     class G1,G2,G3,G4,G5 guide
 ```
 
-> **Diagram:** Charting architecture — **3 libraries** with priority (Recharts primary, D3.js for complex, CSS/SVG for simple) → **5 chart types** (line, bar, pie, sparkline, network graph) → **5 guidelines** (accessibility, responsive, colors, interactivity, empty states).
+> **Diagram:** Charting architecture â€” **3 libraries** with priority (Recharts primary, D3.js for complex, CSS/SVG for simple) â†’ **5 chart types** (line, bar, pie, sparkline, network graph) â†’ **5 guidelines** (accessibility, responsive, colors, interactivity, empty states).
 
 ---
 
@@ -87,9 +87,9 @@ The memory graph uses a force-directed layout:
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Misleading axis scales (truncated Y-axis, uneven intervals) | Distorts the visual story and misleads users — a 5% change can look like 50% with a truncated axis |
+| Misleading axis scales (truncated Y-axis, uneven intervals) | Distorts the visual story and misleads users â€” a 5% change can look like 50% with a truncated axis |
 | Too many colors without semantic meaning | Users cannot visually track more than 5-7 distinct colors; excessive palette creates confusion, not clarity |
-| No meaningful empty state | An empty chart with grid lines suggests data is broken or missing — show a clear message about what the chart will display |
+| No meaningful empty state | An empty chart with grid lines suggests data is broken or missing â€” show a clear message about what the chart will display |
 | Non-responsive chart sizing | Charts that overflow on mobile or shrink to illegibility frustrate users; always set width: 100% + aspect-ratio |
 
 ## Best Practices
@@ -97,7 +97,7 @@ The memory graph uses a force-directed layout:
 | Practice | Rationale |
 |----------|-----------|
 | Provide data tables as chart alternatives | Screen readers cannot interpret SVG chart elements; always include the underlying data in an accessible `<table>` |
-| Use theme color tokens consistently | Charts should reference the same palette as the rest of the UI — never introduce ad-hoc custom colors that clash |
+| Use theme color tokens consistently | Charts should reference the same palette as the rest of the UI â€” never introduce ad-hoc custom colors that clash |
 | Add tooltips and click-to-drill interactivity | Users want to explore data, not just see it; tooltips with exact values and click-through to details add depth |
 | Keep data point count reasonable | Line charts with 1000+ points are illegible; aggregate or sample data for display, show full detail on demand |
 
@@ -106,7 +106,7 @@ The memory graph uses a force-directed layout:
 | Concern | Mitigation |
 |---------|------------|
 | Data exposure in tooltips | Tooltips on interactive charts may inadvertently expose user- or workspace-specific data; validate tooltip content against permission scope |
-| XSS through chart labels/annotations | Charting libraries that render HTML in tooltips or labels (e.g., via `dangerouslySetInnerHTML`) can execute injected scripts — sanitize all label inputs |
+| XSS through chart labels/annotations | Charting libraries that render HTML in tooltips or labels (e.g., via `dangerouslySetInnerHTML`) can execute injected scripts â€” sanitize all label inputs |
 | Knowledge graph node data sensitivity | Network graph visualizations can reveal relationship patterns that expose inferred information; scope graph rendering to permitted entities only |
 
 ## Performance
@@ -115,14 +115,14 @@ The memory graph uses a force-directed layout:
 |---------|-----------|
 | Data point count limits | Recharts and D3.js both recommend <500 data points for smooth interactivity; use data aggregation, decimation, or windowing above that threshold |
 | Canvas vs SVG trade-offs | SVG (Recharts default) is crisp at any resolution but lags above ~1000 elements; use Canvas-based rendering (D3.js) for large datasets |
-| Lazy chart rendering | Charts below the fold should use IntersectionObserver to delay rendering until visible — saves initial paint time by 200-500ms on dashboard pages |
+| Lazy chart rendering | Charts below the fold should use IntersectionObserver to delay rendering until visible â€” saves initial paint time by 200-500ms on dashboard pages |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
 | Data exposure in tooltips | Tooltips on interactive charts may inadvertently expose user- or workspace-specific data; validate tooltip content against permission scope |
-| XSS through chart labels/annotations | Charting libraries that render HTML in tooltips or labels (e.g., via `dangerouslySetInnerHTML`) can execute injected scripts — sanitize all label inputs |
+| XSS through chart labels/annotations | Charting libraries that render HTML in tooltips or labels (e.g., via `dangerouslySetInnerHTML`) can execute injected scripts â€” sanitize all label inputs |
 | Knowledge graph node data sensitivity | Network graph visualizations can reveal relationship patterns that expose inferred information; scope graph rendering to permitted entities only |
 
 ## Performance Considerations
@@ -131,23 +131,23 @@ The memory graph uses a force-directed layout:
 |---------|----------|
 | Data point count limits | Recharts and D3.js both recommend <500 data points for smooth interactivity; use data aggregation, decimation, or windowing above that threshold |
 | Canvas vs SVG trade-offs | SVG (Recharts default) is crisp at any resolution but lags above ~1000 elements; use Canvas-based rendering (D3.js) for large datasets |
-| Lazy chart rendering | Charts below the fold should use IntersectionObserver to delay rendering until visible — saves initial paint time by 200-500ms on dashboard pages |
+| Lazy chart rendering | Charts below the fold should use IntersectionObserver to delay rendering until visible â€” saves initial paint time by 200-500ms on dashboard pages |
 
 ## Components
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| LineChart | Render knowledge growth trends over time | Recharts (React Native) | Instance per metric — configurable xAxis (date), yAxis (count), color from theme |
+| LineChart | Render knowledge growth trends over time | Recharts (React Native) | Instance per metric â€” configurable xAxis (date), yAxis (count), color from theme |
 | BarChart | Display comparisons (apps per platform, skills by category) | Recharts | Instance per comparison; responsive via container width |
 | KnowledgeGraph | Force-directed memory graph visualization | D3.js | Single instance per Memory page; dynamic node count based on entity depth |
-| Sparkline | Compact trend indicator in widget headers | CSS/SVG inline | Stateless — rendered as `<path>` in SVG; no JS runtime |
+| Sparkline | Compact trend indicator in widget headers | CSS/SVG inline | Stateless â€” rendered as `<path>` in SVG; no JS runtime |
 
 ## Workflows
 
-1. **Dashboard line chart loads**: Page mounts → TanStack Query fetches knowledge growth data → Recharts renders `<ResponsiveContainer>` → axis scales computed → lines drawn with theme accent colors → tooltip hover triggers data point highlight
-2. **Knowledge graph interaction**: User searches for entity → D3.js filter narrows visible nodes → force simulation re-heats → connected nodes animate to new positions → user clicks node to expand/collapse
-3. **Chart empty state**: No data available for selected time range → chart renders empty state component → user sees "No data for this period" with CTA → user adjusts filter → chart re-fetches and renders
-4. **Chart export to PNG**: User clicks download → html2canvas captures chart DOM → canvas renders to PNG blob → download triggered with filename `meridian-chart-{date}.png`
+1. **Dashboard line chart loads**: Page mounts â†’ TanStack Query fetches knowledge growth data â†’ Recharts renders `<ResponsiveContainer>` â†’ axis scales computed â†’ lines drawn with theme accent colors â†’ tooltip hover triggers data point highlight
+2. **Knowledge graph interaction**: User searches for entity â†’ D3.js filter narrows visible nodes â†’ force simulation re-heats â†’ connected nodes animate to new positions â†’ user clicks node to expand/collapse
+3. **Chart empty state**: No data available for selected time range â†’ chart renders empty state component â†’ user sees "No data for this period" with CTA â†’ user adjusts filter â†’ chart re-fetches and renders
+4. **Chart export to PNG**: User clicks download â†’ html2canvas captures chart DOM â†’ canvas renders to PNG blob â†’ download triggered with filename `Vaeloom-chart-{date}.png`
 
 ## Sequence Diagrams
 
@@ -157,7 +157,7 @@ sequenceDiagram
     participant D as Dashboard
     participant TQ as TanStack Query
     participant RC as Recharts
-    participant API as Meridian API
+    participant API as Vaeloom API
 
     U->>D: Navigate to Dashboard
     D->>TQ: query knowledgeGrowth
@@ -175,11 +175,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: Connectors fetch external data (LinkedIn, GitHub, Gmail) → parsed into structured entities → stored in PostgreSQL with timestamps and metadata
-2. **Processing**: Memory Agent analyzes entity relationships → computes growth rates, category distributions, trend lines → results cached in Redis with 5-minute TTL
-3. **Storage**: Chart data stored as time-series in PostgreSQL (`entity_growth`, `category_counts`) → aggregated views pre-computed via materialized views
-4. **Retrieval**: Dashboard queries aggregated endpoints → TanStack Query caches with 30s staleTime → Recharts renders SVG/Canvas from cached data
-5. **Deletion**: User deletes workspace → all associated time-series data purged → materialized views refreshed → chart shows empty state
+1. **Ingestion**: Connectors fetch external data (LinkedIn, GitHub, Gmail) â†’ parsed into structured entities â†’ stored in PostgreSQL with timestamps and metadata
+2. **Processing**: Memory Agent analyzes entity relationships â†’ computes growth rates, category distributions, trend lines â†’ results cached in Redis with 5-minute TTL
+3. **Storage**: Chart data stored as time-series in PostgreSQL (`entity_growth`, `category_counts`) â†’ aggregated views pre-computed via materialized views
+4. **Retrieval**: Dashboard queries aggregated endpoints â†’ TanStack Query caches with 30s staleTime â†’ Recharts renders SVG/Canvas from cached data
+5. **Deletion**: User deletes workspace â†’ all associated time-series data purged â†’ materialized views refreshed â†’ chart shows empty state
 
 ## Scalability
 
@@ -203,10 +203,10 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Chart render time | > 200ms per chart | Warning | Grafana — Frontend Performance |
-| Knowledge graph FPS | < 30fps during interaction | Warning | Chrome DevTools — Performance tab |
-| Data fetch error rate | > 1% of chart queries | Critical | Grafana — API Dashboard |
-| Empty state impressions | > 50% of chart views show empty state | Info | Amplitude — Chart Engagement |
+| Chart render time | > 200ms per chart | Warning | Grafana â€” Frontend Performance |
+| Knowledge graph FPS | < 30fps during interaction | Warning | Chrome DevTools â€” Performance tab |
+| Data fetch error rate | > 1% of chart queries | Critical | Grafana â€” API Dashboard |
+| Empty state impressions | > 50% of chart views show empty state | Info | Amplitude â€” Chart Engagement |
 
 ## Risks
 
@@ -227,13 +227,13 @@ sequenceDiagram
 
 ## Overview
 
-Meridian uses data visualization to transform raw entity data into actionable insights for users. Charts display knowledge growth trends over time, application volume across platforms, skill category distributions, and the interconnected memory graph that forms the core of Meridian's AI-powered knowledge management.
+Vaeloom uses data visualization to transform raw entity data into actionable insights for users. Charts display knowledge growth trends over time, application volume across platforms, skill category distributions, and the interconnected memory graph that forms the core of Vaeloom's AI-powered knowledge management.
 
-The charting architecture follows a tiered library strategy: Recharts for standard chart types (line, bar, pie), D3.js for complex custom visualizations (the force-directed knowledge graph), and CSS/SVG for lightweight indicators (sparklines, stat badges). This tiered approach ensures each visualization uses the right tool for its complexity level — a dashboard sparkline doesn't require the full D3.js bundle.
+The charting architecture follows a tiered library strategy: Recharts for standard chart types (line, bar, pie), D3.js for complex custom visualizations (the force-directed knowledge graph), and CSS/SVG for lightweight indicators (sparklines, stat badges). This tiered approach ensures each visualization uses the right tool for its complexity level â€” a dashboard sparkline doesn't require the full D3.js bundle.
 
-Every chart in Meridian follows five design guidelines: accessibility through data tables, responsive resizing with their container, consistent use of theme color tokens, interactive tooltips with drill-down, and meaningful empty states that guide users when no data is available. These guidelines ensure charts are usable, on-brand, and informative regardless of the data state.
+Every chart in Vaeloom follows five design guidelines: accessibility through data tables, responsive resizing with their container, consistent use of theme color tokens, interactive tooltips with drill-down, and meaningful empty states that guide users when no data is available. These guidelines ensure charts are usable, on-brand, and informative regardless of the data state.
 
-For Meridian's users — typically career professionals managing resumes, job applications, and skill development — charts provide at-a-glance understanding of their knowledge ecosystem. The knowledge graph, in particular, is a flagship visualization that reveals hidden connections between skills, experiences, and career goals that users might not have discovered on their own.
+For Vaeloom's users â€” typically career professionals managing resumes, job applications, and skill development â€” charts provide at-a-glance understanding of their knowledge ecosystem. The knowledge graph, in particular, is a flagship visualization that reveals hidden connections between skills, experiences, and career goals that users might not have discovered on their own.
 
 ## Goals
 

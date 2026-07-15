@@ -1,10 +1,10 @@
-# Backend Architecture
+﻿# Backend Architecture
 
-> **Purpose:** Define the backend architecture for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the backend architecture for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Backend Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/Meridian-Complete-Documentation.md#43-backend`](../../Docs/Meridian-Complete-Documentation.md#43-backend)
+> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#43-backend`](../../Docs/Vaeloom-Complete-Documentation.md#43-backend)
 
 ## Architecture Overview
 
@@ -16,15 +16,15 @@ graph TD
     classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef mw fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Frontend["🌐 Frontend"]
+    subgraph Frontend["ðŸŒ Frontend"]
         WEB["Next.js App<br/>SSR + Client"]
     end
 
-    subgraph Backend["⚙️ apps/api — NestJS"]
+    subgraph Backend["âš™ï¸ apps/api â€” NestJS"]
         direction TB
         B1["Router<br/>Resource endpoints"]
 
-        subgraph Middleware["🔗 Middleware Stack (order)"]
+        subgraph Middleware["ðŸ”— Middleware Stack (order)"]
             direction TB
             M1["1. Logger<br/>Structured request logging"]
             M2["2. Auth<br/>JWT validation + session"]
@@ -34,18 +34,18 @@ graph TD
         end
 
         B2["CRUD Handlers<br/>Documents, resumes,\napplications, connectors"]
-        B3["Event Publisher<br/>All actions → Event Bus"]
+        B3["Event Publisher<br/>All actions â†’ Event Bus"]
     end
 
-    subgraph AIService["🧠 apps/ai-service — FastAPI"]
+    subgraph AIService["ðŸ§  apps/ai-service â€” FastAPI"]
         A1["Agent Runtime<br/>Memory, RAG, tools"]
         A2["Model Router<br/>Haiku / Sonnet / GPT-4o"]
     end
 
-    subgraph Data["💾 Data Layer"]
+    subgraph Data["ðŸ’¾ Data Layer"]
         PG["( PostgreSQL<br/>+ AGE + pgvector )"]
         REDIS["( Redis<br/>Cache + Queue )"]
-        EVENTS["📨 Event Bus<br/>Redis → Kafka"]
+        EVENTS["ðŸ“¨ Event Bus<br/>Redis â†’ Kafka"]
     end
 
     WEB -->|REST HTTPS| B1
@@ -66,7 +66,7 @@ graph TD
 
 ```
 
-> **Diagram:** The backend splits into two services communicating over internal gRPC. **apps/api** (NestJS) runs a 5-layer middleware stack — Logger → Auth → Permission → Rate Limit → Validation — before routing to CRUD handlers or gRPC calls to the AI service. **apps/ai-service** (FastAPI) runs the agent runtime and model router. Both services share PostgreSQL, Redis, and the event bus. Events published by api can asynchronously trigger AI service actions.
+> **Diagram:** The backend splits into two services communicating over internal gRPC. **apps/api** (NestJS) runs a 5-layer middleware stack â€” Logger â†’ Auth â†’ Permission â†’ Rate Limit â†’ Validation â€” before routing to CRUD handlers or gRPC calls to the AI service. **apps/ai-service** (FastAPI) runs the agent runtime and model router. Both services share PostgreSQL, Redis, and the event bus. Events published by api can asynchronously trigger AI service actions.
 
 ---
 
@@ -80,20 +80,20 @@ The backend consists of two services communicating over an internal RPC boundary
 ## Service Communication
 
 ```text
-Frontend → apps/api (REST) → apps/ai-service (Internal RPC)
-                                ↓
+Frontend â†’ apps/api (REST) â†’ apps/ai-service (Internal RPC)
+                                â†“
                           PostgreSQL + Redis + Claude API
 ```
 
 ## Request Lifecycle
 
 ```text
-1. HTTP Request → API Gateway
+1. HTTP Request â†’ API Gateway
 2. Auth Middleware (JWT validation)
 3. Permission Engine (check scope, agent, action)
 4. Route to handler (CRUD or agent request)
-5. If agent → RPC call to ai-service
-6. Response → client
+5. If agent â†’ RPC call to ai-service
+6. Response â†’ client
 7. Event published to event bus
 ```
 
@@ -111,35 +111,35 @@ Frontend → apps/api (REST) → apps/ai-service (Internal RPC)
 
 | Mistake | Consequence |
 |---------|-------------|
-| Tight coupling between api and ai-service | Direct HTTP calls between the two services create synchronization dependencies — changes to ai-service can break api without warning |
-| Letting the middleware stack grow unchecked | Adding middleware for "one-off" concerns creates a bloated pipeline — every request pays the latency cost of all middleware, even irrelevant ones |
-| Using the database as a message queue | Polling the database for new work creates contention and misses — use Redis/BullMQ for queues, PostgreSQL for data |
-| Ignoring the event bus until it's critical | Events like "document.ingested" are consumed by multiple agents — skipping events from the start means retrofitting them later at high cost |
+| Tight coupling between api and ai-service | Direct HTTP calls between the two services create synchronization dependencies â€” changes to ai-service can break api without warning |
+| Letting the middleware stack grow unchecked | Adding middleware for "one-off" concerns creates a bloated pipeline â€” every request pays the latency cost of all middleware, even irrelevant ones |
+| Using the database as a message queue | Polling the database for new work creates contention and misses â€” use Redis/BullMQ for queues, PostgreSQL for data |
+| Ignoring the event bus until it's critical | Events like "document.ingested" are consumed by multiple agents â€” skipping events from the start means retrofitting them later at high cost |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Communicate between services via a well-defined gRPC contract | Internal RPC with protobuf schemas gives type safety and versioning — REST between internal services adds unnecessary overhead |
-| Keep the middleware stack lean and ordered | Only add middleware that applies to every request — endpoint-specific logic belongs in guards or interceptors, not the global middleware stack |
-| Use the event bus for cross-service communication | API publishes events → AI service subscribes — this decouples the services and allows multiple consumers without API changes |
-| Separate read and write workloads | Commands (writes) and queries (reads) have different scaling requirements — separate them early to avoid contention |
+| Communicate between services via a well-defined gRPC contract | Internal RPC with protobuf schemas gives type safety and versioning â€” REST between internal services adds unnecessary overhead |
+| Keep the middleware stack lean and ordered | Only add middleware that applies to every request â€” endpoint-specific logic belongs in guards or interceptors, not the global middleware stack |
+| Use the event bus for cross-service communication | API publishes events â†’ AI service subscribes â€” this decouples the services and allows multiple consumers without API changes |
+| Separate read and write workloads | Commands (writes) and queries (reads) have different scaling requirements â€” separate them early to avoid contention |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Unauthenticated gRPC calls between api and ai-service | Without mutual TLS or service mesh auth, any compromised container can call ai-service directly — enforce mTLS between backend services and use short-lived service tokens |
-| Event bus injection attacks | If events published by api are consumed by ai-service without validation, an attacker can inject malicious events via compromised API endpoints — validate event payloads at every consumer |
-| Data layer access without authorization | Backend services accessing PostgreSQL or Redis directly bypass the Permission Engine — enforce row-level security and separate service accounts per service |
+| Unauthenticated gRPC calls between api and ai-service | Without mutual TLS or service mesh auth, any compromised container can call ai-service directly â€” enforce mTLS between backend services and use short-lived service tokens |
+| Event bus injection attacks | If events published by api are consumed by ai-service without validation, an attacker can inject malicious events via compromised API endpoints â€” validate event payloads at every consumer |
+| Data layer access without authorization | Backend services accessing PostgreSQL or Redis directly bypass the Permission Engine â€” enforce row-level security and separate service accounts per service |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| gRPC serialization overhead for small payloads | gRPC with protobuf adds serialization cost that can exceed the payload size for simple CRUD responses — use REST for read-heavy workloads and reserve gRPC for streaming agent responses |
-| Database connection pool contention between services | Both api and ai-service share the same PostgreSQL pool — if ai-service holds connections during LLM calls (500ms+), api starves. Use separate pools with dedicated connection limits |
-| Service communication latency under load | Internal RPC between api and ai-service adds 5-20ms per call — batch multiple agent requests into a single RPC call when possible and use persistent gRPC connections |
+| gRPC serialization overhead for small payloads | gRPC with protobuf adds serialization cost that can exceed the payload size for simple CRUD responses â€” use REST for read-heavy workloads and reserve gRPC for streaming agent responses |
+| Database connection pool contention between services | Both api and ai-service share the same PostgreSQL pool â€” if ai-service holds connections during LLM calls (500ms+), api starves. Use separate pools with dedicated connection limits |
+| Service communication latency under load | Internal RPC between api and ai-service adds 5-20ms per call â€” batch multiple agent requests into a single RPC call when possible and use persistent gRPC connections |
 
 ## Goals
 
@@ -195,7 +195,7 @@ Frontend → apps/api (REST) → apps/ai-service (Internal RPC)
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
 | API Router | Resource endpoint routing, HTTP handling | NestJS + Express | Horizontal scale via load balancer |
-| Middleware Stack | Logging, auth, permissions, rate limiting, validation | NestJS Guards + Interceptors | Stateless — scales horizontally |
+| Middleware Stack | Logging, auth, permissions, rate limiting, validation | NestJS Guards + Interceptors | Stateless â€” scales horizontally |
 | CRUD Handlers | Document, resume, application, connector operations | NestJS Services + TypeORM | Horizontal with connection pooling |
 | Event Publisher | Publish all actions to event bus | Redis/BullMQ | Cluster Redis for higher throughput |
 | gRPC Client | Internal RPC to ai-service | @grpc/grpc-js | Connection pooling with keepalive |
@@ -203,11 +203,11 @@ Frontend → apps/api (REST) → apps/ai-service (Internal RPC)
 
 ## Data Flow
 
-1. **Client Request** — Frontend sends HTTPS request to api.meridian.dev/v1/... with JWT Bearer token in Authorization header
-2. **Middleware Processing** — Request passes through Logger (structured capture), Auth (JWT validation), Permission (scope check), Rate Limiter (token consumption), Validation (schema check) in fixed order
-3. **Handler Routing** — NestJS router matches URI to handler; CRUD requests query PostgreSQL via TypeORM; agent requests initiate gRPC call to ai-service
-4. **Event Publication** — Handler publishes a domain event to the Redis event bus after successful processing (e.g., document.ingested, application.submitted)
-5. **Response Assembly** — Handler serializes response as JSON, adds X-Request-Id header, and returns HTTP status 200/201 with payload or error envelope
+1. **Client Request** â€” Frontend sends HTTPS request to api.Vaeloom.dev/v1/... with JWT Bearer token in Authorization header
+2. **Middleware Processing** â€” Request passes through Logger (structured capture), Auth (JWT validation), Permission (scope check), Rate Limiter (token consumption), Validation (schema check) in fixed order
+3. **Handler Routing** â€” NestJS router matches URI to handler; CRUD requests query PostgreSQL via TypeORM; agent requests initiate gRPC call to ai-service
+4. **Event Publication** â€” Handler publishes a domain event to the Redis event bus after successful processing (e.g., document.ingested, application.submitted)
+5. **Response Assembly** â€” Handler serializes response as JSON, adds X-Request-Id header, and returns HTTP status 200/201 with payload or error envelope
 
 ## Scalability
 
@@ -245,9 +245,9 @@ Frontend → apps/api (REST) → apps/ai-service (Internal RPC)
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
 | PORT | HTTP server listen port | 3000 | Yes |
-| DATABASE_URL | PostgreSQL connection string | postgresql://localhost:5432/meridian | Yes |
+| DATABASE_URL | PostgreSQL connection string | postgresql://localhost:5432/Vaeloom | Yes |
 | REDIS_URL | Redis connection string | redis://localhost:6379 | Yes |
-| JWT_SECRET | Token signing secret | — | Yes |
+| JWT_SECRET | Token signing secret | â€” | Yes |
 | RATE_LIMIT_MAX | Max requests per user per window | 100 | No |
 | RATE_LIMIT_WINDOW | Rate limit window in seconds | 60 | No |
 | LOG_LEVEL | Structured logging verbosity | info | No |
@@ -277,7 +277,7 @@ Frontend → apps/api (REST) → apps/ai-service (Internal RPC)
 
 ```typescript
 // Microservice-to-microservice communication via event bus
-import { EventBus } from '@meridian/events';
+import { EventBus } from '@vaeloom/events';
 
 const bus = new EventBus();
 await bus.publish('document.processed', {
@@ -288,7 +288,7 @@ await bus.publish('document.processed', {
 
 ```python
 # Subscribe to an event stream
-from meridian.events import EventStream
+from Vaeloom.events import EventStream
 
 stream = EventStream("document.*")
 for event in stream.subscribe():
@@ -296,15 +296,15 @@ for event in stream.subscribe():
 ```
 
 ```yaml
-# Docker Compose for local Meridian backend
+# Docker Compose for local Vaeloom backend
 services:
   api-gateway:
-    image: meridian/api-gateway:latest
+    image: Vaeloom/api-gateway:latest
     ports:
       - "8080:8080"
     environment:
       - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgres://meridian:pass@db:5432/meridian
+      - DATABASE_URL=postgres://Vaeloom:pass@db:5432/Vaeloom
 ```
 
 ## Future Improvements
@@ -322,4 +322,4 @@ services:
 
 - [API Architecture.md](./API-Architecture.md)
 - [Authentication.md](./Authentication.md)
-- [`/Docs/Meridian-Complete-Documentation.md#43-backend`](../../Docs/Meridian-Complete-Documentation.md#43-backend)
+- [`/Docs/Vaeloom-Complete-Documentation.md#43-backend`](../../Docs/Vaeloom-Complete-Documentation.md#43-backend)

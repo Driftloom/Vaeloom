@@ -1,7 +1,7 @@
-# Service Level Agreement (SLA)
+﻿# Service Level Agreement (SLA)
 
-> **Purpose:** Define the Service Level Agreement for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define the Service Level Agreement for Vaeloom
+> **Status:** ðŸ†• New
 
 ## SLA Architecture
 
@@ -11,21 +11,21 @@ graph TD
     classDef credit fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef exclude fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
 
-    subgraph Targets["🎯 SLA Targets"]
+    subgraph Targets["ðŸŽ¯ SLA Targets"]
         direction TB
-        T1["Web Application<br/>99.9% · < 43 min/month"]
-        T2["API<br/>99.9% · < 43 min/month"]
-        T3["AI Agents<br/>99.5% · < 3.6 hours/month"]
-        T4["Database<br/>99.95% · < 22 min/month"]
+        T1["Web Application<br/>99.9% Â· < 43 min/month"]
+        T2["API<br/>99.9% Â· < 43 min/month"]
+        T3["AI Agents<br/>99.5% Â· < 3.6 hours/month"]
+        T4["Database<br/>99.95% Â· < 22 min/month"]
     end
 
-    subgraph Credits["💰 SLA Credits (Enterprise)"]
+    subgraph Credits["ðŸ’° SLA Credits (Enterprise)"]
         C1["99.0%-99.9% uptime<br/>5% monthly credit"]
         C2["95.0%-99.0% uptime<br/>10% monthly credit"]
         C3["< 95.0% uptime<br/>25% monthly credit"]
     end
 
-    subgraph Exclusions["🚫 SLA Exclusions"]
+    subgraph Exclusions["ðŸš« SLA Exclusions"]
         E1["Scheduled maintenance<br/>48h notice required"]
         E2["Force majeure<br/>Outside control"]
         E3["Third-party model outages<br/>Anthropic / OpenAI"]
@@ -41,7 +41,7 @@ graph TD
     class E1,E2,E3,E4,E5 exclude
 ```
 
-> **Diagram:** SLA architecture—**4 service targets** (web 99.9%, API 99.9%, AI agents 99.5%, database 99.95%) → **3 credit tiers** (5%/10%/25% monthly credit for missed targets) → **5 exclusions** (maintenance, force majeure, model outages, user issues, beta features).
+> **Diagram:** SLA architectureâ€”**4 service targets** (web 99.9%, API 99.9%, AI agents 99.5%, database 99.95%) â†’ **3 credit tiers** (5%/10%/25% monthly credit for missed targets) â†’ **5 exclusions** (maintenance, force majeure, model outages, user issues, beta features).
 
 ---
 
@@ -76,58 +76,58 @@ graph TD
 
 | Mistake | Consequence |
 |---------|-------------|
-| Setting SLA targets without the data to measure them | Promising 99.9% API availability without health check monitoring means you can't prove you met it — define SLIs first, agree on SLOs second, and only then set SLAs |
-| Over-crediting for service degradations that are minor | A 0.1% availability dip for 2 minutes that doesn't affect most users shouldn't trigger a 25% credit — define minimum measurement windows (e.g., 5 consecutive minutes below target) before credits apply |
-| SLAs that don't align with actual customer expectations | Promising 99.9% AI agent availability when the underlying model provider has 99.5% SLA means you're on the hook for failures you can't control — pass through third-party SLAs transparently |
+| Setting SLA targets without the data to measure them | Promising 99.9% API availability without health check monitoring means you can't prove you met it â€” define SLIs first, agree on SLOs second, and only then set SLAs |
+| Over-crediting for service degradations that are minor | A 0.1% availability dip for 2 minutes that doesn't affect most users shouldn't trigger a 25% credit â€” define minimum measurement windows (e.g., 5 consecutive minutes below target) before credits apply |
+| SLAs that don't align with actual customer expectations | Promising 99.9% AI agent availability when the underlying model provider has 99.5% SLA means you're on the hook for failures you can't control â€” pass through third-party SLAs transparently |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Define SLIs first, then SLOs, then SLAs | You can't set an SLA target without knowing what you can measure — define technical indicators (latency, availability), set internal objectives against them, and only then commit to customer-facing agreements |
-| Exclude third-party dependencies from the SLA with clear language | AI model provider outages, auth provider downtime, and cloud provider failures are outside your control — explicitly exclude them with a link to the provider's own SLA |
-| Use a minimum measurement window for credit calculations | A 30-second blip shouldn't trigger a full month's credit — require a minimum consecutive downtime (e.g., 5 minutes) before availability is considered "down" for SLA calculation purposes |
+| Define SLIs first, then SLOs, then SLAs | You can't set an SLA target without knowing what you can measure â€” define technical indicators (latency, availability), set internal objectives against them, and only then commit to customer-facing agreements |
+| Exclude third-party dependencies from the SLA with clear language | AI model provider outages, auth provider downtime, and cloud provider failures are outside your control â€” explicitly exclude them with a link to the provider's own SLA |
+| Use a minimum measurement window for credit calculations | A 30-second blip shouldn't trigger a full month's credit â€” require a minimum consecutive downtime (e.g., 5 minutes) before availability is considered "down" for SLA calculation purposes |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| SLA credit claims creating security audit burden | Processing a 25% credit claim for 50 enterprise customers requires verifying uptime data — ensure SLA monitoring data is immutable and auditable to handle disputes without manual effort |
-| SLA exclusions being used to hide security incidents | An attacker who gains access but doesn't cause downtime may not trigger SLA monitoring — security breaches should be reported and credited independently of uptime-based SLAs |
-| SLA data revealing which customers are most profitable | Detailed SLA compliance data per customer reveals usage patterns and revenue — aggregate SLA reporting at the tier level (Pro, Enterprise) rather than per-customer |
+| SLA credit claims creating security audit burden | Processing a 25% credit claim for 50 enterprise customers requires verifying uptime data â€” ensure SLA monitoring data is immutable and auditable to handle disputes without manual effort |
+| SLA exclusions being used to hide security incidents | An attacker who gains access but doesn't cause downtime may not trigger SLA monitoring â€” security breaches should be reported and credited independently of uptime-based SLAs |
+| SLA data revealing which customers are most profitable | Detailed SLA compliance data per customer reveals usage patterns and revenue â€” aggregate SLA reporting at the tier level (Pro, Enterprise) rather than per-customer |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| SLA monitoring itself creating performance overhead | Every health check and latency probe adds load — external monitoring probes from different regions generate 10-50 req/min per probe. Keep probes lightweight (head requests, simple health endpoints) and limit frequency |
-| SLA compliance calculations that are too complex to compute | An SLA with multiple service tiers, exclusions, measurement windows, and credit formulas becomes too complex to calculate automatically — simplify to a single metric per service with clear exclusion rules |
-| SLA reporting latency delaying credit processing | If SLA data is aggregated weekly, a month-ending outage may not be reflected in time for credit processing — use real-time SLO dashboards that feed into automated SLA compliance reports |
+| SLA monitoring itself creating performance overhead | Every health check and latency probe adds load â€” external monitoring probes from different regions generate 10-50 req/min per probe. Keep probes lightweight (head requests, simple health endpoints) and limit frequency |
+| SLA compliance calculations that are too complex to compute | An SLA with multiple service tiers, exclusions, measurement windows, and credit formulas becomes too complex to calculate automatically â€” simplify to a single metric per service with clear exclusion rules |
+| SLA reporting latency delaying credit processing | If SLA data is aggregated weekly, a month-ending outage may not be reflected in time for credit processing â€” use real-time SLO dashboards that feed into automated SLA compliance reports |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| SLA credit claims creating security audit burden | Processing a 25% credit claim for 50 enterprise customers requires verifying uptime data — ensure SLA monitoring data is immutable and auditable to handle disputes without manual effort |
-| SLA exclusions being used to hide security incidents | An attacker who gains access but doesn't cause downtime may not trigger SLA monitoring — security breaches should be reported and credited independently of uptime-based SLAs |
-| SLA data revealing which customers are most profitable | Detailed SLA compliance data per customer reveals usage patterns and revenue — aggregate SLA reporting at the tier level (Pro, Enterprise) rather than per-customer |
+| SLA credit claims creating security audit burden | Processing a 25% credit claim for 50 enterprise customers requires verifying uptime data â€” ensure SLA monitoring data is immutable and auditable to handle disputes without manual effort |
+| SLA exclusions being used to hide security incidents | An attacker who gains access but doesn't cause downtime may not trigger SLA monitoring â€” security breaches should be reported and credited independently of uptime-based SLAs |
+| SLA data revealing which customers are most profitable | Detailed SLA compliance data per customer reveals usage patterns and revenue â€” aggregate SLA reporting at the tier level (Pro, Enterprise) rather than per-customer |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| SLA monitoring itself creating performance overhead | Every health check and latency probe adds load — external monitoring probes from different regions generate 10-50 req/min per probe. Keep probes lightweight (head requests, simple health endpoints) and limit frequency |
-| SLA compliance calculations that are too complex to compute | An SLA with multiple service tiers, exclusions, measurement windows, and credit formulas becomes too complex to calculate automatically — simplify to a single metric per service with clear exclusion rules |
-| SLA reporting latency delaying credit processing | If SLA data is aggregated weekly, a month-ending outage may not be reflected in time for credit processing — use real-time SLO dashboards that feed into automated SLA compliance reports |
+| SLA monitoring itself creating performance overhead | Every health check and latency probe adds load â€” external monitoring probes from different regions generate 10-50 req/min per probe. Keep probes lightweight (head requests, simple health endpoints) and limit frequency |
+| SLA compliance calculations that are too complex to compute | An SLA with multiple service tiers, exclusions, measurement windows, and credit formulas becomes too complex to calculate automatically â€” simplify to a single metric per service with clear exclusion rules |
+| SLA reporting latency delaying credit processing | If SLA data is aggregated weekly, a month-ending outage may not be reflected in time for credit processing â€” use real-time SLO dashboards that feed into automated SLA compliance reports |
 
 ## Workflows
 
 1. **Define SLA target:** Set availability percentage per service based on business requirements and technical feasibility
 2. **Measure against SLIs:** Collect SLI data (availability, latency, accuracy) and compare against SLA targets
-3. **Monthly SLA compliance review:** Calculate uptime percentage → check against SLA tiers → process credits if applicable
-4. **SLA exception handling:** Document exclusion (maintenance, provider outage, force majeure) → communicate to customer
-5. **SLA breach response:** Notify affected customers → calculate credit → post-mortem → action items to prevent recurrence
-6. **Annual SLA review:** Re-evaluate targets → adjust based on system maturity → update contracts
+3. **Monthly SLA compliance review:** Calculate uptime percentage â†’ check against SLA tiers â†’ process credits if applicable
+4. **SLA exception handling:** Document exclusion (maintenance, provider outage, force majeure) â†’ communicate to customer
+5. **SLA breach response:** Notify affected customers â†’ calculate credit â†’ post-mortem â†’ action items to prevent recurrence
+6. **Annual SLA review:** Re-evaluate targets â†’ adjust based on system maturity â†’ update contracts
 
 ---
 
@@ -188,26 +188,26 @@ graph TD
 
 ## Overview
 
-The Service Level Agreement (SLA) defines the contractual uptime commitments Meridian makes to its customers across four service categories: web application, API, AI agents, and database. It establishes availability targets, credit schedules for missed targets, and clear exclusions that protect Meridian from liability for factors outside its control.
+The Service Level Agreement (SLA) defines the contractual uptime commitments Vaeloom makes to its customers across four service categories: web application, API, AI agents, and database. It establishes availability targets, credit schedules for missed targets, and clear exclusions that protect Vaeloom from liability for factors outside its control.
 
 This document is intended for the product team, legal counsel, and enterprise sales engineers who negotiate customer contracts, as well as the operations team that monitors compliance. It ensures that every SLA commitment is measurable, achievable, and backed by the monitoring infrastructure defined in the SLO and SLI documents.
 
-For a second-brain AI platform, SLA design requires careful consideration of the AI agent tier. While web and API services can realistically target 99.9% availability, the AI agent tier depends on third-party model providers (Anthropic, OpenAI) whose own SLAs (typically 99.5%) set a ceiling on what Meridian can independently guarantee. Transparently communicating this dependency in the SLA protects Meridian while setting appropriate customer expectations.
+For a second-brain AI platform, SLA design requires careful consideration of the AI agent tier. While web and API services can realistically target 99.9% availability, the AI agent tier depends on third-party model providers (Anthropic, OpenAI) whose own SLAs (typically 99.5%) set a ceiling on what Vaeloom can independently guarantee. Transparently communicating this dependency in the SLA protects Vaeloom while setting appropriate customer expectations.
 
-The SLA is the outermost layer of Meridian's reliability framework — it sits above internal SLOs (stretch targets the team works toward) and SLIs (the raw measurements). An SLA should never be tighter than the corresponding SLO, which in turn should never be tighter than what the SLI data shows is achievable.
+The SLA is the outermost layer of Vaeloom's reliability framework â€” it sits above internal SLOs (stretch targets the team works toward) and SLIs (the raw measurements). An SLA should never be tighter than the corresponding SLO, which in turn should never be tighter than what the SLI data shows is achievable.
 
 ## Goals
 
-- Define measurable availability targets for four Meridian service tiers: web application (99.9%), API (99.9%), AI agents (99.5%), and database (99.95%) with corresponding monthly downtime budgets
+- Define measurable availability targets for four Vaeloom service tiers: web application (99.9%), API (99.9%), AI agents (99.5%), and database (99.95%) with corresponding monthly downtime budgets
 - Establish a graduated SLA credit structure for enterprise customers: 5% credit between 99.0-99.9%, 10% between 95.0-99.0%, and 25% below 95.0% uptime
-- Document clear SLA exclusions — scheduled maintenance, force majeure, third-party model outages, user-side issues, and beta features — to protect Meridian from liability for uncontrollable factors
+- Document clear SLA exclusions â€” scheduled maintenance, force majeure, third-party model outages, user-side issues, and beta features â€” to protect Vaeloom from liability for uncontrollable factors
 - Provide workflows for SLA monitoring, compliance review, exception handling, breach response, and annual target review
 - Ensure SLA targets are backed by measurable SLIs and achievable SLOs, preventing commitments that the operations team cannot verify or meet
 
 ## Scope
 
 ### In Scope
-- SLA targets for all four Meridian service categories with availability percentages, monthly downtime budgets, and applicable exclusions per service
+- SLA targets for all four Vaeloom service categories with availability percentages, monthly downtime budgets, and applicable exclusions per service
 - SLA credit schedule for enterprise customers with three tiers of compensation based on measured uptime ranges
 - SLA exclusion definitions: scheduled maintenance (48-hour notice), force majeure, third-party model provider outages, user-side issues, and beta features
 - Workflows for monthly SLA compliance review, exception documentation, breach response, credit processing, and annual target renegotiation
@@ -228,7 +228,7 @@ The SLA is the outermost layer of Meridian's reliability framework — it sits a
 
 ```bash
 # Check current month SLA compliance
-curl -s https://api.meridian.dev/v1/admin/sla/compliance \
+curl -s https://api.Vaeloom.dev/v1/admin/sla/compliance \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq '.services[] | {service, availability, target, compliant}'
 ```
 

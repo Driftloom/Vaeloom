@@ -1,13 +1,13 @@
-# Enterprise Architecture
+﻿# Enterprise Architecture
 
-> **Purpose:** Deep-dive reference for Meridian's multi-tenant enterprise architecture, tenant isolation, SSO/SAML integration, audit requirements, compliance mappings, and private cloud deployment options
-> **Status:** 🆕 New
+> **Purpose:** Deep-dive reference for Vaeloom's multi-tenant enterprise architecture, tenant isolation, SSO/SAML integration, audit requirements, compliance mappings, and private cloud deployment options
+> **Status:** ðŸ†• New
 > **Owner:** Architecture Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Meridian Enterprise serves organizations with advanced security, compliance, and administrative requirements. The architecture is built on a multi-tenant foundation with configurable isolation levels (database-per-tenant or row-level security), federated SSO (SAML 2.0 / OIDC), comprehensive audit logging, and optional private cloud / VPC deployment.
+Vaeloom Enterprise serves organizations with advanced security, compliance, and administrative requirements. The architecture is built on a multi-tenant foundation with configurable isolation levels (database-per-tenant or row-level security), federated SSO (SAML 2.0 / OIDC), comprehensive audit logging, and optional private cloud / VPC deployment.
 
 This document covers the complete enterprise architecture: tenant lifecycle, isolation models, identity federation, audit pipeline, compliance mappings (SOC 2, GDPR, HIPAA readiness), and the private cloud deployment option.
 
@@ -102,7 +102,7 @@ async function tenantMiddleware(req: Request, res: Response, next: NextFunction)
     const config = await tenantConfigService.getDatabaseConfig(tenantId);
     const pool = new Pool({
       host: config.host,
-      database: `meridian_tenant_${tenantId}`,
+      database: `Vaeloom_tenant_${tenantId}`,
       user: config.username,
       password: config.password,
     });
@@ -120,12 +120,12 @@ async function tenantMiddleware(req: Request, res: Response, next: NextFunction)
 ```mermaid
 sequenceDiagram
     participant U as Enterprise User
-    participant APP as Meridian App
+    participant APP as Vaeloom App
     participant GW as Enterprise Gateway
     participant IDP as IdP (Okta/Azure AD/OneLogin)
-    participant API as Meridian API
+    participant API as Vaeloom API
 
-    U->>APP: Access app.meridian.dev
+    U->>APP: Access app.Vaeloom.dev
     APP->>GW: Redirect to SSO login
     GW->>IDP: SAML Request / OIDC Auth Request
     IDP-->>U: Login page
@@ -135,7 +135,7 @@ sequenceDiagram
     Note over GW: Validate assertion<br/>Check audience, issuer, signature<br/>Extract attributes (email, groups)
 
     GW->>API: Create/find user session
-    API->>API: Map IdP groups to Meridian roles
+    API->>API: Map IdP groups to Vaeloom roles
 
     alt Just-in-Time Provisioning
         API->>API: Create user if not exists<br/>Assign roles from group mapping
@@ -152,25 +152,25 @@ sequenceDiagram
 
 | IdP | Protocol | SCIM Provisioning | Directory Sync |
 |-----|----------|-------------------|----------------|
-| Okta | SAML 2.0, OIDC | ✅ | ✅ (via SCIM) |
-| Azure AD / Entra ID | SAML 2.0, OIDC | ✅ | ✅ (via SCIM) |
-| OneLogin | SAML 2.0 | ✅ | ✅ |
-| Google Workspace | OIDC | ✅ | ✅ (via SCIM) |
-| Any SAML 2.0 IdP | SAML 2.0 | ❌ (manual) | ❌ |
+| Okta | SAML 2.0, OIDC | âœ… | âœ… (via SCIM) |
+| Azure AD / Entra ID | SAML 2.0, OIDC | âœ… | âœ… (via SCIM) |
+| OneLogin | SAML 2.0 | âœ… | âœ… |
+| Google Workspace | OIDC | âœ… | âœ… (via SCIM) |
+| Any SAML 2.0 IdP | SAML 2.0 | âŒ (manual) | âŒ |
 
 ### Configuration Requirements
 
 ```xml
 <!-- SAML 2.0 Service Provider Metadata -->
-<EntityDescriptor entityID="https://auth.meridian.dev/saml/metadata">
+<EntityDescriptor entityID="https://auth.Vaeloom.dev/saml/metadata">
   <SPSSODescriptor>
     <AssertionConsumerService
       Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
-      Location="https://auth.meridian.dev/saml/acs"
+      Location="https://auth.Vaeloom.dev/saml/acs"
       index="1"/>
     <SingleLogoutService
       Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
-      Location="https://auth.meridian.dev/saml/slo"/>
+      Location="https://auth.Vaeloom.dev/saml/slo"/>
     <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>
   </SPSSODescriptor>
 </EntityDescriptor>
@@ -229,7 +229,7 @@ graph LR
 ```json
 {
   "specversion": "1.0",
-  "type": "com.meridian.document.deleted",
+  "type": "com.Vaeloom.document.deleted",
   "source": "/v1/documents/doc_abc123",
   "id": "evt_abc123xyz",
   "time": "2026-07-13T10:00:00Z",
@@ -256,34 +256,34 @@ graph LR
 
 ## Compliance Mappings
 
-| Requirement | SOC 2 | GDPR | HIPAA (Readiness) | Meridian Implementation |
+| Requirement | SOC 2 | GDPR | HIPAA (Readiness) | Vaeloom Implementation |
 |-------------|-------|------|-------------------|------------------------|
-| Access Control | CC6.1 | Art. 32 | §164.312(a)(1) | RBAC + ABAC + tenant isolation; API gateway enforces all access |
-| Encryption at Rest | CC6.7 | Art. 32 | §164.312(a)(2)(iv) | AES-256 for all data stores; KMS-managed keys |
-| Encryption in Transit | CC6.7 | Art. 32 | §164.312(e)(1) | TLS 1.3 for all API, database, and inter-service communication |
-| Audit Logging | CC7.2 | Art. 5(2) | §164.312(b) | Immutable audit events; 7-year retention; real-time search |
-| Data Retention | CC7.3 | Art. 17 | §164.310(d)(1) | Per-data-type retention schedules; automated enforcement |
-| Incident Response | CC7.4 | Art. 33 | §164.308(a)(6) | Documented IR plan; 24-hour notification SLA |
-| Business Continuity | CC7.5 | Art. 32 | §164.308(a)(7) | RTO 4h, RPO 1h; annual failover test |
-| Vendor Management | CC3.2 | Art. 28 | §164.308(b)(1) | Annual vendor assessments; DPAs with all vendors |
-| Data Deletion | CC6.1 | Art. 17 | §164.310(d)(2)(iii) | Soft delete + retention cron; legal hold override |
-| Employee Access | CC6.1 | Art. 32 | §164.308(a)(3) | JIT access; MFA for all operations; quarterly access review |
+| Access Control | CC6.1 | Art. 32 | Â§164.312(a)(1) | RBAC + ABAC + tenant isolation; API gateway enforces all access |
+| Encryption at Rest | CC6.7 | Art. 32 | Â§164.312(a)(2)(iv) | AES-256 for all data stores; KMS-managed keys |
+| Encryption in Transit | CC6.7 | Art. 32 | Â§164.312(e)(1) | TLS 1.3 for all API, database, and inter-service communication |
+| Audit Logging | CC7.2 | Art. 5(2) | Â§164.312(b) | Immutable audit events; 7-year retention; real-time search |
+| Data Retention | CC7.3 | Art. 17 | Â§164.310(d)(1) | Per-data-type retention schedules; automated enforcement |
+| Incident Response | CC7.4 | Art. 33 | Â§164.308(a)(6) | Documented IR plan; 24-hour notification SLA |
+| Business Continuity | CC7.5 | Art. 32 | Â§164.308(a)(7) | RTO 4h, RPO 1h; annual failover test |
+| Vendor Management | CC3.2 | Art. 28 | Â§164.308(b)(1) | Annual vendor assessments; DPAs with all vendors |
+| Data Deletion | CC6.1 | Art. 17 | Â§164.310(d)(2)(iii) | Soft delete + retention cron; legal hold override |
+| Employee Access | CC6.1 | Art. 32 | Â§164.308(a)(3) | JIT access; MFA for all operations; quarterly access review |
 
 ## Private Cloud / VPC Deployment
 
-For enterprises with strict data residency or compliance requirements, Meridian can be deployed in the customer's VPC:
+For enterprises with strict data residency or compliance requirements, Vaeloom can be deployed in the customer's VPC:
 
 ```yaml
 deployment_options:
-  meridian_cloud:
-    description: "Fully managed by Meridian"
+  Vaeloom_cloud:
+    description: "Fully managed by Vaeloom"
     data_residency: "us-east-1 (default); configurable regions"
     compliance: "SOC 2, GDPR"
     maintenance: "Automatic updates"
     sla: "99.99%"
   
   dedicated_vpc:
-    description: "Meridian-managed in customer's AWS account"
+    description: "Vaeloom-managed in customer's AWS account"
     data_residency: "Customer-specified region"
     compliance: "SOC 2, GDPR, HIPAA readiness"
     maintenance: "Approved maintenance windows"
@@ -313,9 +313,9 @@ deployment_options:
 | Practice | Rationale |
 |----------|----------|
 | Prefer row-level security for most enterprises | Database-per-tenant doubles operational cost and backup complexity; RLS provides sufficient isolation for all but the most regulated customers |
-| Use Just-in-Time (JIT) provisioning with SCIM | Prevents stale user records; SCIM sync ensures deprovisioned IdP users are suspended in Meridian within 15 minutes |
-| Sign all audit events at creation | Append-only log with hash chaining prevents tampering — each event includes the hash of the previous event |
-| Map IdP groups to Meridian roles | Group-based role assignment scales better than per-user configuration; supports org-chart changes without manual intervention |
+| Use Just-in-Time (JIT) provisioning with SCIM | Prevents stale user records; SCIM sync ensures deprovisioned IdP users are suspended in Vaeloom within 15 minutes |
+| Sign all audit events at creation | Append-only log with hash chaining prevents tampering â€” each event includes the hash of the previous event |
+| Map IdP groups to Vaeloom roles | Group-based role assignment scales better than per-user configuration; supports org-chart changes without manual intervention |
 
 ## Common Mistakes
 
@@ -324,7 +324,7 @@ deployment_options:
 | Applying RLS policies inconsistently | Some tables expose cross-tenant data; hard to detect without cross-tenant testing | Run automated cross-tenant data leak tests in CI; RLS policies must be applied to every table with a `tenant_id` column |
 | Over-scoping SAML attribute mapping | Mapping all IdP groups to roles creates permission sprawl; unused groups create confusion | Only map groups explicitly configured in the admin console; ignore unmapped groups |
 | No tenant-level rate limiting | One noisy tenant can degrade performance for all others | Implement tenant-level rate limits separate from user-level limits; enforce at the enterprise gateway |
-| Ignoring audit log integrity | Audit logs stored in mutable storage (database) — if compromised, logs can be altered or deleted | Use append-only storage (S3 + hashing); audit log access is read-only even for admins |
+| Ignoring audit log integrity | Audit logs stored in mutable storage (database) â€” if compromised, logs can be altered or deleted | Use append-only storage (S3 + hashing); audit log access is read-only even for admins |
 
 ## Security Considerations
 
@@ -343,7 +343,7 @@ deployment_options:
 | RLS policy evaluation overhead | RLS policies add <1ms per query on indexed `tenant_id` columns; composite indexes created on `(tenant_id, ...)` for common query patterns |
 | Database-per-tenant connection pooling | Connection pool per tenant creates overhead at 100+ tenants; PgBouncer with `session` pooling mode reduces connections |
 | Audit event ingestion at scale | Audit events buffered and batch-written (1000 events / batch); target <1s from event creation to searchable |
-| SCIM sync frequency | SCIM sync runs every 15 minutes; delta sync (not full) to minimize load on IdP and Meridian API |
+| SCIM sync frequency | SCIM sync runs every 15 minutes; delta sync (not full) to minimize load on IdP and Vaeloom API |
 | Private cloud deployment provisioning | VPC deployment automated via Terraform; 12-week timeline includes compliance validation and network security review |
 
 ## Goals
@@ -351,7 +351,7 @@ deployment_options:
 - Define the multi-tenant architecture options (database-per-tenant, RLS, hybrid) with trade-off analysis
 - Document SSO/SAML/OIDC integration patterns for major identity providers
 - Establish enterprise audit requirements with immutable, hash-chained event storage
-- Map compliance requirements (SOC 2, GDPR, HIPAA) to Meridian implementation controls
+- Map compliance requirements (SOC 2, GDPR, HIPAA) to Vaeloom implementation controls
 - Specify private cloud and VPC deployment options with SLAs and timelines
 
 ---
@@ -390,16 +390,16 @@ tenancy:
 
 ```bash
 # Enterprise cluster management
-meridian enterprise cluster add-node --role worker --size large
-meridian enterprise cluster remove-node node-42 --drain
-meridian enterprise cluster status
+Vaeloom enterprise cluster add-node --role worker --size large
+Vaeloom enterprise cluster remove-node node-42 --drain
+Vaeloom enterprise cluster status
 ```
 
 ```typescript
 // Enterprise-level API with tenant context
-import { MeridianEnterprise } from '@meridian/enterprise';
+import { VaeloomEnterprise } from '@vaeloom/enterprise';
 
-const enterprise = new MeridianEnterprise({
+const enterprise = new VaeloomEnterprise({
   tenantId: 'tenant_acme_corp',
   region: 'eu-west-1',
 });

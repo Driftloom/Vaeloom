@@ -1,18 +1,18 @@
-# Database Migrations
+﻿# Database Migrations
 
-> **Purpose:** Define the migration strategy for Meridian's database
-> **Status:** 🆕 New
+> **Purpose:** Define the migration strategy for Vaeloom's database
+> **Status:** ðŸ†• New
 
 ## Overview
 
-Database migrations are the controlled mechanism for evolving Meridian's schema across development, staging, and production environments — ensuring that schema changes are reviewed, tested, reversible, and deployed without downtime. Every migration follows a four-phase lifecycle: development (generate, review, test locally), CI pipeline (lint, apply to ephemeral database, run full test suite), production rollout (approve, apply, verify or roll back), and post-deploy cleanup (backfill data, add indexes, remove old columns). Every migration must have a reversible down migration.
+Database migrations are the controlled mechanism for evolving Vaeloom's schema across development, staging, and production environments â€” ensuring that schema changes are reviewed, tested, reversible, and deployed without downtime. Every migration follows a four-phase lifecycle: development (generate, review, test locally), CI pipeline (lint, apply to ephemeral database, run full test suite), production rollout (approve, apply, verify or roll back), and post-deploy cleanup (backfill data, add indexes, remove old columns). Every migration must have a reversible down migration.
 
 This document defines the migration framework, conventions, zero-downtime patterns, rollback procedures, and environment-specific strategies. It serves all developers making schema changes, SRE engineers approving and applying production migrations, and platform engineers maintaining the migration pipeline. The golden rule: always apply the migration before deploying new application code that depends on the new schema.
 
 ## Goals
 
 - Ensure every migration is reversible with a tested down migration before production deployment
-- Achieve zero-downtime schema changes at Enterprise scale through progressive rollout patterns (add → backfill → constrain → drop)
+- Achieve zero-downtime schema changes at Enterprise scale through progressive rollout patterns (add â†’ backfill â†’ constrain â†’ drop)
 - Validate every migration against an ephemeral database with the full test suite in CI before merging
 - Complete production migration rollback within 5 minutes using prepared down migrations
 - Maintain a clean migration history with squashed baselines quarterly to keep deployment times fast
@@ -22,13 +22,13 @@ This document defines the migration framework, conventions, zero-downtime patter
 **In Scope:**
 - Migration framework selection (Prisma Migrate for TypeScript, Alembic for Python)
 - Migration file naming convention: `YYYYMMDD_HHMMSS_description.sql`
-- Reversible migration requirement — every up migration must have a corresponding down migration
+- Reversible migration requirement â€” every up migration must have a corresponding down migration
 - CI pipeline validation: lint, ephemeral database, apply, test, merge gate
-- Zero-downtime pattern: add column → backfill → add constraint → drop old column
+- Zero-downtime pattern: add column â†’ backfill â†’ add constraint â†’ drop old column
 - Rollback procedures and migration audit logging
 
 **Out of Scope:**
-- Online schema change tools (gh-ost, pt-online-schema-change) — future improvement
+- Online schema change tools (gh-ost, pt-online-schema-change) â€” future improvement
 - Database branching or schema diff tools beyond the ORM migration framework
 - Migration of non-PostgreSQL stores (AGE graph, pgvector, Qdrant)
 - Automated schema drift detection and resolution
@@ -40,14 +40,14 @@ This document defines the migration framework, conventions, zero-downtime patter
 
 ```mermaid
 graph TD
-    %% ─── Class Definitions ───
+    %% â”€â”€â”€ Class Definitions â”€â”€â”€
     classDef dev fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
     classDef ci fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef prod fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef post fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
 
-    %% ─── Phase 1: Development ───
-    subgraph Dev["👨‍💻 1. Development"]
+    %% â”€â”€â”€ Phase 1: Development â”€â”€â”€
+    subgraph Dev["ðŸ‘¨â€ðŸ’» 1. Development"]
         direction TB
         D1["Developer makes schema change<br/>in Prisma / SQLAlchemy models"] --> D2["Generate migration file<br/><code>npx prisma migrate dev</code>"]
         D2 --> D3["Review generated SQL<br/>in <code>migrations/</code> folder"]
@@ -58,8 +58,8 @@ graph TD
         D6 -->|No| D2
     end
 
-    %% ─── Phase 2: CI Pipeline ───
-    subgraph CI["🔁 2. CI Pipeline"]
+    %% â”€â”€â”€ Phase 2: CI Pipeline â”€â”€â”€
+    subgraph CI["ðŸ” 2. CI Pipeline"]
         direction TB
         D7 --> C1["CI triggers on PR:"]
         C1 --> C2["Lint migration file naming<br/>& check for down migration"]
@@ -68,29 +68,29 @@ graph TD
         C4 --> C5["Run full test suite<br/>against migrated DB"]
         C5 --> C6{"CI passes?"}
         C6 -->|Yes| C7["PR approved + merged<br/>to main branch"]
-        C6 -->|No| C8["❌ Block merge
+        C6 -->|No| C8["âŒ Block merge
         Fix migration"]
         C8 --> D2
     end
 
-    %% ─── Phase 3: Production ───
-    subgraph Prod["🚀 3. Production Rollout"]
+    %% â”€â”€â”€ Phase 3: Production â”€â”€â”€
+    subgraph Prod["ðŸš€ 3. Production Rollout"]
         direction TB
         C7 --> P1["Tag release + deploy<br/>new application code"]
         P1 --> P2["Manual approval<br/>(SRE / senior engineer)"]
         P2 --> P3["Apply migration to prod DB<br/><code>prisma migrate deploy</code>"]
         P3 --> P4["Verify schema version<br/>check for errors"]
         P4 --> P5{"Migration succeeded?"}
-        P5 -->|Yes| P6["✅ Rollout complete<br/>monitor for 15 min"]
+        P5 -->|Yes| P6["âœ… Rollout complete<br/>monitor for 15 min"]
         P5 -->|No| P7["Run down migration<br/><code>prisma migrate resolve --rolled-back</code>"]
         P7 --> P8["Roll back application<br/>code to previous tag"]
-        P8 --> P9["🔴 Incident review
+        P8 --> P9["ðŸ”´ Incident review
         Fix migration bug"]
         P9 --> D2
     end
 
-    %% ─── Phase 4: Post-Deploy ───
-    subgraph Post["🧹 4. Post-Deploy Cleanup"]
+    %% â”€â”€â”€ Phase 4: Post-Deploy â”€â”€â”€
+    subgraph Post["ðŸ§¹ 4. Post-Deploy Cleanup"]
         direction TB
         P6 --> PT1["Backfill data in batches<br/>(if new columns)"]
         PT1 --> PT2["Add indexes<br/>after backfill completes"]
@@ -98,14 +98,14 @@ graph TD
         PT3 --> PT4["Drop unused indexes<br/>reclaim storage"]
     end
 
-    %% ─── Apply styles ───
+    %% â”€â”€â”€ Apply styles â”€â”€â”€
     class D1,D2,D3,D4,D5,D6,D7 dev
     class C1,C2,C3,C4,C5,C6,C7,C8 ci
     class P1,P2,P3,P4,P5,P6,P7,P8,P9 prod
     class PT1,PT2,PT3,PT4 post
 ```
 
-> **Diagram:** The migration lifecycle flows through four phases. **Development:** model change → generate → review → test locally. **CI Pipeline:** lint → ephemeral DB → apply → test → merge. **Production Rollout:** deploy code → approve → apply → verify or rollback → incident review. **Post-Deploy:** backfill → add indexes → remove old columns → reclaim space. Every failure path loops back to development for a fix.
+> **Diagram:** The migration lifecycle flows through four phases. **Development:** model change â†’ generate â†’ review â†’ test locally. **CI Pipeline:** lint â†’ ephemeral DB â†’ apply â†’ test â†’ merge. **Production Rollout:** deploy code â†’ approve â†’ apply â†’ verify or rollback â†’ incident review. **Post-Deploy:** backfill â†’ add indexes â†’ remove old columns â†’ reclaim space. Every failure path loops back to development for a fix.
 
 ---
 
@@ -160,35 +160,35 @@ npx prisma migrate resolve --rolled-back "20260712_add_memory_confidence"
 
 | Mistake | Consequence |
 |---------|-------------|
-| Migrations without a down migration | If a production migration fails, there is no way to revert — the database is stuck in an inconsistent state until a manual fix is developed |
-| Adding NOT NULL constraints to existing columns without a backfill | A column added as NOT NULL to a table with existing NULL rows causes the migration to fail on production — always backfill data first, then add constraints |
-| Running migrations as part of application startup | If the application starts before the migration completes, two instances race to migrate — use explicit `migrate deploy` commands, not auto-migration on boot |
-| Creating indexes on large tables during peak traffic | A sequential index scan blocks writes — create indexes CONCURRENTLY on tables larger than 1M rows or schedule during maintenance windows |
+| Migrations without a down migration | If a production migration fails, there is no way to revert â€” the database is stuck in an inconsistent state until a manual fix is developed |
+| Adding NOT NULL constraints to existing columns without a backfill | A column added as NOT NULL to a table with existing NULL rows causes the migration to fail on production â€” always backfill data first, then add constraints |
+| Running migrations as part of application startup | If the application starts before the migration completes, two instances race to migrate â€” use explicit `migrate deploy` commands, not auto-migration on boot |
+| Creating indexes on large tables during peak traffic | A sequential index scan blocks writes â€” create indexes CONCURRENTLY on tables larger than 1M rows or schedule during maintenance windows |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Every migration must be reversible | A down migration should be written alongside the up migration and tested — production rollbacks are not the time to write a down migration from scratch |
-| Use zero-downtime patterns for enterprise | Add columns without NOT NULL → backfill → add constraints → remove old columns in a separate release — each step is a reversible, independent deployment |
-| Test migrations against a production-sized copy | A migration that runs in 2 seconds on a development database may take 20 minutes on production — test against realistic data volumes in staging |
-| Run migrations before deploying application code | The new application code expects the new schema — apply the migration first, then deploy the code that uses it. This avoids errors from code running against old schemas |
+| Every migration must be reversible | A down migration should be written alongside the up migration and tested â€” production rollbacks are not the time to write a down migration from scratch |
+| Use zero-downtime patterns for enterprise | Add columns without NOT NULL â†’ backfill â†’ add constraints â†’ remove old columns in a separate release â€” each step is a reversible, independent deployment |
+| Test migrations against a production-sized copy | A migration that runs in 2 seconds on a development database may take 20 minutes on production â€” test against realistic data volumes in staging |
+| Run migrations before deploying application code | The new application code expects the new schema â€” apply the migration first, then deploy the code that uses it. This avoids errors from code running against old schemas |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Migration script access | Migration files execute arbitrary SQL including DROP and DELETE — access to migration files and the ability to run them must be restricted to senior engineers |
-| Data exposure in migration logs | Migrations that SELECT or UPDATE user data may log sensitive information — ensure migration logging redacts PII |
-| Rollback of destructive migrations | A migration that drops a column or table cannot recover data unless a backup exists — always take a backup before destructive migrations |
+| Migration script access | Migration files execute arbitrary SQL including DROP and DELETE â€” access to migration files and the ability to run them must be restricted to senior engineers |
+| Data exposure in migration logs | Migrations that SELECT or UPDATE user data may log sensitive information â€” ensure migration logging redacts PII |
+| Rollback of destructive migrations | A migration that drops a column or table cannot recover data unless a backup exists â€” always take a backup before destructive migrations |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Index creation during migrations | Use `CREATE INDEX CONCURRENTLY` for tables with active writes — standard CREATE INDEX blocks writes on the table |
-| Data backfill batches | Backfilling millions of rows in a single transaction ties up connection pool and transaction log — backfill in batches of 1,000-10,000 rows with progress logging |
-| Foreign key validation | Adding a foreign key to a large table validates all existing rows — use `NOT VALID` then `VALIDATE CONCURRENTLY` to avoid blocking writes |
+| Index creation during migrations | Use `CREATE INDEX CONCURRENTLY` for tables with active writes â€” standard CREATE INDEX blocks writes on the table |
+| Data backfill batches | Backfilling millions of rows in a single transaction ties up connection pool and transaction log â€” backfill in batches of 1,000-10,000 rows with progress logging |
+| Foreign key validation | Adding a foreign key to a large table validates all existing rows â€” use `NOT VALID` then `VALIDATE CONCURRENTLY` to avoid blocking writes |
 
 ---
 
@@ -207,7 +207,7 @@ npx prisma migrate resolve --rolled-back "20260712_add_memory_confidence"
 | Dimension | Current Limit | 10x Strategy | 100x Strategy |
 |-----------|---------------|--------------|---------------|
 | Migration file count | 100 migrations per year | Squash migrations quarterly into baseline | Versioned baseline migrations per release train |
-| Tables affected per migration | 1-3 tables | Zero-downtime patterns (add → backfill → constraint) | Parallel migration execution for independent schema changes |
+| Tables affected per migration | 1-3 tables | Zero-downtime patterns (add â†’ backfill â†’ constraint) | Parallel migration execution for independent schema changes |
 | Rollback complexity | One-off rollback per migration | Every migration has reversible down migration | Automated rollback testing in CI/CD |
 
 ---
@@ -239,7 +239,7 @@ npx prisma migrate resolve --rolled-back "20260712_add_memory_confidence"
 
 | Limitation | Impact | Workaround | Future Resolution |
 |------------|--------|------------|-------------------|
-| No online schema change support (gh-ost, pt-online) | ALTER TABLE on large tables locks writes | Use zero-downtime pattern (add → backfill → swap → drop) | Integrate gh-ost for online schema changes |
+| No online schema change support (gh-ost, pt-online) | ALTER TABLE on large tables locks writes | Use zero-downtime pattern (add â†’ backfill â†’ swap â†’ drop) | Integrate gh-ost for online schema changes |
 | Migration squashing is manual | 100+ migration files slow down fresh DB setup | Manual quarterly squash into baseline | Automated migration squash tool |
 | Rollback is not always reversible | Some changes (DROP COLUMN, data transformation) cannot be rolled back cleanly | Never perform destructive changes without backup | Immutable migration patterns with forward-only approach |
 
@@ -328,7 +328,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Migration lifecycle — a developer writes a reversible migration, CI validates it against an ephemeral database (apply → test → rollback → re-apply), then the migration is applied to production before the new code that depends on it. The golden rule: migration first, code second.
+> **Diagram:** Migration lifecycle â€” a developer writes a reversible migration, CI validates it against an ephemeral database (apply â†’ test â†’ rollback â†’ re-apply), then the migration is applied to production before the new code that depends on it. The golden rule: migration first, code second.
 
 ---
 

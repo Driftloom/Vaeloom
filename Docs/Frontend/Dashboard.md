@@ -1,10 +1,10 @@
-# Dashboard
+﻿# Dashboard
 
 > **Purpose:** Define the Dashboard page and its widgets
-> **Status:** ✅ Upgraded to enterprise quality
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Frontend Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/Meridian-Complete-Documentation.md#8-screens`](../../Docs/Meridian-Complete-Documentation.md#8-screens)
+> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#8-screens`](../../Docs/Vaeloom-Complete-Documentation.md#8-screens)
 
 ## Overview
 
@@ -14,7 +14,7 @@ graph TD
     classDef source fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef layoutClass fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Sources["📡 Data Sources"]
+    subgraph Sources["ðŸ“¡ Data Sources"]
         S1["Memory Agent<br/>Entity growth, consolidation"]
         S2["Career Memory<br/>Applications, goals"]
         S3["Scheduler<br/>Deadlines, calendar"]
@@ -22,7 +22,7 @@ graph TD
         S5["Recommendation Agent<br/>Proactive suggestions"]
     end
 
-    subgraph Widgets["📊 Dashboard Widgets"]
+    subgraph Widgets["ðŸ“Š Dashboard Widgets"]
         W1["Memory Health<br/>Growth rate, consolidation"]
         W2["Knowledge Growth<br/>Sparkline of entities"]
         W3["Active Applications<br/>Count + status"]
@@ -33,7 +33,7 @@ graph TD
         W8["Per-Agent Status<br/>Health check per agent"]
     end
 
-    subgraph Layout["🔲 Dashboard Layout"]
+    subgraph Layout["ðŸ”² Dashboard Layout"]
         L1["Row 1: Memory Health | Knowledge Growth"]
         L2["Row 2: Active Apps | Upcoming Deadlines"]
         L3["Row 3: Recent Activity (full width)"]
@@ -49,11 +49,11 @@ graph TD
     class L1,L2,L3,L4,L5 layoutClass
 ```
 
-> **Diagram:** Dashboard is composed entirely from other modules — **5 data sources** feed **8 widgets** into a **5-row layout**. The dashboard holds no unique logic of its own; it's an aggregation view. Widgets include Memory Health, Knowledge Growth, Active Applications, Upcoming Deadlines, Goal Progress, Recent Activity, AI Suggestions, and Per-Agent Status.
+> **Diagram:** Dashboard is composed entirely from other modules â€” **5 data sources** feed **8 widgets** into a **5-row layout**. The dashboard holds no unique logic of its own; it's an aggregation view. Widgets include Memory Health, Knowledge Growth, Active Applications, Upcoming Deadlines, Goal Progress, Recent Activity, AI Suggestions, and Per-Agent Status.
 
 ---
 
-The Dashboard is the primary landing page, composed entirely from other modules — it holds no unique logic of its own.
+The Dashboard is the primary landing page, composed entirely from other modules â€” it holds no unique logic of its own.
 
 ## Widgets
 
@@ -71,17 +71,17 @@ The Dashboard is the primary landing page, composed entirely from other modules 
 ## Layout
 
 ```text
-┌─────────────────────────────────────────────┐
-│  Memory Health  │  Knowledge Growth          │
-├────────────────┼────────────────────────────┤
-│  Active Apps   │  Upcoming Deadlines         │
-├────────────────┴────────────────────────────┤
-│  Recent Activity                             │
-├─────────────────────────────────────────────┤
-│  AI Suggestions                              │
-├────────────────┬────────────────────────────┤
-│  Agent Status  │  Goal Progress              │
-└────────────────┴────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Memory Health  â”‚  Knowledge Growth          â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  Active Apps   â”‚  Upcoming Deadlines         â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  Recent Activity                             â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  AI Suggestions                              â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚  Agent Status  â”‚  Goal Progress              â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ## API Endpoints
@@ -95,19 +95,19 @@ The Dashboard is the primary landing page, composed entirely from other modules 
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Displaying too many widgets on one screen | Information overload causes users to ignore the dashboard entirely — focus on the 5-7 most actionable metrics |
+| Displaying too many widgets on one screen | Information overload causes users to ignore the dashboard entirely â€” focus on the 5-7 most actionable metrics |
 | Stale data without refresh indicators | Users lose trust when they see yesterday's data without knowing it's stale; always show "last updated" timestamps |
 | Empty widgets with no guidance | A blank memory health widget should explain what it will show once data is available, not just display a grey box |
-| Widgets that aren't clickable | If a user sees a metric they want to explore, every widget should deep-link to its full screen — no dead-end information |
+| Widgets that aren't clickable | If a user sees a metric they want to explore, every widget should deep-link to its full screen â€” no dead-end information |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Personalize widget layout based on user behavior | Power users may want Agent Status first; new users benefit from Recent Activity — let users rearrange widgets |
+| Personalize widget layout based on user behavior | Power users may want Agent Status first; new users benefit from Recent Activity â€” let users rearrange widgets |
 | Cache dashboard aggregates with explicit invalidation | The dashboard is the most-fetched page; cache its aggregated response and invalidate on relevant memory writes, not on a timer |
-| Show meaningful empty states with call-to-action | An empty Applications list should prompt "Connect a job platform to start" — never just "No applications found" |
-| Surface actionable insights, not raw data | Instead of "14 documents organized," show "14 documents organized — review 3 proposals pending approval" |
+| Show meaningful empty states with call-to-action | An empty Applications list should prompt "Connect a job platform to start" â€” never just "No applications found" |
+| Surface actionable insights, not raw data | Instead of "14 documents organized," show "14 documents organized â€” review 3 proposals pending approval" |
 
 ## Security
 
@@ -121,9 +121,9 @@ The Dashboard is the primary landing page, composed entirely from other modules 
 
 | Concern | Guideline |
 |---------|-----------|
-| Lazy-load individual dashboard widgets | Load and render widgets independently — a slow memory health query should not block the entire dashboard from rendering |
+| Lazy-load individual dashboard widgets | Load and render widgets independently â€” a slow memory health query should not block the entire dashboard from rendering |
 | Stale-while-revalidate for aggregate data | Return the last cached dashboard state immediately, then refresh in the background; the dashboard loads instantly even if data is a few seconds stale |
-| Widget-level caching with independent TTLs | Memory health can cache for 5 minutes; recent activity needs 30-second freshness — use different staleTime values per widget query |
+| Widget-level caching with independent TTLs | Memory health can cache for 5 minutes; recent activity needs 30-second freshness â€” use different staleTime values per widget query |
 
 ## Security Considerations
 
@@ -137,25 +137,25 @@ The Dashboard is the primary landing page, composed entirely from other modules 
 
 | Concern | Approach |
 |---------|----------|
-| Lazy-load individual dashboard widgets | Load and render widgets independently — a slow memory health query should not block the entire dashboard from rendering |
+| Lazy-load individual dashboard widgets | Load and render widgets independently â€” a slow memory health query should not block the entire dashboard from rendering |
 | Stale-while-revalidate for aggregate data | Return the last cached dashboard state immediately, then refresh in the background; the dashboard loads instantly even if data is a few seconds stale |
-| Widget-level caching with independent TTLs | Memory health can cache for 5 minutes; recent activity needs 30-second freshness — use different staleTime values per widget query |
+| Widget-level caching with independent TTLs | Memory health can cache for 5 minutes; recent activity needs 30-second freshness â€” use different staleTime values per widget query |
 
 ## Components
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| WidgetGrid | Responsive dashboard layout (1→2→3 columns) | CSS Grid + Tailwind | Adaptive per viewport; 1 col mobile, 2 tablet, 3 desktop |
+| WidgetGrid | Responsive dashboard layout (1â†’2â†’3 columns) | CSS Grid + Tailwind | Adaptive per viewport; 1 col mobile, 2 tablet, 3 desktop |
 | MemoryHealthCard | Growth rate + consolidation status | Recharts Sparkline + Badge | Instance per widget; SSR skeleton then client hydrate |
 | RecentActivityFeed | Last 10 agent actions timeline | Virtualized List | Lazy-loads beyond 10 items; cursor-based pagination |
 | AISuggestionsPanel | Proactive agent recommendations | Card list + approve/dismiss | Singleton per dashboard; polls every 30s via refetchInterval |
 
 ## Workflows
 
-1. **Dashboard initial load**: User navigates to `/` → server renders skeleton layout → client hydrates widgets in parallel → TanStack Query fires 8 independent queries → each widget renders independently as data arrives → stale-while-revalidate shows cached data immediately
-2. **Widget interaction**: User clicks memory health widget → deep-links to `/memory` → Memory Agent context pre-loaded via prefetch → transition with shared element animation
-3. **AI suggestion response**: User clicks "Approve" on AI suggestion → optimistic UI updates (proposal disappears) → POST to API confirms → on error, suggestion reappears with toast notification
-4. **Custom layout**: User drags widget to new position → layout config saved to localStorage → persisted across sessions → layout state synced to account settings via debounced POST
+1. **Dashboard initial load**: User navigates to `/` â†’ server renders skeleton layout â†’ client hydrates widgets in parallel â†’ TanStack Query fires 8 independent queries â†’ each widget renders independently as data arrives â†’ stale-while-revalidate shows cached data immediately
+2. **Widget interaction**: User clicks memory health widget â†’ deep-links to `/memory` â†’ Memory Agent context pre-loaded via prefetch â†’ transition with shared element animation
+3. **AI suggestion response**: User clicks "Approve" on AI suggestion â†’ optimistic UI updates (proposal disappears) â†’ POST to API confirms â†’ on error, suggestion reappears with toast notification
+4. **Custom layout**: User drags widget to new position â†’ layout config saved to localStorage â†’ persisted across sessions â†’ layout state synced to account settings via debounced POST
 
 ## Sequence Diagrams
 
@@ -164,7 +164,7 @@ sequenceDiagram
     participant U as User
     participant D as Dashboard
     participant TQ as TanStack Query
-    participant API as Meridian API
+    participant API as Vaeloom API
 
     U->>D: Navigate to Dashboard
     D->>D: Render skeleton layout (8 widget placeholders)
@@ -186,11 +186,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: Data pushed to dashboard via connector syncs (Gmail, LinkedIn, GitHub) → stored in PostgreSQL event tables → aggregation layer computes widget metrics
-2. **Processing**: Server-side aggregation endpoint (`GET /dashboard/summary`) queries 8 materialized views in parallel → merges into single response (200ms p95) → response cached in Redis with 30s TTL
-3. **Storage**: Widget layout preferences stored in `user_preferences` JSONB column → individual widget cache keys per user ID → shared data cached in Redis
-4. **Retrieval**: Client requests via TanStack Query with `staleTime: 30s` → individual widget endpoints for progressive loading → stale-while-revalidate pattern for instant paint
-5. **Deletion**: User disconnects connector → associated widget data invalidated → widget shows empty state with "Connect [service] to see data here" prompt
+1. **Ingestion**: Data pushed to dashboard via connector syncs (Gmail, LinkedIn, GitHub) â†’ stored in PostgreSQL event tables â†’ aggregation layer computes widget metrics
+2. **Processing**: Server-side aggregation endpoint (`GET /dashboard/summary`) queries 8 materialized views in parallel â†’ merges into single response (200ms p95) â†’ response cached in Redis with 30s TTL
+3. **Storage**: Widget layout preferences stored in `user_preferences` JSONB column â†’ individual widget cache keys per user ID â†’ shared data cached in Redis
+4. **Retrieval**: Client requests via TanStack Query with `staleTime: 30s` â†’ individual widget endpoints for progressive loading â†’ stale-while-revalidate pattern for instant paint
+5. **Deletion**: User disconnects connector â†’ associated widget data invalidated â†’ widget shows empty state with "Connect [service] to see data here" prompt
 
 ## Scalability
 
@@ -198,7 +198,7 @@ sequenceDiagram
 |-----------|---------------|--------------|---------------|
 | Widgets per dashboard | 8 | Configurable widget limit with pagination | User-customizable dashboard with marketplace widgets |
 | Concurrent dashboard queries | 8 per page load | Batch into single aggregated endpoint | Server-side streaming of widget data via SSE |
-| Layout configurations | 1 per user | Store in user_profile JSONB; indexed by user_id | Tiered storage — hot layout in Redis, cold layout in PostgreSQL |
+| Layout configurations | 1 per user | Store in user_profile JSONB; indexed by user_id | Tiered storage â€” hot layout in Redis, cold layout in PostgreSQL |
 | Widget data refresh | 30s polling | Push-based updates via WebSocket on data change | Real-time streaming with differential updates |
 
 ## Error Handling
@@ -214,10 +214,10 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Dashboard time-to-interactive | > 2s | Critical | Grafana — Web Vitals (LCP) |
-| Widget query failure rate | > 1% | Warning | Grafana — API Dashboard |
-| Stale data display frequency | > 10% of loads | Warning | Amplitude — Dashboard Engagement |
-| Widget layout reset events | > 1 per 1000 users | Info | Sentry — Log-level |
+| Dashboard time-to-interactive | > 2s | Critical | Grafana â€” Web Vitals (LCP) |
+| Widget query failure rate | > 1% | Warning | Grafana â€” API Dashboard |
+| Stale data display frequency | > 10% of loads | Warning | Amplitude â€” Dashboard Engagement |
+| Widget layout reset events | > 1 per 1000 users | Info | Sentry â€” Log-level |
 
 ## Risks
 
@@ -239,7 +239,7 @@ sequenceDiagram
 ## Goals
 
 - Render the full dashboard with all 8 widgets within 2 seconds of page navigation (Time to Interactive)
-- Maintain 100% widget independence — a slow or failed widget should never block other widgets from rendering
+- Maintain 100% widget independence â€” a slow or failed widget should never block other widgets from rendering
 - Achieve stale-while-revalidate on all widget data so users always see cached content instantly
 - Enable user-customizable widget layout with drag-and-drop reordering saved across sessions
 - Surface actionable AI suggestions that achieve 40%+ user approval rate
@@ -329,4 +329,4 @@ function useSuggestionResponse() {
 ## Related Documents
 
 - [Frontend Architecture.md](./Frontend-Architecture.md)
-- [`/Docs/Meridian-Complete-Documentation.md#8-screens`](../../Docs/Meridian-Complete-Documentation.md#8-screens)
+- [`/Docs/Vaeloom-Complete-Documentation.md#8-screens`](../../Docs/Vaeloom-Complete-Documentation.md#8-screens)

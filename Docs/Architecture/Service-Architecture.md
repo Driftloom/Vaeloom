@@ -1,8 +1,8 @@
-# Service Architecture
+﻿# Service Architecture
 
-> **Purpose:** Define the service architecture and inter-service communication for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
-> **Canonical source:** [`/Docs/Meridian-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Meridian-Complete-Documentation.md#135-deployment-architecture)
+> **Purpose:** Define the service architecture and inter-service communication for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
+> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture)
 
 ## Service Map
 
@@ -44,43 +44,43 @@ graph TD
 
 | Path | Protocol | Notes |
 |------|----------|-------|
-| Web → API | HTTP/REST | Standard API calls |
-| API → AI | Internal RPC | Agent requests, not exposed externally |
-| AI → API | Internal RPC | Memory writes, permission checks |
+| Web â†’ API | HTTP/REST | Standard API calls |
+| API â†’ AI | Internal RPC | Agent requests, not exposed externally |
+| AI â†’ API | Internal RPC | Memory writes, permission checks |
 
 ## Common Mistakes
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Exposing AI service endpoints directly to the frontend | The AI service should only be reachable through the API service — direct frontend→AI access bypasses permission checks, auth, and audit logging |
-| Hardcoded service URLs and ports in configuration | Service locations change between environments (local dev vs staging vs production) — use environment variables or service discovery, not hardcoded connection strings |
-| No circuit breaker for inter-service calls | When the AI service is slow or down, the API service should fail fast rather than hanging — circuit breakers prevent cascading failures across services |
-| Mixing synchronous and async communication without clear patterns | Some calls use HTTP, others use events, others use WebSocket — without documented patterns, developers choose randomly, creating an unmaintainable mix |
+| Exposing AI service endpoints directly to the frontend | The AI service should only be reachable through the API service â€” direct frontendâ†’AI access bypasses permission checks, auth, and audit logging |
+| Hardcoded service URLs and ports in configuration | Service locations change between environments (local dev vs staging vs production) â€” use environment variables or service discovery, not hardcoded connection strings |
+| No circuit breaker for inter-service calls | When the AI service is slow or down, the API service should fail fast rather than hanging â€” circuit breakers prevent cascading failures across services |
+| Mixing synchronous and async communication without clear patterns | Some calls use HTTP, others use events, others use WebSocket â€” without documented patterns, developers choose randomly, creating an unmaintainable mix |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Route all AI service access through the API service's internal RPC boundary | The API service enforces auth, permission checks, and rate limiting before forwarding to the AI service — never expose AI endpoints to the frontend |
+| Route all AI service access through the API service's internal RPC boundary | The API service enforces auth, permission checks, and rate limiting before forwarding to the AI service â€” never expose AI endpoints to the frontend |
 | Use environment variables or a service registry for all inter-service URLs | A service registry (or even a simple environment variable per service URL) makes services portable across environments without code changes |
-| Implement circuit breakers on all inter-service HTTP/gRPC calls | When a downstream service fails, the circuit breaker opens and subsequent calls fail fast (within 10ms) rather than hanging for 30s timeout — prevents resource exhaustion |
-| Document communication patterns per service | Each service should document which other services it calls (sync), which events it publishes (async), and which events it consumes — makes the communication topology visible and reviewable |
+| Implement circuit breakers on all inter-service HTTP/gRPC calls | When a downstream service fails, the circuit breaker opens and subsequent calls fail fast (within 10ms) rather than hanging for 30s timeout â€” prevents resource exhaustion |
+| Document communication patterns per service | Each service should document which other services it calls (sync), which events it publishes (async), and which events it consumes â€” makes the communication topology visible and reviewable |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Internal service discovery exposing topology | Service registries (Consul, Kubernetes DNS) can reveal internal service topology — restrict access to the registry to authorized services only |
-| Health check endpoints leaking system information | Health endpoints (`/health`, `/ready`) should return pass/fail status only — avoid including version numbers, dependency versions, or internal configuration in health responses |
-| Stale service-to-service tokens | Service tokens used for inter-service auth that never expire create a long-lived credential risk — rotate service tokens every 24 hours; automate rotation with a sidecar or service mesh |
+| Internal service discovery exposing topology | Service registries (Consul, Kubernetes DNS) can reveal internal service topology â€” restrict access to the registry to authorized services only |
+| Health check endpoints leaking system information | Health endpoints (`/health`, `/ready`) should return pass/fail status only â€” avoid including version numbers, dependency versions, or internal configuration in health responses |
+| Stale service-to-service tokens | Service tokens used for inter-service auth that never expire create a long-lived credential risk â€” rotate service tokens every 24 hours; automate rotation with a sidecar or service mesh |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Serial inter-service call chains | If the API service must call the AI service to get data before it can respond to the frontend, that adds RTT latency — batch or parallelize requests where data from multiple services is needed |
-| Connection pool exhaustion under load | Each service maintains a connection pool to PostgreSQL and Redis — under high load, connection pool limits can throttle request throughput before CPU becomes the bottleneck |
-| Service mesh overhead | A service mesh (Istio/Linkerd) adds ~5-10ms of latency per hop via sidecar proxies — for latency-sensitive paths (Chat), consider bypassing the mesh for direct connections |
+| Serial inter-service call chains | If the API service must call the AI service to get data before it can respond to the frontend, that adds RTT latency â€” batch or parallelize requests where data from multiple services is needed |
+| Connection pool exhaustion under load | Each service maintains a connection pool to PostgreSQL and Redis â€” under high load, connection pool limits can throttle request throughput before CPU becomes the bottleneck |
+| Service mesh overhead | A service mesh (Istio/Linkerd) adds ~5-10ms of latency per hop via sidecar proxies â€” for latency-sensitive paths (Chat), consider bypassing the mesh for direct connections |
 
 ## Goals
 
@@ -114,7 +114,7 @@ graph TD
 
 | ID | Requirement | Target | Measurement |
 |----|-------------|--------|-------------|
-| SVC-NFR-01 | Inter-service call latency (API → AI) | < 50ms p99 | Distributed tracing (OpenTelemetry) |
+| SVC-NFR-01 | Inter-service call latency (API â†’ AI) | < 50ms p99 | Distributed tracing (OpenTelemetry) |
 | SVC-NFR-02 | Service startup time for auto-scaling readiness | < 30s | Container startup time metric |
 | SVC-NFR-03 | Circuit breaker open timeout before retry | 30s | Circuit breaker state monitoring |
 | SVC-NFR-04 | Maximum connection pool size per service | 20 connections per instance | Connection pool utilization metrics |
@@ -167,11 +167,11 @@ graph TD
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `API_SERVICE_URL` | Internal API service URL for frontend server | — | Yes |
-| `AI_SERVICE_URL` | Internal AI service RPC endpoint | — | Yes |
+| `API_SERVICE_URL` | Internal API service URL for frontend server | â€” | Yes |
+| `AI_SERVICE_URL` | Internal AI service RPC endpoint | â€” | Yes |
 | `CIRCUIT_BREAKER_TIMEOUT` | Timeout in ms for circuit breaker open state | `30000` | No |
 | `MAX_RETRY_ATTEMPTS` | Maximum retry attempts for failed inter-service calls | `3` | No |
-| `SERVICE_TOKEN` | Shared secret for inter-service authentication | — | Yes |
+| `SERVICE_TOKEN` | Shared secret for inter-service authentication | â€” | Yes |
 
 ## Risks
 
@@ -204,13 +204,13 @@ const resume = await rpc.call("ai-service", {
 ### Check service health
 
 ```bash
-meridian service health --name api,ai-service,worker
+Vaeloom service health --name api,ai-service,worker
 ```
 
 ### View communication topology
 
 ```bash
-meridian service map --format mermaid
+Vaeloom service map --format mermaid
 ```
 
 ## Future Improvements
@@ -226,4 +226,4 @@ meridian service map --format mermaid
 
 - [Microservices.md](./Microservices.md)
 - [Infrastructure.md](./Infrastructure.md)
-- [`/Docs/Meridian-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Meridian-Complete-Documentation.md#135-deployment-architecture)
+- [`/Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture)

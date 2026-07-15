@@ -1,7 +1,7 @@
-# Encryption
+﻿# Encryption
 
-> **Purpose:** Define encryption standards for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define encryption standards for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
 
@@ -14,14 +14,14 @@ graph TD
     classDef key fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef field fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph InTransit["🌐 Encryption in Transit"]
+    subgraph InTransit["ðŸŒ Encryption in Transit"]
         direction TB
         T1["TLS 1.3<br/>All external traffic"]
         T2["TLS 1.2 minimum<br/>Force downgrade protection"]
         T3["mTLS<br/>Internal service mesh"]
     end
 
-    subgraph AtRest["💾 Encryption at Rest"]
+    subgraph AtRest["ðŸ’¾ Encryption at Rest"]
         direction TB
         R1["Database (PostgreSQL)<br/>AES-256 TDE"]
         R2["Object Storage (S3)<br/>AES-256 SSE"]
@@ -29,7 +29,7 @@ graph TD
         R4["Redis (optional)<br/>AES-256 at rest"]
     end
 
-    subgraph KeyMgmt["🔑 Key Management"]
+    subgraph KeyMgmt["ðŸ”‘ Key Management"]
         direction TB
         K1["DB Encryption Key<br/>Cloud KMS<br/>Rotation: Annual"]
         K2["TLS Certificates<br/>Certificate Manager<br/>Rotation: Biannual"]
@@ -37,7 +37,7 @@ graph TD
         K4["Session Keys<br/>Auth Provider<br/>Rotation: Per session"]
     end
 
-    subgraph FieldLevel["📝 Field-Level Encryption"]
+    subgraph FieldLevel["ðŸ“ Field-Level Encryption"]
         F1["Sensitive fields<br/>Encrypted with AES-256-GCM<br/>Random IV per field<br/>Authentication tag included"]
     end
 
@@ -51,7 +51,7 @@ graph TD
     class F1 field
 ```
 
-> **Diagram:** Encryption spans three layers — **transit** (TLS 1.3 external, mTLS internal), **at rest** (AES-256 for DB, S3, secrets, Redis), and **key management** with rotation policies. Field-level encryption protects the most sensitive data with per-field IVs and authentication tags.
+> **Diagram:** Encryption spans three layers â€” **transit** (TLS 1.3 external, mTLS internal), **at rest** (AES-256 for DB, S3, secrets, Redis), and **key management** with rotation policies. Field-level encryption protects the most sensitive data with per-field IVs and authentication tags.
 
 ---
 
@@ -103,53 +103,53 @@ function encryptField(plaintext: string, key: Buffer): string {
 
 | Mistake | Consequence |
 |---------|-------------|
-| Using the same encryption key for everything | A single compromised key exposes all data — use a key hierarchy: a master key encrypts data keys, which encrypt individual records or fields. Rotate data keys frequently, master key annually |
-| Encrypting everything without considering performance | Full-database encryption (TDE) adds 5-15% CPU overhead — use field-level encryption for sensitive fields only (PII, tokens) and TDE for the rest to balance security and performance |
-| Not handling key rotation for existing encrypted data | Rotating the encryption key doesn't re-encrypt existing data unless a key-wrapping scheme is used — use an envelope encryption pattern where the data key is wrapped by the master key, allowing key rotation without re-encrypting |
+| Using the same encryption key for everything | A single compromised key exposes all data â€” use a key hierarchy: a master key encrypts data keys, which encrypt individual records or fields. Rotate data keys frequently, master key annually |
+| Encrypting everything without considering performance | Full-database encryption (TDE) adds 5-15% CPU overhead â€” use field-level encryption for sensitive fields only (PII, tokens) and TDE for the rest to balance security and performance |
+| Not handling key rotation for existing encrypted data | Rotating the encryption key doesn't re-encrypt existing data unless a key-wrapping scheme is used â€” use an envelope encryption pattern where the data key is wrapped by the master key, allowing key rotation without re-encrypting |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Use envelope encryption with a key hierarchy | A master key (cloud KMS) encrypts data keys, which encrypt individual records — rotating the master key doesn't require re-encrypting all data, and data key rotation is low-cost |
-| Encrypt sensitive fields at the application layer, not just at rest | Database-level TDE protects against disk theft but not against compromised database queries — field-level encryption ensures that even a SQL injection attack can't read encrypted columns |
-| Automate key rotation with a rotation schedule | Manual key rotation is unreliable — use cloud KMS automatic rotation for master keys (annual) and implement scheduled rotation jobs for data keys (90 days) |
+| Use envelope encryption with a key hierarchy | A master key (cloud KMS) encrypts data keys, which encrypt individual records â€” rotating the master key doesn't require re-encrypting all data, and data key rotation is low-cost |
+| Encrypt sensitive fields at the application layer, not just at rest | Database-level TDE protects against disk theft but not against compromised database queries â€” field-level encryption ensures that even a SQL injection attack can't read encrypted columns |
+| Automate key rotation with a rotation schedule | Manual key rotation is unreliable â€” use cloud KMS automatic rotation for master keys (annual) and implement scheduled rotation jobs for data keys (90 days) |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Key material exposure through application logs | Encryption keys loaded into memory can be dumped via debug endpoints or core dumps — never log key material, zero out memory after use, and isolate encryption operations to a dedicated service |
-| Downgrade attack on TLS version | An attacker can force a connection to TLS 1.0 if the server supports it — configure the server to reject TLS versions below 1.2 and use HTTP Strict-Transport-Security headers to prevent downgrade at the client |
-| Encrypted data that can be brute-forced | Weak algorithms (DES, RC4) or short key lengths (128-bit) can be brute-forced — enforce a minimum of AES-256 for all encryption operations and use authenticated encryption (GCM) to prevent tampering |
+| Key material exposure through application logs | Encryption keys loaded into memory can be dumped via debug endpoints or core dumps â€” never log key material, zero out memory after use, and isolate encryption operations to a dedicated service |
+| Downgrade attack on TLS version | An attacker can force a connection to TLS 1.0 if the server supports it â€” configure the server to reject TLS versions below 1.2 and use HTTP Strict-Transport-Security headers to prevent downgrade at the client |
+| Encrypted data that can be brute-forced | Weak algorithms (DES, RC4) or short key lengths (128-bit) can be brute-forced â€” enforce a minimum of AES-256 for all encryption operations and use authenticated encryption (GCM) to prevent tampering |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Application-layer encryption overhead on reads | Every encrypted field must be decrypted on read — each decryption adds 1-5ms per field. Encrypt only the most sensitive fields (tokens, PII) and leave non-sensitive data unencrypted at the application layer |
-| TLS handshake latency for frequent connections | Each new TLS connection adds a 1-3 round trip handshake — use connection pooling with keep-alive and TLS session resumption to eliminate handshake overhead on repeated connections |
-| Key management API latency on every encryption operation | Calling cloud KMS for every encryption/decryption adds 10-50ms per call — cache the data key locally and only call KMS for master key operations (key rotation, initial unwrapping) |
+| Application-layer encryption overhead on reads | Every encrypted field must be decrypted on read â€” each decryption adds 1-5ms per field. Encrypt only the most sensitive fields (tokens, PII) and leave non-sensitive data unencrypted at the application layer |
+| TLS handshake latency for frequent connections | Each new TLS connection adds a 1-3 round trip handshake â€” use connection pooling with keep-alive and TLS session resumption to eliminate handshake overhead on repeated connections |
+| Key management API latency on every encryption operation | Calling cloud KMS for every encryption/decryption adds 10-50ms per call â€” cache the data key locally and only call KMS for master key operations (key rotation, initial unwrapping) |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Key material exposure through application logs | Encryption keys loaded into memory can be dumped via debug endpoints or core dumps — never log key material, zero out memory after use, and isolate encryption operations to a dedicated service |
-| Downgrade attack on TLS version | An attacker can force a connection to TLS 1.0 if the server supports it — configure the server to reject TLS versions below 1.2 and use HTTP Strict-Transport-Security headers to prevent downgrade at the client |
-| Encrypted data that can be brute-forced | Weak algorithms (DES, RC4) or short key lengths (128-bit) can be brute-forced — enforce a minimum of AES-256 for all encryption operations and use authenticated encryption (GCM) to prevent tampering |
+| Key material exposure through application logs | Encryption keys loaded into memory can be dumped via debug endpoints or core dumps â€” never log key material, zero out memory after use, and isolate encryption operations to a dedicated service |
+| Downgrade attack on TLS version | An attacker can force a connection to TLS 1.0 if the server supports it â€” configure the server to reject TLS versions below 1.2 and use HTTP Strict-Transport-Security headers to prevent downgrade at the client |
+| Encrypted data that can be brute-forced | Weak algorithms (DES, RC4) or short key lengths (128-bit) can be brute-forced â€” enforce a minimum of AES-256 for all encryption operations and use authenticated encryption (GCM) to prevent tampering |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Application-layer encryption overhead on reads | Every encrypted field must be decrypted on read — each decryption adds 1-5ms per field. Encrypt only the most sensitive fields (tokens, PII) and leave non-sensitive data unencrypted at the application layer |
-| TLS handshake latency for frequent connections | Each new TLS connection adds a 1-3 round trip handshake — use connection pooling with keep-alive and TLS session resumption to eliminate handshake overhead on repeated connections |
-| Key management API latency on every encryption operation | Calling cloud KMS for every encryption/decryption adds 10-50ms per call — cache the data key locally and only call KMS for master key operations (key rotation, initial unwrapping) |
+| Application-layer encryption overhead on reads | Every encrypted field must be decrypted on read â€” each decryption adds 1-5ms per field. Encrypt only the most sensitive fields (tokens, PII) and leave non-sensitive data unencrypted at the application layer |
+| TLS handshake latency for frequent connections | Each new TLS connection adds a 1-3 round trip handshake â€” use connection pooling with keep-alive and TLS session resumption to eliminate handshake overhead on repeated connections |
+| Key management API latency on every encryption operation | Calling cloud KMS for every encryption/decryption adds 10-50ms per call â€” cache the data key locally and only call KMS for master key operations (key rotation, initial unwrapping) |
 
 ## Overview
 
-Meridian's encryption strategy covers three data states — in transit (TLS 1.3), at rest (AES-256 TDE/SSE), and in use (field-level AES-256-GCM with per-record IVs). Key management follows an envelope encryption pattern where a master key in cloud KMS wraps data keys, enabling zero-downtime rotation without re-encrypting all stored data.
+Vaeloom's encryption strategy covers three data states â€” in transit (TLS 1.3), at rest (AES-256 TDE/SSE), and in use (field-level AES-256-GCM with per-record IVs). Key management follows an envelope encryption pattern where a master key in cloud KMS wraps data keys, enabling zero-downtime rotation without re-encrypting all stored data.
 
 ---
 
@@ -250,19 +250,19 @@ sequenceDiagram
     FE-->>APP: Plaintext
 ```
 
-> **Diagram:** Field-level encryption — data key loaded once from KMS, cached locally, used to encrypt/decrypt fields with random IV per field. Envelope pattern allows key rotation without re-encrypting all data.
+> **Diagram:** Field-level encryption â€” data key loaded once from KMS, cached locally, used to encrypt/decrypt fields with random IV per field. Envelope pattern allows key rotation without re-encrypting all data.
 
 ---
 
 ## Data Flow
 
 ```text
-Plaintext → Field Encryptor → Generate IV (16 bytes random)
-    → AES-256-GCM Encrypt (with data key + IV)
-    → Auth Tag (16 bytes)
-    → Store: {iv_hex}:{auth_tag_hex}:{ciphertext_hex}
-    → On Read: Parse → Decrypt (with same data key + IV)
-    → Plaintext
+Plaintext â†’ Field Encryptor â†’ Generate IV (16 bytes random)
+    â†’ AES-256-GCM Encrypt (with data key + IV)
+    â†’ Auth Tag (16 bytes)
+    â†’ Store: {iv_hex}:{auth_tag_hex}:{ciphertext_hex}
+    â†’ On Read: Parse â†’ Decrypt (with same data key + IV)
+    â†’ Plaintext
 ```
 
 ---

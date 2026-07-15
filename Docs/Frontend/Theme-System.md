@@ -1,10 +1,10 @@
-# Theme System
+﻿# Theme System
 
-> **Purpose:** Define the complete theme system for Meridian's frontend — token architecture, CSS custom properties, practical component examples, and best practices
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the complete theme system for Vaeloom's frontend â€” token architecture, CSS custom properties, practical component examples, and best practices
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Frontend Team
 > **Last Updated:** 2026-07-13
-> **Interactive preview:** 🎨 See all 91 tokens in action with live light/dark mode at [Design-Tokens-Reference.html](./Design-Tokens-Reference.html)
+> **Interactive preview:** ðŸŽ¨ See all 91 tokens in action with live light/dark mode at [Design-Tokens-Reference.html](./Design-Tokens-Reference.html)
 
 ---
 
@@ -17,7 +17,7 @@ graph TD
     classDef switch fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef rule fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph Light["☀️ Light Theme (Default)"]
+    subgraph Light["â˜€ï¸ Light Theme (Default)"]
         direction TB
         L1["--bg-primary: #ffffff<br/>--bg-secondary: #f9fafb"]
         L2["--text-primary: #111827<br/>--text-secondary: #4b5563"]
@@ -25,23 +25,23 @@ graph TD
         L4["--border-light: #e5e7eb<br/>--border-medium: #d1d5db"]
     end
 
-    subgraph Dark["🌙 Dark Theme"]
+    subgraph Dark["ðŸŒ™ Dark Theme"]
         D1["--bg-primary: #111827<br/>--bg-secondary: #1f2937"]
         D2["--text-primary: #f9fafb<br/>--text-secondary: #d1d5db"]
         D3["--accent-primary: #60a5fa<br/>--accent-success: #34d399"]
         D4["--border-light: #374151<br/>--border-medium: #4b5563"]
     end
 
-    subgraph Switching["🔄 Theme Switching"]
+    subgraph Switching["ðŸ”„ Theme Switching"]
         S1["Stored in localStorage"]
         S2["Default: System preference<br/>(prefers-color-scheme)"]
         S3["Override: Settings page"]
         S4["Applied via: data-theme attr on &lt;html&gt;"]
     end
 
-    subgraph Rules["📐 Component Theming Rules"]
-        R1["✅ Use semantic token: var(--bg-secondary)"]
-        R2["❌ NEVER use raw color: #f9fafb"]
+    subgraph Rules["ðŸ“ Component Theming Rules"]
+        R1["âœ… Use semantic token: var(--bg-secondary)"]
+        R2["âŒ NEVER use raw color: #f9fafb"]
     end
 
     Light & Dark --> Switching --> Rules
@@ -52,7 +52,7 @@ graph TD
     class R1,R2 rule
 ```
 
-> **Diagram:** Theme system architecture. **Light** (default) and **Dark** themes use CSS custom properties. **Theme switching** is stored in localStorage, defaults to system `prefers-color-scheme`, overridable in Settings, applied via `data-theme` attribute on `<html>`. **Golden rule**: always use semantic tokens — never raw colors.
+> **Diagram:** Theme system architecture. **Light** (default) and **Dark** themes use CSS custom properties. **Theme switching** is stored in localStorage, defaults to system `prefers-color-scheme`, overridable in Settings, applied via `data-theme` attribute on `<html>`. **Golden rule**: always use semantic tokens â€” never raw colors.
 
 ---
 
@@ -62,7 +62,7 @@ Design tokens are organized into three layers, each building on the one below:
 
 ```mermaid
 graph LR
-    subgraph Primitive["🔧 Layer 1 — Primitive Tokens"]
+    subgraph Primitive["ðŸ”§ Layer 1 â€” Primitive Tokens"]
         direction TB
         P1["Raw color values<br/>#3b82f6, #10b981, #ef4444"]
         P2["Raw spacing values<br/>4px, 8px, 12px, 16px"]
@@ -70,7 +70,7 @@ graph LR
         P4["Raw shadow values<br/>0 1px 3px rgba(0,0,0,0.12)"]
     end
 
-    subgraph Semantic["🎯 Layer 2 — Semantic Tokens"]
+    subgraph Semantic["ðŸŽ¯ Layer 2 â€” Semantic Tokens"]
         direction TB
         S1["--color-primary<br/>References a primitive blue"]
         S2["--bg-card<br/>References --color-gray-50"]
@@ -78,7 +78,7 @@ graph LR
         S4["--shadow-card<br/>References a shadow primitive"]
     end
 
-    subgraph Component["🧩 Layer 3 — Component Tokens"]
+    subgraph Component["ðŸ§© Layer 3 â€” Component Tokens"]
         direction TB
         C1["--btn-primary-bg<br/>References --color-primary"]
         C2["--card-border-radius<br/>References --radius-md"]
@@ -97,15 +97,15 @@ graph LR
     class C1,C2,C3,C4 component
 ```
 
-> **Diagram:** **Primitive tokens** define raw values (colors, spacing, typography, shadows). **Semantic tokens** assign meaning (primary, danger, bg-card, text-body). **Component tokens** are component-scoped overrides (btn-bg, card-radius). Each layer references the one below — never skip layers.
+> **Diagram:** **Primitive tokens** define raw values (colors, spacing, typography, shadows). **Semantic tokens** assign meaning (primary, danger, bg-card, text-body). **Component tokens** are component-scoped overrides (btn-bg, card-radius). Each layer references the one below â€” never skip layers.
 
-### Layer 1 — Primitive Tokens
+### Layer 1 â€” Primitive Tokens
 
-Primitive tokens hold the raw design values. They never change between themes — only semantic tokens remap them.
+Primitive tokens hold the raw design values. They never change between themes â€” only semantic tokens remap them.
 
 ```css
 :root {
-  /* Gray scale — used by semantic tokens */
+  /* Gray scale â€” used by semantic tokens */
   --color-gray-50:  #f9fafb;
   --color-gray-100: #f3f4f6;
   --color-gray-200: #e5e7eb;
@@ -174,7 +174,7 @@ Primitive tokens hold the raw design values. They never change between themes �
 }
 ```
 
-### Layer 2 — Semantic Tokens
+### Layer 2 â€” Semantic Tokens
 
 Semantic tokens assign meaning to primitives. These are what change between light and dark themes. **Components must only use semantic tokens**, never primitives or raw values.
 
@@ -231,26 +231,26 @@ Semantic tokens assign meaning to primitives. These are what change between ligh
 | `--shadow-modal` | `0 8px 24px rgba(0,0,0,0.2)` | `0 8px 24px rgba(0,0,0,0.6)` | Modal/dialog |
 | `--shadow-sticky` | `0 2px 8px rgba(0,0,0,0.08)` | `0 2px 8px rgba(0,0,0,0.3)` | Sticky nav/header |
 
-### Layer 3 — Component Tokens
+### Layer 3 â€” Component Tokens
 
 Component tokens are scoped overrides for specific UI patterns. They reference semantic tokens and add component-specific values (sizing, layout, etc.).
 
 ```css
 :root {
-  /* ── Layout ── */
+  /* â”€â”€ Layout â”€â”€ */
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 64px;
   --topnav-height: 64px;
   --content-max-width: 1200px;
 
-  /* ── Card ── */
+  /* â”€â”€ Card â”€â”€ */
   --card-bg: var(--bg-secondary);
   --card-border: var(--border-light);
   --card-radius: var(--radius-lg);
   --card-shadow: var(--shadow-card);
   --card-padding: var(--space-6);
 
-  /* ── Button (Primary) ── */
+  /* â”€â”€ Button (Primary) â”€â”€ */
   --btn-primary-bg: var(--accent-primary);
   --btn-primary-text: var(--text-inverse);
   --btn-primary-hover-bg: var(--accent-primary-hover);
@@ -258,13 +258,13 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --btn-primary-padding-x: var(--space-4);
   --btn-primary-padding-y: var(--space-2);
 
-  /* ── Button (Secondary) ── */
+  /* â”€â”€ Button (Secondary) â”€â”€ */
   --btn-secondary-bg: var(--bg-secondary);
   --btn-secondary-text: var(--text-primary);
   --btn-secondary-border: var(--border-medium);
   --btn-secondary-hover-bg: var(--bg-tertiary);
 
-  /* ── Input ── */
+  /* â”€â”€ Input â”€â”€ */
   --input-bg: var(--bg-primary);
   --input-text: var(--text-primary);
   --input-border: var(--border-medium);
@@ -274,7 +274,7 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --input-radius: var(--radius-md);
   --input-padding: var(--space-3);
 
-  /* ── Modal ── */
+  /* â”€â”€ Modal â”€â”€ */
   --modal-bg: var(--bg-elevated);
   --modal-radius: var(--radius-xl);
   --modal-shadow: var(--shadow-modal);
@@ -282,14 +282,14 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --modal-header-border: var(--border-light);
   --modal-padding: var(--space-6);
 
-  /* ── Navigation ── */
+  /* â”€â”€ Navigation â”€â”€ */
   --nav-item-radius: var(--radius-md);
   --nav-item-padding: var(--space-2) var(--space-3);
   --nav-item-hover-bg: var(--bg-tertiary);
   --nav-item-active-bg: color-mix(in srgb, var(--accent-primary) 10%, var(--bg-secondary));
   --nav-item-active-text: var(--accent-primary);
 
-  /* ── Badge / Status ── */
+  /* â”€â”€ Badge / Status â”€â”€ */
   --badge-success-bg: color-mix(in srgb, var(--accent-success) 15%, var(--bg-primary));
   --badge-success-text: var(--text-success);
   --badge-warning-bg: color-mix(in srgb, var(--accent-warning) 15%, var(--bg-primary));
@@ -299,20 +299,20 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --badge-radius: var(--radius-full);
   --badge-padding: var(--space-1) var(--space-2);
 
-  /* ── Table ── */
+  /* â”€â”€ Table â”€â”€ */
   --table-header-bg: var(--bg-secondary);
   --table-header-text: var(--text-secondary);
   --table-row-hover-bg: var(--bg-tertiary);
   --table-row-border: var(--border-light);
   --table-cell-padding: var(--space-3) var(--space-4);
 
-  /* ── Toast / Alert ── */
+  /* â”€â”€ Toast / Alert â”€â”€ */
   --toast-bg: var(--bg-elevated);
   --toast-radius: var(--radius-lg);
   --toast-shadow: var(--shadow-lg);
   --toast-padding: var(--space-4);
 
-  /* ── Code Block ── */
+  /* â”€â”€ Code Block â”€â”€ */
   --code-bg: var(--bg-inset);
   --code-text: var(--text-primary);
   --code-font: var(--font-family-mono);
@@ -325,12 +325,12 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
 
 ## Theme Token Reference (Complete)
 
-### Light Theme — Complete CSS
+### Light Theme â€” Complete CSS
 
 ```css
 :root,
 [data-theme="light"] {
-  /* ── Backgrounds ── */
+  /* â”€â”€ Backgrounds â”€â”€ */
   --bg-primary: #ffffff;
   --bg-secondary: #f9fafb;
   --bg-tertiary: #f3f4f6;
@@ -338,7 +338,7 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --bg-overlay: rgba(0, 0, 0, 0.5);
   --bg-inset: #f3f4f6;
 
-  /* ── Text ── */
+  /* â”€â”€ Text â”€â”€ */
   --text-primary: #111827;
   --text-secondary: #4b5563;
   --text-muted: #9ca3af;
@@ -348,7 +348,7 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --text-warning: #d97706;
   --text-error: #dc2626;
 
-  /* ── Accent / Interactive ── */
+  /* â”€â”€ Accent / Interactive â”€â”€ */
   --accent-primary: #3b82f6;
   --accent-primary-hover: #2563eb;
   --accent-success: #10b981;
@@ -356,13 +356,13 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --accent-error: #ef4444;
   --accent-error-hover: #dc2626;
 
-  /* ── Borders ── */
+  /* â”€â”€ Borders â”€â”€ */
   --border-light: #e5e7eb;
   --border-medium: #d1d5db;
   --border-focus: #3b82f6;
   --border-error: #ef4444;
 
-  /* ── Shadows ── */
+  /* â”€â”€ Shadows â”€â”€ */
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-dropdown: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-modal: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
@@ -370,11 +370,11 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
 }
 ```
 
-### Dark Theme — Complete CSS
+### Dark Theme â€” Complete CSS
 
 ```css
 [data-theme="dark"] {
-  /* ── Backgrounds ── */
+  /* â”€â”€ Backgrounds â”€â”€ */
   --bg-primary: #111827;
   --bg-secondary: #1f2937;
   --bg-tertiary: #374151;
@@ -382,7 +382,7 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --bg-overlay: rgba(0, 0, 0, 0.7);
   --bg-inset: #111827;
 
-  /* ── Text ── */
+  /* â”€â”€ Text â”€â”€ */
   --text-primary: #f9fafb;
   --text-secondary: #d1d5db;
   --text-muted: #6b7280;
@@ -392,7 +392,7 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --text-warning: #fbbf24;
   --text-error: #f87171;
 
-  /* ── Accent / Interactive ── */
+  /* â”€â”€ Accent / Interactive â”€â”€ */
   --accent-primary: #60a5fa;
   --accent-primary-hover: #3b82f6;
   --accent-success: #34d399;
@@ -400,13 +400,13 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
   --accent-error: #f87171;
   --accent-error-hover: #ef4444;
 
-  /* ── Borders ── */
+  /* â”€â”€ Borders â”€â”€ */
   --border-light: #374151;
   --border-medium: #4b5563;
   --border-focus: #60a5fa;
   --border-error: #f87171;
 
-  /* ── Shadows ── */
+  /* â”€â”€ Shadows â”€â”€ */
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
   --shadow-dropdown: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
   --shadow-modal: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.5);
@@ -419,7 +419,7 @@ Component tokens are scoped overrides for specific UI patterns. They reference s
 ## Theme Switching Implementation
 
 ```css
-/* Smooth theme transitions — applied to all themed elements */
+/* Smooth theme transitions â€” applied to all themed elements */
 @media (prefers-reduced-motion: no-preference) {
   *,
   *::before,
@@ -452,11 +452,11 @@ function getSystemTheme(): 'light' | 'dark' {
 function applyTheme(theme: Theme): void {
   const resolved = theme === 'system' ? getSystemTheme() : theme;
   document.documentElement.setAttribute('data-theme', resolved);
-  localStorage.setItem('meridian-theme', theme);
+  localStorage.setItem('Vaeloom-theme', theme);
 }
 
 function initTheme(): void {
-  const stored = localStorage.getItem('meridian-theme') as Theme | null;
+  const stored = localStorage.getItem('Vaeloom-theme') as Theme | null;
   const theme = stored ?? 'system';
   applyTheme(theme);
 
@@ -770,12 +770,12 @@ Modern CSS `color-mix()` allows creating derived tokens without hardcoding:
 When semantic tokens need to be applied via inline styles (e.g., dynamic values):
 
 ```tsx
-// ✅ Good: use CSS variables
+// âœ… Good: use CSS variables
 <div style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
   Themed content
 </div>
 
-// ❌ Bad: hardcoded values
+// âŒ Bad: hardcoded values
 <div style={{ backgroundColor: '#f9fafb', color: '#111827' }}>
   Broken in dark mode
 </div>
@@ -853,7 +853,7 @@ Use this when reviewing components to ensure theme compliance:
 
 ## Best Practices
 
-### ✅ Do
+### âœ… Do
 
 - **Always use semantic tokens** (`var(--bg-secondary)`), never raw values
 - **Reference component tokens** where they exist (`var(--card-bg)` instead of `var(--bg-secondary)`)
@@ -862,43 +862,43 @@ Use this when reviewing components to ensure theme compliance:
 - **Add transition tokens** (`var(--transition-fast)`) to interactive elements for smooth theme switching
 - **Use the token audit checklist** during code review
 
-### ❌ Don't
+### âŒ Don't
 
-- **Don't hardcode colors** — no `#hex`, `rgb()`, or named colors in component CSS
-- **Don't skip layers** — don't reference primitives directly from components (e.g., `var(--color-blue-500)` → use `var(--accent-primary)`)
-- **Don't use `!important`** in theme tokens — it breaks cascading and makes dark mode overrides impossible
-- **Don't forget hover/focus/active states** — each interactive state needs its own semantic token
-- **Don't skip the overlay background** in dark mode — `rgba(0,0,0,0.7)` provides better contrast than the light mode value
-- **Don't mix theme files** — all theme variables in one place, never scattered across component files
+- **Don't hardcode colors** â€” no `#hex`, `rgb()`, or named colors in component CSS
+- **Don't skip layers** â€” don't reference primitives directly from components (e.g., `var(--color-blue-500)` â†’ use `var(--accent-primary)`)
+- **Don't use `!important`** in theme tokens â€” it breaks cascading and makes dark mode overrides impossible
+- **Don't forget hover/focus/active states** â€” each interactive state needs its own semantic token
+- **Don't skip the overlay background** in dark mode â€” `rgba(0,0,0,0.7)` provides better contrast than the light mode value
+- **Don't mix theme files** â€” all theme variables in one place, never scattered across component files
 
 ### Common Mistakes
 
 ```css
-/* ❌ Mistake 1: Raw color */
+/* âŒ Mistake 1: Raw color */
 .notification-error {
   background-color: #fef2f2;
   color: #dc2626;
 }
-/* ✅ Fix: Semantic tokens */
+/* âœ… Fix: Semantic tokens */
 .notification-error {
   background-color: var(--badge-error-bg);
   color: var(--text-error);
 }
 
-/* ❌ Mistake 2: Skipping the semantic layer */
+/* âŒ Mistake 2: Skipping the semantic layer */
 .btn {
   background-color: var(--color-blue-500); /* primitive, not semantic */
 }
-/* ✅ Fix: Use component or semantic token */
+/* âœ… Fix: Use component or semantic token */
 .btn {
   background-color: var(--btn-primary-bg);
 }
 
-/* ❌ Mistake 3: No dark mode shadow adjustment */
+/* âŒ Mistake 3: No dark mode shadow adjustment */
 .card {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-/* ✅ Fix: Use shadow token (changes per theme) */
+/* âœ… Fix: Use shadow token (changes per theme) */
 .card {
   box-shadow: var(--shadow-card);
 }
@@ -910,7 +910,7 @@ Use this when reviewing components to ensure theme compliance:
 
 ```mermaid
 graph TD
-    subgraph PrimitiveTokens["🔧 Primitive Tokens"]
+    subgraph PrimitiveTokens["ðŸ”§ Primitive Tokens"]
         PT1["--color-gray-50: #f9fafb"]
         PT2["--font-size-base: 1rem"]
         PT3["--space-4: 1rem"]
@@ -918,7 +918,7 @@ graph TD
         PT5["--shadow-sm: 0 1px 2px..."]
     end
 
-    subgraph SemanticTokens["🎯 Semantic Tokens"]
+    subgraph SemanticTokens["ðŸŽ¯ Semantic Tokens"]
         ST1["--bg-secondary: var(--color-gray-50)"]
         ST2["--text-primary: var(--color-gray-900)"]
         ST3["--border-light: var(--color-gray-200)"]
@@ -926,14 +926,14 @@ graph TD
         ST5["--shadow-card: var(--shadow-sm)"]
     end
 
-    subgraph ComponentTokens["🧩 Component Tokens"]
+    subgraph ComponentTokens["ðŸ§© Component Tokens"]
         CT1["--card-bg: var(--bg-secondary)"]
         CT2["--card-radius: var(--radius-md)"]
         CT3["--btn-primary-bg: var(--accent-primary)"]
         CT4["--input-border: var(--border-light)"]
     end
 
-    subgraph Components["📦 Components"]
+    subgraph Components["ðŸ“¦ Components"]
         C1["Card"]
         C2["Button"]
         C3["Input"]
@@ -941,7 +941,7 @@ graph TD
         C5["Sidebar"]
     end
 
-    subgraph DarkTheme["🌙 Dark Theme Override"]
+    subgraph DarkTheme["ðŸŒ™ Dark Theme Override"]
         DT1["[data-theme='dark'] {"]
         DT2["--bg-secondary: #1f2937"]
         DT3["--text-primary: #f9fafb"]
@@ -981,7 +981,7 @@ graph TD
     class DT1,DT2,DT3,DT4,DT5,DT6,DT7 dark
 ```
 
-> **Diagram:** End-to-end token flow. **Primitive tokens** (gray scale, font sizes, spacing, radii, shadows) are referenced by **semantic tokens** (bg-secondary, text-primary, border-light, accent-primary). **Component tokens** (card-bg, btn-primary-bg, input-border) reference semantic tokens. **Components** use only component or semantic tokens. The **dark theme** overrides semantic token values by remapping them under `[data-theme="dark"]` — no CSS selectors change, only variable values.
+> **Diagram:** End-to-end token flow. **Primitive tokens** (gray scale, font sizes, spacing, radii, shadows) are referenced by **semantic tokens** (bg-secondary, text-primary, border-light, accent-primary). **Component tokens** (card-bg, btn-primary-bg, input-border) reference semantic tokens. **Components** use only component or semantic tokens. The **dark theme** overrides semantic token values by remapping them under `[data-theme="dark"]` â€” no CSS selectors change, only variable values.
 
 ---
 
@@ -989,19 +989,19 @@ graph TD
 
 | Mistake | Consequence |
 |---------|-------------|
-| Referencing primitive tokens directly in components | A component that uses `--color-blue-500` instead of `--accent-primary` breaks when the theme changes — components should only reference semantic or component tokens |
-| Adding new tokens without documenting their semantic role | A token named `--spacing-xl` without a clear definition of when to use it leads to inconsistent spacing — every token should have a documented usage guideline |
-| Overriding component tokens at the page level instead of the theme level | Page-specific CSS that overrides component token values creates a maintenance nightmare — use semantic tokens for page-level theming, not component token overrides |
-| Not verifying dark mode contrast for every new token | A token that passes WCAG AA in light mode may fail in dark mode — verify contrast for both themes before adding any new color token |
+| Referencing primitive tokens directly in components | A component that uses `--color-blue-500` instead of `--accent-primary` breaks when the theme changes â€” components should only reference semantic or component tokens |
+| Adding new tokens without documenting their semantic role | A token named `--spacing-xl` without a clear definition of when to use it leads to inconsistent spacing â€” every token should have a documented usage guideline |
+| Overriding component tokens at the page level instead of the theme level | Page-specific CSS that overrides component token values creates a maintenance nightmare â€” use semantic tokens for page-level theming, not component token overrides |
+| Not verifying dark mode contrast for every new token | A token that passes WCAG AA in light mode may fail in dark mode â€” verify contrast for both themes before adding any new color token |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Keep token chain depth at 3 levels max (primitive → semantic → component) | Deeper chains make theme debugging difficult and add marginal CSS resolution overhead — inspect which tokens reference other tokens and flatten where practical |
-| Use build-time validation to catch missing dark mode values | Every semantic token should define both light and dark values — automate a CI check that flags any token missing a dark theme counterpart |
-| Document each semantic token with its intended usage | A token named `--text-muted` should describe when to use it vs. `--text-secondary` — ambiguity leads to inconsistent application across components |
-| Audit unused tokens quarterly | The token set grows with every feature — remove tokens that are no longer referenced by any component to keep the theme system maintainable |
+| Keep token chain depth at 3 levels max (primitive â†’ semantic â†’ component) | Deeper chains make theme debugging difficult and add marginal CSS resolution overhead â€” inspect which tokens reference other tokens and flatten where practical |
+| Use build-time validation to catch missing dark mode values | Every semantic token should define both light and dark values â€” automate a CI check that flags any token missing a dark theme counterpart |
+| Document each semantic token with its intended usage | A token named `--text-muted` should describe when to use it vs. `--text-secondary` â€” ambiguity leads to inconsistent application across components |
+| Audit unused tokens quarterly | The token set grows with every feature â€” remove tokens that are no longer referenced by any component to keep the theme system maintainable |
 
 ## Security Considerations
 
@@ -1009,15 +1009,15 @@ graph TD
 |---------|------------|
 | CSS variable injection via user-controlled input | If theme tokens are exposed to user customization (e.g., accent color picker), validate that user-provided values match expected formats (hex, rgb, CSS color names) before assigning to CSS custom properties |
 | Theme preference cookie manipulation | Theme preference stored in `localStorage` is not sensitive but could be used for tracking; ensure theme settings are not transmitted to analytics or backend systems |
-| Visual spoofing via malicious token overrides | Component tokens scoped to trusted UI patterns should not accept raw user values — a button's background should come from semantic tokens, never from unsanitized user input |
+| Visual spoofing via malicious token overrides | Component tokens scoped to trusted UI patterns should not accept raw user values â€” a button's background should come from semantic tokens, never from unsanitized user input |
 
 ## Performance Considerations
 
 | Concern | Guideline |
 |---------|-----------|
-| CSS custom property resolution cost | While `var(--token)` resolution is fast, deeply nested variable references (token → semantic → primitive) add marginal overhead; avoid chains deeper than 3 levels in hot animation paths |
-| Theme switch repaint scope | Switching themes triggers repaints across the entire page — batch theme changes by setting the `data-theme` attribute once and ensuring all themed properties use CSS variables, not hardcoded values |
-| Dead token elimination | Build-time tools like PurgeCSS can remove unused CSS variables from the production bundle — regularly audit component tokens and remove those no longer referenced by any component |
+| CSS custom property resolution cost | While `var(--token)` resolution is fast, deeply nested variable references (token â†’ semantic â†’ primitive) add marginal overhead; avoid chains deeper than 3 levels in hot animation paths |
+| Theme switch repaint scope | Switching themes triggers repaints across the entire page â€” batch theme changes by setting the `data-theme` attribute once and ensuring all themed properties use CSS variables, not hardcoded values |
+| Dead token elimination | Build-time tools like PurgeCSS can remove unused CSS variables from the production bundle â€” regularly audit component tokens and remove those no longer referenced by any component |
 
 ## Components
 
@@ -1030,10 +1030,10 @@ graph TD
 
 ## Workflows
 
-1. **Theme initialization**: App loads → `initTheme()` reads localStorage → if "system", check `prefers-color-scheme` → apply `data-theme="light|dark"` to `<html>` → all CSS variables resolve to correct values
-2. **User switches theme manually**: User opens Settings → selects "Dark theme" → localStorage set to "dark" → `data-theme="dark"` applied → 250ms CSS transition smooths color changes → all components repaint with dark values
-3. **System preference changes (auto)**: User changes OS theme from light to dark → matchMedia listener fires → if stored preference is "system", `applyTheme('system')` re-evaluates → `data-theme` updates → seamless transition
-4. **New component token addition**: Developer identifies `--btn-primary-hover-bg` needed → adds to component token block → references existing semantic token → documents in token table → PR reviewed → merged
+1. **Theme initialization**: App loads â†’ `initTheme()` reads localStorage â†’ if "system", check `prefers-color-scheme` â†’ apply `data-theme="light|dark"` to `<html>` â†’ all CSS variables resolve to correct values
+2. **User switches theme manually**: User opens Settings â†’ selects "Dark theme" â†’ localStorage set to "dark" â†’ `data-theme="dark"` applied â†’ 250ms CSS transition smooths color changes â†’ all components repaint with dark values
+3. **System preference changes (auto)**: User changes OS theme from light to dark â†’ matchMedia listener fires â†’ if stored preference is "system", `applyTheme('system')` re-evaluates â†’ `data-theme` updates â†’ seamless transition
+4. **New component token addition**: Developer identifies `--btn-primary-hover-bg` needed â†’ adds to component token block â†’ references existing semantic token â†’ documents in token table â†’ PR reviewed â†’ merged
 
 ## Sequence Diagrams
 
@@ -1045,7 +1045,7 @@ sequenceDiagram
     participant MQ as matchMedia
     participant CSS as CSS Variables
 
-    APP->>LS: Read 'meridian-theme'
+    APP->>LS: Read 'Vaeloom-theme'
     alt Stored as 'dark'
         LS-->>APP: 'dark'
     else Stored as 'system' or null
@@ -1054,7 +1054,7 @@ sequenceDiagram
         MQ-->>APP: 'light' or 'dark'
     end
     APP->>CSS: Set data-theme="dark"
-    CSS->>CSS: :root variables → [data-theme="dark"] overrides
+    CSS->>CSS: :root variables â†’ [data-theme="dark"] overrides
     APP-->>U: Theme applied
 
     Note over U,CSS: User switches manually
@@ -1067,11 +1067,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: Token values written in CSS files and TypeScript constants → Figma plugin syncs designer changes → validated by CI for contrast and completeness
-2. **Processing**: Build-time tool extracts all `--token` definitions → validates no missing dark mode pairs → generates documentation → produces production CSS bundle
-3. **Storage**: Theme preference stored in `localStorage` (`meridian-theme`) → system preference monitored via `matchMedia` → no server-side persistence needed
-4. **Retrieval**: `initTheme()` reads on every page load → if no stored preference, uses system default → CSS variable resolution is native browser behavior — zero JS cost
-5. **Deletion**: User clears site data → localStorage cleared → theme resets to system default → CSS variables unaffected
+1. **Ingestion**: Token values written in CSS files and TypeScript constants â†’ Figma plugin syncs designer changes â†’ validated by CI for contrast and completeness
+2. **Processing**: Build-time tool extracts all `--token` definitions â†’ validates no missing dark mode pairs â†’ generates documentation â†’ produces production CSS bundle
+3. **Storage**: Theme preference stored in `localStorage` (`Vaeloom-theme`) â†’ system preference monitored via `matchMedia` â†’ no server-side persistence needed
+4. **Retrieval**: `initTheme()` reads on every page load â†’ if no stored preference, uses system default â†’ CSS variable resolution is native browser behavior â€” zero JS cost
+5. **Deletion**: User clears site data â†’ localStorage cleared â†’ theme resets to system default â†’ CSS variables unaffected
 
 ## Scalability
 
@@ -1095,8 +1095,8 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Dark mode token coverage | < 100% of semantic tokens | Critical | CI — Token Lint step |
-| Theme switch render time | > 50ms | Warning | Grafana — Interaction to Next Paint |
+| Dark mode token coverage | < 100% of semantic tokens | Critical | CI â€” Token Lint step |
+| Theme switch render time | > 50ms | Warning | Grafana â€” Interaction to Next Paint |
 | Token usage count by component | < 80% of tokens referenced | Info | Code Quality dashboard |
 | Unused token count | > 10 | Warning | Build-time lint report |
 
@@ -1119,20 +1119,20 @@ sequenceDiagram
 
 ## Overview
 
-The Meridian theme system is the foundation of visual consistency across the entire application. Built on a three-layer token architecture, it starts with primitive tokens representing raw design values (hex colors, pixel spacing, font families, shadow definitions), layers semantic tokens that assign meaning to those primitives (--bg-primary, --text-body, --accent-success), and culminates in component tokens that scope values to specific UI patterns (--card-bg, --btn-primary-bg, --input-border). This layered approach ensures that updating a brand color in the primitive layer automatically propagates through every component in the application.
+The Vaeloom theme system is the foundation of visual consistency across the entire application. Built on a three-layer token architecture, it starts with primitive tokens representing raw design values (hex colors, pixel spacing, font families, shadow definitions), layers semantic tokens that assign meaning to those primitives (--bg-primary, --text-body, --accent-success), and culminates in component tokens that scope values to specific UI patterns (--card-bg, --btn-primary-bg, --input-border). This layered approach ensures that updating a brand color in the primitive layer automatically propagates through every component in the application.
 
-The system supports two themes — light and dark — with every semantic token defining values for both. Theme switching is instantaneous via a `data-theme` attribute on the `<html>` element, with smooth CSS transitions (250ms ease) on background, color, border, and shadow properties. The system respects the user's OS-level `prefers-color-scheme` by default, stores manual overrides in `localStorage`, and provides a settings-page toggle for explicit control.
+The system supports two themes â€” light and dark â€” with every semantic token defining values for both. Theme switching is instantaneous via a `data-theme` attribute on the `<html>` element, with smooth CSS transitions (250ms ease) on background, color, border, and shadow properties. The system respects the user's OS-level `prefers-color-scheme` by default, stores manual overrides in `localStorage`, and provides a settings-page toggle for explicit control.
 
-For Meridian's AI-driven interfaces, the theme system ensures that ProposalCards, AgentStatus indicators, MemoryNodes, and Chat interfaces all render consistently regardless of user preference. The color palette is semantically mapped: blue for primary actions and links, green for success states and approvals, amber for warnings and attention-needed, red for destructive actions and errors. Status badges, progress bars, and notification indicators all use these semantic colors, creating an intuitive visual language that reduces cognitive load.
+For Vaeloom's AI-driven interfaces, the theme system ensures that ProposalCards, AgentStatus indicators, MemoryNodes, and Chat interfaces all render consistently regardless of user preference. The color palette is semantically mapped: blue for primary actions and links, green for success states and approvals, amber for warnings and attention-needed, red for destructive actions and errors. Status badges, progress bars, and notification indicators all use these semantic colors, creating an intuitive visual language that reduces cognitive load.
 
 The theme system includes 91 CSS custom properties across 7 categories, all verified against WCAG AA 4.5:1 contrast ratios through build-time CI validation. Every component is audited against a token usage checklist that prevents raw color values, ensures hover-specific tokens are used for interactive states, and verifies dark mode rendering before merge.
 
 ## Goals
 
-- Maintain 100% semantic token coverage — zero raw color values in any component CSS
+- Maintain 100% semantic token coverage â€” zero raw color values in any component CSS
 - Ensure every semantic token defines verified light and dark values that pass WCAG AA contrast
 - Achieve sub-50ms theme switch render time through batched `data-theme` attribute application
-- Keep dark mode token coverage at 100% — no semantic token without a dark theme counterpart
+- Keep dark mode token coverage at 100% â€” no semantic token without a dark theme counterpart
 - Eliminate unused tokens quarterly through automated usage scanning
 
 ## Scope
@@ -1170,7 +1170,7 @@ type Theme = 'light' | 'dark' | 'system';
 function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>('system');
   useEffect(() => {
-    const stored = localStorage.getItem('meridian-theme') as Theme | null;
+    const stored = localStorage.getItem('Vaeloom-theme') as Theme | null;
     if (stored) setTheme(stored);
   }, []);
   const apply = (t: Theme) => {
@@ -1178,7 +1178,7 @@ function ThemeToggle() {
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : t;
     document.documentElement.setAttribute('data-theme', resolved);
-    localStorage.setItem('meridian-theme', t);
+    localStorage.setItem('Vaeloom-theme', t);
     setTheme(t);
   };
   return (
@@ -1235,10 +1235,10 @@ function ThemedCard({ title }: { title: string }) {
 
 ## Related Documents
 
-- [Design System.md](./Design-System.md) — Design token architecture, color palette, typography scale
-- [Component Library.md](./Component-Library.md) — Atomic design component hierarchy
-- [Animation System.md](./Animation-System.md) — Motion tokens, transitions, timing functions
-- [Responsive Design.md](./Responsive-Design.md) — Breakpoint tokens, responsive patterns
-- [Accessibility.md](./Accessibility.md) — WCAG compliance, contrast ratios, focus indicators
-- [Frontend Architecture.md](./Frontend-Architecture.md) — Overall frontend stack and page structure
-- 🎨 **[Design-Tokens-Reference.html](./Design-Tokens-Reference.html)** — Interactive HTML preview with live light/dark theme toggle, all 91 tokens as click-to-copy cards, and 8 component previews
+- [Design System.md](./Design-System.md) â€” Design token architecture, color palette, typography scale
+- [Component Library.md](./Component-Library.md) â€” Atomic design component hierarchy
+- [Animation System.md](./Animation-System.md) â€” Motion tokens, transitions, timing functions
+- [Responsive Design.md](./Responsive-Design.md) â€” Breakpoint tokens, responsive patterns
+- [Accessibility.md](./Accessibility.md) â€” WCAG compliance, contrast ratios, focus indicators
+- [Frontend Architecture.md](./Frontend-Architecture.md) â€” Overall frontend stack and page structure
+- ðŸŽ¨ **[Design-Tokens-Reference.html](./Design-Tokens-Reference.html)** â€” Interactive HTML preview with live light/dark theme toggle, all 91 tokens as click-to-copy cards, and 8 component previews

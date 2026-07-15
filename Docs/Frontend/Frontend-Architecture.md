@@ -1,10 +1,10 @@
-# Frontend Architecture
+﻿# Frontend Architecture
 
-> **Purpose:** Define the frontend architecture for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the frontend architecture for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Frontend Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/Meridian-Complete-Documentation.md#42-frontend`](../../Docs/Meridian-Complete-Documentation.md#42-frontend)
+> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#42-frontend`](../../Docs/Vaeloom-Complete-Documentation.md#42-frontend)
 
 ## Architecture Overview
 
@@ -14,7 +14,7 @@ graph TD
     classDef tech fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef page fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Stack["🛠️ Technology Stack"]
+    subgraph Stack["ðŸ› ï¸ Technology Stack"]
         direction TB
         S1["Framework: Next.js 14+<br/>SSR + App Router"]
         S2["Language: TypeScript<br/>Strict mode"]
@@ -23,7 +23,7 @@ graph TD
         S5["Forms: React Hook Form<br/>Form state management"]
     end
 
-    subgraph Pages["📄 Page Structure"]
+    subgraph Pages["ðŸ“„ Page Structure"]
         P1["/dashboard<br/>At-a-glance summary"]
         P2["/workspace<br/>File/folder viewer"]
         P3["/memory-graph<br/>Knowledge graph viz"]
@@ -33,7 +33,7 @@ graph TD
         P7["/settings<br/>Permissions, privacy"]
     end
 
-    subgraph Communication["🔗 Communication Pattern"]
+    subgraph Communication["ðŸ”— Communication Pattern"]
         C1["Frontend (Next.js SPA)"]
         C2["REST API Gateway"]
         C3["Backend Services<br/>(AI / Memory / Queue)"]
@@ -48,11 +48,11 @@ graph TD
     class C1,C2,C3 arch
 ```
 
-> **Diagram:** Frontend architecture showing the **technology stack** (Next.js + TypeScript + Tailwind + TanStack Query), **page structure** (11 routes), and **communication pattern** — frontend communicates exclusively through the REST API gateway, never directly accessing memory or agent systems.
+> **Diagram:** Frontend architecture showing the **technology stack** (Next.js + TypeScript + Tailwind + TanStack Query), **page structure** (11 routes), and **communication pattern** â€” frontend communicates exclusively through the REST API gateway, never directly accessing memory or agent systems.
 
 ---
 
-The Meridian frontend is a component-driven SPA built with React + Next.js + TypeScript. It communicates exclusively through the API layer — never directly accessing memory or agent systems.
+The Vaeloom frontend is a component-driven SPA built with React + Next.js + TypeScript. It communicates exclusively through the API layer â€” never directly accessing memory or agent systems.
 
 ## Technology Stack
 
@@ -68,68 +68,68 @@ The Meridian frontend is a component-driven SPA built with React + Next.js + Typ
 
 ```text
 app/
-├── dashboard/        # At-a-glance summary
-├── workspace/        # File/folder browser with viewer
-├── memory-graph/     # Knowledge graph visualization
-├── resume/           # Master resume editor
-├── jobs/             # Job/internship shortlist
-├── applications/     # Application status board
-├── chat/             # Agent chat interface
-├── schedule/         # Calendar + deadlines
-├── connectors/       # Connector management
-├── history/          # Audit log
-└── settings/         # Permissions, privacy, export/delete
+â”œâ”€â”€ dashboard/        # At-a-glance summary
+â”œâ”€â”€ workspace/        # File/folder browser with viewer
+â”œâ”€â”€ memory-graph/     # Knowledge graph visualization
+â”œâ”€â”€ resume/           # Master resume editor
+â”œâ”€â”€ jobs/             # Job/internship shortlist
+â”œâ”€â”€ applications/     # Application status board
+â”œâ”€â”€ chat/             # Agent chat interface
+â”œâ”€â”€ schedule/         # Calendar + deadlines
+â”œâ”€â”€ connectors/       # Connector management
+â”œâ”€â”€ history/          # Audit log
+â””â”€â”€ settings/         # Permissions, privacy, export/delete
 ```
 
 ## Common Mistakes
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Frontend reading from memory or agent stores directly | Bypassing the API layer means the permission engine is never checked — every direct store access is a potential data leak |
+| Frontend reading from memory or agent stores directly | Bypassing the API layer means the permission engine is never checked â€” every direct store access is a potential data leak |
 | Missing error boundaries around route segments | A render crash in one widget should never take down the entire page; wrap each route segment in its own error boundary |
-| No loading states for server-rendered pages | SSR pages that wait for data without showing a loading state feel unresponsive — use Suspense boundaries with fallbacks |
-| Tight coupling between pages and shared components | A change to the Sidebar should not require updates to every page that uses it — components should accept props, not assume context |
+| No loading states for server-rendered pages | SSR pages that wait for data without showing a loading state feel unresponsive â€” use Suspense boundaries with fallbacks |
+| Tight coupling between pages and shared components | A change to the Sidebar should not require updates to every page that uses it â€” components should accept props, not assume context |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Communicate exclusively through the REST API gateway | The frontend must never access database, memory, or agent systems directly — all data flows through the API where permissions are enforced |
+| Communicate exclusively through the REST API gateway | The frontend must never access database, memory, or agent systems directly â€” all data flows through the API where permissions are enforced |
 | Wrap every route segment in an error boundary | A crash in the Memory Graph page should not affect the Dashboard or Workspace; error boundaries at the route level isolate failures |
 | Use skeleton loading states for every data-dependent view | Skeleton screens that match the final layout feel instant; generic spinners tell the user nothing about what's loading |
-| Keep shared components independent of page-specific logic | Components should receive data via props, not fetch it themselves — this keeps them reusable and testable across different page contexts |
+| Keep shared components independent of page-specific logic | Components should receive data via props, not fetch it themselves â€” this keeps them reusable and testable across different page contexts |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| API key or token exposure in client-side code | Environment variables prefixed with `NEXT_PUBLIC_` are visible in the browser bundle — never expose secrets, only public configuration values |
+| API key or token exposure in client-side code | Environment variables prefixed with `NEXT_PUBLIC_` are visible in the browser bundle â€” never expose secrets, only public configuration values |
 | Route protection bypass via client-side navigation | Protected routes must verify authentication server-side (Next.js middleware or server components); client-side auth checks can be bypassed |
-| Cross-tenant data exposure through shared state | Ensure TanStack Query caches are scoped per workspace — switching workspaces should not serve cached data from the previous workspace |
+| Cross-tenant data exposure through shared state | Ensure TanStack Query caches are scoped per workspace â€” switching workspaces should not serve cached data from the previous workspace |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Route-level code splitting with Next.js App Router | Each route should only load its own JavaScript bundle — Next.js automatically code-splits by route, but verify dynamic imports for heavy components |
-| Optimize images with Next.js Image component | Use the built-in `next/image` for automatic WebP conversion, lazy loading, and responsive srcset — saves 30-50% on image transfer sizes |
-| Regular bundle analysis in CI | Add `@next/bundle-analyzer` to CI and set size thresholds — a PR that adds 50KB to the main bundle should trigger a review |
+| Route-level code splitting with Next.js App Router | Each route should only load its own JavaScript bundle â€” Next.js automatically code-splits by route, but verify dynamic imports for heavy components |
+| Optimize images with Next.js Image component | Use the built-in `next/image` for automatic WebP conversion, lazy loading, and responsive srcset â€” saves 30-50% on image transfer sizes |
+| Regular bundle analysis in CI | Add `@next/bundle-analyzer` to CI and set size thresholds â€” a PR that adds 50KB to the main bundle should trigger a review |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| API key or token exposure in client-side code | Environment variables prefixed with `NEXT_PUBLIC_` are visible in the browser bundle — never expose secrets, only public configuration values |
+| API key or token exposure in client-side code | Environment variables prefixed with `NEXT_PUBLIC_` are visible in the browser bundle â€” never expose secrets, only public configuration values |
 | Route protection bypass via client-side navigation | Protected routes must verify authentication server-side (Next.js middleware or server components); client-side auth checks can be bypassed |
-| Cross-tenant data exposure through shared state | Ensure TanStack Query caches are scoped per workspace — switching workspaces should not serve cached data from the previous workspace |
+| Cross-tenant data exposure through shared state | Ensure TanStack Query caches are scoped per workspace â€” switching workspaces should not serve cached data from the previous workspace |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Route-level code splitting with Next.js App Router | Each route should only load its own JavaScript bundle — Next.js automatically code-splits by route, but verify dynamic imports for heavy components |
-| Optimize images with Next.js Image component | Use the built-in `next/image` for automatic WebP conversion, lazy loading, and responsive srcset — saves 30-50% on image transfer sizes |
-| Regular bundle analysis in CI | Add `@next/bundle-analyzer` to CI and set size thresholds — a PR that adds 50KB to the main bundle should trigger a review |
+| Route-level code splitting with Next.js App Router | Each route should only load its own JavaScript bundle â€” Next.js automatically code-splits by route, but verify dynamic imports for heavy components |
+| Optimize images with Next.js Image component | Use the built-in `next/image` for automatic WebP conversion, lazy loading, and responsive srcset â€” saves 30-50% on image transfer sizes |
+| Regular bundle analysis in CI | Add `@next/bundle-analyzer` to CI and set size thresholds â€” a PR that adds 50KB to the main bundle should trigger a review |
 
 ## Goals
 
@@ -181,9 +181,9 @@ app/
 
 ## Data Flow
 
-1. User navigates to a route — Next.js server renders the page shell with Suspense boundaries and streaming
+1. User navigates to a route â€” Next.js server renders the page shell with Suspense boundaries and streaming
 2. Server components fetch initial data through the API gateway with workspace_id and auth token attached
-3. HTML is streamed to the client progressively — sidebar and TopNav render before slower content sections
+3. HTML is streamed to the client progressively â€” sidebar and TopNav render before slower content sections
 4. Client hydrates and TanStack Query takes over data fetching for subsequent navigations and mutations
 5. All subsequent API calls go through the API gateway where permissions are enforced at the backend level
 
@@ -220,7 +220,7 @@ app/
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
 | NEXT_PUBLIC_API_URL | Public API gateway URL | /api/v1 | Yes |
-| NEXT_PUBLIC_WS_URL | WebSocket URL for real-time features | wss://api.meridian.dev/ws | No |
+| NEXT_PUBLIC_WS_URL | WebSocket URL for real-time features | wss://api.Vaeloom.dev/ws | No |
 | TANSTACK_STALE_TIME_MS | TanStack Query stale time | 30000 | No |
 | TANSTACK_RETRY_COUNT | API client retry count on failure | 3 | No |
 | ERROR_BOUNDARY_FALLBACK | Custom fallback UI for error boundaries | default-fallback | No |
@@ -245,11 +245,11 @@ app/
 
 ## Overview
 
-The Meridian frontend is a component-driven single-page application built with Next.js 14+ (App Router), TypeScript (strict mode), Tailwind CSS, TanStack Query, and React Hook Form. It serves 11 page routes including Dashboard, Workspace, Memory Graph, Resume, Jobs, Applications, Chat, Schedule, Connectors, History, and Settings — each with an SSR or CSR rendering strategy chosen for its interaction model.
+The Vaeloom frontend is a component-driven single-page application built with Next.js 14+ (App Router), TypeScript (strict mode), Tailwind CSS, TanStack Query, and React Hook Form. It serves 11 page routes including Dashboard, Workspace, Memory Graph, Resume, Jobs, Applications, Chat, Schedule, Connectors, History, and Settings â€” each with an SSR or CSR rendering strategy chosen for its interaction model.
 
 The architecture enforces a strict communication boundary: the frontend communicates exclusively through the REST API gateway, never directly accessing databases, memory stores, or agent systems. Every data request passes through the API layer where the permission engine enforces workspace-scoped access control. This one-way data flow prevents data leaks, ensures consistent authorization, and keeps the frontend stateless with respect to backend concerns.
 
-For Meridian's AI-powered workflows, this architecture means that agent proposals, memory graph data, and chat responses are all fetched through the same API gateway pattern. TanStack Query provides consistent caching with workspace-scoped query keys — switching workspaces invalidates caches automatically, preventing cross-tenant data leakage. Error boundaries at every route segment ensure that a crash in the Memory Graph doesn't take down the Dashboard or Workspace.
+For Vaeloom's AI-powered workflows, this architecture means that agent proposals, memory graph data, and chat responses are all fetched through the same API gateway pattern. TanStack Query provides consistent caching with workspace-scoped query keys â€” switching workspaces invalidates caches automatically, preventing cross-tenant data leakage. Error boundaries at every route segment ensure that a crash in the Memory Graph doesn't take down the Dashboard or Workspace.
 
 The frontend uses a shared monorepo structure (`packages/shared`) for TypeScript types, GraphQL fragments, design tokens, and utility functions that are shared between the web application and the React Native mobile companion. This prevents API contract drift and ensures consistent business logic across platforms.
 
@@ -309,4 +309,4 @@ function useWorkspaceQuery<T>(key: string, workspaceId: string, fetcher: () => P
 
 - [UI Architecture.md](./UI-Architecture.md)
 - [Design System.md](./Design-System.md)
-- [`/Docs/Meridian-Complete-Documentation.md#42-frontend`](../../Docs/Meridian-Complete-Documentation.md#42-frontend)
+- [`/Docs/Vaeloom-Complete-Documentation.md#42-frontend`](../../Docs/Vaeloom-Complete-Documentation.md#42-frontend)

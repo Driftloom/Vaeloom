@@ -1,10 +1,10 @@
-Meridian · Agent Workflow
+﻿Vaeloom Â· Agent Workflow
 
 # One file in, one application out
 
 The same memory loop runs underneath every feature. This is what actually happens between a student uploading a resume draft and an application landing in front of a recruiter.
 
-**Scenario:** A student drags **Resume\_draft\_v3.pdf** into Meridian, then later asks: "find me backend internships."
+**Scenario:** A student drags **Resume\_draft\_v3.pdf** into Vaeloom, then later asks: "find me backend internships."
 
 1
 
@@ -55,7 +55,7 @@ USER
 
 ## "Find me backend internships"
 
-A normal chat request — the Orchestrator routes it to the Job Search Agent.
+A normal chat request â€” the Orchestrator routes it to the Job Search Agent.
 
 reads: working memory (conversation)
 
@@ -76,7 +76,7 @@ ATS AGENT
 
 ## Scores fit per role
 
-For each shortlisted role: 78% match, missing keywords "Docker," "system design," suggests two specific resume edits — shown as a diff, not applied automatically.
+For each shortlisted role: 78% match, missing keywords "Docker," "system design," suggests two specific resume edits â€” shown as a diff, not applied automatically.
 
 reads: master resume, job description
 
@@ -92,12 +92,12 @@ Nothing leaves the system until this point. The user selects which roles to actu
 
 APPLICATION AGENT
 
-## Tailors and submits — or hands off
+## Tailors and submits â€” or hands off
 
 Builds a tailored resume + cover letter per role. Where the platform has an official API, applies directly. Where it doesn't, deep-links the user to the listing with documents ready to attach, rather than scraping the form.
 
 reads: master resume, ATS suggestions
-writes: career memory — application + status
+writes: career memory â€” application + status
 
 10
 
@@ -105,6 +105,6 @@ MEMORY AGENT
 
 ## Outcome feeds the next loop
 
-Whatever happens next — interview, rejection, silence — gets logged. The next time the Job Search Agent ranks roles, this outcome is part of what it's reading.
+Whatever happens next â€” interview, rejection, silence â€” gets logged. The next time the Job Search Agent ranks roles, this outcome is part of what it's reading.
 
 writes: episodic memory, preference memory

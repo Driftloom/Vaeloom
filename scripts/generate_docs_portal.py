@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Meridian Documentation Portal Generator
+Vaeloom Documentation Portal Generator
 Reads all markdown files from docs/ and generates a single self-contained HTML file
 with sidebar navigation, full-text search, dark mode, and Mermaid diagram support.
 """
@@ -17,21 +17,21 @@ OUTPUT_FILE = Path("docs-portal.html")
 
 # Categories and their display names / icons
 CATEGORIES = [
-    ("Product", "📋"),
-    ("Architecture", "🏗️"),
-    ("Frontend", "🎨"),
-    ("Backend", "⚙️"),
-    ("AI", "🤖"),
-    ("Database", "🗄️"),
-    ("Security", "🔒"),
-    ("DevOps", "🚀"),
-    ("Testing", "🧪"),
-    ("Engineering", "🔧"),
-    ("Operations", "📊"),
-    ("Developer_Experience", "💻"),
-    ("Project", "📁"),
-    ("Enterprise", "🏢"),
-    ("Build_Prompts", "📝"),
+    ("Product", "ðŸ“‹"),
+    ("Architecture", "ðŸ—ï¸"),
+    ("Frontend", "ðŸŽ¨"),
+    ("Backend", "âš™ï¸"),
+    ("AI", "ðŸ¤–"),
+    ("Database", "ðŸ—„ï¸"),
+    ("Security", "ðŸ”’"),
+    ("DevOps", "ðŸš€"),
+    ("Testing", "ðŸ§ª"),
+    ("Engineering", "ðŸ”§"),
+    ("Operations", "ðŸ“Š"),
+    ("Developer_Experience", "ðŸ’»"),
+    ("Project", "ðŸ“"),
+    ("Enterprise", "ðŸ¢"),
+    ("Build_Prompts", "ðŸ“"),
 ]
 
 # Files at root level (not in a category folder)
@@ -53,7 +53,7 @@ def categorize_file(rel_path: str) -> tuple:
     name = os.path.splitext(parts[-1])[0]
     name = name.replace("-", " ").replace("_", " ")
     name = name.title()
-    return "Root", name, "📄"
+    return "Root", name, "ðŸ“„"
 
 
 def read_markdown_files():
@@ -69,7 +69,7 @@ def read_markdown_files():
         try:
             content = md_file.read_text(encoding="utf-8", errors="replace")
         except Exception as e:
-            print(f"  ⚠ Error reading {rel_path}: {e}")
+            print(f"  âš  Error reading {rel_path}: {e}")
             content = f"# Error Loading Document\n\nCould not read `{rel_path}`."
         
         cat, display_name, icon = categorize_file(rel_path)
@@ -118,7 +118,7 @@ def group_by_category(docs):
     if root_docs:
         groups.append({
             "name": "Other Documents",
-            "icon": "📄",
+            "icon": "ðŸ“„",
             "docs": root_docs,
         })
     
@@ -164,7 +164,7 @@ def generate_html(docs_by_cat):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meridian Documentation Portal</title>
+<title>Vaeloom Documentation Portal</title>
 
 <!-- Libraries from CDN -->
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
@@ -796,12 +796,12 @@ def generate_html(docs_by_cat):
 <!-- ===== Sidebar ===== -->
 <aside id="sidebar">
   <div class="sidebar-header">
-    <h1>📖 Meridian Docs</h1>
+    <h1>ðŸ“– Vaeloom Docs</h1>
     <div class="subtitle">Documentation Portal</div>
   </div>
 
   <div id="search-container" style="position:relative">
-    <span class="search-icon">🔍</span>
+    <span class="search-icon">ðŸ”</span>
     <input type="text" id="search-input" placeholder="Search documents..." autocomplete="off">
     <div id="search-results"></div>
   </div>
@@ -812,22 +812,22 @@ def generate_html(docs_by_cat):
 <!-- ===== Main Content ===== -->
 <div id="main">
   <div id="toolbar">
-    <button id="sidebar-toggle" title="Toggle sidebar">☰</button>
+    <button id="sidebar-toggle" title="Toggle sidebar">â˜°</button>
     <div id="breadcrumb">
       <span class="bc-cat" id="bc-cat">Documentation</span>
       <span id="bc-sep" style="display:none"> / </span>
       <span class="bc-doc" id="bc-doc"></span>
     </div>
     <div class="toolbar-actions">
-      <button id="theme-toggle" title="Toggle dark mode">🌙 Dark</button>
+      <button id="theme-toggle" title="Toggle dark mode">ðŸŒ™ Dark</button>
     </div>
   </div>
 
   <div id="content-area">
     <div id="loading"><div class="spinner"></div></div>
     <div id="welcome">
-      <div class="welcome-icon">📚</div>
-      <h2>Meridian Documentation</h2>
+      <div class="welcome-icon">ðŸ“š</div>
+      <h2>Vaeloom Documentation</h2>
       <p>Select a document from the sidebar to begin reading. Use the search bar to find documents by title or content.</p>
       <div class="welcome-stats">
         <div class="stat">
@@ -860,7 +860,7 @@ const CATEGORIES_DATA = {groups_json};
 // ===== State =====
 let currentDocIndex = -1;
 let filteredDocs = null;
-let currentTheme = localStorage.getItem('meridian-theme') || 'light';
+let currentTheme = localStorage.getItem('Vaeloom-theme') || 'light';
 let sidebarOpen = window.innerWidth > 768;
 
 // ===== Init =====
@@ -891,15 +891,15 @@ document.addEventListener('DOMContentLoaded', () => {{
 function initTheme() {{
   document.documentElement.setAttribute('data-theme', currentTheme);
   document.getElementById('theme-toggle').innerHTML = 
-    currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    currentTheme === 'dark' ? 'â˜€ï¸ Light' : 'ðŸŒ™ Dark';
 }}
 
 document.getElementById('theme-toggle').addEventListener('click', () => {{
   currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', currentTheme);
-  localStorage.setItem('meridian-theme', currentTheme);
+  localStorage.setItem('Vaeloom-theme', currentTheme);
   document.getElementById('theme-toggle').innerHTML = 
-    currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    currentTheme === 'dark' ? 'â˜€ï¸ Light' : 'ðŸŒ™ Dark';
   
   // Re-render only the content area so mermaid diagrams get the new theme
   // (mermaid.run() can't re-theme already-rendered SVGs; re-creating the DOM fixes this)
@@ -921,7 +921,7 @@ function buildSidebar() {{
       <span class="cat-icon">${{cat.icon}}</span>
       ${{cat.name}}
       <span class="cat-count">${{cat.docs.length}}</span>
-      <span class="chevron open">▶</span>
+      <span class="chevron open">â–¶</span>
     `;
     header.addEventListener('click', () => {{
       const docsEl = catEl.querySelector('.nav-docs');
@@ -1137,7 +1137,7 @@ function renderDoc(doc) {{
   // Add header meta
   const catInfo = CATEGORIES_DATA.find(c => c.docs.some(d => d.path === doc.path));
   const catName = catInfo ? catInfo.name : 'Uncategorized';
-  const catIcon = catInfo ? catInfo.icon : '📄';
+  const catIcon = catInfo ? catInfo.icon : 'ðŸ“„';
   
   container.innerHTML = `
     <div class="doc-header">
@@ -1158,7 +1158,7 @@ function renderDoc(doc) {{
 }}
 
 /**
- * Re-render content only — used when theme changes.
+ * Re-render content only â€” used when theme changes.
  * Unlike renderDoc(), this preserves scroll position and doesn't show toasts
  * or update navigation elements.
  */
@@ -1243,7 +1243,7 @@ document.addEventListener('keydown', (e) => {{
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
-    print("[...] Generating Meridian Documentation Portal...")
+    print("[...] Generating Vaeloom Documentation Portal...")
     print(f"  Scanning {DOCS_DIR} for markdown files...")
     
     docs = read_markdown_files()

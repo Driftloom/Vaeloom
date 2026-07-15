@@ -1,16 +1,16 @@
-# Agentic RAG
+﻿# Agentic RAG
 
-> **Purpose:** Define the Agentic RAG architecture — retrieval that chooses its own strategy per query, rather than a fixed pipeline
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define the Agentic RAG architecture â€” retrieval that chooses its own strategy per query, rather than a fixed pipeline
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-12
-> **Canonical source:** [`/Docs/Meridian-Complete-Documentation.md#65-agentic-rag`](../../Docs/Meridian-Complete-Documentation.md#65-agentic-rag)
+> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag)
 
 ---
 
 ## Overview
 
-Traditional RAG runs one fixed retrieval pipeline for every query. Agentic RAG means the requesting agent decides, per query, which combination of strategies (vector, keyword, graph, or hybrid) actually answers the question. This is a core differentiator for Meridian — it allows agents to ask the right kind of question for the context, rather than forcing every query through the same funnel.
+Traditional RAG runs one fixed retrieval pipeline for every query. Agentic RAG means the requesting agent decides, per query, which combination of strategies (vector, keyword, graph, or hybrid) actually answers the question. This is a core differentiator for Vaeloom â€” it allows agents to ask the right kind of question for the context, rather than forcing every query through the same funnel.
 
 This document covers the agentic RAG architecture, retrieval strategy selection, ranking, context assembly, and implementation patterns.
 
@@ -30,27 +30,27 @@ This document covers the agentic RAG architecture, retrieval strategy selection,
 stateDiagram-v2
     direction LR
 
-    %% ─── State Definitions ───
-    state Idle      : ⏸️ Waiting for agent query
-    state Received  : 📥 Query received by Router
-    state Analyzing : 🔍 Router classifies intent
+    %% â”€â”€â”€ State Definitions â”€â”€â”€
+    state Idle      : â¸ï¸ Waiting for agent query
+    state Received  : ðŸ“¥ Query received by Router
+    state Analyzing : ðŸ” Router classifies intent
 
     state Fork_strategy <<fork>>
 
-    state Vector   : 📐 Vector Search
-    state Keyword  : ⌨️ Keyword Search
-    state Graph    : 🔗 Graph Traversal
-    state Hybrid   : 🧬 Hybrid Search
+    state Vector   : ðŸ“ Vector Search
+    state Keyword  : âŒ¨ï¸ Keyword Search
+    state Graph    : ðŸ”— Graph Traversal
+    state Hybrid   : ðŸ§¬ Hybrid Search
 
     state Join_results <<join>>
 
-    state Ranking    : 📊 Multi-factor scoring
-    state Assembling : 🧩 Context assembly
-    state Pruning    : ✂️ Prune to token budget
-    state Returned   : ✅ Context delivered to Agent
-    state Error      : ❌ Error / No results
+    state Ranking    : ðŸ“Š Multi-factor scoring
+    state Assembling : ðŸ§© Context assembly
+    state Pruning    : âœ‚ï¸ Prune to token budget
+    state Returned   : âœ… Context delivered to Agent
+    state Error      : âŒ Error / No results
 
-    %% ─── Transitions ───
+    %% â”€â”€â”€ Transitions â”€â”€â”€
     [*] --> Idle : System ready
     Idle --> Received : Agent sends query
     Received --> Analyzing : Router parses query
@@ -74,18 +74,18 @@ stateDiagram-v2
     Pruning --> Returned : Context fits within max_tokens
     Pruning --> Returned : Truncated to budget
 
-    Returned --> Generating : 🤖 LLM generates response<br/>using assembled context
+    Returned --> Generating : ðŸ¤– LLM generates response<br/>using assembled context
     Generating --> [*] : Response delivered to user
     Generating --> Idle : Ready for next query
 
-    %% ─── Error transitions ───
+    %% â”€â”€â”€ Error transitions â”€â”€â”€
     Analyzing --> Error : Strategy cannot be determined
     Ranking --> Error : Zero results across all stores
     Assembling --> Error : All results deduplicated away
 
     Error --> Idle : Log error, return empty context
 
-    %% ─── Notes ───
+    %% â”€â”€â”€ Notes â”€â”€â”€
     note right of Analyzing
         Router analyzes query signals:
         exact terms, relationships,
@@ -107,7 +107,7 @@ stateDiagram-v2
     end note
 ```
 
-> **Diagram:** The RAG query lifecycle as a state machine. A query flows through five phases — **Receive** → **Analyze** → **Strategy Fork** (vector/keyword/graph/hybrid) → **Rank & Assemble** → **Return**. Error states handle strategy failures, empty results, and deduplication edge cases. The system returns to `Idle` after each query, ready for the next.
+> **Diagram:** The RAG query lifecycle as a state machine. A query flows through five phases â€” **Receive** â†’ **Analyze** â†’ **Strategy Fork** (vector/keyword/graph/hybrid) â†’ **Rank & Assemble** â†’ **Return**. Error states handle strategy failures, empty results, and deduplication edge cases. The system returns to `Idle` after each query, ready for the next.
 
 ---
 
@@ -274,7 +274,7 @@ graph LR
 
 | Factor | Weight | Source | Calculation |
 |--------|--------|--------|-------------|
-| Relevance | 0.50 | Cross-encoder reranker | `reranker.score(query, memory)` → 0-1 |
+| Relevance | 0.50 | Cross-encoder reranker | `reranker.score(query, memory)` â†’ 0-1 |
 | Freshness | 0.20 | Timestamp | `max(0, 1 - days_since_update / 365)` |
 | Importance | 0.15 | Entity centrality | `entity.degree_centrality / max_centrality` |
 | Confidence | 0.15 | Source reliability | `min(1, source_documents / 3)` |
@@ -358,7 +358,7 @@ def assemble_context(
 
 ## Scope
 
-This document covers the Agentic RAG system for Meridian, including retrieval strategy selection, hybrid search execution, multi-factor ranking, context assembly, and the routing classifier. It applies to all AI agents in the Meridian system (MVP: 8 agents, Enterprise: 28 agents). Out of scope: base RAG pipeline details (see [RAG.md](./RAG.md)), embedding model selection (see [Embeddings.md](./Embeddings.md)), and knowledge graph traversal specifics (see [Knowledge-Graph.md](./Knowledge-Graph.md)).
+This document covers the Agentic RAG system for Vaeloom, including retrieval strategy selection, hybrid search execution, multi-factor ranking, context assembly, and the routing classifier. It applies to all AI agents in the Vaeloom system (MVP: 8 agents, Enterprise: 28 agents). Out of scope: base RAG pipeline details (see [RAG.md](./RAG.md)), embedding model selection (see [Embeddings.md](./Embeddings.md)), and knowledge graph traversal specifics (see [Knowledge-Graph.md](./Knowledge-Graph.md)).
 
 ---
 
@@ -394,9 +394,9 @@ This document covers the Agentic RAG system for Meridian, including retrieval st
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
 | Retrieval Router | Classifies query, selects strategy, dispatches to stores | Python async service (FastAPI) | Horizontal scaling with queue buffer |
-| Vector Search Engine | Semantic similarity search over embeddings | pgvector (MVP) → Qdrant (Enterprise) | Shard by workspace_id |
+| Vector Search Engine | Semantic similarity search over embeddings | pgvector (MVP) â†’ Qdrant (Enterprise) | Shard by workspace_id |
 | Keyword Search Engine | Exact-term full-text search | PostgreSQL FTS (GIN indexes) | Read replicas for search volume |
-| Graph Traversal Engine | Entity relationship navigation | AGE (MVP) → Neo4j (Enterprise) | Graph partitioning by entity cluster |
+| Graph Traversal Engine | Entity relationship navigation | AGE (MVP) â†’ Neo4j (Enterprise) | Graph partitioning by entity cluster |
 | Relevance Ranker | Cross-encoder re-ranking of results | SentenceTransformers (cross-encoder) | Dedicated GPU workers at scale |
 | Context Assembler | Dedup, prioritize, prune, build prompt context | In-memory Python | Stateless, scales horizontally |
 
@@ -416,7 +416,7 @@ This document covers the Agentic RAG system for Meridian, including retrieval st
 
 ### 2. Context Assembly Workflow
 
-1. Ranker computes weighted score for each result (Relevance × 0.50 + Freshness × 0.20 + Importance × 0.15 + Confidence × 0.15)
+1. Ranker computes weighted score for each result (Relevance Ã— 0.50 + Freshness Ã— 0.20 + Importance Ã— 0.15 + Confidence Ã— 0.15)
 2. Results sorted descending by score
 3. Deduplication: skip results with duplicate entity_id (keep highest score)
 4. Iterate through results, building context string with source provenance
@@ -472,36 +472,36 @@ sequenceDiagram
 ## Data Flow
 
 ```
-┌─────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Agent       │────>│ Retrieval Router  │────>│ Strategy Select  │
-│  Query       │     │ (classify + route)│     │ (signal analysis)│
-└─────────────┘     └──────────────────┘     └─────────────────┘
-                                                    │
-                          ┌─────────────────────────┼─────────────────────┐
-                          ▼                         ▼                     ▼
-                   ┌────────────┐          ┌──────────────┐      ┌──────────────┐
-                   │Vector Store│          │Keyword Store  │      │ Graph Store  │
-                   │(pgvector)  │          │(PG FTS)       │      │(AGE/Neo4j)  │
-                   └────────────┘          └──────────────┘      └──────────────┘
-                          │                         │                     │
-                          └──────────────┬──────────┘─────────────────────┘
-                                         ▼
-                                  ┌──────────────┐
-                                  │Relevance Rank│
-                                  │(cross-encoder)│
-                                  └──────────────┘
-                                         │
-                                         ▼
-                                  ┌──────────────┐
-                                  │Context Assemb│
-                                  │(dedup + prune)│
-                                  └──────────────┘
-                                         │
-                                         ▼
-                                  ┌──────────────┐
-                                  │   Agent      │
-                                  │  Response    │
-                                  └──────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Agent       â”‚â”€â”€â”€â”€>â”‚ Retrieval Router  â”‚â”€â”€â”€â”€>â”‚ Strategy Select  â”‚
+â”‚  Query       â”‚     â”‚ (classify + route)â”‚     â”‚ (signal analysis)â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                                    â”‚
+                          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                          â–¼                         â–¼                     â–¼
+                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                   â”‚Vector Storeâ”‚          â”‚Keyword Store  â”‚      â”‚ Graph Store  â”‚
+                   â”‚(pgvector)  â”‚          â”‚(PG FTS)       â”‚      â”‚(AGE/Neo4j)  â”‚
+                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜          â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                          â”‚                         â”‚                     â”‚
+                          â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                         â–¼
+                                  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                                  â”‚Relevance Rankâ”‚
+                                  â”‚(cross-encoder)â”‚
+                                  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                         â”‚
+                                         â–¼
+                                  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                                  â”‚Context Assembâ”‚
+                                  â”‚(dedup + prune)â”‚
+                                  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                         â”‚
+                                         â–¼
+                                  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                                  â”‚   Agent      â”‚
+                                  â”‚  Response    â”‚
+                                  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 **Data Flow Description:** Agent queries flow through Router for strategy selection, which dispatches to the appropriate stores in parallel. Results converge at the Ranker for scoring, then the Context Assembler for deduplication and token-budget pruning. The final context payload is delivered to the requesting agent with full source provenance.
@@ -535,9 +535,9 @@ sequenceDiagram
 |-----------|--------------|--------------|---------------|
 | Queries per second | 100 QPS per workspace | Horizontal scaling of Router + Redis cache layer | Global query routing with regional caches |
 | Vector store size | 10M vectors (pgvector) | Migrate to Qdrant with auto-sharding | Distributed Qdrant cluster with multi-region replication |
-| Document corpus | 100K documents | AGE → Neo4j for graph store; document chunking increases embedding count | Dedicated GPU cluster for embedding generation |
+| Document corpus | 100K documents | AGE â†’ Neo4j for graph store; document chunking increases embedding count | Dedicated GPU cluster for embedding generation |
 | Concurrent agents | 8 agents (MVP) | Agent-specific router instances with shared cache | Full mesh agent-router topology with affinity routing |
-| Context assembly | 10 results per query | Tiered assembly: preview (top-3) → full (top-10) | Streaming assembly with progressive context delivery |
+| Context assembly | 10 results per query | Tiered assembly: preview (top-3) â†’ full (top-10) | Streaming assembly with progressive context delivery |
 
 ---
 
@@ -546,7 +546,7 @@ sequenceDiagram
 | Scenario | Detection | Mitigation | Recovery |
 |----------|-----------|------------|----------|
 | All stores return empty results | Ranker receives zero results | Return empty context with `status: "no_results"` flag | Router retries with broader strategy (hybrid with 100% weight on least-used store) |
-| One store times out | Per-store timeout exceeds 500ms | Continue with results from other stores; log timeout | Retry failed store on next query (circuit breaker: 3 failures → 30s cooldown) |
+| One store times out | Per-store timeout exceeds 500ms | Continue with results from other stores; log timeout | Retry failed store on next query (circuit breaker: 3 failures â†’ 30s cooldown) |
 | Router cannot classify query | Confidence below 0.3 threshold | Default to hybrid search with balanced weights | Log classification failure for prompt improvement |
 | Context exceeds token budget | Accumulated tokens > max_tokens | Prune lowest-scored results until within budget | Log pruning count for context budget optimization |
 | Vector store unavailable | Connection error / 503 | Fall back to keyword + graph only | Alert on-call; auto-reconnect with backoff |
@@ -572,7 +572,7 @@ sequenceDiagram
 |-------------|--------|---------|-------------|
 | Development | Docker Compose with local services | Code push to `develop` branch | Unit tests + integration tests |
 | Staging | Helm chart to staging Kubernetes cluster | PR merge to `main` | Golden dataset evals pass |
-| Production (canary) | Progressive rollout (10% → 50% → 100%) | Manual approval after staging | Shadow mode compare vs production baseline |
+| Production (canary) | Progressive rollout (10% â†’ 50% â†’ 100%) | Manual approval after staging | Shadow mode compare vs production baseline |
 | Production (full) | Full cluster rollout | 24h canary observation | Latency + accuracy metrics within SLO |
 
 ---
@@ -604,7 +604,7 @@ assert plan.weights == {"keyword": 0.7, "vector": 0.2, "graph": 0.1}
 
 # Output context assembled with source provenance
 # [Source: course_catalog.pdf | Score: 0.94]
-# CS229: Machine Learning — Stanford course covering supervised learning...
+# CS229: Machine Learning â€” Stanford course covering supervised learning...
 ```
 
 ### Example 2: Relationship Query
@@ -618,7 +618,7 @@ assert plan.strategy == RetrievalStrategy.GRAPH
 
 # Output: traverses from React node to connected Skill nodes
 # [Source: knowledge_graph | Score: 0.88]
-# React → requires_skill → JavaScript, TypeScript, CSS
+# React â†’ requires_skill â†’ JavaScript, TypeScript, CSS
 ```
 
 ---
@@ -660,4 +660,4 @@ assert plan.strategy == RetrievalStrategy.GRAPH
 - [RAG.md](./RAG.md)
 - [Embeddings.md](./Embeddings.md)
 - [Memory.md](./Memory.md)
-- [`/Docs/Meridian-Complete-Documentation.md#65-agentic-rag`](../../Docs/Meridian-Complete-Documentation.md#65-agentic-rag)
+- [`/Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag)

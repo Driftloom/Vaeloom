@@ -1,13 +1,13 @@
-# API Reference
+﻿# API Reference
 
-> **Purpose:** Complete OpenAPI 3.1 structured reference for all Meridian API endpoints, authentication, error handling, and rate limits
-> **Status:** 🆕 New
+> **Purpose:** Complete OpenAPI 3.1 structured reference for all Vaeloom API endpoints, authentication, error handling, and rate limits
+> **Status:** ðŸ†• New
 > **Owner:** Backend Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-The Meridian API follows RESTful conventions over HTTPS at `https://api.meridian.dev/v1`. All endpoints are documented in an OpenAPI 3.1 specification available at `/.well-known/openapi.json` for tooling integration (Postman, Insomnia, SDK generation).
+The Vaeloom API follows RESTful conventions over HTTPS at `https://api.Vaeloom.dev/v1`. All endpoints are documented in an OpenAPI 3.1 specification available at `/.well-known/openapi.json` for tooling integration (Postman, Insomnia, SDK generation).
 
 This reference covers all resources: Documents, Agents, Connectors, Workspaces, Users, and Admin. Every endpoint requires authentication via Bearer JWT, with scoped access based on the Permission Engine.
 
@@ -20,7 +20,7 @@ graph TD
     classDef resource fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Gateway["API Gateway — api.meridian.dev"]
+    subgraph Gateway["API Gateway â€” api.Vaeloom.dev"]
         GW["Gateway<br/>SSL termination, rate limit, routing"]
     end
 
@@ -74,7 +74,7 @@ Authorization: Bearer <token>
 |-------|----------|----------|
 | Access Token | 15 minutes | Standard API requests |
 | Refresh Token | 7 days | Obtain new access tokens |
-| API Key | Configurable (30d–1yr) | Automated / CI integrations |
+| API Key | Configurable (30dâ€“1yr) | Automated / CI integrations |
 | Enterprise JWT (SAML) | Per-session | SAML/OIDC federated login |
 
 ### Token Scopes
@@ -195,12 +195,12 @@ Content-Type: application/json
 **Get run result (poll):**
 
 ```json
-// Response — GET /v1/agents/runs/run_xyz789
+// Response â€” GET /v1/agents/runs/run_xyz789
 {
   "run_id": "run_xyz789",
   "status": "completed",
   "result": {
-    "tailored_resume_url": "https://storage.meridian.dev/...",
+    "tailored_resume_url": "https://storage.Vaeloom.dev/...",
     "summary": "Resume optimized for Senior Software Engineer at Acme Corp. Added keywords: Kubernetes, distributed systems, team leadership.",
     "match_score": 87
   },
@@ -293,7 +293,7 @@ POST   /v1/admin/audit-logs/export        # Export audit logs
 
 | Practice | Rationale |
 |----------|----------|
-| Use cursor-based pagination | Cursor pagination remains stable when new items are inserted — unlike offset pagination which can skip/duplicate results |
+| Use cursor-based pagination | Cursor pagination remains stable when new items are inserted â€” unlike offset pagination which can skip/duplicate results |
 | Implement exponential backoff | Retry 429 responses with `Retry-After` header; use jitter to avoid thundering herd |
 | Send `Idempotency-Key` for mutation requests | Prevents duplicate agent runs and document uploads on network retry |
 | Use conditional requests with ETags | Cache document metadata and agent configurations client-side; saves bandwidth and reduces server load |
@@ -331,10 +331,10 @@ POST   /v1/admin/audit-logs/export        # Export audit logs
 
 ## Goals
 
-1. **Standardize API access** — Provide a single, consistent RESTful interface for all Meridian clients (web app, mobile, AI agents, third-party integrations)
-2. **Enable self-service integration** — Document every endpoint with request/response schemas so external developers and AI agents can integrate without source code access
-3. **Define security and rate-limit boundaries** — Specify auth requirements, scope permissions, and rate limits so clients know exactly how to interact safely
-4. **Support OpenAPI 3.1 tooling** — Expose a machine-readable spec at `/.well-known/openapi.json` for automated SDK generation, Postman collections, and API gateway validation
+1. **Standardize API access** â€” Provide a single, consistent RESTful interface for all Vaeloom clients (web app, mobile, AI agents, third-party integrations)
+2. **Enable self-service integration** â€” Document every endpoint with request/response schemas so external developers and AI agents can integrate without source code access
+3. **Define security and rate-limit boundaries** â€” Specify auth requirements, scope permissions, and rate limits so clients know exactly how to interact safely
+4. **Support OpenAPI 3.1 tooling** â€” Expose a machine-readable spec at `/.well-known/openapi.json` for automated SDK generation, Postman collections, and API gateway validation
 
 ---
 
@@ -342,7 +342,7 @@ POST   /v1/admin/audit-logs/export        # Export audit logs
 
 ### In Scope
 
-- All REST endpoints under `https://api.meridian.dev/v1/` covering Documents, Agents, Connectors, Workspaces, Users, and Admin
+- All REST endpoints under `https://api.Vaeloom.dev/v1/` covering Documents, Agents, Connectors, Workspaces, Users, and Admin
 - Authentication via Bearer JWT with scope-based access control
 - Rate limiting tiered by subscription plan (Free, Pro, Enterprise)
 - Error responses with structured error codes and request IDs
@@ -384,9 +384,9 @@ POST   /v1/admin/audit-logs/export        # Export audit logs
 
 ## Workflows
 
-1. **Document Upload Flow:** Client POSTs file → API returns 202 with document ID → Ingestion queue processes OCR/extraction → Webhook notifies on completion → Document status becomes `processed`
-2. **Agent Execution Flow:** Client POSTs agent execution with input → API returns 202 with run ID → Agent queued on dedicated worker → Worker executes agent logic → Result stored → Client polls or receives WebSocket push with result
-3. **Connector Sync Flow:** Client triggers sync → API enqueues sync job → Worker fetches external data → Data is deduplicated and classified → Memory Agent extracts entities → Sync status updated
+1. **Document Upload Flow:** Client POSTs file â†’ API returns 202 with document ID â†’ Ingestion queue processes OCR/extraction â†’ Webhook notifies on completion â†’ Document status becomes `processed`
+2. **Agent Execution Flow:** Client POSTs agent execution with input â†’ API returns 202 with run ID â†’ Agent queued on dedicated worker â†’ Worker executes agent logic â†’ Result stored â†’ Client polls or receives WebSocket push with result
+3. **Connector Sync Flow:** Client triggers sync â†’ API enqueues sync job â†’ Worker fetches external data â†’ Data is deduplicated and classified â†’ Memory Agent extracts entities â†’ Sync status updated
 
 ---
 
@@ -411,14 +411,14 @@ sequenceDiagram
     CTRL-->>C: 202 Accepted + document metadata
     C-->>C: Poll GET /v1/documents/:id for status
 ```
-> **Diagram:** Document upload flow — API Gateway validates auth/permissions, controller delegates to service, service persists with `processing` status, enqueues async ingestion, returns 202 immediately.
+> **Diagram:** Document upload flow â€” API Gateway validates auth/permissions, controller delegates to service, service persists with `processing` status, enqueues async ingestion, returns 202 immediately.
 
 ---
 
 ## Data Flow
 
 ```text
-1. Client sends HTTPS request to api.meridian.dev/v1/{resource}
+1. Client sends HTTPS request to api.Vaeloom.dev/v1/{resource}
 2. API Gateway terminates SSL and extracts client IP
 3. Gateway validates Bearer JWT, extracts user_id and workspace_id
 4. Gateway checks Permission Engine for requested scope
@@ -428,7 +428,7 @@ sequenceDiagram
 8. Service layer executes business logic (CRUD, agent execution, etc.)
 9. Response serialized as JSON with standard envelope
 10. Rate limit headers attached (X-RateLimit-Limit, X-RateLimit-Remaining)
-11. All errors caught by global exception filter → structured error response
+11. All errors caught by global exception filter â†’ structured error response
 ```
 
 ---
@@ -519,7 +519,7 @@ sequenceDiagram
 
 ```typescript
 // List all documents in a workspace
-const documents = await meridian.documents.list({
+const documents = await Vaeloom.documents.list({
   workspaceId: 'ws_abc123',
   limit: 50,
   offset: 0,
@@ -531,8 +531,8 @@ for (const doc of documents) {
 ```
 
 ```python
-# Upload a document to Meridian
-from meridian import Client
+# Upload a document to Vaeloom
+from Vaeloom import Client
 
 client = Client(api_key="...")
 doc = client.documents.upload(
@@ -545,8 +545,8 @@ print(doc.id, doc.status)
 
 ```bash
 # Create a new workspace
-curl -X POST "https://api.meridian.ai/v1/workspaces" \
-  -H "X-API-Key: $MERIDIAN_API_KEY" \
+curl -X POST "https://api.Vaeloom.ai/v1/workspaces" \
+  -H "X-API-Key: $Vaeloom_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"name": "Q3 Hiring", "settings": {"auto_organize": true}}'
 ```

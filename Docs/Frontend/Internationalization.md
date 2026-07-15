@@ -1,13 +1,13 @@
-# Internationalization
+﻿# Internationalization
 
-> **Purpose:** Define the i18n strategy, locale management, and translation workflow for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define the i18n strategy, locale management, and translation workflow for Vaeloom
+> **Status:** ðŸ†• New
 > **Owner:** Frontend Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Meridian serves a global user base with a focus on international students and job markets. The frontend uses **next-i18next** for React/Next.js internationalization, supporting six initial locales: English, Spanish, French, German, Japanese, and Chinese. Arabic and Hebrew support includes full RTL layout mirroring.
+Vaeloom serves a global user base with a focus on international students and job markets. The frontend uses **next-i18next** for React/Next.js internationalization, supporting six initial locales: English, Spanish, French, German, Japanese, and Chinese. Arabic and Hebrew support includes full RTL layout mirroring.
 
 Translations are managed through **Crowdin** for collaborative translation workflows, lazy-loaded per route to minimize bundle size, and versioned alongside the codebase to ensure translation drift is detected in CI.
 
@@ -25,7 +25,7 @@ graph TD
     end
     
     subgraph Platform["Translation Platform"]
-        CD["Crowdin Project<br/>meridian-web"]
+        CD["Crowdin Project<br/>Vaeloom-web"]
         TM["Translation Memory"]
         GT["Glossary / Terminology"]
     end
@@ -137,11 +137,11 @@ For RTL locales, the application applies CSS logical properties and a layout fli
 
 | Practice | Rationale |
 |----------|----------|
-| Namespace translations by route | Enables lazy-loading per page — dashboard loads only `dashboard.json`, not the entire translation corpus |
+| Namespace translations by route | Enables lazy-loading per page â€” dashboard loads only `dashboard.json`, not the entire translation corpus |
 | Use interpolation, not concatenation | `t('welcome', { name })` avoids word-order issues in languages where adjective placement differs |
 | Keep source keys in English | English keys serve as self-documenting identifiers; translators always have a reference context |
 | Version lock translations to releases | Translation PRs pinned to app version tags prevent drift when source strings change mid-release cycle |
-| Always use `t()` function | Never embed raw strings in JSX — every user-facing string must pass through the i18n function |
+| Always use `t()` function | Never embed raw strings in JSX â€” every user-facing string must pass through the i18n function |
 
 ## Common Mistakes
 
@@ -184,10 +184,10 @@ For RTL locales, the application applies CSS logical properties and a layout fli
 
 ## Workflows
 
-1. **User changes language**: Clicks LanguageSwitcher → selects "Français" → locale cookie updated → page re-renders with French translations → if RTL locale (Arabic, Hebrew), `dir=rtl` applied → layout flips via CSS logical properties
-2. **New translation key added**: Developer adds key to `en/common.json` → PR merge triggers CI → Crowdin sync uploads source keys → translators receive notification → translations submitted → proofread approved → `crowdin pull` downloads updated files → build includes new locale chunks
-3. **Missing translation fallback**: User with German locale encounters untranslated key → i18next falls back to English value → console warning logged → Sentry captures missing key → translation ticket auto-filed in Crowdin
-4. **RTL layout verification**: Developer tests Arabic locale → CSS logical properties auto-flip margins, padding, borders → icons reverse via `transform: scaleX(-1)` → visual regression test compares LTR vs RTL screenshots → CI passes only if both match baseline
+1. **User changes language**: Clicks LanguageSwitcher â†’ selects "FranÃ§ais" â†’ locale cookie updated â†’ page re-renders with French translations â†’ if RTL locale (Arabic, Hebrew), `dir=rtl` applied â†’ layout flips via CSS logical properties
+2. **New translation key added**: Developer adds key to `en/common.json` â†’ PR merge triggers CI â†’ Crowdin sync uploads source keys â†’ translators receive notification â†’ translations submitted â†’ proofread approved â†’ `crowdin pull` downloads updated files â†’ build includes new locale chunks
+3. **Missing translation fallback**: User with German locale encounters untranslated key â†’ i18next falls back to English value â†’ console warning logged â†’ Sentry captures missing key â†’ translation ticket auto-filed in Crowdin
+4. **RTL layout verification**: Developer tests Arabic locale â†’ CSS logical properties auto-flip margins, padding, borders â†’ icons reverse via `transform: scaleX(-1)` â†’ visual regression test compares LTR vs RTL screenshots â†’ CI passes only if both match baseline
 
 ## Sequence Diagrams
 
@@ -196,7 +196,7 @@ sequenceDiagram
     participant U as User
     participant MW as Next.js Middleware
     participant I18N as next-i18next
-    participant API as Meridian API
+    participant API as Vaeloom API
     participant CDN as CDN (Translations)
 
     U->>MW: GET /workspace (Accept-Language: fr)
@@ -216,11 +216,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: Source translations authored in English `en/{namespace}.json` → pushed to Crowdin via CI → translators submit target locale translations → proofread and approved
-2. **Processing**: `crowdin pull` downloads approved translations → CI lints for missing keys → webpack chunks splits by locale + namespace → JSON gzipped and uploaded to CDN
-3. **Storage**: Translation files versioned in Git alongside code → CDN serves immutable locale chunks with SRI hashes → browser caches via localStorage + SWR
-4. **Retrieval**: Next.js middleware detects locale → i18next loads namespace JSON on demand → `<Trans>` components render rich translations → RTLProvider flips layout if needed
-5. **Deletion**: Deprecated translation keys removed from source → Crowdin sync removes from all locales → stale keys purged from CDN cache → old locale chunks removed from build
+1. **Ingestion**: Source translations authored in English `en/{namespace}.json` â†’ pushed to Crowdin via CI â†’ translators submit target locale translations â†’ proofread and approved
+2. **Processing**: `crowdin pull` downloads approved translations â†’ CI lints for missing keys â†’ webpack chunks splits by locale + namespace â†’ JSON gzipped and uploaded to CDN
+3. **Storage**: Translation files versioned in Git alongside code â†’ CDN serves immutable locale chunks with SRI hashes â†’ browser caches via localStorage + SWR
+4. **Retrieval**: Next.js middleware detects locale â†’ i18next loads namespace JSON on demand â†’ `<Trans>` components render rich translations â†’ RTLProvider flips layout if needed
+5. **Deletion**: Deprecated translation keys removed from source â†’ Crowdin sync removes from all locales â†’ stale keys purged from CDN cache â†’ old locale chunks removed from build
 
 ## Scalability
 
@@ -244,11 +244,11 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Missing translation key rate | > 0 in production | Warning | Sentry — i18n Issues |
-| Translation bundle size per locale | > 50KB gzipped | Warning | Grafana — Bundle Size Dashboard |
-| RTL locale visual regression failures | > 0 per release | Critical | Chromatic — Visual Regression |
-| Crowdin sync duration | > 5 minutes | Warning | CI Pipeline — i18n Sync step |
-| Locale detection redirect rate | > 1% of requests redirect | Info | Grafana — Performance Dashboard |
+| Missing translation key rate | > 0 in production | Warning | Sentry â€” i18n Issues |
+| Translation bundle size per locale | > 50KB gzipped | Warning | Grafana â€” Bundle Size Dashboard |
+| RTL locale visual regression failures | > 0 per release | Critical | Chromatic â€” Visual Regression |
+| Crowdin sync duration | > 5 minutes | Warning | CI Pipeline â€” i18n Sync step |
+| Locale detection redirect rate | > 1% of requests redirect | Info | Grafana â€” Performance Dashboard |
 
 ## Risks
 

@@ -1,13 +1,13 @@
-# Mobile Architecture
+﻿# Mobile Architecture
 
-> **Purpose:** Define the React Native mobile companion app architecture for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define the React Native mobile companion app architecture for Vaeloom
+> **Status:** ðŸ†• New
 > **Owner:** Frontend Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Meridian provides a React Native companion app for iOS and Android that serves as a mobile extension of the web application — not a full parity client. The companion is designed for on-the-go access to the most critical workflows: reviewing dashboards, managing workspaces, chatting with agents, receiving notifications, and quick document uploads.
+Vaeloom provides a React Native companion app for iOS and Android that serves as a mobile extension of the web application â€” not a full parity client. The companion is designed for on-the-go access to the most critical workflows: reviewing dashboards, managing workspaces, chatting with agents, receiving notifications, and quick document uploads.
 
 The mobile app shares TypeScript types, GraphQL fragments, and core business logic with the web frontend through a shared monorepo package (`packages/shared`). Platform-specific UI is built using React Native components while reusing design tokens from the web design system.
 
@@ -21,10 +21,10 @@ graph TD
     classDef storage fill:#f3e5f5,stroke:#6a1b9a,color:#000
 
     subgraph Monorepo["Shared Packages"]
-        T["@meridian/types<br/>TypeScript types & interfaces"]
-        G["@meridian/graphql<br/>Fragments & queries"]
-        U["@meridian/utils<br/>Business logic, formatting"]
-        D["@meridian/design-tokens<br/>Colors, spacing, typography"]
+        T["@vaeloom/types<br/>TypeScript types & interfaces"]
+        G["@vaeloom/graphql<br/>Fragments & queries"]
+        U["@vaeloom/utils<br/>Business logic, formatting"]
+        D["@vaeloom/design-tokens<br/>Colors, spacing, typography"]
     end
 
     subgraph MobileApp["React Native App"]
@@ -125,7 +125,7 @@ interface OfflineStrategy {
 sequenceDiagram
     participant U as Device
     participant P as Push Service
-    participant API as Meridian API
+    participant API as Vaeloom API
     participant W as WebSocket
 
     U->>P: Register device token
@@ -140,7 +140,7 @@ sequenceDiagram
         P-->>U: Display notification
     end
     
-    U->>API: Tap notification → deep link
+    U->>API: Tap notification â†’ deep link
     API-->>U: Navigate to target screen
 ```
 
@@ -193,18 +193,18 @@ sequenceDiagram
 
 ## Workflows
 
-1. **App cold start**: User opens app → splash screen displays → biometric auth prompt appears → Face ID / Fingerprint authenticates → tab navigator renders → active tab (Dashboard) fires data queries → skeleton screens show while loading → data renders
-2. **Offline document upload**: User taps FAB → selects camera → captures document → WatermelonDB stores locally with `synced: false` → optimistic UI shows document in list → network reconnects → background sync pushes to server → conflict resolved (LWW) → sync badge updates
-3. **Push notification → deep link**: User receives notification → taps it → app opens → deep link parsed → target screen resolved in navigator → screen loads with context from notification payload → WebSocket connects for real-time updates
-4. **Biometric session lock**: App backgrounds → timer starts (5 min default) → user returns within timer → no re-auth → user returns after timer → biometric prompt shown → success → continue session → failure → logout with data preserved
+1. **App cold start**: User opens app â†’ splash screen displays â†’ biometric auth prompt appears â†’ Face ID / Fingerprint authenticates â†’ tab navigator renders â†’ active tab (Dashboard) fires data queries â†’ skeleton screens show while loading â†’ data renders
+2. **Offline document upload**: User taps FAB â†’ selects camera â†’ captures document â†’ WatermelonDB stores locally with `synced: false` â†’ optimistic UI shows document in list â†’ network reconnects â†’ background sync pushes to server â†’ conflict resolved (LWW) â†’ sync badge updates
+3. **Push notification â†’ deep link**: User receives notification â†’ taps it â†’ app opens â†’ deep link parsed â†’ target screen resolved in navigator â†’ screen loads with context from notification payload â†’ WebSocket connects for real-time updates
+4. **Biometric session lock**: App backgrounds â†’ timer starts (5 min default) â†’ user returns within timer â†’ no re-auth â†’ user returns after timer â†’ biometric prompt shown â†’ success â†’ continue session â†’ failure â†’ logout with data preserved
 
 ## Data Flow
 
-1. **Ingestion**: User actions on mobile → optimistic update to WatermelonDB local store → queued for sync → when online, differential sync transmits only changed records → server processes and returns confirmation
-2. **Processing**: Apollo GraphQL client fragments shared with web → persisted queries reduce payload → normalized cache merged with WatermelonDB local data → conflict resolution via LWW
-3. **Storage**: WatermelonDB SQLite database encrypted via SQLCipher → encryption key bound to biometric keychain → Clerk session tokens in iOS Keychain / Android EncryptedSharedPreferences
-4. **Retrieval**: Reads use cache-first strategy → WatermelonDB queried first → stale data returned instantly → background sync updates cache → UI re-renders with fresh data
-5. **Deletion**: User deletes document locally → optimistic removal from FlatList → sync sends DELETE to server → server confirms → record purged from WatermelonDB
+1. **Ingestion**: User actions on mobile â†’ optimistic update to WatermelonDB local store â†’ queued for sync â†’ when online, differential sync transmits only changed records â†’ server processes and returns confirmation
+2. **Processing**: Apollo GraphQL client fragments shared with web â†’ persisted queries reduce payload â†’ normalized cache merged with WatermelonDB local data â†’ conflict resolution via LWW
+3. **Storage**: WatermelonDB SQLite database encrypted via SQLCipher â†’ encryption key bound to biometric keychain â†’ Clerk session tokens in iOS Keychain / Android EncryptedSharedPreferences
+4. **Retrieval**: Reads use cache-first strategy â†’ WatermelonDB queried first â†’ stale data returned instantly â†’ background sync updates cache â†’ UI re-renders with fresh data
+5. **Deletion**: User deletes document locally â†’ optimistic removal from FlatList â†’ sync sends DELETE to server â†’ server confirms â†’ record purged from WatermelonDB
 
 ## Scalability
 
@@ -228,11 +228,11 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Offline sync failure rate | > 2% | Warning | Grafana — Mobile Sync Dashboard |
-| App cold start time (p95) | > 3s | Critical | Grafana — Mobile Performance |
-| Biometric auth failure rate | > 5% | Warning | Sentry — Mobile Auth |
+| Offline sync failure rate | > 2% | Warning | Grafana â€” Mobile Sync Dashboard |
+| App cold start time (p95) | > 3s | Critical | Grafana â€” Mobile Performance |
+| Biometric auth failure rate | > 5% | Warning | Sentry â€” Mobile Auth |
 | Push notification delivery rate | < 95% | Critical | FCM/APNs Console |
-| Navigation jank (dropped frames) | > 5% of navigations | Warning | Grafana — Mobile Web Vitals |
+| Navigation jank (dropped frames) | > 5% of navigations | Warning | Grafana â€” Mobile Web Vitals |
 
 ## Risks
 
@@ -269,7 +269,7 @@ sequenceDiagram
 - Biometric authentication (Face ID / Fingerprint) as secondary factor for local session unlock
 
 ### Out of Scope
-- Full web parity — mobile is a companion app for on-the-go access, not a complete replacement
+- Full web parity â€” mobile is a companion app for on-the-go access, not a complete replacement
 - Real-time collaborative editing on mobile (future improvement)
 - Apple Watch companion app (future improvement)
 - Android Widget/iOS Shortcut support (future improvement)
@@ -318,7 +318,7 @@ async function authenticateUser(): Promise<boolean> {
   }
 
   const result = await LocalAuthentication.authenticateAsync({
-    promptMessage: 'Unlock Meridian',
+    promptMessage: 'Unlock Vaeloom',
     fallbackLabel: 'Use Passcode',
     disableDeviceFallback: false,
   });

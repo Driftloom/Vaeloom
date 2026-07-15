@@ -1,7 +1,7 @@
-# Architecture Walkthrough
+﻿# Architecture Walkthrough
 
-> **Purpose:** Guided walkthrough of Meridian's architecture for new developers
-> **Status:** 🆕 New
+> **Purpose:** Guided walkthrough of Vaeloom's architecture for new developers
+> **Status:** ðŸ†• New
 
 ## 5-Minute Architecture Overview
 
@@ -24,9 +24,9 @@ The frontend is a component-driven SPA with SSR for fast initial loads.
 
 **Key files to read first:**
 
-- `app/dashboard/page.tsx` — Landing page
-- `app/workspace/page.tsx` — File browser
-- `components/ProposalCard.tsx` — Agent proposal UI
+- `app/dashboard/page.tsx` â€” Landing page
+- `app/workspace/page.tsx` â€” File browser
+- `components/ProposalCard.tsx` â€” Agent proposal UI
 
 ### 2. API: `apps/api/` (NestJS)
 
@@ -34,9 +34,9 @@ REST API handling auth, CRUD, permissions, and proxying agent requests.
 
 **Key files to read first:**
 
-- `src/auth/auth.middleware.ts` — Auth flow
-- `src/permissions/permission.engine.ts` — Access control
-- `src/documents/document.service.ts` — File operations
+- `src/auth/auth.middleware.ts` â€” Auth flow
+- `src/permissions/permission.engine.ts` â€” Access control
+- `src/documents/document.service.ts` â€” File operations
 
 ### 3. AI Service: `apps/ai-service/` (FastAPI)
 
@@ -44,9 +44,9 @@ Agent runtime, memory system, RAG retrieval, and model routing.
 
 **Key files to read first:**
 
-- `agents/memory_agent/handler.py` — Core agent logic
-- `retrieval/router.py` — Agentic RAG strategy selection
-- `orchestrator/router.py` — Agent request routing
+- `agents/memory_agent/handler.py` â€” Core agent logic
+- `retrieval/router.py` â€” Agentic RAG strategy selection
+- `orchestrator/router.py` â€” Agent request routing
 
 ### 4. Database: PostgreSQL + Redis
 
@@ -71,33 +71,33 @@ PostgreSQL stores structured data, graph relationships (AGE), and vectors (pgvec
 
 | Mistake | Consequence |
 |---------|-------------|
-| Jumping into code before understanding the 3-tier architecture | New developers who start reading agent code before understanding the API ↔ AI Service boundary often make changes that break the gRPC contract between services |
+| Jumping into code before understanding the 3-tier architecture | New developers who start reading agent code before understanding the API â†” AI Service boundary often make changes that break the gRPC contract between services |
 | Modifying shared types without coordinating across packages | A change to `packages/shared-types` that isn't reflected in both TypeScript and Python definitions causes silent type mismatches in production |
-| Running services in the wrong order | Starting the AI Service before the API or database creates connection errors that look like code bugs — the start order is API → DB → AI → Frontend |
-| Skipping the architecture walkthrough entirely | Developers who go straight to coding miss the system design decisions that explain *why* the code is structured this way — leads to PRs that fight the architecture |
+| Running services in the wrong order | Starting the AI Service before the API or database creates connection errors that look like code bugs â€” the start order is API â†’ DB â†’ AI â†’ Frontend |
+| Skipping the architecture walkthrough entirely | Developers who go straight to coding miss the system design decisions that explain *why* the code is structured this way â€” leads to PRs that fight the architecture |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Start with the architecture diagram before reading any code | The high-level diagram shows how services communicate — understanding the boundaries prevents changes that violate the service contract |
-| Read the 4 key files in the suggested order | Auth middleware → Permission Engine → Document Service → Agent handler — this follows the request lifecycle and builds understanding incrementally |
-| Use the 5-minute overview as your mental model | The single diagram of User → Web → API → AI → PG/Redis is the foundation — every feature maps to this flow, and every change must preserve it |
-| Check the shared types package before creating new types | If a type already exists in `packages/shared-types`, creating a duplicate in a service causes drift — always reference shared types first |
+| Start with the architecture diagram before reading any code | The high-level diagram shows how services communicate â€” understanding the boundaries prevents changes that violate the service contract |
+| Read the 4 key files in the suggested order | Auth middleware â†’ Permission Engine â†’ Document Service â†’ Agent handler â€” this follows the request lifecycle and builds understanding incrementally |
+| Use the 5-minute overview as your mental model | The single diagram of User â†’ Web â†’ API â†’ AI â†’ PG/Redis is the foundation â€” every feature maps to this flow, and every change must preserve it |
+| Check the shared types package before creating new types | If a type already exists in `packages/shared-types`, creating a duplicate in a service causes drift â€” always reference shared types first |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Service boundary trust | The API and AI Service communicate over internal gRPC, but neither should implicitly trust the other — validate all cross-service inputs |
-| Frontend-to-API direct calls | The walkthrough shows the frontend calling the API directly — ensure all such calls go through the middleware stack (auth, permission, rate limiting) |
+| Service boundary trust | The API and AI Service communicate over internal gRPC, but neither should implicitly trust the other â€” validate all cross-service inputs |
+| Frontend-to-API direct calls | The walkthrough shows the frontend calling the API directly â€” ensure all such calls go through the middleware stack (auth, permission, rate limiting) |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| gRPC vs REST for internal communication | gRPC is used between API and AI Service for performance — REST between frontend and API allows caching at the CDN level |
-| Database connection pool sizing per service | Each service (API, AI, Workers) has its own pool size — API gets max 20, AI gets max 10, Workers get max 5 to prevent connection exhaustion |
+| gRPC vs REST for internal communication | gRPC is used between API and AI Service for performance â€” REST between frontend and API allows caching at the CDN level |
+| Database connection pool sizing per service | Each service (API, AI, Workers) has its own pool size â€” API gets max 20, AI gets max 10, Workers get max 5 to prevent connection exhaustion |
 
 ## Error Handling
 
@@ -124,13 +124,13 @@ PostgreSQL stores structured data, graph relationships (AGE), and vectors (pgvec
 
 ## Overview
 
-The Architecture Walkthrough guides new developers through Meridian's three-tier architecture — Next.js frontend, NestJS API, and FastAPI AI service — explaining how each service connects, where key code lives, and how to navigate the codebase. It covers the request lifecycle from user action to database write, common development flows, and service startup dependencies.
+The Architecture Walkthrough guides new developers through Vaeloom's three-tier architecture â€” Next.js frontend, NestJS API, and FastAPI AI service â€” explaining how each service connects, where key code lives, and how to navigate the codebase. It covers the request lifecycle from user action to database write, common development flows, and service startup dependencies.
 
 ---
 
 ## Goals
 
-- Provide a 5-minute mental model of Meridian's architecture for new developers
+- Provide a 5-minute mental model of Vaeloom's architecture for new developers
 - Map the request lifecycle across frontend, API, and AI service tiers
 - Identify key files to read first in each service
 - Document common development workflows (adding endpoints, agents)
@@ -193,11 +193,11 @@ orchestrator.register_agent(
 )
 ```
 
-### gRPC service call (API → AI)
+### gRPC service call (API â†’ AI)
 
 ```typescript
 // apps/api/src/services/ai-gateway.ts
-import { AiServiceClient } from '@meridian/grpc';
+import { AiServiceClient } from '@vaeloom/grpc';
 
 async function processDocument(content: string) {
   const client = new AiServiceClient('ai-service:50051');

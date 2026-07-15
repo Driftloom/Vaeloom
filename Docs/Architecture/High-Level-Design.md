@@ -1,8 +1,8 @@
-# High-Level Design
+﻿# High-Level Design
 
-> **Purpose:** High-level architectural design for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
-> **Canonical source:** [`/Docs/Meridian-Complete-Documentation.md#4-system-architecture`](../../Docs/Meridian-Complete-Documentation.md#4-system-architecture)
+> **Purpose:** High-level architectural design for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
+> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#4-system-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#4-system-architecture)
 
 ## System Context
 
@@ -40,17 +40,17 @@ graph TD
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Frontend accessing the AI service or database directly | Every direct access path bypasses the permission engine and audit log — the API layer must be the sole gateway for all data access |
-| Over-engineering scalability before proving the product | Building a Kubernetes cluster with auto-scaling for an MVP with 10 users adds months of complexity — start simple (PaaS, one database) and scale when validated |
-| Ignoring the event bus for agent-to-agent communication | Agents calling each other directly (even via HTTP) creates tightly coupled, hard-to-debug chains — event-based communication decouples producers from consumers |
-| Treating the two-service backend split as optional | A monolithic API+AI service makes it impossible to scale them independently or use Python's AI ecosystem properly — the split is non-negotiable |
+| Frontend accessing the AI service or database directly | Every direct access path bypasses the permission engine and audit log â€” the API layer must be the sole gateway for all data access |
+| Over-engineering scalability before proving the product | Building a Kubernetes cluster with auto-scaling for an MVP with 10 users adds months of complexity â€” start simple (PaaS, one database) and scale when validated |
+| Ignoring the event bus for agent-to-agent communication | Agents calling each other directly (even via HTTP) creates tightly coupled, hard-to-debug chains â€” event-based communication decouples producers from consumers |
+| Treating the two-service backend split as optional | A monolithic API+AI service makes it impossible to scale them independently or use Python's AI ecosystem properly â€” the split is non-negotiable |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
 | Enforce that all frontend traffic routes through the API layer | The frontend talks to the API (NestJS); the API talks to the AI service (FastAPI); the AI service never exposes endpoints to the frontend directly |
-| Start with the simplest viable infrastructure and upgrade only when metrics demand it | PaaS + managed PostgreSQL + Redis handles thousands of users — migrate to Kubernetes only when auto-scaling, multi-region, or complex traffic management requires it |
+| Start with the simplest viable infrastructure and upgrade only when metrics demand it | PaaS + managed PostgreSQL + Redis handles thousands of users â€” migrate to Kubernetes only when auto-scaling, multi-region, or complex traffic management requires it |
 | Decouple agent actions through the event bus, not direct calls | When an agent publishes `memory.updated` instead of calling `MemoryAgent.update()`, any future consumer can subscribe without changing the producer |
 | Adopt the two-service backend split from day one even if both run on the same box | Deploying them as separate processes (even on the same instance) enforces the API boundary and makes the eventual split to separate instances a deployment change, not an architecture change |
 
@@ -58,17 +58,17 @@ graph TD
 
 | Concern | Mitigation |
 |---------|------------|
-| Inter-service API exposure to the public internet | The AI service's internal RPC endpoints must not be publicly accessible — configure network policies (VPC, security groups) so the AI service only accepts traffic from the API service |
-| Authentication bypass through internal service-to-service calls | Internal RPC calls between services must carry authentication (service tokens or mTLS) — an attacker who reaches an internal endpoint should still be authenticated |
-| API gateway as a single point of trust | The API gateway is the only entry point for external traffic — ensure it enforces all auth, rate limiting, and input validation before forwarding to internal services |
+| Inter-service API exposure to the public internet | The AI service's internal RPC endpoints must not be publicly accessible â€” configure network policies (VPC, security groups) so the AI service only accepts traffic from the API service |
+| Authentication bypass through internal service-to-service calls | Internal RPC calls between services must carry authentication (service tokens or mTLS) â€” an attacker who reaches an internal endpoint should still be authenticated |
+| API gateway as a single point of trust | The API gateway is the only entry point for external traffic â€” ensure it enforces all auth, rate limiting, and input validation before forwarding to internal services |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Inter-service latency overhead | Each internal RPC call between API and AI service adds 5-50ms of network latency — batch related requests (e.g., fetch all dashboard data in one call) rather than making 5 sequential calls |
-| SSR rendering cost for real-time pages | Server-side rendering every Chat or Memory Graph page adds unnecessary server load — use SSR for content pages (Dashboard, Settings) and CSR for interactive pages (Chat, Workspace) |
-| CDN caching for static assets | Versioned static assets (JS, CSS, images) should be served through CDN with long cache headers (1 year) — eliminates repeat requests for unchanged assets after the first load |
+| Inter-service latency overhead | Each internal RPC call between API and AI service adds 5-50ms of network latency â€” batch related requests (e.g., fetch all dashboard data in one call) rather than making 5 sequential calls |
+| SSR rendering cost for real-time pages | Server-side rendering every Chat or Memory Graph page adds unnecessary server load â€” use SSR for content pages (Dashboard, Settings) and CSR for interactive pages (Chat, Workspace) |
+| CDN caching for static assets | Versioned static assets (JS, CSS, images) should be served through CDN with long cache headers (1 year) â€” eliminates repeat requests for unchanged assets after the first load |
 
 ## Goals
 
@@ -114,7 +114,7 @@ graph TD
 | Web Frontend | SSR rendering, client routing, static asset serving | Next.js, React, TypeScript | CDN caching + horizontal auto-scaling |
 | API Gateway | Authentication, rate limiting, request routing to internal services | NestJS, TypeScript | Stateless horizontal scaling behind load balancer |
 | AI Service | Agent orchestration, memory extraction, model routing | FastAPI, Python 3.11+ | Queue-driven scaling based on job backlog |
-| PostgreSQL | Relational data, graph entities, vector embeddings | PostgreSQL 15 + AGE + pgvector | Vertical → read replicas → partitioning |
+| PostgreSQL | Relational data, graph entities, vector embeddings | PostgreSQL 15 + AGE + pgvector | Vertical â†’ read replicas â†’ partitioning |
 
 ## Data Flow
 
@@ -122,7 +122,7 @@ graph TD
 2. Web Frontend authenticates the session via the API Gateway, which validates tokens with the Auth Provider
 3. For AI operations, the API Gateway forwards authorized requests to the AI Service via internal RPC with mTLS
 4. AI Service retrieves relevant context from PostgreSQL (entities + embeddings), constructs agent prompts, and calls the external Model API
-5. The response flows back through the AI Service → API Gateway → Web Frontend, with structured logging at every hop
+5. The response flows back through the AI Service â†’ API Gateway â†’ Web Frontend, with structured logging at every hop
 
 ## Scalability
 
@@ -155,11 +155,11 @@ graph TD
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `NEXT_PUBLIC_API_URL` | Public-facing API endpoint URL | — | Yes |
-| `INTERNAL_API_URL` | Internal API service URL for server-side calls | — | Yes |
-| `AI_SERVICE_URL` | AI service internal RPC endpoint | — | Yes |
-| `AUTH_PROVIDER_URL` | Authentication provider base URL | — | Yes |
-| `SESSION_SECRET` | Secret key for session token encryption | — | Yes |
+| `NEXT_PUBLIC_API_URL` | Public-facing API endpoint URL | â€” | Yes |
+| `INTERNAL_API_URL` | Internal API service URL for server-side calls | â€” | Yes |
+| `AI_SERVICE_URL` | AI service internal RPC endpoint | â€” | Yes |
+| `AUTH_PROVIDER_URL` | Authentication provider base URL | â€” | Yes |
+| `SESSION_SECRET` | Secret key for session token encryption | â€” | Yes |
 
 ## Risks
 
@@ -183,13 +183,13 @@ graph TD
 ### Service context diagram
 
 ```bash
-meridian arch diagram --scope services --format mermaid
+Vaeloom arch diagram --scope services --format mermaid
 ```
 
-### API → AI service RPC call
+### API â†’ AI service RPC call
 
 ```typescript
-const result = await meridian.internalRpc.call({
+const result = await Vaeloom.internalRpc.call({
   service: "ai-service",
   method: "agent.run",
   payload: { agent: "resume", action: "update" }
@@ -199,7 +199,7 @@ const result = await meridian.internalRpc.call({
 ### Check service health
 
 ```bash
-meridian health --services api,ai-service,worker
+Vaeloom health --services api,ai-service,worker
 ```
 
 ## Future Improvements
@@ -215,4 +215,4 @@ meridian health --services api,ai-service,worker
 
 - [System Design.md](./System-Design.md)
 - [Low Level Design.md](./Low-Level-Design.md)
-- [`/Docs/Meridian-Complete-Documentation.md#4-system-architecture`](../../Docs/Meridian-Complete-Documentation.md#4-system-architecture)
+- [`/Docs/Vaeloom-Complete-Documentation.md#4-system-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#4-system-architecture)

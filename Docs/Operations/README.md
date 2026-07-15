@@ -1,4 +1,4 @@
-# Operations
+﻿# Operations
 
 > **Purpose:** Runbooks, incident response, monitoring, and operational procedures
 > **Status:** Active
@@ -7,7 +7,7 @@
 
 ## Overview
 
-The Operations directory contains runbooks, incident response procedures, and operational guidance for running the Meridian platform in production. These documents fill the gap between pre-build architecture specifications and post-deployment operational needs.
+The Operations directory contains runbooks, incident response procedures, and operational guidance for running the Vaeloom platform in production. These documents fill the gap between pre-build architecture specifications and post-deployment operational needs.
 
 Documents include the operations runbook with standard procedures for health checks, backup and restore, deployment, scaling, secrets management, database operations, agent system operations, and cost management. The incident response plan covers severity levels, roles, response workflows, communication templates, common incident scenarios, and the post-mortem process.
 
@@ -17,22 +17,22 @@ All operations docs follow best practices for version control, regular testing, 
 
 | Document | Location | Status |
 |----------|----------|--------|
-| Operations Runbook | [`01-operations-runbook.md`](./01-operations-runbook.md) | 🆕 Created |
-| Incident Response | [`02-incident-response.md`](./02-incident-response.md) | 🆕 Created |
+| Operations Runbook | [`01-operations-runbook.md`](./01-operations-runbook.md) | ðŸ†• Created |
+| Incident Response | [`02-incident-response.md`](./02-incident-response.md) | ðŸ†• Created |
 
 ```mermaid
 graph LR
-    subgraph Monitor["📊 Monitor"]
+    subgraph Monitor["ðŸ“Š Monitor"]
         M1["Observability"]
         M2["Tracing"]
         M3["Alerting"]
     end
-    subgraph Respond["🚨 Respond"]
+    subgraph Respond["ðŸš¨ Respond"]
         R1["Incident Detection"]
         R2["Runbook Execution"]
         R3["Postmortem"]
     end
-    subgraph Improve["🔄 Improve"]
+    subgraph Improve["ðŸ”„ Improve"]
         I1["SLA/SLO Tracking"]
         I2["Capacity Planning"]
         I3["Cost Optimization"]
@@ -52,64 +52,64 @@ graph LR
 
 ## Why these were missing
 
-The MVP specifications and architecture documents focused heavily on product features, AI system design, and implementation plans — which is appropriate for the pre-build phase. What was absent was operational guidance for what happens *after* deployment: how to monitor the system, what to do when things break, and how to respond to incidents. These documents fill that gap.
+The MVP specifications and architecture documents focused heavily on product features, AI system design, and implementation plans â€” which is appropriate for the pre-build phase. What was absent was operational guidance for what happens *after* deployment: how to monitor the system, what to do when things break, and how to respond to incidents. These documents fill that gap.
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
-| Creating runbooks but never testing them | A runbook that hasn't been tested since creation is likely wrong — services change, endpoints move, credentials expire. Schedule quarterly runbook drills to catch drift before an incident |
-| Writing incident response plans without practicing them | A documented SEV-1 process that the team has never rehearsed will fall apart under pressure — run quarterly tabletop exercises for the most likely incident scenarios |
-| Operations docs that focus on procedures without explaining why | A procedure that says "restart the service" without explaining why is brittle — when the infrastructure changes, the procedure should be updated, but without context, teams won't know when or how |
+| Creating runbooks but never testing them | A runbook that hasn't been tested since creation is likely wrong â€” services change, endpoints move, credentials expire. Schedule quarterly runbook drills to catch drift before an incident |
+| Writing incident response plans without practicing them | A documented SEV-1 process that the team has never rehearsed will fall apart under pressure â€” run quarterly tabletop exercises for the most likely incident scenarios |
+| Operations docs that focus on procedures without explaining why | A procedure that says "restart the service" without explaining why is brittle â€” when the infrastructure changes, the procedure should be updated, but without context, teams won't know when or how |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Keep operations docs in version control alongside infrastructure code | Runbooks, incident response plans, and maintenance procedures drift when stored outside the codebase — PR them alongside infrastructure changes to ensure they stay current |
-| Test runbooks and incident response plans regularly | A runbook that works in production under pressure is more valuable than a perfectly formatted one that wasn't tested — schedule quarterly drills with measurable success criteria |
-| Cross-reference operations docs with monitoring dashboards and alert rules | Every alert should link to a runbook, and every runbook should reference the relevant dashboard — closing the loop between monitoring and procedures reduces MTT* during incidents |
+| Keep operations docs in version control alongside infrastructure code | Runbooks, incident response plans, and maintenance procedures drift when stored outside the codebase â€” PR them alongside infrastructure changes to ensure they stay current |
+| Test runbooks and incident response plans regularly | A runbook that works in production under pressure is more valuable than a perfectly formatted one that wasn't tested â€” schedule quarterly drills with measurable success criteria |
+| Cross-reference operations docs with monitoring dashboards and alert rules | Every alert should link to a runbook, and every runbook should reference the relevant dashboard â€” closing the loop between monitoring and procedures reduces MTT* during incidents |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Operations docs containing credentials or secrets | A runbook with `export DATABASE_URL=postgres://...` in a code snippet exposes credentials to everyone with repo access — use placeholders that reference the secrets manager name |
-| Incident response docs revealing too much infrastructure detail | A playbook shared with customer support or posted on a status page may expose internal service architecture — maintain a customer-safe version and a full version for the operations team |
-| Operations docs that don't cover security incident procedures | If the only runbook for a security incident says "contact security team," responders lose critical time — document initial containment steps (revoke tokens, block IPs) that can be taken immediately |
+| Operations docs containing credentials or secrets | A runbook with `export DATABASE_URL=postgres://...` in a code snippet exposes credentials to everyone with repo access â€” use placeholders that reference the secrets manager name |
+| Incident response docs revealing too much infrastructure detail | A playbook shared with customer support or posted on a status page may expose internal service architecture â€” maintain a customer-safe version and a full version for the operations team |
+| Operations docs that don't cover security incident procedures | If the only runbook for a security incident says "contact security team," responders lose critical time â€” document initial containment steps (revoke tokens, block IPs) that can be taken immediately |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Operations procedures that don't consider performance impact | A runbook step like "run a full database VACUUM" during business hours locks tables and degrades query performance — every procedure should include a performance impact assessment and recommended timing |
-| Monitoring dashboards that don't include performance baselines | A dashboard without baseline markers ("this line should be below this threshold") is hard to interpret under pressure — add static threshold lines for SLOs and alert thresholds on all metric graphs |
-| Post-incident recovery steps that don't verify performance recovery | After restoring a service from an incident, teams often check "is it up?" but not "is it fast?" — add latency and throughput verification steps to the recovery checklist |
+| Operations procedures that don't consider performance impact | A runbook step like "run a full database VACUUM" during business hours locks tables and degrades query performance â€” every procedure should include a performance impact assessment and recommended timing |
+| Monitoring dashboards that don't include performance baselines | A dashboard without baseline markers ("this line should be below this threshold") is hard to interpret under pressure â€” add static threshold lines for SLOs and alert thresholds on all metric graphs |
+| Post-incident recovery steps that don't verify performance recovery | After restoring a service from an incident, teams often check "is it up?" but not "is it fast?" â€” add latency and throughput verification steps to the recovery checklist |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Operations docs containing credentials or secrets | A runbook with `export DATABASE_URL=postgres://...` in a code snippet exposes credentials to everyone with repo access — use placeholders that reference the secrets manager name |
-| Incident response docs revealing too much infrastructure detail | A playbook shared with customer support or posted on a status page may expose internal service architecture — maintain a customer-safe version and a full version for the operations team |
-| Operations docs that don't cover security incident procedures | If the only runbook for a security incident says "contact security team," responders lose critical time — document initial containment steps (revoke tokens, block IPs) that can be taken immediately |
+| Operations docs containing credentials or secrets | A runbook with `export DATABASE_URL=postgres://...` in a code snippet exposes credentials to everyone with repo access â€” use placeholders that reference the secrets manager name |
+| Incident response docs revealing too much infrastructure detail | A playbook shared with customer support or posted on a status page may expose internal service architecture â€” maintain a customer-safe version and a full version for the operations team |
+| Operations docs that don't cover security incident procedures | If the only runbook for a security incident says "contact security team," responders lose critical time â€” document initial containment steps (revoke tokens, block IPs) that can be taken immediately |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Operations procedures that don't consider performance impact | A runbook step like "run a full database VACUUM" during business hours locks tables and degrades query performance — every procedure should include a performance impact assessment and recommended timing |
-| Monitoring dashboards that don't include performance baselines | A dashboard without baseline markers ("this line should be below this threshold") is hard to interpret under pressure — add static threshold lines for SLOs and alert thresholds on all metric graphs |
-| Post-incident recovery steps that don't verify performance recovery | After restoring a service from an incident, teams often check "is it up?" but not "is it fast?" — add latency and throughput verification steps to the recovery checklist |
+| Operations procedures that don't consider performance impact | A runbook step like "run a full database VACUUM" during business hours locks tables and degrades query performance â€” every procedure should include a performance impact assessment and recommended timing |
+| Monitoring dashboards that don't include performance baselines | A dashboard without baseline markers ("this line should be below this threshold") is hard to interpret under pressure â€” add static threshold lines for SLOs and alert thresholds on all metric graphs |
+| Post-incident recovery steps that don't verify performance recovery | After restoring a service from an incident, teams often check "is it up?" but not "is it fast?" â€” add latency and throughput verification steps to the recovery checklist |
 
 ## Workflows
 
-1. **Monitor:** Check observability dashboards → review metrics/logs/traces → identify anomalies
-2. **Respond:** Detect incident → acknowledge → triage → mitigate → recover → post-mortem
-3. **Improve:** Post-mortem action items → update runbooks → adjust monitoring → capacity review
-4. **Maintain:** Weekly/database/quarterly maintenance per schedule → verify backups → update docs
-5. **Plan:** Review capacity → optimize costs → update growth projections → adjust scaling
-6. **Audit**: Review SLA/SLO compliance → check vendor risk assessments → run DR drills
+1. **Monitor:** Check observability dashboards â†’ review metrics/logs/traces â†’ identify anomalies
+2. **Respond:** Detect incident â†’ acknowledge â†’ triage â†’ mitigate â†’ recover â†’ post-mortem
+3. **Improve:** Post-mortem action items â†’ update runbooks â†’ adjust monitoring â†’ capacity review
+4. **Maintain:** Weekly/database/quarterly maintenance per schedule â†’ verify backups â†’ update docs
+5. **Plan:** Review capacity â†’ optimize costs â†’ update growth projections â†’ adjust scaling
+6. **Audit**: Review SLA/SLO compliance â†’ check vendor risk assessments â†’ run DR drills
 
 ---
 
@@ -170,9 +170,9 @@ The MVP specifications and architecture documents focused heavily on product fea
 
 ## Goals
 
-- Provide a single entry point for all Meridian operational documentation, making it easy for engineers to find runbooks, incident response procedures, maintenance schedules, and SRE policies
+- Provide a single entry point for all Vaeloom operational documentation, making it easy for engineers to find runbooks, incident response procedures, maintenance schedules, and SRE policies
 - Ensure every operations document follows consistent standards: version control alongside code, quarterly testing mandates, and cross-references to monitoring dashboards and alert rules
-- Close the gap between pre-deployment architecture specifications and post-deployment operational needs for Meridian's second-brain AI platform
+- Close the gap between pre-deployment architecture specifications and post-deployment operational needs for Vaeloom's second-brain AI platform
 - Establish a feedback loop where incidents, post-mortems, and capacity reviews continuously improve the operational documentation corpus
 - Track operations doc health through metrics: last-updated age, runbook test success rate, cross-reference link validity, and service coverage percentage
 
@@ -206,9 +206,9 @@ The MVP specifications and architecture documents focused heavily on product fea
 
 ## Related categories
 
-- [`DevOps/`](../DevOps/) — Deployment and infrastructure
-- [`Testing/`](../Testing/) — Testing that prevents incidents
-- [`Security/`](../Security/) — Security incidents
+- [`DevOps/`](../DevOps/) â€” Deployment and infrastructure
+- [`Testing/`](../Testing/) â€” Testing that prevents incidents
+- [`Security/`](../Security/) â€” Security incidents
 
 ## Examples
 
@@ -216,11 +216,11 @@ The MVP specifications and architecture documents focused heavily on product fea
 
 ```bash
 # Service health
-curl -s -o /dev/null -w '%{http_code}' https://api.meridian.dev/v1/health
-curl -s -o /dev/null -w '%{http_code}' https://ai.meridian.dev/health
+curl -s -o /dev/null -w '%{http_code}' https://api.Vaeloom.dev/v1/health
+curl -s -o /dev/null -w '%{http_code}' https://ai.Vaeloom.dev/health
 
 # Database health
-docker compose exec postgres pg_isready -U meridian -d meridian_db
+docker compose exec postgres pg_isready -U Vaeloom -d Vaeloom_db
 docker compose exec redis redis-cli ping
 ```
 
@@ -228,10 +228,10 @@ docker compose exec redis redis-cli ping
 
 ```bash
 # Backup database
-pg_dump -h localhost -U meridian meridian_db > backup_$(date +%Y%m%d).sql
+pg_dump -h localhost -U Vaeloom Vaeloom_db > backup_$(date +%Y%m%d).sql
 
 # Restore database
-psql -h localhost -U meridian meridian_db < backup_20260713.sql
+psql -h localhost -U Vaeloom Vaeloom_db < backup_20260713.sql
 
 # Verify backup integrity
 head -5 backup_20260713.sql
@@ -247,7 +247,7 @@ SELECT count(*) FROM pg_stat_activity;
 SELECT query, mean_time FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 5;
 
 -- Queue depth
-redis-cli LLEN bull:meridian:queue
+redis-cli LLEN bull:Vaeloom:queue
 ```
 
 ### Cost analysis
@@ -264,6 +264,6 @@ aws ec2 describe-volumes --filters Name=status,Values=available --query "Volumes
 
 ## Related Documents
 
-- [Operations Runbook](01-operations-runbook.md) — Standard operating procedures
-- [Incident Response](02-incident-response.md) — Incident response plan
-- [DevOps Overview](../DevOps/README.md) — Deployment and infrastructure
+- [Operations Runbook](01-operations-runbook.md) â€” Standard operating procedures
+- [Incident Response](02-incident-response.md) â€” Incident response plan
+- [DevOps Overview](../DevOps/README.md) â€” Deployment and infrastructure

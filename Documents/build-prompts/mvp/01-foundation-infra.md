@@ -1,4 +1,4 @@
-# 01 — Foundation & Infrastructure Scaffolding (MVP)
+﻿# 01 â€” Foundation & Infrastructure Scaffolding (MVP)
 
 ```mermaid
 graph TD
@@ -6,7 +6,7 @@ graph TD
     classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
     subgraph Repo["Monorepo Scaffold"]
-        A["Root meridian/"]:::primary --> B["apps/web (Next.js)"]:::secondary
+        A["Root Vaeloom/"]:::primary --> B["apps/web (Next.js)"]:::secondary
         A --> C["apps/api (NestJS)"]:::secondary
         A --> D["apps/ai-service (FastAPI)"]:::secondary
         A --> E["packages/shared-types"]:::secondary
@@ -18,7 +18,7 @@ graph TD
         H --> I["Typecheck (tsc + mypy)"]:::secondary
         I --> J["Unit Tests"]:::secondary
         J --> K["Build"]:::secondary
-        K --> L["Green CI ✅"]:::primary
+        K --> L["Green CI âœ…"]:::primary
     end
 
     subgraph Local["Local Dev (docker-compose)"]
@@ -39,33 +39,33 @@ graph TD
 ```
 
 ## Context
-Read `00-master-build-order.md` first. This is the first build phase — the deployable skeleton every later phase builds on top of. No feature logic yet.
+Read `00-master-build-order.md` first. This is the first build phase â€” the deployable skeleton every later phase builds on top of. No feature logic yet.
 
 ## Objective
-Stand up a working, deployable, empty version of Meridian: three services that boot, talk to each other, pass CI, and let a user sign up and see a blank workspace.
+Stand up a working, deployable, empty version of Vaeloom: three services that boot, talk to each other, pass CI, and let a user sign up and see a blank workspace.
 
 ## Requirements
 
 **Monorepo structure** (create exactly this layout):
 ```
-meridian/
-├── apps/
-│   ├── web/            # Next.js 14+, TypeScript, App Router, Tailwind CSS
-│   ├── api/             # NestJS, TypeScript
-│   └── ai-service/      # FastAPI, Python 3.11+
-├── packages/
-│   └── shared-types/    # types shared between web and api
-├── infra/
-│   ├── docker/          # Dockerfiles per service
-│   └── ci/
-└── docker-compose.yml   # Postgres, Redis, all three services, for local dev
+Vaeloom/
+â”œâ”€â”€ apps/
+â”‚   â”œâ”€â”€ web/            # Next.js 14+, TypeScript, App Router, Tailwind CSS
+â”‚   â”œâ”€â”€ api/             # NestJS, TypeScript
+â”‚   â””â”€â”€ ai-service/      # FastAPI, Python 3.11+
+â”œâ”€â”€ packages/
+â”‚   â””â”€â”€ shared-types/    # types shared between web and api
+â”œâ”€â”€ infra/
+â”‚   â”œâ”€â”€ docker/          # Dockerfiles per service
+â”‚   â””â”€â”€ ci/
+â””â”€â”€ docker-compose.yml   # Postgres, Redis, all three services, for local dev
 ```
 
 **apps/api (NestJS):**
 - Health-check endpoint (`GET /health`) returning service status.
 - Auth module: email/password signup + login to start (bcrypt-hashed passwords), structured so an OAuth/SSO provider can be swapped in later (file 15) without changing the interface.
 - Auth middleware/guard usable by every future endpoint.
-- `POST /workspaces` — provisions a new, empty workspace for the authenticated user (see file 02 for the table this writes to).
+- `POST /workspaces` â€” provisions a new, empty workspace for the authenticated user (see file 02 for the table this writes to).
 
 **apps/ai-service (FastAPI):**
 - Health-check endpoint.
@@ -73,7 +73,7 @@ meridian/
 
 **apps/web (Next.js):**
 - Signup and login pages, calling the api service.
-- An empty, authenticated Dashboard route that renders "Workspace ready" once a workspace exists — this is the placeholder file 14 replaces.
+- An empty, authenticated Dashboard route that renders "Workspace ready" once a workspace exists â€” this is the placeholder file 14 replaces.
 
 **CI (`infra/ci/`, GitHub Actions):**
 - On every PR: lint (ESLint + Python ruff/flake8), typecheck (`tsc --noEmit`, `mypy`), unit tests, build, for all three apps.
@@ -81,10 +81,10 @@ meridian/
 
 **Local dev:**
 - `docker-compose.yml` bringing up Postgres, Redis, and all three apps with hot reload.
-- `.env.example` at the repo root documenting every required variable (DB URL, Redis URL, JWT secret, etc.) — no service should require an undocumented env var to boot.
+- `.env.example` at the repo root documenting every required variable (DB URL, Redis URL, JWT secret, etc.) â€” no service should require an undocumented env var to boot.
 
 ## Out of scope
-Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any memory or ingestion logic (files 02–04), production deployment (file 16 — this phase is local + CI only).
+Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any memory or ingestion logic (files 02â€“04), production deployment (file 16 â€” this phase is local + CI only).
 
 ## Acceptance criteria
 - [ ] `docker-compose up` boots all services with no manual steps beyond copying `.env.example` to `.env`.

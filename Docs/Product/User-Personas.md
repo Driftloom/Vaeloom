@@ -1,7 +1,7 @@
-# User Personas
+﻿# User Personas
 
-> **Purpose:** Define the target user personas for Meridian
-> **Canonical source:** [`/Docs/06-Meridian-Enterprise-Paper.md#21-who-its-for`](../../Docs/06-Meridian-Enterprise-Paper.md#21-who-its-for)
+> **Purpose:** Define the target user personas for Vaeloom
+> **Canonical source:** [`/Docs/06-Vaeloom-Enterprise-Paper.md#21-who-its-for`](../../Docs/06-Vaeloom-Enterprise-Paper.md#21-who-its-for)
 
 ## Persona Architecture
 
@@ -12,18 +12,18 @@ graph TD
     classDef prof fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef second fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Primary["👤 Primary Personas"]
+    subgraph Primary["ðŸ‘¤ Primary Personas"]
         direction TB
-        S["🎓 Student (18-24)<br/>Pain: Resume from scratch, missed deadlines<br/>Needs: Auto-org, resume, internship search<br/>Tech: High (native digital)"]
-        J["💼 Job Seeker (22-30)<br/>Pain: Inefficient applying, generic materials<br/>Needs: ATS scoring, tailored apps, tracking<br/>Tech: High"]
-        P["👔 Early-Career Professional (25-35)<br/>Pain: Unnoticed skill atrophy, growth tracking<br/>Needs: Memory system, trajectory tracking<br/>Tech: Medium-high"]
+        S["ðŸŽ“ Student (18-24)<br/>Pain: Resume from scratch, missed deadlines<br/>Needs: Auto-org, resume, internship search<br/>Tech: High (native digital)"]
+        J["ðŸ’¼ Job Seeker (22-30)<br/>Pain: Inefficient applying, generic materials<br/>Needs: ATS scoring, tailored apps, tracking<br/>Tech: High"]
+        P["ðŸ‘” Early-Career Professional (25-35)<br/>Pain: Unnoticed skill atrophy, growth tracking<br/>Needs: Memory system, trajectory tracking<br/>Tech: Medium-high"]
     end
 
-    subgraph Secondary["👥 Secondary Personas"]
-        R["🔬 Researcher<br/>Papers, notes, citations"]
-        D["💻 Developer<br/>Code/projects → career narrative"]
-        F["🔗 Freelancer<br/>Portfolio + pipeline management"]
-        E["🏢 Enterprise Employee<br/>Internal mobility + skills tracking"]
+    subgraph Secondary["ðŸ‘¥ Secondary Personas"]
+        R["ðŸ”¬ Researcher<br/>Papers, notes, citations"]
+        D["ðŸ’» Developer<br/>Code/projects â†’ career narrative"]
+        F["ðŸ”— Freelancer<br/>Portfolio + pipeline management"]
+        E["ðŸ¢ Enterprise Employee<br/>Internal mobility + skills tracking"]
     end
 
     Primary --> Secondary
@@ -34,7 +34,7 @@ graph TD
     class R,D,F,E second
 ```
 
-> **Diagram:** Personas — **3 primary personas** (Student 18-24, Job Seeker 22-30, Early-Career Professional 25-35) with age, pain points, needs, and tech comfort → **4 secondary personas** (Researcher, Developer, Freelancer, Enterprise Employee).
+> **Diagram:** Personas â€” **3 primary personas** (Student 18-24, Job Seeker 22-30, Early-Career Professional 25-35) with age, pain points, needs, and tech comfort â†’ **4 secondary personas** (Researcher, Developer, Freelancer, Enterprise Employee).
 
 ---
 
@@ -48,7 +48,7 @@ graph TD
 | **Pain** | Building a resume from scratch, remembering achievements, missing deadlines |
 | **Needs** | Auto-organization, resume agent, internship search, deadline tracking |
 | **Primary modules** | Organization Agent, Resume Agent, Job/Internship Search, Scheduler |
-| **Tech comfort** | High — native digital |
+| **Tech comfort** | High â€” native digital |
 
 ### Job Seeker
 
@@ -72,47 +72,47 @@ graph TD
 
 ### Secondary Personas
 
-- **Researcher** — organizing papers, notes, citations
-- **Developer** — connecting code/projects to career narrative
-- **Freelancer** — portfolio and pipeline management
-- **Enterprise employee** — internal mobility, skills tracking within org
+- **Researcher** â€” organizing papers, notes, citations
+- **Developer** â€” connecting code/projects to career narrative
+- **Freelancer** â€” portfolio and pipeline management
+- **Enterprise employee** â€” internal mobility, skills tracking within org
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
 | Personas based on assumptions, not research | Fictional personas that reflect internal stereotypes rather than real user data lead to products that don't fit anyone |
-| Too many personas | Defining 15+ personas makes it impossible to design for any of them — 3 primary + a few secondary is the maximum |
-| Static personas that never update | Personas should evolve as the product matures and user base grows — the student persona at MVP may differ from the student persona at V2 |
-| Designing for the "average" persona | The average of 3 personas serves none of them — design for specific personas, not the hypothetical composite |
+| Too many personas | Defining 15+ personas makes it impossible to design for any of them â€” 3 primary + a few secondary is the maximum |
+| Static personas that never update | Personas should evolve as the product matures and user base grows â€” the student persona at MVP may differ from the student persona at V2 |
+| Designing for the "average" persona | The average of 3 personas serves none of them â€” design for specific personas, not the hypothetical composite |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
 | Base personas on real user interviews | Each persona attribute (pain, need, tech comfort) should come from actual user conversations, not team assumptions |
-| Include what the persona is NOT | A persona's boundaries are as important as its attributes — the Student persona is NOT enterprise procurement, NOT a hiring manager |
-| Prioritize personas by business strategy | The Student is the wedge — design decisions that serve the Student should take priority over secondary personas |
-| Link each persona to specific features | Each persona should map to specific primary modules — if a feature doesn't serve any persona, reconsider its priority |
+| Include what the persona is NOT | A persona's boundaries are as important as its attributes â€” the Student persona is NOT enterprise procurement, NOT a hiring manager |
+| Prioritize personas by business strategy | The Student is the wedge â€” design decisions that serve the Student should take priority over secondary personas |
+| Link each persona to specific features | Each persona should map to specific primary modules â€” if a feature doesn't serve any persona, reconsider its priority |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Persona data handling | Persona descriptions should be anonymized composites, not identifiable individuals — no real user data in persona documents |
-| Secondary persona privacy | Researcher and Developer personas may involve sensitive workflows — ensure persona-related feature planning accounts for data protection |
+| Persona data handling | Persona descriptions should be anonymized composites, not identifiable individuals â€” no real user data in persona documents |
+| Secondary persona privacy | Researcher and Developer personas may involve sensitive workflows â€” ensure persona-related feature planning accounts for data protection |
 | Persona-based access control | Enterprise Employee personas should never imply shared memory or cross-account data access |
 
 ## Overview
 
-Meridian serves three primary personas — Student (18-24), Job Seeker (22-30), and Early-Career Professional (25-35) — and four secondary personas — Researcher, Developer, Freelancer, and Enterprise Employee. Each persona has distinct pain points, needs, tech comfort levels, and primary feature modules. The persona framework ensures that product decisions are grounded in the needs of real user archetypes rather than internal assumptions.
+Vaeloom serves three primary personas â€” Student (18-24), Job Seeker (22-30), and Early-Career Professional (25-35) â€” and four secondary personas â€” Researcher, Developer, Freelancer, and Enterprise Employee. Each persona has distinct pain points, needs, tech comfort levels, and primary feature modules. The persona framework ensures that product decisions are grounded in the needs of real user archetypes rather than internal assumptions.
 
-The Student persona is the wedge: Meridian's go-to-market strategy targets students first, which means design decisions that serve the Student should generally take priority over secondary personas. However, the architecture must not preclude serving other personas — the same memory system that organizes a student's academic documents works equally well for a freelancer's client portfolio or a developer's project history.
+The Student persona is the wedge: Vaeloom's go-to-market strategy targets students first, which means design decisions that serve the Student should generally take priority over secondary personas. However, the architecture must not preclude serving other personas â€” the same memory system that organizes a student's academic documents works equally well for a freelancer's client portfolio or a developer's project history.
 
 ## Goals
 
 - Validate all 3 primary persona profiles through user interviews (minimum 5 users per persona)
-- Link every feature to at least one primary persona's needs — no orphan features
+- Link every feature to at least one primary persona's needs â€” no orphan features
 - Achieve >80% persona-representation accuracy: actual user base matches persona profiles within 20%
 - Update persona descriptions quarterly based on real user data, not team assumptions
 - Maintain persona-based prioritization framework for feature decisions
@@ -122,7 +122,7 @@ The Student persona is the wedge: Meridian's go-to-market strategy targets stude
 | | |
 |---|---|
 | **In Scope** | 3 primary persona definitions with age, pain points, needs, tech comfort, and primary modules; 4 secondary persona descriptions; persona architecture diagram; common persona mistakes; persona-based prioritization best practices |
-| **Out of Scope** | Enterprise buyer personas (HR directors, university career office admins) — covered in Enterprise docs; competitor user personas; demographic market sizing; persona-specific UX designs |
+| **Out of Scope** | Enterprise buyer personas (HR directors, university career office admins) â€” covered in Enterprise docs; competitor user personas; demographic market sizing; persona-specific UX designs |
 
 ## Workflows
 
@@ -174,7 +174,7 @@ The Student persona is the wedge: Meridian's go-to-market strategy targets stude
 
 ```bash
 # Classify user persona from behavior
-curl -s https://api.meridian.dev/v1/admin/persona/classify \
+curl -s https://api.Vaeloom.dev/v1/admin/persona/classify \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{"user_id": "usr_abc123"}' | jq '.persona'
 ```
@@ -211,4 +211,4 @@ curl -s https://api.meridian.dev/v1/admin/persona/classify \
 - [Features.md](./Features.md)
 - [Product Strategy.md](./Product-Strategy.md)
 - [Vision.md](./Vision.md)
-- [`/Docs/06-Meridian-Enterprise-Paper.md#21-who-its-for`](../../Docs/06-Meridian-Enterprise-Paper.md#21-who-its-for)
+- [`/Docs/06-Vaeloom-Enterprise-Paper.md#21-who-its-for`](../../Docs/06-Vaeloom-Enterprise-Paper.md#21-who-its-for)

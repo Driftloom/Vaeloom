@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meridian — Animation System Preview</title>
+<title>Vaeloom â€” Animation System Preview</title>
 <style>
   :root {
     --color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;
@@ -129,17 +129,17 @@
 <body>
 
 <div class="theme-toggle-bar">
-  <span class="logo">✨ Meridian — Animation System Preview</span>
-  <span class="hint"><a href="./Animation-System.md">📄 View Source Doc</a></span>
+  <span class="logo">âœ¨ Vaeloom â€” Animation System Preview</span>
+  <span class="hint"><a href="./Animation-System.md">ðŸ“„ View Source Doc</a></span>
   <div class="theme-toggle-group">
-    <button class="theme-btn active" onclick="setTheme('light')">☀️ Light</button>
-    <button class="theme-btn" onclick="setTheme('dark')">🌙 Dark</button>
-    <button class="theme-btn" onclick="setTheme('system')">🖥️ System</button>
+    <button class="theme-btn active" onclick="setTheme('light')">â˜€ï¸ Light</button>
+    <button class="theme-btn" onclick="setTheme('dark')">ðŸŒ™ Dark</button>
+    <button class="theme-btn" onclick="setTheme('system')">ðŸ–¥ï¸ System</button>
   </div>
 </div>
 
-<h1>✨ Animation System Preview</h1>
-<p class="subtitle">Interactive demo of Meridian's animation principles, easing curves, timing categories, and element-specific animations. All animations use <code>transform</code> and <code>opacity</code> only.</p>
+<h1>âœ¨ Animation System Preview</h1>
+<p class="subtitle">Interactive demo of Vaeloom's animation principles, easing curves, timing categories, and element-specific animations. All animations use <code>transform</code> and <code>opacity</code> only.</p>
 
 <div class="stats-bar">
   <span class="stat-chip"><strong>4</strong> principles</span>
@@ -149,21 +149,21 @@
 </div>
 
 <!-- SECTION 1: EASING CURVES -->
-<h2>🎯 Easing Curves</h2>
+<h2>ðŸŽ¯ Easing Curves</h2>
 <p>Click any curve to preview it. Each curve is drawn using <code>cubic-bezier()</code> and applied to the demo dot below.</p>
 
 <div class="easing-grid" id="easingGrid"></div>
 
 <!-- SECTION 2: TIMING CATEGORIES -->
-<h2>⏱️ Timing Categories</h2>
+<h2>â±ï¸ Timing Categories</h2>
 <p>Visual comparison of duration categories. Adjust the master speed slider to see all timings scale together.</p>
 
 <div class="demo-card">
   <h4>Duration Comparison</h4>
   <div class="anim-ctrl">
-    <label>Speed: <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1" oninput="updateTimings(this.value)"> <span id="speedLabel">1×</span></label>
-    <button class="demo-btn demo-btn-primary" onclick="runTimingDemo()">▶ Play All</button>
-    <button class="demo-btn demo-btn-secondary" onclick="resetTimingDemo()">↺ Reset</button>
+    <label>Speed: <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1" oninput="updateTimings(this.value)"> <span id="speedLabel">1Ã—</span></label>
+    <button class="demo-btn demo-btn-primary" onclick="runTimingDemo()">â–¶ Play All</button>
+    <button class="demo-btn demo-btn-secondary" onclick="resetTimingDemo()">â†º Reset</button>
   </div>
   <div class="timeline" id="microTimeline"><div class="timeline-bar" style="width:15%;background:var(--accent-primary);left:0">Micro 100ms</div></div>
   <div class="timeline" id="stateTimeline"><div class="timeline-bar" style="width:25%;background:var(--accent-success);left:0">State 200ms</div></div>
@@ -172,7 +172,7 @@
 </div>
 
 <!-- SECTION 3: REDUCED MOTION -->
-<h2>♿ Reduced Motion</h2>
+<h2>â™¿ Reduced Motion</h2>
 <p>Toggle <code>prefers-reduced-motion</code> simulation to see how the system responds. When enabled, all animation durations are forced to near-zero.</p>
 
 <div class="reduced-motion-panel">
@@ -181,75 +181,75 @@
 </div>
 
 <div class="anim-track" id="reducedMotionTrack">
-  <div class="anim-box" id="reducedMotionBox" style="position:absolute;left:10px;top:10px;transition:left var(--animation-normal) var(--easing-standard)">•</div>
+  <div class="anim-box" id="reducedMotionBox" style="position:absolute;left:10px;top:10px;transition:left var(--animation-normal) var(--easing-standard)">â€¢</div>
 </div>
 <div class="anim-ctrl">
-  <button class="demo-btn demo-btn-primary" onclick="animateReducedMotion()">▶ Animate</button>
+  <button class="demo-btn demo-btn-primary" onclick="animateReducedMotion()">â–¶ Animate</button>
 </div>
 
 <!-- SECTION 4: ELEMENT ANIMATIONS -->
-<h2>✨ Element-Specific Animations</h2>
+<h2>âœ¨ Element-Specific Animations</h2>
 
 <div class="demo-grid">
   <!-- Toast Slide -->
   <div class="demo-card">
-    <h4>🔔 Toast (Slide from top)</h4>
+    <h4>ðŸ”” Toast (Slide from top)</h4>
     <p class="subtitle"><code>transform: translateY + opacity</code></p>
-    <div class="element-preview"><div class="element-demo"><div class="demo-toast hidden" id="toastDemo"><span>✅ Resume updated successfully</span><span style="cursor:pointer;color:var(--text-muted)">&times;</span></div></div></div>
-    <button class="demo-btn demo-btn-primary" onclick="showToast()">▶ Show Toast</button>
+    <div class="element-preview"><div class="element-demo"><div class="demo-toast hidden" id="toastDemo"><span>âœ… Resume updated successfully</span><span style="cursor:pointer;color:var(--text-muted)">&times;</span></div></div></div>
+    <button class="demo-btn demo-btn-primary" onclick="showToast()">â–¶ Show Toast</button>
   </div>
 
   <!-- Modal Scale -->
   <div class="demo-card">
-    <h4>🪟 Modal (Scale + fade)</h4>
+    <h4>ðŸªŸ Modal (Scale + fade)</h4>
     <p class="subtitle"><code>transform: scale + opacity</code></p>
     <div class="element-preview"><div class="element-demo"><div class="demo-modal-mini hidden" id="modalDemo"><div style="font-weight:600;margin-bottom:var(--space-2)">Confirm</div><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">Delete this item?</p></div></div></div>
-    <button class="demo-btn demo-btn-primary" onclick="showModal()">▶ Show Modal</button>
+    <button class="demo-btn demo-btn-primary" onclick="showModal()">â–¶ Show Modal</button>
   </div>
 
   <!-- Sidebar Slide -->
   <div class="demo-card">
-    <h4>🧭 Sidebar (Slide from left)</h4>
+    <h4>ðŸ§­ Sidebar (Slide from left)</h4>
     <p class="subtitle"><code>transform: translateX</code></p>
-    <div class="element-preview"><div class="element-demo"><div class="demo-sidebar-mini hidden" id="sidebarDemo"><div style="font-size:var(--font-size-sm);font-weight:600;margin-bottom:6px">📊 Dashboard</div><div style="font-size:var(--font-size-sm);color:var(--text-secondary)">📁 Workspace</div><div style="font-size:var(--font-size-sm);color:var(--text-secondary)">📄 Resume</div></div></div></div>
-    <button class="demo-btn demo-btn-primary" onclick="showSidebar()">▶ Slide In</button>
+    <div class="element-preview"><div class="element-demo"><div class="demo-sidebar-mini hidden" id="sidebarDemo"><div style="font-size:var(--font-size-sm);font-weight:600;margin-bottom:6px">ðŸ“Š Dashboard</div><div style="font-size:var(--font-size-sm);color:var(--text-secondary)">ðŸ“ Workspace</div><div style="font-size:var(--font-size-sm);color:var(--text-secondary)">ðŸ“„ Resume</div></div></div></div>
+    <button class="demo-btn demo-btn-primary" onclick="showSidebar()">â–¶ Slide In</button>
   </div>
 
   <!-- Card Stagger -->
   <div class="demo-card">
-    <h4>📇 Cards (Staggered entrance)</h4>
-    <p class="subtitle"><code>translateY + opacity · 50ms stagger</code></p>
-    <div class="element-preview"><div class="element-demo"><div class="card-stagger" id="staggerContainer"><div class="card-stagger-item">📄 Google SDE Intern</div><div class="card-stagger-item">📄 Microsoft SWE</div><div class="card-stagger-item">📄 Meta Production Eng</div><div class="card-stagger-item">📄 Stripe Backend</div></div></div></div>
-    <button class="demo-btn demo-btn-primary" onclick="showStagger()">▶ Animate</button>
+    <h4>ðŸ“‡ Cards (Staggered entrance)</h4>
+    <p class="subtitle"><code>translateY + opacity Â· 50ms stagger</code></p>
+    <div class="element-preview"><div class="element-demo"><div class="card-stagger" id="staggerContainer"><div class="card-stagger-item">ðŸ“„ Google SDE Intern</div><div class="card-stagger-item">ðŸ“„ Microsoft SWE</div><div class="card-stagger-item">ðŸ“„ Meta Production Eng</div><div class="card-stagger-item">ðŸ“„ Stripe Backend</div></div></div></div>
+    <button class="demo-btn demo-btn-primary" onclick="showStagger()">â–¶ Animate</button>
   </div>
 
   <!-- Micro-interaction -->
   <div class="demo-card">
-    <h4>🔘 Button Micro-interaction</h4>
-    <p class="subtitle"><code>100ms · ease-out</code></p>
+    <h4>ðŸ”˜ Button Micro-interaction</h4>
+    <p class="subtitle"><code>100ms Â· ease-out</code></p>
     <div class="element-preview"><div class="element-demo" style="flex-direction:column;gap:var(--space-2)"><button class="demo-btn demo-btn-primary micro-btn" onclick="this.style.transform='scale(.92)';setTimeout(()=>this.style.transform='scale(1)',100)">Click me</button><button class="demo-btn demo-btn-secondary micro-btn">Hover me</button></div></div>
-    <p class="subtitle">Click the primary button for press feedback (scale .92 → 1). Hover the secondary button for background transition.</p>
+    <p class="subtitle">Click the primary button for press feedback (scale .92 â†’ 1). Hover the secondary button for background transition.</p>
     <style>.micro-btn{transition:transform var(--animation-fast) ease-out,background var(--animation-fast) ease-out}.micro-btn:hover{transform:translateY(-1px)}</style>
   </div>
 </div>
 
 <!-- SECTION 5: PRINCIPLES -->
-<h2>🎯 Animation Principles</h2>
+<h2>ðŸŽ¯ Animation Principles</h2>
 <div class="demo-grid">
-  <div class="demo-card"><h4>🎯 Purposeful</h4><p>Every animation serves a function — state change, feedback, or navigation. No decoration-only motion.</p></div>
-  <div class="demo-card"><h4>⚡ Performant</h4><p>Only <code>transform</code> and <code>opacity</code> are animated. No layout-triggering properties (<code>width</code>, <code>height</code>, <code>top</code>, <code>left</code>).</p></div>
-  <div class="demo-card"><h4>🌸 Subtle</h4><p>All animations under 300ms for transitions. No gratuitous motion. Micro-interactions at 100-150ms.</p></div>
-  <div class="demo-card"><h4>♿ Accessible</h4><p><code>prefers-reduced-motion</code> respected. Toggle above to test. Durations forced to 0.01ms when active.</p></div>
+  <div class="demo-card"><h4>ðŸŽ¯ Purposeful</h4><p>Every animation serves a function â€” state change, feedback, or navigation. No decoration-only motion.</p></div>
+  <div class="demo-card"><h4>âš¡ Performant</h4><p>Only <code>transform</code> and <code>opacity</code> are animated. No layout-triggering properties (<code>width</code>, <code>height</code>, <code>top</code>, <code>left</code>).</p></div>
+  <div class="demo-card"><h4>ðŸŒ¸ Subtle</h4><p>All animations under 300ms for transitions. No gratuitous motion. Micro-interactions at 100-150ms.</p></div>
+  <div class="demo-card"><h4>â™¿ Accessible</h4><p><code>prefers-reduced-motion</code> respected. Toggle above to test. Durations forced to 0.01ms when active.</p></div>
 </div>
 
 <div class="footer">
-  Meridian Animation System v1.0 · Companion to <a href="./Animation-System.md">Animation-System.md</a><br>
-  All animations use transform + opacity only · Reduced motion supported
+  Vaeloom Animation System v1.0 Â· Companion to <a href="./Animation-System.md">Animation-System.md</a><br>
+  All animations use transform + opacity only Â· Reduced motion supported
 </div>
 
 <script>
-  function setTheme(t){const r=t==='system'?(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',r);localStorage.setItem('meridian-theme',t);document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));const btn=Array.from(document.querySelectorAll('.theme-btn')).find(b=>b.getAttribute('onclick')?.includes(`'${t}`));if(btn)btn.classList.add('active')}
-  (function(){const s=localStorage.getItem('meridian-theme');setTheme(s||'system');window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(localStorage.getItem('meridian-theme')==='system')setTheme('system')})})();
+  function setTheme(t){const r=t==='system'?(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',r);localStorage.setItem('Vaeloom-theme',t);document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));const btn=Array.from(document.querySelectorAll('.theme-btn')).find(b=>b.getAttribute('onclick')?.includes(`'${t}`));if(btn)btn.classList.add('active')}
+  (function(){const s=localStorage.getItem('Vaeloom-theme');setTheme(s||'system');window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(localStorage.getItem('Vaeloom-theme')==='system')setTheme('system')})})();
 
   // Easing curves data
   const EASINGS = [
@@ -318,7 +318,7 @@
 
   // Timing demo
   let speedFactor = 1;
-  function updateTimings(val) { speedFactor = parseFloat(val); document.getElementById('speedLabel').textContent = val + '×'; }
+  function updateTimings(val) { speedFactor = parseFloat(val); document.getElementById('speedLabel').textContent = val + 'Ã—'; }
   function runTimingDemo() {
     const micro = document.getElementById('microTimeline').querySelector('.timeline-bar');
     const state = document.getElementById('stateTimeline').querySelector('.timeline-bar');

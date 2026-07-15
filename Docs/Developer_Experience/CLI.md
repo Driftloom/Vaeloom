@@ -1,7 +1,7 @@
-# CLI Tools
+﻿# CLI Tools
 
-> **Purpose:** Define CLI tools and usage for Meridian development
-> **Status:** 🆕 New
+> **Purpose:** Define CLI tools and usage for Vaeloom development
+> **Status:** ðŸ†• New
 
 ## CLI Architecture
 
@@ -11,30 +11,30 @@ graph TD
     classDef planned fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef scripts fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Current["⚡ Current CLI Tools"]
-        C1["npm run dev → Dev servers (FE + API)"]
-        C2["npm run build → Production build"]
-        C3["npm run test → Run tests"]
-        C4["npm run lint → Lint code"]
-        C5["pytest → Python tests (AI)"]
-        C6["uvicorn --reload → AI dev server"]
+    subgraph Current["âš¡ Current CLI Tools"]
+        C1["npm run dev â†’ Dev servers (FE + API)"]
+        C2["npm run build â†’ Production build"]
+        C3["npm run test â†’ Run tests"]
+        C4["npm run lint â†’ Lint code"]
+        C5["pytest â†’ Python tests (AI)"]
+        C6["uvicorn --reload â†’ AI dev server"]
     end
 
-    subgraph Planned["🚀 Meridian CLI (Future)"]
-        P1["Auth: meridian login / logout"]
+    subgraph Planned["ðŸš€ Vaeloom CLI (Future)"]
+        P1["Auth: Vaeloom login / logout"]
         P2["Workspace: list / switch"]
         P3["Documents: upload / list"]
         P4["Agents: list / status"]
-        P5["Dev: meridian dev (all services)"]
-        P6["Deploy: meridian deploy &lt;service&gt;"]
-        P7["Logs: meridian logs &lt;service&gt;"]
+        P5["Dev: Vaeloom dev (all services)"]
+        P6["Deploy: Vaeloom deploy &lt;service&gt;"]
+        P7["Logs: Vaeloom logs &lt;service&gt;"]
     end
 
-    subgraph Scripts["📁 Scripts/"]
-        S1["setup-dev.sh → Initial setup"]
-        S2["reset-db.sh → Clean DB state"]
-        S3["seed-data.sh → Dev seed data"]
-        S4["smoke-test.sh → Smoke tests"]
+    subgraph Scripts["ðŸ“ Scripts/"]
+        S1["setup-dev.sh â†’ Initial setup"]
+        S2["reset-db.sh â†’ Clean DB state"]
+        S3["seed-data.sh â†’ Dev seed data"]
+        S4["smoke-test.sh â†’ Smoke tests"]
     end
 
     Current --> Planned --> Scripts
@@ -44,7 +44,7 @@ graph TD
     class S1,S2,S3,S4 scripts
 ```
 
-> **Diagram:** CLI architecture — **current tools** (npm/pytest/uvicorn) → **planned Meridian CLI** (auth, workspace, documents, agents, dev, deploy, logs) → **scripts directory** (setup, reset, seed, smoke-test).
+> **Diagram:** CLI architecture â€” **current tools** (npm/pytest/uvicorn) â†’ **planned Vaeloom CLI** (auth, workspace, documents, agents, dev, deploy, logs) â†’ **scripts directory** (setup, reset, seed, smoke-test).
 
 ---
 
@@ -59,31 +59,31 @@ graph TD
 | `pytest` | AI Service | Run Python tests |
 | `uvicorn main:app --reload` | AI Service | Development server |
 
-## Meridian CLI (Future)
+## Vaeloom CLI (Future)
 
-A dedicated CLI tool `meridian-cli` is planned:
+A dedicated CLI tool `Vaeloom-cli` is planned:
 
 ```bash
 # Authentication
-meridian login
-meridian logout
+Vaeloom login
+Vaeloom logout
 
 # Workspace management
-meridian workspace list
-meridian workspace switch <id>
+Vaeloom workspace list
+Vaeloom workspace switch <id>
 
 # Document operations
-meridian document upload <path>
-meridian document list
+Vaeloom document upload <path>
+Vaeloom document list
 
 # Agent interactions
-meridian agent list
-meridian agent status <name>
+Vaeloom agent list
+Vaeloom agent status <name>
 
 # Development
-meridian dev               # Start all services
-meridian deploy <service>   # Deploy single service
-meridian logs <service>     # View logs
+Vaeloom dev               # Start all services
+Vaeloom deploy <service>   # Deploy single service
+Vaeloom logs <service>     # View logs
 ```
 
 ## Scripts Directory
@@ -99,26 +99,26 @@ meridian logs <service>     # View logs
 
 | Mistake | Consequence |
 |---------|-------------|
-| Running `npm start` instead of `npm run dev` in development | `npm start` runs the production build — changes aren't reflected without rebuild, leading to confusion about why code edits don't take effect |
-| Forgetting to activate the Python virtual environment before running AI Service commands | Running `pytest` or `uvicorn` outside the venv uses the system Python — missing dependencies cause import errors that look like setup failures |
-| Using production environment variables in local CLI commands | A `--env production` flag or production `DATABASE_URL` in a local terminal can accidentally modify production data — always verify the active environment |
-| Running destructive commands without a dry-run | Commands like `reset-db.sh` drop all data — running without confirming the target environment causes irreversible data loss in staging or production |
+| Running `npm start` instead of `npm run dev` in development | `npm start` runs the production build â€” changes aren't reflected without rebuild, leading to confusion about why code edits don't take effect |
+| Forgetting to activate the Python virtual environment before running AI Service commands | Running `pytest` or `uvicorn` outside the venv uses the system Python â€” missing dependencies cause import errors that look like setup failures |
+| Using production environment variables in local CLI commands | A `--env production` flag or production `DATABASE_URL` in a local terminal can accidentally modify production data â€” always verify the active environment |
+| Running destructive commands without a dry-run | Commands like `reset-db.sh` drop all data â€” running without confirming the target environment causes irreversible data loss in staging or production |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Use `npm run dev` for all local development | Dev mode includes hot reload, debug logging, and double rate limits — it's the only mode suitable for active development |
-| Always activate the Python venv before AI Service work | `source .venv/bin/activate` should be the first command in any AI Service terminal session — add it to your shell profile for convenience |
-| Prefix environment-specific commands with the target | `STAGING=1 ./scripts/reset-db.sh` or `NODE_ENV=production npm run build` — explicit environment markers prevent cross-environment accidents |
-| Add a confirmation prompt to destructive scripts | Scripts that drop databases or delete resources should require `--confirm` or `--force` flags — never run destructive operations without explicit confirmation |
+| Use `npm run dev` for all local development | Dev mode includes hot reload, debug logging, and double rate limits â€” it's the only mode suitable for active development |
+| Always activate the Python venv before AI Service work | `source .venv/bin/activate` should be the first command in any AI Service terminal session â€” add it to your shell profile for convenience |
+| Prefix environment-specific commands with the target | `STAGING=1 ./scripts/reset-db.sh` or `NODE_ENV=production npm run build` â€” explicit environment markers prevent cross-environment accidents |
+| Add a confirmation prompt to destructive scripts | Scripts that drop databases or delete resources should require `--confirm` or `--force` flags â€” never run destructive operations without explicit confirmation |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| CLI tool credential storage | A future Meridian CLI will store auth tokens locally — use the system keychain (or encrypted config file), never plaintext config files |
-| Script secrets in command history | Commands with inline secrets (`ANTHROPIC_API_KEY=sk-... npm run dev`) are stored in shell history — use `.env` files or secrets manager instead |
+| CLI tool credential storage | A future Vaeloom CLI will store auth tokens locally â€” use the system keychain (or encrypted config file), never plaintext config files |
+| Script secrets in command history | Commands with inline secrets (`ANTHROPIC_API_KEY=sk-... npm run dev`) are stored in shell history â€” use `.env` files or secrets manager instead |
 
 ## Error Handling
 
@@ -134,26 +134,26 @@ meridian logs <service>     # View logs
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Destructive script run against wrong environment | Medium | Critical | Add environment confirmation prompt; check `NODE_ENV` before destructive operations |
-| CLI tool credentials stored in plaintext | Medium | High | Use system keychain or encrypted config for future `meridian login` |
+| CLI tool credentials stored in plaintext | Medium | High | Use system keychain or encrypted config for future `Vaeloom login` |
 | Scripts fail silently on errors | High | Medium | Use `set -euo pipefail` in all shell scripts; verify exit codes in CI |
 
 ## Limitations
 
 | Limitation | Impact | Workaround | Future Resolution |
 |------------|--------|------------|-------------------|
-| No dedicated Meridian CLI tool (MVP) | Developers use npm/pytest/uvicorn directly with inconsistent flags | Standardize on `npm run dev` and documented scripts for all services | `meridian-cli` with unified commands (v1.5) |
+| No dedicated Vaeloom CLI tool (MVP) | Developers use npm/pytest/uvicorn directly with inconsistent flags | Standardize on `npm run dev` and documented scripts for all services | `Vaeloom-cli` with unified commands (v1.5) |
 | Shell scripts are platform-specific (bash) | Windows developers cannot run scripts natively | Use Git Bash, WSL, or PowerShell equivalents | Cross-platform scripts or Node.js-based CLI (V2) |
 
 ## Overview
 
-The CLI Tools document catalogs all command-line interfaces available for Meridian development — npm scripts for the frontend and API, Python/uvicorn commands for the AI service, shell scripts for database operations, and the planned Meridian CLI tool. It defines conventions for script safety, environment-aware execution, and cross-platform compatibility.
+The CLI Tools document catalogs all command-line interfaces available for Vaeloom development â€” npm scripts for the frontend and API, Python/uvicorn commands for the AI service, shell scripts for database operations, and the planned Vaeloom CLI tool. It defines conventions for script safety, environment-aware execution, and cross-platform compatibility.
 
 ---
 
 ## Goals
 
 - Document all available CLI commands across frontend, API, and AI service
-- Define the roadmap for the dedicated Meridian CLI tool
+- Define the roadmap for the dedicated Vaeloom CLI tool
 - Establish script safety conventions (idempotency, confirmation prompts, error handling)
 - Prevent environment-crossing accidents with explicit flags and checks
 - Enable Windows development through cross-platform alternatives
@@ -164,7 +164,7 @@ The CLI Tools document catalogs all command-line interfaces available for Meridi
 
 ### In Scope
 - Current CLI tools (npm, pytest, uvicorn)
-- Planned Meridian CLI features
+- Planned Vaeloom CLI features
 - Scripts directory conventions and usage
 - Shell script safety best practices
 - Environment-specific command patterns
@@ -181,17 +181,17 @@ The CLI Tools document catalogs all command-line interfaces available for Meridi
 
 | Improvement | Priority | Complexity | Timeline |
 |-------------|----------|------------|----------|
-| Dedicated `meridian-cli` with unified commands | High | Medium | v1.5 (2027 H1) |
+| Dedicated `Vaeloom-cli` with unified commands | High | Medium | v1.5 (2027 H1) |
 | Cross-platform scripts (PowerShell alternatives) | Medium | Low | V2 (2027 H2) |
-| Interactive `meridian dev` with service selection | Medium | Medium | v1.5 (2027 H1) |
-| `meridian deploy` for one-command deployments | Low | High | Enterprise (2028) |
+| Interactive `Vaeloom dev` with service selection | Medium | Medium | v1.5 (2027 H1) |
+| `Vaeloom deploy` for one-command deployments | Low | High | Enterprise (2028) |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| CLI startup time | The planned Meridian CLI should load in under 500ms — lazy-load subcommands and dependencies rather than importing everything at startup |
-| npm run dev memory usage | Running all services (frontend + API + AI + Docker) consumes 2-4GB RAM — provide a `--light` flag to start only the services needed for a specific task |
+| CLI startup time | The planned Vaeloom CLI should load in under 500ms â€” lazy-load subcommands and dependencies rather than importing everything at startup |
+| npm run dev memory usage | Running all services (frontend + API + AI + Docker) consumes 2-4GB RAM â€” provide a `--light` flag to start only the services needed for a specific task |
 
 ## Examples
 

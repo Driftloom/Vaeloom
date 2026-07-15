@@ -1,26 +1,26 @@
-Meridian · Memory System
+﻿Vaeloom Â· Memory System
 
 | Metadata         | Value                                                                |
 |------------------|----------------------------------------------------------------------|
-| **Purpose**      | Document Meridian's memory system: knowledge graph, six memory types, and agentic RAG |
+| **Purpose**      | Document Vaeloom's memory system: knowledge graph, six memory types, and agentic RAG |
 | **Status**       | Draft |
 | **Owner**        | Engineering Team |
 | **Last Updated** | 2026-07-13 |
 
 ## Overview
 
-Meridian's memory system is the core asset everything else is built on. Every agent reads from and writes to the same underlying knowledge graph — this is what makes the resume, the job search, and the chat all feel like they know the same person. Six kinds of structured memory (Profile, Document, Career, Episodic, Preference, Working) connect to a central knowledge graph, accessed through an agentic RAG read path and maintained through a write path that extracts, deduplicates, merges, and consolidates.
+Vaeloom's memory system is the core asset everything else is built on. Every agent reads from and writes to the same underlying knowledge graph â€” this is what makes the resume, the job search, and the chat all feel like they know the same person. Six kinds of structured memory (Profile, Document, Career, Episodic, Preference, Working) connect to a central knowledge graph, accessed through an agentic RAG read path and maintained through a write path that extracts, deduplicates, merges, and consolidates.
 
 ## Goals
 
-- **Define the six memory types** — what each stores, when it's written, and how it's queried
-- **Describe the knowledge graph structure** — entity types, relationship types, and how they're built automatically
-- **Document the agentic RAG read path** — how agents choose retrieval strategy per query
-- **Explain the write and consolidation path** — extraction, dedup, merge, and periodic compression
+- **Define the six memory types** â€” what each stores, when it's written, and how it's queried
+- **Describe the knowledge graph structure** â€” entity types, relationship types, and how they're built automatically
+- **Document the agentic RAG read path** â€” how agents choose retrieval strategy per query
+- **Explain the write and consolidation path** â€” extraction, dedup, merge, and periodic compression
 
 # One graph, six kinds of memory
 
-Every agent reads from and writes to the same underlying graph — this is what makes the resume, the job search, and the chat all feel like they "know" the same person.
+Every agent reads from and writes to the same underlying graph â€” this is what makes the resume, the job search, and the chat all feel like they "know" the same person.
 
 ```mermaid
 graph TD
@@ -30,11 +30,11 @@ graph TD
     classDef read fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
     classDef write fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Graph["🧠 Knowledge Graph — The Second Brain"]
+    subgraph Graph["ðŸ§  Knowledge Graph â€” The Second Brain"]
         KG["Entities + typed relationships<br/>The central structure everything links to"]
     end
 
-    subgraph MemTypes["🗂️ Six Kinds of Memory"]
+    subgraph MemTypes["ðŸ—‚ï¸ Six Kinds of Memory"]
         P["Profile Memory<br/>Education, skills, certifications"]
         D["Document Memory<br/>Per-file summary & embedding"]
         C["Career Memory<br/>Applications, outcomes"]
@@ -43,14 +43,14 @@ graph TD
         W["Working Memory<br/>Current session context<br/>(cleared per session)"]
     end
 
-    subgraph ReadPath["📖 Read Path — Agentic RAG Retrieval"]
+    subgraph ReadPath["ðŸ“– Read Path â€” Agentic RAG Retrieval"]
         R1["Query from agent"]
         R2["Hybrid search<br/>Vector + keyword + graph traversal"]
         R3["Re-rank by relevance, recency, confidence"]
         R4["Assembled context returned to agent"]
     end
 
-    subgraph WritePath["✏️ Write Path — How Memory Gets Updated"]
+    subgraph WritePath["âœï¸ Write Path â€” How Memory Gets Updated"]
         W1["New info from any agent"]
         W2["Extract entities & facts"]
         W3["Dedup / merge against existing nodes"]
@@ -69,7 +69,7 @@ graph TD
     class W1,W2,W3,W4 write
 ```
 
-> **Diagram:** Memory system architecture. **Knowledge Graph** is the central structure — 6 memory types connect to it: **Profile** (education/skills), **Document** (file summaries), **Career** (applications/outcomes), **Episodic** (events), **Preference** (patterns), and **Working** (session context, cleared per session). **Read path** (Agentic RAG): query → hybrid search → re-rank → assembled context. **Write path**: new info → extract → dedup/merge → write to graph + vector store → consolidated.
+> **Diagram:** Memory system architecture. **Knowledge Graph** is the central structure â€” 6 memory types connect to it: **Profile** (education/skills), **Document** (file summaries), **Career** (applications/outcomes), **Episodic** (events), **Preference** (patterns), and **Working** (session context, cleared per session). **Read path** (Agentic RAG): query â†’ hybrid search â†’ re-rank â†’ assembled context. **Write path**: new info â†’ extract â†’ dedup/merge â†’ write to graph + vector store â†’ consolidated.
 
 ---
 
@@ -112,19 +112,19 @@ Read path
 
 ## Agentic RAG retrieval
 
-When an agent needs context, it doesn't run one fixed search — it picks a strategy for the question in front of it.
+When an agent needs context, it doesn't run one fixed search â€” it picks a strategy for the question in front of it.
 
 Query from an agent
 
-↓
+â†“
 
-Hybrid search — vector + keyword + graph traversal
+Hybrid search â€” vector + keyword + graph traversal
 
-↓
+â†“
 
 Re-rank by relevance, recency, confidence
 
-↓
+â†“
 
 Assembled context returned to agent
 
@@ -132,23 +132,23 @@ Write path
 
 ### How memory gets updated
 
-Every agent action is a potential memory update — this is what keeps the graph current without the user doing any manual linking.
+Every agent action is a potential memory update â€” this is what keeps the graph current without the user doing any manual linking.
 
 New info from any agent
 
-↓
+â†“
 
 Extract entities & facts
 
-↓
+â†“
 
 Dedup / merge against existing nodes
 
-↓
+â†“
 
 Write to graph + vector store, consolidate over time
 
-Working Memory is the only type that's cleared per session — everything else persists and compounds over years of use.
+Working Memory is the only type that's cleared per session â€” everything else persists and compounds over years of use.
 
 ---
 
@@ -157,7 +157,7 @@ Working Memory is the only type that's cleared per session — everything else p
 ### In Scope
 - Six memory types: Profile, Document, Career, Episodic, Preference, Working
 - Knowledge graph structure: entity types and typed relationships
-- Agentic RAG read path — hybrid search combining vector, keyword, and graph traversal
+- Agentic RAG read path â€” hybrid search combining vector, keyword, and graph traversal
 - Write path: extraction, dedup/merge, write to graph + vector store, consolidation
 - Read/re-rank by relevance, recency, and confidence
 
@@ -175,7 +175,7 @@ Working Memory is the only type that's cleared per session — everything else p
 ### Extract entities from a document
 
 ```python
-from meridian import MemoryClient
+from Vaeloom import MemoryClient
 
 client = MemoryClient()
 entities = client.extract(
@@ -187,7 +187,7 @@ entities = client.extract(
 ### Query the knowledge graph
 
 ```typescript
-const results = await meridian.memory.graph.query({
+const results = await Vaeloom.memory.graph.query({
   entity: "React",
   relationships: ["used_in", "taught_at"],
   depth: 2
@@ -197,7 +197,7 @@ const results = await meridian.memory.graph.query({
 ### Write to episodic memory
 
 ```bash
-meridian memory write --type episodic --event "Applied to Stripe internship" --timestamp 2026-07-13
+Vaeloom memory write --type episodic --event "Applied to Stripe internship" --timestamp 2026-07-13
 ```
 
 ## Future Improvements
@@ -212,7 +212,7 @@ meridian memory write --type episodic --event "Applied to Stripe internship" --t
 
 | Document | Description |
 |----------|-------------|
-| [MVP Product Spec](01-Meridian-MVP-Spec.md) | v1 memory architecture defined in product context |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1 memory architecture defined in product context |
 | [System Architecture](02-system-architecture.md) | Where the memory layer fits in the six-layer stack |
 | [Agent Workflow](03-agent-workflow.md) | How agents read from and write to memory in practice |
-| [Enterprise Product Vision](06-Meridian-Enterprise-Paper.md) | Full enterprise memory taxonomy (22 types) |
+| [Enterprise Product Vision](06-Vaeloom-Enterprise-Paper.md) | Full enterprise memory taxonomy (22 types) |

@@ -1,7 +1,7 @@
-# Design System
+﻿# Design System
 
-> **Purpose:** Define the design system for Meridian
-> **Status:** 🆕 New — foundation for component development
+> **Purpose:** Define the design system for Vaeloom
+> **Status:** ðŸ†• New â€” foundation for component development
 
 ## Design Token Architecture
 
@@ -12,7 +12,7 @@ graph TD
     classDef space fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef cat fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Colors["🎨 Color System"]
+    subgraph Colors["ðŸŽ¨ Color System"]
         C1["Primary: #3B82F6<br/>Actions, links"]
         C2["Success: #10B981<br/>Success states"]
         C3["Warning: #F59E0B<br/>Attention needed"]
@@ -21,16 +21,16 @@ graph TD
         C6["Text: #111827 / #6B7280<br/>Primary / Secondary"]
     end
 
-    subgraph Typography["🔤 Typography"]
+    subgraph Typography["ðŸ”¤ Typography"]
         T1["Font: Inter (sans)<br/>Code: JetBrains Mono"]
-        T2["Scale: xs(0.75) → 2xl(1.5rem)<br/>Captions → Page titles"]
+        T2["Scale: xs(0.75) â†’ 2xl(1.5rem)<br/>Captions â†’ Page titles"]
     end
 
-    subgraph Spacing["📏 Spacing Scale"]
+    subgraph Spacing["ðŸ“ Spacing Scale"]
         S1["space-1: 0.25rem<br/>space-2: 0.5rem<br/>space-3: 0.75rem<br/>space-4: 1rem<br/>space-6: 1.5rem<br/>space-8: 2rem"]
     end
 
-    subgraph Categories["📦 Component Categories"]
+    subgraph Categories["ðŸ“¦ Component Categories"]
         G1["Layout<br/>Page, Card, Grid, Stack"]
         G2["Navigation<br/>Sidebar, Tabs, Breadcrumbs"]
         G3["Data Display<br/>Table, List, Tree, Graph"]
@@ -47,7 +47,7 @@ graph TD
     class G1,G2,G3,G4,G5,G6 cat
 ```
 
-> **Diagram:** Design system architecture — **colors** (semantic palette with actions, states, backgrounds, text), **typography** (Inter + JetBrains Mono with size scale), **spacing** (6-step scale from 0.25rem to 2rem). These tokens feed into **6 component categories**: Layout, Navigation, Data Display, Feedback, Input, and AI-specific.
+> **Diagram:** Design system architecture â€” **colors** (semantic palette with actions, states, backgrounds, text), **typography** (Inter + JetBrains Mono with size scale), **spacing** (6-step scale from 0.25rem to 2rem). These tokens feed into **6 component categories**: Layout, Navigation, Data Display, Feedback, Input, and AI-specific.
 
 ---
 
@@ -105,18 +105,18 @@ graph TD
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Inconsistent spacing between components | Developers guessing spacing values leads to layout drift — every gap should come from the spacing scale, never from arbitrary values |
+| Inconsistent spacing between components | Developers guessing spacing values leads to layout drift â€” every gap should come from the spacing scale, never from arbitrary values |
 | Too many color tokens without clear semantic mapping | A palette with 50+ colors is unmaintainable; each color should have a specific, documented semantic role |
-| Missing dark mode adjustments for shadows | Shadows that look fine on white backgrounds become invisible or muddy on dark backgrounds — dark theme shadows should be stronger and lower-opacity |
+| Missing dark mode adjustments for shadows | Shadows that look fine on white backgrounds become invisible or muddy on dark backgrounds â€” dark theme shadows should be stronger and lower-opacity |
 | No versioning or changelog for design tokens | Teams that don't version their tokens can't tell which components use which token values; breaks cascade on theme updates |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Define semantic tokens that reference primitives | Components should never reference `--color-blue-500` directly — they reference `--accent-primary`, which remaps per theme |
-| Use a systematic spacing scale (4px base unit) | A 4px-based scale (4, 8, 12, 16, 24, 32…) ensures visual rhythm without forcing designers into a rigid grid |
-| Choose accessible contrast from the start | Design tokens should be verified against WCAG AA (4.5:1) before components are built — retrofitting accessibility is expensive |
+| Define semantic tokens that reference primitives | Components should never reference `--color-blue-500` directly â€” they reference `--accent-primary`, which remaps per theme |
+| Use a systematic spacing scale (4px base unit) | A 4px-based scale (4, 8, 12, 16, 24, 32â€¦) ensures visual rhythm without forcing designers into a rigid grid |
+| Choose accessible contrast from the start | Design tokens should be verified against WCAG AA (4.5:1) before components are built â€” retrofitting accessibility is expensive |
 | Document both light and dark values for every semantic token | Never ship a semantic token that only defines its light value; developers will discover dark mode is broken at the worst moment |
 
 ## Security
@@ -132,7 +132,7 @@ graph TD
 | Concern | Guideline |
 |---------|-----------|
 | CSS custom property access cost | Accessing `var(--custom-prop)` is marginally slower than a hardcoded value; the difference is negligible for most pages but measurable in hot loops like animations |
-| Unused token bloat in CSS bundles | Purge unused CSS variables with a build-time tool — shipping 91 tokens to every page when only 40 are used adds ~2KB to the initial CSS bundle |
+| Unused token bloat in CSS bundles | Purge unused CSS variables with a build-time tool â€” shipping 91 tokens to every page when only 40 are used adds ~2KB to the initial CSS bundle |
 | Theme switching performance | Switching themes (redefining ~40+ CSS variables) triggers a repaint; batch theme variable changes in a single style recalculation via `document.documentElement.setAttribute` |
 
 ## Security Considerations
@@ -148,7 +148,7 @@ graph TD
 | Concern | Approach |
 |---------|----------|
 | CSS custom property access cost | Accessing `var(--custom-prop)` is marginally slower than a hardcoded value; the difference is negligible for most pages but measurable in hot loops like animations |
-| Unused token bloat in CSS bundles | Purge unused CSS variables with a build-time tool — shipping 91 tokens to every page when only 40 are used adds ~2KB to the initial CSS bundle |
+| Unused token bloat in CSS bundles | Purge unused CSS variables with a build-time tool â€” shipping 91 tokens to every page when only 40 are used adds ~2KB to the initial CSS bundle |
 | Theme switching performance | Switching themes (redefining ~40+ CSS variables) triggers a repaint; batch theme variable changes in a single style recalculation via `document.documentElement.setAttribute` |
 
 ## Components
@@ -162,10 +162,10 @@ graph TD
 
 ## Workflows
 
-1. **Design token update**: Designer updates token in Figma → token sync plugin creates PR → CI validates contrast ratios for all themes → PR merged → design tokens reference updated → components inherit new values automatically
-2. **New component token creation**: Developer identifies need for component-specific variable → checks existing component tokens for coverage → adds new token referencing semantic layer → documents in token table → visual regression test verifies
-3. **Dark theme override**: Developer adds new semantic token → defines both light and dark values → CI checks dark mode contrast → builds passes → component renders correctly in both themes
-4. **Deprecated token removal**: Token marked `@deprecated` in source comments → all references migrated to replacement → token removed in next major release → codemod provided for consumer migration
+1. **Design token update**: Designer updates token in Figma â†’ token sync plugin creates PR â†’ CI validates contrast ratios for all themes â†’ PR merged â†’ design tokens reference updated â†’ components inherit new values automatically
+2. **New component token creation**: Developer identifies need for component-specific variable â†’ checks existing component tokens for coverage â†’ adds new token referencing semantic layer â†’ documents in token table â†’ visual regression test verifies
+3. **Dark theme override**: Developer adds new semantic token â†’ defines both light and dark values â†’ CI checks dark mode contrast â†’ builds passes â†’ component renders correctly in both themes
+4. **Deprecated token removal**: Token marked `@deprecated` in source comments â†’ all references migrated to replacement â†’ token removed in next major release â†’ codemod provided for consumer migration
 
 ## Sequence Diagrams
 
@@ -181,21 +181,21 @@ sequenceDiagram
     PLUGIN->>CI: Open PR with token change
     CI->>CI: Check contrast ratios (light + dark)
     alt Contrast passes
-        CI->>CODE: ✅ Token change merged
+        CI->>CODE: âœ… Token change merged
         CODE-->>DES: Component previews updated
     else Contrast fails
-        CI-->>PLUGIN: ❌ Contrast failure report
+        CI-->>PLUGIN: âŒ Contrast failure report
         PLUGIN-->>DES: Suggest compliant alternative
     end
 ```
 
 ## Data Flow
 
-1. **Ingestion**: Token values defined in CSS files and TypeScript config → synced from Figma via plugin → validated by CI → merged into main
-2. **Processing**: CSS parser extracts all `--token` definitions → generates documentation page → validates no missing dark mode values → builds production CSS bundle
-3. **Storage**: Tokens stored in `:root` and `[data-theme="dark"]` CSS blocks → also exported as TypeScript constants for inline usage → Tailwind config references CSS variables
-4. **Retrieval**: Component renders → references component token → token resolves to semantic token → semantic token resolves to primitive value → browser paints correct themed value
-5. **Deletion**: Deprecated token removed from all source files → CSS bundle size reduces → no runtime impact as no component references it
+1. **Ingestion**: Token values defined in CSS files and TypeScript config â†’ synced from Figma via plugin â†’ validated by CI â†’ merged into main
+2. **Processing**: CSS parser extracts all `--token` definitions â†’ generates documentation page â†’ validates no missing dark mode values â†’ builds production CSS bundle
+3. **Storage**: Tokens stored in `:root` and `[data-theme="dark"]` CSS blocks â†’ also exported as TypeScript constants for inline usage â†’ Tailwind config references CSS variables
+4. **Retrieval**: Component renders â†’ references component token â†’ token resolves to semantic token â†’ semantic token resolves to primitive value â†’ browser paints correct themed value
+5. **Deletion**: Deprecated token removed from all source files â†’ CSS bundle size reduces â†’ no runtime impact as no component references it
 
 ## Scalability
 
@@ -203,7 +203,7 @@ sequenceDiagram
 |-----------|---------------|--------------|---------------|
 | Total design tokens | 91 | Modular token sets per component domain (200 tokens) | Automated token generation from brand guidelines via AI |
 | Themes maintained | 2 (light + dark) | Theme extension system with user-customizable accent colors | Multi-brand theming with full token isolation |
-| Token reference depth | 3 layers (primitive→semantic→component) | Auto-flatten at build time for performance | Dynamic token graph with lazy resolution |
+| Token reference depth | 3 layers (primitiveâ†’semanticâ†’component) | Auto-flatten at build time for performance | Dynamic token graph with lazy resolution |
 | CSS bundle size from tokens | ~15KB | Purge unused tokens per page | Tree-shake CSS variables at component level |
 
 ## Error Handling
@@ -219,9 +219,9 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Token contrast compliance | < 100% of semantic pairs | Critical | CI — Contrast Check step |
+| Token contrast compliance | < 100% of semantic pairs | Critical | CI â€” Contrast Check step |
 | Unused token count | > 10 | Info | Code Quality dashboard |
-| Theme switch render time | > 50ms | Warning | Grafana — Interaction to Next Paint |
+| Theme switch render time | > 50ms | Warning | Grafana â€” Interaction to Next Paint |
 | Token reference depth violations | > 3 layers | Warning | Build-time lint report |
 
 ## Risks
@@ -243,17 +243,17 @@ sequenceDiagram
 
 ## Overview
 
-The Meridian design system is the single source of truth for all visual styling decisions across the application. It defines a three-layer token architecture — primitive tokens hold raw values (hex colors, pixel spacing, font families), semantic tokens assign meaning to those values (--bg-primary, --text-body, --accent-success), and component tokens scope values to specific UI patterns (--card-bg, --btn-primary-bg). This layered approach ensures that changing a brand color propagates automatically through every component without touching a single CSS selector.
+The Vaeloom design system is the single source of truth for all visual styling decisions across the application. It defines a three-layer token architecture â€” primitive tokens hold raw values (hex colors, pixel spacing, font families), semantic tokens assign meaning to those values (--bg-primary, --text-body, --accent-success), and component tokens scope values to specific UI patterns (--card-bg, --btn-primary-bg). This layered approach ensures that changing a brand color propagates automatically through every component without touching a single CSS selector.
 
-The design system supports two themes — light and dark — with every semantic token defining both. Theme switching is instant via a `data-theme` attribute on the `<html>` element, with smooth CSS transitions on background, color, border, and shadow properties. The system defaults to the user's OS preference via `prefers-color-scheme` and persists manual overrides in `localStorage`.
+The design system supports two themes â€” light and dark â€” with every semantic token defining both. Theme switching is instant via a `data-theme` attribute on the `<html>` element, with smooth CSS transitions on background, color, border, and shadow properties. The system defaults to the user's OS preference via `prefers-color-scheme` and persists manual overrides in `localStorage`.
 
-For Meridian's AI-powered workflows, the design system provides consistent visual language across every interaction — from the approval buttons on ProposalCards to the entity nodes in the knowledge graph. The color palette is optimized for semantic meaning over decoration: blue for primary actions, green for success states (approvals, completions), amber for warnings, red for destructive actions. This semantic mapping helps users intuitively understand the weight and meaning of AI agent outputs.
+For Vaeloom's AI-powered workflows, the design system provides consistent visual language across every interaction â€” from the approval buttons on ProposalCards to the entity nodes in the knowledge graph. The color palette is optimized for semantic meaning over decoration: blue for primary actions, green for success states (approvals, completions), amber for warnings, red for destructive actions. This semantic mapping helps users intuitively understand the weight and meaning of AI agent outputs.
 
-The system includes 91 CSS custom properties across 7 categories (backgrounds, text, accents, borders, shadows, typography, spacing), all verified against WCAG AA 4.5:1 contrast ratios in both light and dark modes. Every component is built against these tokens — no raw colors, no hardcoded values, no theme drift.
+The system includes 91 CSS custom properties across 7 categories (backgrounds, text, accents, borders, shadows, typography, spacing), all verified against WCAG AA 4.5:1 contrast ratios in both light and dark modes. Every component is built against these tokens â€” no raw colors, no hardcoded values, no theme drift.
 
 ## Goals
 
-- Maintain 100% token coverage — every color, shadow, font, and spacing value in production UI references a design token
+- Maintain 100% token coverage â€” every color, shadow, font, and spacing value in production UI references a design token
 - Achieve zero hardcoded colors in component CSS through ESLint enforcement (`no-raw-colors`)
 - Ensure all 91 tokens have verified light and dark values with WCAG AA contrast compliance
 - Support seamless theme switching in under 50ms render time

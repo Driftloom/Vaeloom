@@ -1,7 +1,7 @@
-# REST Standards
+﻿# REST Standards
 
-> **Purpose:** Define REST API standards and conventions for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define REST API standards and conventions for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Backend Team
 > **Last Updated:** 2026-07-13
 
@@ -13,27 +13,27 @@ graph TD
     classDef req fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef code fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Conventions["📐 URL Conventions"]
+    subgraph Conventions["ðŸ“ URL Conventions"]
         C1["Plural nouns: /documents"]
         C2["Lowercase hyphens: /memory-graph"]
         C3["Nested resources: /workspaces/{id}/docs/{id}"]
         C4["Actions as verbs: /documents/{id}/archive"]
     end
 
-    subgraph Patterns["📋 Request/Response Patterns"]
+    subgraph Patterns["ðŸ“‹ Request/Response Patterns"]
         P1["Pagination: ?page=2&limit=20<br/>Response: data[] + meta{page,limit,total}"]
         P2["Filtering: ?type=PDF&status=processed<br/>Query: ?q=resume<br/>Date: ?created_after=2026-01-01"]
         P3["Sorting: ?sort=created_at:desc<br/>Multi: ?sort=name:asc,created_at:desc"]
     end
 
-    subgraph Headers["🔧 Standard Headers"]
-        H1["Authorization: Bearer &lt;token&gt; — Always"]
-        H2["Content-Type: application/json — POST/PUT"]
-        H3["X-Request-Id: Trace ID — Always"]
-        H4["X-Workspace-Id: Workspace context — Resource requests"]
+    subgraph Headers["ðŸ”§ Standard Headers"]
+        H1["Authorization: Bearer &lt;token&gt; â€” Always"]
+        H2["Content-Type: application/json â€” POST/PUT"]
+        H3["X-Request-Id: Trace ID â€” Always"]
+        H4["X-Workspace-Id: Workspace context â€” Resource requests"]
     end
 
-    subgraph StatusCodes["📊 HTTP Status Codes"]
+    subgraph StatusCodes["ðŸ“Š HTTP Status Codes"]
         S1["200: GET/PATCH success<br/>201: POST created<br/>204: DELETE success"]
         S2["400: Bad request<br/>401: Unauthenticated<br/>403: Unauthorized<br/>404: Not found"]
         S3["409: Conflict<br/>429: Rate limited<br/>500: Server error"]
@@ -47,7 +47,7 @@ graph TD
     class S1,S2,S3 code
 ```
 
-> **Diagram:** REST standards — **URL conventions** (plural, lowercase, nested, verbs), **request/response patterns** (pagination, filtering, sorting), **standard headers** (Auth, Content-Type, Request-Id, Workspace-Id), **HTTP status codes** (success 200/201/204, client errors 400-429, server error 500).
+> **Diagram:** REST standards â€” **URL conventions** (plural, lowercase, nested, verbs), **request/response patterns** (pagination, filtering, sorting), **standard headers** (Auth, Content-Type, Request-Id, Workspace-Id), **HTTP status codes** (success 200/201/204, client errors 400-429, server error 500).
 
 ---
 
@@ -64,7 +64,7 @@ graph TD
 
 ```json
 GET /documents?page=2&limit=20
-→ {
+â†’ {
     "data": [...],
     "meta": {
       "page": 2,
@@ -118,44 +118,44 @@ GET /documents?sort=name:asc,created_at:desc
 
 | Mistake | Consequence |
 |---------|-------------|
-| Using verbs in URL paths | `/createDocument` and `/deleteDocument` instead of `POST /documents` and `DELETE /documents/{id}` — breaks REST conventions and prevents HTTP method caching |
-| Returning 200 for all responses with error codes in the body | Clients can't distinguish success from failure without parsing the body — use HTTP status codes correctly (201 for created, 400 for bad request) |
-| Inconsistent pagination format across endpoints | Some endpoints return `{data, total}`, others `{items, count}` — every client must handle multiple formats |
-| Nesting resources too deeply | `/workspaces/{id}/documents/{id}/versions/{id}/comments/{id}` creates URLs that are hard to maintain — flatten after 2 levels or use query parameters |
+| Using verbs in URL paths | `/createDocument` and `/deleteDocument` instead of `POST /documents` and `DELETE /documents/{id}` â€” breaks REST conventions and prevents HTTP method caching |
+| Returning 200 for all responses with error codes in the body | Clients can't distinguish success from failure without parsing the body â€” use HTTP status codes correctly (201 for created, 400 for bad request) |
+| Inconsistent pagination format across endpoints | Some endpoints return `{data, total}`, others `{items, count}` â€” every client must handle multiple formats |
+| Nesting resources too deeply | `/workspaces/{id}/documents/{id}/versions/{id}/comments/{id}` creates URLs that are hard to maintain â€” flatten after 2 levels or use query parameters |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Plural nouns, lowercase, hyphens for multi-word | `/memory-graph` not `/memoryGraph` or `/memory_graph` — consistency across all endpoints reduces cognitive load |
-| Use standard HTTP methods for CRUD | GET (read), POST (create), PATCH (partial update), DELETE (remove) — this maps cleanly to HTTP semantics and intermediary caching |
-| Include pagination metadata in every list response | `{data: [], meta: {page, limit, total, total_pages}}` — clients need page info to build navigation without guessing |
-| Return structured error responses with error codes | `{error: {code, message, details}}` — error codes let clients handle specific errors programmatically instead of parsing message strings |
+| Plural nouns, lowercase, hyphens for multi-word | `/memory-graph` not `/memoryGraph` or `/memory_graph` â€” consistency across all endpoints reduces cognitive load |
+| Use standard HTTP methods for CRUD | GET (read), POST (create), PATCH (partial update), DELETE (remove) â€” this maps cleanly to HTTP semantics and intermediary caching |
+| Include pagination metadata in every list response | `{data: [], meta: {page, limit, total, total_pages}}` â€” clients need page info to build navigation without guessing |
+| Return structured error responses with error codes | `{error: {code, message, details}}` â€” error codes let clients handle specific errors programmatically instead of parsing message strings |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Mass assignment via unexpected fields | An API client sending extra fields (e.g., `role: admin` in a user creation request) can escalate privileges if the server accepts all fields — use DTOs with explicit allow-lists, never pass raw request bodies to services |
-| Insecure direct object references (IDOR) | Exposing internal IDs in URLs (`/documents/123`) lets an attacker enumerate resources by incrementing the ID — use UUIDs and enforce ownership checks on every resource access |
-| Rate limit evasion through HTTP method variation | If rate limiting only applies to POST requests, an attacker can use PATCH or PUT to bypass limits — apply rate limits uniformly across all mutation methods for the same resource |
+| Mass assignment via unexpected fields | An API client sending extra fields (e.g., `role: admin` in a user creation request) can escalate privileges if the server accepts all fields â€” use DTOs with explicit allow-lists, never pass raw request bodies to services |
+| Insecure direct object references (IDOR) | Exposing internal IDs in URLs (`/documents/123`) lets an attacker enumerate resources by incrementing the ID â€” use UUIDs and enforce ownership checks on every resource access |
+| Rate limit evasion through HTTP method variation | If rate limiting only applies to POST requests, an attacker can use PATCH or PUT to bypass limits â€” apply rate limits uniformly across all mutation methods for the same resource |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Pagination overhead on large datasets | Offset-based pagination (`page=1000&limit=20`) forces the database to scan and discard rows — use cursor-based pagination for large datasets or set a maximum page offset |
-| JSON serialization cost for list endpoints | Serializing 20 nested resources with full object graphs can take 50ms+ — implement sparse field selection (`?fields=id,name,type`) so clients request only what they need |
-| Uncompressed response payloads | Large list responses (1MB+) without compression consume bandwidth and increase latency — enable gzip/brotli compression at the API gateway for all text-based responses |
+| Pagination overhead on large datasets | Offset-based pagination (`page=1000&limit=20`) forces the database to scan and discard rows â€” use cursor-based pagination for large datasets or set a maximum page offset |
+| JSON serialization cost for list endpoints | Serializing 20 nested resources with full object graphs can take 50ms+ â€” implement sparse field selection (`?fields=id,name,type`) so clients request only what they need |
+| Uncompressed response payloads | Large list responses (1MB+) without compression consume bandwidth and increase latency â€” enable gzip/brotli compression at the API gateway for all text-based responses |
 
 ---
 
 ## Goals
 
-1. **Consistent API design** — Establish a single set of REST conventions (URL format, pagination, filtering, sorting, headers, status codes) used by every Meridian endpoint
-2. **Developer-friendly DX** — Make the API intuitive for both human developers and AI agents, with predictable patterns across all resources
-3. **Interoperable with tooling** — Follow OpenAPI 3.1 standards so Postman, Insomnia, and SDK generators work without custom configuration
-4. **Cacheable and performant** — Use HTTP semantics (ETags, status codes, compression) that work with CDNs and client-side caching
+1. **Consistent API design** â€” Establish a single set of REST conventions (URL format, pagination, filtering, sorting, headers, status codes) used by every Vaeloom endpoint
+2. **Developer-friendly DX** â€” Make the API intuitive for both human developers and AI agents, with predictable patterns across all resources
+3. **Interoperable with tooling** â€” Follow OpenAPI 3.1 standards so Postman, Insomnia, and SDK generators work without custom configuration
+4. **Cacheable and performant** â€” Use HTTP semantics (ETags, status codes, compression) that work with CDNs and client-side caching
 
 ---
 
@@ -223,7 +223,7 @@ sequenceDiagram
     API->>API: Format response: {data: [...], pagination: {next_cursor, has_more}}
     API-->>C: 200 OK + X-Request-Id + rate limit headers + gzip
 ```
-> **Diagram:** Standard REST request — Client sends paginated GET with cursor, limit, and filter. API adds +1 to limit for cursor detection, formats standard response with pagination metadata, and returns with proper headers.
+> **Diagram:** Standard REST request â€” Client sends paginated GET with cursor, limit, and filter. API adds +1 to limit for cursor detection, formats standard response with pagination metadata, and returns with proper headers.
 
 ---
 
@@ -337,8 +337,8 @@ sequenceDiagram
 ## Examples
 
 ```typescript
-// Paginated document listing (following Meridian REST conventions)
-const { data, pagination } = await meridian.get('/documents', {
+// Paginated document listing (following Vaeloom REST conventions)
+const { data, pagination } = await Vaeloom.get('/documents', {
   params: { page: 2, per_page: 25, sort: '-created_at' },
 });
 console.log(pagination); // { page: 2, per_page: 25, total: 142, pages: 6 }
@@ -348,7 +348,7 @@ console.log(pagination); // { page: 2, per_page: 25, total: 142, pages: 6 }
 # Standard error response handling
 import httpx
 
-resp = httpx.get("https://api.meridian.ai/v1/documents/invalid")
+resp = httpx.get("https://api.Vaeloom.ai/v1/documents/invalid")
 if resp.status_code == 422:
     error = resp.json()
     print(f"{error['code']}: {error['message']}")
@@ -358,8 +358,8 @@ if resp.status_code == 422:
 
 ```bash
 # Create resource with proper status codes
-curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.meridian.ai/v1/documents" \
-  -H "X-API-Key: $MERIDIAN_API_KEY" \
+curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.Vaeloom.ai/v1/documents" \
+  -H "X-API-Key: $Vaeloom_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"title": "Test"}'
 # Returns 201 on success

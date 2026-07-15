@@ -1,6 +1,6 @@
-# Operations Runbook
+﻿# Operations Runbook
 
-> **Purpose:** Standard operating procedures for running the Meridian platform in production
+> **Purpose:** Standard operating procedures for running the Vaeloom platform in production
 > **Status:** Active
 > **Owner:** Operations Team
 > **Last Updated:** 2026-07-13
@@ -36,18 +36,18 @@ graph LR
     classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
     classDef ext fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Services["🚀 Services"]
+    subgraph Services["ðŸš€ Services"]
         WEB["apps/web (Next.js)<br/>1+ instance"]
         API["apps/api (NestJS)<br/>1+ instance"]
         AI_SVC["apps/ai-service (FastAPI)<br/>1+ instance"]
     end
 
-    subgraph Infra["⚙️ Infrastructure"]
+    subgraph Infra["âš™ï¸ Infrastructure"]
         PG["PostgreSQL<br/>+ AGE + pgvector"]
         REDIS["Redis<br/>Queue + cache"]
     end
 
-    subgraph External["🔗 External Dependencies"]
+    subgraph External["ðŸ”— External Dependencies"]
         E1["Anthropic Claude API<br/>SLA: 99.9%"]
         E2["Auth Provider<br/>SLA: 99.95%"]
         E3["S3 Storage<br/>SLA: 99.99%"]
@@ -92,9 +92,9 @@ graph LR
 ### Health check endpoints
 
 ```text
-GET /health          → { status: "ok", version: "x.y.z", uptime: 12345 }
-GET /health/ready    → { status: "ok", deps: { db: "ok", redis: "ok", ai: "ok" } }
-GET /health/live     → { status: "ok" }
+GET /health          â†’ { status: "ok", version: "x.y.z", uptime: 12345 }
+GET /health/ready    â†’ { status: "ok", deps: { db: "ok", redis: "ok", ai: "ok" } }
+GET /health/live     â†’ { status: "ok" }
 ```
 
 ### Key metrics to monitor
@@ -149,8 +149,8 @@ flyctl restart apps/api
 flyctl restart ai-service
 
 # Kubernetes
-kubectl rollout restart deployment/apps-api -n meridian
-kubectl rollout restart deployment/ai-service -n meridian
+kubectl rollout restart deployment/apps-api -n Vaeloom
+kubectl rollout restart deployment/ai-service -n Vaeloom
 ```
 
 **Verify:** Check `GET /health` returns `status: "ok"` within 60 seconds.
@@ -162,7 +162,7 @@ kubectl rollout restart deployment/ai-service -n meridian
 flyctl logs -a apps-api --tail
 
 # Kubernetes
-kubectl logs -n meridian -l app=apps-api --tail=100 -f
+kubectl logs -n Vaeloom -l app=apps-api --tail=100 -f
 ```
 
 ### 3.3 Scale a service
@@ -172,34 +172,34 @@ kubectl logs -n meridian -l app=apps-api --tail=100 -f
 flyctl scale count apps-api=3
 
 # Kubernetes
-kubectl scale deployment/apps-api -n meridian --replicas=3
+kubectl scale deployment/apps-api -n Vaeloom --replicas=3
 ```
 
 ### 3.4 Run a database migration
 
 ```bash
 # Via migration runner
-kubectl create job --from=cronjob/db-migrate -n meridian db-migrate-manual-001
+kubectl create job --from=cronjob/db-migrate -n Vaeloom db-migrate-manual-001
 
 # Or via API service
-kubectl exec -n meridian deploy/apps-api -- npx prisma migrate deploy
+kubectl exec -n Vaeloom deploy/apps-api -- npx prisma migrate deploy
 ```
 
 ### 3.5 Clear Redis cache
 
 ```bash
 # Clear specific cache namespace
-kubectl exec -n meridian deploy/redis -- redis-cli DEL "cache:dashboard:*"
+kubectl exec -n Vaeloom deploy/redis -- redis-cli DEL "cache:dashboard:*"
 
-# Clear all cache (caution — performance impact)
-kubectl exec -n meridian deploy/redis -- redis-cli FLUSHDB
+# Clear all cache (caution â€” performance impact)
+kubectl exec -n Vaeloom deploy/redis -- redis-cli FLUSHDB
 ```
 
 ### 3.6 Re-run a failed ingestion job
 
 ```bash
 # Via API
-curl -X POST https://api.meridian.dev/internal/jobs/replay \
+curl -X POST https://api.Vaeloom.dev/internal/jobs/replay \
   -H "Authorization: Bearer $INTERNAL_TOKEN" \
   -d '{"job_id": "job_abc123", "reason": "transient_failure"}'
 ```
@@ -216,13 +216,13 @@ curl -X POST https://api.meridian.dev/internal/jobs/replay \
 
 ```bash
 # Manual full backup
-pg_dump -h localhost -U meridian -d meridian_db \
+pg_dump -h localhost -U Vaeloom -d Vaeloom_db \
   --format=custom \
   --compress=9 \
   --file=backup_$(date +%Y%m%d).dump
 
 # Restore
-pg_restore -h localhost -U meridian -d meridian_db \
+pg_restore -h localhost -U Vaeloom -d Vaeloom_db \
   --clean \
   --if-exists \
   backup_20260712.dump
@@ -275,29 +275,29 @@ jobs:
   deploy-staging:
     needs: [test]
     steps:
-      - run: flyctl deploy apps/api --app meridian-api-staging
-      - run: flyctl deploy ai-service --app meridian-ai-staging
-      - run: flyctl deploy apps/web --app meridian-web-staging
-      - run: ./scripts/smoke-test.sh staging.meridian.dev
+      - run: flyctl deploy apps/api --app Vaeloom-api-staging
+      - run: flyctl deploy ai-service --app Vaeloom-ai-staging
+      - run: flyctl deploy apps/web --app Vaeloom-web-staging
+      - run: ./scripts/smoke-test.sh staging.Vaeloom.dev
   
   deploy-production:
     needs: [deploy-staging]
     environment: production
     steps:
-      - run: flyctl deploy apps/api --app meridian-api
-      - run: flyctl deploy ai-service --app meridian-ai
-      - run: flyctl deploy apps/web --app meridian-web
-      - run: ./scripts/smoke-test.sh meridian.dev
+      - run: flyctl deploy apps/api --app Vaeloom-api
+      - run: flyctl deploy ai-service --app Vaeloom-ai
+      - run: flyctl deploy apps/web --app Vaeloom-web
+      - run: ./scripts/smoke-test.sh Vaeloom.dev
 ```
 
 ### 5.2 Rollback procedure
 
 ```bash
-# PaaS — redeploy previous version
-flyctl deploy apps/api --image meridian-api:vPrevious
+# PaaS â€” redeploy previous version
+flyctl deploy apps/api --image Vaeloom-api:vPrevious
 
 # Kubernetes
-kubectl rollout undo deployment/apps-api -n meridian
+kubectl rollout undo deployment/apps-api -n Vaeloom
 ```
 
 **Verify rollback:** Run smoke tests and check error rates for 10 minutes before declaring success.
@@ -357,17 +357,17 @@ For zero-downtime deployments:
 openssl rand -base64 32 | tr -d '\n' > new-secret.txt
 
 # 2. Update secrets manager
-flyctl secrets set DATABASE_PASSWORD=$(cat new-secret.txt) -a meridian-api
+flyctl secrets set DATABASE_PASSWORD=$(cat new-secret.txt) -a Vaeloom-api
 
 # 3. Rotate database password
-psql -h localhost -U admin -d meridian_db \
-  -c "ALTER USER meridian WITH PASSWORD '$(cat new-secret.txt)';"
+psql -h localhost -U admin -d Vaeloom_db \
+  -c "ALTER USER Vaeloom WITH PASSWORD '$(cat new-secret.txt)';"
 
 # 4. Restart affected services
 flyctl restart apps/api
 
 # 5. Verify connectivity
-curl https://api.meridian.dev/health
+curl https://api.Vaeloom.dev/health
 
 # 6. Delete old secret files
 rm new-secret.txt
@@ -425,7 +425,7 @@ Each agent in the system publishes health metrics:
 | Metric | What it measures | Healthy range |
 |--------|-----------------|---------------|
 | `agent.memory.extraction_rate` | Entities extracted per minute | > 10 |
-| `agent.memory.merge_rate` | Merges per minute | 1–100 |
+| `agent.memory.merge_rate` | Merges per minute | 1â€“100 |
 | `agent.organization.proposal_rate` | Proposals generated per minute | > 1 |
 | `agent.organization.approval_rate` | User approval % of proposals | > 80% |
 | `agent.resume.generation_time` | Time to generate resume variant | < 30s |
@@ -446,12 +446,12 @@ Each agent in the system publishes health metrics:
 
 ```bash
 # Force an agent to re-process a document
-curl -X POST https://api.meridian.dev/internal/agents/reprocess \
+curl -X POST https://api.Vaeloom.dev/internal/agents/reprocess \
   -H "Authorization: Bearer $INTERNAL_TOKEN" \
   -d '{"document_id": "doc_abc123", "agent": "memory_agent"}'
 
 # Clear agent error state
-curl -X POST https://api.meridian.dev/internal/agents/clear-error \
+curl -X POST https://api.Vaeloom.dev/internal/agents/clear-error \
   -H "Authorization: Bearer $INTERNAL_TOKEN" \
   -d '{"agent": "gmail_agent", "workspace_id": "ws_xyz"}'
 ```
@@ -464,29 +464,29 @@ curl -X POST https://api.meridian.dev/internal/agents/clear-error \
 
 | Model usage | Estimated cost per month (1K users) | Optimization |
 |-------------|-------------------------------------|--------------|
-| Classification (Gmail Agent) | $50–150 | Use cheapest adequate model |
-| Entity extraction (Memory Agent) | $200–500 | Batch + deduplicate |
-| Resume generation | $100–300 | Cache variants |
-| Chat (user-facing) | $300–1,000 | Context window management |
+| Classification (Gmail Agent) | $50â€“150 | Use cheapest adequate model |
+| Entity extraction (Memory Agent) | $200â€“500 | Batch + deduplicate |
+| Resume generation | $100â€“300 | Cache variants |
+| Chat (user-facing) | $300â€“1,000 | Context window management |
 
 ### 10.2 Infrastructure costs (MVP)
 
 | Service | Estimated monthly | Notes |
 |---------|------------------|-------|
-| Web app hosting | $25–100 | PaaS, 2–3 instances |
-| API hosting | $25–100 | PaaS, 2–3 instances |
-| AI service hosting | $50–200 | May need GPU instance |
-| Postgres | $15–50 | Managed, smallest tier |
-| Redis | $15–30 | Managed, smallest tier |
-| Object storage | $5–20 | Per GB stored |
-| **Total** | **$135–500** | Scales with users + documents |
+| Web app hosting | $25â€“100 | PaaS, 2â€“3 instances |
+| API hosting | $25â€“100 | PaaS, 2â€“3 instances |
+| AI service hosting | $50â€“200 | May need GPU instance |
+| Postgres | $15â€“50 | Managed, smallest tier |
+| Redis | $15â€“30 | Managed, smallest tier |
+| Object storage | $5â€“20 | Per GB stored |
+| **Total** | **$135â€“500** | Scales with users + documents |
 
 ### 10.3 Cost alerts
 
 Set budget alerts at:
 
-- 80% of monthly projected spend → warning notification
-- 100% of monthly budget → critical alert, review all services
+- 80% of monthly projected spend â†’ warning notification
+- 100% of monthly budget â†’ critical alert, review all services
 
 ---
 
@@ -528,61 +528,61 @@ Set budget alerts at:
 
 | Mistake | Consequence |
 |---------|-------------|
-| Runbooks that are not tested regularly | A procedure that hasn't been tested in 6 months is likely wrong — services change, endpoints move, credentials rotate. Test every runbook procedure quarterly in staging |
-| Runbooks that assume too much context | Steps like "restart the service" without specifying which service, how, or how to verify — every procedure must be executable by a junior engineer with no prior context |
-| Runbooks without verification steps | A procedure that says "deploy the fix" without "verify the fix by checking X endpoint returns Y" — without verification, you don't know if the procedure actually worked |
+| Runbooks that are not tested regularly | A procedure that hasn't been tested in 6 months is likely wrong â€” services change, endpoints move, credentials rotate. Test every runbook procedure quarterly in staging |
+| Runbooks that assume too much context | Steps like "restart the service" without specifying which service, how, or how to verify â€” every procedure must be executable by a junior engineer with no prior context |
+| Runbooks without verification steps | A procedure that says "deploy the fix" without "verify the fix by checking X endpoint returns Y" â€” without verification, you don't know if the procedure actually worked |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Keep runbooks in version control alongside the code | Runbooks drift when they're in a wiki separate from the codebase — treat runbooks as code: PR them alongside service changes, review them in code review |
-| Include explicit verification steps after every action | Each procedure should end with "Verify: run this command, expect this output" — verification confirms the procedure worked and provides a clear done signal |
-| Test runbooks in staging before relying on them in production | A quarterly runbook drill in staging catches drift before it matters — schedule runbook testing as a recurring calendar event |
+| Keep runbooks in version control alongside the code | Runbooks drift when they're in a wiki separate from the codebase â€” treat runbooks as code: PR them alongside service changes, review them in code review |
+| Include explicit verification steps after every action | Each procedure should end with "Verify: run this command, expect this output" â€” verification confirms the procedure worked and provides a clear done signal |
+| Test runbooks in staging before relying on them in production | A quarterly runbook drill in staging catches drift before it matters â€” schedule runbook testing as a recurring calendar event |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Runbooks containing hardcoded credentials | A runbook with `export DATABASE_URL=postgres://admin:password@...` exposes secrets to everyone with repo access — use `$SECRET_NAME` placeholders and reference the secrets manager |
-| Runbook access allowing privilege escalation | A runbook that grants temporary database admin access for backups could be used to exfiltrate data — monitor and audit all runbook-driven privilege escalations |
-| Incident response runbooks revealing internal architecture | Runbooks published to a status page or shared with customers may expose internal service names and IPs — maintain a customer-safe version of the runbook |
+| Runbooks containing hardcoded credentials | A runbook with `export DATABASE_URL=postgres://admin:password@...` exposes secrets to everyone with repo access â€” use `$SECRET_NAME` placeholders and reference the secrets manager |
+| Runbook access allowing privilege escalation | A runbook that grants temporary database admin access for backups could be used to exfiltrate data â€” monitor and audit all runbook-driven privilege escalations |
+| Incident response runbooks revealing internal architecture | Runbooks published to a status page or shared with customers may expose internal service names and IPs â€” maintain a customer-safe version of the runbook |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Runbook procedures that create performance regressions | A runbook step like "clear Redis cache" without staggering across instances causes a thundering herd of cache misses — add rate-limiting delays to cache-clearing procedures |
-| Backup and restore procedures that block production traffic | A full database restore on a production replica locks tables — use point-in-time recovery instead of full restores during business hours |
-| Scaling procedures that overshoot demand | Manually scaling from 2 to 10 instances based on a hunch wastes money — scaling decisions should be data-driven and use the capacity planning triggers, not manual estimates |
+| Runbook procedures that create performance regressions | A runbook step like "clear Redis cache" without staggering across instances causes a thundering herd of cache misses â€” add rate-limiting delays to cache-clearing procedures |
+| Backup and restore procedures that block production traffic | A full database restore on a production replica locks tables â€” use point-in-time recovery instead of full restores during business hours |
+| Scaling procedures that overshoot demand | Manually scaling from 2 to 10 instances based on a hunch wastes money â€” scaling decisions should be data-driven and use the capacity planning triggers, not manual estimates |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Runbooks containing hardcoded credentials | A runbook with `export DATABASE_URL=postgres://admin:password@...` exposes secrets to everyone with repo access — use `$SECRET_NAME` placeholders and reference the secrets manager |
-| Runbook access allowing privilege escalation | A runbook that grants temporary database admin access for backups could be used to exfiltrate data — monitor and audit all runbook-driven privilege escalations |
-| Incident response runbooks revealing internal architecture | Runbooks published to a status page or shared with customers may expose internal service names and IPs — maintain a customer-safe version of the runbook |
+| Runbooks containing hardcoded credentials | A runbook with `export DATABASE_URL=postgres://admin:password@...` exposes secrets to everyone with repo access â€” use `$SECRET_NAME` placeholders and reference the secrets manager |
+| Runbook access allowing privilege escalation | A runbook that grants temporary database admin access for backups could be used to exfiltrate data â€” monitor and audit all runbook-driven privilege escalations |
+| Incident response runbooks revealing internal architecture | Runbooks published to a status page or shared with customers may expose internal service names and IPs â€” maintain a customer-safe version of the runbook |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Runbook procedures that create performance regressions | A runbook step like "clear Redis cache" without staggering across instances causes a thundering herd of cache misses — add rate-limiting delays to cache-clearing procedures |
-| Backup and restore procedures that block production traffic | A full database restore on a production replica locks tables — use point-in-time recovery instead of full restores during business hours |
-| Scaling procedures that overshoot demand | Manually scaling from 2 to 10 instances based on a hunch wastes money — scaling decisions should be data-driven and use the capacity planning triggers, not manual estimates |
+| Runbook procedures that create performance regressions | A runbook step like "clear Redis cache" without staggering across instances causes a thundering herd of cache misses â€” add rate-limiting delays to cache-clearing procedures |
+| Backup and restore procedures that block production traffic | A full database restore on a production replica locks tables â€” use point-in-time recovery instead of full restores during business hours |
+| Scaling procedures that overshoot demand | Manually scaling from 2 to 10 instances based on a hunch wastes money â€” scaling decisions should be data-driven and use the capacity planning triggers, not manual estimates |
 
 ---
 
 ## Workflows
 
-1. **Daily health check:** Run automated health checks → verify all services `status: "ok"` → check no queue depths > 500 → confirm backups completed
-2. **Incident response:** Alert → acknowledge → mitigate (rollback/feature flag/scale) → verify → recover → post-mortem
-3. **Routine maintenance:** Weekly (error budgets, dependencies, backups) → Monthly (VACUUM, slow queries, storage, key rotation) → Quarterly (capacity, DR drill, dependencies, benchmarks)
-4. **Cost management:** Monitor daily spend → review per-user AI costs → adjust model routing → optimize infrastructure
-5. **Scaling decision:** Monitor triggers (CPU, latency, queue depth, connections, memory) → auto-scale or manual scale → verify
-6. **Secrets rotation:** Generate new secret → update secrets manager → rotate service → verify connectivity → clean up old secret
-7. **Backup restore test:** Provision clean staging → restore from latest backup → run smoke tests → document issues
+1. **Daily health check:** Run automated health checks â†’ verify all services `status: "ok"` â†’ check no queue depths > 500 â†’ confirm backups completed
+2. **Incident response:** Alert â†’ acknowledge â†’ mitigate (rollback/feature flag/scale) â†’ verify â†’ recover â†’ post-mortem
+3. **Routine maintenance:** Weekly (error budgets, dependencies, backups) â†’ Monthly (VACUUM, slow queries, storage, key rotation) â†’ Quarterly (capacity, DR drill, dependencies, benchmarks)
+4. **Cost management:** Monitor daily spend â†’ review per-user AI costs â†’ adjust model routing â†’ optimize infrastructure
+5. **Scaling decision:** Monitor triggers (CPU, latency, queue depth, connections, memory) â†’ auto-scale or manual scale â†’ verify
+6. **Secrets rotation:** Generate new secret â†’ update secrets manager â†’ rotate service â†’ verify connectivity â†’ clean up old secret
+7. **Backup restore test:** Provision clean staging â†’ restore from latest backup â†’ run smoke tests â†’ document issues
 
 ---
 
@@ -644,20 +644,20 @@ Set budget alerts at:
 
 ## Overview
 
-The Operations Runbook is the authoritative reference for standard operating procedures required to run the Meridian platform in production. It covers the full lifecycle of service management — from health checks and deployment to scaling, secrets rotation, and database maintenance — for both the MVP PaaS deployment and the enterprise Kubernetes deployment.
+The Operations Runbook is the authoritative reference for standard operating procedures required to run the Vaeloom platform in production. It covers the full lifecycle of service management â€” from health checks and deployment to scaling, secrets rotation, and database maintenance â€” for both the MVP PaaS deployment and the enterprise Kubernetes deployment.
 
-This document is written for the operations team, on-call engineers, and any developer who needs to perform production procedures on Meridian's services. Each procedure includes explicit steps, expected outcomes, and verification commands to ensure correctness even under time pressure.
+This document is written for the operations team, on-call engineers, and any developer who needs to perform production procedures on Vaeloom's services. Each procedure includes explicit steps, expected outcomes, and verification commands to ensure correctness even under time pressure.
 
-As a second-brain AI platform serving education and career workflows, Meridian depends on continuous availability of its agent system (memory, organization, resume, job-search agents), document processing pipeline, and connector integrations. This runbook ensures that every operator — regardless of seniority — can maintain, diagnose, and restore these critical services with confidence.
+As a second-brain AI platform serving education and career workflows, Vaeloom depends on continuous availability of its agent system (memory, organization, resume, job-search agents), document processing pipeline, and connector integrations. This runbook ensures that every operator â€” regardless of seniority â€” can maintain, diagnose, and restore these critical services with confidence.
 
 Operations runbooks are only as reliable as their testing cadence. Every procedure in this document should be validated in staging quarterly, and the runbook itself should be updated as part of every post-incident review.
 
 ## Goals
 
-- Standardize all production procedures — health checks, backup/restore, deployments, scaling, secrets management, database ops, and agent system operations — into repeatable, verified steps
+- Standardize all production procedures â€” health checks, backup/restore, deployments, scaling, secrets management, database ops, and agent system operations â€” into repeatable, verified steps
 - Reduce mean-time-to-recovery (MTTR) by providing clear, executable procedures that any on-call engineer can follow without tribal knowledge
-- Define alert thresholds, escalation paths, and monitoring metrics for every Meridian service (web, API, AI service, Postgres, Redis)
-- Codify cost management practices specific to AI inference spend, which represents 50-60% of Meridian's operational costs
+- Define alert thresholds, escalation paths, and monitoring metrics for every Vaeloom service (web, API, AI service, Postgres, Redis)
+- Codify cost management practices specific to AI inference spend, which represents 50-60% of Vaeloom's operational costs
 - Establish a regular testing and review cadence (daily, weekly, monthly, quarterly checklists) to prevent runbook drift
 
 ## Scope
@@ -689,9 +689,9 @@ Operations runbooks are only as reliable as their testing cadence. Every procedu
 
 ```bash
 # Quick health verification across all services
-curl -s https://api.meridian.dev/health | jq '.status'
-curl -s https://api.meridian.dev/health/ready | jq '.deps'
-curl -s https://ai.meridian.dev/health | jq '.status'
+curl -s https://api.Vaeloom.dev/health | jq '.status'
+curl -s https://api.Vaeloom.dev/health/ready | jq '.deps'
+curl -s https://ai.Vaeloom.dev/health | jq '.status'
 ```
 
 ### Scale a Service (CLI)
@@ -703,17 +703,17 @@ flyctl scale count apps-api=5
 flyctl status -a apps-api | grep "Instances"
 
 # Kubernetes equivalent
-kubectl scale deployment/apps-api -n meridian --replicas=5
-kubectl get pods -n meridian -l app=apps-api
+kubectl scale deployment/apps-api -n Vaeloom --replicas=5
+kubectl get pods -n Vaeloom -l app=apps-api
 ```
 
 ### Database Migration (CLI)
 
 ```bash
 # Check pending migrations
-kubectl exec -n meridian deploy/apps-api -- npx prisma migrate status
+kubectl exec -n Vaeloom deploy/apps-api -- npx prisma migrate status
 # Apply migration
-kubectl create job --from=cronjob/db-migrate -n meridian db-migrate-manual-$(date +%s)
+kubectl create job --from=cronjob/db-migrate -n Vaeloom db-migrate-manual-$(date +%s)
 ```
 
 ### Redis Cache Operations (CLI)
@@ -737,9 +737,9 @@ redis-cli -h $REDIS_ENDPOINT DEL "cache:inference:*"
 
 ## Related Documents
 
-- [Incident Response Plan](./02-incident-response.md) — Procedures for detecting and responding to production incidents
-- [DevOps README](../DevOps/README.md) — Deployment infrastructure and CI/CD
-- [Architecture README](../Architecture/README.md) — System architecture being operated
-- [Security README](../Security/README.md) — Security policies and compliance
+- [Incident Response Plan](./02-incident-response.md) â€” Procedures for detecting and responding to production incidents
+- [DevOps README](../DevOps/README.md) â€” Deployment infrastructure and CI/CD
+- [Architecture README](../Architecture/README.md) â€” System architecture being operated
+- [Security README](../Security/README.md) â€” Security policies and compliance
 
-*Maintained by the Meridian engineering team. Last updated: Q4 2026.*
+*Maintained by the Vaeloom engineering team. Last updated: Q4 2026.*

@@ -1,4 +1,4 @@
-# Testing
+﻿# Testing
 
 > **Purpose:** Test strategy, evaluation framework, and quality assurance approach
 > **Status:** Active
@@ -7,7 +7,7 @@
 
 ## Overview
 
-The Testing directory defines Meridian's test strategy, evaluation framework, and quality assurance approach across all implementation phases. It ensures that testing is integrated from day one rather than treated as an afterthought.
+The Testing directory defines Vaeloom's test strategy, evaluation framework, and quality assurance approach across all implementation phases. It ensures that testing is integrated from day one rather than treated as an afterthought.
 
 Key documents cover the evaluation framework for AI agents, the QA Agent architecture, and phased testing strategies from infrastructure through enterprise. Testing evolves with each implementation phase, starting with CI lint/test/build and culminating in tenant-isolation penetration testing.
 
@@ -17,22 +17,22 @@ The QA Agent serves as a gate between every consequential action-capable agent a
 
 | Document | Location | Status |
 |----------|----------|--------|
-| Evaluation Framework | [`/Docs/Engineering/Implementation/10-evaluation-framework.md`](../../Docs/Engineering/Implementation/10-evaluation-framework.md) | ✅ Good |
-| QA Agent Architecture | [`/Docs/Meridian-Complete-Documentation.md#53-flagship-agents`](../../Docs/Meridian-Complete-Documentation.md#53-flagship-agents) | ✅ Good |
-| Testing Strategy (per phase) | [`/Docs/Meridian-Complete-Documentation.md#12-implementation-plan`](../../Docs/Meridian-Complete-Documentation.md#12-implementation-plan) | ✅ Good |
+| Evaluation Framework | [`/Docs/Engineering/Implementation/10-evaluation-framework.md`](../../Docs/Engineering/Implementation/10-evaluation-framework.md) | âœ… Good |
+| QA Agent Architecture | [`/Docs/Vaeloom-Complete-Documentation.md#53-flagship-agents`](../../Docs/Vaeloom-Complete-Documentation.md#53-flagship-agents) | âœ… Good |
+| Testing Strategy (per phase) | [`/Docs/Vaeloom-Complete-Documentation.md#12-implementation-plan`](../../Docs/Vaeloom-Complete-Documentation.md#12-implementation-plan) | âœ… Good |
 
 ## Testing approach by phase
 
 | Phase | Testing focus |
 |-------|---------------|
-| 0 — Infrastructure | CI runs lint/test/build on every PR; E2E "can sign up" test |
-| 1 — Ingestion | Golden-file tests per parser type; extraction accuracy spot-checked |
-| 2 — Organization Agent | Proposal-approval-rate tracked from day one |
-| 3 — Resume & ATS | Resume-quality review against anonymized samples |
-| 4 — Career Intelligence | Ranking quality reviewed; QA Agent false-positive/negative rate tracked |
-| 5 — Communication | Classification accuracy per category; false-negative rate on urgent mail |
-| 6 — Polish & Dashboard | Full E2E test suite across critical paths; "delete everything" verification |
-| 7 — Enterprise | Tenant-isolation penetration testing (cross-tenant leakage) |
+| 0 â€” Infrastructure | CI runs lint/test/build on every PR; E2E "can sign up" test |
+| 1 â€” Ingestion | Golden-file tests per parser type; extraction accuracy spot-checked |
+| 2 â€” Organization Agent | Proposal-approval-rate tracked from day one |
+| 3 â€” Resume & ATS | Resume-quality review against anonymized samples |
+| 4 â€” Career Intelligence | Ranking quality reviewed; QA Agent false-positive/negative rate tracked |
+| 5 â€” Communication | Classification accuracy per category; false-negative rate on urgent mail |
+| 6 â€” Polish & Dashboard | Full E2E test suite across critical paths; "delete everything" verification |
+| 7 â€” Enterprise | Tenant-isolation penetration testing (cross-tenant leakage) |
 
 ## QA Agent role
 
@@ -40,9 +40,9 @@ The Quality Assurance Agent sits structurally between every consequential action
 
 ```mermaid
 graph LR
-    AO["🤖 Agent Output"] --> QA["✅ QA Agent<br/>Correctness + Policy Checks"]
-    QA -->|Pass| DEL["📤 Deliver to User / Execute"]
-    QA -->|Flag| RB["🔄 Route Back / Escalate"]
+    AO["ðŸ¤– Agent Output"] --> QA["âœ… QA Agent<br/>Correctness + Policy Checks"]
+    QA -->|Pass| DEL["ðŸ“¤ Deliver to User / Execute"]
+    QA -->|Flag| RB["ðŸ”„ Route Back / Escalate"]
 
     classDef output fill:#e3f2fd,stroke:#1565c0
     classDef qa fill:#fff3e0,stroke:#e65100,stroke-width:3px
@@ -112,7 +112,7 @@ QA is deliberately conservative: a false flag costs a click; a false pass costs 
 
 ### In Scope
 - Unit tests for all business logic, UI components, and service functions across frontend, API, and AI service
-- Integration tests for service boundaries (API→DB, API→AI, API→Redis, AI→DB, Web→API contract)
+- Integration tests for service boundaries (APIâ†’DB, APIâ†’AI, APIâ†’Redis, AIâ†’DB, Webâ†’API contract)
 - E2E tests for critical user flows covering the full proposal lifecycle
 - AI golden dataset evaluations for all agent prompts with accuracy, hallucination, and adversarial testing
 - Coverage measurement and enforcement with per-module thresholds (70-90% line, 60-80% branch)
@@ -135,9 +135,9 @@ QA is deliberately conservative: a false flag costs a click; a false pass costs 
 
 ## Related categories
 
-- [`AI/`](../AI/) — AI evaluation framework
-- [`Security/`](../Security/) — Security testing
-- [`Operations/`](../Operations/) — Production monitoring for quality
+- [`AI/`](../AI/) â€” AI evaluation framework
+- [`Security/`](../Security/) â€” Security testing
+- [`Operations/`](../Operations/) â€” Production monitoring for quality
 
 ## Examples
 
@@ -196,6 +196,6 @@ services:
 
 ## Related Documents
 
-- [Testing Strategy](./Testing-Strategy.md) — Full testing strategy
-- [AI Evaluation Framework](../AI/README.md) — AI agent testing
-- [QA Agent Architecture](../Meridian-Complete-Documentation.md#53-flagship-agents) — QA Agent design
+- [Testing Strategy](./Testing-Strategy.md) â€” Full testing strategy
+- [AI Evaluation Framework](../AI/README.md) â€” AI agent testing
+- [QA Agent Architecture](../Vaeloom-Complete-Documentation.md#53-flagship-agents) â€” QA Agent design

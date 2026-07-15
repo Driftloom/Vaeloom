@@ -1,7 +1,7 @@
-# Responsive Design
+﻿# Responsive Design
 
-> **Purpose:** Define the responsive design strategy for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define the responsive design strategy for Vaeloom
+> **Status:** ðŸ†• New
 
 ## Responsive Architecture
 
@@ -11,25 +11,25 @@ graph TD
     classDef layout fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef interaction fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Breakpoints["📐 Breakpoints"]
+    subgraph Breakpoints["ðŸ“ Breakpoints"]
         B1["Mobile: 0px<br/>Phones (portrait)"]
         B2["Tablet: 640px<br/>Phones (landscape), small tablets"]
         B3["Desktop: 1024px<br/>Laptops, desktops"]
         B4["Wide: 1440px<br/>Large desktops"]
     end
 
-    subgraph LayoutAdaptation["🔄 Layout Adaptation"]
-        L1["Sidebar: Hidden→Collapsible→Visible"]
-        L2["Dashboard: 1 col→2 col→3-4 col"]
-        L3["Workspace: Full→40/60→30/70 split"]
-        L4["Tables: Card list→Compact→Full"]
-        L5["Chat: Full screen→Side panel"]
+    subgraph LayoutAdaptation["ðŸ”„ Layout Adaptation"]
+        L1["Sidebar: Hiddenâ†’Collapsibleâ†’Visible"]
+        L2["Dashboard: 1 colâ†’2 colâ†’3-4 col"]
+        L3["Workspace: Fullâ†’40/60â†’30/70 split"]
+        L4["Tables: Card listâ†’Compactâ†’Full"]
+        L5["Chat: Full screenâ†’Side panel"]
     end
 
-    subgraph Interaction["✋ Touch vs Mouse"]
+    subgraph Interaction["âœ‹ Touch vs Mouse"]
         I1["Mobile: Tap, Swipe, Long-press+drag"]
         I2["Desktop: Hover+focus, Click+drag"]
-        I3["Tooltips: Tap to show → Hover to show"]
+        I3["Tooltips: Tap to show â†’ Hover to show"]
     end
 
     Breakpoints --> LayoutAdaptation --> Interaction
@@ -39,7 +39,7 @@ graph TD
     class I1,I2,I3 interaction
 ```
 
-> **Diagram:** Responsive design strategy — **4 breakpoints** (mobile 0px → wide 1440px) → **layout adaptation** per component (sidebar collapse, column grid, workspace split, table density) → **interaction patterns** vary between touch (tap, swipe, long-press) and mouse (hover, click, drag).
+> **Diagram:** Responsive design strategy â€” **4 breakpoints** (mobile 0px â†’ wide 1440px) â†’ **layout adaptation** per component (sidebar collapse, column grid, workspace split, table density) â†’ **interaction patterns** vary between touch (tap, swipe, long-press) and mouse (hover, click, drag).
 
 ---
 
@@ -101,13 +101,13 @@ graph TD
 | Mobile-first CSS with `min-width` breakpoints | Starting with the mobile layout and adding complexity at larger viewports produces cleaner, smaller CSS than desktop-first with overrides |
 | Use CSS Grid and Flexbox for fluid layouts | Modern layout methods adapt content naturally; avoid float-based layouts and fixed pixel widths for content containers |
 | Progressive enhancement for interactive features | Complex interactions (drag-and-drop, multi-select) should have a fallback for touch or narrow viewports |
-| Test breakpoints on real devices, not just browser DevTools | Device emulation in DevTools is close but not identical to real device rendering — test on actual phones and tablets |
+| Test breakpoints on real devices, not just browser DevTools | Device emulation in DevTools is close but not identical to real device rendering â€” test on actual phones and tablets |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| UI redressing via responsive iframes | Ensure `X-Frame-Options: DENY` or CSP `frame-ancestors` is set — responsive designs often allow embedding which can be exploited |
+| UI redressing via responsive iframes | Ensure `X-Frame-Options: DENY` or CSP `frame-ancestors` is set â€” responsive designs often allow embedding which can be exploited |
 | Viewport-based content filtering | Never expose or hide security-sensitive UI elements based on viewport size alone; responsive visibility is a presentation concern, not an access control |
 | Mobile gesture interception | Custom swipe gestures should not override browser-native gestures (pull-to-refresh, back swipe) in ways that could confuse or trap users |
 
@@ -115,15 +115,15 @@ graph TD
 
 | Concern | Guideline |
 |---------|-----------|
-| Responsive image loading with `srcset` and `sizes` | Serve appropriately sized images per viewport — a 2400px hero image on a 375px phone wastes ~2MB of bandwidth and slows page load by 1-3s |
-| Conditional JavaScript loading per viewport | Heavy interactive components (knowledge graph, file viewer) should use dynamic imports gated by viewport — desktop-only features should not block mobile rendering |
+| Responsive image loading with `srcset` and `sizes` | Serve appropriately sized images per viewport â€” a 2400px hero image on a 375px phone wastes ~2MB of bandwidth and slows page load by 1-3s |
+| Conditional JavaScript loading per viewport | Heavy interactive components (knowledge graph, file viewer) should use dynamic imports gated by viewport â€” desktop-only features should not block mobile rendering |
 | Debounce resize handlers | Layout recalculations on window resize should be debounced to 150-200ms; avoid continuous layout thrashing from unbatched resize events |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| UI redressing via responsive iframes | Ensure `X-Frame-Options: DENY` or CSP `frame-ancestors` is set — responsive designs often allow embedding which can be exploited |
+| UI redressing via responsive iframes | Ensure `X-Frame-Options: DENY` or CSP `frame-ancestors` is set â€” responsive designs often allow embedding which can be exploited |
 | Viewport-based content filtering | Never expose or hide security-sensitive UI elements based on viewport size alone; responsive visibility is a presentation concern, not an access control |
 | Mobile gesture interception | Custom swipe gestures should not override browser-native gestures (pull-to-refresh, back swipe) in ways that could confuse or trap users |
 
@@ -131,8 +131,8 @@ graph TD
 
 | Concern | Approach |
 |---------|----------|
-| Responsive image loading with `srcset` and `sizes` | Serve appropriately sized images per viewport — a 2400px hero image on a 375px phone wastes ~2MB of bandwidth and slows page load by 1-3s |
-| Conditional JavaScript loading per viewport | Heavy interactive components (knowledge graph, file viewer) should use dynamic imports gated by viewport — desktop-only features should not block mobile rendering |
+| Responsive image loading with `srcset` and `sizes` | Serve appropriately sized images per viewport â€” a 2400px hero image on a 375px phone wastes ~2MB of bandwidth and slows page load by 1-3s |
+| Conditional JavaScript loading per viewport | Heavy interactive components (knowledge graph, file viewer) should use dynamic imports gated by viewport â€” desktop-only features should not block mobile rendering |
 | Debounce resize handlers | Layout recalculations on window resize should be debounced to 150-200ms; avoid continuous layout thrashing from unbatched resize events |
 
 ## Components
@@ -146,10 +146,10 @@ graph TD
 
 ## Workflows
 
-1. **Viewport change triggers layout shift**: User resizes browser from 1200px to 800px → `matchMedia` listener fires → sidebar switches from visible to collapsible → dashboard grid goes from 3-col to 2-col → tables switch to card layout → all without page reload
-2. **Mobile-first page load**: Phone loads dashboard → base CSS (mobile) renders single column → `min-width: 640px` media query activates for tablet → no elements hidden via `display:none` — content adapts progressively
-3. **Touch vs mouse detection**: User taps tooltip on mobile → `hover: none` matches → tooltip shows on tap → user taps elsewhere → tooltip dismisses → on desktop, tooltip shows on hover over element
-4. **Responsive image selection**: Browser loads page → `<picture>` element evaluates `min-width` media queries → 375px viewport gets `hero-mobile.jpg` (800px wide) → 1440px viewport gets `hero-desktop.jpg` (2400px wide)
+1. **Viewport change triggers layout shift**: User resizes browser from 1200px to 800px â†’ `matchMedia` listener fires â†’ sidebar switches from visible to collapsible â†’ dashboard grid goes from 3-col to 2-col â†’ tables switch to card layout â†’ all without page reload
+2. **Mobile-first page load**: Phone loads dashboard â†’ base CSS (mobile) renders single column â†’ `min-width: 640px` media query activates for tablet â†’ no elements hidden via `display:none` â€” content adapts progressively
+3. **Touch vs mouse detection**: User taps tooltip on mobile â†’ `hover: none` matches â†’ tooltip shows on tap â†’ user taps elsewhere â†’ tooltip dismisses â†’ on desktop, tooltip shows on hover over element
+4. **Responsive image selection**: Browser loads page â†’ `<picture>` element evaluates `min-width` media queries â†’ 375px viewport gets `hero-mobile.jpg` (800px wide) â†’ 1440px viewport gets `hero-desktop.jpg` (2400px wide)
 
 ## Sequence Diagrams
 
@@ -162,10 +162,10 @@ sequenceDiagram
     participant L as Layout Engine
 
     U->>B: Resize from 1200px to 800px
-    B->>MQ: min-width: 1024px → no longer matches
-    MQ->>C: Sidebar → collapsible mode
-    MQ->>C: Dashboard grid → 2 columns
-    MQ->>C: Tables → card list layout
+    B->>MQ: min-width: 1024px â†’ no longer matches
+    MQ->>C: Sidebar â†’ collapsible mode
+    MQ->>C: Dashboard grid â†’ 2 columns
+    MQ->>C: Tables â†’ card list layout
     C->>L: Recalculate layout
     L-->>U: Updated responsive layout
 
@@ -179,11 +179,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: Viewport dimensions from `window.innerWidth` → `matchMedia` listeners evaluate breakpoint queries → responsive state computed once per change → React state updated via `useMediaQuery` hook
-2. **Processing**: ResponsiveContainer reads grid column count from breakpoint → CSS Grid auto-fill computes column widths → images selected via `<picture>` element based on viewport width → conditional JS loads via dynamic imports
-3. **Storage**: No persistent responsive state — all computed at runtime from viewport → last-known viewport cached in sessionStorage for orientation change recovery
-4. **Retrieval**: CSS `@media` queries apply styles at render time → JS-based responsive hooks (useMediaQuery) trigger re-renders on breakpoint changes → layout engine recalculates
-5. **Deletion**: Component unmount removes event listeners → ResizeObserver disconnected → media query listener cleanup
+1. **Ingestion**: Viewport dimensions from `window.innerWidth` â†’ `matchMedia` listeners evaluate breakpoint queries â†’ responsive state computed once per change â†’ React state updated via `useMediaQuery` hook
+2. **Processing**: ResponsiveContainer reads grid column count from breakpoint â†’ CSS Grid auto-fill computes column widths â†’ images selected via `<picture>` element based on viewport width â†’ conditional JS loads via dynamic imports
+3. **Storage**: No persistent responsive state â€” all computed at runtime from viewport â†’ last-known viewport cached in sessionStorage for orientation change recovery
+4. **Retrieval**: CSS `@media` queries apply styles at render time â†’ JS-based responsive hooks (useMediaQuery) trigger re-renders on breakpoint changes â†’ layout engine recalculates
+5. **Deletion**: Component unmount removes event listeners â†’ ResizeObserver disconnected â†’ media query listener cleanup
 
 ## Scalability
 
@@ -207,10 +207,10 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Layout shift (CLS) | > 0.1 | Critical | Grafana — Web Vitals |
-| Responsive image bandwidth savings | < 30% reduction vs desktop images | Info | Grafana — Performance Budget |
-| Layout recalculation time | > 10ms per resize | Warning | Chrome DevTools — Performance tab |
-| Touch-to-show tooltip engagement | > 50% of users tap tooltip | Info | Amplitude — UX Analytics |
+| Layout shift (CLS) | > 0.1 | Critical | Grafana â€” Web Vitals |
+| Responsive image bandwidth savings | < 30% reduction vs desktop images | Info | Grafana â€” Performance Budget |
+| Layout recalculation time | > 10ms per resize | Warning | Chrome DevTools â€” Performance tab |
+| Touch-to-show tooltip engagement | > 50% of users tap tooltip | Info | Amplitude â€” UX Analytics |
 
 ## Risks
 
@@ -231,11 +231,11 @@ sequenceDiagram
 
 ## Overview
 
-Meridian's responsive design strategy ensures a consistent, functional experience across devices from 320px phones to 2560px ultrawide monitors. The system uses four breakpoints (mobile 0px, tablet 640px, desktop 1024px, wide 1440px) with mobile-first CSS using `min-width` media queries. Layout components adapt progressively — the sidebar collapses, dashboard grids reflow, tables convert to card lists, and chat shifts from full-screen to side panel.
+Vaeloom's responsive design strategy ensures a consistent, functional experience across devices from 320px phones to 2560px ultrawide monitors. The system uses four breakpoints (mobile 0px, tablet 640px, desktop 1024px, wide 1440px) with mobile-first CSS using `min-width` media queries. Layout components adapt progressively â€” the sidebar collapses, dashboard grids reflow, tables convert to card lists, and chat shifts from full-screen to side panel.
 
 The approach is mobile-first: the base CSS targets the smallest viewport, and additional complexity layers in at each breakpoint. This ensures users on any device get a functional experience without content hidden via `display: none`. Images use `srcset` and `sizes` attributes to serve appropriately sized files per viewport, preventing 2400px hero images from loading on 375px phones.
 
-For Meridian's data-rich workflows, responsive adaptation is critical. The dashboard transitions from a 4-column grid on wide desktops to a single-column stack on phones, prioritizing the most important widgets. The workspace file viewer shifts from a side-by-side split on desktop to a full-width single-pane on mobile. Tables that show 10 columns on desktop become compact card lists showing only the 3 most important fields on mobile.
+For Vaeloom's data-rich workflows, responsive adaptation is critical. The dashboard transitions from a 4-column grid on wide desktops to a single-column stack on phones, prioritizing the most important widgets. The workspace file viewer shifts from a side-by-side split on desktop to a full-width single-pane on mobile. Tables that show 10 columns on desktop become compact card lists showing only the 3 most important fields on mobile.
 
 Touch interactions are handled separately from mouse interactions using pointer media queries. On touch devices, tooltips show on tap instead of hover, drag-and-drop requires long-press instead of click-drag, and swipe gestures enable back navigation. All interactive elements maintain minimum 44x44px touch targets as required by WCAG 2.5.5.
 
@@ -252,7 +252,7 @@ Touch interactions are handled separately from mouse interactions using pointer 
 ### In Scope
 - Four breakpoints: mobile (0px), tablet (640px), desktop (1024px), wide (1440px)
 - Mobile-first CSS with `min-width` media queries for progressive enhancement
-- Responsive components: sidebar (hidden→collapsible→visible), dashboard (1→2→3-4 columns), workspace (full→40/60→30/70 split), tables (card→compact→full), chat (full→side panel)
+- Responsive components: sidebar (hiddenâ†’collapsibleâ†’visible), dashboard (1â†’2â†’3-4 columns), workspace (fullâ†’40/60â†’30/70 split), tables (cardâ†’compactâ†’full), chat (fullâ†’side panel)
 - Touch vs mouse interaction detection via `pointer: coarse` media query
 - Responsive images with `<picture>`, `srcset`, and `sizes` attributes
 

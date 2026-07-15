@@ -1,13 +1,13 @@
-# Accessibility Audit
+﻿# Accessibility Audit
 
-> **Purpose:** Define the WCAG 2.2 AA compliance audit program, testing methodology, and remediation SLAs for Meridian
-> **Status:** 🆕 New
+> **Purpose:** Define the WCAG 2.2 AA compliance audit program, testing methodology, and remediation SLAs for Vaeloom
+> **Status:** ðŸ†• New
 > **Owner:** Frontend Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Meridian is committed to WCAG 2.2 AA compliance across all user-facing interfaces. This document defines the formal accessibility audit schedule, testing categories, tooling, severity classification, and remediation SLAs. Accessibility is treated as a quality gate in CI/CD — pull requests that introduce AA violations are blocked from merging.
+Vaeloom is committed to WCAG 2.2 AA compliance across all user-facing interfaces. This document defines the formal accessibility audit schedule, testing categories, tooling, severity classification, and remediation SLAs. Accessibility is treated as a quality gate in CI/CD â€” pull requests that introduce AA violations are blocked from merging.
 
 The audit program covers automated scanning (axe-core, Lighthouse) and manual testing (VoiceOver, NVDA, keyboard-only navigation) on a quarterly cycle, with continuous monitoring per commit via CI integration.
 
@@ -84,10 +84,10 @@ graph TD
 
 | Severity | Definition | Remediation SLA | Examples |
 |----------|-----------|-----------------|----------|
-| **Critical** | Complete barrier — user cannot complete a core task | Blocking — must fix before merge; 7 days if found in production | Missing form labels, keyboard trap, no alt text on info images |
-| **High** | Significant barrier — user can complete task but with great difficulty | 14 days from identification | Low contrast text, missing focus indicator, no skip link |
-| **Medium** | Partial barrier — user can complete task but with some friction | 30 days from identification | Non-descriptive link text, missing ARIA landmarks, heading hierarchy issues |
-| **Low** | Minor friction — does not prevent task completion | Next regular sprint | Decorative images with redundant alt text, slightly suboptimal heading order |
+| **Critical** | Complete barrier â€” user cannot complete a core task | Blocking â€” must fix before merge; 7 days if found in production | Missing form labels, keyboard trap, no alt text on info images |
+| **High** | Significant barrier â€” user can complete task but with great difficulty | 14 days from identification | Low contrast text, missing focus indicator, no skip link |
+| **Medium** | Partial barrier â€” user can complete task but with some friction | 30 days from identification | Non-descriptive link text, missing ARIA landmarks, heading hierarchy issues |
+| **Low** | Minor friction â€” does not prevent task completion | Next regular sprint | Decorative images with redundant alt text, slightly suboptimal heading order |
 
 ## WCAG 2.2 AA Success Criteria Coverage
 
@@ -137,7 +137,7 @@ jobs:
 | Mistake | Consequence | Fix |
 |---------|-------------|-----|
 | Relying solely on automated tools | Misses ~70% of WCAG issues including keyboard traps, focus order, and screen reader context | Schedule manual audits quarterly; train developers on basic screen reader testing |
-| ARIA overuse | "When you have a hammer, everything looks like a nail" — ARIA added to divs that should be semantic HTML | Use native HTML elements first; ARIA only when no semantic element exists |
+| ARIA overuse | "When you have a hammer, everything looks like a nail" â€” ARIA added to divs that should be semantic HTML | Use native HTML elements first; ARIA only when no semantic element exists |
 | Color-only indicators | Success/failure states conveyed purely through color inaccessible to colorblind users | Add icons, text labels, and patterns alongside color indicators |
 | Focus management in SPAs | Page transitions without focus management trap keyboard users in dead space | Programmatically move focus to `h1` on route change; announce navigation via live region |
 | Ignoring zoom / text resize | Fixed units (px) prevent text scaling up to 200% as required by WCAG | Use relative units (rem, em) for all text and layout containers |
@@ -160,23 +160,23 @@ jobs:
 | Lighthouse audit overhead | Run on 3 representative pages per commit; full suite runs nightly |
 | Screen reader testing time | Allocate 2 person-days per quarterly audit; create test scripts for repeatability |
 | Accessibility overlay performance | No third-party overlays used (known to degrade performance and miss WCAG issues) |
-| Focus indicator rendering | CSS `:focus-visible` used instead of JS-based focus management — zero runtime cost |
+| Focus indicator rendering | CSS `:focus-visible` used instead of JS-based focus management â€” zero runtime cost |
 
 ## Components
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| AxeScanner | Automated WCAG scanning of all routes | axe-core + GitHub Actions | Scaled per route — runs only on changed routes for PRs, full scan nightly |
-| ContrastVerifier | Validate all design token pairs against 4.5:1 | Custom Node script + token parser | Build-time — verifies 400+ token pairs in <2s |
-| LighthouseReporter | Generate accessibility score reports | Lighthouse CI + Grafana | Scaled per environment — 3 representative pages per commit |
-| ManualTestRunner | Orchestrate quarterly manual audit workflows | Notion + TestRail | Linear — 2 person-days per quarter, fixed scope |
+| AxeScanner | Automated WCAG scanning of all routes | axe-core + GitHub Actions | Scaled per route â€” runs only on changed routes for PRs, full scan nightly |
+| ContrastVerifier | Validate all design token pairs against 4.5:1 | Custom Node script + token parser | Build-time â€” verifies 400+ token pairs in <2s |
+| LighthouseReporter | Generate accessibility score reports | Lighthouse CI + Grafana | Scaled per environment â€” 3 representative pages per commit |
+| ManualTestRunner | Orchestrate quarterly manual audit workflows | Notion + TestRail | Linear â€” 2 person-days per quarter, fixed scope |
 
 ## Workflows
 
-1. **Developer submits PR**: CI triggers axe-core scan across all changed routes → results posted as GitHub Check → if 0 new violations, PR proceeds; if violations found, PR is blocked with detailed report
-2. **Quarterly manual audit**: QA lead creates audit plan in TestRail → screen reader specialists test NVDA + VoiceOver → findings categorized by severity → remediation tickets filed with SLA
-3. **Contrast compliance check**: Design token file updated → CI runs ContrastVerifier → all light/dark pairs checked against WCAG 4.5:1/3:1 → non-compliant tokens flagged with suggested alternatives
-4. **Bug regression verification**: a11y bug fixed → failing test case added to golden dataset → full suite re-run → all routes re-scanned → fix verified and deployed
+1. **Developer submits PR**: CI triggers axe-core scan across all changed routes â†’ results posted as GitHub Check â†’ if 0 new violations, PR proceeds; if violations found, PR is blocked with detailed report
+2. **Quarterly manual audit**: QA lead creates audit plan in TestRail â†’ screen reader specialists test NVDA + VoiceOver â†’ findings categorized by severity â†’ remediation tickets filed with SLA
+3. **Contrast compliance check**: Design token file updated â†’ CI runs ContrastVerifier â†’ all light/dark pairs checked against WCAG 4.5:1/3:1 â†’ non-compliant tokens flagged with suggested alternatives
+4. **Bug regression verification**: a11y bug fixed â†’ failing test case added to golden dataset â†’ full suite re-run â†’ all routes re-scanned â†’ fix verified and deployed
 
 ## Sequence Diagrams
 
@@ -191,10 +191,10 @@ sequenceDiagram
     CI->>AXE: Run scan on changed routes
     AXE-->>CI: Violation report (JSON)
     alt 0 new violations
-        CI->>GH: ✅ Pass — post report
+        CI->>GH: âœ… Pass â€” post report
         GH-->>DEV: PR passes a11y gate
     else Violations found
-        CI->>GH: ❌ Fail — post detailed report
+        CI->>GH: âŒ Fail â€” post detailed report
         GH-->>DEV: PR blocked; fix required
         DEV->>DEV: Fix violations and re-push
     end
@@ -202,11 +202,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: A11y scan configuration loaded from `.a11yrc` → axe-core scans all HTML routes → violation data structured as JSON report
-2. **Processing**: Report parsed by CI action → violations categorized by severity and WCAG criterion → duplicates de-duplicated → hash computed for change detection
-3. **Storage**: Violation history stored in Grafana Loki → baseline snapshot kept per release tag → screenshots stored in S3 with 90-day retention
-4. **Retrieval**: Developer views report in GitHub Checks → Grafana dashboard shows violation trends over time → weekly a11y health score computed
-5. **Deletion**: Old screenshot artifacts deleted after 90 days → violation history aggregated after 6 months → PII in test artifacts purged quarterly
+1. **Ingestion**: A11y scan configuration loaded from `.a11yrc` â†’ axe-core scans all HTML routes â†’ violation data structured as JSON report
+2. **Processing**: Report parsed by CI action â†’ violations categorized by severity and WCAG criterion â†’ duplicates de-duplicated â†’ hash computed for change detection
+3. **Storage**: Violation history stored in Grafana Loki â†’ baseline snapshot kept per release tag â†’ screenshots stored in S3 with 90-day retention
+4. **Retrieval**: Developer views report in GitHub Checks â†’ Grafana dashboard shows violation trends over time â†’ weekly a11y health score computed
+5. **Deletion**: Old screenshot artifacts deleted after 90 days â†’ violation history aggregated after 6 months â†’ PII in test artifacts purged quarterly
 
 ## Scalability
 
@@ -231,10 +231,10 @@ sequenceDiagram
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
 | Violations per PR | > 0 new violations | Critical | GitHub Checks dashboard |
-| Lighthouse a11y score | < 90 | Warning | Grafana — Frontend Health |
-| Audit completion rate | < 100% of quarterly audits on time | High | Notion — A11y Audit Tracker |
-| Contrast compliance | < 100% of semantic tokens | Warning | CI Pipeline — Contrast step |
-| Time to remediate critical violations | > 7 days | Critical | Sentry — a11y SLA tracker |
+| Lighthouse a11y score | < 90 | Warning | Grafana â€” Frontend Health |
+| Audit completion rate | < 100% of quarterly audits on time | High | Notion â€” A11y Audit Tracker |
+| Contrast compliance | < 100% of semantic tokens | Warning | CI Pipeline â€” Contrast step |
+| Time to remediate critical violations | > 7 days | Critical | Sentry â€” a11y SLA tracker |
 
 ## Risks
 
@@ -255,7 +255,7 @@ sequenceDiagram
 
 ## Goals
 
-- Achieve 100% WCAG 2.2 AA compliance across all Meridian surfaces before public launch
+- Achieve 100% WCAG 2.2 AA compliance across all Vaeloom surfaces before public launch
 - Block pull requests that introduce any new accessibility violations through automated CI gates
 - Reduce average remediation time for critical violations to under 7 days
 - Maintain Lighthouse accessibility score of 90+ on all routes after every deployment
@@ -274,7 +274,7 @@ sequenceDiagram
 - WCAG 2.2 AAA compliance (monitored but not required)
 - Third-party embedded content accessibility (assessed per integration)
 - Accessibility of user-generated content (documents, uploaded files)
-- Native mobile platform accessibility (Android TalkBack, iOS VoiceOver — covered in Mobile Architecture)
+- Native mobile platform accessibility (Android TalkBack, iOS VoiceOver â€” covered in Mobile Architecture)
 
 ---
 

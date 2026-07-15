@@ -1,17 +1,17 @@
-# 15 — Security & Compliance (MVP)
+﻿# 15 â€” Security & Compliance (MVP)
 
 > **Purpose:** Harden the entire system with encryption, real secrets management, and the two data controls every user must have from day one: export everything, delete everything.
-> **Status:** ✅ Upgraded to enterprise quality
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-This phase hardens every component built in Phases 01–14 rather than adding new user-facing features. It is a mandatory gate before Phase 16's deployment — not an optional polish pass. Three core requirements are addressed: encryption (at rest for Postgres and object storage, in transit via TLS everywhere including internal service calls), secrets management (replacing `.env`-only local dev with a real secrets manager for OAuth client secrets, database credentials, and connector tokens), and data controls (export-everything and delete-everything actions that are immediate and verifiable).
+This phase hardens every component built in Phases 01â€“14 rather than adding new user-facing features. It is a mandatory gate before Phase 16's deployment â€” not an optional polish pass. Three core requirements are addressed: encryption (at rest for Postgres and object storage, in transit via TLS everywhere including internal service calls), secrets management (replacing `.env`-only local dev with a real secrets manager for OAuth client secrets, database credentials, and connector tokens), and data controls (export-everything and delete-everything actions that are immediate and verifiable).
 
 The export-everything action produces a complete, structured JSON bundle plus a zip of raw files covering every data category. The delete-everything action removes all rows across Postgres, AGE, pgvector, and object storage, with an automated test that verifies zero remaining artifacts. Audit log records (`agent_actions`) are retained in a minimal, anonymized form even through deletion, with the retention policy explicitly documented.
 
-The auth scaffold from Phase 01 is upgraded to support real OAuth/SSO providers. Object storage for raw files replaces local disk, using S3-compatible stores with Signed URLs for access. All secrets go through the secrets manager — never committed, never in plaintext database columns.
+The auth scaffold from Phase 01 is upgraded to support real OAuth/SSO providers. Object storage for raw files replaces local disk, using S3-compatible stores with Signed URLs for access. All secrets go through the secrets manager â€” never committed, never in plaintext database columns.
 
 ## Goals
 
@@ -59,27 +59,27 @@ graph TD
 ```
 
 ## Context
-Read every prior file — this phase hardens what's already built rather than adding new user-facing features. Treat it as a gate before file 16's deployment, not an optional polish pass.
+Read every prior file â€” this phase hardens what's already built rather than adding new user-facing features. Treat it as a gate before file 16's deployment, not an optional polish pass.
 
 ## Objective
-Encryption, real secrets management, and the two data controls every user must have from day one: export everything, delete everything — both immediate and verifiable.
+Encryption, real secrets management, and the two data controls every user must have from day one: export everything, delete everything â€” both immediate and verifiable.
 
 ## Requirements
 
-**Encryption:** encryption at rest for Postgres (raw documents in object storage + database), encryption in transit (TLS everywhere, including internal service-to-service calls). Object storage for raw uploaded files (file 03) — not local disk — even in MVP, using an S3-compatible store.
+**Encryption:** encryption at rest for Postgres (raw documents in object storage + database), encryption in transit (TLS everywhere, including internal service-to-service calls). Object storage for raw uploaded files (file 03) â€” not local disk â€” even in MVP, using an S3-compatible store.
 
-**Secrets management:** replace file 01's local `.env`-only approach for anything beyond local dev — OAuth client secrets, database credentials, and connector tokens (file 02's `token_ref`) must resolve through a real secrets manager in staging/production, never committed, never in a plain database column.
+**Secrets management:** replace file 01's local `.env`-only approach for anything beyond local dev â€” OAuth client secrets, database credentials, and connector tokens (file 02's `token_ref`) must resolve through a real secrets manager in staging/production, never committed, never in a plain database column.
 
-**Auth upgrade:** wire in a real OAuth/SSO-capable auth provider (replacing file 01's basic email/password scaffold) — the interface built in file 01 should make this a swap, not a rewrite.
+**Auth upgrade:** wire in a real OAuth/SSO-capable auth provider (replacing file 01's basic email/password scaffold) â€” the interface built in file 01 should make this a swap, not a rewrite.
 
-**Export everything:** a single endpoint/action producing a complete, structured export of a workspace's data — every `memory_records`, `documents` (with links to raw files), `resumes`, `applications`, `schedule_events` row, in a portable format (e.g. a JSON bundle + a zip of raw files). No partial export — if it's the user's data, it's in the bundle.
+**Export everything:** a single endpoint/action producing a complete, structured export of a workspace's data â€” every `memory_records`, `documents` (with links to raw files), `resumes`, `applications`, `schedule_events` row, in a portable format (e.g. a JSON bundle + a zip of raw files). No partial export â€” if it's the user's data, it's in the bundle.
 
-**Delete everything:** a single endpoint/action that immediately and verifiably removes all of a workspace's data — Postgres rows, AGE graph nodes/edges, pgvector embeddings, object storage files, and any cached copies. Write an automated test that runs delete-everything against a fully-seeded workspace and asserts zero remaining rows/objects across all stores, not just the primary tables.
+**Delete everything:** a single endpoint/action that immediately and verifiably removes all of a workspace's data â€” Postgres rows, AGE graph nodes/edges, pgvector embeddings, object storage files, and any cached copies. Write an automated test that runs delete-everything against a fully-seeded workspace and asserts zero remaining rows/objects across all stores, not just the primary tables.
 
-**Audit retention:** `agent_actions` (the audit log) is retained even through a delete-everything action in a minimal, anonymized form sufficient for security investigation — decide and document explicitly what's kept vs. purged, don't leave this ambiguous.
+**Audit retention:** `agent_actions` (the audit log) is retained even through a delete-everything action in a minimal, anonymized form sufficient for security investigation â€” decide and document explicitly what's kept vs. purged, don't leave this ambiguous.
 
 ## Out of scope
-Full RBAC, SAML/OIDC enterprise SSO, GDPR/SOC2 formal readiness documentation, regional data residency (all enterprise phase — see `enterprise/15-security-compliance.md`).
+Full RBAC, SAML/OIDC enterprise SSO, GDPR/SOC2 formal readiness documentation, regional data residency (all enterprise phase â€” see `enterprise/15-security-compliance.md`).
 
 ## Acceptance criteria
 - [ ] TLS is enforced on every service-to-service and client-to-service connection, including in the docker-compose dev environment (self-signed is fine locally).
@@ -141,18 +141,18 @@ Full RBAC, SAML/OIDC enterprise SSO, GDPR/SOC2 formal readiness documentation, r
 ## Examples
 
 ```bash
-# Export everything — trigger and download
-curl -X POST https://api.meridian.dev/v1/workspaces/{id}/export \
+# Export everything â€” trigger and download
+curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/export \
   -H "Authorization: Bearer $JWT"
 
-# Async export — poll until ready
-curl https://api.meridian.dev/v1/workspaces/{id}/export/status \
+# Async export â€” poll until ready
+curl https://api.Vaeloom.dev/v1/workspaces/{id}/export/status \
   -H "Authorization: Bearer $JWT"
 # Response: {"status": "ready", "download_url": "https://..."}
 ```
 
 ```python
-# Delete everything — verifiable across all stores
+# Delete everything â€” verifiable across all stores
 async def delete_workspace(workspace_id: str) -> DeleteResult:
     async with db.transaction():
         await db.execute("DELETE FROM memory_records WHERE workspace_id = $1", workspace_id)
@@ -171,14 +171,14 @@ async def delete_workspace(workspace_id: str) -> DeleteResult:
 ```
 
 ```python
-# Secrets management — resolve at startup, never at runtime
+# Secrets management â€” resolve at startup, never at runtime
 class SecretsManager:
     async def resolve(self, secret_name: str) -> str:
         if os.getenv("ENVIRONMENT") == "local":
             return os.environ[secret_name]  # .env for local dev
-        return await self._vault_client.read_secret(f"meridian/{secret_name}")
+        return await self._vault_client.read_secret(f"Vaeloom/{secret_name}")
 
-# Usage in gateway — only the gateway holds provider credentials
+# Usage in gateway â€” only the gateway holds provider credentials
 provider_key = await secrets.resolve("ANTHROPIC_API_KEY")
 anthropic_client = Anthropic(api_key=provider_key)
 ```
@@ -197,6 +197,6 @@ anthropic_client = Anthropic(api_key=provider_key)
 
 ## Related Documents
 
-- [01 — Foundation Infrastructure](01-foundation-infra.md) — Auth scaffold this phase upgrades
-- [11 — Guardrails & Safety](11-guardrails-safety.md) — Runtime safety checks alongside this security hardening
-- [16 — Deployment Infrastructure](16-deployment-infrastructure.md) — Deployment that consumes this security configuration
+- [01 â€” Foundation Infrastructure](01-foundation-infra.md) â€” Auth scaffold this phase upgrades
+- [11 â€” Guardrails & Safety](11-guardrails-safety.md) â€” Runtime safety checks alongside this security hardening
+- [16 â€” Deployment Infrastructure](16-deployment-infrastructure.md) â€” Deployment that consumes this security configuration

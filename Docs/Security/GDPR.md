@@ -1,7 +1,7 @@
-# GDPR Compliance
+﻿# GDPR Compliance
 
-> **Purpose:** Define GDPR compliance posture for Meridian
-> **Status:** ✅ Upgraded to enterprise quality
+> **Purpose:** Define GDPR compliance posture for Vaeloom
+> **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
 
@@ -14,7 +14,7 @@ graph TD
     classDef process fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef register fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Requirements["📋 Key GDPR Requirements"]
+    subgraph Requirements["ðŸ“‹ Key GDPR Requirements"]
         direction TB
         R1["Explicit Consent<br/>Granular per-data-access"]
         R2["Right to Access<br/>Export everything action"]
@@ -24,21 +24,21 @@ graph TD
         R6["Consent Revocation<br/>Future data stop, not retroactive"]
     end
 
-    subgraph Rights["🛡️ Data Subject Rights"]
+    subgraph Rights["ðŸ›¡ï¸ Data Subject Rights"]
         S1["Right to be informed<br/>Privacy policy + in-app prompts"]
-        S2["Right of access<br/>Settings → Export Everything"]
+        S2["Right of access<br/>Settings â†’ Export Everything"]
         S3["Right to rectification<br/>Memory Graph editor"]
-        S4["Right to erasure<br/>Settings → Delete Everything"]
+        S4["Right to erasure<br/>Settings â†’ Delete Everything"]
         S5["Right to restrict<br/>Per-agent autonomy controls"]
         S6["Right to portability<br/>Export in structured format"]
         S7["Right to object<br/>Opt-out of processing"]
     end
 
-    subgraph Register["📝 Data Processing Register"]
-        D1["📄 Document storage<br/>Consent → Until deletion"]
-        D2["🧠 Memory extraction<br/>Consent → Until deletion"]
-        D3["💼 Job matching<br/>Legitimate interest → Until withdrawn"]
-        D4["📧 Gmail scanning<br/>Consent → 30 days"]
+    subgraph Register["ðŸ“ Data Processing Register"]
+        D1["ðŸ“„ Document storage<br/>Consent â†’ Until deletion"]
+        D2["ðŸ§  Memory extraction<br/>Consent â†’ Until deletion"]
+        D3["ðŸ’¼ Job matching<br/>Legitimate interest â†’ Until withdrawn"]
+        D4["ðŸ“§ Gmail scanning<br/>Consent â†’ 30 days"]
     end
 
     Requirements --> Rights
@@ -55,7 +55,7 @@ graph TD
 
 ## Compliance Posture
 
-Meridian is designed around GDPR as the strictest applicable regime, applied universally.
+Vaeloom is designed around GDPR as the strictest applicable regime, applied universally.
 
 ## Key GDPR Requirements
 
@@ -82,9 +82,9 @@ Meridian is designed around GDPR as the strictest applicable regime, applied uni
 | Right | How It's Fulfilled |
 |-------|-------------------|
 | Right to be informed | Privacy policy, in-app consent prompts |
-| Right of access | Settings → Export Everything |
+| Right of access | Settings â†’ Export Everything |
 | Right to rectification | Memory Graph editor |
-| Right to erasure | Settings → Delete Everything |
+| Right to erasure | Settings â†’ Delete Everything |
 | Right to restrict processing | Per-agent autonomy controls |
 | Right to data portability | Export in structured format |
 | Right to object | Opt-out of specific processing |
@@ -93,53 +93,53 @@ Meridian is designed around GDPR as the strictest applicable regime, applied uni
 
 | Mistake | Consequence |
 |---------|-------------|
-| Treating "consent" as a single binary setting | GDPR requires granular, informed consent per processing activity — a single "I agree" checkbox for all data uses violates the purpose limitation principle. Implement per-connector, per-purpose consent prompts |
-| Right to erasure requests that don't cascade to backups | Deleting user data from the primary database but leaving it in backups violates the right to erasure — implement a deletion ledger that covers all storage tiers including backups and caches |
-| Data residency promises without technical enforcement | Promising EU data residency but routing through US-based AI inference violates GDPR — enforce data residency at the storage AND processing layer with region-locked infrastructure |
+| Treating "consent" as a single binary setting | GDPR requires granular, informed consent per processing activity â€” a single "I agree" checkbox for all data uses violates the purpose limitation principle. Implement per-connector, per-purpose consent prompts |
+| Right to erasure requests that don't cascade to backups | Deleting user data from the primary database but leaving it in backups violates the right to erasure â€” implement a deletion ledger that covers all storage tiers including backups and caches |
+| Data residency promises without technical enforcement | Promising EU data residency but routing through US-based AI inference violates GDPR â€” enforce data residency at the storage AND processing layer with region-locked infrastructure |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Implement granular, per-processing-activity consent with a clear record | Each connector and agent should have its own consent toggle with a timestamped record — this provides auditable evidence of consent for each processing activity |
-| Design deletion as a cascading operation across all storage layers | A user's right to erasure must delete data from primary DB, caches, backups, and analytics — implement a deletion orchestration service that coordinates across all data stores |
-| Enforce data residency at infrastructure level, not just application level | Use region-locked cloud resources, VPC endpoints, and data classification tags to ensure data never leaves the designated region — don't rely on application code alone |
+| Implement granular, per-processing-activity consent with a clear record | Each connector and agent should have its own consent toggle with a timestamped record â€” this provides auditable evidence of consent for each processing activity |
+| Design deletion as a cascading operation across all storage layers | A user's right to erasure must delete data from primary DB, caches, backups, and analytics â€” implement a deletion orchestration service that coordinates across all data stores |
+| Enforce data residency at infrastructure level, not just application level | Use region-locked cloud resources, VPC endpoints, and data classification tags to ensure data never leaves the designated region â€” don't rely on application code alone |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Data subject rights requests used for reconnaissance | An attacker can use "right of access" requests to enumerate user data — verify identity through multiple factors before fulfilling access or erasure requests |
-| Cross-border data transfer violations | Transferring EU user data to US-based AI providers without Standard Contractual Clauses (SCCs) violates GDPR — ensure all third-party processors have SCCs or Binding Corporate Rules in place |
-| Incomplete data mapping making deletion impossible | If you don't know where all user data lives, you can't delete it on request — maintain an automated data mapping system that tracks data lineage across all services and storage systems |
+| Data subject rights requests used for reconnaissance | An attacker can use "right of access" requests to enumerate user data â€” verify identity through multiple factors before fulfilling access or erasure requests |
+| Cross-border data transfer violations | Transferring EU user data to US-based AI providers without Standard Contractual Clauses (SCCs) violates GDPR â€” ensure all third-party processors have SCCs or Binding Corporate Rules in place |
+| Incomplete data mapping making deletion impossible | If you don't know where all user data lives, you can't delete it on request â€” maintain an automated data mapping system that tracks data lineage across all services and storage systems |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Cascading deletion operations at scale | A "delete everything" request that must cascade across 10+ services can take minutes — implement deletion as an async background job with progress tracking, not a synchronous operation |
-| Data portability export generating large payloads | A full memory export for a power user with years of data can produce 500MB+ archives — generate exports as background jobs with notification upon completion, and set a maximum export size with pagination |
-| Consent check latency on every data access | Checking consent status on every read/write operation adds latency — cache consent decisions per (user, connector) with a 5-minute TTL and invalidate on consent changes |
+| Cascading deletion operations at scale | A "delete everything" request that must cascade across 10+ services can take minutes â€” implement deletion as an async background job with progress tracking, not a synchronous operation |
+| Data portability export generating large payloads | A full memory export for a power user with years of data can produce 500MB+ archives â€” generate exports as background jobs with notification upon completion, and set a maximum export size with pagination |
+| Consent check latency on every data access | Checking consent status on every read/write operation adds latency â€” cache consent decisions per (user, connector) with a 5-minute TTL and invalidate on consent changes |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Data subject rights requests used for reconnaissance | An attacker can use "right of access" requests to enumerate user data — verify identity through multiple factors before fulfilling access or erasure requests |
-| Cross-border data transfer violations | Transferring EU user data to US-based AI providers without Standard Contractual Clauses (SCCs) violates GDPR — ensure all third-party processors have SCCs or Binding Corporate Rules in place |
-| Incomplete data mapping making deletion impossible | If you don't know where all user data lives, you can't delete it on request — maintain an automated data mapping system that tracks data lineage across all services and storage systems |
+| Data subject rights requests used for reconnaissance | An attacker can use "right of access" requests to enumerate user data â€” verify identity through multiple factors before fulfilling access or erasure requests |
+| Cross-border data transfer violations | Transferring EU user data to US-based AI providers without Standard Contractual Clauses (SCCs) violates GDPR â€” ensure all third-party processors have SCCs or Binding Corporate Rules in place |
+| Incomplete data mapping making deletion impossible | If you don't know where all user data lives, you can't delete it on request â€” maintain an automated data mapping system that tracks data lineage across all services and storage systems |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Cascading deletion operations at scale | A "delete everything" request that must cascade across 10+ services can take minutes — implement deletion as an async background job with progress tracking, not a synchronous operation |
-| Data portability export generating large payloads | A full memory export for a power user with years of data can produce 500MB+ archives — generate exports as background jobs with notification upon completion, and set a maximum export size with pagination |
-| Consent check latency on every data access | Checking consent status on every read/write operation adds latency — cache consent decisions per (user, connector) with a 5-minute TTL and invalidate on consent changes |
+| Cascading deletion operations at scale | A "delete everything" request that must cascade across 10+ services can take minutes â€” implement deletion as an async background job with progress tracking, not a synchronous operation |
+| Data portability export generating large payloads | A full memory export for a power user with years of data can produce 500MB+ archives â€” generate exports as background jobs with notification upon completion, and set a maximum export size with pagination |
+| Consent check latency on every data access | Checking consent status on every read/write operation adds latency â€” cache consent decisions per (user, connector) with a 5-minute TTL and invalidate on consent changes |
 
 ## Overview
 
-Meridian is designed around GDPR as the strictest applicable data protection regime, applied universally to all users. The platform implements all seven data subject rights — from informed consent and access through erasure and portability — with per-connector consent management, cascading deletion across all storage tiers, and region-locked data residency options.
+Vaeloom is designed around GDPR as the strictest applicable data protection regime, applied universally to all users. The platform implements all seven data subject rights â€” from informed consent and access through erasure and portability â€” with per-connector consent management, cascading deletion across all storage tiers, and region-locked data residency options.
 
 ---
 
@@ -155,7 +155,7 @@ Meridian is designed around GDPR as the strictest applicable data protection reg
 
 ## Scope
 
-This document defines the GDPR compliance posture for Meridian — covering key requirements, data processing register, data subject rights, and regional compliance enforcement. Applies to all processing of personal data for users in the European Union and, by design, all users globally. Out of scope: broader compliance strategy (see [Compliance.md](./Compliance.md)), privacy principles (see [Privacy.md](./Privacy.md)), data retention schedules (see [Data-Retention-Policy.md](./Data-Retention-Policy.md)).
+This document defines the GDPR compliance posture for Vaeloom â€” covering key requirements, data processing register, data subject rights, and regional compliance enforcement. Applies to all processing of personal data for users in the European Union and, by design, all users globally. Out of scope: broader compliance strategy (see [Compliance.md](./Compliance.md)), privacy principles (see [Privacy.md](./Privacy.md)), data retention schedules (see [Data-Retention-Policy.md](./Data-Retention-Policy.md)).
 
 ---
 
@@ -198,7 +198,7 @@ This document defines the GDPR compliance posture for Meridian — covering key 
 
 ### 1. Right to Erasure Workflow
 
-1. User requests deletion via Settings → Delete Everything
+1. User requests deletion via Settings â†’ Delete Everything
 2. Identity verified (multiple factors for sensitive requests)
 3. Erasure Orchestrator begins cascading deletion
 4. Stage 1: Delete from primary database
@@ -210,7 +210,7 @@ This document defines the GDPR compliance posture for Meridian — covering key 
 
 ### 2. Right to Access Workflow
 
-1. User requests data export via Settings → Export Everything
+1. User requests data export via Settings â†’ Export Everything
 2. Export Service begins async job
 3. Data collected from all storage tiers (DB, vector store, graph, cache)
 4. Archive generated in portable JSON format
@@ -250,26 +250,26 @@ sequenceDiagram
     ER->>AUD: Log full deletion event
 ```
 
-> **Diagram:** Right to erasure — parallel cascading deletion across database, cache, backups, and analytics. All confirmed before user notification; full audit log recorded.
+> **Diagram:** Right to erasure â€” parallel cascading deletion across database, cache, backups, and analytics. All confirmed before user notification; full audit log recorded.
 
 ---
 
 ## Data Flow
 
 ```text
-Erasure Request → Identity Verification (MFA)
-    → Cascading Deletion:
+Erasure Request â†’ Identity Verification (MFA)
+    â†’ Cascading Deletion:
         1. Primary Database (delete user records)
         2. Cache (invalidate all cached user data)
         3. Backups (schedule exclusion from next rotation)
         4. Analytics (anonymize user data)
-    → All Confirmed → User Notification → Audit Log
+    â†’ All Confirmed â†’ User Notification â†’ Audit Log
 
-Access Request → Identity Verification
-    → Export Service (async job)
-    → Collect data from all stores
-    → Generate portable JSON archive
-    → Notify user → Download link (7-day expiry)
+Access Request â†’ Identity Verification
+    â†’ Export Service (async job)
+    â†’ Collect data from all stores
+    â†’ Generate portable JSON archive
+    â†’ Notify user â†’ Download link (7-day expiry)
 ```
 
 ---
@@ -417,4 +417,4 @@ assert all(stage == "completed" for stage in status.stages.values())
 
 - [Privacy.md](./Privacy.md)
 - [Compliance.md](./Compliance.md)
-- [`/Docs/06-Meridian-Enterprise-Paper.md#198-regional-compliance`](../../Docs/06-Meridian-Enterprise-Paper.md#198-regional-compliance)
+- [`/Docs/06-Vaeloom-Enterprise-Paper.md#198-regional-compliance`](../../Docs/06-Vaeloom-Enterprise-Paper.md#198-regional-compliance)

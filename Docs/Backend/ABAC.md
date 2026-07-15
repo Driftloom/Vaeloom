@@ -1,7 +1,7 @@
-# Attribute-Based Access Control (ABAC)
+﻿# Attribute-Based Access Control (ABAC)
 
-> **Purpose:** Define ABAC model for Meridian's Permission Engine
-> **Status:** 🆕 New
+> **Purpose:** Define ABAC model for Vaeloom's Permission Engine
+> **Status:** ðŸ†• New
 
 ## ABAC Architecture
 
@@ -13,29 +13,29 @@ graph TD
     classDef context fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
     classDef decision fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
 
-    subgraph Subject["👤 Subject Attributes"]
+    subgraph Subject["ðŸ‘¤ Subject Attributes"]
         S1["User / Agent identity<br/>agent: memory_agent<br/>role: admin"]
     end
 
-    subgraph Resource["📄 Resource Attributes"]
+    subgraph Resource["ðŸ“„ Resource Attributes"]
         R1["Resource type + owner<br/>type: document<br/>workspace: ws_abc"]
     end
 
-    subgraph Action["⚡ Action Attributes"]
+    subgraph Action["âš¡ Action Attributes"]
         A1["Operation type<br/>read / write / act / delete"]
     end
 
-    subgraph Context["🌐 Context Attributes"]
+    subgraph Context["ðŸŒ Context Attributes"]
         C1["Time, location, device<br/>ip_range: internal<br/>time: business_hours"]
     end
 
-    subgraph Evaluation["🔍 Policy Evaluation Flow"]
+    subgraph Evaluation["ðŸ” Policy Evaluation Flow"]
         E1["Request: Agent=A, Action=W, Resource=R"]
         E2["Fetch subject attributes"]
         E3["Fetch resource attributes"]
         E4["Fetch context attributes"]
         E5["Evaluate policies against ALL attributes"]
-        E6["Deny by default → Allow if policy matches"]
+        E6["Deny by default â†’ Allow if policy matches"]
     end
 
     S1 & R1 & A1 & C1 --> E1 --> E2 & E3 & E4 --> E5 --> E6
@@ -47,13 +47,13 @@ graph TD
     class E1,E2,E3,E4,E5,E6 decision
 ```
 
-> **Diagram:** ABAC model — requests are evaluated against **4 attribute categories**: Subject (who), Resource (what), Action (how), Context (when/where). **Policy evaluation** fetches all attributes, evaluates policies, and denies by default — only allowing if a matching policy is found.
+> **Diagram:** ABAC model â€” requests are evaluated against **4 attribute categories**: Subject (who), Resource (what), Action (how), Context (when/where). **Policy evaluation** fetches all attributes, evaluates policies, and denies by default â€” only allowing if a matching policy is found.
 
 ---
 
 ## ABAC Model
 
-Meridian's Permission Engine uses **attribute-based access control** as the core model, with RBAC as an additional layer at the enterprise tier.
+Vaeloom's Permission Engine uses **attribute-based access control** as the core model, with RBAC as an additional layer at the enterprise tier.
 
 ## Attributes Checked
 
@@ -96,58 +96,58 @@ const documentPolicy = {
 
 ```text
 Request: Agent=memory_agent, Action=write, Resource=entity/ent_123
-    ↓
+    â†“
 Fetch subject attributes (agent=memory_agent, internal=true)
 Fetch resource attributes (type=entity, workspace=ws_abc)
 Fetch context attributes (time=10:30, source=internal)
-    ↓
+    â†“
 Evaluate policies against all attributes
-    ↓
-Deny by default → Allow if policy matches → Return decision
+    â†“
+Deny by default â†’ Allow if policy matches â†’ Return decision
 ```
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
-| Using too many attribute categories | Every additional attribute dimension multiplies policy complexity — start with Subject + Resource, add Context only when needed |
-| Storing user attributes in the wrong system | Role and group membership must live in the auth provider, not duplicated in the Permission Engine — stale attributes cause authorization gaps |
-| Policy explosion from over-specific rules | Writing individual policies for every (Subject, Resource, Action) combination creates thousands of unmaintainable rules — use resource hierarchy and wildcards |
-| Ignoring the context attribute source | Context like IP range or time of day must come from the request itself, not user-supplied headers — attackers can spoof context |
+| Using too many attribute categories | Every additional attribute dimension multiplies policy complexity â€” start with Subject + Resource, add Context only when needed |
+| Storing user attributes in the wrong system | Role and group membership must live in the auth provider, not duplicated in the Permission Engine â€” stale attributes cause authorization gaps |
+| Policy explosion from over-specific rules | Writing individual policies for every (Subject, Resource, Action) combination creates thousands of unmaintainable rules â€” use resource hierarchy and wildcards |
+| Ignoring the context attribute source | Context like IP range or time of day must come from the request itself, not user-supplied headers â€” attackers can spoof context |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Deny by default, allow by explicit policy | Every request that doesn't match a policy must be denied — silent "allow" is a security vulnerability |
-| Keep attribute sources authoritative | Subject attributes from auth provider, resource attributes from the resource service, context from the request environment — never mix sources |
+| Deny by default, allow by explicit policy | Every request that doesn't match a policy must be denied â€” silent "allow" is a security vulnerability |
+| Keep attribute sources authoritative | Subject attributes from auth provider, resource attributes from the resource service, context from the request environment â€” never mix sources |
 | Test policies with a matrix | Every policy change should be validated against a permission matrix of all known (Subject, Resource, Action, Context) combinations |
-| Log every policy decision | Denied requests are as important as allowed ones — audit trails of "why wasn't this allowed" are essential for debugging access issues |
+| Log every policy decision | Denied requests are as important as allowed ones â€” audit trails of "why wasn't this allowed" are essential for debugging access issues |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Policy injection via crafted attributes | Sanitize and validate all attribute values at the API boundary — an attacker supplying `role: admin` as a resource attribute should not elevate privileges |
-| Attribute spoofing through request tampering | Context attributes (IP range, time) must come from the trusted request environment, not user-supplied headers — never trust `X-Forwarded-For` for authorization decisions |
-| Policy evaluation bypass | Every request path must go through the Permission Engine — bypassing policy evaluation at the API layer shouldn't be possible via internal RPC or event bus consumers |
+| Policy injection via crafted attributes | Sanitize and validate all attribute values at the API boundary â€” an attacker supplying `role: admin` as a resource attribute should not elevate privileges |
+| Attribute spoofing through request tampering | Context attributes (IP range, time) must come from the trusted request environment, not user-supplied headers â€” never trust `X-Forwarded-For` for authorization decisions |
+| Policy evaluation bypass | Every request path must go through the Permission Engine â€” bypassing policy evaluation at the API layer shouldn't be possible via internal RPC or event bus consumers |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Policy evaluation latency with many attribute sources | Fetching subject, resource, action, and context attributes sequentially adds latency — batch attribute fetches and cache frequently accessed attribute values |
-| Policy rule matching on every request | Evaluating every policy rule against every attribute combination is O(n×m) — index policies by (action, resource_type) and skip irrelevant rules early |
-| Attribute source availability during evaluation | If a context service (e.g., IP geolocation) is slow, it blocks the entire evaluation — use timeouts and fallback defaults for non-critical attributes |
+| Policy evaluation latency with many attribute sources | Fetching subject, resource, action, and context attributes sequentially adds latency â€” batch attribute fetches and cache frequently accessed attribute values |
+| Policy rule matching on every request | Evaluating every policy rule against every attribute combination is O(nÃ—m) â€” index policies by (action, resource_type) and skip irrelevant rules early |
+| Attribute source availability during evaluation | If a context service (e.g., IP geolocation) is slow, it blocks the entire evaluation â€” use timeouts and fallback defaults for non-critical attributes |
 
 ---
 
 ## Goals
 
-1. **Fine-grained access control** — Enable policies that consider not just who the user is, but what resource they're accessing, what action they're performing, and under what context
-2. **Multi-agent isolation** — Ensure that AI agents (Memory Agent, Organization Agent, Scheduler Agent) can only access resources within their authorized scope
-3. **Auditable permission decisions** — Every allow/deny decision must be logged with the full attribute context for compliance and debugging
-4. **Self-service policy management** — Allow workspace owners to define custom policies without engineering intervention
+1. **Fine-grained access control** â€” Enable policies that consider not just who the user is, but what resource they're accessing, what action they're performing, and under what context
+2. **Multi-agent isolation** â€” Ensure that AI agents (Memory Agent, Organization Agent, Scheduler Agent) can only access resources within their authorized scope
+3. **Auditable permission decisions** â€” Every allow/deny decision must be logged with the full attribute context for compliance and debugging
+4. **Self-service policy management** â€” Allow workspace owners to define custom policies without engineering intervention
 
 ---
 
@@ -157,7 +157,7 @@ Deny by default → Allow if policy matches → Return decision
 
 - ABAC policy evaluation for documents, memory records, entities, connectors, and agent actions
 - Policy definition language supporting attribute conditions, wildcard matching, and composite conditions
-- Integration with Meridian's auth provider (Clerk/Auth0) for subject attribute resolution
+- Integration with Vaeloom's auth provider (Clerk/Auth0) for subject attribute resolution
 - Audit logging of every policy decision with full attribute context
 
 ### Out of Scope
@@ -175,7 +175,7 @@ Deny by default → Allow if policy matches → Return decision
 |----|-------------|----------|
 | F-001 | System SHALL evaluate ABAC policies using Subject, Resource, Action, and Context attributes | P0 |
 | F-002 | System SHALL support wildcard matching (`*`) in action and resource patterns (e.g., `actions: ['read', 'write']`) | P0 |
-| F-003 | System SHALL enforce deny-by-default — any request not matching a policy is denied | P0 |
+| F-003 | System SHALL enforce deny-by-default â€” any request not matching a policy is denied | P0 |
 | F-004 | System SHALL support attribute conditions (e.g., `workspace: '{user.workspace_id}'`) for dynamic policy matching | P1 |
 | F-005 | System SHALL evaluate agent-specific policies separately from user-specific policies | P1 |
 | F-006 | System SHALL cache evaluated permission decisions per (subject, resource, action) tuple for request duration | P1 |
@@ -190,7 +190,7 @@ Deny by default → Allow if policy matches → Return decision
 | NF-002 | Policy decision throughput | > 1000 decisions/sec per node |
 | NF-003 | Policy cache TTL | 5 minutes maximum |
 | NF-004 | Audit log completeness | 100% of all decisions (allow + deny) logged |
-| NF-005 | Policy propagation delay | < 30 seconds from update to生效 |
+| NF-005 | Policy propagation delay | < 30 seconds from update toç”Ÿæ•ˆ |
 
 ---
 
@@ -219,7 +219,7 @@ sequenceDiagram
     GW->>AL: Log decision (allow, subject, resource, action, context)
     GW-->>C: 200 OK + result
 ```
-> **Diagram:** ABAC sequence — API Gateway delegates evaluation to Permission Engine, which aggregates attributes from Auth Provider and Resource Service, evaluates policies, and logs every decision to the audit log.
+> **Diagram:** ABAC sequence â€” API Gateway delegates evaluation to Permission Engine, which aggregates attributes from Auth Provider and Resource Service, evaluates policies, and logs every decision to the audit log.
 
 ---
 
@@ -338,7 +338,7 @@ sequenceDiagram
 
 ```typescript
 // Evaluate ABAC policy for a document access request
-import { abac } from '@meridian/auth';
+import { abac } from '@vaeloom/auth';
 
 const context = {
   user: { role: 'manager', department: 'engineering', clearance: 'l3' },
@@ -351,8 +351,8 @@ console.log(result.allowed); // true | false
 ```
 
 ```python
-# Meridian ABAC policy definition
-from meridian.access_control import ABACPolicy
+# Vaeloom ABAC policy definition
+from Vaeloom.access_control import ABACPolicy
 
 policy = ABACPolicy(
     name="engineering_doc_access",
@@ -366,7 +366,7 @@ policy.save()
 
 ```bash
 # Test ABAC policy via CLI
-meridian abac test --context '{"user.department":"engineering","action":"read"}' --resource "doc_99"
+Vaeloom abac test --context '{"user.department":"engineering","action":"read"}' --resource "doc_99"
 ```
 
 ## Future Improvements

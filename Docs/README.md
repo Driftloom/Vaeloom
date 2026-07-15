@@ -1,27 +1,27 @@
-# Meridian — Documentation Index
+﻿# Vaeloom â€” Documentation Index
 
 | Metadata         | Value                                                                |
 |------------------|----------------------------------------------------------------------|
-| **Purpose**      | Root index of the complete Meridian documentation system |
-| **Status**       | Enterprise-grade — complete |
+| **Purpose**      | Root index of the complete Vaeloom documentation system |
+| **Status**       | Enterprise-grade â€” complete |
 | **Owner**        | Documentation Team |
 | **Last Updated** | 2026-07-13 |
 
-> **Status:** Enterprise-grade documentation system — complete
+> **Status:** Enterprise-grade documentation system â€” complete
 > **Total documents:** ~214 | **Last updated:** 2026-07-13
-> **Legacy references:** [`/Docs/`](../Docs/) · [`/Documents/`](../Documents/) (archived)
+> **Legacy references:** [`/Docs/`](../Docs/) Â· [`/Documents/`](../Documents/) (archived)
 
 ---
 
 ## Overview
 
-Meridian is a second brain for a person's education and career: it ingests documents, code, and communications; builds a continuously updated, structured memory; and runs specialized, permission-scoped agents on top of that memory to organize files, maintain a resume, search for and apply to jobs, and track deadlines.
+Vaeloom is a second brain for a person's education and career: it ingests documents, code, and communications; builds a continuously updated, structured memory; and runs specialized, permission-scoped agents on top of that memory to organize files, maintain a resume, search for and apply to jobs, and track deadlines.
 
-This index is the single entry point into the complete documentation system — 214 files across 16 categories covering product, architecture, engineering, AI, security, operations, and more.
+This index is the single entry point into the complete documentation system â€” 214 files across 16 categories covering product, architecture, engineering, AI, security, operations, and more.
 
 ## Goals
 
-- Provide a single entry point to all Meridian documentation
+- Provide a single entry point to all Vaeloom documentation
 - Enable developers, product managers, and enterprise stakeholders to quickly find relevant docs
 - Maintain clear navigation and cross-referencing between related documents
 - Document the MVP product scope, system architecture, agent workflows, and memory system
@@ -42,40 +42,40 @@ This index is the single entry point into the complete documentation system — 
 
 ```mermaid
 graph TD
-    subgraph Product["📋 Product (16 docs)"]
+    subgraph Product["ðŸ“‹ Product (16 docs)"]
         PRD["MVP Spec, Features, Strategy<br/>Roadmap, Personas, Pricing, FAQ"]
     end
-    subgraph Architecture["🏗️ Architecture (16 docs)"]
+    subgraph Architecture["ðŸ—ï¸ Architecture (16 docs)"]
         ARCH["System Design, HLD, LLD, Events<br/>Microservices, Scalability, Caching, DR"]
     end
-    subgraph AI["🧠 AI (18 docs)"]
+    subgraph AI["ðŸ§  AI (18 docs)"]
         AI_D["LLM, Agents, Memory, KG, RAG<br/>Agentic RAG, Prompts, Guardrails"]
     end
-    subgraph Frontend["🎨 Frontend (14 docs)"]
+    subgraph Frontend["ðŸŽ¨ Frontend (14 docs)"]
         FE["Architecture, Design System, Components<br/>Accessibility, Animation, Theme"]
     end
-    subgraph Backend["⚙️ Backend (12 docs)"]
+    subgraph Backend["âš™ï¸ Backend (12 docs)"]
         BE["API, REST, Auth, RBAC, ABAC<br/>Validation, Workers, Cron, Rate Limiting"]
     end
-    subgraph Database["🗄️ Database (9 docs)"]
+    subgraph Database["ðŸ—„ï¸ Database (9 docs)"]
         DB["Schema, ERD, Indexes, Migrations<br/>Partitioning, Replication, Backups"]
     end
-    subgraph Security["🔒 Security (11 docs)"]
+    subgraph Security["ðŸ”’ Security (11 docs)"]
         SEC["Threat Model, IAM, Encryption<br/>Secrets, OWASP, GDPR, Compliance"]
     end
-    subgraph DevOps["🛠️ DevOps (10 docs)"]
+    subgraph DevOps["ðŸ› ï¸ DevOps (10 docs)"]
         DO["CI/CD, Docker, K8s, Terraform<br/>Monitoring, Logging, Tracing, Alerting"]
     end
-    subgraph Testing["✅ Testing (12 docs)"]
+    subgraph Testing["âœ… Testing (12 docs)"]
         TEST["Strategy, Unit, Integration, E2E<br/>Load, AI, Prompt, Security, Coverage"]
     end
-    subgraph Engineering["📐 Engineering (10 docs)"]
+    subgraph Engineering["ðŸ“ Engineering (10 docs)"]
         ENG["Coding Standards, Git Workflow<br/>Branch Strategy, Code Review"]
     end
-    subgraph DevExp["🚀 Developer Experience (9 docs)"]
+    subgraph DevExp["ðŸš€ Developer Experience (9 docs)"]
         DX["Setup, Contributing, Debugging<br/>API Examples, CLI"]
     end
-    subgraph Operations["📊 Operations (12 docs)"]
+    subgraph Operations["ðŸ“Š Operations (12 docs)"]
         OPS["Runbooks, Incident Response, SRE<br/>SLA, SLO, Capacity Planning"]
     end
 
@@ -123,27 +123,27 @@ graph TD
 
 ```text
 docs/
-├── README.md                     ← You are here
-├── TEMPLATE.md                   ← Enterprise doc template
-│
-├── Project/                      → 1 doc — Overview, vision
-├── Product/                      → 15 docs — MVP spec, features, strategy
-├── Architecture/                 → 16 docs — System design, HLD, LLD, events
-├── AI/                           → 18 docs — Agents, memory, RAG, LLM
-│
-├── Frontend/                     → 17 docs — Architecture, components, design system, i18n, mobile, accessibility audit
-├── Backend/                      → 15 docs — API, auth, validation, workers, GraphQL, Queue
-├── Database/                     → 9 docs — Schema, indexes, migrations, backups
-├── Security/                     → 13 docs — Threat model, IAM, encryption, GDPR, data retention, pen testing
-│
-├── DevOps/                       → 12 docs — CI/CD, Docker, K8s, Terraform, monitoring, SBOM, container signing
-├── Testing/                      → 11 docs — Strategy, unit, E2E, AI, load, security
-├── Engineering/                  → 10 docs — Standards, git workflow, code review
-├── Developer_Experience/         → 9 docs — Setup, contributing, debugging
-│
-├── Operations/                   → 16 docs — Runbooks, incident response, SRE, BCP, vendor risk, runbooks
-├── Enterprise/                   → 2 docs — Enterprise paper, enterprise architecture
-└── Build_Prompts/                → 1 doc — Build prompt references
+â”œâ”€â”€ README.md                     â† You are here
+â”œâ”€â”€ TEMPLATE.md                   â† Enterprise doc template
+â”‚
+â”œâ”€â”€ Project/                      â†’ 1 doc â€” Overview, vision
+â”œâ”€â”€ Product/                      â†’ 15 docs â€” MVP spec, features, strategy
+â”œâ”€â”€ Architecture/                 â†’ 16 docs â€” System design, HLD, LLD, events
+â”œâ”€â”€ AI/                           â†’ 18 docs â€” Agents, memory, RAG, LLM
+â”‚
+â”œâ”€â”€ Frontend/                     â†’ 17 docs â€” Architecture, components, design system, i18n, mobile, accessibility audit
+â”œâ”€â”€ Backend/                      â†’ 15 docs â€” API, auth, validation, workers, GraphQL, Queue
+â”œâ”€â”€ Database/                     â†’ 9 docs â€” Schema, indexes, migrations, backups
+â”œâ”€â”€ Security/                     â†’ 13 docs â€” Threat model, IAM, encryption, GDPR, data retention, pen testing
+â”‚
+â”œâ”€â”€ DevOps/                       â†’ 12 docs â€” CI/CD, Docker, K8s, Terraform, monitoring, SBOM, container signing
+â”œâ”€â”€ Testing/                      â†’ 11 docs â€” Strategy, unit, E2E, AI, load, security
+â”œâ”€â”€ Engineering/                  â†’ 10 docs â€” Standards, git workflow, code review
+â”œâ”€â”€ Developer_Experience/         â†’ 9 docs â€” Setup, contributing, debugging
+â”‚
+â”œâ”€â”€ Operations/                   â†’ 16 docs â€” Runbooks, incident response, SRE, BCP, vendor risk, runbooks
+â”œâ”€â”€ Enterprise/                   â†’ 2 docs â€” Enterprise paper, enterprise architecture
+â””â”€â”€ Build_Prompts/                â†’ 1 doc â€” Build prompt references
 ```
 
 ---
@@ -152,20 +152,20 @@ docs/
 
 | Category | Docs | Coverage | Status |
 |----------|------|----------|--------|
-| **Product** | 15 | ✅ Complete | Vision, mission, strategy, roadmap, personas, pricing, FAQ |
-| **Architecture** | 16 | ✅ Complete | System design, HLD, LLD, events, microservices, scalability, caching |
-| **Frontend** | 17 | ✅ Complete | Architecture, design system, components, accessibility, animation, i18n, mobile |
-| **Backend** | 15 | ✅ Complete | API, REST, auth, RBAC, ABAC, validation, workers, cron, rate limiting, GraphQL, Queue, Connectors |
-| **AI** | 18 | ✅ Complete | LLM, agents, memory, knowledge graph, RAG, Agentic RAG, prompts, guardrails |
-| **Database** | 9 | ✅ Complete | Schema, ERD, indexes, migrations, partitioning, replication, backups |
-| **Security** | 13 | ✅ Complete | Threat model, IAM, encryption, secrets, OWASP, GDPR, compliance, data retention, pen testing |
-| **DevOps** | 12 | ✅ Complete | CI/CD, Docker, K8s, Terraform, monitoring, logging, tracing, alerting, deployment, SBOM, container signing |
-| **Testing** | 12 | ✅ Complete | Strategy, unit, integration, E2E, load, performance, AI, prompt, security, regression, coverage |
-| **Engineering** | 10 | ✅ Complete | Coding standards, git workflow, branch strategy, code review |
-| **Developer Experience** | 9 | ✅ Complete | Setup, contributing, debugging, API examples, CLI |
-| **Operations** | 16 | ✅ Complete | Runbooks, incident response, SRE, SLA, SLO, capacity planning, BCP, vendor risk, runbooks |
-| **Enterprise** | 2 | ✅ Complete | Enterprise paper, multi-tenant architecture, enterprise architecture |
-| **Build Prompts** | 1 | ✅ Good | Build order reference |
+| **Product** | 15 | âœ… Complete | Vision, mission, strategy, roadmap, personas, pricing, FAQ |
+| **Architecture** | 16 | âœ… Complete | System design, HLD, LLD, events, microservices, scalability, caching |
+| **Frontend** | 17 | âœ… Complete | Architecture, design system, components, accessibility, animation, i18n, mobile |
+| **Backend** | 15 | âœ… Complete | API, REST, auth, RBAC, ABAC, validation, workers, cron, rate limiting, GraphQL, Queue, Connectors |
+| **AI** | 18 | âœ… Complete | LLM, agents, memory, knowledge graph, RAG, Agentic RAG, prompts, guardrails |
+| **Database** | 9 | âœ… Complete | Schema, ERD, indexes, migrations, partitioning, replication, backups |
+| **Security** | 13 | âœ… Complete | Threat model, IAM, encryption, secrets, OWASP, GDPR, compliance, data retention, pen testing |
+| **DevOps** | 12 | âœ… Complete | CI/CD, Docker, K8s, Terraform, monitoring, logging, tracing, alerting, deployment, SBOM, container signing |
+| **Testing** | 12 | âœ… Complete | Strategy, unit, integration, E2E, load, performance, AI, prompt, security, regression, coverage |
+| **Engineering** | 10 | âœ… Complete | Coding standards, git workflow, branch strategy, code review |
+| **Developer Experience** | 9 | âœ… Complete | Setup, contributing, debugging, API examples, CLI |
+| **Operations** | 16 | âœ… Complete | Runbooks, incident response, SRE, SLA, SLO, capacity planning, BCP, vendor risk, runbooks |
+| **Enterprise** | 2 | âœ… Complete | Enterprise paper, multi-tenant architecture, enterprise architecture |
+| **Build Prompts** | 1 | âœ… Good | Build order reference |
 
 ---
 
@@ -188,7 +188,7 @@ docs/
 | Goals | [`Product/Goals.md`](./Product/Goals.md) | Product goals and milestones |
 | Product Strategy | [`Product/Product-Strategy.md`](./Product/Product-Strategy.md) | Go-to-market and moat |
 | Business Model | [`Product/Business-Model.md`](./Product/Business-Model.md) | Revenue model and pricing |
-| Roadmap | [`Product/Roadmap.md`](./Product/Roadmap.md) | Product roadmap (MVP → Enterprise) |
+| Roadmap | [`Product/Roadmap.md`](./Product/Roadmap.md) | Product roadmap (MVP â†’ Enterprise) |
 | Features | [`Product/Features.md`](./Product/Features.md) | Feature catalog |
 | User Personas | [`Product/User-Personas.md`](./Product/User-Personas.md) | Target user personas |
 | User Journey | [`Product/User-Journey.md`](./Product/User-Journey.md) | End-to-end user journey |
@@ -416,16 +416,16 @@ These are copied from the original `/Docs/` folder for convenience. The canonica
 
 | Document | Path | Description |
 |----------|------|-------------|
-| MVP Product Spec (v1) | [`01-Meridian-MVP-Spec.md`](./01-Meridian-MVP-Spec.md) | Full MVP specification |
-| MVP Product Spec (v2) | [`05-Meridian-MVP-Spec.md`](./05-Meridian-MVP-Spec.md) | Alternative MVP formatting |
+| MVP Product Spec (v1) | [`01-Vaeloom-MVP-Spec.md`](./01-Vaeloom-MVP-Spec.md) | Full MVP specification |
+| MVP Product Spec (v2) | [`05-Vaeloom-MVP-Spec.md`](./05-Vaeloom-MVP-Spec.md) | Alternative MVP formatting |
 | System Architecture | [`02-system-architecture.md`](./02-system-architecture.md) | 6-layer architecture |
 | Agent Workflow | [`03-agent-workflow.md`](./03-agent-workflow.md) | Agent interaction flows |
 | Memory & Knowledge Graph | [`04-memory-knowledge-graph.md`](./04-memory-knowledge-graph.md) | Memory system overview |
-| Enterprise Paper (v1) | [`06-Meridian-Enterprise-Paper.md`](./06-Meridian-Enterprise-Paper.md) | Enterprise product vision |
-| Enterprise Paper (v2) | [`Meridian-Enterprise-Paper.md`](./Meridian-Enterprise-Paper.md) | Alternative enterprise paper |
-| Complete Documentation | [`Meridian-Complete-Documentation.md`](./Meridian-Complete-Documentation.md) | ~18K-word comprehensive doc |
-| Documentation Site | [`Meridian-Documentation-Site.md`](./Meridian-Documentation-Site.md) | Alternative formatting |
-| How It Works Visual | [`Meridian-How-It-Works-Visual.md`](./Meridian-How-It-Works-Visual.md) | Visual walkthrough |
+| Enterprise Paper (v1) | [`06-Vaeloom-Enterprise-Paper.md`](./06-Vaeloom-Enterprise-Paper.md) | Enterprise product vision |
+| Enterprise Paper (v2) | [`Vaeloom-Enterprise-Paper.md`](./Vaeloom-Enterprise-Paper.md) | Alternative enterprise paper |
+| Complete Documentation | [`Vaeloom-Complete-Documentation.md`](./Vaeloom-Complete-Documentation.md) | ~18K-word comprehensive doc |
+| Documentation Site | [`Vaeloom-Documentation-Site.md`](./Vaeloom-Documentation-Site.md) | Alternative formatting |
+| How It Works Visual | [`Vaeloom-How-It-Works-Visual.md`](./Vaeloom-How-It-Works-Visual.md) | Visual walkthrough |
 | Audit Report | [`AUDIT-REPORT.md`](./AUDIT-REPORT.md) | Documentation quality audit |
 
 ### Implementation Files (16 docs)
@@ -434,7 +434,7 @@ Located in [`Engineering/Implementation/`](./Engineering/Implementation/). These
 
 | # | File | Builds |
 |---|------|--------|
-| 00 | [Master Build Order](./Engineering/Implementation/00-master-build-order.md) | Entry point — read first |
+| 00 | [Master Build Order](./Engineering/Implementation/00-master-build-order.md) | Entry point â€” read first |
 | 01 | [Foundation Infra](./Engineering/Implementation/01-foundation-infra.md) | Repo scaffold, CI, auth |
 | 02 | [Database Schema](./Engineering/Implementation/02-database-schema.md) | Postgres schema, migrations |
 | 03 | [Ingestion Pipeline](./Engineering/Implementation/03-ingestion-pipeline.md) | File parsing, OCR, extraction |
@@ -462,24 +462,24 @@ Located in [`Engineering/Implementation/`](./Engineering/Implementation/). These
 
 ---
 
-## Quick Start — Finding What You Need
+## Quick Start â€” Finding What You Need
 
 | I'm looking for... | Start here |
 |-------------------|------------|
-| What is Meridian? | `Project/README.md` or complete doc |
-| Product strategy? | `Product/Vision.md` → `Product/Product-Strategy.md` |
+| What is Vaeloom? | `Project/README.md` or complete doc |
+| Product strategy? | `Product/Vision.md` â†’ `Product/Product-Strategy.md` |
 | User personas? | `Product/User-Personas.md` |
 | System architecture? | `Architecture/System-Design.md` |
-| Agent system? | `AI/AI-Agents.md` → `AI/Agentic-RAG.md` |
-| Database schema? | `Database/Schema.md` → `Database/ER-Diagram.md` |
-| API design? | `Backend/API-Architecture.md` → `Backend/REST-Standards.md` |
-| Security model? | `Security/Security-Architecture.md` → `Security/Threat-Model.md` |
-| Frontend? | `Frontend/Frontend-Architecture.md` → `Frontend/Design-System.md` |
-| CI/CD? | `DevOps/CI-CD.md` → `DevOps/Deployment.md` |
-| Testing? | `Testing/Testing-Strategy.md` → per-test-type docs |
-| Operations? | `Operations/01-operations-runbook.md` → `Operations/SRE.md` |
-| Engineering standards? | `Engineering/Coding-Standards.md` → `Engineering/Git-Workflow.md` |
-| Developer setup? | `Developer_Experience/Setup.md` → `Developer_Experience/Contributing.md` |
+| Agent system? | `AI/AI-Agents.md` â†’ `AI/Agentic-RAG.md` |
+| Database schema? | `Database/Schema.md` â†’ `Database/ER-Diagram.md` |
+| API design? | `Backend/API-Architecture.md` â†’ `Backend/REST-Standards.md` |
+| Security model? | `Security/Security-Architecture.md` â†’ `Security/Threat-Model.md` |
+| Frontend? | `Frontend/Frontend-Architecture.md` â†’ `Frontend/Design-System.md` |
+| CI/CD? | `DevOps/CI-CD.md` â†’ `DevOps/Deployment.md` |
+| Testing? | `Testing/Testing-Strategy.md` â†’ per-test-type docs |
+| Operations? | `Operations/01-operations-runbook.md` â†’ `Operations/SRE.md` |
+| Engineering standards? | `Engineering/Coding-Standards.md` â†’ `Engineering/Git-Workflow.md` |
+| Developer setup? | `Developer_Experience/Setup.md` â†’ `Developer_Experience/Contributing.md` |
 | Enterprise features? | `Enterprise/README.md` |
 | Build order? | `Engineering/Implementation/00-master-build-order.md` |
 
@@ -491,15 +491,15 @@ This documentation system was built in three passes:
 
 | Pass | What Was Done | When |
 |------|---------------|------|
-| **1 — Structure** | Created 14 category folders with READMEs, ADR log, master index | Initial restructure |
-| **2 — Generation** | Created ~140 documents across all categories (96% coverage of target) | Full generation pass |
-| **3 — Quality** | Upgraded 9 strategic docs to enterprise quality, fixed broken references | Enterprise upgrade pass |
+| **1 â€” Structure** | Created 14 category folders with READMEs, ADR log, master index | Initial restructure |
+| **2 â€” Generation** | Created ~140 documents across all categories (96% coverage of target) | Full generation pass |
+| **3 â€” Quality** | Upgraded 9 strategic docs to enterprise quality, fixed broken references | Enterprise upgrade pass |
 
 Legacy documentation in `/Docs/` and `/Documents/` remains untouched. This `/docs/` folder is the canonical documentation system going forward.
 
 ---
 
-*Maintained by the Meridian engineering team. Last updated: Q4 2026.*
+*Maintained by the Vaeloom engineering team. Last updated: Q4 2026.*
 
 ---
 
@@ -508,26 +508,26 @@ Legacy documentation in `/Docs/` and `/Documents/` remains untouched. This `/doc
 ### Navigate the documentation tree
 
 ```bash
-meridian docs list
-meridian docs show --path Architecture/System-Design.md
+Vaeloom docs list
+Vaeloom docs show --path Architecture/System-Design.md
 ```
 
 ### Find docs by category
 
 ```bash
-meridian docs search --category "AI Agents" --format markdown
+Vaeloom docs search --category "AI Agents" --format markdown
 ```
 
 ### Check for missing enterprise sections
 
 ```bash
-meridian docs audit --template enterprise
+Vaeloom docs audit --template enterprise
 ```
 
 ### Generate a cross-reference map
 
 ```bash
-meridian docs graph --output xref.md
+Vaeloom docs graph --output xref.md
 ```
 
 ## Future Improvements
@@ -542,8 +542,8 @@ meridian docs graph --output xref.md
 
 | Document | Description |
 |----------|-------------|
-| [MVP Product Spec](01-Meridian-MVP-Spec.md) | v1/MVP product scope |
-| [Complete Documentation](Meridian-Complete-Documentation.md) | Full product and engineering reference |
-| [Enterprise Product Vision](06-Meridian-Enterprise-Paper.md) | Enterprise-scale vision |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1/MVP product scope |
+| [Complete Documentation](Vaeloom-Complete-Documentation.md) | Full product and engineering reference |
+| [Enterprise Product Vision](06-Vaeloom-Enterprise-Paper.md) | Enterprise-scale vision |
 | [TEMPLATE.md](TEMPLATE.md) | Enterprise documentation template |
 | [Audit Report](AUDIT-REPORT.md) | Quality audit of the documentation system |

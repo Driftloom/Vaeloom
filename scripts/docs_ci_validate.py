@@ -1,16 +1,16 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Meridian Docs CI Validator
+Vaeloom Docs CI Validator
 ==========================
 Automated cross-document validation pipeline.
 
 Checks performed:
-  1. cross-references  — Every [text](./path.md) link resolves to an existing file
-  2. canonical-sources — Links to /Docs/... and /Documents/... reference real legacy files
-  3. contradictions    — Known related-pair values (thresholds, SLOs, retries) match
-  4. orphans           — Documents not referenced by any other doc
-  5. readme-index      — All docs/ files are listed in the master README.md
-  6. path-consistency  — Relative paths from markdown links resolve correctly
+  1. cross-references  â€” Every [text](./path.md) link resolves to an existing file
+  2. canonical-sources â€” Links to /Docs/... and /Documents/... reference real legacy files
+  3. contradictions    â€” Known related-pair values (thresholds, SLOs, retries) match
+  4. orphans           â€” Documents not referenced by any other doc
+  5. readme-index      â€” All docs/ files are listed in the master README.md
+  6. path-consistency  â€” Relative paths from markdown links resolve correctly
 
 Usage:
     python3 scripts/docs_ci_validate.py           # full run
@@ -41,7 +41,7 @@ SKIP_README_INDEX = {
 }
 
 
-# ── Helpers ───────────────────────────────────
+# â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def rel_path(file_path: Path) -> str:
     """Return path relative to project root for a glob result."""
@@ -65,7 +65,7 @@ def read_file(path):
 
 
 def find_markdown_links(content):
-    """All [text](path.md) links — includes hash fragments."""
+    """All [text](path.md) links â€” includes hash fragments."""
     links = []
     for m in re.finditer(r'\]\(([^)]*\.md[^)]*)\)', content):
         link = m.group(1)
@@ -96,14 +96,14 @@ def resolve_link(link, source_file):
 SHORT_SEVERITY = {
     "Warning": "Warning",
     "Critical": "Critical",
-    "🔴 Critical": "Critical",
-    "⚠️ Warning": "Warning",
-    "🔴": "Critical",
-    "⚠️": "Warning",
+    "ðŸ”´ Critical": "Critical",
+    "âš ï¸ Warning": "Warning",
+    "ðŸ”´": "Critical",
+    "âš ï¸": "Warning",
 }
 
 
-# ── Contradiction check definitions ───────────
+# â”€â”€ Contradiction check definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CONTRADICTION_CHECKS = [
     # (name, description, locations, extractor_callable, expected)
@@ -191,7 +191,7 @@ def _extract_table_severity(content, metric_name):
                            | Queue depth | > 500 | > 1000 |
         -> finds the column position of "Critical" header, then reads that column's value.
 
-      Format B (Workers.md): | Queue depth > 1000 | 🔴 Critical | ... |
+      Format B (Workers.md): | Queue depth > 1000 | ðŸ”´ Critical | ... |
         -> extracts the severity label directly.
 
     Returns a set of severity strings (normalised).
@@ -203,7 +203,7 @@ def _extract_table_severity(content, metric_name):
     sev_keys = sorted(SHORT_SEVERITY, key=len, reverse=True)
     sev_alt = '|'.join(re.escape(k) for k in sev_keys)
 
-    # First pass: look for Format B — inline severity in first column
+    # First pass: look for Format B â€” inline severity in first column
     for line in lines:
         pat = rf"{re.escape(metric_name)}.*?\|.*?({sev_alt})"
         m = re.search(pat, line, re.IGNORECASE)
@@ -212,7 +212,7 @@ def _extract_table_severity(content, metric_name):
             normalized = SHORT_SEVERITY.get(raw, raw)
             results.add(normalized)
 
-    # Second pass: look for Format A — severity in column headers
+    # Second pass: look for Format A â€” severity in column headers
     if not results:
         # Find the table header row containing the metric
         header_idx = None
@@ -254,7 +254,7 @@ def _extract_regex_set(content, pattern):
     return vals
 
 
-# ── Check 1: Cross-References ────────────────
+# â”€â”€ Check 1: Cross-References â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def check_cross_references(all_files, verbose=False):
     """Every [text](./path.md) resolves to an existing file."""
@@ -286,7 +286,7 @@ def check_cross_references(all_files, verbose=False):
     return issues, stats
 
 
-# ── Check 2: Canonical Sources ───────────────
+# â”€â”€ Check 2: Canonical Sources â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def check_canonical_sources(all_files, verbose=False):
@@ -328,7 +328,7 @@ def check_canonical_sources(all_files, verbose=False):
     return issues, stats
 
 
-# ── Check 3: Contradictions ──────────────────
+# â”€â”€ Check 3: Contradictions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def check_contradictions(_all_files=None, verbose=False):
     """Known related-pair values match expected values."""
@@ -359,7 +359,7 @@ def check_contradictions(_all_files=None, verbose=False):
     return issues, stats
 
 
-# ── Check 4: Orphans ─────────────────────────
+# â”€â”€ Check 4: Orphans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def check_orphans(all_files, verbose=False):
     """Documents not referenced by any other document."""
@@ -392,7 +392,7 @@ def check_orphans(all_files, verbose=False):
     return issues, stats
 
 
-# ── Check 5: README Index ────────────────────
+# â”€â”€ Check 5: README Index â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def check_readme_index(all_files, verbose=False):
     """All docs are listed in the master README.md."""
@@ -426,7 +426,7 @@ def check_readme_index(all_files, verbose=False):
     return issues, stats
 
 
-# ── Check 6: Path Consistency ────────────────
+# â”€â”€ Check 6: Path Consistency â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def check_path_consistency(all_files, verbose=False):
     """
@@ -487,7 +487,7 @@ def check_path_consistency(all_files, verbose=False):
     return issues, stats
 
 
-# ── Main ──────────────────────────────────────
+# â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CHECKERS = {
     "cross-references": check_cross_references,
@@ -524,7 +524,7 @@ def print_report(results):
     n = summary.get("total_issues", 0)
 
     print("\n" + "=" * 58)
-    print("  MERIDIAN DOCS CI VALIDATOR")
+    print("  Vaeloom DOCS CI VALIDATOR")
     print("=" * 58)
 
     for name, data in results.items():
@@ -550,12 +550,12 @@ def print_report(results):
     if n == 0:
         print("  RESULT: All checks PASSED")
     else:
-        print(f"  RESULT: {n} issue(s) FOUND — review required")
+        print(f"  RESULT: {n} issue(s) FOUND â€” review required")
     print("-" * 58)
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Meridian Docs CI Validator")
+    ap = argparse.ArgumentParser(description="Vaeloom Docs CI Validator")
     ap.add_argument("--check", "-c", choices=list(CHECKERS) + ["all"], default="all")
     ap.add_argument("--json", "-j", action="store_true")
     ap.add_argument("--verbose", "-v", action="store_true")
