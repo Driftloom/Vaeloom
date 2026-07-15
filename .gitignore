@@ -1,0 +1,23 @@
+# Vale lint styles (auto-installed by CI)
+.vale/styles/
+
+# Generated artifacts
+/docs-portal.html
+/Documents/Archived/
+/Documents/*.html
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
