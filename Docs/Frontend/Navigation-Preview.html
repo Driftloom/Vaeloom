@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian — Navigation Preview</title>
+<style>
+  :root{--color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;--color-gray-500:#6b7280;--color-gray-600:#4b5563;--color-gray-700:#374151;--color-gray-800:#1f2937;--color-gray-900:#111827;--color-blue-500:#3b82f6;--color-blue-600:#2563eb;--color-green-500:#10b981;--color-green-600:#059669;--color-amber-500:#f59e0b;--color-red-500:#ef4444;--color-red-600:#dc2626;--font-family-sans:'Inter',system-ui,-apple-system,sans-serif;--font-family-mono:'JetBrains Mono','SF Mono','Fira Code',monospace;--font-size-xs:.75rem;--font-size-sm:.875rem;--font-size-base:1rem;--font-size-lg:1.125rem;--font-size-xl:1.25rem;--font-size-2xl:1.5rem;--font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--space-1:.25rem;--space-2:.5rem;--space-3:.75rem;--space-4:1rem;--space-6:1.5rem;--space-8:2rem;--space-12:3rem;--radius-sm:.25rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;--radius-full:9999px;--shadow-sm:0 1px 2px 0 rgb(0 0 0 / .05);--shadow-md:0 4px 6px -1px rgb(0 0 0 / .1);--shadow-lg:0 10px 15px -3px rgb(0 0 0 / .1);--shadow-xl:0 20px 25px -5px rgb(0 0 0 / .1);--transition-fast:150ms ease;--transition-base:250ms ease;--transition-slow:400ms ease;--sidebar-width:240px;}
+  :root,[data-theme="light"]{--bg-primary:#fff;--bg-secondary:#f9fafb;--bg-tertiary:#f3f4f6;--bg-elevated:#fff;--bg-inset:#f3f4f6;--text-primary:#111827;--text-secondary:#4b5563;--text-muted:#9ca3af;--text-inverse:#fff;--text-link:#3b82f6;--accent-primary:#3b82f6;--accent-primary-hover:#2563eb;--accent-success:#10b981;--accent-warning:#f59e0b;--accent-error:#ef4444;--border-light:#e5e7eb;--border-medium:#d1d5db;--shadow-card:0 1px 3px 0 rgb(0 0 0 / .1);--nav-item-hover-bg:var(--bg-tertiary);--nav-item-active-bg:color-mix(in srgb,var(--accent-primary) 10%,var(--bg-secondary));--nav-item-active-text:var(--accent-primary);--nav-item-radius:var(--radius-md);--nav-item-padding:var(--space-2)var(--space-3)}
+  [data-theme="dark"]{--bg-primary:#111827;--bg-secondary:#1f2937;--bg-tertiary:#374151;--bg-elevated:#1f2937;--bg-inset:#111827;--text-primary:#f9fafb;--text-secondary:#d1d5db;--text-muted:#6b7280;--text-inverse:#111827;--text-link:#60a5fa;--accent-primary:#60a5fa;--accent-primary-hover:#3b82f6;--accent-success:#34d399;--accent-warning:#fbbf24;--accent-error:#f87171;--border-light:#374151;--border-medium:#4b5563;--shadow-card:0 1px 3px 0 rgb(0 0 0 / .4);--nav-item-hover-bg:var(--bg-tertiary);--nav-item-active-bg:color-mix(in srgb,var(--accent-primary) 20%,var(--bg-secondary));--nav-item-active-text:var(--accent-primary);--nav-item-radius:var(--radius-md);--nav-item-padding:var(--space-2)var(--space-3)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-family:var(--font-family-sans);background:var(--bg-primary);color:var(--text-primary);transition:background var(--transition-base),color var(--transition-base)}
+  body{max-width:1200px;margin:0 auto;padding:var(--space-8);line-height:1.6}
+  @media(max-width:768px){body{padding:var(--space-4)}}
+  h1{font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);margin-bottom:var(--space-2);letter-spacing:-.02em}
+  h2{font-size:var(--font-size-xl);font-weight:var(--font-weight-semibold);margin:var(--space-8)0 var(--space-4);padding-bottom:var(--space-2);border-bottom:1px solid var(--border-light)}
+  h3{font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);margin:var(--space-6)0 var(--space-3)}
+  p{color:var(--text-secondary);margin-bottom:var(--space-4)}
+  a{color:var(--text-link);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--font-family-mono);font-size:var(--font-size-sm);background:var(--bg-inset);padding:2px 6px;border-radius:var(--radius-sm)}
+  .subtitle{color:var(--text-muted);font-size:var(--font-size-sm);margin-bottom:var(--space-6)}
+  .theme-toggle-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);padding:var(--space-4)var(--space-6);background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:var(--radius-xl);margin-bottom:var(--space-6);flex-wrap:wrap}
+  .theme-toggle-bar .logo{font-weight:var(--font-weight-bold)}
+  .theme-toggle-bar .hint{font-size:var(--font-size-sm);color:var(--text-muted)}
+  .theme-toggle-group{display:flex;gap:var(--space-2);background:var(--bg-tertiary);padding:var(--space-1);border-radius:var(--radius-lg)}
+  .theme-btn{padding:var(--space-2)var(--space-4);border:none;border-radius:var(--radius-md);font-family:var(--font-family-sans);font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);cursor:pointer;background:transparent;color:var(--text-secondary);transition:all var(--transition-fast)}
+  .theme-btn:hover{color:var(--text-primary)}.theme-btn.active{background:var(--accent-primary);color:var(--text-inverse);box-shadow:var(--shadow-sm)}
+
+  .demo-layout{display:flex;gap:0;border:1px solid var(--border-light);border-radius:var(--radius-xl);overflow:hidden;margin:var(--space-4)0;min-height:400px}
+  .demo-sidebar{width:var(--sidebar-width);background:var(--bg-secondary);border-right:1px solid var(--border-light);padding:var(--space-3);flex-shrink:0;transition:width var(--transition-base)}
+  .demo-sidebar.collapsed{width:56px}
+  .demo-content{flex:1;padding:var(--space-4);background:var(--bg-primary);min-width:0}
+  @media(max-width:700px){.demo-layout{flex-direction:column}.demo-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border-light)}}
+
+  .nav-item{display:flex;align-items:center;gap:var(--space-3);padding:var(--nav-item-padding);border-radius:var(--nav-item-radius);color:var(--text-secondary);font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);cursor:pointer;transition:all var(--transition-fast);white-space:nowrap;overflow:hidden}
+  .nav-item:hover{background:var(--nav-item-hover-bg);color:var(--text-primary)}
+  .nav-item.active{background:var(--nav-item-active-bg);color:var(--nav-item-active-text);font-weight:var(--font-weight-semibold)}
+  .nav-item .nav-icon{flex-shrink:0;width:20px;text-align:center;font-size:16px}
+  .nav-item .nav-label{overflow:hidden;text-overflow:ellipsis}
+  .nav-section{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;padding:var(--space-2)var(--space-3);margin-top:var(--space-2)}
+
+  .topbar{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2)0;border-bottom:1px solid var(--border-light);margin-bottom:var(--space-3)}
+  .topbar .collapse-btn{padding:var(--space-1)var(--space-2);border:none;border-radius:var(--radius-md);background:var(--bg-tertiary);color:var(--text-secondary);cursor:pointer;font-size:var(--font-size-sm);transition:all var(--transition-fast)}
+  .topbar .collapse-btn:hover{background:var(--bg-tertiary);color:var(--text-primary)}
+  .topbar .page-title{font-weight:var(--font-weight-semibold);font-size:var(--font-size-base)}
+
+  .breadcrumb{display:flex;align-items:center;gap:var(--space-1);font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-3);flex-wrap:wrap}
+  .breadcrumb a{color:var(--text-muted)}.breadcrumb a:hover{color:var(--text-link)}
+  .breadcrumb .sep{color:var(--text-muted)}
+
+  .tabs-bar{display:flex;gap:0;border-bottom:1px solid var(--border-light);margin-bottom:var(--space-3)}
+  .tab-item{padding:var(--space-2)var(--space-4);border:none;background:transparent;color:var(--text-muted);font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);font-family:var(--font-family-sans);cursor:pointer;border-bottom:2px solid transparent;transition:all var(--transition-fast)}
+  .tab-item:hover{color:var(--text-primary)}
+  .tab-item.active{color:var(--accent-primary);border-bottom-color:var(--accent-primary)}
+
+  .page-content{font-size:var(--font-size-sm);color:var(--text-secondary)}
+  .page-content h4{font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--text-primary);margin-bottom:var(--space-2)}
+
+  /* Command palette */
+  .cmd-palette{position:relative;margin:var(--space-3)0}
+  .cmd-overlay{position:absolute;top:100%;left:0;right:0;background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius-lg);box-shadow:var(--shadow-xl);z-index:10;display:none;max-height:260px;overflow-y:auto;margin-top:4px}
+  .cmd-overlay.open{display:block}
+  .cmd-input{width:100%;padding:var(--space-3);border:1px solid var(--border-medium);border-radius:var(--radius-lg);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-family-sans);font-size:var(--font-size-sm)}
+  .cmd-input:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-primary) 20%,transparent)}
+  .cmd-item{padding:var(--space-2)var(--space-3);display:flex;align-items:center;gap:var(--space-2);font-size:var(--font-size-sm);color:var(--text-secondary);cursor:pointer;transition:background var(--transition-fast)}
+  .cmd-item:hover,.cmd-item.selected{background:var(--bg-tertiary);color:var(--text-primary)}
+  .cmd-item kbd{font-family:var(--font-family-mono);font-size:10px;padding:1px 5px;border-radius:var(--radius-sm);background:var(--bg-tertiary);color:var(--text-muted);border:1px solid var(--border-light)}
+
+  /* Mobile nav preview */
+  .mobile-nav{display:flex;gap:0;border-top:1px solid var(--border-light);background:var(--bg-elevated);flex-shrink:0}
+  .mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:var(--space-2);font-size:10px;color:var(--text-muted);cursor:pointer;transition:color var(--transition-fast);border:none;background:transparent;font-family:var(--font-family-sans)}
+  .mobile-nav-item:hover{color:var(--text-primary)}
+  .mobile-nav-item.active{color:var(--accent-primary)}
+  .mobile-nav-item .m-icon{font-size:18px}
+
+  .stats-bar{display:flex;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-6)}
+  .stat-chip{display:flex;align-items:center;gap:var(--space-2);background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:var(--radius-full);padding:var(--space-2)var(--space-4);font-size:var(--font-size-sm)}
+  .stat-chip strong{font-weight:var(--font-weight-semibold);color:var(--text-primary)}
+  .footer{margin-top:var(--space-12);padding-top:var(--space-6);border-top:1px solid var(--border-light);text-align:center;font-size:var(--font-size-sm);color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="theme-toggle-bar"><span class="logo">🧭 Meridian — Navigation Preview</span><span class="hint"><a href="./Navigation.md">📄 View Source Doc</a></span><div class="theme-toggle-group"><button class="theme-btn active" onclick="setTheme('light')">☀️ Light</button><button class="theme-btn" onclick="setTheme('dark')">🌙 Dark</button><button class="theme-btn" onclick="setTheme('system')">🖥️ System</button></div></div>
+<h1>🧭 Navigation Preview</h1>
+<p class="subtitle">Interactive preview of Meridian's navigation system — sidebar, top tabs, breadcrumbs, command palette, and mobile nav.</p>
+<div class="stats-bar"><span class="stat-chip"><strong>5</strong> core routes</span><span class="stat-chip"><strong>5</strong> patterns</span><span class="stat-chip"><strong>3</strong> mobile patterns</span><span class="stat-chip"><strong>11</strong> nav items</span></div>
+
+<!-- MAIN DEMO LAYOUT -->
+<div class="demo-layout" id="demoLayout">
+  <!-- Sidebar -->
+  <div class="demo-sidebar" id="demoSidebar">
+    <div class="nav-section">Primary</div>
+    <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></div>
+    <div class="nav-item" data-page="workspace" onclick="switchPage('workspace')"><span class="nav-icon">📁</span><span class="nav-label">Workspace</span></div>
+    <div class="nav-item" data-page="memory" onclick="switchPage('memory')"><span class="nav-icon">🕸️</span><span class="nav-label">Memory Graph</span></div>
+    <div class="nav-item" data-page="chat" onclick="switchPage('chat')"><span class="nav-icon">💬</span><span class="nav-label">Chat</span></div>
+    <div class="nav-item" data-page="settings" onclick="switchPage('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></div>
+    <div class="nav-section" style="margin-top:var(--space-3)">Secondary</div>
+    <div class="nav-item" data-page="resume" onclick="switchPage('resume')"><span class="nav-icon">📄</span><span class="nav-label">Resume & Career</span></div>
+    <div class="nav-item" data-page="jobs" onclick="switchPage('jobs')"><span class="nav-icon">💼</span><span class="nav-label">Jobs & Internships</span></div>
+    <div class="nav-item" data-page="applications" onclick="switchPage('applications')"><span class="nav-icon">📋</span><span class="nav-label">Applications</span></div>
+    <div class="nav-item" data-page="connectors" onclick="switchPage('connectors')"><span class="nav-icon">🔗</span><span class="nav-label">Connectors</span></div>
+    <div class="nav-item" data-page="history" onclick="switchPage('history')"><span class="nav-icon">🕐</span><span class="nav-label">History</span></div>
+  </div>
+
+  <!-- Content -->
+  <div class="demo-content">
+    <div class="topbar">
+      <button class="collapse-btn" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
+      <span class="page-title" id="pageTitle">Dashboard</span>
+      <div style="flex:1"></div>
+      <div style="position:relative;width:200px">
+        <input class="cmd-input" id="cmdInput" placeholder="Cmd+K to search..." onfocus="openCmd()" oninput="filterCmd(this.value)" style="font-size:var(--font-size-xs);padding:var(--space-2)var(--space-3)">
+        <div class="cmd-overlay" id="cmdOverlay">
+          <div class="cmd-item selected" onclick="selectCmd('Go to Dashboard')"><span>📊</span> Go to Dashboard <kbd>⌘1</kbd></div>
+          <div class="cmd-item" onclick="selectCmd('Open Workspace')"><span>📁</span> Open Workspace <kbd>⌘2</kbd></div>
+          <div class="cmd-item" onclick="selectCmd('Search Memory')"><span>🔍</span> Search Memory <kbd>⌘F</kbd></div>
+          <div class="cmd-item" onclick="selectCmd('Create Resume')"><span>📄</span> Create Resume Variant <kbd>⌘N</kbd></div>
+          <div class="cmd-item" onclick="selectCmd('Sync Connectors')"><span>🔄</span> Sync Connectors <kbd>⌘S</kbd></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="breadcrumb" id="breadcrumb">
+      <a href="#" onclick="event.preventDefault()">Home</a>
+      <span class="sep">›</span>
+      <span id="breadcrumbCurrent">Dashboard</span>
+    </div>
+
+    <div class="tabs-bar" id="tabsBar">
+      <button class="tab-item active" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-item" onclick="switchTab('details')">Details</button>
+      <button class="tab-item" onclick="switchTab('activity')">Activity</button>
+    </div>
+
+    <div class="page-content" id="pageContent">
+      <div id="contentOverview"><h4>📊 Dashboard Overview</h4><p>Welcome to your Meridian dashboard. Here you'll find an overview of your memory health, active applications, and AI-powered suggestions.</p><p style="margin-top:var(--space-2)">Your knowledge graph has <strong>342 entities</strong> across <strong>18 categories</strong>. Recent consolidation discovered <strong>15 new connections</strong> between your skills and job requirements.</p></div>
+      <div id="contentDetails" style="display:none"><h4>📋 Dashboard Details</h4><p>Memory health: <strong>94%</strong> · Knowledge growth: <strong>+12%</strong> this week · Active applications: <strong>12</strong></p><p style="margin-top:var(--space-2)">Data last synced: <strong>2 minutes ago</strong> · Next consolidation scheduled: <strong>in 8 minutes</strong></p></div>
+      <div id="contentActivity" style="display:none"><h4>🕐 Recent Activity</h4><p>• Memory Agent consolidated 15 entities (2m ago)<br>• Resume Agent created variant for Google SDE (15m ago)<br>• Scheduler detected new deadline (1h ago)<br>• Job Agent matched 3 new positions (3h ago)</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE NAV PREVIEW -->
+<h2 style="margin-top:var(--space-6)">📱 Mobile Navigation</h2>
+<p>Bottom tab bar for primary destinations. Hamburger menu for full sidebar access.</p>
+<div class="mobile-nav" style="border:1px solid var(--border-light);border-radius:var(--radius-xl);overflow:hidden;max-width:500px">
+  <button class="mobile-nav-item active"><span class="m-icon">📊</span>Dashboard</button>
+  <button class="mobile-nav-item"><span class="m-icon">📁</span>Workspace</button>
+  <button class="mobile-nav-item"><span class="m-icon">🕸️</span>Memory</button>
+  <button class="mobile-nav-item"><span class="m-icon">💬</span>Chat</button>
+  <button class="mobile-nav-item"><span class="m-icon">☰</span>Menu</button>
+</div>
+
+<h2>🧭 Navigation Patterns</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--space-3);margin:var(--space-3)0">
+  <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">Primary Sidebar</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">Left sidebar, collapsible. Controls above show toggle.</p></div>
+  <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">Top Tabs</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">Secondary navigation within each page. Click tabs above.</p></div>
+  <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">Breadcrumbs</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">Hierarchy indicator. Shown in the top bar above.</p></div>
+  <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">Command Palette</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">Cmd+K global search. Click the search field above.</p></div>
+  <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">Deep Links</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">Direct URLs to any resource. Memorable and shareable.</p></div>
+</div>
+
+<div class="footer">Meridian Navigation Preview v1.0 · Companion to <a href="./Navigation.md">Navigation.md</a><br>5 patterns · 5 routes · 3 mobile patterns · 11 nav items</div>
+
+<script>
+  function setTheme(t){const r=t==='system'?(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',r);localStorage.setItem('meridian-theme',t);document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));const btn=Array.from(document.querySelectorAll('.theme-btn')).find(b=>b.getAttribute('onclick')?.includes(`'${t}`));if(btn)btn.classList.add('active')}
+  (function(){const s=localStorage.getItem('meridian-theme');setTheme(s||'system');window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(localStorage.getItem('meridian-theme')==='system')setTheme('system')})})();
+
+  let sidebarOpen = true;
+  function toggleSidebar() {sidebarOpen=!sidebarOpen;document.getElementById('demoSidebar').classList.toggle('collapsed',!sidebarOpen)}
+
+  const pageData = {
+    dashboard:{title:'Dashboard',breadcrumb:'Dashboard',overview:'<h4>📊 Dashboard Overview</h4><p>Welcome to your Meridian dashboard. Here you\'ll find an overview of your memory health, active applications, and AI-powered suggestions.</p><p style="margin-top:var(--space-2)">Your knowledge graph has <strong>342 entities</strong> across <strong>18 categories</strong>. Recent consolidation discovered <strong>15 new connections</strong> between your skills and job requirements.</p>',details:'<h4>📋 Dashboard Details</h4><p>Memory health: <strong>94%</strong> · Knowledge growth: <strong>+12%</strong> this week · Active applications: <strong>12</strong></p><p style="margin-top:var(--space-2)">Data last synced: <strong>2 minutes ago</strong> · Next consolidation: <strong>in 8 minutes</strong></p>',activity:'<h4>🕐 Recent Activity</h4><p>• Memory Agent consolidated 15 entities (2m ago)<br>• Resume Agent created variant for Google SDE (15m ago)<br>• Scheduler detected new deadline (1h ago)</p>'},
+    workspace:{title:'Workspace',breadcrumb:'Workspace',overview:'<h4>📁 Workspace Overview</h4><p>Your workspace contains all your active documents, resumes, and career materials.</p><p style="margin-top:var(--space-2)"><strong>Recent items:</strong> Resume_v3.pdf, Cover_Letter_Google.docx, Skills_Matrix.xlsx</p>',details:'<h4>📋 Workspace Details</h4><p>12 documents · 4 resumes · 3 cover letters · 2 skill matrices</p><p>Last modified: <strong>2 hours ago</strong></p>',activity:'<h4>🕐 Workspace Activity</h4><p>• Resume_v3.pdf uploaded (2h ago)<br>• Skills_Matrix updated (5h ago)<br>• Cover_Letter_Google created (1d ago)</p>'},
+    memory:{title:'Memory Graph',breadcrumb:'Memory Graph',overview:'<h4>🕸️ Memory Graph</h4><p>Your personal knowledge graph contains all entities, relationships, and insights extracted from your connected data sources.</p><p style="margin-top:var(--space-2)"><strong>342 entities</strong> · <strong>1,247 relationships</strong> · <strong>18 categories</strong></p>',details:'<h4>📋 Memory Details</h4><p>Knowledge Graph: 342 entities · Vector Store: 1,024 embeddings · Structured Memory: 89 records</p><p>Last consolidation: <strong>8 minutes ago</strong></p>',activity:'<h4>🕐 Memory Activity</h4><p>• 15 new entities discovered (8m ago)<br>• 42 relationships consolidated (1h ago)<br>• 3 duplicate entities merged (3h ago)</p>'},
+    chat:{title:'Chat',breadcrumb:'Chat',overview:'<h4>💬 Chat</h4><p>Chat with your AI agents. Ask questions about your documents, get career advice, or explore your knowledge graph.</p><p style="margin-top:var(--space-2)"><strong>Active conversations:</strong> Resume review, Job search strategy, Skill gap analysis</p>',details:'<h4>📋 Chat Details</h4><p>3 active conversations · 48 total messages today · Avg response: 1.2s</p><p>Agents available: Memory, Resume, Job, Goal, Scheduler</p>',activity:'<h4>🕐 Chat Activity</h4><p>• You asked: "What skills am I missing for Google SDE?" (5m ago)<br>• Memory Agent responded with analysis (5m ago)<br>• Resume Agent created action item (5m ago)</p>'},
+    settings:{title:'Settings',breadcrumb:'Settings',overview:'<h4>⚙️ Settings</h4><p>Configure your Meridian experience. Manage connections, preferences, and account settings.</p><p style="margin-top:var(--space-2)"><strong>Connected:</strong> Gmail · GitHub · LinkedIn · Local Folder (4)</p>',details:'<h4>📋 Settings Details</h4><p>Profile: Complete · Connections: 4/6 · Notifications: Enabled<br>Theme: System default · Language: English</p>',activity:'<h4>🕐 Settings Activity</h4><p>• LinkedIn connected (2d ago)<br>• Theme changed to system default (5d ago)<br>• Notification preferences updated (1w ago)</p>'},
+    resume:{title:'Resume & Career',breadcrumb:'Resume & Career',overview:'<h4>📄 Resume & Career</h4><p>Manage your resumes, career goals, and professional development.</p><p style="margin-top:var(--space-2)"><strong>3 resume variants</strong> · <strong>2 career goals</strong> · <strong>12 skill entries</strong></p>',details:'<h4>📋 Resume Details</h4><p>Base resume: v3 · Google SDE variant: active · Meta variant: active · Stripe variant: draft</p>',activity:'<h4>🕐 Resume Activity</h4><p>• Google SDE variant optimized (1h ago)<br>• New skill "Distributed Systems" added (3h ago)<br>• Career goal "Get SDE Internship" updated (1d ago)</p>'},
+    jobs:{title:'Jobs & Internships',breadcrumb:'Jobs',overview:'<h4>💼 Jobs & Internships</h4><p>Discover and track job opportunities matched to your skills and preferences.</p><p style="margin-top:var(--space-2)"><strong>12 matches</strong> · <strong>8 saved</strong> · <strong>3 applied</strong> · <strong>1 interview</strong></p>',details:'<h4>📋 Jobs Details</h4><p>New this week: 4 · Viewed: 12 · Applied: 3 · Interviewing: 1 (Google SDE)</p>',activity:'<h4>🕐 Jobs Activity</h4><p>• Google SDE matched (2d ago) · Applied (1d ago) · Interview invite received (today)</p>'},
+    applications:{title:'Applications',breadcrumb:'Applications',overview:'<h4>📋 Applications</h4><p>Track your job applications from submission through interview.</p><p style="margin-top:var(--space-2)"><strong>12 total</strong> · 4 interviewing · 3 OA received · 5 applied</p>',details:'<h4>📋 Applications Details</h4><p>Google SDE: Interviewing · Meta: OA Received · Stripe: Applied · Microsoft: Applied</p>',activity:'<h4>🕐 Applications Activity</h4><p>• Google SDE → Interview stage (2d ago)<br>• Meta → OA Received (3d ago)</p>'},
+    connectors:{title:'Connectors',breadcrumb:'Connectors',overview:'<h4>🔗 Connectors</h4><p>Connect your data sources to enrich your knowledge graph and enable agent capabilities.</p><p style="margin-top:var(--space-2)"><strong>4 connected</strong> · 2 available · Gmail, GitHub, LinkedIn, Local Folder</p>',details:'<h4>📋 Connectors Details</h4><p>Gmail: ✅ Connected (2,847 emails) · GitHub: ✅ Connected (14 repos)<br>LinkedIn: ✅ Connected (382 connections) · Local: ✅ Connected (45 files)</p>',activity:'<h4>🕐 Connectors Activity</h4><p>• Gmail sync completed (2m ago)<br>• GitHub sync completed (15m ago)<br>• New files detected in Local Folder (1h ago)</p>'},
+    history:{title:'History',breadcrumb:'History',overview:'<h4>🕐 History</h4><p>View your complete activity history across all agents and data sources.</p><p style="margin-top:var(--space-2)"><strong>Last 48 hours:</strong> 24 agent actions · 12 memory updates · 6 suggestions</p>',details:'<h4>📋 History Details</h4><p>All agents active · 99.8% uptime · Last error: 72h ago (Gmail reconnect)</p>',activity:'<h4>🕐 Recent History</h4><p>Full timeline available. Filter by agent, action type, or date range.</p>'}
+  };
+
+  let currentPage = 'dashboard';
+  function switchPage(page) {
+    currentPage = page;
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
+    const data = pageData[page];
+    document.getElementById('pageTitle').textContent = data.title;
+    document.getElementById('breadcrumbCurrent').textContent = data.breadcrumb;
+    document.getElementById('contentOverview').innerHTML = data.overview;
+    document.getElementById('contentDetails').innerHTML = data.details;
+    document.getElementById('contentActivity').innerHTML = data.activity;
+    // Reset tabs to Overview
+    document.querySelectorAll('.tab-item').forEach((t,i)=>t.classList.toggle('active',i===0));
+    showTabContent('overview');
+    // Close command palette
+    document.getElementById('cmdOverlay').classList.remove('open');
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('active'));
+    document.querySelector(`.tab-item[onclick*="${name}"]`).classList.add('active');
+    showTabContent(name);
+  }
+  function showTabContent(name) {
+    document.getElementById('contentOverview').style.display = name==='overview'?'block':'none';
+    document.getElementById('contentDetails').style.display = name==='details'?'block':'none';
+    document.getElementById('contentActivity').style.display = name==='activity'?'block':'none';
+  }
+
+  function openCmd() {document.getElementById('cmdOverlay').classList.add('open')}
+  document.addEventListener('click',e=>{if(!e.target.closest('.topbar div:last-child'))document.getElementById('cmdOverlay').classList.remove('open')});
+  function filterCmd(val) {document.querySelectorAll('.cmd-item').forEach((item,i)=>{item.style.display=val&&!item.textContent.toLowerCase().includes(val.toLowerCase())?'none':'';if(i===0)item.classList.add('selected');else item.classList.remove('selected')})}
+  function selectCmd(action) {document.getElementById('cmdInput').value=action;document.getElementById('cmdOverlay').classList.remove('open');}
+</script>
+</body>
+</html>

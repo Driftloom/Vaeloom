@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian — Component Library Preview</title>
+<style>
+  :root{--color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;--color-gray-500:#6b7280;--color-gray-600:#4b5563;--color-gray-700:#374151;--color-gray-800:#1f2937;--color-gray-900:#111827;--color-blue-500:#3b82f6;--color-blue-600:#2563eb;--color-green-500:#10b981;--color-green-600:#059669;--color-amber-500:#f59e0b;--color-red-500:#ef4444;--color-red-600:#dc2626;--font-family-sans:'Inter',system-ui,-apple-system,sans-serif;--font-family-mono:'JetBrains Mono','SF Mono','Fira Code',monospace;--font-size-xs:.75rem;--font-size-sm:.875rem;--font-size-base:1rem;--font-size-lg:1.125rem;--font-size-xl:1.25rem;--font-size-2xl:1.5rem;--font-size-3xl:1.875rem;--font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--space-1:.25rem;--space-2:.5rem;--space-3:.75rem;--space-4:1rem;--space-6:1.5rem;--space-8:2rem;--space-12:3rem;--radius-sm:.25rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;--radius-full:9999px;--shadow-sm:0 1px 2px 0 rgb(0 0 0 / .05);--shadow-md:0 4px 6px -1px rgb(0 0 0 / .1);--shadow-lg:0 10px 15px -3px rgb(0 0 0 / .1);--shadow-xl:0 20px 25px -5px rgb(0 0 0 / .1);--transition-fast:150ms ease;--transition-base:250ms ease;--transition-slow:400ms ease;}
+  :root,[data-theme="light"]{--bg-primary:#fff;--bg-secondary:#f9fafb;--bg-tertiary:#f3f4f6;--bg-elevated:#fff;--bg-inset:#f3f4f6;--text-primary:#111827;--text-secondary:#4b5563;--text-muted:#9ca3af;--text-inverse:#fff;--text-link:#3b82f6;--accent-primary:#3b82f6;--accent-primary-hover:#2563eb;--accent-success:#10b981;--accent-warning:#f59e0b;--accent-error:#ef4444;--accent-error-hover:#dc2626;--border-light:#e5e7eb;--border-medium:#d1d5db;--border-focus:#3b82f6;--shadow-card:0 1px 3px 0 rgb(0 0 0 / .1);--card-bg:var(--bg-secondary);--card-border:var(--border-light);--card-radius:var(--radius-xl);--card-shadow:var(--shadow-card);--card-padding:var(--space-5);--sidebar-width:240px;--sidebar-collapsed-width:64px;--topnav-height:64px;--content-max-width:1200px;--btn-primary-bg:var(--accent-primary);--btn-primary-text:var(--text-inverse);--btn-primary-hover-bg:var(--accent-primary-hover);--btn-primary-radius:var(--radius-md);--btn-primary-padding:var(--space-2)var(--space-4);--input-bg:var(--bg-primary);--input-text:var(--text-primary);--input-border:var(--border-medium);--input-focus-border:var(--border-focus);--input-focus-ring:0 0 0 3px color-mix(in srgb,var(--accent-primary)20%,transparent);--input-radius:var(--radius-md);--input-padding:var(--space-3);--modal-bg:var(--bg-elevated);--modal-radius:var(--radius-xl);--modal-shadow:var(--shadow-xl);--modal-overlay-bg:var(--bg-overlay);--modal-header-border:var(--border-light);--modal-padding:var(--space-5);--nav-item-radius:var(--radius-md);--nav-item-padding:var(--space-2)var(--space-3);--nav-item-hover-bg:var(--bg-tertiary);--nav-item-active-bg:color-mix(in srgb,var(--accent-primary)10%,var(--bg-secondary));--nav-item-active-text:var(--accent-primary);--badge-success-bg:color-mix(in srgb,var(--accent-success)15%,transparent);--badge-success-text:var(--text-success);--badge-warning-bg:color-mix(in srgb,var(--accent-warning)15%,transparent);--badge-warning-text:var(--text-warning);--badge-error-bg:color-mix(in srgb,var(--accent-error)15%,transparent);--badge-error-text:var(--text-error);--badge-radius:var(--radius-full);--badge-padding:var(--space-1)var(--space-2);--table-header-bg:var(--bg-secondary);--table-header-text:var(--text-secondary);--table-row-hover-bg:var(--bg-tertiary);--table-row-border:var(--border-light);--table-cell-padding:var(--space-3)var(--space-4);--toast-bg:var(--bg-elevated);--toast-radius:var(--radius-lg);--toast-shadow:var(--shadow-lg);--toast-padding:var(--space-4)}
+  [data-theme="dark"]{--bg-primary:#111827;--bg-secondary:#1f2937;--bg-tertiary:#374151;--bg-elevated:#1f2937;--bg-inset:#111827;--text-primary:#f9fafb;--text-secondary:#d1d5db;--text-muted:#6b7280;--text-inverse:#111827;--text-link:#60a5fa;--accent-primary:#60a5fa;--accent-primary-hover:#3b82f6;--accent-success:#34d399;--accent-warning:#fbbf24;--accent-error:#f87171;--accent-error-hover:#ef4444;--border-light:#374151;--border-medium:#4b5563;--border-focus:#60a5fa;--shadow-card:0 1px 3px 0 rgb(0 0 0 / .4);--btn-primary-bg:var(--accent-primary);--btn-primary-text:var(--text-inverse);--btn-primary-hover-bg:var(--accent-primary-hover);--input-bg:var(--bg-primary);--input-text:var(--text-primary);--input-border:var(--border-medium);--input-focus-border:var(--border-focus);--input-focus-ring:0 0 0 3px color-mix(in srgb,var(--accent-primary)20%,transparent);--modal-bg:var(--bg-elevated);--modal-shadow:var(--shadow-xl);--modal-overlay-bg:rgba(0,0,0,.7);--modal-header-border:var(--border-light);--nav-item-hover-bg:var(--bg-tertiary);--nav-item-active-bg:color-mix(in srgb,var(--accent-primary)20%,var(--bg-secondary));--nav-item-active-text:var(--accent-primary);--badge-success-bg:color-mix(in srgb,var(--accent-success)15%,transparent);--badge-success-text:var(--text-success);--badge-warning-bg:color-mix(in srgb,var(--accent-warning)15%,transparent);--badge-warning-text:var(--text-warning);--badge-error-bg:color-mix(in srgb,var(--accent-error)15%,transparent);--badge-error-text:var(--text-error);--table-header-bg:var(--bg-secondary);--table-header-text:var(--text-secondary);--table-row-hover-bg:var(--bg-tertiary);--table-row-border:var(--border-light);--toast-bg:var(--bg-elevated);--toast-shadow:var(--shadow-lg)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-family:var(--font-family-sans);background:var(--bg-primary);color:var(--text-primary);transition:background var(--transition-base),color var(--transition-base)}
+  body{max-width:1200px;margin:0 auto;padding:var(--space-8);line-height:1.6}
+  @media(max-width:768px){body{padding:var(--space-4)}}
+  h1{font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);margin-bottom:var(--space-2);letter-spacing:-.02em}
+  h2{font-size:var(--font-size-xl);font-weight:var(--font-weight-semibold);margin:var(--space-8)0 var(--space-4);padding-bottom:var(--space-2);border-bottom:1px solid var(--border-light)}
+  p{color:var(--text-secondary);margin-bottom:var(--space-4)}
+  a{color:var(--text-link);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--font-family-mono);font-size:var(--font-size-sm);background:var(--bg-inset);padding:2px 6px;border-radius:var(--radius-sm)}
+  .subtitle{color:var(--text-muted);font-size:var(--font-size-sm);margin-bottom:var(--space-6)}
+  .theme-toggle-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);padding:var(--space-4)var(--space-6);background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:var(--radius-xl);margin-bottom:var(--space-6);flex-wrap:wrap}
+  .theme-toggle-bar .logo{font-weight:var(--font-weight-bold)}
+  .theme-toggle-bar .hint{font-size:var(--font-size-sm);color:var(--text-muted)}
+  .theme-toggle-group{display:flex;gap:var(--space-2);background:var(--bg-tertiary);padding:var(--space-1);border-radius:var(--radius-lg)}
+  .theme-btn{padding:var(--space-2)var(--space-4);border:none;border-radius:var(--radius-md);font-family:var(--font-family-sans);font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);cursor:pointer;background:transparent;color:var(--text-secondary);transition:all var(--transition-fast)}
+  .theme-btn:hover{color:var(--text-primary)}.theme-btn.active{background:var(--accent-primary);color:var(--text-inverse);box-shadow:var(--shadow-sm)}
+  .stats-bar{display:flex;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-6)}
+  .stat-chip{display:flex;align-items:center;gap:var(--space-2);background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:var(--radius-full);padding:var(--space-2)var(--space-4);font-size:var(--font-size-sm)}
+  .stat-chip strong{font-weight:var(--font-weight-semibold);color:var(--text-primary)}
+  .tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border-light);margin-bottom:var(--space-4)}
+  .tab-btn{padding:var(--space-2)var(--space-5);border:none;background:transparent;color:var(--text-muted);font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);font-family:var(--font-family-sans);cursor:pointer;border-bottom:2px solid transparent;transition:all var(--transition-fast);margin-bottom:-1px}
+  .tab-btn:hover{color:var(--text-primary)}.tab-btn.active{color:var(--accent-primary);border-bottom-color:var(--accent-primary)}
+  .tab-panel{display:none}.tab-panel.active{display:block}
+  .comp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-3)}
+  .comp-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--card-radius);box-shadow:var(--card-shadow);padding:var(--space-4);transition:all var(--transition-fast)}
+  .comp-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+  .comp-card .comp-name{font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--text-primary);margin-bottom:var(--space-1)}
+  .comp-card .comp-desc{font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:var(--space-2)}
+  .comp-card .comp-props{font-size:10px;color:var(--text-muted);font-family:var(--font-family-mono)}
+  .layer-badge{display:inline-block;padding:1px 8px;border-radius:var(--radius-full);font-size:10px;font-weight:600;margin-bottom:var(--space-2)}
+  .layer-1{background:var(--accent-primary);color:var(--text-inverse)}
+  .layer-2{background:var(--accent-success);color:var(--text-inverse)}
+  .layer-3{background:var(--accent-warning);color:var(--text-inverse)}
+  .layer-4{background:#8b5cf6;color:#fff}
+  .layer-5{background:var(--accent-error);color:var(--text-inverse)}
+  .footer{margin-top:var(--space-12);padding-top:var(--space-6);border-top:1px solid var(--border-light);text-align:center;font-size:var(--font-size-sm);color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="theme-toggle-bar"><span class="logo">🧩 Meridian — Component Library Preview</span><span class="hint"><a href="./Component-Library.md">📄 View Source Doc</a></span><div class="theme-toggle-group"><button class="theme-btn active" onclick="setTheme('light')">☀️ Light</button><button class="theme-btn" onclick="setTheme('dark')">🌙 Dark</button><button class="theme-btn" onclick="setTheme('system')">🖥️ System</button></div></div>
+<h1>🧩 Component Library Preview</h1>
+<p class="subtitle">Interactive catalog of all Meridian UI components organized by atomic design layer. <a href="./Design-Tokens-Reference.html">View Design Tokens</a></p>
+<div class="stats-bar"><span class="stat-chip"><strong>12</strong> atoms</span><span class="stat-chip"><strong>8</strong> molecules</span><span class="stat-chip"><strong>6</strong> layouts</span><span class="stat-chip"><strong>6</strong> features</span><span class="stat-chip"><strong>6</strong> pages</span><span class="stat-chip"><strong>4</strong> shared utils</span></div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="selectLayer('primitives')">🧱 Primitives</button>
+  <button class="tab-btn" onclick="selectLayer('molecules')">🔩 Molecules</button>
+  <button class="tab-btn" onclick="selectLayer('layout')">📐 Layout</button>
+  <button class="tab-btn" onclick="selectLayer('features')">⚡ Features</button>
+  <button class="tab-btn" onclick="selectLayer('pages')">📄 Pages</button>
+</div>
+
+<div class="tab-panel active" id="layer-primitives">
+  <p>Smallest UI atoms — button, input, text, icon, avatar, badge, tooltip, spinner, checkbox, radio, select, toggle.</p>
+  <div class="comp-grid">
+    <div class="comp-card"><span class="layer-badge layer-1">Atom</span><div class="comp-name">Button</div><div class="comp-desc">Clickable action element with variants: primary, secondary, danger</div><div class="comp-props">Props: variant, size, disabled, loading, icon</div><div style="margin-top:var(--space-2);display:flex;gap:var(--space-2)"><button style="padding:4px 12px;border-radius:var(--radius-md);background:var(--accent-primary);color:#fff;border:none;font-size:11px;cursor:pointer">Primary</button><button style="padding:4px 12px;border-radius:var(--radius-md);background:transparent;border:1px solid var(--border-medium);color:var(--text-primary);font-size:11px;cursor:pointer">Secondary</button></div></div>
+    <div class="comp-card"><span class="layer-badge layer-1">Atom</span><div class="comp-name">Input</div><div class="comp-desc">Text input field with label, placeholder, error state</div><div class="comp-props">Props: type, placeholder, value, error, disabled</div><div style="margin-top:var(--space-2)"><input placeholder="Type here..." style="width:100%;padding:6px 10px;border-radius:var(--radius-md);border:1px solid var(--border-medium);background:var(--input-bg);color:var(--text-primary);font-size:11px"></div></div>
+    <div class="comp-card"><span class="layer-badge layer-1">Atom</span><div class="comp-name">Badge</div><div class="comp-desc">Status indicator with color variants</div><div class="comp-props">Props: variant (success, warning, error)</div><div style="margin-top:var(--space-2);display:flex;gap:var(--space-2)"><span style="padding:2px 10px;border-radius:var(--radius-full);background:var(--badge-success-bg);color:var(--badge-success-text);font-size:10px">✓ Active</span><span style="padding:2px 10px;border-radius:var(--radius-full);background:var(--badge-warning-bg);color:var(--badge-warning-text);font-size:10px">⚠ Pending</span><span style="padding:2px 10px;border-radius:var(--radius-full);background:var(--badge-error-bg);color:var(--badge-error-text);font-size:10px">✗ Error</span></div></div>
+    <div class="comp-card"><span class="layer-badge layer-1">Atom</span><div class="comp-name">Spinner</div><div class="comp-desc">Loading indicator with size variants</div><div class="comp-props">Props: size (sm, md, lg)</div><div style="margin-top:var(--space-2);display:flex;gap:var(--space-3);align-items:center"><div style="width:16px;height:16px;border:2px solid var(--border-light);border-top-color:var(--accent-primary);border-radius:50%;animation:spin .6s linear infinite"></div><div style="width:24px;height:24px;border:3px solid var(--border-light);border-top-color:var(--accent-primary);border-radius:50%;animation:spin .6s linear infinite"></div></div></div>
+    <div class="comp-card"><span class="layer-badge layer-1">Atom</span><div class="comp-name">Toggle</div><div class="comp-desc">Binary on/off switch</div><div class="comp-props">Props: checked, onChange, disabled</div><div style="margin-top:var(--space-2);display:flex;gap:var(--space-2)"><div style="width:36px;height:20px;background:var(--accent-primary);border-radius:10px;position:relative;cursor:pointer"><div style="position:absolute;top:2px;left:18px;width:16px;height:16px;background:#fff;border-radius:50%"></div></div><div style="width:36px;height:20px;background:var(--border-medium);border-radius:10px;position:relative;cursor:pointer"><div style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%"></div></div></div></div>
+    <div class="comp-card"><span class="layer-badge layer-1">Atom</span><div class="comp-name">Avatar</div><div class="comp-desc">User/circle avatar with fallback initial</div><div class="comp-props">Props: src, alt, size, fallback</div><div style="margin-top:var(--space-2);display:flex;gap:var(--space-2)"><div style="width:32px;height:32px;border-radius:50%;background:var(--accent-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">A</div><div style="width:32px;height:32px;border-radius:50%;background:var(--accent-success);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">J</div><div style="width:32px;height:32px;border-radius:50%;background:var(--accent-warning);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">M</div></div></div>
+  </div>
+</div>
+
+<div class="tab-panel" id="layer-molecules">
+  <p>Compositions of primitives into functional units.</p>
+  <div class="comp-grid">
+    <div class="comp-card"><span class="layer-badge layer-2">Molecule</span><div class="comp-name">Card</div><div class="comp-desc">Header + Body + Footer composition</div><div class="comp-props">Props: title, variant, actions, children</div></div>
+    <div class="comp-card"><span class="layer-badge layer-2">Molecule</span><div class="comp-name">Table</div><div class="comp-desc">Data table with sort, filter, pagination</div><div class="comp-props">Props: columns, data, sortable, pageSize</div></div>
+    <div class="comp-card"><span class="layer-badge layer-2">Molecule</span><div class="comp-name">Modal</div><div class="comp-desc">Overlay dialog with title, content, footer</div><div class="comp-props">Props: isOpen, title, children, onClose</div></div>
+    <div class="comp-card"><span class="layer-badge layer-2">Molecule</span><div class="comp-name">Toast</div><div class="comp-desc">Temporary notification with timer</div><div class="comp-props">Props: message, type, duration, onDismiss</div></div>
+    <div class="comp-card"><span class="layer-badge layer-2">Molecule</span><div class="comp-name">Form</div><div class="comp-desc">Input field + validation + submit</div><div class="comp-props">Props: fields, onSubmit, validate</div></div>
+    <div class="comp-card"><span class="layer-badge layer-2">Molecule</span><div class="comp-name">List</div><div class="comp-desc">Virtualized item list with renderItem</div><div class="comp-props">Props: items, renderItem, virtual</div></div>
+    <div class="comp-card"><span class="layer-badge layer-2">Molecule</span><div class="comp-name">Alert</div><div class="comp-desc">Inline alert with type and action</div><div class="comp-props">Props: type, message, action, onAction</div></div>
+    <div class="comp-card"><span class="layer-badge layer-2">Molecule</span><div class="comp-name">Breadcrumb</div><div class="comp-desc">Path navigation with separators</div><div class="comp-props">Props: items, separator, maxItems</div></div>
+  </div>
+</div>
+
+<div class="tab-panel" id="layer-layout">
+  <p>Layout components that arrange molecules into page structures.</p>
+  <div class="comp-grid">
+    <div class="comp-card"><span class="layer-badge layer-3">Layout</span><div class="comp-name">Page</div><div class="comp-desc">Standard page wrapper with header + actions</div><div class="comp-props">Props: title, actions, children, scrollable</div></div>
+    <div class="comp-card"><span class="layer-badge layer-3">Layout</span><div class="comp-name">Grid</div><div class="comp-desc">Responsive CSS grid with cols + gap</div><div class="comp-props">Props: cols, gap, responsive, children</div></div>
+    <div class="comp-card"><span class="layer-badge layer-3">Layout</span><div class="comp-name">Stack</div><div class="comp-desc">Flex-based stacking layout</div><div class="comp-props">Props: direction, gap, align, wrap</div></div>
+    <div class="comp-card"><span class="layer-badge layer-3">Layout</span><div class="comp-name">Sidebar</div><div class="comp-desc">Collapsible nav sidebar</div><div class="comp-props">Props: items, collapsed, width, onToggle</div></div>
+    <div class="comp-card"><span class="layer-badge layer-3">Layout</span><div class="comp-name">Navbar</div><div class="comp-desc">Top navigation bar with logo + nav + profile</div><div class="comp-props">Props: logo, navItems, profile, actions</div></div>
+    <div class="comp-card"><span class="layer-badge layer-3">Layout</span><div class="comp-name">Tabs</div><div class="comp-desc">Tab list + panel container</div><div class="comp-props">Props: tabs, activeTab, onChange, orientation</div></div>
+  </div>
+</div>
+
+<div class="tab-panel" id="layer-features">
+  <p>Domain-specific components built from layouts and molecules.</p>
+  <div class="comp-grid">
+    <div class="comp-card"><span class="layer-badge layer-4">Feature</span><div class="comp-name">ProposalCard</div><div class="comp-desc">Agent suggestion card with approve/reject</div><div class="comp-props">Props: proposal, onApprove, onReject, source</div></div>
+    <div class="comp-card"><span class="layer-badge layer-4">Feature</span><div class="comp-name">AgentStatus</div><div class="comp-desc">Per-agent health with metrics + controls</div><div class="comp-props">Props: agent, uptime, metrics, actions</div></div>
+    <div class="comp-card"><span class="layer-badge layer-4">Feature</span><div class="comp-name">MemoryNode</div><div class="comp-desc">Knowledge graph entity node</div><div class="comp-props">Props: entity, depth, expanded, onClick</div></div>
+    <div class="comp-card"><span class="layer-badge layer-4">Feature</span><div class="comp-name">Citation</div><div class="comp-desc">Clickable source citation with tooltip</div><div class="comp-props">Props: source, text, index, verified</div></div>
+    <div class="comp-card"><span class="layer-badge layer-4">Feature</span><div class="comp-name">ConnectorCard</div><div class="comp-desc">Data source connector with status and sync</div><div class="comp-props">Props: name, status, lastSync, onConnect</div></div>
+    <div class="comp-card"><span class="layer-badge layer-4">Feature</span><div class="comp-name">Timeline</div><div class="comp-desc">Event timeline with dates and actions</div><div class="comp-props">Props: events, dateFormat, onEventClick</div></div>
+  </div>
+</div>
+
+<div class="tab-panel" id="layer-pages">
+  <p>Full page compositions that assemble features into complete views.</p>
+  <div class="comp-grid">
+    <div class="comp-card"><span class="layer-badge layer-5">Page</span><div class="comp-name">WorkspacePage</div><div class="comp-desc">Main workspace with dashboard + activity feed</div><div class="comp-props">Composed from: Page, Grid, Card, Table, AgentStatus</div></div>
+    <div class="comp-card"><span class="layer-badge layer-5">Page</span><div class="comp-name">MemoryPage</div><div class="comp-desc">Knowledge graph viewer with search + filter</div><div class="comp-props">Composed from: Page, Stack, MemoryNode, Citation, Graph</div></div>
+    <div class="comp-card"><span class="layer-badge layer-5">Page</span><div class="comp-name">ConnectorsPage</div><div class="comp-desc">Manage data source connections</div><div class="comp-props">Composed from: Page, Grid, ConnectorCard, Alert</div></div>
+    <div class="comp-card"><span class="layer-badge layer-5">Page</span><div class="comp-name">SettingsPage</div><div class="comp-desc">User profile, preferences, billing</div><div class="comp-props">Composed from: Page, Tabs, Form, Modal, Toast</div></div>
+    <div class="comp-card"><span class="layer-badge layer-5">Page</span><div class="comp-name">LoginPage</div><div class="comp-desc">OAuth authentication flow</div><div class="comp-props">Composed from: Card, Button, Input, Alert</div></div>
+    <div class="comp-card"><span class="layer-badge layer-5">Page</span><div class="comp-name">OnboardingPage</div><div class="comp-desc">Multi-step setup wizard</div><div class="comp-props">Composed from: Page, Progress, Form, Card, Toast</div></div>
+  </div>
+</div>
+
+<div class="footer">Meridian Component Library v1.0 · Companion to <a href="./Component-Library.md">Component-Library.md</a><br>Atomic design · 5 layers · 38 components · Theme-aware</div>
+
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<script>
+  function setTheme(t){const r=t==='system'?(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',r);localStorage.setItem('meridian-theme',t);document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));const btn=Array.from(document.querySelectorAll('.theme-btn')).find(b=>b.getAttribute('onclick')?.includes(`'${t}`));if(btn)btn.classList.add('active')}
+  (function(){const s=localStorage.getItem('meridian-theme');setTheme(s||'system');window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(localStorage.getItem('meridian-theme')==='system')setTheme('system')})})();
+  function selectLayer(name){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick')?.includes(name)));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));document.getElementById('layer-'+name).classList.add('active')}
+</script>
+</body>
+</html>

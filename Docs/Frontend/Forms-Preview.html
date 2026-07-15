@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian — Forms Preview</title>
+<style>
+  :root{--color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;--color-gray-500:#6b7280;--color-gray-600:#4b5563;--color-gray-700:#374151;--color-gray-800:#1f2937;--color-gray-900:#111827;--color-blue-500:#3b82f6;--color-blue-600:#2563eb;--color-green-500:#10b981;--color-green-600:#059669;--color-amber-500:#f59e0b;--color-red-500:#ef4444;--color-red-600:#dc2626;--font-family-sans:'Inter',system-ui,-apple-system,sans-serif;--font-family-mono:'JetBrains Mono','SF Mono','Fira Code',monospace;--font-size-xs:.75rem;--font-size-sm:.875rem;--font-size-base:1rem;--font-size-lg:1.125rem;--font-size-xl:1.25rem;--font-size-2xl:1.5rem;--font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--space-1:.25rem;--space-2:.5rem;--space-3:.75rem;--space-4:1rem;--space-6:1.5rem;--space-8:2rem;--space-12:3rem;--radius-sm:.25rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;--radius-full:9999px;--shadow-sm:0 1px 2px 0 rgb(0 0 0 / .05);--shadow-md:0 4px 6px -1px rgb(0 0 0 / .1);--shadow-lg:0 10px 15px -3px rgb(0 0 0 / .1);--shadow-xl:0 20px 25px -5px rgb(0 0 0 / .1);--transition-fast:150ms ease;--transition-base:250ms ease;--transition-slow:400ms ease;}
+  :root,[data-theme="light"]{--bg-primary:#fff;--bg-secondary:#f9fafb;--bg-tertiary:#f3f4f6;--bg-elevated:#fff;--bg-inset:#f3f4f6;--text-primary:#111827;--text-secondary:#4b5563;--text-muted:#9ca3af;--text-inverse:#fff;--text-link:#3b82f6;--accent-primary:#3b82f6;--accent-primary-hover:#2563eb;--accent-success:#10b981;--accent-warning:#f59e0b;--accent-error:#ef4444;--accent-error-hover:#dc2626;--border-light:#e5e7eb;--border-medium:#d1d5db;--border-focus:#3b82f6;--border-error:#ef4444;--shadow-card:0 1px 3px 0 rgb(0 0 0 / .1);--card-bg:var(--bg-secondary);--card-border:var(--border-light);--card-radius:var(--radius-xl);--card-shadow:var(--shadow-card);--card-padding:var(--space-5);--input-bg:var(--bg-primary);--input-text:var(--text-primary);--input-border:var(--border-medium);--input-focus-border:var(--border-focus);--input-focus-ring:0 0 0 3px color-mix(in srgb,var(--accent-primary) 20%,transparent);--input-error-border:var(--border-error);--input-radius:var(--radius-md);--input-padding:var(--space-3);--btn-primary-bg:var(--accent-primary);--btn-primary-text:var(--text-inverse);--btn-primary-hover-bg:var(--accent-primary-hover);--btn-primary-radius:var(--radius-md);--btn-primary-padding:var(--space-2)var(--space-4);--btn-secondary-bg:var(--bg-secondary);--btn-secondary-text:var(--text-primary);--btn-secondary-border:var(--border-medium);--btn-secondary-hover-bg:var(--bg-tertiary)}
+  [data-theme="dark"]{--bg-primary:#111827;--bg-secondary:#1f2937;--bg-tertiary:#374151;--bg-elevated:#1f2937;--bg-inset:#111827;--text-primary:#f9fafb;--text-secondary:#d1d5db;--text-muted:#6b7280;--text-inverse:#111827;--text-link:#60a5fa;--accent-primary:#60a5fa;--accent-primary-hover:#3b82f6;--accent-success:#34d399;--accent-warning:#fbbf24;--accent-error:#f87171;--accent-error-hover:#ef4444;--border-light:#374151;--border-medium:#4b5563;--border-focus:#60a5fa;--border-error:#f87171;--shadow-card:0 1px 3px 0 rgb(0 0 0 / .4);--card-bg:var(--bg-secondary);--card-border:var(--border-light);--card-radius:var(--radius-xl);--card-shadow:var(--shadow-card);--card-padding:var(--space-5);--input-bg:var(--bg-primary);--input-text:var(--text-primary);--input-border:var(--border-medium);--input-focus-border:var(--border-focus);--input-focus-ring:0 0 0 3px color-mix(in srgb,var(--accent-primary) 20%,transparent);--input-error-border:var(--border-error);--input-radius:var(--radius-md);--input-padding:var(--space-3);--btn-primary-bg:var(--accent-primary);--btn-primary-text:var(--text-inverse);--btn-primary-hover-bg:var(--accent-primary-hover);--btn-primary-radius:var(--radius-md);--btn-primary-padding:var(--space-2)var(--space-4);--btn-secondary-bg:var(--bg-secondary);--btn-secondary-text:var(--text-primary);--btn-secondary-border:var(--border-medium);--btn-secondary-hover-bg:var(--bg-tertiary)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-family:var(--font-family-sans);background:var(--bg-primary);color:var(--text-primary);transition:background var(--transition-base),color var(--transition-base)}
+  body{max-width:1200px;margin:0 auto;padding:var(--space-8);line-height:1.6}
+  @media(max-width:768px){body{padding:var(--space-4)}}
+  h1{font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);margin-bottom:var(--space-2);letter-spacing:-.02em}
+  h2{font-size:var(--font-size-xl);font-weight:var(--font-weight-semibold);margin:var(--space-8)0 var(--space-4);padding-bottom:var(--space-2);border-bottom:1px solid var(--border-light)}
+  h3{font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);margin:var(--space-6)0 var(--space-3)}
+  p{color:var(--text-secondary);margin-bottom:var(--space-4)}
+  a{color:var(--text-link);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--font-family-mono);font-size:var(--font-size-sm);background:var(--bg-inset);padding:2px 6px;border-radius:var(--radius-sm)}
+  .subtitle{color:var(--text-muted);font-size:var(--font-size-sm);margin-bottom:var(--space-6)}
+  .theme-toggle-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);padding:var(--space-4)var(--space-6);background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:var(--radius-xl);margin-bottom:var(--space-6);flex-wrap:wrap}
+  .theme-toggle-bar .logo{font-weight:var(--font-weight-bold)}
+  .theme-toggle-bar .hint{font-size:var(--font-size-sm);color:var(--text-muted)}
+  .theme-toggle-group{display:flex;gap:var(--space-2);background:var(--bg-tertiary);padding:var(--space-1);border-radius:var(--radius-lg)}
+  .theme-btn{padding:var(--space-2)var(--space-4);border:none;border-radius:var(--radius-md);font-family:var(--font-family-sans);font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);cursor:pointer;background:transparent;color:var(--text-secondary);transition:all var(--transition-fast)}
+  .theme-btn:hover{color:var(--text-primary)}.theme-btn.active{background:var(--accent-primary);color:var(--text-inverse);box-shadow:var(--shadow-sm)}
+  .demo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:var(--space-4);margin:var(--space-4)0}
+  .demo-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--card-radius);box-shadow:var(--card-shadow);padding:var(--card-padding);transition:all var(--transition-base)}
+  .demo-card h4{font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-3);color:var(--text-primary)}
+  .form-group{display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-3)}
+  .form-label{font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);color:var(--text-secondary)}
+  .form-input{background:var(--input-bg);color:var(--input-text);border:1px solid var(--input-border);border-radius:var(--input-radius);padding:var(--input-padding);font-size:var(--font-size-base);font-family:var(--font-family-sans);transition:all var(--transition-fast);width:100%}
+  .form-input:focus{outline:none;border-color:var(--input-focus-border);box-shadow:var(--input-focus-ring)}
+  .form-input.error{border-color:var(--input-error-border)}
+  .form-input.error:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-error) 20%,transparent)}
+  .form-input::placeholder{color:var(--text-muted)}
+  .form-error{color:var(--text-error);font-size:var(--font-size-xs);margin-top:var(--space-1);display:none;align-items:center;gap:var(--space-1)}
+  .form-error.show{display:flex}
+  .form-success{color:var(--accent-success);font-size:var(--font-size-sm);padding:var(--space-3);background:color-mix(in srgb,var(--accent-success) 10%,transparent);border-radius:var(--radius-md);display:none;align-items:center;gap:var(--space-2)}
+  .form-success.show{display:flex}
+  .btn-group{display:flex;gap:var(--space-3);margin:var(--space-3)0;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--btn-primary-padding);border-radius:var(--btn-primary-radius);font-family:var(--font-family-sans);font-weight:var(--font-weight-medium);font-size:var(--font-size-sm);cursor:pointer;border:1px solid transparent;transition:all var(--transition-fast)}
+  .btn-primary{background:var(--btn-primary-bg);color:var(--btn-primary-text)}
+  .btn-primary:hover{background:var(--btn-primary-hover-bg)}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-secondary{background:var(--btn-secondary-bg);color:var(--btn-secondary-text);border-color:var(--btn-secondary-border)}
+  .btn-secondary:hover{background:var(--btn-secondary-hover-bg)}
+  .state-machine{display:flex;gap:2px;align-items:center;flex-wrap:wrap;margin:var(--space-3)0;padding:var(--space-3);background:var(--bg-tertiary);border-radius:var(--radius-lg);font-size:var(--font-size-xs)}
+  .state-node{padding:var(--space-1)var(--space-3);border-radius:var(--radius-full);background:var(--bg-elevated);border:1px solid var(--border-light);color:var(--text-muted);transition:all var(--transition-fast);white-space:nowrap}
+  .state-node.active{background:var(--accent-primary);color:var(--text-inverse);border-color:var(--accent-primary)}
+  .state-node.error-state{background:var(--accent-error);color:var(--text-inverse);border-color:var(--accent-error)}
+  .state-node.success-state{background:var(--accent-success);color:var(--text-inverse);border-color:var(--accent-success)}
+  .state-arrow{color:var(--text-muted);font-size:12px}
+  .wizard-step{padding:var(--space-3);border:1px solid var(--border-light);border-radius:var(--radius-lg);margin:var(--space-3)0;background:var(--bg-elevated)}
+  .wizard-step.active{display:block}
+  .wizard-step.hidden{display:none}
+  .progress-bar{display:flex;gap:0;margin:var(--space-3)0;background:var(--bg-tertiary);border-radius:var(--radius-full);overflow:hidden;height:6px}
+  .progress-step{flex:1;transition:all var(--transition-base)}
+  .progress-step.done{background:var(--accent-success)}
+  .progress-step.active{background:var(--accent-primary)}
+  .progress-step.pending{background:var(--bg-tertiary)}
+  .stats-bar{display:flex;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-6)}
+  .stat-chip{display:flex;align-items:center;gap:var(--space-2);background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:var(--radius-full);padding:var(--space-2)var(--space-4);font-size:var(--font-size-sm)}
+  .stat-chip strong{font-weight:var(--font-weight-semibold);color:var(--text-primary)}
+  .valid-list{list-style:none;padding:0;font-size:var(--font-size-sm)}
+  .valid-list li{padding:var(--space-1)0;color:var(--text-secondary);display:flex;align-items:center;gap:var(--space-2)}
+  .valid-list li::before{content:'•';color:var(--text-muted)}
+  .footer{margin-top:var(--space-12);padding-top:var(--space-6);border-top:1px solid var(--border-light);text-align:center;font-size:var(--font-size-sm);color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="theme-toggle-bar"><span class="logo">✏️ Meridian — Forms Preview</span><span class="hint"><a href="./Forms.md">📄 View Source Doc</a></span><div class="theme-toggle-group"><button class="theme-btn active" onclick="setTheme('light')">☀️ Light</button><button class="theme-btn" onclick="setTheme('dark')">🌙 Dark</button><button class="theme-btn" onclick="setTheme('system')">🖥️ System</button></div></div>
+<h1>✏️ Forms Preview</h1>
+<p class="subtitle">Interactive form demos with inline validation, debounced save, multi-step wizard, and state machine visualization.</p>
+<div class="stats-bar"><span class="stat-chip"><strong>2</strong> libraries</span><span class="stat-chip"><strong>4</strong> patterns</span><span class="stat-chip"><strong>5</strong> validation rules</span><span class="stat-chip"><strong>6</strong> states</span></div>
+
+<div class="demo-grid">
+  <!-- Simple Form with Validation -->
+  <div class="demo-card"><h4>📝 Inline Validation Form</h4><p class="subtitle">Validates on blur + submit. Try submitting with invalid data.</p>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="emailInput" type="email" placeholder="you@example.com" onblur="validateField('email')"><span class="form-error" id="emailError">⚠️ Please enter a valid email address</span></div>
+    <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="nameInput" placeholder="John Doe" onblur="validateField('name')"><span class="form-error" id="nameError">⚠️ Name is required (min 2 characters)</span></div>
+    <div class="form-group"><label class="form-label">URL</label><input class="form-input" id="urlInput" type="url" placeholder="https://linkedin.com/in/..." onblur="validateField('url')"><span class="form-error" id="urlError">⚠️ Please enter a valid URL (https://...)</span></div>
+    <div class="form-group"><label class="form-label">Portfolio (file, max 10MB)</label><input class="form-input" id="fileInput" type="text" placeholder="resume.pdf (simulated)" onblur="validateField('file')"><span class="form-error" id="fileError">⚠️ File must be under 10MB</span></div>
+    <div class="btn-group"><button class="btn btn-primary" onclick="submitForm()">Submit</button><button class="btn btn-secondary" onclick="resetForm()">Reset</button></div>
+    <div class="form-success" id="formSuccess">✅ Form submitted successfully!</div>
+    <div class="state-machine" id="formStateMachine">
+      <span class="state-node active" id="stateIdle">Idle</span><span class="state-arrow">→</span>
+      <span class="state-node" id="stateTyping">Typing</span><span class="state-arrow">→</span>
+      <span class="state-node" id="stateValidating">Validating</span><span class="state-arrow">→</span>
+      <span class="state-node" id="stateValid">Valid</span><span class="state-arrow">→</span>
+      <span class="state-node" id="stateSubmitting">Submitting</span><span class="state-arrow">→</span>
+      <span class="state-node" id="stateDone">Success</span>
+    </div>
+  </div>
+
+  <!-- Multi-step Wizard -->
+  <div class="demo-card"><h4>🔀 Multi-Step Wizard</h4><p class="subtitle">Onboarding flow with 4 steps. Navigate with Next/Back.</p>
+    <div class="progress-bar" id="wizardProgress"><div class="progress-step active" id="ws0"></div><div class="progress-step pending" id="ws1"></div><div class="progress-step pending" id="ws2"></div><div class="progress-step pending" id="ws3"></div></div>
+    <div class="wizard-step active" id="wizardStep0"><h4 style="font-size:var(--font-size-base);margin-bottom:var(--space-2)">Step 1: Profile</h4><div class="form-group"><label class="form-label">Display Name</label><input class="form-input" placeholder="Your name" value="Alex"></div><div class="form-group"><label class="form-label">Role</label><input class="form-input" placeholder="Software Engineer" value="SDE Intern"></div></div>
+    <div class="wizard-step hidden" id="wizardStep1"><h4 style="font-size:var(--font-size-base);margin-bottom:var(--space-2)">Step 2: Connect</h4><div class="form-group"><label class="form-label">LinkedIn URL</label><input class="form-input" placeholder="linkedin.com/in/..." value="linkedin.com/in/alex"></div><div class="form-group"><label class="form-label">GitHub URL</label><input class="form-input" placeholder="github.com/..." value="github.com/alex"></div></div>
+    <div class="wizard-step hidden" id="wizardStep2"><h4 style="font-size:var(--font-size-base);margin-bottom:var(--space-2)">Step 3: Goals</h4><div class="form-group"><label class="form-label">Target Companies</label><input class="form-input" placeholder="Google, Meta, Stripe" value="Google, Meta, Stripe"></div><div class="form-group"><label class="form-label">Start Date</label><input class="form-input" type="date" value="2026-06-01"></div></div>
+    <div class="wizard-step hidden" id="wizardStep3"><h4 style="font-size:var(--font-size-base);margin-bottom:var(--space-2)">Step 4: Confirm</h4><div style="font-size:var(--font-size-sm);padding:var(--space-3);border:1px solid var(--border-light);border-radius:var(--radius-md);margin-bottom:var(--space-2)"><strong>Alex</strong> · SDE Intern<br>LinkedIn + GitHub connected<br>Targeting Google, Meta, Stripe</div></div>
+    <div class="btn-group"><button class="btn btn-secondary" id="wizardBack" onclick="wizardStep(-1)" style="display:none">← Back</button><button class="btn btn-primary" id="wizardNext" onclick="wizardStep(1)">Next →</button><button class="btn btn-primary" id="wizardFinish" onclick="finishWizard()" style="display:none">✓ Finish</button></div>
+    <div class="form-success" id="wizardSuccess">🎉 Onboarding complete! Welcome to Meridian.</div>
+  </div>
+</div>
+
+<div class="footer">Meridian Forms Preview v1.0 · Companion to <a href="./Forms.md">Forms.md</a><br>React Hook Form · Inline validation · Debounced save · Multi-step wizard</div>
+
+<script>
+  function setTheme(t){const r=t==='system'?(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',r);localStorage.setItem('meridian-theme',t);document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));const btn=Array.from(document.querySelectorAll('.theme-btn')).find(b=>b.getAttribute('onclick')?.includes(`'${t}`));if(btn)btn.classList.add('active')}
+  (function(){const s=localStorage.getItem('meridian-theme');setTheme(s||'system');window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(localStorage.getItem('meridian-theme')==='system')setTheme('system')})})();
+
+  let wizardStepCount = 0;
+  function setFormState(state) {
+    const states = ['stateIdle','stateTyping','stateValidating','stateValid','stateSubmitting','stateDone'];
+    states.forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('active','error-state','success-state');}});
+    const idx = states.indexOf(state);
+    if(idx>=0){const el=document.getElementById(state);if(el){if(state==='stateDone')el.classList.add('success-state');else el.classList.add('active');}}
+  }
+
+  function validateField(field) {
+    const val = document.getElementById(field+'Input').value.trim();
+    const error = document.getElementById(field+'Error');
+    if(field==='email'){const ok=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);error.classList.toggle('show',!ok&&val!=='');document.getElementById(field+'Input').classList.toggle('error',!ok&&val!=='');return ok||val==='';}
+    if(field==='name'){const ok=val.length>=2;error.classList.toggle('show',!ok);document.getElementById(field+'Input').classList.toggle('error',!ok);return ok||val==='';}
+    if(field==='url'){const ok=val.startsWith('https://')||val.startsWith('http://');error.classList.toggle('show',!ok&&val!=='');document.getElementById(field+'Input').classList.toggle('error',!ok&&val!=='');return ok||val==='';}
+    if(field==='file'){const ok=val.length<50;error.classList.toggle('show',!ok);document.getElementById(field+'Input').classList.toggle('error',!ok);return ok;}
+    return true;
+  }
+
+  function submitForm() {
+    const fields = ['email','name','url','file'];
+    let allValid = true;
+    fields.forEach(f=>{if(!validateField(f))allValid=false;});
+    if(!allValid){setFormState('stateValidating');document.querySelectorAll('.state-node').forEach(n=>n.classList.remove('active','error-state'));document.getElementById('stateValidating').classList.add('active');setTimeout(()=>{document.getElementById('stateValidating').classList.remove('active');document.getElementById('stateValid').classList.add('active')},800);return;}
+    setFormState('stateSubmitting');
+    setTimeout(()=>{setFormState('stateDone');document.getElementById('formSuccess').classList.add('show')},1200);
+  }
+
+  function resetForm() {
+    ['email','name','url','file'].forEach(f=>{document.getElementById(f+'Input').value='';document.getElementById(f+'Error').classList.remove('show');document.getElementById(f+'Input').classList.remove('error');});
+    document.getElementById('formSuccess').classList.remove('show');
+    setFormState('stateIdle');
+  }
+
+  function wizardStep(dir) {
+    const next = wizardStepCount + dir;
+    if(next<0||next>3)return;
+    document.getElementById('wizardStep'+wizardStepCount).classList.replace('active','hidden');
+    document.getElementById('wizardStep'+next).classList.replace('hidden','active');
+    document.getElementById('ws'+wizardStepCount).classList.replace('active','done');
+    document.getElementById('ws'+next).classList.replace('pending','active');
+    wizardStepCount = next;
+    document.getElementById('wizardBack').style.display = wizardStepCount===0?'none':'inline-flex';
+    document.getElementById('wizardNext').style.display = wizardStepCount===3?'none':'inline-flex';
+    document.getElementById('wizardFinish').style.display = wizardStepCount===3?'inline-flex':'none';
+  }
+
+  function finishWizard() {
+    document.getElementById('wizardSuccess').classList.add('show');
+    document.getElementById('ws3').classList.replace('active','done');
+    document.getElementById('wizardFinish').style.display='none';
+  }
+</script>
+</body>
+</html>
