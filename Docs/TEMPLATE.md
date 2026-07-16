@@ -23,10 +23,11 @@ Every document in the Vaeloom documentation system MUST follow this structure. A
 > **Last Updated:** YYYY-MM-DD
 > **Dependencies:** [comma-separated docs/systems this relies on, or "None"]
 > **Implementation Status:** ðŸ“‹ Spec Only | ðŸ”¨ In Progress | âœ… Shipped
+> **Review Checklist:** Standard
 > **Canonical source:** <!-- Replace with actual path --> `./path/to/source.md`
 ```
 
-The `Status / Owner / Version / Last Updated / Dependencies / Implementation Status`
+The `Status / Owner / Version / Last Updated / Dependencies / Implementation Status / Review Checklist`
 fields are **mandatory** on every document. `Canonical source` is only required
 when a document supersedes or mirrors another.
 

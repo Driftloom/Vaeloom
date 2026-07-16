@@ -13,7 +13,7 @@ This document serves as the index and entry point for all AI system documentatio
 
 ## Goals
 
-- Provide a single navigation entry point for all 18 AI system documentation files in the AI/ directory
+- Provide a single navigation entry point for all 24 AI system documentation files in the AI/ directory
 - Maintain an up-to-date index of agent rosters, memory system architecture, retri eval pipeline, and model routing guides
 - Keep agent count and system status in sync with actual deployment (8 agents MVP, 28 agents Enterprise)
 - Link to conceptual docs as primary references and implementation docs as supplementary sources
@@ -32,7 +32,13 @@ This document serves as the index and entry point for all AI system documentatio
 | Memory System (in depth) | [`/Docs/Vaeloom-Complete-Documentation.md#6-memory-system-in-depth`](../../Docs/Vaeloom-Complete-Documentation.md#6-memory-system-in-depth) | âœ… Excellent |
 | Agentic RAG & Retrieval | [`/Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag) | âœ… Good |
 | AI Gateway & Model Routing | [`/Docs/Engineering/Implementation/09-ai-gateway-model-routing.md`](../../Docs/Engineering/Implementation/09-ai-gateway-model-routing.md) | âœ… Good |
-| Evaluation Framework | [`/Docs/Engineering/Implementation/10-evaluation-framework.md`](../../Docs/Engineering/Implementation/10-evaluation-framework.md) | âœ… Good |
+| Evaluation Framework | [`/Docs/Engineering/Implementation/10-evaluation-framework.md`](../../Docs/Engineering/Implementation/10-evaluation-framework.md) | ✅ Good |
+| Model Benchmarking | [`./Model-Benchmarking.md`](./Model-Benchmarking.md) | 🆕 New |
+| AI Versioning | [`./AI-Versioning.md`](./AI-Versioning.md) | 🆕 New |
+| Prompt Library | [`./Prompt-Library.md`](./Prompt-Library.md) | 🆕 New |
+| Eval Datasets | [`./Eval-Datasets.md`](./Eval-Datasets.md) | 🆕 New |
+| AI Cost Strategy | [`./AI-Cost-Strategy.md`](./AI-Cost-Strategy.md) | 🆕 New |
+| Agent Prompt Specs | [`./Agent-Prompt-Specs.md`](./Agent-Prompt-Specs.md) | 🆕 New |
 
 ## Agent architecture overview
 
