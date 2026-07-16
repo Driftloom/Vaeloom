@@ -20,6 +20,7 @@ This document defines the replication architecture, scale triggers, replica conf
 ## Scope
 
 **In Scope:**
+
 - Streaming WAL-based replication from primary to up to 3 read replicas
 - Application-layer read/write splitting using { readOnly } query flag
 - Scale triggers: read queries > 5,000/sec â†’ add replica, replica CPU > 70% â†’ add another
@@ -28,6 +29,7 @@ This document defines the replication architecture, scale triggers, replica conf
 - Connection pool sizing per replica (API: max 30, Analytics: max 10, Backups: max 5)
 
 **Out of Scope:**
+
 - Synchronous replication for zero-data-loss (future improvement)
 - Automated failover with Patroni or pg_auto_failover (future improvement)
 - Cascading replica topology â€” currently star topology from single primary

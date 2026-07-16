@@ -325,6 +325,7 @@ class TestMemoryAgent:
 ## Scope
 
 **In Scope:**
+
 - Unit tests for individual functions, services, and components
 - Integration tests for API + database service boundaries
 - E2E tests for critical user flows (upload, organize, apply)
@@ -335,6 +336,7 @@ class TestMemoryAgent:
 - Security tests for vulnerability scanning
 
 **Out of Scope:**
+
 - Visual regression testing (manual review process)
 - Manual exploratory testing (ad hoc, not automated)
 - Performance testing in CI (run as separate pre-release stage)

@@ -70,9 +70,11 @@ graph TD
 ```
 
 ## Context
+
 Read all prior files. This is the last MVP phase â€” everything before this has been built and tested locally/in CI; this phase makes it real for actual users.
 
 ## Objective
+
 Containerize every service, stand up staging and production environments on a PaaS (not Kubernetes yet â€” that's an enterprise-scale upgrade), and wire CI/CD to auto-deploy on merge.
 
 ## Requirements
@@ -90,9 +92,11 @@ Containerize every service, stand up staging and production environments on a Pa
 **Rollback:** deployment must support a one-command rollback to the previous known-good build â€” verify this works before considering the phase complete, don't assume it from the platform's marketing.
 
 ## Out of scope
+
 Kubernetes, multi-region deployment, autoscaling policies beyond the PaaS's default, disaster recovery runbooks, chaos engineering (all enterprise phase â€” see `enterprise/16-deployment-infrastructure.md`).
 
 ## Acceptance criteria
+
 - [ ] A merged PR auto-deploys to staging with zero manual steps, and the smoke test suite runs automatically against it.
 - [ ] Production promotion requires an explicit manual approval step â€” no accidental production deploys.
 - [ ] A deliberate rollback (reverting to the prior build) is tested and completes without data loss.
@@ -133,6 +137,7 @@ Kubernetes, multi-region deployment, autoscaling policies beyond the PaaS's defa
 ## Scope
 
 ### In Scope
+
 - Production-optimized Dockerfiles for all four services: web (Next.js), api (NestJS), ai-service (FastAPI), ingestion worker
 - Staging environment auto-deployed from main on every merge, production manually promoted from known-good staging build
 - Managed PaaS (Render, Fly.io, or equivalent) â€” not Kubernetes â€” for operational simplicity at MVP scale
@@ -142,6 +147,7 @@ Kubernetes, multi-region deployment, autoscaling policies beyond the PaaS's defa
 - One-command rollback to previous known-good build, verified before phase completion
 
 ### Out of Scope
+
 - Kubernetes migration for multi-region and complex autoscaling (planned Q2 2027)
 - Disaster recovery runbooks and automated failover testing (planned Q2 2027)
 - Chaos engineering pipeline for resilience validation (planned Q2 2027)

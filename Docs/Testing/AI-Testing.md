@@ -209,6 +209,7 @@ Adversarial testing is a critical component, testing prompt injection, role conf
 ## Scope
 
 ### In Scope
+
 - Golden datasets with minimum 50 hand-labeled examples per agent, versioned alongside prompts
 - Five evaluation types: accuracy, hallucination, consistency, latency, safety
 - Statistical significance targets: classification (500 items, 95%), extraction (100 docs, 95%), generation (50 outputs, 90%), ranking (100 comparisons, 95%)
@@ -217,6 +218,7 @@ Adversarial testing is a critical component, testing prompt injection, role conf
 - CI integration: full eval suite on every prompt change, targeted evals on PRs
 
 ### Out of Scope
+
 - AI-powered golden dataset auto-generation with human validation (future improvement)
 - Continuous eval in production with shadow traffic (future improvement)
 - 25+ eval types including bias, attribution, and completeness (future improvement)

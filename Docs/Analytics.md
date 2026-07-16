@@ -104,7 +104,7 @@ graph LR
     REST --> WS
     REST --> ALERT
     GQL --> PROD
-```
+```text
 
 ## Components
 
@@ -143,13 +143,13 @@ Dashboards are built with a combination of Metabase (internal product analytics)
 
 All event names follow the `object.action.context` pattern using dot notation:
 
-```
+```text
 workspace.create.ui
 agent.run.completed
 document.export.started
 connector.sync.failed
 user.settings.changed
-```
+```text
 
 | Segment | Description | Examples |
 |---------|-------------|----------|
@@ -284,7 +284,7 @@ PARTITION BY toYYYYMM(timestamp)
 ORDER BY (workspace_id, toDate(timestamp), event_name)
 TTL timestamp + INTERVAL 90 DAY DELETE
 SETTINGS index_granularity = 8192;
-```
+```text
 
 ### Materialized View (Daily Aggregation)
 
@@ -302,7 +302,7 @@ AS SELECT
     uniq(session_id) AS unique_sessions
 FROM analytics.events
 GROUP BY workspace_id, day, event_name;
-```
+```text
 
 ## Privacy
 
@@ -447,7 +447,7 @@ ALTER TABLE analytics.events
 
 ALTER TABLE analytics.daily_events
     MODIFY TTL day + INTERVAL 2 YEAR DELETE;
-```
+```text
 
 ## Error Handling
 
@@ -511,9 +511,9 @@ Consumer lag is the primary indicator of pipeline health. Lag is measured as the
 
 Error rate is tracked as a percentage of total events:
 
-```
+```text
 error_rate = events_errored / events_total * 100
-```
+```text
 
 | Severity | Threshold | Action |
 |----------|-----------|--------|
@@ -600,7 +600,7 @@ Users with the `dashboard:admin` scope can create, update, and delete custom das
     }
   ]
 }
-```
+```text
 
 ### Metric Definitions
 
@@ -703,7 +703,7 @@ const stats = await Analytics.query({
   range: { from: '2025-06-01', to: '2025-06-30' },
 });
 console.log(stats.dataPoints);
-```
+```text
 
 ```python
 # Generate an analytics report
@@ -714,13 +714,13 @@ report.add_metric("active_users", aggregate="count", filter="last_30d")
 report.add_metric("documents_processed", aggregate="sum")
 report.add_dimension("department")
 report.run(output_format="csv", path="./report.csv")
-```
+```text
 
 ```bash
 # Analytics via CLI
 Vaeloom analytics query --metric document_count --granularity day --from 2025-06-01 --to 2025-06-30
 Vaeloom analytics export --report workspace_usage --format csv > usage.csv
-```
+```text
 
 ## Future Improvements
 

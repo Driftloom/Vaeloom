@@ -167,6 +167,7 @@ The Developer Guide is the central reference for Vaeloom developers, covering pr
 ## Scope
 
 ### In Scope
+
 - Project navigation (apps, packages, infra directories)
 - Adding new API endpoints (route, validation, service, permissions, tests)
 - Adding new agents (directory, prompt/tools, orchestrator, eval, tests)
@@ -174,6 +175,7 @@ The Developer Guide is the central reference for Vaeloom developers, covering pr
 - Debugging tips for common issues (prompt drift, schema mismatch, permissions, cache)
 
 ### Out of Scope
+
 - Detailed API reference (covered in Backend docs)
 - Agent implementation patterns (covered in AI docs)
 - Connector SDK specifics (covered in Integration Guide)

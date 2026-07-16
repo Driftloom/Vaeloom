@@ -59,9 +59,11 @@ graph TD
 ```
 
 ## Context
+
 Read every prior file â€” this phase hardens what's already built rather than adding new user-facing features. Treat it as a gate before file 16's deployment, not an optional polish pass.
 
 ## Objective
+
 Encryption, real secrets management, and the two data controls every user must have from day one: export everything, delete everything â€” both immediate and verifiable.
 
 ## Requirements
@@ -79,9 +81,11 @@ Encryption, real secrets management, and the two data controls every user must h
 **Audit retention:** `agent_actions` (the audit log) is retained even through a delete-everything action in a minimal, anonymized form sufficient for security investigation â€” decide and document explicitly what's kept vs. purged, don't leave this ambiguous.
 
 ## Out of scope
+
 Full RBAC, SAML/OIDC enterprise SSO, GDPR/SOC2 formal readiness documentation, regional data residency (all enterprise phase â€” see `enterprise/15-security-compliance.md`).
 
 ## Acceptance criteria
+
 - [ ] TLS is enforced on every service-to-service and client-to-service connection, including in the docker-compose dev environment (self-signed is fine locally).
 - [ ] No secret (OAuth client secret, DB credential, connector token) appears in plaintext in any committed file or database column in staging/production configuration.
 - [ ] The delete-everything test passes: a fully-seeded workspace has zero remaining rows/objects across Postgres, AGE, pgvector, and object storage after the action, except the documented minimal audit residue.
@@ -122,6 +126,7 @@ Full RBAC, SAML/OIDC enterprise SSO, GDPR/SOC2 formal readiness documentation, r
 ## Scope
 
 ### In Scope
+
 - Encryption at rest for Postgres and object storage; encryption in transit (TLS) for all service-to-service and client-to-service connections
 - Real secrets manager (replacing .env-only approach) for OAuth client secrets, database credentials, and connector tokens
 - OAuth/SSO provider integration upgrading Phase 01's email/password auth scaffold
@@ -130,6 +135,7 @@ Full RBAC, SAML/OIDC enterprise SSO, GDPR/SOC2 formal readiness documentation, r
 - Documented audit retention policy: minimal anonymized agent_actions records surviving deletion
 
 ### Out of Scope
+
 - Full RBAC with role hierarchy and custom roles (planned Q2 2027)
 - SAML/OIDC enterprise SSO integration (planned Q2 2027)
 - GDPR/SOC2 formal readiness documentation and audit (planned Q2 2027)

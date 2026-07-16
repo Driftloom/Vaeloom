@@ -111,6 +111,7 @@ QA is deliberately conservative: a false flag costs a click; a false pass costs 
 ## Scope
 
 ### In Scope
+
 - Unit tests for all business logic, UI components, and service functions across frontend, API, and AI service
 - Integration tests for service boundaries (APIâ†’DB, APIâ†’AI, APIâ†’Redis, AIâ†’DB, Webâ†’API contract)
 - E2E tests for critical user flows covering the full proposal lifecycle
@@ -120,6 +121,7 @@ QA is deliberately conservative: a false flag costs a click; a false pass costs 
 - Security scanning (SAST, dependency, secret) on every PR
 
 ### Out of Scope
+
 - Visual regression testing (manual review until tool integration)
 - Manual exploratory testing (ad hoc, not automated in CI)
 - Production performance monitoring (covered in Operations docs)

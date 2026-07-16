@@ -197,6 +197,7 @@ AI safety testing is another Vaeloom-specific focus. The penetration test evalua
 ## Scope
 
 ### In Scope
+
 - Automated SAST scanning: ESLint security rules (JS/TS) and Bandit (Python) on every PR
 - Dependency scanning: Dependabot (npm) and Snyk (npm + pip) on a weekly cadence
 - Secret scanning: GitLeaks on every push to detect committed credentials, tokens, keys
@@ -205,6 +206,7 @@ AI safety testing is another Vaeloom-specific focus. The penetration test evalua
 - SAST findings: severity-classified with action (high-severity blocks merge, medium reviewed, low triaged)
 
 ### Out of Scope
+
 - Bug bounty program (future improvement)
 - IAST (Interactive Application Security Testing) integration (future improvement)
 - AI-based exploitability prediction for dependency vulnerabilities (future improvement)

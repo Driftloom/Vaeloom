@@ -73,6 +73,7 @@ graph TD
 ## Scope
 
 ### In Scope
+
 - Project vision and one-liner description
 - Core philosophy statement
 - Document index (complete docs, how-it-works, glossary)
@@ -80,6 +81,7 @@ graph TD
 - Current project status
 
 ### Out of Scope
+
 - Product feature details (covered in Product docs)
 - Enterprise architecture (covered in Enterprise docs)
 - Implementation specifics (covered in Engineering docs)

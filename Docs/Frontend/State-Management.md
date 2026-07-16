@@ -252,6 +252,7 @@ Cache invalidation follows a cascade pattern: when a document is uploaded, the `
 ## Scope
 
 ### In Scope
+
 - TanStack Query for all server state with configurable staleTime per data type (5s for agent status, 30s for documents, 5min for settings)
 - React Context for UI-only state that spans component trees (sidebar collapse, theme preference)
 - React Hook Form for all form state with debounced auto-save
@@ -260,6 +261,7 @@ Cache invalidation follows a cascade pattern: when a document is uploaded, the `
 - Cache invalidation cascade on mutation success
 
 ### Out of Scope
+
 - IndexedDB-backed persistent cache (future improvement)
 - Offline mutation queue with retry (future improvement)
 - Real-time cache invalidation via WebSocket (future improvement)

@@ -32,6 +32,7 @@ The admin panel is critical because it is the single point of operational contro
 ## Scope
 
 ### In Scope
+
 - Admin panel frontend architecture and component tree
 - User management: CRUD, search, filtering, role assignment, MFA enforcement
 - Workspace administration: view/manage, storage quotas, member management, data export/deletion
@@ -44,6 +45,7 @@ The admin panel is critical because it is the single point of operational contro
 - Security controls: admin MFA, IP allowlisting, session timeout, audit logging, separation of duties
 
 ### Out of Scope
+
 - End-user workspace management UI (covered in Workspace documentation)
 - Agent configuration UI (covered in Agent Workflow documentation)
 - Infrastructure-level monitoring dashboards (covered in DevOps documentation)
@@ -116,7 +118,7 @@ graph TD
     class US,WS,AS,AUS,SHS,BS,SS,CMS service
     class PG,TS,OS,CA data
     class EB infra
-```
+```text
 
 > **Diagram:** Admin Panel architecture flows through 5 layers â€” **Frontend** (8 modules) â†’ **Admin API Gateway** (JWT+MFA+IP filtering) â†’ **Admin Services** (8 domain services) â†’ **Data Layer** (PostgreSQL, TimescaleDB, Object Store, Redis Cache) â†’ **Event Bus** for async audit and moderation events. Each service is scoped to a single domain and independently deployable.
 
@@ -160,9 +162,9 @@ The User Management module provides full CRUD operations for platform users.
 
 ### User List API
 
-```
+```text
 GET /api/v1/admin/users?page=1&per_page=50&search=john&status=active&role=member&mfa_status=enabled
-```
+```text
 
 **Response:**
 
@@ -185,7 +187,7 @@ GET /api/v1/admin/users?page=1&per_page=50&search=john&status=active&role=member
   "page": 1,
   "per_page": 50
 }
-```
+```text
 
 ---
 
@@ -219,7 +221,7 @@ The Workspace Admin module provides oversight and management across all tenant w
   "quota_warning_at_pct": 80,
   "quota_enforced": true
 }
-```
+```text
 
 ---
 
@@ -258,7 +260,7 @@ interface AgentPermissionOverride {
   expires_at?: Date;
   reason: string;
 }
-```
+```text
 
 ---
 
@@ -304,11 +306,11 @@ The Audit Log Viewer provides a searchable, filterable interface for investigati
   "new_state": { "status": "suspended" },
   "status": "success"
 }
-```
+```text
 
 ### Export
 
-```
+```text
 POST /api/v1/admin/audit/export
 {
   "filters": {
@@ -319,7 +321,7 @@ POST /api/v1/admin/audit/export
   "format": "csv",
   "include_details": true
 }
-```
+```text
 
 ---
 
@@ -370,7 +372,7 @@ The Usage & Billing module provides financial and consumption oversight for all 
 
 ### Usage Report Sample
 
-```
+```text
 GET /api/v1/admin/billing/usage?workspace_id=ws_xyz&period=2026-06
 
 {
@@ -393,7 +395,7 @@ GET /api/v1/admin/billing/usage?workspace_id=ws_xyz&period=2026-06
   "credits_applied": 50.00,
   "amount_due": 395.70
 }
-```
+```text
 
 ---
 
@@ -419,7 +421,7 @@ Support tools provide customer support engineers with the capabilities needed to
 5. **Termination:** Automatic termination after max duration (30 min) or manual end
 6. **Audit:** Full keylog of all actions taken during impersonation session
 
-```
+```text
 POST /api/v1/admin/support/impersonate
 {
   "target_user_id": "usr_target99",
@@ -427,7 +429,7 @@ POST /api/v1/admin/support/impersonate
   "duration_minutes": 15,
   "mfa_token": "123456"
 }
-```
+```text
 
 ---
 
@@ -462,7 +464,7 @@ The Content Moderation module provides tools to review, action, and manage user-
   "action_taken": null,
   "created_at": "2026-07-13T09:15:00Z"
 }
-```
+```text
 
 ---
 
@@ -605,14 +607,14 @@ Vaeloom admin workspace delete ws_inactive_99 --force
 Vaeloom admin system status
 Vaeloom admin system backup --output ./backups/
 Vaeloom admin system restore --file ./backups/Vaeloom_2025-07-01.sql.gz
-```
+```text
 
 ```bash
 # Admin audit and reporting
 Vaeloom admin audit-log --since 24h --format json
 Vaeloom admin usage-report --workspace ws_abc123 --month 2025-06
 Vaeloom admin security rotate-keys --service api-gateway
-```
+```text
 
 ## Future Improvements
 

@@ -273,6 +273,7 @@ Reliable alerting is essential for maintaining Vaeloom's SLA commitments. Every 
 ## Scope
 
 ### In Scope
+
 - Alert severity definitions: P1 (Critical), P2 (High), P3 (Medium), P4 (Low)
 - Alert rules for availability, performance, error rate, and business health
 - Notification routing to PagerDuty (P1â€“P2) and Slack (P3â€“P4)
@@ -281,6 +282,7 @@ Reliable alerting is essential for maintaining Vaeloom's SLA commitments. Every 
 - Alert rule configuration via Terraform and config files
 
 ### Out of Scope
+
 - Metric collection and monitoring infrastructure (covered in [Monitoring.md](./Monitoring.md))
 - Log-based alerting and log aggregation (covered in [Logging.md](./Logging.md))
 - SLO-based burn rate alerting (planned for future)

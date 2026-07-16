@@ -243,6 +243,7 @@ The maintenance log at the end of this document provides an auditable record of 
 ## Scope
 
 ### In Scope
+
 - Four maintenance types with frequency, duration, and user impact definitions for Vaeloom services: routine updates (weekly, <5 min, no impact), database maintenance (monthly, <30 min, slower queries), major upgrades (quarterly, <1 hour, brief downtime), and emergency (as needed, variable)
 - Scheduled maintenance windows for staging (any time) and production (Sunday 3-5 AM) with notification requirements
 - Weekly task checklist: error budget review, dependency update check, backup integrity verification
@@ -251,6 +252,7 @@ The maintenance log at the end of this document provides an auditable record of 
 - Maintenance log format for recording and auditing all maintenance actions
 
 ### Out of Scope
+
 - Incident response procedures for unplanned outages (covered in Incident Response Plan)
 - Capacity planning growth projections and scaling triggers (covered in Capacity Planning)
 - Database schema migrations and application deployment procedures (covered in Operations Runbook)

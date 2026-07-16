@@ -219,6 +219,7 @@ graph TD
     APIKEY --> SECRETS
     REFRESH --> REDIS
 ```
+
 > **Diagram:** Authentication architecture â€” Web and mobile clients authenticate via Clerk/Auth0 with OAuth; API clients use JWT access tokens. Enterprise layer adds SAML/OIDC SSO and SCIM provisioning. Tokens stored in httpOnly cookies (web), secure storage (mobile), or Secrets Manager (connector tokens). Session metadata cached in Redis for fast lookup.
 
 ---

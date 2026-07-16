@@ -3,13 +3,14 @@
 | Metadata         | Value                                                                |
 |------------------|----------------------------------------------------------------------|
 | **Purpose**      | Root index of the complete Vaeloom documentation system |
-| **Status**       | Enterprise-grade â€” complete |
+| **Status**       | Enterprise-grade — complete |
 | **Owner**        | Documentation Team |
-| **Last Updated** | 2026-07-13 |
+| **Version**      | 2.0 |
+| **Last Updated** | 2026-07-16 |
 
-> **Status:** Enterprise-grade documentation system â€” complete
-> **Total documents:** ~214 | **Last updated:** 2026-07-13
-> **Legacy references:** [`/Docs/`](../Docs/) Â· [`/Documents/`](../Documents/) (archived)
+> **Status:** Enterprise-grade documentation system — complete
+> **Total documents:** 254 | **Last updated:** 2026-07-16
+> **Canonical:** [`Docs/`](.) · **Legacy (deprecated):** [`Documents/`](../Documents/)
 
 ---
 
@@ -17,7 +18,7 @@
 
 Vaeloom is a second brain for a person's education and career: it ingests documents, code, and communications; builds a continuously updated, structured memory; and runs specialized, permission-scoped agents on top of that memory to organize files, maintain a resume, search for and apply to jobs, and track deadlines.
 
-This index is the single entry point into the complete documentation system â€” 214 files across 16 categories covering product, architecture, engineering, AI, security, operations, and more.
+This index is the single entry point into the complete documentation system â€” 254 files across 16 categories covering product, architecture, engineering, AI, security, operations, and more.
 
 ## Goals
 
@@ -29,12 +30,14 @@ This index is the single entry point into the complete documentation system â�
 ## Scope
 
 ### In Scope
+
 - Root-level documentation index and cross-reference
 - MVP spec, architecture, agent workflow, and memory/knowledge graph docs
 - API reference, backend service docs, and architecture ADRs
 - Enterprise paper and documentation site structure
 
 ### Out of Scope
+
 - Detailed implementation guides (in Backend/)
 - Code-level API documentation (auto-generated from code)
 - User-facing product documentation (separate product site)
@@ -42,41 +45,47 @@ This index is the single entry point into the complete documentation system â�
 
 ```mermaid
 graph TD
-    subgraph Product["ðŸ“‹ Product (16 docs)"]
+    subgraph Product["ðŸ“‹ Product (35 docs)"]
         PRD["MVP Spec, Features, Strategy<br/>Roadmap, Personas, Pricing, FAQ"]
     end
-    subgraph Architecture["ðŸ—ï¸ Architecture (16 docs)"]
+    subgraph Architecture["ðŸ—ï¸ Architecture (19 docs)"]
         ARCH["System Design, HLD, LLD, Events<br/>Microservices, Scalability, Caching, DR"]
     end
-    subgraph AI["ðŸ§  AI (18 docs)"]
+    subgraph AI["ðŸ§  AI (24 docs)"]
         AI_D["LLM, Agents, Memory, KG, RAG<br/>Agentic RAG, Prompts, Guardrails"]
     end
-    subgraph Frontend["ðŸŽ¨ Frontend (14 docs)"]
+    subgraph Frontend["ðŸŽ¨ Frontend (17 docs)"]
         FE["Architecture, Design System, Components<br/>Accessibility, Animation, Theme"]
     end
-    subgraph Backend["âš™ï¸ Backend (12 docs)"]
+    subgraph Backend["âš™ï¸ Backend (21 docs)"]
         BE["API, REST, Auth, RBAC, ABAC<br/>Validation, Workers, Cron, Rate Limiting"]
     end
-    subgraph Database["ðŸ—„ï¸ Database (9 docs)"]
+    subgraph Database["ðŸ—„ï¸ Database (10 docs)"]
         DB["Schema, ERD, Indexes, Migrations<br/>Partitioning, Replication, Backups"]
     end
-    subgraph Security["ðŸ”’ Security (11 docs)"]
+    subgraph Security["ðŸ”’ Security (15 docs)"]
         SEC["Threat Model, IAM, Encryption<br/>Secrets, OWASP, GDPR, Compliance"]
     end
-    subgraph DevOps["ðŸ› ï¸ DevOps (10 docs)"]
+    subgraph DevOps["ðŸ› ï¸ DevOps (13 docs)"]
         DO["CI/CD, Docker, K8s, Terraform<br/>Monitoring, Logging, Tracing, Alerting"]
     end
-    subgraph Testing["âœ… Testing (12 docs)"]
+    subgraph Testing["âœ… Testing (13 docs)"]
         TEST["Strategy, Unit, Integration, E2E<br/>Load, AI, Prompt, Security, Coverage"]
     end
-    subgraph Engineering["ðŸ“ Engineering (10 docs)"]
+    subgraph Engineering["ðŸ“ Engineering (29 docs)"]
         ENG["Coding Standards, Git Workflow<br/>Branch Strategy, Code Review"]
     end
     subgraph DevExp["ðŸš€ Developer Experience (9 docs)"]
         DX["Setup, Contributing, Debugging<br/>API Examples, CLI"]
     end
-    subgraph Operations["ðŸ“Š Operations (12 docs)"]
+    subgraph Operations["ðŸ“Š Operations (18 docs)"]
         OPS["Runbooks, Incident Response, SRE<br/>SLA, SLO, Capacity Planning"]
+    end
+    subgraph Enterprise["🏢 Enterprise (10 docs)"]
+        ENTERPRISE["Multi-Tenancy, Billing, Orgs<br/>Admin Portal, Licensing, APIs"]
+    end
+    subgraph Build_Prompts["🔨 Build_Prompts (1 doc)"]
+        BP["Build Order"]
     end
 
     Product --> Architecture
@@ -89,6 +98,8 @@ graph TD
     Backend --> Testing
     DevOps --> Operations
     Engineering --> DevExp
+    Enterprise --> Architecture
+    Build_Prompts --> Engineering
 
     classDef product fill:#e3f2fd,stroke:#1565c0
     classDef arch fill:#e8f5e9,stroke:#2e7d32
@@ -102,6 +113,8 @@ graph TD
     classDef eng fill:#e8eaf6,stroke:#283593
     classDef dx fill:#fce4ec,stroke:#880e4f
     classDef ops fill:#e0f7fa,stroke:#006064
+    classDef enterprise fill:#fce4ec,stroke:#b71c1c
+    classDef bp fill:#f1f8e9,stroke:#558b2f
 
     class PRD product
     class ARCH arch
@@ -115,6 +128,8 @@ graph TD
     class ENG eng
     class DX dx
     class OPS ops
+    class ENTERPRISE enterprise
+    class BP bp
 ```
 
 ---
@@ -123,28 +138,51 @@ graph TD
 
 ```text
 docs/
-â”œâ”€â”€ README.md                     â† You are here
-â”œâ”€â”€ TEMPLATE.md                   â† Enterprise doc template
-â”‚
-â”œâ”€â”€ Project/                      â†’ 1 doc â€” Overview, vision
-â”œâ”€â”€ Product/                      â†’ 15 docs â€” MVP spec, features, strategy
-â”œâ”€â”€ Architecture/                 â†’ 16 docs â€” System design, HLD, LLD, events
-â”œâ”€â”€ AI/                           â†’ 18 docs â€” Agents, memory, RAG, LLM
-â”‚
-â”œâ”€â”€ Frontend/                     â†’ 17 docs â€” Architecture, components, design system, i18n, mobile, accessibility audit
-â”œâ”€â”€ Backend/                      â†’ 15 docs â€” API, auth, validation, workers, GraphQL, Queue
-â”œâ”€â”€ Database/                     â†’ 9 docs â€” Schema, indexes, migrations, backups
-â”œâ”€â”€ Security/                     â†’ 13 docs â€” Threat model, IAM, encryption, GDPR, data retention, pen testing
-â”‚
-â”œâ”€â”€ DevOps/                       â†’ 12 docs â€” CI/CD, Docker, K8s, Terraform, monitoring, SBOM, container signing
-â”œâ”€â”€ Testing/                      â†’ 11 docs â€” Strategy, unit, E2E, AI, load, security
-â”œâ”€â”€ Engineering/                  â†’ 10 docs â€” Standards, git workflow, code review
-â”œâ”€â”€ Developer_Experience/         â†’ 9 docs â€” Setup, contributing, debugging
-â”‚
-â”œâ”€â”€ Operations/                   â†’ 16 docs â€” Runbooks, incident response, SRE, BCP, vendor risk, runbooks
-â”œâ”€â”€ Enterprise/                   â†’ 2 docs â€” Enterprise paper, enterprise architecture
-â””â”€â”€ Build_Prompts/                â†’ 1 doc â€” Build prompt references
+ââââ README.md                     â You are here
+ââââ 00-GAP-ANALYSIS-REPORT.md     â Enterprise gap analysis (2026-07-16)
+ââââ 00-DOCUMENTATION-COMPLETION-REPORT.md â Completion report
+ââââ TEMPLATE.md                   â Enterprise doc template
+ââââ Analytics.md                  â Analytics tracking and metrics
+ââââ Integration-Guide.md         â Third-party integration guide
+ââââ Admin.md                     â Admin operations guide
+â
+ââââ Project/                      â 1 doc â Overview, vision
+ââââ Product/                      â 35 docs â MVP spec, features, strategy, business/user reqs, KPIs
+ââââ Architecture/                 â 19 docs â System design, HLD, LLD, events, C4 model, flows
+ââââ AI/                           â 24 docs â Agents, memory, RAG, LLM, prompts, eval, benchmarking, cost
+â
+ââââ Frontend/                     â 17 docs â Architecture, components, design system, i18n, mobile, accessibility audit
+ââââ Backend/                      â 21 docs â API, auth, validation, workers, service contracts, event catalog
+ââââ Database/                     â 10 docs â Schema, indexes, migrations, backups, data dictionary
+ââââ Security/                     â 15 docs â Threat model, IAM, encryption, GDPR, SOC2, audit policy
+â
+ââââ DevOps/                       â 13 docs â CI/CD, Docker, K8s, Terraform, monitoring, SBOM, container signing
+ââââ Testing/                      â 13 docs â Strategy, unit, E2E, AI, load, security, chaos
+ââââ Engineering/                  â 29 docs â Standards, git workflow, code review, implementation
+ââââ Developer_Experience/         â 9 docs â Setup, contributing, debugging
+â
+ââââ Operations/                   â 18 docs â Runbooks, incident response, SRE, BCP, rollback strategy
+ââââ Enterprise/                   â 10 docs â Multi-tenancy, orgs, billing, licensing, admin, feature flags, marketplace
+ââââ Build_Prompts/                â 1 doc â Build prompt references
 ```
+
+---
+
+## What's New (2026-07-16 Enterprise Completion Pass)
+
+33 new documents were added in the 2026-07-16 enterprise documentation completion pass:
+
+- **Enterprise (8):** Multi-Tenancy, Organizations, Billing, Licensing, Admin-Portal, Feature-Flags, Plugin-Marketplace, Enterprise-APIs
+- **Architecture (3):** C4-Architecture, Event-Flow, Data-Flow
+- **Backend (5):** Service-Contracts, Module-Specs, Event-Catalog, Error-Standards, API-Versioning
+- **AI (6):** Prompt-Library, Agent-Prompt-Specs, Eval-Datasets, Model-Benchmarking, AI-Versioning, AI-Cost-Strategy
+- **Database (1):** Data-Dictionary
+- **Product (6):** Business-Requirements, User-Research, User-Stories, Functional-Requirements, Non-Functional-Requirements, KPIs
+- **Security (2):** SOC2, Audit-Policy
+- **Testing (1):** Chaos-Testing
+- **Operations (1):** Rollback-Strategy
+
+See [`00-GAP-ANALYSIS-REPORT.md`](./00-GAP-ANALYSIS-REPORT.md) for the baseline analysis and [`00-DOCUMENTATION-COMPLETION-REPORT.md`](./00-DOCUMENTATION-COMPLETION-REPORT.md) for the final completion assessment.
 
 ---
 
@@ -152,20 +190,20 @@ docs/
 
 | Category | Docs | Coverage | Status |
 |----------|------|----------|--------|
-| **Product** | 15 | âœ… Complete | Vision, mission, strategy, roadmap, personas, pricing, FAQ |
-| **Architecture** | 16 | âœ… Complete | System design, HLD, LLD, events, microservices, scalability, caching |
-| **Frontend** | 17 | âœ… Complete | Architecture, design system, components, accessibility, animation, i18n, mobile |
-| **Backend** | 15 | âœ… Complete | API, REST, auth, RBAC, ABAC, validation, workers, cron, rate limiting, GraphQL, Queue, Connectors |
-| **AI** | 18 | âœ… Complete | LLM, agents, memory, knowledge graph, RAG, Agentic RAG, prompts, guardrails |
-| **Database** | 9 | âœ… Complete | Schema, ERD, indexes, migrations, partitioning, replication, backups |
-| **Security** | 13 | âœ… Complete | Threat model, IAM, encryption, secrets, OWASP, GDPR, compliance, data retention, pen testing |
-| **DevOps** | 12 | âœ… Complete | CI/CD, Docker, K8s, Terraform, monitoring, logging, tracing, alerting, deployment, SBOM, container signing |
-| **Testing** | 12 | âœ… Complete | Strategy, unit, integration, E2E, load, performance, AI, prompt, security, regression, coverage |
-| **Engineering** | 10 | âœ… Complete | Coding standards, git workflow, branch strategy, code review |
-| **Developer Experience** | 9 | âœ… Complete | Setup, contributing, debugging, API examples, CLI |
-| **Operations** | 16 | âœ… Complete | Runbooks, incident response, SRE, SLA, SLO, capacity planning, BCP, vendor risk, runbooks |
-| **Enterprise** | 2 | âœ… Complete | Enterprise paper, multi-tenant architecture, enterprise architecture |
-| **Build Prompts** | 1 | âœ… Good | Build order reference |
+| **Product** | 35 | ✅ Complete | Vision, mission, strategy, roadmap, personas, pricing, FAQ, business reqs, user research, user stories, FR, NFR, KPIs, feature specs |
+| **Architecture** | 19 | ✅ Complete | System design, HLD, LLD, events, microservices, scalability, caching, **C4 model, event flow, data flow** |
+| **Frontend** | 17 | ✅ Complete | Architecture, design system, components, accessibility, animation, i18n, mobile |
+| **Backend** | 21 | ✅ Complete | API, REST, auth, RBAC, ABAC, validation, workers, **service contracts, module specs, event catalog, error standards, API versioning** |
+| **AI** | 24 | ✅ Complete | LLM, agents, memory, knowledge graph, RAG, **prompt library, agent prompt specs, eval datasets, model benchmarking, AI versioning, AI cost strategy** |
+| **Database** | 10 | ✅ Complete | Schema, ERD, indexes, migrations, partitioning, replication, backups, **data dictionary** |
+| **Security** | 15 | ✅ Complete | Threat model, IAM, encryption, secrets, OWASP, GDPR, compliance, **SOC2, audit policy** |
+| **DevOps** | 13 | ✅ Complete | CI/CD, Docker, K8s, Terraform, monitoring, logging, tracing, alerting, deployment, SBOM, container signing |
+| **Testing** | 13 | ✅ Complete | Strategy, unit, integration, E2E, load, performance, AI, prompt, security, regression, coverage, **chaos testing** |
+| **Engineering** | 29 | ✅ Complete | Coding standards, git workflow, branch strategy, code review, implementation guides |
+| **Developer Experience** | 9 | ✅ Complete | Setup, contributing, debugging, API examples, CLI |
+| **Operations** | 18 | ✅ Complete | Runbooks, incident response, SRE, SLA, SLO, capacity planning, BCP, **rollback strategy** |
+| **Enterprise** | 10 | ✅ Complete | Enterprise architecture, **multi-tenancy, organizations, billing, licensing, admin portal, feature flags, plugin marketplace, enterprise APIs** |
+| **Build Prompts** | 1 | ✅ Good | Build order reference |
 
 ---
 
@@ -177,7 +215,7 @@ docs/
 |----------|------|-------------|
 | Project Overview | [`Project/README.md`](./Project/README.md) | Project-level overview and vision |
 
-### Product (16 docs)
+### Product (35 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -196,8 +234,20 @@ docs/
 | Success Metrics | [`Product/Success-Metrics.md`](./Product/Success-Metrics.md) | Key metrics and targets |
 | Pricing | [`Product/Pricing.md`](./Product/Pricing.md) | Pricing tiers |
 | FAQ | [`Product/FAQ.md`](./Product/FAQ.md) | Frequently asked questions |
+| ATS Scoring | [`Product/Feature-Specs/ATS-Scoring.md`](./Product/Feature-Specs/ATS-Scoring.md) | Resume scoring against job descriptions |
+| Auto-Organization | [`Product/Feature-Specs/Auto-Organization.md`](./Product/Feature-Specs/Auto-Organization.md) | Automatic file and document organization |
+| Chat | [`Product/Feature-Specs/Chat.md`](./Product/Feature-Specs/Chat.md) | Conversational interface |
+| Deadline Detection | [`Product/Feature-Specs/Deadline-Detection.md`](./Product/Feature-Specs/Deadline-Detection.md) | Deadline extraction and tracking |
+| Document Viewer | [`Product/Feature-Specs/Document-Viewer.md`](./Product/Feature-Specs/Document-Viewer.md) | Document rendering and annotation |
+| Global Search | [`Product/Feature-Specs/Global-Search.md`](./Product/Feature-Specs/Global-Search.md) | Cross-document full-text search |
+| Gmail Digest | [`Product/Feature-Specs/Gmail-Digest.md`](./Product/Feature-Specs/Gmail-Digest.md) | Email summarization and digest |
+| Job Search | [`Product/Feature-Specs/Job-Search.md`](./Product/Feature-Specs/Job-Search.md) | Job listing aggregation and search |
+| Learning Roadmap | [`Product/Feature-Specs/Learning-Roadmap.md`](./Product/Feature-Specs/Learning-Roadmap.md) | Skill gap analysis and learning paths |
+| Master Resume | [`Product/Feature-Specs/Master-Resume.md`](./Product/Feature-Specs/Master-Resume.md) | Centralized resume management |
+| Memory Graph | [`Product/Feature-Specs/Memory-Graph.md`](./Product/Feature-Specs/Memory-Graph.md) | Knowledge graph visualization |
+| Tailored Applications | [`Product/Feature-Specs/Tailored-Applications.md`](./Product/Feature-Specs/Tailored-Applications.md) | Customized job applications |
 
-### Architecture (16 docs)
+### Architecture (19 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -240,7 +290,7 @@ docs/
 | Internationalization | [`Frontend/Internationalization.md`](./Frontend/Internationalization.md) | i18n and localization strategy |
 | Mobile Architecture | [`Frontend/Mobile-Architecture.md`](./Frontend/Mobile-Architecture.md) | Companion mobile app architecture |
 
-### Backend (15 docs)
+### Backend (21 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -261,7 +311,7 @@ docs/
 | Connectors | [`Backend/Connectors.md`](./Backend/Connectors.md) | External connector integration |
 | API Reference | [`Backend/API-Reference.md`](./Backend/API-Reference.md) | Complete OpenAPI endpoint reference |
 
-### AI (18 docs)
+### AI (24 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -284,7 +334,7 @@ docs/
 | Safety | [`AI/Safety.md`](./AI/Safety.md) | AI safety mechanisms |
 | Reasoning | [`AI/Reasoning.md`](./AI/Reasoning.md) | Agent reasoning strategies |
 
-### Database (9 docs)
+### Database (10 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -298,7 +348,7 @@ docs/
 | Backups | [`Database/Backups.md`](./Database/Backups.md) | Backup and restore |
 | Optimization | [`Database/Optimization.md`](./Database/Optimization.md) | Query and pool optimization |
 
-### Security (11 docs)
+### Security (15 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -316,7 +366,7 @@ docs/
 | Data Retention Policy | [`Security/Data-Retention-Policy.md`](./Security/Data-Retention-Policy.md) | Data retention schedules |
 | Penetration Test Procedure | [`Security/Penetration-Test-Procedure.md`](./Security/Penetration-Test-Procedure.md) | Penetration testing methodology |
 
-### DevOps (12 docs)
+### DevOps (13 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -332,8 +382,9 @@ docs/
 | Alerting | [`DevOps/Alerting.md`](./DevOps/Alerting.md) | Alerting rules |
 | SBOM Policy | [`DevOps/SBOM-Policy.md`](./DevOps/SBOM-Policy.md) | Software bill of materials |
 | Container Signing | [`DevOps/Container-Signing.md`](./DevOps/Container-Signing.md) | Image signing and verification |
+| Configuration Management | [`DevOps/Configuration-Management.md`](./DevOps/Configuration-Management.md) | Infrastructure configuration management |
 
-### Testing (11 docs)
+### Testing (13 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -350,7 +401,7 @@ docs/
 | Regression Testing | [`Testing/Regression-Testing.md`](./Testing/Regression-Testing.md) | Regression test process |
 | Coverage | [`Testing/Coverage.md`](./Testing/Coverage.md) | Coverage targets |
 
-### Engineering (10 docs)
+### Engineering (29 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -380,7 +431,7 @@ docs/
 | API Examples | [`Developer_Experience/API-Examples.md`](./Developer_Experience/API-Examples.md) | Common API calls |
 | Debugging | [`Developer_Experience/Debugging.md`](./Developer_Experience/Debugging.md) | Debugging guide |
 
-### Operations (16 docs)
+### Operations (19 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
@@ -393,6 +444,7 @@ docs/
 | SLI | [`Operations/SLI.md`](./Operations/SLI.md) | Service Level Indicators |
 | Capacity Planning | [`Operations/Capacity-Planning.md`](./Operations/Capacity-Planning.md) | Growth projections |
 | Cost Optimization | [`Operations/Cost-Optimization.md`](./Operations/Cost-Optimization.md) | AI and infra cost strategy |
+| Admin Guide | [`Admin.md`](./Admin.md) | Admin operations guide |
 | Observability | [`Operations/Observability.md`](./Operations/Observability.md) | Three pillars of observability |
 | Support | [`Operations/Support.md`](./Operations/Support.md) | Support tiers and processes |
 | Maintenance | [`Operations/Maintenance.md`](./Operations/Maintenance.md) | Maintenance procedures |
@@ -402,12 +454,25 @@ docs/
 | AI Service Outage Runbook | [`Operations/Runbooks/AI-Service-Outage.md`](./Operations/Runbooks/AI-Service-Outage.md) | AI service outage response |
 | Cache Failure Runbook | [`Operations/Runbooks/Cache-Failure.md`](./Operations/Runbooks/Cache-Failure.md) | Redis cache failure response |
 
-### Enterprise & Build Prompts (4 docs)
+### Enterprise (10 docs)
 
 | Document | Path | Description |
 |----------|------|-------------|
 | Enterprise Overview | [`Enterprise/README.md`](./Enterprise/README.md) | Enterprise category index |
 | Enterprise Architecture | [`Enterprise/Enterprise-Architecture.md`](./Enterprise/Enterprise-Architecture.md) | Multi-tenant architecture |
+| Multi-Tenancy | [`Enterprise/Multi-Tenancy.md`](./Enterprise/Multi-Tenancy.md) | Multi-tenant data isolation |
+| Organizations | [`Enterprise/Organizations.md`](./Enterprise/Organizations.md) | Organization management |
+| Billing | [`Enterprise/Billing.md`](./Enterprise/Billing.md) | Billing and invoicing |
+| Licensing | [`Enterprise/Licensing.md`](./Enterprise/Licensing.md) | Licensing model |
+| Admin Portal | [`Enterprise/Admin-Portal.md`](./Enterprise/Admin-Portal.md) | Administration interface |
+| Feature Flags | [`Enterprise/Feature-Flags.md`](./Enterprise/Feature-Flags.md) | Feature flag system |
+| Plugin Marketplace | [`Enterprise/Plugin-Marketplace.md`](./Enterprise/Plugin-Marketplace.md) | Plugin ecosystem |
+| Enterprise APIs | [`Enterprise/Enterprise-APIs.md`](./Enterprise/Enterprise-APIs.md) | Enterprise-grade API surface |
+
+### Build_Prompts (1 doc)
+
+| Document | Path | Description |
+|----------|------|-------------|
 | Build Prompts Reference | [`Build_Prompts/README.md`](./Build_Prompts/README.md) | Build prompt index |
 
 ### Legacy Documents (in `/docs/` root)
@@ -427,8 +492,12 @@ These are copied from the original `/Docs/` folder for convenience. The canonica
 | Documentation Site | [`Vaeloom-Documentation-Site.md`](./Vaeloom-Documentation-Site.md) | Alternative formatting |
 | How It Works Visual | [`Vaeloom-How-It-Works-Visual.md`](./Vaeloom-How-It-Works-Visual.md) | Visual walkthrough |
 | Audit Report | [`AUDIT-REPORT.md`](./AUDIT-REPORT.md) | Documentation quality audit |
+| Analytics | [`Analytics.md`](./Analytics.md) | Analytics tracking and metrics |
+| Integration Guide | [`Integration-Guide.md`](./Integration-Guide.md) | Third-party integration guide |
+| Admin Guide | [`Admin.md`](./Admin.md) | Admin operations guide |
+| SDK Documentation | [`SDK-Documentation.md`](./SDK-Documentation.md) | SDK architecture and usage |
 
-### Implementation Files (16 docs)
+### Implementation Files (17 docs)
 
 Located in [`Engineering/Implementation/`](./Engineering/Implementation/). These are the build-order prompts for coding agents.
 
@@ -451,6 +520,7 @@ Located in [`Engineering/Implementation/`](./Engineering/Implementation/). These
 | 14 | [Frontend](./Engineering/Implementation/14-frontend-workspace.md) | Next.js frontend |
 | 15 | [Security](./Engineering/Implementation/15-security-compliance.md) | Encryption, secrets |
 | 16 | [Deployment](./Engineering/Implementation/16-deployment-infrastructure.md) | Containers, CI/CD |
+| 17 | [Agent Orchestration at Scale](./Engineering/Implementation/17-agent-orchestration-at-scale.md) | Multi-agent coordination and scaling |
 
 ---
 

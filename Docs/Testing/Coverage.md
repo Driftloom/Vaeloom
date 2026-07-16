@@ -220,6 +220,7 @@ Coverage is monitored as a trend over time, not a static snapshot. Quarterly gap
 ## Scope
 
 ### In Scope
+
 - Per-module coverage targets: apps/web (80% line, 70% branch), apps/api (85-90% line, 75-80% branch), ai-service (85-90% line, 75-80% branch)
 - Jest + Istanbul for TypeScript/JavaScript coverage measurement
 - pytest-cov for Python coverage measurement
@@ -228,6 +229,7 @@ Coverage is monitored as a trend over time, not a static snapshot. Quarterly gap
 - Quarterly coverage gap analysis with automated uncovered-line reporting
 
 ### Out of Scope
+
 - Mutation testing integration (Stryker) for test quality measurement (future improvement)
 - Test Impact Analysis for selective test execution (future improvement)
 - Automatic test generation for uncovered code paths (future improvement)

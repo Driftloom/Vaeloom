@@ -1,4 +1,5 @@
 ﻿## Header
+>
 > **Purpose:** Detailed specification for In-App Document Viewer
 > **Status:** ðŸ†• New
 > **Owner:** Product Team
@@ -49,6 +50,7 @@ The chat sidebar is the bridge between document reading and the agent system. As
 | `documents` (annotations) | Annotations stored as JSONB metadata on document record | Highlights, notes, bookmarks |
 
 Annotation schema (stored on `documents` record as `annotations` JSONB):
+
 ```json
 {
   "highlights": [

@@ -256,6 +256,7 @@ For mobile users, navigation switches to a bottom tab bar with the four primary 
 ## Scope
 
 ### In Scope
+
 - Primary sidebar with 11 navigable routes, collapsible sections, and role-based item visibility
 - Breadcrumb trail for multi-level content pages (Workspace, Settings)
 - Command palette (Cmd+K) with Fuse.js fuzzy search across pages, documents, agents, and recent items
@@ -263,6 +264,7 @@ For mobile users, navigation switches to a bottom tab bar with the four primary 
 - Responsive navigation: persistent sidebar (desktop), hamburger menu (tablet), bottom tab bar (mobile)
 
 ### Out of Scope
+
 - Predictive route prefetching based on ML user behavior model (future improvement)
 - Customizable sidebar sections per workspace (future improvement)
 - Voice navigation for hands-free agent interaction (future improvement)

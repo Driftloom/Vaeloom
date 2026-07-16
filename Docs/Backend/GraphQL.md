@@ -202,6 +202,7 @@ sequenceDiagram
     GW->>GW: Aggregate responses
     GW-->>C: Dashboard { documents, memorySummary, agents }
 ```
+
 > **Diagram:** GraphQL gateway delegates to REST services â€” Dashboard query fans out to 3 REST endpoints (documents, memory, agents), aggregates results, and returns a single response. JWT auth and query complexity are checked at the gateway level.
 
 ---

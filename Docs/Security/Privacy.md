@@ -403,6 +403,7 @@ Enterprise-grade privacy requires more than regulatory compliance â€” it re
 ## Scope
 
 ### In Scope
+
 - Data classification: user profile, user content, system metadata with distinct policies
 - Data flow boundaries: what data crosses service boundaries (API â†’ AI service, API â†’ storage)
 - User data rights: access, export (JSON/CSV), correction, deletion
@@ -411,6 +412,7 @@ Enterprise-grade privacy requires more than regulatory compliance â€” it re
 - Privacy review process for new features
 
 ### Out of Scope
+
 - GDPR-specific compliance requirements (covered in [GDPR.md](./GDPR.md))
 - Data Retention Schedule with specific timelines (covered in [Data-Retention-Policy.md](./Data-Retention-Policy.md))
 - Third-party data processing agreements (covered in vendor onboarding process)

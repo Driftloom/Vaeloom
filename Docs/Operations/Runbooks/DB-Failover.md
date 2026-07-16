@@ -330,6 +330,7 @@ aws rds create-db-instance-read-replica \
 ## Scope
 
 ### In Scope
+
 - Automated detection of primary database failure through CloudWatch alarms (replica lag > 30s), PgBouncer connection health checks, application-level write failure monitoring, and RDS instance degradation events
 - Automated failover procedure triggered by three consecutive health check failures: Lambda promotes read replica, updates Route53 health check alias, pushes new connection string to Secrets Manager
 - Manual failover procedure with step-by-step commands: verify primary failure via pg_isready, check WAL position on replica, promote via AWS CLI, update connection strings, verify reads and writes
@@ -338,6 +339,7 @@ aws rds create-db-instance-read-replica \
 - Error handling: replica lag exceeding 30s at failover time, promote command failure, connection pool drain issues, and split-brain detection
 
 ### Out of Scope
+
 - Application-level connection pooling configuration beyond PgBouncer reload procedures (covered in Operations Runbook)
 - General incident response workflows and post-mortem processes (covered in Incident Response Plan)
 - Business continuity planning for multi-region and multi-cloud database strategies (covered in Business Continuity Plan)
@@ -345,6 +347,7 @@ aws rds create-db-instance-read-replica \
 - Active-active multi-region PostgreSQL configuration (future improvement)
 
 ---
+
 ## Examples
 
 ### Replication Status Check (CLI)

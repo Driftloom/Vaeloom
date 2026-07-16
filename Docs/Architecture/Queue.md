@@ -313,7 +313,7 @@ Jobs that fail after max retries (3 attempts) go to a dead letter queue for manu
 | Queue depth per queue | > 1000 pending jobs | Warning | Queue Overview |
 | Job age (oldest pending) | > 15 min | Critical | Queue Latency |
 | Failure rate per queue | > 10% of jobs | Critical | Queue Health |
-| Worker saturation | > 90% busy for 5 min | Warning | Worker Pool |
+| Worker saturation | > 90% busy for 5 min | Critical | Worker Pool |
 | Dead letter count | > 10 per day | Warning | Dead Letter Queue |
 
 ## Configuration

@@ -24,6 +24,7 @@ This paper assumes the MVP described in the companion spec has shipped and prove
 ## Scope
 
 ### In Scope
+
 - Full 28-agent architecture expanding from MVP's 8 agents
 - Complete enterprise memory taxonomy (22 types with lifecycle management)
 - Multi-tenant RBAC, permission engine, consent model, and audit logging
@@ -31,6 +32,7 @@ This paper assumes the MVP described in the companion spec has shipped and prove
 - Migration path from MVP to enterprise
 
 ### Out of Scope
+
 - MVP-level implementation details (covered in companion MVP spec)
 - Pricing and business model specifics (will be informed by MVP data)
 - Full admin console wireframes and UX flows

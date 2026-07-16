@@ -215,6 +215,7 @@ Visual regression testing via Playwright screenshot comparison catches unintende
 ## Scope
 
 ### In Scope
+
 - Five regression triggers: bug fix, feature addition, dependency update, prompt change, model provider change
 - Selective regression test execution based on change impact analysis
 - Golden dataset regression for all AI agent prompts on every prompt change
@@ -223,6 +224,7 @@ Visual regression testing via Playwright screenshot comparison catches unintende
 - Test impact analysis to minimize per-PR regression test runtime
 
 ### Out of Scope
+
 - AI-driven visual regression with semantic change understanding (future improvement)
 - Dynamic impact analysis using production coverage traces (future improvement)
 - Continuous regression with traffic shadowing (future improvement)

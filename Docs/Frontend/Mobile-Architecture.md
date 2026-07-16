@@ -262,6 +262,7 @@ sequenceDiagram
 ## Scope
 
 ### In Scope
+
 - React Native companion app with 5 screens: Dashboard, Workspace, Chat, Notifications, Quick Upload
 - Shared TypeScript types, GraphQL fragments, design tokens, and business logic with web monorepo
 - Offline-first reads via WatermelonDB with SQLCipher encryption and background sync
@@ -269,6 +270,7 @@ sequenceDiagram
 - Biometric authentication (Face ID / Fingerprint) as secondary factor for local session unlock
 
 ### Out of Scope
+
 - Full web parity â€” mobile is a companion app for on-the-go access, not a complete replacement
 - Real-time collaborative editing on mobile (future improvement)
 - Apple Watch companion app (future improvement)

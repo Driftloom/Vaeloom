@@ -163,6 +163,7 @@ The CLI Tools document catalogs all command-line interfaces available for Vaeloo
 ## Scope
 
 ### In Scope
+
 - Current CLI tools (npm, pytest, uvicorn)
 - Planned Vaeloom CLI features
 - Scripts directory conventions and usage
@@ -170,6 +171,7 @@ The CLI Tools document catalogs all command-line interfaces available for Vaeloo
 - Environment-specific command patterns
 
 ### Out of Scope
+
 - CI/CD pipeline commands (covered in DevOps documentation)
 - IDE-specific debugger configurations
 - Database migration commands in detail (covered in Database docs)

@@ -60,14 +60,17 @@ graph TD
 ```
 
 ## Context
+
 Read `05-agent-harness-orchestration.md` first. Every agent's "Act"/"Plan" phase eventually calls a model — this phase centralizes that call so it's governed in one place instead of scattered `fetch()` calls to a provider.
 
 ## Objective
+
 Build a thin AI gateway sitting between every agent and the underlying model provider: one place for auth, routing, rate limits, caching, and logging — the point that makes "the model got smarter" or "we switched providers" a config change, not a refactor.
 
 ## Requirements
 
 **Gateway module (`apps/ai-service/gateway/`):**
+
 - Single function every agent calls instead of hitting a provider SDK directly: `complete(agent_name: str, messages: list, tools: list[Tool] | None, config: ModelConfig) -> ModelResponse`.
 - Per-agent model configuration (`gateway/config.py`): which model an agent uses by default, is not hardcoded inside the agent — it's declared config, swappable without touching agent logic. For MVP, all agents route to a single provider (Anthropic Claude API) with per-agent model tier (e.g. a lighter/faster model for classification-heavy agents like Gmail Agent, a stronger model for reasoning-heavy agents like Job Search Agent).
 - **Fallback chain:** if the configured model/provider call fails or times out, retry once against a configured fallback model before surfacing an error to the agent — implement this now even with only one provider, so adding a second provider later is additive.
@@ -82,9 +85,11 @@ Build a thin AI gateway sitting between every agent and the underlying model pro
 **Rate limiting:** per-workspace request rate limiting at the gateway level, so one workspace's heavy usage (e.g. a large batch re-ingestion) can't starve another workspace's interactive requests.
 
 ## Out of scope
+
 Multi-provider routing beyond the fallback chain (OpenAI/Gemini/local models as full alternatives is enterprise phase), dynamic cost-based routing logic, semantic/model-response caching beyond prompt caching.
 
 ## Acceptance criteria
+
 - [ ] Changing an agent's configured model tier requires editing `gateway/config.py` only — zero changes to any agent's own code.
 - [ ] A forced failure of the primary model call in a test correctly triggers the fallback model and still returns a valid response.
 - [ ] Every `complete()` call produces a token-usage log entry queryable by `agent_name` and `workspace_id`.
@@ -127,6 +132,7 @@ Multi-provider routing beyond the fallback chain (OpenAI/Gemini/local models as 
 ## Scope
 
 ### In Scope
+
 - Single `complete()` gateway function called by every agent instead of direct provider SDK invocations
 - Per-agent model tier configuration with declarative fallback chains
 - Centralized credential management — gateway is the only component holding provider API keys
@@ -136,6 +142,7 @@ Multi-provider routing beyond the fallback chain (OpenAI/Gemini/local models as 
 - Soft per-workspace budget alerts (warning only, no throttling)
 
 ### Out of Scope
+
 - Multi-provider routing beyond fallback chain (OpenAI, Gemini, local models as full alternatives — enterprise)
 - Dynamic cost-based routing (cheapest adequate model per request — planned Q2 2027)
 - Semantic/model-response caching beyond prompt caching (planned Q1 2027)

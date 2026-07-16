@@ -219,6 +219,7 @@ sequenceDiagram
     GW->>AL: Log decision (allow, subject, resource, action, context)
     GW-->>C: 200 OK + result
 ```
+
 > **Diagram:** ABAC sequence â€” API Gateway delegates evaluation to Permission Engine, which aggregates attributes from Auth Provider and Resource Service, evaluates policies, and logs every decision to the audit log.
 
 ---

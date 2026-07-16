@@ -258,6 +258,7 @@ Validation is a first-class concern, not an afterthought. Every field type has s
 ## Scope
 
 ### In Scope
+
 - React Hook Form for complex forms (resume editor, settings, connector configuration)
 - Native HTML forms for simple forms (search, filters, quick actions)
 - Inline validation on blur and on submit for all form fields
@@ -267,6 +268,7 @@ Validation is a first-class concern, not an afterthought. Every field type has s
 - Field-level validation rules: email, URL, date, file upload, text
 
 ### Out of Scope
+
 - Offline form persistence with Service Worker (future improvement)
 - AI-assisted form filling and auto-population (future improvement)
 - Drag-and-drop form builder for admin configurations (future improvement)

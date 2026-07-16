@@ -389,6 +389,7 @@ export default [
 ## Scope
 
 ### In Scope
+
 - TypeScript standards (strict mode, named exports, branded types, discriminated unions, async/await)
 - Python standards (mypy strict, type hints, dataclasses, custom exceptions, async I/O)
 - Shared conventions across both languages (line length, indentation, file naming, class/function naming)
@@ -397,6 +398,7 @@ export default [
 - Good/bad pattern examples for both languages with specific anti-patterns to avoid
 
 ### Out of Scope
+
 - Pre-commit hooks for lint + type checking (planned Q3 2026)
 - AI-assisted automated code review for style compliance (planned Q1 2027)
 - Shared ESLint/Ruff config published as npm/PyPI packages (planned Q4 2026)

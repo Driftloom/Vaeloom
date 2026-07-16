@@ -210,6 +210,7 @@ The conventions are language-aware (camelCase for TypeScript, snake_case for Pyt
 ## Scope
 
 ### In Scope
+
 - General naming rules: descriptive names, no abbreviations, consistent terminology, no Hungarian notation
 - Language-specific conventions: TypeScript (camelCase, PascalCase, kebab-case), Python (snake_case, PascalCase), SQL/CSS
 - Context-specific conventions: API endpoints (kebab-case plural), database (snake_case), GraphQL (camelCase), env vars (UPPER_SNAKE), git branches (kebab-case), Docker images (kebab-case)
@@ -217,6 +218,7 @@ The conventions are language-aware (camelCase for TypeScript, snake_case for Pyt
 - Workflows for creating new components, endpoints, agents, env vars, and migrations
 
 ### Out of Scope
+
 - Unified convention linter for all languages using megalinter (planned Q4 2026)
 - Pre-commit hook for file naming validation (planned Q3 2026)
 - IDE extension for naming convention suggestions (planned Q1 2027)

@@ -215,6 +215,7 @@ Every engineer working on the Vaeloom monorepo follows this workflow. It integra
 ## Scope
 
 ### In Scope
+
 - Branch strategy: main (production), develop (integration), feature, fix, release, hotfix branches
 - 7-step development workflow: branch, commit, push, PR, CI, merge, promote
 - Commit convention: Conventional Commits with type, scope, description, and optional body
@@ -223,6 +224,7 @@ Every engineer working on the Vaeloom monorepo follows this workflow. It integra
 - Common mistakes and best practices for daily Git operations
 
 ### Out of Scope
+
 - Auto-merge for approved small PRs (planned Q3 2026)
 - Automated hotfix backport CI job (planned Q4 2026)
 - Merge queue with batch processing (planned Q1 2027)

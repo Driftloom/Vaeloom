@@ -204,6 +204,7 @@ graph TD
 ## Scope
 
 ### In Scope
+
 - CI/CD pipeline definitions and best practices (GitHub Actions)
 - Container build, signing, and deployment standards (Docker, Cosign)
 - Kubernetes cluster architecture and service deployment manifests
@@ -214,6 +215,7 @@ graph TD
 - Configuration management: schema registry, env hierarchy, feature flags, secret management
 
 ### Out of Scope
+
 - Application-level business logic and service architecture (covered in `Architecture/`)
 - Application performance tuning and optimization (covered in `Engineering/`)
 - User-facing feature deployment and release management (covered in `Engineering/`)

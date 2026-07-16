@@ -229,6 +229,7 @@ Contract tests (Pact) between the web frontend and API serve as an early warning
 ## Scope
 
 ### In Scope
+
 - Five integration scenarios: APIâ†’DB, APIâ†’AI Service, APIâ†’Redis, AIâ†’DB, Webâ†’API (Pact contract)
 - Dedicated test infrastructure: PostgreSQL on tmpfs, ephemeral Redis, mocked external services
 - Transaction rollback for per-test database state isolation
@@ -236,6 +237,7 @@ Contract tests (Pact) between the web frontend and API serve as an early warning
 - Three-tier test data: seed data (migration files), test-specific (factory functions with transaction rollback), golden datasets (read-only JSON fixtures)
 
 ### Out of Scope
+
 - Ephemeral production-replica test environments per PR (future improvement)
 - Shadow-mode AI integration testing with traffic mirroring (future improvement)
 - Automated contract test generation from API schemas (future improvement)

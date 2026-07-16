@@ -272,7 +272,7 @@ def check_cross_references(all_files, verbose=False):
             if link.startswith(("http://", "https://", "#")):
                 stats["ok"] += 1
                 continue
-            if link.startswith(("../../Docs/", "../../Documents/", "Docs/", "Documents/")):
+            if link.startswith(("../../Docs/", "../../Documents/", "../Docs/", "../Documents/", "Docs/", "Documents/")):
                 stats["ok"] += 1
                 continue
 

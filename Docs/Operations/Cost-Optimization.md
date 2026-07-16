@@ -227,6 +227,7 @@ The strategies in this document are designed to decouple user growth from cost g
 ## Scope
 
 ### In Scope
+
 - AI cost optimization strategies: tiered model routing per agent task (memory extraction, classification, resume generation, chat), prompt caching, context window pruning, and debounced re-processing
 - Infrastructure cost optimization: right-sizing instances, auto-scaling, reserved instance commitments, and spot instance provisioning for batch workloads
 - Cost monitoring alerts for daily spend spikes (> 20% day-over-day), per-user AI cost thresholds (> $2/user/month), monthly budget utilization (> 80%), and storage growth rates (> 10% week-over-week)
@@ -234,6 +235,7 @@ The strategies in this document are designed to decouple user growth from cost g
 - Budget alert response procedures for managing spend when approaching or exceeding monthly allocations
 
 ### Out of Scope
+
 - Capacity planning projections and scaling triggers (covered in Capacity Planning)
 - AI model selection and capability evaluation (covered in AI/LLM Architecture)
 - Reserved instance portfolio management and cloud provider discount negotiation (future improvement)

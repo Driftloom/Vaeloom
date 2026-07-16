@@ -240,6 +240,7 @@ A well-designed support operation is Vaeloom's first line of defense against chu
 ## Scope
 
 ### In Scope
+
 - Four-tier support structure with audience definitions, channels, and response time SLAs: self-service, community, standard, and priority
 - Support workflow from ticket submission through auto-categorization, tier assignment, investigation, resolution, and post-resolution follow-up
 - Common support categories: account, connectors, agent behavior, data, billing, and technical â€” with typical issues and resolution tiers
@@ -248,6 +249,7 @@ A well-designed support operation is Vaeloom's first line of defense against chu
 - Error handling for mis-categorized tickets, SLA breaches, unresolved issues, and agent escalation failures
 
 ### Out of Scope
+
 - Product documentation and user-facing FAQ content (covered in Product documentation)
 - Incident response procedures for platform outages (covered in Incident Response Plan)
 - Account management and billing system implementation details (covered in Admin documentation)

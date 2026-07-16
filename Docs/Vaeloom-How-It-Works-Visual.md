@@ -29,6 +29,7 @@ Vaeloom connects to the places you already keep your stuff â€” email, Drive
 ## Scope
 
 ### In Scope
+
 - Visual walkthrough of the core problem and product solution
 - Six-layer system architecture diagram and explanation
 - Agent orchestration flow with permission boundaries
@@ -36,6 +37,7 @@ Vaeloom connects to the places you already keep your stuff â€” email, Drive
 - Implementation plan phases and roadmap timeline
 
 ### Out of Scope
+
 - Detailed backend service specifications (in Backend/ docs)
 - API reference and code-level documentation
 - Security threat models and compliance documentation

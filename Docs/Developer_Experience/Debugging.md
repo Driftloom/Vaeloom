@@ -189,6 +189,7 @@ The Debugging guide provides diagnostic commands and troubleshooting patterns fo
 ## Scope
 
 ### In Scope
+
 - Agent debugging (logs, eval, prompt testing)
 - Database debugging (connections, slow queries, locks)
 - Performance debugging (latency, queue depth, cache)
@@ -197,6 +198,7 @@ The Debugging guide provides diagnostic commands and troubleshooting patterns fo
 - Safe production debugging practices
 
 ### Out of Scope
+
 - Infrastructure-level debugging (covered in DevOps docs)
 - Network debugging and DNS resolution
 - Third-party service debugging (LLM provider issues)

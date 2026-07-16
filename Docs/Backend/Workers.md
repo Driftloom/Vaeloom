@@ -255,6 +255,7 @@ sequenceDiagram
     Note over S,M: â”œâ”€â”€ BACK TO IDLE â”€â”€â”¤
     W->>Q: blpop (blocking pop)
 ```
+
 > **Diagram:** Worker lifecycle â€” Worker blocks on queue with blocking pop. On job receipt, it processes (parse, extract, persist). On success: acknowledge. On transient failure: requeue with exponential backoff. After max retries: move to dead letter and alert.
 
 ---

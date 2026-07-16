@@ -222,6 +222,7 @@ sequenceDiagram
         GW-->>C: 429 Too Many Requests + Retry-After header
     end
 ```
+
 > **Diagram:** Rate limit flow â€” Gateway checks rate limit for each request against Redis-backed token bucket. Token refill calculated based on elapsed time. Under limit: allow with headers; over limit: return 429 with Retry-After.
 
 ---

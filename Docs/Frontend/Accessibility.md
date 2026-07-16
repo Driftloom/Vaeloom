@@ -302,6 +302,7 @@ function FocusTrapModal({ isOpen, onClose, children }: FocusTrapModalProps) {
 ## Scope
 
 ### In Scope
+
 - WCAG 2.2 AA compliance for all user-facing screens (Dashboard, Workspace, Memory Graph, Chat, Settings)
 - Keyboard navigation for every interactive component (buttons, links, forms, custom controls)
 - Screen reader support via semantic HTML, ARIA labels, roles, and landmarks
@@ -310,6 +311,7 @@ function FocusTrapModal({ isOpen, onClose, children }: FocusTrapModalProps) {
 - Automated accessibility scanning in CI with axe-core on every pull request
 
 ### Out of Scope
+
 - WCAG AAA compliance (targeted where practical but not guaranteed)
 - Third-party widget accessibility (assessed per vendor but not retrofitted)
 - Native mobile application accessibility (covered in Mobile Architecture)

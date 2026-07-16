@@ -284,6 +284,7 @@ jobs:
 ## Scope
 
 ### In Scope
+
 - SBOM generation in SPDX 2.3 format using CycloneDX plugin for npm, Docker, and Go dependencies
 - Vulnerability scanning with Trivy (OS-level) and Grype (deep dependency matching)
 - Policy enforcement: block deploy on critical/high CVEs, warn on medium with 7-day SLA
@@ -291,6 +292,7 @@ jobs:
 - CI integration for automated generation and scanning on every build
 
 ### Out of Scope
+
 - Container image signing and attestation (covered in [Container-Signing.md](./Container-Signing.md))
 - Runtime vulnerability scanning in production (covered in [Monitoring.md](./Monitoring.md))
 - Dependency license compliance and policy (covered in [Compliance.md](../Security/Compliance.md))

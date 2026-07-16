@@ -271,6 +271,7 @@ For Vaeloom's AI-driven workflows, animations play a critical role in maintainin
 ## Scope
 
 ### In Scope
+
 - CSS custom property tokens for animation durations, easing curves, and delay values
 - Framer Motion integration for complex choreographed animations (page transitions, modals, sidebars)
 - Reduced-motion detection via `matchMedia` and `prefers-reduced-motion` media query
@@ -278,6 +279,7 @@ For Vaeloom's AI-driven workflows, animations play a critical role in maintainin
 - Animation performance monitoring via Interaction to Next Paint (INP) metric
 
 ### Out of Scope
+
 - Animation of layout properties (`width`, `height`, `top`, `left`) â€” only `transform` and `opacity` are permitted
 - Decorative or purely ornamental animations without functional purpose
 - Third-party animation libraries beyond Framer Motion and CSS transitions

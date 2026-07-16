@@ -107,12 +107,14 @@ Run these in order â€” each depends on the ones before it:
 ## Scope
 
 ### In Scope
+
 - MVP build prompt index and dependency ordering
 - Enterprise build prompt index
 - Implementation file references and navigation
 - Build phase categorization (foundation, core, agent, quality, delivery)
 
 ### Out of Scope
+
 - Build prompt content itself (located in canonical document directories)
 - Implementation guide content (located in Engineering docs)
 - Architecture decision records

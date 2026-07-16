@@ -225,6 +225,7 @@ All Vaeloom engineers, API consumers, and DevOps engineers use this document as 
 ## Scope
 
 ### In Scope
+
 - SemVer 2.0.0 scheme: MAJOR (breaking), MINOR (new features), PATCH (bug fixes)
 - Six versioned artifacts: application release (package.json), API (URL path), database schema (migrations), AI prompts (filename prefix), embedding model (model_version field), documentation (git history)
 - API versioning: URL path (`/v1/`) and Accept header (`application/vnd.Vaeloom.v1+json`)
@@ -232,6 +233,7 @@ All Vaeloom engineers, API consumers, and DevOps engineers use this document as 
 - Workflow for determining version bump, updating version files, tagging releases, and generating changelogs
 
 ### Out of Scope
+
 - Per-service independent versioning (planned Q4 2026, monorepo currently shares one version)
 - Automated version bump from conventional commits (planned Q3 2026)
 - Deprecated endpoint traffic monitoring dashboard (planned Q3 2026)

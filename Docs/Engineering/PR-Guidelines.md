@@ -226,6 +226,7 @@ The goal is to maintain a throughput of 10 PRs/day with an average review-to-mer
 ## Scope
 
 ### In Scope
+
 - PR requirements: conventional commit title, template description, tests, lint, build, review, size limits
 - PR template with sections for description, related issues, type of change, testing, and checklist
 - PR size guidelines: small (< 100), medium (100-500), large (500+), massive (1000+)
@@ -234,6 +235,7 @@ The goal is to maintain a throughput of 10 PRs/day with an average review-to-mer
 - Security considerations for PR descriptions and dependency scanning
 
 ### Out of Scope
+
 - Auto-merge for approved, CI-passed small PRs (planned Q3 2026)
 - PR template validation GitHub Action (planned Q3 2026)
 - Automated reviewer assignment by expertise and load (planned Q4 2026)

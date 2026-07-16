@@ -270,7 +270,7 @@ function typePriority(source: string): number {
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| SEARCH_KEYWORD_BACKEND_URL | URL for keyword search backend (Meilisearch/OpenSearch) | http://meilisearch:7700 | Yes |
+| SEARCH_KEYWORD_BACKEND_URL | URL for keyword search backend (Meilisearch/OpenSearch) | <http://meilisearch:7700> | Yes |
 | SEARCH_VECTOR_BACKEND_URL | URL for vector search backend (pgvector/Qdrant) | postgresql://localhost:5432 | Yes |
 | SEARCH_CACHE_TTL_SECONDS | Cache TTL for frequent search results | 60 | Yes |
 | SEARCH_MAX_RESULTS | Maximum results returned per query | 20 | No |

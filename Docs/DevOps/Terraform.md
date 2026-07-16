@@ -284,6 +284,7 @@ Enterprise-grade IaC requires encrypted remote state backends with locking, vers
 ## Scope
 
 ### In Scope
+
 - Terraform provider configuration (AWS ~> 5.0, Kubernetes ~> 2.0)
 - Reusable resource modules: database (Aurora PostgreSQL), kubernetes (EKS), redis (ElastiCache), networking (VPC/subnets)
 - Environment structure with per-environment `terraform.tfvars` (dev, staging, production)
@@ -292,6 +293,7 @@ Enterprise-grade IaC requires encrypted remote state backends with locking, vers
 - Drift detection via scheduled `terraform plan` runs
 
 ### Out of Scope
+
 - Container image building and deployment (covered in [Docker.md](./Docker.md) and [Deployment.md](./Deployment.md))
 - Kubernetes resource definitions and HPA configuration (covered in [Kubernetes.md](./Kubernetes.md))
 - Application configuration management and Secrets (covered in [Configuration-Management.md](./Configuration-Management.md))

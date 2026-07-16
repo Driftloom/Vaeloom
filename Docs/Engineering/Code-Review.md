@@ -205,6 +205,7 @@ Each review enforces the coding standards and naming conventions defined in `Cod
 ## Scope
 
 ### In Scope
+
 - PR size classification tiers (< 100, 100-500, 500+ lines) with corresponding reviewer count and SLA
 - The 9-item review checklist (standards, tests, security, error handling, logging, docs, debugging, performance, compatibility)
 - AI-specific review guidelines for agent and prompt changes
@@ -213,6 +214,7 @@ Each review enforces the coding standards and naming conventions defined in `Cod
 - Performance review focus areas (N+1 queries, resource cleanup)
 
 ### Out of Scope
+
 - AI-assisted automated PR review (planned Q1 2027)
 - Automated reviewer assignment by expertise and load (planned Q4 2026)
 - Review SLA breach auto-escalation (planned Q3 2026)

@@ -617,6 +617,7 @@ Every incident is an opportunity to improve the system. The post-mortem process 
 ## Scope
 
 ### In Scope
+
 - Incident severity definitions (SEV-1 through SEV-4) with response time SLAs for all Vaeloom services including AI agent system, API, database, and connectors
 - Incident response roles and responsibilities with hand-off procedures
 - End-to-end incident response workflow from detection through post-mortem with SLA targets per phase
@@ -626,6 +627,7 @@ Every incident is an opportunity to improve the system. The post-mortem process 
 - Blameless culture principles and incident response quick reference card
 
 ### Out of Scope
+
 - Standard operating procedures for routine operations (covered in Operations Runbook)
 - Business continuity and disaster recovery failover procedures (covered in Business Continuity Plan)
 - SLA/SLO/SLI definitions and error budget policies (covered in SRE, SLA, SLO, and SLI documents)
@@ -690,6 +692,6 @@ incident:
 - [Operations Runbook](./01-operations-runbook.md) â€” Standard operating procedures
 - [DevOps README](../DevOps/README.md) â€” Deployment infrastructure and monitoring
 - [Security README](../Security/README.md) â€” Security incident procedures and compliance
-- [Business Continuity Plan](../Operations/Business-Continuity-Plan.md) â€” DR and continuity planning
+- [Business Continuity Plan](./Business-Continuity-Plan.md) â€” DR and continuity planning
 
 *Maintained by the Vaeloom engineering team. Last updated: Q4 2026.*

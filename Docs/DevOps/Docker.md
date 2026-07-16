@@ -293,6 +293,7 @@ Proper containerization is critical for Vaeloom's deployment velocity and securi
 ## Scope
 
 ### In Scope
+
 - Multi-stage Dockerfiles for all Vaeloom services (web, API, AI service)
 - Docker Compose configuration for local development with PostgreSQL, Redis, and all services
 - Image tagging conventions (SHA-based immutable tags for deploy, `:latest` as alias)
@@ -300,6 +301,7 @@ Proper containerization is critical for Vaeloom's deployment velocity and securi
 - Dockerfile security best practices (non-root user, multi-stage, version pinning, secrets hygiene)
 
 ### Out of Scope
+
 - Container orchestration and scheduling (covered in [Kubernetes.md](./Kubernetes.md))
 - Container image signing and verification (covered in [Container-Signing.md](./Container-Signing.md))
 - Container vulnerability scanning (covered in [SBOM-Policy.md](./SBOM-Policy.md))

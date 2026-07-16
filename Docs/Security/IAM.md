@@ -409,6 +409,7 @@ Enterprise-grade IAM requires a layered approach: authentication (who you are + 
 ## Scope
 
 ### In Scope
+
 - User authentication: OAuth 2.0 + OIDC (Google, GitHub), email/password (Supabase Auth)
 - Authorization model: ABAC with roles (user, admin, owner) and permissions (read, write, delete, admin)
 - JWT structure and claims: sub, role, email, org_id, permissions array, session_id
@@ -417,6 +418,7 @@ Enterprise-grade IAM requires a layered approach: authentication (who you are + 
 - MFA enforcement for admin roles and high-value operations
 
 ### Out of Scope
+
 - OAuth scope-based delegation for third-party API access (planned for future)
 - Fine-grained row-level security in PostgreSQL (covered in [Security-Architecture.md](./Security-Architecture.md))
 - Audit log storage and querying (covered in [Audit-Logs.md](./Audit-Logs.md))

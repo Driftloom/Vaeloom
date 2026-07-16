@@ -437,6 +437,7 @@ Enterprise-grade secret management requires a zero-trust approach: secrets are n
 ## Scope
 
 ### In Scope
+
 - Secret lifecycle: generation, storage, access, rotation, revocation, archival
 - Secret storage tiers: production vault (Tier 1, Tier 2), environment variables (Tier 3)
 - Access control: RBAC with read/write/admin roles, time-limited emergency access
@@ -446,6 +447,7 @@ Enterprise-grade secret management requires a zero-trust approach: secrets are n
 - Local development: `.env.local` files with `.gitignore` enforcement, developer-specific secrets
 
 ### Out of Scope
+
 - Certificate management and PKI infrastructure (planned for future)
 - Service mesh secrets (Istio mTLS certificates â€” covered in future service mesh deployment)
 - Database encryption at rest keys (managed by cloud provider)

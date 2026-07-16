@@ -226,6 +226,7 @@ A capacity shortage at the wrong moment â€” during a user onboarding spike 
 ## Scope
 
 ### In Scope
+
 - Growth projections for all Vaeloom resource dimensions: active users, documents stored, memory records, agent actions per day, and total storage over months 1â€“12
 - Resource plans per service: web instances, API instances, AI service instances, PostgreSQL storage, and Redis memory with current, 3-month, and action-trigger thresholds
 - Automated scaling triggers for compute (CPU > 70%), database (connections > 80%), and cache (memory > 80%) with sustained duration requirements
@@ -234,6 +235,7 @@ A capacity shortage at the wrong moment â€” during a user onboarding spike 
 - Error handling for common capacity failure scenarios: storage fills faster than projected, auto-scaling fails to trigger, resource limits hit unexpectedly
 
 ### Out of Scope
+
 - Cost optimization strategies for reducing AI inference and infrastructure spend (covered in Cost Optimization)
 - SLA/SLO/SLI compliance monitoring and error budget management (covered in SLA, SLO, SLI, and SRE documents)
 - Detailed infrastructure-as-code configuration for auto-scaling groups (covered in DevOps documentation)

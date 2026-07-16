@@ -20,6 +20,7 @@ This document defines the partitioning triggers, strategy per table, implementat
 ## Scope
 
 **In Scope:**
+
 - Range partitioning on agent_actions by created_at (monthly, 12 partitions per year)
 - Hash partitioning on memory_records and documents by workspace_id (256 partitions each)
 - Automated partition creation via cron job (monthly for range, as needed for hash)
@@ -28,6 +29,7 @@ This document defines the partitioning triggers, strategy per table, implementat
 - Error handling for missing partitions, imbalance, and archival failures
 
 **Out of Scope:**
+
 - Sub-partitioning (hash + range) â€” future improvement
 - pg_partman integration â€” future improvement (currently using custom cron)
 - Tiered storage with tablespace-per-partition â€” future improvement

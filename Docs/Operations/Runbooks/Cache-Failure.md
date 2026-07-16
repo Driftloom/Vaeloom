@@ -333,6 +333,7 @@ async function warmCriticalCaches(redis: RedisClient): Promise<void> {
 ## Scope
 
 ### In Scope
+
 - Cache architecture for all six Redis cache types in Vaeloom: rate limiter counters, session data, API responses, inference cache, document metadata, and feature flags â€” with key patterns, TTLs, cache miss impacts, and data sizes
 - Detection procedures: Redis cluster health checking, cache miss rate monitoring (>80% triggers warning), memory usage tracking (>80% triggers scale action), replica lag monitoring
 - Degraded mode fallback implementations for every cache consumer: local token bucket for rate limiting, database-backed sessions, null cache for inference (recompute), and direct database queries for metadata
@@ -341,6 +342,7 @@ async function warmCriticalCaches(redis: RedisClient): Promise<void> {
 - Error handling: high cache miss rate, memory fragmentation, partial cluster failover, and warm-up thundering herd prevention
 
 ### Out of Scope
+
 - Database failover procedures during combined cache + database outages (covered in DB Failover runbook)
 - AI service fallback activation when cache failure coincides with provider outage (covered in AI Service Outage runbook)
 - Infrastructure-level Redis cluster provisioning and scaling (covered in Capacity Planning and DevOps documentation)
@@ -348,6 +350,7 @@ async function warmCriticalCaches(redis: RedisClient): Promise<void> {
 - L1 in-memory cache design for ultra-low-latency use cases (multi-tier cache is a future improvement)
 
 ---
+
 ## Examples
 
 ### Redis Health Check (CLI)

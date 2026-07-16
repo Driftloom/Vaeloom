@@ -21,6 +21,7 @@ Vaeloom is a second brain for a person's education and career. It connects to th
 ## Scope
 
 ### In Scope
+
 - Complete product story and system architecture (six-layer design)
 - Eight-agent architecture with memory read/write permissions
 - Six-type memory system: Profile, Document, Career, Episodic, Preference, Working
@@ -29,6 +30,7 @@ Vaeloom is a second brain for a person's education and career. It connects to th
 - Gap analysis and roadmap from MVP to enterprise
 
 ### Out of Scope
+
 - Per-backend-service implementation details (in Backend/ docs)
 - Code-level API documentation (auto-generated)
 - Operations runbooks and incident response procedures (in Operations/)

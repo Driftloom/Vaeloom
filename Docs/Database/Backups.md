@@ -20,6 +20,7 @@ This document defines the backup schedule, commands, verification procedures, an
 ## Scope
 
 **In Scope:**
+
 - PostgreSQL daily full backups via pg_dump custom format
 - Continuous WAL archiving for point-in-time recovery
 - S3 object storage backup with cross-region replication (Enterprise)
@@ -29,6 +30,7 @@ This document defines the backup schedule, commands, verification procedures, an
 - Automated integrity checks after each backup
 
 **Out of Scope:**
+
 - Incremental or differential backup strategies (future improvement)
 - Third-party backup tools (pgBackrest, WAL-G) â€” currently using native pg_dump
 - Backup of ephemeral or transient data (session caches, working memory)

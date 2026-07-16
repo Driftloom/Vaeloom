@@ -14,7 +14,7 @@
 
 This PRD defines **what** Vaeloom MVP must deliver for students and early-career professionals: a personal intelligence platform that ingests documents, email, and code; builds persistent structured memory; and runs permission-scoped AI agents that organize work, maintain resumes, search jobs, and track deadlines.
 
-This document is the authoritative product requirements layer above implementation specs. Engineering derives technical design from this PRD and the companion [SRS](./SRS.md). Business stakeholders use the companion [BRD](./BRD.md) for ROI and market framing.
+This document is the authoritative product requirements layer above implementation specs. Engineering derives technical design from this PRD and the companion SRS (Not yet created). Business stakeholders use the companion BRD (Not yet created) for ROI and market framing.
 
 **Audience:** Product managers, engineering leads, AI architects, QA, enterprise evaluators.
 
@@ -175,8 +175,8 @@ See [Success Metrics](./Success-Metrics.md).
 
 ## Related Documents
 
-- [BRD](./BRD.md) â€” Business requirements
-- [SRS](./SRS.md) â€” Software requirements specification
+- BRD (Not yet created) â€” Business requirements
+- SRS (Not yet created) â€” Software requirements specification
 - [MVP Spec](../01-Vaeloom-MVP-Spec.md) â€” Detailed MVP specification
 - [Features](./Features.md) â€” Feature catalog
 - [Feature Specs](./Feature-Specs/) â€” Per-feature implementation docs

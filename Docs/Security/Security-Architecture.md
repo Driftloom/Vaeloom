@@ -132,6 +132,7 @@ graph TD
 ## Scope
 
 **In Scope:**
+
 - Perimeter security: TLS 1.3, WAF, CORS, CSP headers
 - Authentication: Auth provider (Clerk/Auth0), JWT with short-lived tokens (15min), MFA for enterprise
 - Authorization: 4-axis Permission Engine (connector, action type, agent, workspace)
@@ -141,6 +142,7 @@ graph TD
 - Plugin sandbox with manifest enforcement
 
 **Out of Scope:**
+
 - On-premise hardware security modules (HSM)
 - Network-level segmentation (VPC peering, private subnets â€” managed by cloud provider)
 - Physical security of data centers (managed by cloud provider)
@@ -225,15 +227,15 @@ graph TD
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| AUTH_PROVIDER_URL | Auth service endpoint | https://auth.Vaeloom.dev | Yes |
-| JWT_ISSUER | Expected JWT issuer | https://auth.Vaeloom.dev | Yes |
+| AUTH_PROVIDER_URL | Auth service endpoint | <https://auth.Vaeloom.dev> | Yes |
+| JWT_ISSUER | Expected JWT issuer | <https://auth.Vaeloom.dev> | Yes |
 | JWT_AUDIENCE | Expected JWT audience | api.Vaeloom.dev | Yes |
 | MFA_REQUIRED | Force MFA for all users | false | No |
 | SECRETS_CACHE_TTL | Secrets cache duration in seconds | 86400 | No |
 | AUDIT_LOG_RETENTION_DAYS | Audit log retention period | 365 | No |
 | PERMISSION_CACHE_TTL | Permission cache duration in seconds | 300 | No |
 | ENCRYPTION_ALGORITHM | Encryption algorithm for at-rest | AES-256-GCM | No |
-| CORS_ORIGINS | Allowed CORS origins | https://app.Vaeloom.dev | Yes |
+| CORS_ORIGINS | Allowed CORS origins | <https://app.Vaeloom.dev> | Yes |
 
 ## Risks
 
@@ -267,6 +269,7 @@ graph TD
 ## Scope
 
 ### In Scope
+
 - Network security architecture: VPN, private subnets, security groups, and network ACLs
 - Application security architecture: API gateway, WAF, rate limiting, input validation, CSP
 - Data security architecture: encryption at rest (AES-256), encryption in transit (TLS 1.3), key management
@@ -276,6 +279,7 @@ graph TD
 - Secrets management architecture: vault tier with RBAC + audit
 
 ### Out of Scope
+
 - Physical data center security (cloud-managed)
 - Endpoint security (developer workstation security)
 - Third-party vendor security architecture (covered in vendor risk assessment)

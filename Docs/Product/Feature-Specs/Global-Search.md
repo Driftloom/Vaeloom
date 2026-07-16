@@ -1,4 +1,5 @@
 ﻿## Header
+>
 > **Purpose:** Detailed specification for Global Search
 > **Status:** ðŸ†• New
 > **Owner:** Product Team

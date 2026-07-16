@@ -57,18 +57,21 @@ graph TD
     C --- N
     D --- M
     D --- N
-```
+```text
 
 ## Context
+
 Read `00-master-build-order.md` first. This is the first build phase â€” the deployable skeleton every later phase builds on top of. No feature logic yet.
 
 ## Objective
+
 Stand up a working, deployable, empty version of Vaeloom: three services that boot, talk to each other, pass CI, and let a user sign up and see a blank workspace.
 
 ## Requirements
 
 **Monorepo structure** (create exactly this layout):
-```
+
+```text
 Vaeloom/
 â”œâ”€â”€ apps/
 â”‚   â”œâ”€â”€ web/            # Next.js 14+, TypeScript, App Router, Tailwind CSS
@@ -80,34 +83,41 @@ Vaeloom/
 â”‚   â”œâ”€â”€ docker/          # Dockerfiles per service
 â”‚   â””â”€â”€ ci/
 â””â”€â”€ docker-compose.yml   # Postgres, Redis, all three services, for local dev
-```
+```text
 
 **apps/api (NestJS):**
+
 - Health-check endpoint (`GET /health`) returning service status.
 - Auth module: email/password signup + login to start (bcrypt-hashed passwords), structured so an OAuth/SSO provider can be swapped in later (file 15) without changing the interface.
 - Auth middleware/guard usable by every future endpoint.
 - `POST /workspaces` â€” provisions a new, empty workspace for the authenticated user (see file 02 for the table this writes to).
 
 **apps/ai-service (FastAPI):**
+
 - Health-check endpoint.
 - Empty `orchestrator/` and `agents/` folders with a `README.md` stub explaining they're populated in file 05.
 
 **apps/web (Next.js):**
+
 - Signup and login pages, calling the api service.
 - An empty, authenticated Dashboard route that renders "Workspace ready" once a workspace exists â€” this is the placeholder file 14 replaces.
 
 **CI (`infra/ci/`, GitHub Actions):**
+
 - On every PR: lint (ESLint + Python ruff/flake8), typecheck (`tsc --noEmit`, `mypy`), unit tests, build, for all three apps.
 - Must be green before any later phase's PR merges.
 
 **Local dev:**
+
 - `docker-compose.yml` bringing up Postgres, Redis, and all three apps with hot reload.
 - `.env.example` at the repo root documenting every required variable (DB URL, Redis URL, JWT secret, etc.) â€” no service should require an undocumented env var to boot.
 
 ## Out of scope
+
 Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any memory or ingestion logic (files 02â€“04), production deployment (file 16 â€” this phase is local + CI only).
 
 ## Acceptance criteria
+
 - [ ] `docker-compose up` boots all services with no manual steps beyond copying `.env.example` to `.env`.
 - [ ] A new user can sign up, log in, and see an empty, correctly-provisioned workspace.
 - [ ] CI is green on a fresh PR with no changes.
@@ -147,6 +157,7 @@ Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any
 ## Scope
 
 ### In Scope
+
 - Monorepo scaffold with three services: apps/web (Next.js), apps/api (NestJS), apps/ai-service (FastAPI)
 - packages/shared-types for cross-service type sharing
 - CI pipeline via GitHub Actions: lint (ESLint + ruff), typecheck (tsc + mypy), test, build on every PR
@@ -155,6 +166,7 @@ Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any
 - .env.example documenting every required environment variable
 
 ### Out of Scope
+
 - Real OAuth/SSO providers (deferred to Phase 15)
 - Any AI or agent logic (deferred to Phase 05+)
 - Memory or ingestion logic (deferred to Phases 02â€“04)
@@ -186,7 +198,7 @@ curl -X POST http://localhost:4000/auth/signup \
 curl -X POST http://localhost:4000/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "test@vaeloom.dev", "password": "SecurePass123!"}'
-```
+```text
 
 ```typescript
 // packages/shared-types/src/index.ts â€” types shared between web and api
@@ -201,7 +213,7 @@ export interface Workspace {
   userId: string;
   createdAt: Date;
 }
-```
+```text
 
 ```yaml
 # .github/workflows/ci.yml â€” CI pipeline entry
@@ -220,7 +232,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: npx tsc --noEmit
       - run: mypy .
-```
+```text
 
 ---
 

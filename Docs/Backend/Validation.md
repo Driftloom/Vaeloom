@@ -257,6 +257,7 @@ sequenceDiagram
         API-->>C: 201 Created
     end
 ```
+
 > **Diagram:** Validation pipeline â€” API layer validates input shape with class-validator (required, type, length, enum). On pass, Business Logic layer applies domain rules (uniqueness, quotas). Failure at any layer returns the same structured error format with field-level details.
 
 ---

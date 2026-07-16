@@ -20,6 +20,7 @@ This document defines the indexing architecture, index definitions, maintenance 
 ## Scope
 
 **In Scope:**
+
 - B-tree indexes on workspace_id for all tenant-scoped tables
 - Composite indexes for multi-column query patterns (type + workspace_id, workspace_id + created_at DESC)
 - GIN indexes for full-text search (documents.content_tsvector) and array containment (entities.aliases)
@@ -28,6 +29,7 @@ This document defines the indexing architecture, index definitions, maintenance 
 - Usage monitoring via pg_stat_user_indexes
 
 **Out of Scope:**
+
 - Partial or conditional indexes (future improvement)
 - Expression indexes or functional indexes
 - BRIN indexes for time-series data (considered but not implemented)

@@ -62,33 +62,40 @@ graph TD
 ```
 
 ## Context
+
 Read `04-memory-system.md` and `05-agent-harness-orchestration.md` first. File 04 already implements the core `retrieve()` function — this phase hardens it into something every agent can depend on for quality, not just correctness, and wires it into the harness's "Plan" step.
 
 ## Objective
+
 Make retrieval good enough that agents make correct decisions from it: proper chunking, the right embedding model, real re-ranking, and mandatory citations — not just "a vector search that returns something."
 
 ## Requirements
 
 **Chunking (`apps/ai-service/retrieval/chunking.py`):**
+
 - Chunk long documents by semantic boundary (paragraph/section), not fixed character count — a chunk should never split a sentence or a table row.
 - Store chunk-to-document mapping so a retrieved chunk always resolves back to its full source document for provenance.
 
 **Embedding model:** pick one embedding model for MVP (state your choice and reasoning in code comments — optimize for retrieval quality and cost, not the largest available model) and record `model_version` on every row in `embeddings` (file 02) so a future model upgrade can re-embed deliberately instead of silently mixing incompatible vector spaces.
 
 **Re-ranking (`apps/ai-service/retrieval/rerank.py`):**
+
 - After hybrid retrieval (file 04) returns candidates, re-rank by a weighted combination of: relevance (similarity score), freshness (`freshness_at`), and confidence (`memory_records.confidence` / `entities` confidence).
 - Make the weights configurable per agent — a Job Search Agent query should weight freshness higher than a Profile lookup, for example.
 
 **Context assembly (`apps/ai-service/retrieval/context.py`):**
+
 - Given re-ranked candidates and a token budget (passed by the calling agent), select the most relevant, non-redundant subset that fits — don't just concatenate the top N.
 - Every assembled context item retains its provenance pointer through to the final agent output — this is what makes citations possible, not an afterthought bolted onto the response.
 
 **Query rewriting (basic):** if a user's query is ambiguous relative to the workspace's known entities (e.g., "that project" with no clear antecedent), the retrieval layer should attempt one rewrite pass using recent conversation context (`working` memory) before falling back to asking the user.
 
 ## Out of scope
+
 Semantic caching, a dedicated vector database (pgvector is sufficient for MVP scale), context compression beyond basic dedup, a standalone Knowledge Graph exploration UI (file 14 covers the basic viewer).
 
 ## Acceptance criteria
+
 - [ ] A test document with a table survives chunking without the table being split mid-row.
 - [ ] Re-ranking demonstrably changes result order versus raw similarity score alone, on a seeded test case where a fresher, lower-similarity result should outrank a stale, higher-similarity one.
 - [ ] Context assembly respects a token budget — a deliberately small budget still returns a coherent, non-truncated-mid-sentence context.
@@ -129,6 +136,7 @@ Semantic caching, a dedicated vector database (pgvector is sufficient for MVP sc
 ## Scope
 
 ### In Scope
+
 - Semantic chunking by paragraph/section boundary (not fixed character count) with chunk-to-document mapping
 - Embedding model selection with explicit model_version tracking on every embedding row
 - Multi-factor re-ranking by relevance (similarity score), freshness (freshness_at), and confidence with per-agent configurable weights
@@ -137,6 +145,7 @@ Semantic caching, a dedicated vector database (pgvector is sufficient for MVP sc
 - Basic query rewriting for ambiguous queries using recent working memory
 
 ### Out of Scope
+
 - Semantic caching for repeated query patterns (planned Q1 2027)
 - Dedicated search engine migration (Meilisearch → OpenSearch, planned Q2 2027)
 - Multi-modal retrieval (images, tables as independent search units, planned Q2 2027)

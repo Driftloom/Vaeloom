@@ -247,6 +247,7 @@ sequenceDiagram
 ## Scope
 
 ### In Scope
+
 - Eight dashboard widgets: Memory Health, Knowledge Growth, Active Applications, Upcoming Deadlines, Goal Progress, Recent Activity, AI Suggestions, Per-Agent Status
 - Aggregated data endpoint (`GET /dashboard/summary`) with 30-second Redis cache TTL
 - Individual widget-level endpoints for progressive loading and independent error handling
@@ -254,6 +255,7 @@ sequenceDiagram
 - Deep-link navigation from each widget to its full-page view
 
 ### Out of Scope
+
 - Real-time streaming widget updates (future improvement with WebSocket push)
 - Widget sharing or embedding across users (future improvement)
 - Third-party widget marketplace (planned for post-MVP)

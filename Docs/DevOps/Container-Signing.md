@@ -303,6 +303,7 @@ sequenceDiagram
 ## Scope
 
 ### In Scope
+
 - Cosign-based container image signing with ECDSA-P256 keys stored in cloud KMS (AWS KMS / GCP Cloud KMS)
 - Admission-level signature verification via Kyverno ClusterPolicy
 - SBOM attestation attachment as Cosign attestations
@@ -310,6 +311,7 @@ sequenceDiagram
 - Signing integration in CI build pipeline (GitHub Actions)
 
 ### Out of Scope
+
 - Keyless signing via Sigstore Fulcio (planned for future)
 - Signing of non-container artifacts (Helm charts, configs â€” planned for future)
 - Container image vulnerability scanning (covered in [SBOM-Policy.md](./SBOM-Policy.md))

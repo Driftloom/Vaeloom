@@ -60,12 +60,14 @@ graph TD
     PARSE --> P4
     PARSE --> P5
     PARSE --> P6
-```
+```text
 
 ## Context
+
 Read `02-database-schema.md` first. This phase turns an uploaded or synced file into a parsed, structured record ready for the Memory Agent (file 04) to extract from. It does not do entity extraction itself â€” it stops at "parsed and stored," file 04 picks up from there.
 
 ## Objective
+
 Build a queue-driven ingestion pipeline: a file goes in (upload or connector sync), a parsed `documents` row comes out, without blocking the interactive app.
 
 ## Requirements
@@ -73,6 +75,7 @@ Build a queue-driven ingestion pipeline: a file goes in (upload or connector syn
 **Queue:** Redis + BullMQ. File uploads and connector syncs enqueue an `ingest` job; a worker process (separate from the API's request-handling process) consumes it.
 
 **Parsers (one module per type, in `apps/ai-service/ingestion/parsers/`):**
+
 - PDF, DOCX, PPTX, XLSX/CSV, Markdown, plain text â€” extract both structure (headings, tables) and text content.
 - Images/scans â€” OCR with a confidence score attached to the extraction; anything below a defined threshold (e.g. 0.75) is stored but flagged `needs_review: true` in the document's metadata rather than trusted silently.
 - Code repositories (from the GitHub connector, file 07) â€” extract structure (languages, dependency graph, README, commit history shape) into a semantic summary; do not store full source verbatim in `documents.summary`.
@@ -81,17 +84,20 @@ Build a queue-driven ingestion pipeline: a file goes in (upload or connector syn
 **Dedup & versioning:** before creating a new `documents` row, check for an existing document at a similar path/content (content-hash + filename similarity). If found, create a `document_versions` row linking to the prior version instead of a wholly new document.
 
 **Pipeline stages** (implement as a sequence, each stage's output feeding the next):
-```
+
+```text
 Source â†’ format detection â†’ parser dispatch â†’ OCR (if needed) â†’ structure extraction
    â†’ dedup/version check â†’ documents row written â†’ ingest.completed event published
-```
+```text
 
 **Test fixtures:** create `apps/ai-service/ingestion/fixtures/` with at least one real sample of each supported type (a sample resume PDF, a scanned certificate image, a small code repo, a spreadsheet) and golden-output JSON for each, used in the test suite below.
 
 ## Out of scope
+
 Entity/relationship extraction, embeddings, knowledge graph writes (all file 04). Organization Agent naming/foldering proposals (file 08). Any UI for uploading (file 14).
 
 ## Acceptance criteria
+
 - [ ] Each parser has a golden-file test against its fixture, asserting correct structure extraction.
 - [ ] A large batch upload does not block a concurrent, unrelated API request (verified with a load test enqueuing 50 jobs while hitting `/health`).
 - [ ] OCR confidence scoring works â€” a deliberately blurry test image is flagged `needs_review: true`.
@@ -133,6 +139,7 @@ Entity/relationship extraction, embeddings, knowledge graph writes (all file 04)
 ## Scope
 
 ### In Scope
+
 - Redis + BullMQ queue-driven ingestion pipeline with separate worker process
 - Six parser modules: PDF, DOCX, PPTX, XLSX/CSV, Markdown, Code Repos
 - OCR with configurable confidence thresholds for images and scanned documents
@@ -142,6 +149,7 @@ Entity/relationship extraction, embeddings, knowledge graph writes (all file 04)
 - Parser timeout handling and sandboxed execution
 
 ### Out of Scope
+
 - Entity/relationship extraction, embeddings, or knowledge graph writes (Phase 04)
 - Organization Agent naming or foldering proposals (Phase 08)
 - Upload UI (Phase 14)
@@ -167,7 +175,7 @@ async def upload_document(workspace_id: str, file: UploadedFile) -> dict:
         "content_type": file.content_type,
     })
     return {"job_id": job.id, "status": "queued"}
-```
+```text
 
 ```python
 # Parser dispatch with format detection
@@ -190,7 +198,7 @@ async def parse_document(storage_key: str, filename: str) -> ParsedDocument:
     content = await object_store.get(storage_key)
     parser = parser_cls(timeout=30)
     return await parser.parse(content)
-```
+```text
 
 ```python
 # OCR with confidence thresholding
@@ -205,7 +213,7 @@ async def process_image(storage_key: str) -> ParsedDocument:
             "needs_review": needs_review,
         }
     )
-```
+```text
 
 ---
 

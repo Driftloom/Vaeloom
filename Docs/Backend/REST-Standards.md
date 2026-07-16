@@ -223,6 +223,7 @@ sequenceDiagram
     API->>API: Format response: {data: [...], pagination: {next_cursor, has_more}}
     API-->>C: 200 OK + X-Request-Id + rate limit headers + gzip
 ```
+
 > **Diagram:** Standard REST request â€” Client sends paginated GET with cursor, limit, and filter. API adds +1 to limit for cursor detection, formats standard response with pagination metadata, and returns with proper headers.
 
 ---

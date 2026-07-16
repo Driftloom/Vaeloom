@@ -239,6 +239,7 @@ sequenceDiagram
     J-->>C: Job completed
     C->>L: Release lock
 ```
+
 > **Diagram:** Cron job execution â€” Scheduler triggers at cron time, acquires Redis lock to prevent duplicate execution, runs job handler with database operations, emits metrics for observability, then releases the lock.
 
 ---

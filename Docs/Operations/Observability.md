@@ -243,6 +243,7 @@ The dashboards defined in this document ensure that every team â€” engineer
 ## Scope
 
 ### In Scope
+
 - Three pillars implementation: OpenTelemetry-based metrics collection, structured JSON logging, and distributed tracing across all Vaeloom services
 - System metrics: CPU usage, memory usage, disk usage aggregated by service
 - Application metrics: HTTP request duration (p50/p95/p99), request counts by status code, agent execution duration, agent error rates by agent type, queue depths per queue, memory write rates
@@ -252,6 +253,7 @@ The dashboards defined in this document ensure that every team â€” engineer
 - Trace sampling strategy: 10% head-based sampling in production, 100% in staging
 
 ### Out of Scope
+
 - Infrastructure-level monitoring tool configuration (covered in DevOps documentation)
 - SLO/SLI definition and error budget calculation (covered in SRE, SLO, and SLI documents)
 - Alert routing and PagerDuty configuration (covered in Incident Response Plan)

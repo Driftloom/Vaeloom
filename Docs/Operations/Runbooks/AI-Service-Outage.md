@@ -305,6 +305,7 @@ curl -s https://ai.Vaeloom.dev/v1/health
 ## Scope
 
 ### In Scope
+
 - Detection procedures for AI service outages: provider error rate thresholds (>5% over 1 minute), latency warnings (>10s p99 over 5 minutes), circuit breaker state monitoring, and embedding queue depth tracking
 - Fallback activation steps: feature flag to switch primary provider, circuit breaker verification, degraded mode configuration, and stakeholder notification
 - Recovery procedures: provider status monitoring, circuit breaker reset, primary provider restoration, and 30-minute verification period
@@ -312,6 +313,7 @@ curl -s https://ai.Vaeloom.dev/v1/health
 - Graceful degradation architecture: inference cache for common queries, reduced request rate multiplier (0.5x), increased timeouts, and per-provider rate limit management
 
 ### Out of Scope
+
 - General incident response workflows and post-mortem processes (covered in Incident Response Plan)
 - Infrastructure-level outages affecting Fly.io GPU instance availability (covered in Operations Runbook)
 - Database or cache failures that may accompany or compound AI service degradation (covered in Cache Failure runbook)
@@ -319,6 +321,7 @@ curl -s https://ai.Vaeloom.dev/v1/health
 - Multi-provider routing beyond the Anthropic â†’ OpenAI â†’ degraded fallback chain (third provider is a future improvement)
 
 ---
+
 ## Examples
 
 ### Fallback Activation (CLI)

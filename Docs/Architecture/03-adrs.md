@@ -250,6 +250,7 @@ Planned ADR topics (to be written as decisions are made):
 ## Scope
 
 ### In Scope
+
 - ADR format and template: context â†’ options considered â†’ decision â†’ consequences
 - Accepted ADRs 001â€“006 covering agent contract, data pipeline, Graph DB, GraphQL schema, search/reranking, and audit trail
 - Pending ADRs 007â€“013 covering embedding model, graph DB engine timing, event bus, auth provider, frontend state, plugin sandboxing, and tenant isolation
@@ -257,6 +258,7 @@ Planned ADR topics (to be written as decisions are made):
 - Cross-references to system architecture and implementation master build order
 
 ### Out of Scope
+
 - Implementation-level decisions that are easily reversible (port assignments, library patch versions, naming conventions)
 - RFCs or lightweight decision records that do not warrant formal ADR treatment
 - Per-service design documents (covered in Backend/, Frontend/, AI/ docs)

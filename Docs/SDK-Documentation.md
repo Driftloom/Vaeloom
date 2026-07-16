@@ -278,7 +278,7 @@ sequenceDiagram
 
 ### 7.1 TypeScript SDK
 
-```
+```text
 packages/sdk-ts/
 â”œâ”€â”€ src/
 â”‚   â”œâ”€â”€ client/
@@ -323,7 +323,7 @@ packages/sdk-ts/
 
 ### 7.2 Python SDK
 
-```
+```text
 packages/sdk-py/
 â”œâ”€â”€ src/Vaeloom_sdk/
 â”‚   â”œâ”€â”€ __init__.py
@@ -832,7 +832,7 @@ The SDK implements a **token-bucket algorithm** to stay within Vaeloom API rate 
 
 When the SDK receives a `429` response, it inspects the `Retry-After` header and backs off automatically. The retry handler uses truncated exponential backoff with jitter:
 
-```
+```text
 delay = min(baseDelay * 2^(attempt - 1), maxDelay) * (0.5 + random())
 ```
 
@@ -1136,7 +1136,7 @@ Each release includes a `CHANGELOG.md` entry with:
 
 Breaking changes include a migration guide in `MIGRATING.md`:
 
-```
+```text
 MIGRATING.md
 â”œâ”€â”€ 1.x-to-2.0.md
 â”œâ”€â”€ 2.x-to-3.0.md
@@ -1374,6 +1374,6 @@ const client = new VaeloomClient({
 | **Rate Limiting Guide**           | Rate limit policies, headers, best practices     | [`Backend/Rate-Limiting.md`](./Backend/Rate-Limiting.md) |
 | **REST API Standards**            | Naming conventions, pagination, error contracts  | [`Backend/REST-Standards.md`](./Backend/REST-Standards.md) |
 | **Webhook Guide**                 | Webhook registration, verification, retries      | [`Integration-Guide.md`](./Integration-Guide.md) |
-| **Migration Guide (v1.x â†’ v2.0)**| Breaking changes and upgrade paths               | [`Project/Migration-Guide.md`](./Project/Migration-Guide.md) |
-| **CHANGELOG**                     | Release history and version diffs                | [`Project/Changelog.md`](./Project/Changelog.md) |
+| **Migration Guide (v1.x to v2.0)**| Breaking changes and upgrade paths               | Not yet created |
+| **CHANGELOG**                     | Release history and version diffs                | Not yet created |
 | **OpenAPI Spec**                  | Machine-readable API specification               | [`Backend/openapi.yaml`](./Backend/openapi.yaml) |

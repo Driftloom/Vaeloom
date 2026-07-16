@@ -51,7 +51,7 @@ Reliable integrations are critical because Vaeloom's core value proposition â�
 - Database schema migrations for connector storage
 - Third-party API design or documentation
 - Custom enterprise SSO integration (see [Authentication](./Backend/Authentication.md))
-- Connector plugin marketplace (see [Future Improvements](#24-future-improvements))
+- Connector plugin marketplace (see Future Improvements section)
 
 ---
 
@@ -125,7 +125,7 @@ graph TD
     class B1,B2,B3,B4 bus
     class P1,P2,P3,P4,P5 pipeline
     class C1,C2,C3 cross
-```
+```text
 
 > **Diagram:** Connector architecture showing five layers. **External Services** connect via REST/GraphQL APIs or webhooks. The **Connector Adapter Layer** manages OAuth, webhook reception, sync scheduling, and rate limiting. Validated events publish to the **Event Bus** (Redis/Kafka) on typed topics. The **Processing Pipeline** routes, classifies, deduplicates, and extracts entities into memory. **Cross-Cutting** concerns include encrypted credential storage, a dead letter error queue, and a health dashboard.
 
@@ -149,7 +149,7 @@ graph TD
 
 ### OAuth Authorization Flow
 
-```
+```text
 Step 1:  User clicks "Connect Service" in frontend
 Step 2:  API generates state parameter (anti-CSRF) and stores in Redis (TTL: 10min)
 Step 3:  API redirects user to provider's OAuth consent URL with requested scopes
@@ -159,11 +159,11 @@ Step 6:  API exchanges authorization code for access_token + refresh_token + exp
 Step 7:  API encrypts tokens and stores in Secrets Manager keyed by workspace_id + connector_id
 Step 8:  API stores expires_at and scopes in connector_registry (PostgreSQL)
 Step 9:  API marks connector as "connected" â€” sync scheduler activates
-```
+```text
 
 ### Webhook Setup Flow
 
-```
+```text
 Step 1:  Connector registers webhook URL with external service (POST /webhooks/:connector_type)
 Step 2:  Service returns webhook_id and shared secret â€” stored in Secrets Manager
 Step 3:  Vaeloom responds to inbound webhooks by verifying HMAC-SHA256 signature
@@ -172,11 +172,11 @@ Step 5:  If new: publish event to Event Bus topic webhook.{connector_type}
 Step 6:  Processing pipeline handles event â€” classify, deduplicate, extract entities
 Step 7:  On success: ACK event, return 200 OK to external service
 Step 8:  On failure: NACK event, retry up to 3 times, then route to Dead Letter Queue
-```
+```text
 
 ### Polling Sync Workflow
 
-```
+```text
 Step 1:  Sync scheduler triggers based on connector cron schedule (e.g., every 6h)
 Step 2:  Load connector config and decrypted tokens from Secrets Manager
 Step 3:  Check token expiry â€” refresh if needed (at least 5min before expiry)
@@ -186,11 +186,11 @@ Step 6:  Enqueue extracted entities for Memory Agent ingestion
 Step 7:  On rate limit (429): parse Retry-After, backoff 30s â†’ 2m â†’ 5m
 Step 8:  On success: update last_sync_at, record item_count, emit metrics
 Step 9:  On repeated failure: mark connector as degraded, alert engineering
-```
+```text
 
 ### Error Recovery Workflow
 
-```
+```text
 Step 1:  Repeated failures push events to Dead Letter Queue
 Step 2:  DLQ alert triggers (threshold: 100 events in 1h)
 Step 3:  Engineer inspects DLQ entries â€” payload, error, headers preserved
@@ -198,7 +198,7 @@ Step 4:  Engineer identifies root cause (API change, revoked token, credential e
 Step 5:  Apply fix â€” update connector config, re-authorize, or deploy connector patch
 Step 6:  Replay DLQ entries through processing pipeline (preserving original order)
 Step 7:  Mark connector as healthy if syncs succeed
-```
+```text
 
 ---
 
@@ -277,7 +277,7 @@ Every connector must define a manifest that declares its identity, authenticatio
     ]
   }
 }
-```
+```text
 
 ```yaml
 # connector.github.yml
@@ -325,7 +325,7 @@ config:
       label: "Repository Filter"
       description: "Only sync notifications for these repos (empty = all)"
       required: false
-```
+```text
 
 ---
 
@@ -379,7 +379,7 @@ sequenceDiagram
         API->>API: Mark connector degraded
         API->>Client: Notify user â€” re-connect required
     end
-```
+```text
 
 > **Diagram:** OAuth 2.0 authorization code flow with PKCE. **Top half:** user authorizes via provider consent screen, Vaeloom exchanges the code for tokens, tokens are encrypted and stored in Secrets Manager. **Bottom half:** automatic token refresh when access token is within 5 minutes of expiry â€” failure marks the connector as degraded.
 
@@ -451,7 +451,7 @@ export function verifyWebhookSignature(
     return false;
   }
 }
-```
+```text
 
 ### Retry Policy
 
@@ -501,7 +501,7 @@ async function handleWebhook(
 
   return { status: "received", eventId };
 }
-```
+```text
 
 ---
 
@@ -541,7 +541,7 @@ flowchart LR
     class Webhook webhook
     class Incremental,Reconcile inc
     class Start,SyncDone,End rec
-```
+```text
 
 > **Diagram:** Sync strategy decision tree. First sync always does a **full sync**. Subsequent syncs prefer **webhook-driven** updates if recent events exist, falling back to **incremental** polling. A **reconciliation** check runs every 24 hours to catch items missed by webhooks or pagination gaps, triggering an incremental catch-up if discrepancies are found.
 
@@ -600,7 +600,7 @@ class TokenBucketRateLimiter {
     );
   }
 }
-```
+```text
 
 ### Backpressure Signals
 
@@ -661,7 +661,7 @@ The Dead Letter Queue (DLQ) preserves events that have exceeded their maximum re
     "x-hub-signature-256": "sha256=abc..."
   }
 }
-```
+```text
 
 ### Alerting
 
@@ -798,7 +798,7 @@ flowchart LR
     class TestSuite,Staging test
     class SecurityReview sec
     class Approval approve
-```
+```text
 
 > **Diagram:** Connector certification pipeline. A PR triggers automated manifest validation, then progresses through code review â†’ integration tests â†’ security review â†’ performance review â†’ documentation review â†’ 7-day staging observation before production certification. Any failure routes back to fixes and re-submission.
 
@@ -874,7 +874,7 @@ export class GmailConnector extends ConnectorBase<GmailConfig> {
     };
   }
 }
-```
+```text
 
 ### GitHub Connector Integration
 
@@ -954,7 +954,7 @@ class GitHubConnector(ConnectorBase):
             items=items,
             has_more=False,
         )
-```
+```text
 
 ### Webhook Registration (CLI)
 
@@ -982,7 +982,7 @@ curl -X POST https://api.Vaeloom.dev/webhooks/github \
   -H "X-Hub-Signature-256: sha256=$(echo -n '{"action":"test"}' | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | cut -d' ' -f2)" \
   -H "X-Idempotency-Key: test-$(uuidgen)" \
   -d '{"action":"test","repository":{"full_name":"Vaeloom/test"}}'
-```
+```text
 
 ---
 
@@ -1043,6 +1043,7 @@ curl -X POST https://api.Vaeloom.dev/webhooks/github \
 
 ---
 
+<a id="future-improvements"></a>
 ## Future Improvements
 
 | Improvement | Priority | Complexity | Timeline |

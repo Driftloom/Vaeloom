@@ -216,6 +216,7 @@ git push origin main
 ## Scope
 
 **In Scope:**
+
 - Three deployment environments: Development (local), Staging (integration), Production (live)
 - Rolling deployment strategy for MVP, blue-green for Enterprise
 - CI/CD pipeline integration with container registry
@@ -225,6 +226,7 @@ git push origin main
 - Container image signing and verification
 
 **Out of Scope:**
+
 - Canary deployment with percentage-based traffic splitting (Enterprise only)
 - Multi-region active-active deployment
 - Database schema migration during deployment (handled separately)

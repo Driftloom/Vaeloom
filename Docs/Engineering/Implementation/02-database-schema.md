@@ -68,9 +68,11 @@ graph TD
 ```
 
 ## Context
+
 Read `01-foundation-infra.md` first — this assumes Postgres is already running via docker-compose. This phase implements the full relational schema every later phase reads from and writes to.
 
 ## Objective
+
 Implement the complete MVP relational schema in Postgres, with migrations, seed data, and indexes — the durable source of truth for every other system in this project.
 
 ## Requirements
@@ -96,6 +98,7 @@ Implement the complete MVP relational schema in Postgres, with migrations, seed 
 **Memory type enum** (used in `memory_records.type`, MVP set only — enterprise adds 14 more): `profile`, `document`, `career`, `episodic`, `preference`, `working`.
 
 **Indexes (required, not optional):**
+
 - `workspace_id` on every table.
 - Composite `(type, workspace_id)` on `memory_records`.
 - `(workspace_id, created_at)` on `agent_actions` for time-range audit queries.
@@ -108,9 +111,11 @@ Implement the complete MVP relational schema in Postgres, with migrations, seed 
 **Seed script:** a `seed.ts`/`seed.py` that creates one demo workspace with a handful of sample entities and a sample document, for local development and manual QA.
 
 ## Out of scope
+
 Any actual write logic from agents (file 04 populates this schema for real), read replicas / partitioning (enterprise upgrade), a dedicated vector DB migration (enterprise upgrade).
 
 ## Acceptance criteria
+
 - [ ] `prisma migrate dev` (or equivalent) runs cleanly from an empty database.
 - [ ] Both `apps/api` and `apps/ai-service` can read/write the same tables with no schema drift.
 - [ ] Seed script produces a workspace with queryable sample data.
@@ -152,6 +157,7 @@ Any actual write logic from agents (file 04 populates this schema for real), rea
 ## Scope
 
 ### In Scope
+
 - 13 core MVP tables: users, workspaces, connectors, documents, document_versions, memory_records, entities, relationships, resumes, applications, schedule_events, agent_actions, permissions
 - pgvector extension for vector similarity search with embeddings table
 - Apache AGE extension for graph projection mirroring entities/relationships
@@ -160,6 +166,7 @@ Any actual write logic from agents (file 04 populates this schema for real), rea
 - Required indexes on workspace_id, (type, workspace_id), (workspace_id, created_at), and (source_connector_id)
 
 ### Out of Scope
+
 - Actual write logic from agents (Phase 04 populates the schema for real)
 - Read replicas or table partitioning (enterprise-phase scaling)
 - Dedicated vector database (Qdrant) migration from pgvector (enterprise)

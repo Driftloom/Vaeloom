@@ -1105,7 +1105,7 @@ sequenceDiagram
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | New developer adds raw color instead of token | High | Medium | ESLint rule prohibiting `#hex` and `rgb()` in component CSS; code review |
-| Token naming inconsistency across components | Medium | Medium | Token naming convention enforced via linting (`/^(--bg|--text|--accent|--border|--shadow)/`) |
+| Token naming inconsistency across components | Medium | Medium | Token naming convention enforced via linting (`/^(--bg\|--text\|--accent\|--border\|--shadow)/`) |
 | High-contrast theme reveals contrast issues | Low | High | Test all components in high-contrast mode before release |
 | Theme CSS bundle grows unbounded | Medium | Low | Quarterly token audit to remove unused variables |
 
@@ -1138,6 +1138,7 @@ The theme system includes 91 CSS custom properties across 7 categories, all veri
 ## Scope
 
 ### In Scope
+
 - Three-layer token architecture with 31 primitive, 31 semantic, and 29 component tokens
 - Light and dark theme definitions for all semantic tokens with CI-verified contrast ratios
 - Theme switching via `data-theme` attribute with localStorage persistence and system preference defaults
@@ -1146,6 +1147,7 @@ The theme system includes 91 CSS custom properties across 7 categories, all veri
 - Token usage audit checklist for code review (10-point verification per component)
 
 ### Out of Scope
+
 - User-customizable accent colors beyond the defined palette (future improvement)
 - High-contrast theme for WCAG AAA compliance (future improvement)
 - Real-time Figma-to-code token sync (future improvement)

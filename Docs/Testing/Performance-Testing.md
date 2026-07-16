@@ -205,6 +205,7 @@ Performance baselines are versioned alongside the codebase, labeled with git com
 ## Scope
 
 ### In Scope
+
 - Five performance test types: load, stress, endurance, spike, scalability
 - Performance budgets: API p99 < 500ms, Agent p99 < 10s, Page load < 2s (LCP), DB query p99 < 100ms
 - k6 for API-level performance testing with structured ramp-up patterns
@@ -213,6 +214,7 @@ Performance baselines are versioned alongside the codebase, labeled with git com
 - Baseline-relative regression detection with CI enforcement
 
 ### Out of Scope
+
 - Real User Monitoring (RUM) integration with Web Vitals (future improvement)
 - AI-adaptive performance budgets based on feature complexity (future improvement)
 - Continuous profiling with eBPF for agent performance (future improvement)

@@ -17,15 +17,23 @@ Every document in the Vaeloom documentation system MUST follow this structure. A
 # Document Title
 
 > **Purpose:** One-sentence description of what this document covers
-> **Status:** ðŸ†• New | âœ… Upgraded to enterprise quality | ðŸ”„ Needs Update
+> **Status:** ðŸ†• New | âœ… Upgraded to enterprise quality | ðŸ”„ Needs Update | ðŸ—„ï¸ Deprecated
 > **Owner:** [Team Name]
+> **Version:** 1.0
 > **Last Updated:** YYYY-MM-DD
-> **Canonical source:** [`relative/path/to/source.md`](./path/to/source.md)
+> **Dependencies:** [comma-separated docs/systems this relies on, or "None"]
+> **Implementation Status:** ðŸ“‹ Spec Only | ðŸ”¨ In Progress | âœ… Shipped
+> **Canonical source:** <!-- Replace with actual path --> `./path/to/source.md`
 ```
+
+The `Status / Owner / Version / Last Updated / Dependencies / Implementation Status`
+fields are **mandatory** on every document. `Canonical source` is only required
+when a document supersedes or mirrors another.
 
 ### 2. Overview
 
 3-4 paragraphs covering:
+
 - What this document covers
 - Who the audience is
 - How it fits into the larger Vaeloom system

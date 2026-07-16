@@ -353,7 +353,7 @@ Delete Request â†’ Soft Delete (is_deleted=true, deleted_at=now)
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
 | `RETENTION_SOFT_DELETE_DAYS` | Grace period before hard delete | 30 | Yes |
-| `RETENTION_CRON_SCHEDULE` | Cron schedule for retention job | 0 2 * * * | Yes |
+| `RETENTION_CRON_SCHEDULE` | Cron schedule for retention job | 0 2 ** * | Yes |
 | `RETENTION_BATCH_SIZE` | Records per deletion batch | 1000 | No |
 | `RETENTION_LEGAL_HOLD_ENABLED` | Enable legal hold feature | true | No |
 | `RETENTION_BACKUP_ENCRYPTION` | Enable backup at-rest encryption | true | Yes |

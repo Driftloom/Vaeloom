@@ -141,6 +141,7 @@ The Architecture Walkthrough guides new developers through Vaeloom's three-tier 
 ## Scope
 
 ### In Scope
+
 - Three-service architecture overview (Web, API, AI Service)
 - Key file pointers for each service
 - Common development flows (adding API endpoints, adding agents)
@@ -148,6 +149,7 @@ The Architecture Walkthrough guides new developers through Vaeloom's three-tier 
 - Internal communication patterns (gRPC, REST)
 
 ### Out of Scope
+
 - Database schema details (covered in Database documentation)
 - Connector/SDK integration patterns (covered in Integration Guide)
 - Deployment topology and infrastructure (covered in DevOps docs)

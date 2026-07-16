@@ -23,12 +23,14 @@ Vaeloom is a second brain for a person's education and career. It connects to th
 ## Scope
 
 ### In Scope
+
 - Navigable landing page with links to all major documentation sections
 - Product story, architecture, AI agents, memory system, and feature documentation
 - Tech stack, database design, and implementation plan
 - Enterprise paper and documentation site structure references
 
 ### Out of Scope
+
 - Detailed implementation guides (in Backend/ docs)
 - Auto-generated API reference documentation
 - Operations runbooks, incident response procedures, and security compliance docs
@@ -36,7 +38,7 @@ Vaeloom is a second brain for a person's education and career. It connects to th
 
 Overview
 
-[What Is Vaeloom](#what-is-Vaeloom)
+[What Is Vaeloom](#features)
 [The Product Story](#the-product-story)
 
 Product
@@ -436,116 +438,116 @@ agents auditable instead of twenty-eight black boxes.
 
 **Memory Agent** â€” the agent every other agent depends on
 
-* **Responsibilities:** entity/relationship extraction
+- **Responsibilities:** entity/relationship extraction
   from every agentâ€™s output; deduplication and merging; writing to the
   knowledge graph and vector store; running periodic consolidation.
-* **Inputs:** raw output from any other agent (a parsed
+- **Inputs:** raw output from any other agent (a parsed
   document, a chat exchange, an application outcome).
-* **Outputs:** structured memory records, updated graph
+- **Outputs:** structured memory records, updated graph
   edges, updated embeddings.
-* **Memory access:** full read/write across all memory
+- **Memory access:** full read/write across all memory
   types.
-* **Permissions:** internal-only â€” never directly exposed
+- **Permissions:** internal-only â€” never directly exposed
   to a connector or the outside world.
-* **Workflow:** receive â†’ extract entities/facts â†’ check
+- **Workflow:** receive â†’ extract entities/facts â†’ check
   for existing matching entities (embedding + string + graph-context
   similarity) â†’ merge or create â†’ write â†’ emit `memory.updated`
   event.
-* **Prompt style:** structured extraction prompts with
+- **Prompt style:** structured extraction prompts with
   strict output schemas (JSON), not open-ended generation â€” precision
   matters more than fluency here.
-* **Decision process:** merge decisions use a confidence
+- **Decision process:** merge decisions use a confidence
   threshold; below threshold, the entity is created as a new, unmerged
   node flagged for later reflection rather than guessed into an existing
   one â€” a missed merge is a correctable annoyance, a wrong merge silently
   corrupts two records.
-* **Interaction with other agents:** every other agentâ€™s
+- **Interaction with other agents:** every other agentâ€™s
   output flows through it; it does not call other agents.
-* **Future upgrades:** learned merge-confidence
+- **Future upgrades:** learned merge-confidence
   calibration from historical correction data (Â§5.4, Self-Improvement
   Agent).
 
 **Job Search Agent** â€” search and rank, grounded in real
 platform constraints
 
-* **Responsibilities:** search connected platforms; rank
+- **Responsibilities:** search connected platforms; rank
   results against the userâ€™s skill graph and past outcomes; filter out
   previously-rejected roles; hand off to the Application Agent on
   approval.
-* **Inputs:** a user request (explicit search) or a
+- **Inputs:** a user request (explicit search) or a
   scheduled background pass (Opportunity Radar-style, Â§21 of the
   Enterprise Paper); Career and Skill memory.
-* **Outputs:** a ranked shortlist with a stated fit
+- **Outputs:** a ranked shortlist with a stated fit
   reason per role.
-* **Memory access:** reads Career, Skill, Preference
+- **Memory access:** reads Career, Skill, Preference
   memory; writes shortlist state.
-* **Permissions:** read-only on connectors unless an
+- **Permissions:** read-only on connectors unless an
   official application API is configured (Application Agent handles the
   write path).
-* **Workflow:** query platforms (API where available;
+- **Workflow:** query platforms (API where available;
   otherwise structured scraping is explicitly out of scope â€” see Â§14 Gap
   Analysis) â†’ score each result â†’ filter against rejection history â†’
   return ranked list.
-* **Decision process:** ranking combines skill-overlap
+- **Decision process:** ranking combines skill-overlap
   score, stated preference alignment, and recency of similar past outcomes
   â€” always shown with its reasoning, never an opaque number.
-* **Interaction with other agents:** hands approved
+- **Interaction with other agents:** hands approved
   selections to the Application Agent; reads ATS Agentâ€™s scoring output
   when available.
-* **Future upgrades:** organization-consented data
+- **Future upgrades:** organization-consented data
   sources (e.g., a university career officeâ€™s partner-employer list)
   factored into ranking without cross-tenant visibility.
 
 **Reflection Agent** â€” the agent that notices what no
 single document would reveal
 
-* **Responsibilities:** scheduled (not per-event) review
+- **Responsibilities:** scheduled (not per-event) review
   of recent memory for higher-level patterns.
-* **Inputs:** recent memory writes across all types, on a
+- **Inputs:** recent memory writes across all types, on a
   rolling window.
-* **Outputs:** suggested preference updates, flagged
+- **Outputs:** suggested preference updates, flagged
   anomalies, consolidation candidates.
-* **Memory access:** read across all types; writes only
+- **Memory access:** read across all types; writes only
   to a suggestion queue, never directly to Preference or Career
   memory.
-* **Permissions:** internal-only.
-* **Workflow:** batch-review recent activity â†’ look for
+- **Permissions:** internal-only.
+- **Workflow:** batch-review recent activity â†’ look for
   repeated patterns (e.g., three rejected frontend-heavy roles) â†’ generate
   a suggestion â†’ surface to the user for confirmation.
-* **Decision process:** pattern confidence must clear a
+- **Decision process:** pattern confidence must clear a
   higher bar than single-fact extraction, precisely because itâ€™s inferring
   intent rather than reading a stated fact.
-* **Interaction with other agents:** feeds the
+- **Interaction with other agents:** feeds the
   Recommendation Agent and Job Search Agent once a suggestion is
   user-confirmed.
-* **Future upgrades:** cross-referencing patterns against
+- **Future upgrades:** cross-referencing patterns against
   Reflection output from similar (anonymized, consented) users to improve
   suggestion quality â€” enterprise/aggregate feature, not a default.
 
 **Quality Assurance Agent** â€” the gate before anything
 reaches the user or the world
 
-* **Responsibilities:** reviews other agentsâ€™ outputs â€” a
+- **Responsibilities:** reviews other agentsâ€™ outputs â€” a
   proposed rename, a drafted email, an application about to be submitted â€”
   against correctness and policy checks before delivery or execution.
-* **Inputs:** any agentâ€™s pre-delivery output.
-* **Outputs:** a pass/flag decision; flagged items route
+- **Inputs:** any agentâ€™s pre-delivery output.
+- **Outputs:** a pass/flag decision; flagged items route
   back to the originating agent or to the user directly.
-* **Memory access:** read-only, scoped to whatever
+- **Memory access:** read-only, scoped to whatever
   context is needed to validate the specific output.
-* **Permissions:** internal gate â€” sits structurally
+- **Permissions:** internal gate â€” sits structurally
   between every agent and the outside world/user surface.
-* **Workflow:** receive candidate output â†’ run
+- **Workflow:** receive candidate output â†’ run
   correctness checks (schema validity, policy compliance, basic sanity) â†’
   pass through or flag with a reason.
-* **Decision process:** deliberately conservative â€” a
+- **Decision process:** deliberately conservative â€” a
   flagged-but-actually-fine output costs the user one extra confirmation
   click; a passed-but-wrong output costs trust.
-* **Interaction with other agents:** sits inline between
+- **Interaction with other agents:** sits inline between
   every action-capable agent and delivery â€” not called explicitly by other
   agents, invoked automatically by the Orchestrator on any consequential
   output.
-* **Future upgrades:** per-agent, learned QA thresholds
+- **Future upgrades:** per-agent, learned QA thresholds
   based on that agentâ€™s historical accuracy (a well-proven agentâ€™s output
   needs a lighter check than a newly added one).
 
@@ -658,13 +660,13 @@ Traditional RAG runs one fixed retrieval pipeline for every query.
 Agentic RAG means the requesting agent decides, per query, which
 combination of strategies actually answers the question:
 
-* **Semantic / vector search** â€” best for â€œfind things
+- **Semantic / vector search** â€” best for â€œfind things
   conceptually related to X,â€ where exact wording doesnâ€™t matter.
-* **Keyword search** â€” best for exact terms: a course
+- **Keyword search** â€” best for exact terms: a course
   code, a tool name, an ID.
-* **Graph traversal** â€” best for relationship queries:
+- **Graph traversal** â€” best for relationship queries:
   â€œeverything connected to this skill,â€ â€œwho worked on this with me.â€
-* **Hybrid** â€” most real queries combine at least two of
+- **Hybrid** â€” most real queries combine at least two of
   the above; the agentâ€™s retrieval call can request a weighted combination
   rather than picking exactly one.
 
@@ -732,19 +734,19 @@ specs.
 **Dashboard** â€” full breakdown (representative depth for
 every screen below)
 
-* **Purpose:** one at-a-glance view composed entirely
+- **Purpose:** one at-a-glance view composed entirely
   from other modules â€” holds no unique logic of its own.
-* **Widgets:** memory health card, knowledge growth
+- **Widgets:** memory health card, knowledge growth
   sparkline, active applications list, upcoming deadlines strip, goal
   progress bars, recent activity feed, AI suggestions panel, per-agent
   status grid, workspace health summary.
-* **Buttons/interactions:** approve/dismiss on any
+- **Buttons/interactions:** approve/dismiss on any
   suggestion inline; click any widget to deep-link into its full screen;
   per-agent status click opens that agentâ€™s detail panel.
-* **Backend APIs:** `GET /dashboard/summary`
+- **Backend APIs:** `GET /dashboard/summary`
   (aggregated read across memory + agent state),
   `POST /suggestions/{id}/respond`.
-* **AI usage:** Analytics Agent (read-only aggregation),
+- **AI usage:** Analytics Agent (read-only aggregation),
   Recommendation Agent (suggestion generation) â€” no generative writes
   happen from this screen directly.
 
@@ -897,17 +899,17 @@ connector-scoped resync operations.
 
 ### 11.2 Graph schema (property graph â€” Apache AGE at MVP, Neo4j at scale)
 
-* **Nodes:** labeled by entity type (`Skill`,
+- **Nodes:** labeled by entity type (`Skill`,
   `Project`, `Organization`, `Person`,
   `Certificate`, `Event`, `Job`,
   `Course`, `Publication`), properties
   `{id, canonical_name, workspace_id, confidence, importance}`.
-* **Edges:** typed and directional
+- **Edges:** typed and directional
   (`worked_on`, `awarded_to`,
   `requires_skill`, `applied_to`,
   `mentored_by`, `published_with`), properties
   `{confidence, source_memory_id, created_at}`.
-* **Why separate from the relational
+- **Why separate from the relational
   `entities`/`relationships` tables:** the
   relational tables are the durable source of truth and audit trail; the
   graph engine (AGE/Neo4j) is a query-optimized projection rebuilt from
@@ -951,222 +953,222 @@ the core loop is proven with real users, not before.
 
 **Phase 0 â€” Infrastructure & Scaffolding**
 
-* **Objectives:** stand up the deployable skeleton before
+- **Objectives:** stand up the deployable skeleton before
   any feature work.
-* **Deliverables:** empty NestJS API service, empty
+- **Deliverables:** empty NestJS API service, empty
   FastAPI AI service, Postgres + Redis provisioned, CI pipeline running
   lint/test/build on every PR, auth provider integrated.
-* **Key folders:** `/apps/web`,
+- **Key folders:** `/apps/web`,
   `/apps/api`, `/apps/ai-service`,
   `/packages/shared-types`, `/infra`.
-* **Backend:** health-check endpoint, auth middleware,
+- **Backend:** health-check endpoint, auth middleware,
   workspace provisioning endpoint.
-* **Frontend:** signup/login flow, empty dashboard
+- **Frontend:** signup/login flow, empty dashboard
   shell.
-* **Database:** `users`,
+- **Database:** `users`,
   `workspaces` tables migrated.
-* **Testing:** CI runs unit tests on every service; a
+- **Testing:** CI runs unit tests on every service; a
   single end-to-end â€œcan sign up and see an empty dashboardâ€ test.
-* **Deployment:** PaaS staging environment auto-deployed
+- **Deployment:** PaaS staging environment auto-deployed
   from `main`.
-* **Milestone:** a new user can sign up and land on an
+- **Milestone:** a new user can sign up and land on an
   empty, correctly-provisioned workspace.
-* **Complexity:** S. **Dependencies:** none.
+- **Complexity:** S. **Dependencies:** none.
   **Risks:** over-engineering the scaffold before real
   feature pressure exists â€” keep it minimal.
 
 **Phase 1 â€” Ingestion & Memory Foundation**
 
-* **Objectives:** get a file from upload to a queryable
+- **Objectives:** get a file from upload to a queryable
   memory record.
-* **Deliverables:** file upload endpoint, ingestion
+- **Deliverables:** file upload endpoint, ingestion
   pipeline (parse/OCR/extract), Memory Agent v1 (extraction + basic
   dedup),
   `memory_records`/`entities`/`relationships`
   tables live, pgvector embeddings wired up.
-* **Key folders:**
+- **Key folders:**
   `/apps/ai-service/ingestion`,
   `/apps/ai-service/memory-agent`,
   `/apps/api/documents`.
-* **Backend:** queue-driven ingestion jobs (BullMQ),
+- **Backend:** queue-driven ingestion jobs (BullMQ),
   document CRUD API.
-* **Frontend:** basic upload UI, a raw (unstyled) list of
+- **Frontend:** basic upload UI, a raw (unstyled) list of
   extracted memory records for internal QA.
-* **Database:** full schema from Â§11.1â€“Â§11.3 for
+- **Database:** full schema from Â§11.1â€“Â§11.3 for
   documents/memory/entities/relationships/embeddings.
-* **Testing:** golden-file tests for each parser type
+- **Testing:** golden-file tests for each parser type
   (PDF/DOCX/image); extraction accuracy spot-checked against a
   hand-labeled sample set.
-* **Deployment:** staging, feature-flagged off for real
+- **Deployment:** staging, feature-flagged off for real
   users until extraction quality clears an internal bar.
-* **Milestone:** uploading a resume produces correct,
+- **Milestone:** uploading a resume produces correct,
   queryable entities (skills, education, projects) in the graph.
-* **Complexity:** L. **Dependencies:** Phase
+- **Complexity:** L. **Dependencies:** Phase
   0. **Risks:** extraction quality is the whole product â€” do
   not move to Phase 2 until this is genuinely solid.
 
 **Phase 2 â€” Organization Agent & Workspace**
 
-* **Objectives:** turn raw ingestion into the user-facing
+- **Objectives:** turn raw ingestion into the user-facing
   file organization experience.
-* **Deliverables:** Organization Agent
+- **Deliverables:** Organization Agent
   (naming/foldering/dedup proposals), Workspace screen, approval flow,
   Archive (not delete).
-* **Key folders:**
+- **Key folders:**
   `/apps/ai-service/organization-agent`,
   `/apps/web/workspace`.
-* **Backend:** proposal generation endpoint,
+- **Backend:** proposal generation endpoint,
   approve/reject endpoint, `document_versions` write path.
-* **Frontend:** file tree, in-app viewer (PDF/image/text
+- **Frontend:** file tree, in-app viewer (PDF/image/text
   at minimum), proposal approval cards.
-* **Database:** `document_versions`,
+- **Database:** `document_versions`,
   `agent_actions` (audit log) live.
-* **Testing:** proposal-approval-rate tracked from day
+- **Testing:** proposal-approval-rate tracked from day
   one in staging with internal test users.
-* **Deployment:** first real (small, opted-in) user
+- **Deployment:** first real (small, opted-in) user
   cohort.
-* **Milestone:** a real userâ€™s messy folder gets
+- **Milestone:** a real userâ€™s messy folder gets
   organized with a >90% approval rate on proposals.
-* **Complexity:** M. **Dependencies:** Phase
+- **Complexity:** M. **Dependencies:** Phase
   1. **Risks:** a wrong rename/move is the fastest way to
   lose user trust â€” ship conservative, suggest-only, from day one.
 
 **Phase 3 â€” Resume & ATS**
 
-* **Objectives:** the first â€œwowâ€ feature â€” a resume that
+- **Objectives:** the first â€œwowâ€ feature â€” a resume that
   writes itself.
-* **Deliverables:** Resume Agent, ATS Agent,
+- **Deliverables:** Resume Agent, ATS Agent,
   `resumes` table, Resume screen with variant generation.
-* **Key folders:**
+- **Key folders:**
   `/apps/ai-service/resume-agent`,
   `/apps/ai-service/ats-agent`,
   `/apps/web/resume`.
-* **Backend:** resume assembly endpoint, ATS scoring
+- **Backend:** resume assembly endpoint, ATS scoring
   endpoint, gap-fill question flow.
-* **Frontend:** resume editor, variant picker, ATS score
+- **Frontend:** resume editor, variant picker, ATS score
   panel with specific suggestions.
-* **Database:** `resumes` table,
+- **Database:** `resumes` table,
   versioning.
-* **Testing:** resume-quality review against a set of
+- **Testing:** resume-quality review against a set of
   real (anonymized, consented) sample profiles.
-* **Deployment:** same cohort as Phase 2, feature-flagged
+- **Deployment:** same cohort as Phase 2, feature-flagged
   on.
-* **Milestone:** the master resume is generated correctly
+- **Milestone:** the master resume is generated correctly
   from memory and a user can produce a role-tailored variant in under a
   minute.
-* **Complexity:** M. **Dependencies:** Phase
+- **Complexity:** M. **Dependencies:** Phase
   1 (needs solid memory). **Risks:** silently wrong resume
   content is worse than a visible gap â€” keep the â€œask, donâ€™t guessâ€ rule
   strict.
 
 **Phase 4 â€” Career Intelligence**
 
-* **Objectives:** job/internship search, ranking, and
+- **Objectives:** job/internship search, ranking, and
   tailored (approval-gated) applications.
-* **Deliverables:** Job Search Agent, Application Agent,
+- **Deliverables:** Job Search Agent, Application Agent,
   QA Agent (first real use of the QA gate), `applications`
   table.
-* **Key folders:**
+- **Key folders:**
   `/apps/ai-service/job-search-agent`,
   `/apps/ai-service/application-agent`,
   `/apps/ai-service/qa-agent`, `/apps/web/jobs`,
   `/apps/web/applications`.
-* **Backend:** platform connector integrations (API-based
+- **Backend:** platform connector integrations (API-based
   first, per Â§14 Gap Analysis), shortlist ranking endpoint, application
   submission/deep-link endpoint.
-* **Frontend:** shortlist cards, approval flow,
+- **Frontend:** shortlist cards, approval flow,
   application status board.
-* **Database:** `applications` table,
+- **Database:** `applications` table,
   `schedule_events` linkage.
-* **Testing:** ranking quality reviewed manually against
+- **Testing:** ranking quality reviewed manually against
   known-good matches; QA Agent false-positive/negative rate tracked
   explicitly.
-* **Deployment:** cohort expansion, application
+- **Deployment:** cohort expansion, application
   submission still gated behind explicit per-application approval (no
   earned autonomy yet).
-* **Milestone:** a user can go from â€œfind me Xâ€ to a
+- **Milestone:** a user can go from â€œfind me Xâ€ to a
   submitted, tailored application inside one session.
-* **Complexity:** L. **Dependencies:** Phase
+- **Complexity:** L. **Dependencies:** Phase
   3 (needs Resume + ATS). **Risks:** platform ToS constraints
   (Â§14) â€” do not build scraping-based auto-apply against a platformâ€™s
   terms.
 
 **Phase 5 â€” Communication & Time**
 
-* **Objectives:** close the loop on time-sensitive
+- **Objectives:** close the loop on time-sensitive
   information.
-* **Deliverables:** Gmail Agent (scheduled + push hook),
+- **Deliverables:** Gmail Agent (scheduled + push hook),
   Scheduler Agent, Schedule screen.
-* **Key folders:**
+- **Key folders:**
   `/apps/ai-service/gmail-agent`,
   `/apps/ai-service/scheduler-agent`,
   `/apps/web/schedule`.
-* **Backend:** Gmail connector integration,
+- **Backend:** Gmail connector integration,
   classification pipeline, conflict-detection logic.
-* **Frontend:** Schedule calendar/list views, daily
+- **Frontend:** Schedule calendar/list views, daily
   digest surfaced on Dashboard.
-* **Database:** `schedule_events` fully wired
+- **Database:** `schedule_events` fully wired
   to all upstream sources.
-* **Testing:** classification accuracy tracked per
+- **Testing:** classification accuracy tracked per
   category; false-negative rate on â€œurgentâ€ mail specifically monitored
   (missing an interview email is the worst failure mode here).
-* **Deployment:** full cohort.
-* **Milestone:** a same-day-urgent email reliably
+- **Deployment:** full cohort.
+- **Milestone:** a same-day-urgent email reliably
   surfaces within minutes, not the next scheduled pass.
-* **Complexity:** M. **Dependencies:** Phase
+- **Complexity:** M. **Dependencies:** Phase
   1 (memory), Phase 4 (career context for deadline relevance).
   **Risks:** over-notifying erodes trust as fast as
   under-notifying â€” tune classifier thresholds carefully.
 
 **Phase 6 â€” Polish, Autonomy, Dashboard, Settings**
 
-* **Objectives:** the trust-building layer that turns a
+- **Objectives:** the trust-building layer that turns a
   feature set into a product.
-* **Deliverables:** Dashboard (aggregating everything
+- **Deliverables:** Dashboard (aggregating everything
   built so far), History/audit log screen, per-agent autonomy settings,
   data export/delete controls.
-* **Key folders:** `/apps/web/dashboard`,
+- **Key folders:** `/apps/web/dashboard`,
   `/apps/web/settings`, `/apps/web/history`.
-* **Backend:** aggregation endpoints, autonomy-grant
+- **Backend:** aggregation endpoints, autonomy-grant
   endpoint (Permission Engine writes), export/delete endpoints.
-* **Frontend:** Dashboard widgets, Settings autonomy
+- **Frontend:** Dashboard widgets, Settings autonomy
   sliders, one-click export/delete.
-* **Database:** `permissions` table fully
+- **Database:** `permissions` table fully
   wired; audit log queryable end-to-end.
-* **Testing:** full end-to-end test suite across every
+- **Testing:** full end-to-end test suite across every
   phaseâ€™s critical path; a specific â€œdelete everything actually deletes
   everythingâ€ test, run on every release.
-* **Deployment:** public MVP launch.
-* **Milestone:** a new userâ€™s full first-week journey
+- **Deployment:** public MVP launch.
+- **Milestone:** a new userâ€™s full first-week journey
   (Â§3.1 of the companion MVP spec, Â§3 User Journey of the Enterprise
   Paper) works without a single manual intervention from the team.
-* **Complexity:** M. **Dependencies:** all
+- **Complexity:** M. **Dependencies:** all
   prior phases. **Risks:** scope creep â€” this phase is about
   polish and trust infrastructure, not new agent capabilities.
 
 **Phase 7 â€” Enterprise (post-MVP)**
 
-* **Objectives:** multi-tenancy, the consent model, SSO,
+- **Objectives:** multi-tenancy, the consent model, SSO,
   and the plugin/MCP ecosystem.
-* **Deliverables:** tenant-scoped provisioning, SAML/OIDC
+- **Deliverables:** tenant-scoped provisioning, SAML/OIDC
   SSO, Admin console, Plugin SDK v1, Marketplace v1.
-* **Key folders:** `/apps/api/admin`,
+- **Key folders:** `/apps/api/admin`,
   `/apps/api/plugins`, `/packages/plugin-sdk`.
-* **Backend:** tenant isolation enforcement in the
+- **Backend:** tenant isolation enforcement in the
   Permission Engine, plugin sandbox runtime.
-* **Frontend:** Admin console, Plugin management
+- **Frontend:** Admin console, Plugin management
   screen.
-* **Database:** `tenants` table, tenant-scoped
+- **Database:** `tenants` table, tenant-scoped
   policy tables.
-* **Testing:** tenant-isolation penetration testing
+- **Testing:** tenant-isolation penetration testing
   specifically (cross-tenant data leakage is the single highest-severity
   risk at this phase).
-* **Deployment:** enterprise design-partner rollout,
+- **Deployment:** enterprise design-partner rollout,
   gated.
-* **Milestone:** an institution can provision accounts
+- **Milestone:** an institution can provision accounts
   for its population without ever gaining access to individual memory
   contents without explicit consent.
-* **Complexity:** L. **Dependencies:** Phase
+- **Complexity:** L. **Dependencies:** Phase
   6 (MVP proven with real users first). **Risks:** this
   entire phase is deferred exactly because getting the consent model wrong
   is a trust failure the product may not recover from â€” no shortcuts

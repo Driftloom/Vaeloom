@@ -359,6 +359,7 @@ deployment_options:
 ## Scope
 
 ### In Scope
+
 - Multi-tenant architecture and isolation models
 - SSO/SAML/OIDC integration with major IdPs (Okta, Azure AD, OneLogin, Google Workspace)
 - Enterprise audit pipeline (CloudEvents format, immutability, retention)
@@ -367,6 +368,7 @@ deployment_options:
 - SCIM provisioning and directory sync
 
 ### Out of Scope
+
 - Individual account management (covered in Product docs)
 - Agent and memory system architecture (covered in AI docs)
 - Frontend implementation details

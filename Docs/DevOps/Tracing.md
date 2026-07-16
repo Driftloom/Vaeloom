@@ -260,6 +260,7 @@ Enterprise-grade distributed tracing requires careful sampling to balance data c
 ## Scope
 
 ### In Scope
+
 - OpenTelemetry SDK instrumentation for all services (TypeScript, Python)
 - W3C trace context propagation across HTTP and message queue boundaries
 - Span naming conventions: API (`{method} {path}`), DB (`db.query.{table}`), AI (`ai.inference.{model}`), Agent (`agent.{name}.{action}`), Queue (`queue.{name}.process`)
@@ -267,6 +268,7 @@ Enterprise-grade distributed tracing requires careful sampling to balance data c
 - Trace export via OpenTelemetry Collector to Jaeger or Grafana Tempo
 
 ### Out of Scope
+
 - Metrics collection and monitoring dashboards (covered in [Monitoring.md](./Monitoring.md))
 - Log aggregation and structured logging (covered in [Logging.md](./Logging.md))
 - Alerting rules based on trace data (covered in [Alerting.md](./Alerting.md))

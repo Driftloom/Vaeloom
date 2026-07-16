@@ -5,7 +5,7 @@
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
-### Read this first. This file is the entry point for Claude Code / Cursor.
+## Read this first. This file is the entry point for Claude Code / Cursor
 
 ## Overview
 
@@ -52,9 +52,11 @@ graph TD
 ```
 
 ## What you're building
+
 Vaeloom: a second brain for a person's education and career. It ingests documents, code, and communications; builds a continuously updated, structured memory of who the person is and what they've done; and runs specialized, permission-scoped agents on top of that memory to organize files, maintain a resume, search for and apply to jobs, and track deadlines. Full product context lives in the companion docs `Vaeloom-Complete-Documentation.md` and `01-Vaeloom-MVP-Spec.md` â€” read those for the "why," this file and the ones after it are the "how, in order."
 
 ## Non-negotiable architectural decisions (already made â€” do not re-litigate)
+
 - **Agent contract:** every agent shares one structure â€” fixed mission, declared tool list, explicit memory read/write permissions, a stated default autonomy level (suggest-mode unless stated otherwise), and a required fallback (ask, never guess).
 - **Agentic loop:** Plan â†’ Act â†’ Observe â†’ Reflect â†’ Improve, implemented once in the shared harness (file 05), not reimplemented per agent.
 - **Memory before features:** every agent action that teaches the system something new is a memory write; every feature is a memory read. If a feature can't be expressed as a read/write against memory, question whether it belongs.
@@ -63,6 +65,7 @@ Vaeloom: a second brain for a person's education and career. It ingests document
 - **Two-service backend split:** `apps/api` (NestJS, TypeScript) owns auth/CRUD/permissions; `apps/ai-service` (FastAPI, Python) owns agents/memory/retrieval. They talk over an internal RPC boundary.
 
 ## Build order
+
 Run these prompts in order. Each depends on the ones before it. Do not skip ahead â€” a later file assumes the earlier ones' schemas/interfaces exist.
 
 | # | File | Builds | Depends on |
@@ -85,6 +88,7 @@ Run these prompts in order. Each depends on the ones before it. Do not skip ahea
 | 16 | `16-deployment-infrastructure.md` | Containers, CI/CD, staging/prod | all above |
 
 ## Global conventions (apply in every file below)
+
 - **Languages:** TypeScript (strict mode) for `apps/web` and `apps/api`; Python 3.11+ with full type hints for `apps/ai-service`.
 - **Testing:** every phase ships with tests before being marked done â€” unit tests minimum, integration tests where a real external dependency (DB, queue) is involved. No phase is "complete" without a green test suite.
 - **Local dev:** every service must run locally via `docker-compose up` with a documented `.env.example` â€” never require a cloud account to develop against. Secrets in local dev come from `.env` (gitignored); production secrets come from a secrets manager (file 15).
@@ -92,6 +96,7 @@ Run these prompts in order. Each depends on the ones before it. Do not skip ahea
 - **No silent scope creep:** if a prompt file's "Out of scope" section excludes something, do not build it "while you're in there" â€” flag it as a note instead.
 
 ## Definition of "MVP done"
+
 A new user can sign up, connect at least one source, upload a resume, see it organized and reflected in an always-current master resume, search for and (with approval) apply to a role, and see relevant deadlines surfaced automatically â€” with zero manual intervention from the engineering team. This is the acceptance bar for file 16.
 
 ## Common Mistakes
@@ -127,6 +132,7 @@ A new user can sign up, connect at least one source, upload a resume, see it org
 ## Scope
 
 ### In Scope
+
 - Complete 16-phase MVP build sequence with explicit dependency ordering from foundation (01) through deployment (16)
 - Non-negotiable architectural decisions: two-service backend split, agent contract, agentic loop, memory-before-features, MCP-shaped tools, suggest-mode by default
 - Global conventions: TypeScript/Python language choice, testing requirements, local-dev standards, commit format, scope-creep prohibition
@@ -134,6 +140,7 @@ A new user can sign up, connect at least one source, upload a resume, see it org
 - Cross-referencing between phases so downstream engineers understand upstream contracts
 
 ### Out of Scope
+
 - Product specifications and design rationale (covered in `Vaeloom-Complete-Documentation.md` and `01-Vaeloom-MVP-Spec.md`)
 - Enterprise-phase scaling, migration guides, or additional agent roster
 - Performance benchmarking beyond what each phase's acceptance criteria define

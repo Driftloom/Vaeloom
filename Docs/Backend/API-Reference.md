@@ -411,6 +411,7 @@ sequenceDiagram
     CTRL-->>C: 202 Accepted + document metadata
     C-->>C: Poll GET /v1/documents/:id for status
 ```
+
 > **Diagram:** Document upload flow â€” API Gateway validates auth/permissions, controller delegates to service, service persists with `processing` status, enqueues async ingestion, returns 202 immediately.
 
 ---

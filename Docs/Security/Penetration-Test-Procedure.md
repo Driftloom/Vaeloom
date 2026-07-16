@@ -436,6 +436,7 @@ Annual Manual PT â†’ Firm selection â†’ Scope definition
 ## Scope
 
 ### In Scope
+
 - Web application (Next.js): XSS, CSRF, authentication bypass, session management, CSP bypass
 - API service (NestJS): IDOR, mass assignment, rate limiting bypass, SSRF, injection (SQL, NoSQL)
 - AI service (FastAPI): prompt injection, SSRF via document URLs, data exfiltration via responses
@@ -444,6 +445,7 @@ Annual Manual PT â†’ Firm selection â†’ Scope definition
 - File upload / storage: path traversal, malicious file upload, unauthenticated access to uploaded files
 
 ### Out of Scope
+
 - Social engineering attacks (phishing, vishing, pretexting)
 - Physical security assessments (cloud-managed infrastructure)
 - Denial-of-service testing requiring coordinated defense bypass

@@ -1,4 +1,5 @@
 ﻿## Header
+>
 > **Purpose:** Detailed specification for Master Resume
 > **Status:** ðŸ†• New
 > **Owner:** Product Team
@@ -49,6 +50,7 @@ This feature is the proof point for Vaeloom's core thesis: if memory is accurate
 | `applications` | `id`, `workspace_id`, `resume_version_id` | Links submitted resume versions to applications |
 
 Resume schema (`content`, jsonb):
+
 ```json
 {
   "sections": [

@@ -242,6 +242,7 @@ All Vaeloom engineers use this document as the canonical reference when creating
 ## Scope
 
 ### In Scope
+
 - Top-level directory layout: apps/, packages/, infra/, docs/
 - apps/web structure: Next.js App Router pages, components
 - apps/api structure: NestJS modules (auth, workspaces, documents, connectors, permissions, audit, events)
@@ -252,6 +253,7 @@ All Vaeloom engineers use this document as the canonical reference when creating
 - Workflows for adding new directories at each level
 
 ### Out of Scope
+
 - Automated directory structure validation in CI (planned Q3 2026)
 - Automated structure diagram generation from tree (planned Q4 2026)
 - Import path alias enforcement per package (planned Q3 2026)

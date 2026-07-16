@@ -299,6 +299,7 @@ docker stats
 ## Scope
 
 ### In Scope
+
 - Prerequisites installation (Node.js, Python, Docker, Docker Compose, Git)
 - Repository cloning and environment configuration
 - Infrastructure startup (PostgreSQL, Redis via Docker Compose)
@@ -307,6 +308,7 @@ docker stats
 - Verification commands and troubleshooting
 
 ### Out of Scope
+
 - Production deployment setup (covered in DevOps docs)
 - Development container configuration
 - IDE and editor configuration

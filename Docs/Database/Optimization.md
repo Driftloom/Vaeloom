@@ -20,6 +20,7 @@ This document defines the optimization detection pipeline, common query anti-pat
 ## Scope
 
 **In Scope:**
+
 - Slow query detection via pg_stat_statements with p95 > 200ms threshold
 - Common optimization patterns: N+1 queries, missing indexes, SELECT * over-fetching, JSONB abuse
 - Connection pool sizing per service tier with optimal max/min/idle configuration
@@ -27,6 +28,7 @@ This document defines the optimization detection pipeline, common query anti-pat
 - Batch operation sizing for bulk data processing (ingestion, consolidation, archival)
 
 **Out of Scope:**
+
 - Query optimization for non-PostgreSQL stores (AGE graph queries, vector similarity search)
 - Database hardware optimization (CPU, memory, disk I/O configuration)
 - Application-level caching strategies (Redis â€” covered in Infrastructure docs)

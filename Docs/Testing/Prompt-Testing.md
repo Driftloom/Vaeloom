@@ -215,6 +215,7 @@ The prompt test runner supports targeted execution by agent or test type, enabli
 ## Scope
 
 ### In Scope
+
 - Five prompt test types: golden dataset, edge cases, adversarial, regression, A/B comparison
 - Golden datasets with minimum 50 examples per agent, versioned alongside prompts
 - Adversarial test suite covering prompt injection, role confusion, system prompt leak, and jailbreak
@@ -223,6 +224,7 @@ The prompt test runner supports targeted execution by agent or test type, enabli
 - A/B comparison framework for prompt version optimization with statistical significance calculation
 
 ### Out of Scope
+
 - Continuous eval in production with shadow traffic (future improvement)
 - AI-assisted golden dataset generation with confidence scoring (future improvement)
 - Bayesian eval framework for probabilistic quality assessment (future improvement)

@@ -306,6 +306,7 @@ Unit tests are the first line of defense against regressions in Vaeloom's rapidl
 ## Scope
 
 ### In Scope
+
 - Backend service unit tests (TypeScript, Python)
 - Frontend component and hook unit tests (TypeScript, React Testing Library)
 - AI agent and utility function unit tests
@@ -313,6 +314,7 @@ Unit tests are the first line of defense against regressions in Vaeloom's rapidl
 - Test doubles (mocks, stubs, fakes) for external dependencies
 
 ### Out of Scope
+
 - Integration tests across service boundaries (covered in Integration-Testing.md)
 - End-to-end browser tests (covered in E2E-Testing.md)
 - Performance and load tests (covered in Performance-Testing.md)

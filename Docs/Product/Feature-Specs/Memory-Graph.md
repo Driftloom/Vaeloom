@@ -1,4 +1,5 @@
 ﻿## Header
+>
 > **Purpose:** Detailed specification for Memory Graph Explorer
 > **Status:** ðŸ†• New
 > **Owner:** Product Team

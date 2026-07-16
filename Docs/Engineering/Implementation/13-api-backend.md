@@ -71,9 +71,11 @@ graph TD
 ```
 
 ## Context
+
 Read `02-database-schema.md` and `08-specialist-agents.md` first. This phase is the resource-oriented API surface `apps/web` (file 14) consumes â€” it's the only door into the system; nothing bypasses it.
 
 ## Objective
+
 Build the core REST API in `apps/api` (NestJS): resource endpoints for every MVP feature, with the Permission Engine enforced on every single call.
 
 ## Requirements
@@ -81,6 +83,7 @@ Build the core REST API in `apps/api` (NestJS): resource endpoints for every MVP
 **Permission Engine (`apps/api/permissions/`):** a single middleware/guard every endpoint passes through, checking the request against `permissions` (file 02) along three axes â€” connector, action type (read/write/act), and requesting agent (if the call originates from an internal agent action rather than direct user action). No endpoint, including internal service-to-service calls from `apps/ai-service`, bypasses this.
 
 **Endpoints (resource-oriented, `/workspaces/{id}/...`):**
+
 - `documents` â€” list, get, upload (enqueues file 03's pipeline), approve/reject Organization Agent proposals.
 - `memory/graph` â€” read-only graph query endpoint for the Memory Graph screen.
 - `resume` â€” get master resume, generate variant, answer a gap-fill question.
@@ -97,9 +100,11 @@ Build the core REST API in `apps/api` (NestJS): resource endpoints for every MVP
 **API documentation:** generate an OpenAPI spec from the NestJS decorators â€” this is what file 14's frontend team (or agent) builds against, and later becomes the seed for the public API (enterprise phase).
 
 ## Out of scope
+
 Public API/SDK for external developers, webhook architecture, API versioning strategy, rate-limit tiers beyond the basic per-workspace limiting already in file 09 (all enterprise phase).
 
 ## Acceptance criteria
+
 - [ ] Every endpoint has an automated test asserting it rejects a request lacking the required permission scope.
 - [ ] The generated OpenAPI spec accurately reflects every implemented endpoint (verified by a contract test, not just manual inspection).
 - [ ] A chat request round-trips correctly through `apps/api` â†’ `apps/ai-service` â†’ Orchestrator â†’ back, with the trace (file 12) showing the full path.
@@ -140,6 +145,7 @@ Public API/SDK for external developers, webhook architecture, API versioning str
 ## Scope
 
 ### In Scope
+
 - Resource-oriented REST endpoints under /workspaces/{id}/... for documents, memory/graph, resume, jobs, applications, chat, schedule, connectors, audit, and settings
 - Permission Engine middleware checking every request against permissions table along three axes: connector, action type (read/write/act), and requesting agent
 - Internal RPC boundary enforcing apps/web â†’ apps/api â†’ apps/ai-service call chain â€” no direct web â†’ ai-service calls
@@ -148,6 +154,7 @@ Public API/SDK for external developers, webhook architecture, API versioning str
 - Authenticated internal service-to-service communication with shared service secret
 
 ### Out of Scope
+
 - Public API/SDK for external developers (planned Q2 2027)
 - Webhook architecture for event-driven integrations (planned Q2 2027)
 - API versioning strategy and deprecation lifecycle (planned Q1 2027)

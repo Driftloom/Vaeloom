@@ -64,9 +64,11 @@ graph TD
 ```
 
 ## Context
+
 Read `05-agent-harness-orchestration.md` and `08-specialist-agents.md` first. Guardrails sit across the whole execution path, not just as a profanity filter — this phase adds the checks that catch a wrong or unsafe action before it reaches the user or the world.
 
 ## Objective
+
 Implement input validation, prompt-injection defense, PII handling, tool-authorization enforcement, policy checks, and output filtering as harness-level hooks — every agent gets these for free, none of them opt-in per agent.
 
 ## Requirements
@@ -86,9 +88,11 @@ Implement input validation, prompt-injection defense, PII handling, tool-authori
 **This is the seed of the Quality Assurance Agent** (a formal, separate gate is enterprise phase, see `enterprise/05-agent-harness-orchestration.md`) — for MVP, implement these as harness middleware, not yet a separate agent with its own reasoning.
 
 ## Out of scope
+
 A separate, LLM-powered QA Agent as its own reasoning entity, a general/configurable ABAC policy engine (MVP's policy checks are a fixed, hard-coded list, not a rules engine), formal threat-model documentation/pen-testing (enterprise phase — though the cross-workspace leak test above should still be written now).
 
 ## Acceptance criteria
+
 - [ ] The prompt-injection test suite (seeded with known patterns) passes — no test case causes the agent to follow embedded instructions from untrusted content.
 - [ ] A tool call attempted after its connector's permission was revoked mid-session is blocked, not just blocked on the next fresh session.
 - [ ] The cross-workspace leak test (output containing another workspace's data) fails loudly in CI if guardrails don't catch it.
@@ -130,6 +134,7 @@ A separate, LLM-powered QA Agent as its own reasoning entity, a general/configur
 ## Scope
 
 ### In Scope
+
 - Pre-Plan guardrails: input validation, prompt injection defense with data delimiter enforcement, PII detection (flag, don't block legitimate content)
 - Pre-Act guardrails: tool authorization re-check against current permissions table, policy checks for hard-coded business rules (e.g., daily application cap)
 - Post-Act guardrails: output filtering (leaked system prompts), cross-workspace leak detection, output format validation
@@ -138,6 +143,7 @@ A separate, LLM-powered QA Agent as its own reasoning entity, a general/configur
 - PII detection for SSN-like numbers, financial accounts with metadata flags on documents.summary
 
 ### Out of Scope
+
 - Formal QA Agent as a separate reasoning entity (planned Q2 2027)
 - General/configurable ABAC policy engine replacing hard-coded rules (planned Q2 2027)
 - Formal threat-model documentation and penetration testing (planned Q1 2027)

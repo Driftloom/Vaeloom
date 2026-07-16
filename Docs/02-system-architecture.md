@@ -192,6 +192,7 @@ Read access is default Â· Write access is always a separate, explicit grant
 ## Scope
 
 ### In Scope
+
 - Six-layer architecture design: Interface, Connectors, Ingestion, Agent Orchestration, Memory & Knowledge (core), Storage & Security
 - Layer contracts â€” what each layer guarantees to layers above and below
 - Web app, desktop companion, VS Code extension, and future mobile interface points
@@ -200,6 +201,7 @@ Read access is default Â· Write access is always a separate, explicit grant
 - Memory layer: knowledge graph, vector store, structured memory, agentic RAG
 
 ### Out of Scope
+
 - Enterprise multi-region deployment topology
 - Service mesh and layer-level observability instrumentation
 - Event-driven architecture for layer decoupling

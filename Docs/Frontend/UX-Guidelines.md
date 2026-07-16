@@ -245,6 +245,7 @@ For Vaeloom's AI-driven workflows, these principles materialize in specific inte
 ## Scope
 
 ### In Scope
+
 - Card-based proposal UI with visual diff views and approve/reject/reject-with-feedback interactions
 - Batch action patterns for file organization, job applications, and proposal approvals
 - Undo mechanism with 15-second recovery window for all destructive agent actions
@@ -254,6 +255,7 @@ For Vaeloom's AI-driven workflows, these principles materialize in specific inte
 - Clickable citations in chat interface with source document links
 
 ### Out of Scope
+
 - Delayed or scheduled action execution (future improvement)
 - Multi-choice proposal cards for complex decisions (future improvement)
 - ML-optimized notification timing based on engagement patterns (future improvement)

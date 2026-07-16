@@ -256,6 +256,7 @@ The toil reduction targets in this document are particularly important for Vaelo
 ## Scope
 
 ### In Scope
+
 - SRE principles applied to Vaeloom: SLO-driven reliability, error budget governance, toil automation strategy, observability requirements, and blameless post-mortem culture
 - SLO targets with error budget calculations and consumption tracking across all six service dimensions
 - Error budget policy with four-tier response actions and recommended enforcement through CI/CD gates
@@ -264,6 +265,7 @@ The toil reduction targets in this document are particularly important for Vaelo
 - Error handling for SRE processes: budget exhaustion scenarios, runbook failures, automation failures, and monitoring tool failures
 
 ### Out of Scope
+
 - SLI definitions and measurement methodology (covered in SLI document)
 - SLA contractual commitments and customer credit structures (covered in SLA document)
 - Detailed incident response workflows and communication templates (covered in Incident Response Plan)

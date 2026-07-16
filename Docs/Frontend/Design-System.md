@@ -228,7 +228,7 @@ sequenceDiagram
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Token naming inconsistencies lead to confusion | Medium | Medium | Enforce naming convention via ESLint rule (`/--(bg|text|accent|border|shadow)-[a-z]+/`) |
+| Token naming inconsistencies lead to confusion | Medium | Medium | Enforce naming convention via ESLint rule (`/--(bg\|text\|accent\|border\|shadow)-[a-z]+/`) |
 | Build-time token validation slows CI | Low | Medium | Cache token graph; run validation only on changed token files |
 | Designer-developer token sync breaks | Medium | High | Figma plugin validates against CI-passing token schema; manual sync as backup |
 | Component token explosion makes maintenance hard | High | Medium | Quarterly token audit; merge duplicate tokens; remove unused ones |
@@ -262,6 +262,7 @@ The system includes 91 CSS custom properties across 7 categories (backgrounds, t
 ## Scope
 
 ### In Scope
+
 - Three-layer token architecture: primitive (raw values), semantic (meaning), component (scoped overrides)
 - 91 CSS custom properties across backgrounds, text, accents, borders, shadows, typography, and spacing
 - Full light and dark theme definitions with WCAG AA contrast validation
@@ -271,6 +272,7 @@ The system includes 91 CSS custom properties across 7 categories (backgrounds, t
 - Build-time contrast checking and unused token purging in CI
 
 ### Out of Scope
+
 - User-customizable accent colors beyond the defined palette (future improvement)
 - Multi-brand theming with separate token sets (future improvement)
 - Runtime token editing or live preview tools (future improvement)

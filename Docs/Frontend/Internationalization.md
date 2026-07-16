@@ -278,6 +278,7 @@ sequenceDiagram
 ## Scope
 
 ### In Scope
+
 - next-i18next integration with Next.js App Router and server-side locale detection
 - Six initial locales: English, Spanish, French, German, Japanese, Chinese (Simplified)
 - RTL layout support for Arabic and Hebrew via CSS logical properties
@@ -286,6 +287,7 @@ sequenceDiagram
 - CI pipeline integration: lint missing keys, sync with Crowdin, version-lock translations to releases
 
 ### Out of Scope
+
 - Real-time translation preview for translators (future improvement)
 - Community translation contribution portal (future improvement)
 - Regional locale variants (en-GB, pt-BR, fr-CA) (future improvement)

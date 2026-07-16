@@ -20,6 +20,7 @@ This document defines the core entities, their attributes, the relationship type
 ## Scope
 
 **In Scope:**
+
 - 9 core entities: users, workspaces, documents, document_versions, memory_records, entities, relationships, applications, agent_actions
 - Entity attributes, primary keys, and foreign key relationships
 - Cardinality and optionality for all relationships (1:1, 1:N, M:N)
@@ -27,6 +28,7 @@ This document defines the core entities, their attributes, the relationship type
 - Workspace_id scoping across all tenant entities
 
 **Out of Scope:**
+
 - Physical schema implementation details (see Schema.md)
 - Index strategies and query optimization (see Indexes.md)
 - Partitioning and replication considerations (see Partitioning.md, Replication.md)

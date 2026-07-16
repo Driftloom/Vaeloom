@@ -248,6 +248,7 @@ sequenceDiagram
 
     Note over API,SM: Token stored with workspace isolation
 ```
+
 > **Diagram:** Connector OAuth flow â€” User initiates connection via UI, API orchestrates OAuth consent with the external provider, receives tokens, encrypts them, and stores in Secrets Manager scoped to workspace.
 
 ---

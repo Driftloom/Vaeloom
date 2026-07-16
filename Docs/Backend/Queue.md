@@ -210,6 +210,7 @@ sequenceDiagram
         M->>M: alert on-call
     end
 ```
+
 > **Diagram:** Job lifecycle â€” Producer enqueues job with priority and TTL. Worker pops, processes, and acknowledges on success or requeues on transient failure. After max retries, job moves to dead letter queue and triggers alert.
 
 ---

@@ -230,6 +230,7 @@ All Vaeloom engineers are expected to follow this convention for every commit. T
 ## Scope
 
 ### In Scope
+
 - Conventional Commits format: `<type>(<scope>): <description>` with optional body and footer
 - Eight commit types: feat, fix, chore, docs, style, refactor, test, ci
 - Six Vaeloom scopes: web, api, ai, infra, deps, docs
@@ -238,6 +239,7 @@ All Vaeloom engineers are expected to follow this convention for every commit. T
 - Workflow for staging, writing, amending, and squashing commits
 
 ### Out of Scope
+
 - Pre-commit hooks for conventional commit validation (planned Q3 2026)
 - CI-enforced commitlint gate on PR branches (planned Q4 2026)
 - Automated breaking change detection from commit messages (planned Q1 2027)

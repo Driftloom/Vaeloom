@@ -1,9 +1,10 @@
 ﻿# Architecture
 
 > **Purpose:** System architecture, deployment architecture, and architecture decision records
-> **Status:** Active
+> **Status:** ✅ Active
 > **Owner:** Architecture Team
-> **Last Updated:** 2026-07-13
+> **Version:** 1.1
+> **Last Updated:** 2026-07-16
 
 ## Overview
 
@@ -17,10 +18,13 @@ The architecture follows six non-negotiable principles: agent contract uniformit
 
 | Document | Location | Status |
 |----------|----------|--------|
-| System Architecture (6-layer) | [`/Docs/02-system-architecture.md`](../../Docs/02-system-architecture.md) | âœ… Canonical |
-| System Architecture (8-layer, extended) | [`/Docs/Vaeloom-Complete-Documentation.md#4-system-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#4-system-architecture) | âœ… Extended |
-| Deployment Architecture | [`/Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture) | âœ… Canonical |
-| Architecture Decision Records | [`03-adrs.md`](./03-adrs.md) | ðŸ†• Started |
+| System Architecture (6-layer) | [`/Docs/02-system-architecture.md`](../../Docs/02-system-architecture.md) | ✅ Canonical |
+| System Architecture (8-layer, extended) | [`/Docs/Vaeloom-Complete-Documentation.md#4-system-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#4-system-architecture) | ✅ Extended |
+| Deployment Architecture | [`/Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture) | ✅ Canonical |
+| C4 Architecture Model | [`C4-Architecture.md`](./C4-Architecture.md) | 🆕 New |
+| Event Flow | [`Event-Flow.md`](./Event-Flow.md) | 🆕 New |
+| Data Flow | [`Data-Flow.md`](./Data-Flow.md) | 🆕 New |
+| Architecture Decision Records | [`03-adrs.md`](./03-adrs.md) | ✅ Started |
 
 ## Architecture overview
 
@@ -136,6 +140,7 @@ graph TD
 ## Scope
 
 ### In Scope
+
 - 8-layer architecture overview and layer descriptions (Interface, Connectors, Ingestion, Agent Orchestration, Memory, Events, Data Infrastructure, Storage & Security)
 - Six non-negotiable architectural decisions with rationale
 - Architecture Decision Records index (accepted and pending ADRs)
@@ -143,6 +148,7 @@ graph TD
 - Common mistakes, best practices, security, and performance guidance for architecture contributors
 
 ### Out of Scope
+
 - Per-service implementation details (covered in Backend/, AI/, Frontend/ docs)
 - Infrastructure-as-Code and deployment pipeline configuration (covered in DevOps/)
 - Code-level API documentation and SDK references

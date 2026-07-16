@@ -137,7 +137,7 @@ graph LR
     class K8S_CONFIG,ENV_INJECT,SIDE_CAR dist
     class APP_ENV,CONFIG_CLIENT,FLAG_CLIENT inject
     class SERVICE_WEB,SERVICE_API,SERVICE_AI,SERVICE_MEM,INFRA runtime
-```
+```text
 
 > **Diagram:** Configuration pipeline flows from four source types through CI validation, then distribution via Kubernetes/Helm/Docker Compose, injection into process environments and config clients, and finally consumed by all Vaeloom services at runtime.
 
@@ -160,12 +160,12 @@ graph LR
 
 ### `.env` Files (Local / Development)
 
-```
+```text
 .env                  # Base defaults (committed)
 .env.local            # Local overrides (gitignored)
 .env.dev              # Dev environment overrides
 .env.test             # Test environment overrides
-```
+```text
 
 Loading order (last wins): `.env` â†’ `.env.<environment>` â†’ `.env.local`
 
@@ -188,7 +188,7 @@ data:
   RATE_LIMIT_MAX_REQUESTS: "100"
   REDIS_HOST: "redis.Vaeloom-staging.svc.cluster.local"
   REDIS_PORT: "6379"
-```
+```text
 
 ### Secret Store (All Non-Local Environments)
 
@@ -218,7 +218,7 @@ graph BT
     class DEV dev
     class STAGING staging
     class PROD prod
-```
+```text
 
 > **Diagram:** Config inheritance flows upward. Each environment inherits the structural shape of the one below, with values becoming progressively more restrictive and production-hardened.
 
@@ -343,7 +343,7 @@ graph BT
     }
   ]
 }
-```
+```text
 
 ---
 
@@ -393,7 +393,7 @@ export function validateConfig(env: Record<string, string | undefined>): Vaeloom
   }
   return result.data;
 }
-```
+```text
 
 ```python
 # apps/ai-service/app/config.py
@@ -419,7 +419,7 @@ class VaeloomSettings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-```
+```text
 
 ---
 
@@ -460,7 +460,7 @@ graph LR
     class V1,V2,V3 vault
     class AGENT,POD pod
     class A1,A2 audit
-```
+```text
 
 > **Diagram:** Secrets flow from Vault's KV engine through the Vault Agent sidecar into a shared volume mounted by the application pod. Every read is audited.
 
@@ -508,7 +508,7 @@ interface FeatureFlag {
   created_at: string;             // ISO 8601
   archived: boolean;              // Soft delete
 }
-```
+```text
 
 ### Rollout Strategy
 
@@ -545,7 +545,7 @@ interface FeatureFlag {
     }
   ]
 }
-```
+```text
 
 ### Kill Switch Protocol
 
@@ -627,7 +627,7 @@ graph LR
     class PROMOTE ci
     class DEPLOY,FULL deploy
     class ROLLBACK rollback
-```
+```text
 
 > **Diagram:** Config promotion follows the same pipeline as code. Each environment gets validated config from the previous stage, with automatic rollback on failure.
 
@@ -652,7 +652,7 @@ helm rollback Vaeloom-api 1 --namespace Vaeloom-production
 
 # Restore vault secrets from versioned KV
 vault kv rollback -version=5 secret/Vaeloom/production/api/db
-```
+```text
 
 ---
 
@@ -700,7 +700,7 @@ AI_MAX_RETRIES: 2
 # Observability
 OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.Vaeloom-prod.svc.cluster.local:4318"
 SENTRY_DSN: "https://sentry-key@sentry.Vaeloom.ai/prod"
-```
+```text
 
 ### Full Config â€” `apps/ai-service`
 
@@ -738,7 +738,7 @@ GRAPH_DB_URL: "bolt://neo4j.Vaeloom-prod.svc.cluster.local:7687"
 # Rate limiting
 RATE_LIMIT_TOKENS_PER_MINUTE: 1000
 RATE_LIMIT_BURST: 50
-```
+```text
 
 ### Full Config â€” `apps/web`
 
@@ -760,7 +760,7 @@ API_INTERNAL_URL: "http://api.Vaeloom-prod.svc.cluster.local:8080"
 SESSION_SECRET: "session-secret-from-vault"
 CSRF_SECRET: "csrf-secret-from-vault"
 REVALIDATION_TOKEN: "reval-token-from-vault"
-```
+```text
 
 ### Feature Flag Example
 
@@ -788,7 +788,7 @@ REVALIDATION_TOKEN: "reval-token-from-vault"
     }
   ]
 }
-```
+```text
 
 ### Config Client Usage
 
@@ -800,7 +800,7 @@ export const config = validateConfig(process.env);
 
 // Usage in service
 const dbPool = config.DB_POOL_SIZE;
-```
+```text
 
 ```python
 # apps/ai-service/app/main.py
@@ -809,7 +809,7 @@ from app.config import VaeloomSettings
 settings = VaeloomSettings()
 # Usage in service
 redis_host = settings.redis_host
-```
+```text
 
 ---
 
@@ -898,7 +898,7 @@ sequenceDiagram
             APP-->>K8S: Healthy - serving traffic
         end
     end
-```
+```text
 
 > **Diagram:** Config change lifecycle â€” PR triggers CI validation against schema, validated configs deploy to Kubernetes ConfigMaps, applications validate at startup and fail fast on mismatch.
 

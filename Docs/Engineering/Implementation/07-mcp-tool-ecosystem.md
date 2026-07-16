@@ -62,14 +62,17 @@ graph TD
 ```
 
 ## Context
+
 Read `01-foundation-infra.md` and `05-agent-harness-orchestration.md` first. This phase gives agents something real to call — connectors, defined as MCP-shaped tools from day one.
 
 ## Objective
+
 Implement the tool/connector layer as MCP-shaped internal tools (name, JSON-schema input/output, required scope, auth type) and ship the first three real connectors: Gmail (read + draft only), GitHub (read-only), Google Drive (read-only).
 
 ## Requirements
 
 **Tool definition format (`apps/ai-service/tools/base.py`):** every tool — internal or connector-backed — is defined as:
+
 ```python
 class Tool:
     name: str
@@ -81,6 +84,7 @@ class Tool:
     capabilities: ToolCapabilities   # e.g. {"streaming": bool, "idempotent": bool}
     async def call(self, input: dict, context: ToolContext) -> dict: ...
 ```
+
 This shape is deliberately identical to an MCP tool definition — when you later wire up real MCP transport (consuming or exposing MCP servers), it should be a transport change to `call()`, not a redesign of this class.
 
 **Retry and failure handling:** every tool call is wrapped by the harness (file 05's "Act" phase), not left to each connector to handle inconsistently. Classify failures as transient (network blip, rate limit, timeout — safe to retry with backoff) or permanent (invalid input, revoked auth, not-found — do not retry, surface immediately). A tool that doesn't declare which of its failure modes are which defaults to "permanent" (fail fast) rather than silently retrying something that will never succeed.
@@ -88,6 +92,7 @@ This shape is deliberately identical to an MCP tool definition — when you late
 **Streaming support:** for tool calls that can take a while (a large file OCR pass, a broad search), a tool may declare `capabilities.streaming = true` and yield partial results the harness's "Observe" phase can attach incrementally, rather than the caller blocking until the entire operation finishes. Tools that don't support streaming return a single blocking result, which remains the default and is fine for most MVP tool calls.
 
 **Connector implementations (`apps/ai-service/tools/connectors/`):**
+
 - `gmail.py` — OAuth2, scopes limited to `gmail.readonly` and `gmail.compose` (draft creation only, never send). Tools exposed: `search_messages`, `get_message`, `create_draft`.
 - `github.py` — OAuth2 or PAT, read-only scopes. Tools exposed: `list_repos`, `get_repo_summary`, `get_commit_history`.
 - `google_drive.py` — OAuth2, `drive.readonly` scope. Tools exposed: `list_files`, `get_file_content`.
@@ -98,9 +103,11 @@ This shape is deliberately identical to an MCP tool definition — when you late
 **Plugin SDK v1 (`packages/plugin-sdk/`):** a minimal TypeScript/Python package that lets a third party define a new `Tool` following the exact shape above, without touching `apps/ai-service` core code — even if no external plugin exists yet, build the seam now so it's not a later rewrite.
 
 ## Out of scope
+
 Real MCP transport/protocol wiring (the shape is MCP-compatible now; actual MCP server consumption/exposure is enterprise phase), the Plugin Marketplace, additional connectors beyond the three listed (Slack, Notion, LinkedIn, etc. are enterprise phase), sandboxing hardening beyond basic scope enforcement.
 
 ## Acceptance criteria
+
 - [ ] A user can connect Gmail, GitHub, and Google Drive via OAuth and immediately revoke any one of them from a test endpoint.
 - [ ] Every tool call is checked against `required_scope` before execution — calling `create_draft` without `gmail.compose` scope granted fails at the tool layer, not silently.
 - [ ] `health_check()` correctly detects a deliberately revoked token in a test.
@@ -143,6 +150,7 @@ Real MCP transport/protocol wiring (the shape is MCP-compatible now; actual MCP 
 ## Scope
 
 ### In Scope
+
 - MCP-compatible tool definition format: name, JSON Schema input/output, required_scope, auth_type, capabilities
 - Three MVP connectors: Gmail (read + draft-only via OAuth2), GitHub (read-only via OAuth2/PAT), Google Drive (read-only via OAuth2)
 - Consistent retry/failure handling classifying errors as transient (retry with backoff) or permanent (fail fast)
@@ -151,6 +159,7 @@ Real MCP transport/protocol wiring (the shape is MCP-compatible now; actual MCP 
 - Plugin SDK v1 (`packages/plugin-sdk/`) for third-party tool registration without core code changes
 
 ### Out of Scope
+
 - Real MCP transport/protocol wiring (MCP server consumption/exposure, enterprise phase)
 - Plugin Marketplace for third-party tool distribution (planned Q2 2027)
 - Additional connectors beyond the three listed (Slack, Notion, LinkedIn — enterprise phase)

@@ -300,6 +300,7 @@ Multi-tenant/org accounts, SSO/RBAC, full plugin marketplace, public API/SDK pla
 ## Scope
 
 ### In Scope
+
 - Eight-agent architecture (Orchestrator + 7 specialist agents) with fixed prompts, tool lists, and autonomy defaults
 - Six-type memory system: Profile, Document, Career, Episodic, Preference, Working
 - Connectors: Gmail, GitHub, Google Drive, local folder (via desktop companion), VS Code extension
@@ -309,6 +310,7 @@ Multi-tenant/org accounts, SSO/RBAC, full plugin marketplace, public API/SDK pla
 - In-app document viewer, memory graph explorer, resume editor, chat interface
 
 ### Out of Scope
+
 - Multi-tenancy and organizational accounts
 - Full plugin marketplace and public SDK
 - Enterprise connector ecosystem (Slack, Notion, Figma, Coursera, etc.)

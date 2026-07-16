@@ -63,9 +63,11 @@ graph TD
 ```
 
 ## Context
+
 Read `05-agent-harness-orchestration.md`, `06-rag-retrieval.md`, and `07-mcp-tool-ecosystem.md` first. This phase builds the seven user-facing agents on top of the harness â€” the first point where the product becomes usable end to end.
 
 ## Objective
+
 Implement the seven MVP specialist agents, each as a class extending the base agent contract (file 05), each with its own file under `apps/ai-service/agents/`.
 
 ## Agents to build (one file each)
@@ -85,9 +87,11 @@ Implement the seven MVP specialist agents, each as a class extending the base ag
 **`scheduler_agent/`** â€” Mission: maintain deadlines, detect conflicts. Reads: `schedule_events` from all sources (Gmail Agent, manual entry, Application Agent outcomes). Writes: conflict flags on `schedule_events`. Full autonomy for reminders (notify-only actions are safe to automate), suggest-only for adding/editing events.
 
 ## Out of scope
+
 The remaining ~20 agents from the full enterprise roster (Learning, Research, Coding, Calendar, Internship, Document, PDF, Planning, Reminder, Analytics, Recommendation, Security, Plugin, Connector, Reflection, Self-Improvement, Quality Assurance â€” all `enterprise/08-specialist-agents.md`). Earned autonomy upgrades beyond the stated defaults (v1.5+, not MVP).
 
 ## Acceptance criteria
+
 - [ ] Each agent has its own test suite exercising at least the happy path and one "asks rather than guesses" path.
 - [ ] Organization Agent, run against a seeded messy folder of 10 mixed files, produces proposals a human reviewer approves at >90% without edits.
 - [ ] Resume Agent correctly asks a specific clarifying question when a seeded profile is missing an expected field, rather than fabricating a value.
@@ -130,6 +134,7 @@ The remaining ~20 agents from the full enterprise roster (Learning, Research, Co
 ## Scope
 
 ### In Scope
+
 - Seven MVP specialist agents: Organization, Resume, ATS (read-only), Job Search, Application (approval-gated), Gmail, Scheduler
 - Each agent as a class extending the base agent contract with fixed mission, tool list, memory scopes, autonomy level, and fallback method
 - Autonomy levels: suggest-mode (default), read-only (ATS Agent), approval-gated (Application Agent), full autonomy (Scheduler Agent reminders)
@@ -138,6 +143,7 @@ The remaining ~20 agents from the full enterprise roster (Learning, Research, Co
 - Gmail Agent with both scheduled (6 AM daily) and push-triggered classification paths
 
 ### Out of Scope
+
 - Enterprise agent roster (~20 additional specialist agents: Learning, Research, Coding, Calendar, etc.)
 - Earned autonomy upgrades based on approval-rate history (v1.5+)
 - Multi-agent negotiation for complex cross-domain tasks (planned Q2 2027)

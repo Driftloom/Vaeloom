@@ -152,6 +152,7 @@ agents/
 ## Scope
 
 **In Scope:**
+
 - 8 specialized agents: Memory, Organization, Resume, Gmail, Job Search, Scheduler, Application, Reflection
 - Orchestrator coordinating all inter-agent communication
 - QA Agent for output validation and quality gating
@@ -160,6 +161,7 @@ agents/
 - Per-agent mission, tool list, memory permissions, autonomy level, and fallback behavior
 
 **Out of Scope:**
+
 - Direct agent-to-agent communication (all routed through Orchestrator)
 - Agents modifying their own system prompts or mission definitions
 - User-facing agent configuration interfaces

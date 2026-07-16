@@ -210,6 +210,7 @@ The error budget is the mechanism that makes SLOs actionable. By converting reli
 ## Scope
 
 ### In Scope
+
 - SLO targets for all six indicators with target percentages, rolling measurement windows, and measurement methods
 - Error budget calculations for each SLO tier: 99.9% (43 min/month), 99.5% (3.6 hours/month), 99.0% (7.2 hours/month), 99.95% (21.6 min/month)
 - SLO violation response policy with four consumption tiers and corresponding actions: normal operations, reduced deploys, feature freeze, and emergency sprint
@@ -217,6 +218,7 @@ The error budget is the mechanism that makes SLOs actionable. By converting reli
 - Error handling for SLO management: budget exhausted early, target too tight for system maturity, multi-service calculation errors, and data gaps
 
 ### Out of Scope
+
 - SLI definitions and measurement methodology (covered in SLI document)
 - SLA contractual commitments and customer credit calculations (covered in SLA document)
 - SRE principles, toil reduction targets, and incident response metrics (covered in SRE document)

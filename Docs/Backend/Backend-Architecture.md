@@ -152,6 +152,7 @@ Frontend â†’ apps/api (REST) â†’ apps/ai-service (Internal RPC)
 ## Scope
 
 **In Scope:**
+
 - NestJS-based REST API service for auth, CRUD, permissions, and event publishing
 - FastAPI-based AI service for agent runtime, RAG, and model routing
 - Internal gRPC communication between api and ai-service
@@ -160,6 +161,7 @@ Frontend â†’ apps/api (REST) â†’ apps/ai-service (Internal RPC)
 - PostgreSQL data layer shared between both services
 
 **Out of Scope:**
+
 - Frontend application logic and UI rendering
 - Third-party connector implementations (Gmail, GitHub, Slack)
 - Database migration tooling and schema design
@@ -252,7 +254,7 @@ Frontend â†’ apps/api (REST) â†’ apps/ai-service (Internal RPC)
 | RATE_LIMIT_WINDOW | Rate limit window in seconds | 60 | No |
 | LOG_LEVEL | Structured logging verbosity | info | No |
 | GRPC_AI_SERVICE_URL | ai-service gRPC endpoint | localhost:50051 | Yes |
-| CORS_ORIGINS | Allowed CORS origins | http://localhost:3000 | No |
+| CORS_ORIGINS | Allowed CORS origins | <http://localhost:3000> | No |
 
 ## Risks
 

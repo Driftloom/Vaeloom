@@ -161,6 +161,7 @@ writes: episodic memory, preference memory
 ## Scope
 
 ### In Scope
+
 - End-to-end agent workflow from file upload to application outcome
 - Agent handoffs: Organization Agent â†’ Memory Agent â†’ Resume Agent â†’ Job Search Agent â†’ ATS Agent â†’ Application Agent
 - Memory read/write permissions at each step of the workflow
@@ -168,6 +169,7 @@ writes: episodic memory, preference memory
 - Feedback loop where outcomes feed back into memory for future searches
 
 ### Out of Scope
+
 - Cross-agent dependency orchestration (future improvement)
 - Parallel agent execution paths (future improvement)
 - Agent workflow visualization dashboard (future improvement)

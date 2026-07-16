@@ -20,6 +20,7 @@ This document defines the complete DDL for all 9 tables, constraint definitions,
 ## Scope
 
 **In Scope:**
+
 - Complete DDL for all 9 core tables: users, workspaces, documents, document_versions, memory_records, entities, relationships, applications, agent_actions
 - Column types, NOT NULL constraints, primary keys, foreign keys, UNIQUE constraints
 - JSONB columns for semi-structured memory record content
@@ -27,6 +28,7 @@ This document defines the complete DDL for all 9 tables, constraint definitions,
 - Table comments and estimated row counts at MVP scale
 
 **Out of Scope:**
+
 - Index definitions (covered in Indexes.md)
 - Partitioning strategy (covered in Partitioning.md)
 - Graph store schema (AGE â€” covered in Knowledge-Graph.md)

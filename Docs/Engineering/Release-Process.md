@@ -224,6 +224,7 @@ Every engineer involved in the release process â€” developers, reviewers, Q
 ## Scope
 
 ### In Scope
+
 - Semantic Versioning (SemVer 2.0.0): MAJOR (breaking), MINOR (new features), PATCH (bug fixes)
 - Release cadence: major (quarterly), minor (monthly), patch (as-needed)
 - GitHub Flow release process: 7 steps from branch creation to tag
@@ -232,6 +233,7 @@ Every engineer involved in the release process â€” developers, reviewers, Q
 - Staging verification requirements before production promotion
 
 ### Out of Scope
+
 - Canary deployments with traffic splitting (planned Q1 2027)
 - Feature flag system for gradual rollouts (planned Q4 2026)
 - Auto-rollback on health check failure (planned Q4 2026)

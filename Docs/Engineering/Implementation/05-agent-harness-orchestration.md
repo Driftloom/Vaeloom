@@ -66,12 +66,15 @@ graph TD
 ```
 
 ## Context
+
 Read `04-memory-system.md` first. This phase builds the shared runtime every specialist agent (file 08) runs inside — the harness is more important than any single agent, since it's what makes twenty-eight future agents auditable instead of twenty-eight bespoke black boxes. Get this right once; every later agent becomes cheap to add.
 
 ## Objective
+
 Build the agent harness (the production environment around a model call) and the Orchestrator that routes requests into it. The harness implements one agentic loop, shared by every agent: **Plan → Act → Observe → Reflect → Improve.**
 
 ## Harness anatomy — the eight parts, and where each one actually lives
+
 The model is only one component. Everything around it — the harness — is what makes an agent reliable rather than a chatbot with tools bolted on. This project splits the harness into eight named parts; none of them live only in this file, so this table is the map back to where each is actually implemented:
 
 | Harness part | What it does | Where it's built |
@@ -90,6 +93,7 @@ If a future change touches any one of these, update the relevant file above — 
 ## Requirements
 
 **Agent contract (`apps/ai-service/agents/base.py`):** every agent is a class implementing:
+
 - `mission: str` — fixed, cannot be overridden at runtime.
 - `tools: list[Tool]` — the declared, MCP-shaped tool list (file 07) this agent may call; calling anything outside this list must be impossible, not just discouraged.
 - `memory_scopes: MemoryScopes` — explicit read/write permissions per memory type (file 04's types); enforced by the harness, not by the agent's own discipline.
@@ -97,6 +101,7 @@ If a future change touches any one of these, update the relevant file above — 
 - `fallback() -> Action` — required method defining what the agent does when uncertain (ask the user; never guess).
 
 **The loop (`apps/ai-service/orchestrator/loop.py`):** implement each phase as a distinct, observable step (this maps directly to file 12's tracing requirements):
+
 1. **Plan** — given the request and retrieved context (file 06), the agent produces an intended action.
 2. **Act** — the harness executes the planned tool call(s), never the agent directly.
 3. **Observe** — the tool result is captured and attached to the agent's context.
@@ -106,15 +111,18 @@ If a future change touches any one of these, update the relevant file above — 
 **State persistence (`apps/ai-service/orchestrator/state.py`):** a request's loop state (which phase it's in, what's been planned, what's been observed so far) is checkpointed after every phase to Redis, keyed by a request ID — not held only in an in-memory process variable. If the `ai-service` process crashes or restarts mid-loop, the request resumes from its last completed phase on restart rather than silently vanishing or restarting from Plan with no memory of prior Observe results. This is scoped to single-request resumability within one service instance's lifetime for MVP; durable, cross-session resumability for long-running multi-step plans is an enterprise upgrade (see `enterprise/05-agent-harness-orchestration.md`).
 
 **Orchestrator (`apps/ai-service/orchestrator/router.py`):**
+
 - Single entry point: `handle(request: UserRequest | ScheduledTrigger) -> AgentResponse`.
 - Routes to the correct specialist agent based on intent (a lightweight classification call is sufficient for MVP — no need for a complex planner agent yet).
 - Every routed call passes through the Permission Engine (file 13) before the target agent's loop begins — no agent-to-agent call bypasses this, including internal ones.
 - Every phase of the loop publishes an event (`agent.plan`, `agent.act`, `agent.observe`, etc.) to the event bus (Redis pub/sub is sufficient for MVP; Kafka is an enterprise upgrade) for the observability layer (file 12) to consume.
 
 ## Out of scope
+
 The Self-Improvement Agent and formal Quality Assurance Agent gate (both enterprise phase — MVP relies on the "Reflect" step's basic rule-checks and human approval instead), multi-agent negotiated handoffs, subagent context isolation for parallel work (single-threaded loop per request is fine for MVP).
 
 ## Acceptance criteria
+
 - [ ] A stub "echo agent" (mission: repeat back what it's told) runs through all five loop phases with each phase individually visible in the logs.
 - [ ] Attempting to call a tool not in an agent's declared `tools` list raises an error at the harness level, not just a lint warning.
 - [ ] A forced tool failure during "Act" correctly triggers a bounded Reflect→re-Plan cycle, and escalates to the user after 3 failed attempts rather than looping forever.
@@ -156,6 +164,7 @@ The Self-Improvement Agent and formal Quality Assurance Agent gate (both enterpr
 ## Scope
 
 ### In Scope
+
 - Shared agent base class (`base.py`) enforcing fixed mission, declared tool list, memory scopes, autonomy level, and required fallback method
 - Five-phase agentic loop (Plan → Act → Observe → Reflect → Improve) as distinct, observable, traceable steps
 - Redis-backed state persistence checkpointing every loop phase for crash recovery
@@ -164,6 +173,7 @@ The Self-Improvement Agent and formal Quality Assurance Agent gate (both enterpr
 - Bounded Reflect→re-Plan loop with max 3 iterations before user escalation
 
 ### Out of Scope
+
 - Self-Improvement Agent for automated loop optimization (enterprise)
 - Multi-agent negotiated handoffs for complex workflows (planned Q2 2027)
 - Subagent context isolation for parallel work within a request (planned Q2 2027)

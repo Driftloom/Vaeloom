@@ -276,6 +276,7 @@ Enterprise-grade logging requires a balance between completeness and cost. Struc
 ## Scope
 
 ### In Scope
+
 - Structured JSON log format with required fields (level, timestamp, service, trace_id, message)
 - Log level definitions and usage conventions per service
 - Data governance: explicit lists of what to log (request ID, agent actions) and what never to log (passwords, secrets, PII)
@@ -284,6 +285,7 @@ Enterprise-grade logging requires a balance between completeness and cost. Struc
 - Log retention and lifecycle policies
 
 ### Out of Scope
+
 - Log-based alerting (covered in [Alerting.md](./Alerting.md))
 - Distributed tracing implementation (covered in [Tracing.md](./Tracing.md))
 - Log aggregation infrastructure scaling (covered in [Monitoring.md](./Monitoring.md))

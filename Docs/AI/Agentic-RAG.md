@@ -105,7 +105,7 @@ stateDiagram-v2
         Sort by score descending
         Truncate at max_tokens
     end note
-```
+```text
 
 > **Diagram:** The RAG query lifecycle as a state machine. A query flows through five phases â€” **Receive** â†’ **Analyze** â†’ **Strategy Fork** (vector/keyword/graph/hybrid) â†’ **Rank & Assemble** â†’ **Return**. Error states handle strategy failures, empty results, and deduplication edge cases. The system returns to `Idle` after each query, ready for the next.
 
@@ -130,7 +130,7 @@ graph TD
     Ranker --> Assembler[Context Assembler]
     Assembler --> Prune[Prune to Budget]
     Prune --> Agent[Return to Agent]
-```
+```text
 
 ## Retrieval Strategy Selection
 
@@ -207,7 +207,7 @@ def plan_retrieval(query: str, context: dict) -> RetrievalPlan:
             strategy=RetrievalStrategy.HYBRID,
             weights={"vector": 0.5, "keyword": 0.3, "graph": 0.2}
         )
-```
+```text
 
 ## Hybrid Search Execution
 
@@ -248,7 +248,7 @@ async def execute_hybrid_search(
         results.extend(graph_results)
     
     return results
-```
+```text
 
 ## Ranking Pipeline
 
@@ -268,7 +268,7 @@ graph LR
     Total --> Sort[Sort Descending]
     Sort --> Prune[Take Top N]
     Prune --> Return[Return to Agent]
-```
+```text
 
 ### Score Calculation
 
@@ -318,7 +318,7 @@ def assemble_context(
         token_count += entry_tokens
     
     return "\n---\n".join(context_parts)
-```
+```text
 
 ## Best Practices
 
@@ -463,7 +463,7 @@ sequenceDiagram
     CA->>CA: Deduplicate by entity_id
     CA->>CA: Prune to token budget
     CA-->>AG: Assembled context with provenance
-```
+```text
 
 > **Diagram:** The Agentic RAG retrieval flow showing parallel search execution across three stores, followed by ranking, deduplication, and pruning before delivery to the requesting agent.
 
@@ -471,7 +471,7 @@ sequenceDiagram
 
 ## Data Flow
 
-```
+```text
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚  Agent       â”‚â”€â”€â”€â”€>â”‚ Retrieval Router  â”‚â”€â”€â”€â”€>â”‚ Strategy Select  â”‚
 â”‚  Query       â”‚     â”‚ (classify + route)â”‚     â”‚ (signal analysis)â”‚
@@ -502,7 +502,7 @@ sequenceDiagram
                                   â”‚   Agent      â”‚
                                   â”‚  Response    â”‚
                                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-```
+```text
 
 **Data Flow Description:** Agent queries flow through Router for strategy selection, which dispatches to the appropriate stores in parallel. Results converge at the Ranker for scoring, then the Context Assembler for deduplication and token-budget pruning. The final context payload is delivered to the requesting agent with full source provenance.
 
@@ -605,7 +605,7 @@ assert plan.weights == {"keyword": 0.7, "vector": 0.2, "graph": 0.1}
 # Output context assembled with source provenance
 # [Source: course_catalog.pdf | Score: 0.94]
 # CS229: Machine Learning â€” Stanford course covering supervised learning...
-```
+```text
 
 ### Example 2: Relationship Query
 
@@ -619,7 +619,7 @@ assert plan.strategy == RetrievalStrategy.GRAPH
 # Output: traverses from React node to connected Skill nodes
 # [Source: knowledge_graph | Score: 0.88]
 # React â†’ requires_skill â†’ JavaScript, TypeScript, CSS
-```
+```text
 
 ---
 

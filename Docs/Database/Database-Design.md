@@ -129,6 +129,7 @@ graph TD
 ## Scope
 
 **In Scope:**
+
 - PostgreSQL as the primary relational store with 8 core tables
 - Apache AGE (PostgreSQL extension) for graph store in MVP
 - pgvector (PostgreSQL extension) for vector store in MVP
@@ -138,6 +139,7 @@ graph TD
 - Index strategies including GIN for JSONB and HNSW for vectors
 
 **Out of Scope:**
+
 - Database sharding or partitioning by tenant
 - Cross-region replication or multi-master setups
 - Real-time change data capture (CDC) streams

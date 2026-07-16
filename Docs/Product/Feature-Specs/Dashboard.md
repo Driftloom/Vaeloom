@@ -1,4 +1,5 @@
 ﻿## Header
+>
 > **Purpose:** Detailed specification for Dashboard
 > **Status:** ðŸ†• New
 > **Owner:** Product Team
@@ -46,6 +47,7 @@ The Dashboard is read-only by design. The only interactive element is the sugges
 | No new tables | â€” | Dashboard is an aggregate read across existing tables |
 
 Data sources per widget:
+
 - **Deadlines strip:** `schedule_events` filtered to next 7 days, ordered by date, with `conflict_flag = true` highlighted
 - **Application pipeline:** `applications` grouped by `status`
 - **Memory health:** aggregate count of `entities` created this week + `documents` added + `memory_records` by type
@@ -104,7 +106,7 @@ Dashboard respects existing per-module read permissions â€” it cannot show 
 |----------|-------|-------------|----------|
 | Dashboard aggregation query times out (>3s) | Partial load | Loaded widgets shown; failed widgets show "Could not load" with retry button | Retry individually; full refresh |
 | One data source unavailable (e.g., Gmail connector down) | Partial data | Specific widget shows "Unavailable â€” [reason]" | Connector health check runs independently |
-| No data for any widget yet | Empty Dashboard | "Welcome to Vaeloom! Upload your first file or connect a source to get started." Onboarding checklist widget replaces dashboard content for first week |
+| No data for any widget yet | Empty Dashboard | "Welcome to Vaeloom! Upload your first file or connect a source to get started." Onboarding checklist widget replaces dashboard content for first week | Auto-recover on next data sync |
 | Suggestion generation returns nothing | Empty suggestions panel | "No suggestions right now â€” you're all caught up!" | Panel hides after 7 days of no suggestions |
 | Cache miss on Dashboard aggregation | Cold load | Full aggregation query runs (slower but accurate) | Cache populated for next request |
 

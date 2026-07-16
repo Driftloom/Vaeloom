@@ -201,6 +201,7 @@ sequenceDiagram
 
     Note over RBAC,ABAC: Role assigned â†’ ABAC attribute updated<br/>for next permission evaluation
 ```
+
 > **Diagram:** RBAC role assignment â€” Admin assigns "admin" role to a user; RBAC service persists the assignment, invalidates the user's permission cache, syncs with ABAC for attribute mapping, and logs the event.
 
 ---

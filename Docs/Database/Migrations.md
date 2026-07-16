@@ -20,6 +20,7 @@ This document defines the migration framework, conventions, zero-downtime patter
 ## Scope
 
 **In Scope:**
+
 - Migration framework selection (Prisma Migrate for TypeScript, Alembic for Python)
 - Migration file naming convention: `YYYYMMDD_HHMMSS_description.sql`
 - Reversible migration requirement â€” every up migration must have a corresponding down migration
@@ -28,6 +29,7 @@ This document defines the migration framework, conventions, zero-downtime patter
 - Rollback procedures and migration audit logging
 
 **Out of Scope:**
+
 - Online schema change tools (gh-ost, pt-online-schema-change) â€” future improvement
 - Database branching or schema diff tools beyond the ORM migration framework
 - Migration of non-PostgreSQL stores (AGE graph, pgvector, Qdrant)

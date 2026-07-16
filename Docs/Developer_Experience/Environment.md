@@ -207,6 +207,7 @@ The Environment Configuration document defines Vaeloom's environment variable st
 ## Scope
 
 ### In Scope
+
 - Environment types (development, staging, production) and configuration sources
 - Key environment variables across all services (core, database, auth, AI, storage, connectors)
 - Environment-specific configuration differences
@@ -214,6 +215,7 @@ The Environment Configuration document defines Vaeloom's environment variable st
 - Security practices for secrets and environment isolation
 
 ### Out of Scope
+
 - CI/CD environment configuration (covered in DevOps docs)
 - Secrets manager setup and rotation procedures
 - Per-developer environment customization

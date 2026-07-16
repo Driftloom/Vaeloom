@@ -264,6 +264,7 @@ sequenceDiagram
 ## Scope
 
 ### In Scope
+
 - Automated axe-core scanning of all frontend routes on every pull request
 - Quarterly manual accessibility audits covering keyboard navigation, screen reader, and focus management
 - Color contrast validation for every design token pair across light and dark themes
@@ -271,6 +272,7 @@ sequenceDiagram
 - Severity-classified remediation with defined SLAs (Critical: block merge, High: 14 days, Medium: 30 days, Low: next sprint)
 
 ### Out of Scope
+
 - WCAG 2.2 AAA compliance (monitored but not required)
 - Third-party embedded content accessibility (assessed per integration)
 - Accessibility of user-generated content (documents, uploaded files)

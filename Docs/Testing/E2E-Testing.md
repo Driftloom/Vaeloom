@@ -277,6 +277,7 @@ Playwright's auto-retrying assertions, trace viewer for debugging failures, and 
 ## Scope
 
 ### In Scope
+
 - Playwright-based E2E tests for 8 critical user flows and 20+ extended flows
 - Three-tier test execution: smoke (every PR), critical (every staging deploy), full (every production deploy)
 - Parallel browser execution across Chromium and Firefox with 2+ workers
@@ -285,6 +286,7 @@ Playwright's auto-retrying assertions, trace viewer for debugging failures, and 
 - Screenshot, trace, and video capture on test failure for debugging
 
 ### Out of Scope
+
 - AI output quality validation in E2E (tested via golden datasets separately)
 - Real mobile device testing (Playwright emulation used for PRs; physical devices for release candidates)
 - Visual regression testing (future improvement with Chromatic/Percy)

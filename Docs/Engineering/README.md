@@ -235,6 +235,7 @@ graph LR
 ## Scope
 
 ### In Scope
+
 - Master build orchestration plan (00-master-build-order.md) defining the complete 16-phase MVP implementation sequence
 - 16 sequential implementation guides (01-foundation-infra through 16-deployment-infrastructure) with dependency ordering
 - Cross-referencing architecture documents in `../Architecture/` that provide design rationale
@@ -243,6 +244,7 @@ graph LR
 - Definition of "MVP done" with measurable acceptance criteria across all phases
 
 ### Out of Scope
+
 - Detailed product specifications (covered in `Vaeloom-Complete-Documentation.md` and `01-Vaeloom-MVP-Spec.md`)
 - Operational runbooks and incident response procedures (covered in `../DevOps/`)
 - Security compliance documentation and audit trails (covered in `./Implementation/15-security-compliance.md`)

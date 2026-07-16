@@ -167,6 +167,7 @@ https://api.Vaeloom.dev/v1/
 ## Scope
 
 **In Scope:**
+
 - RESTful resource endpoints under /v1/ for documents, resumes, applications, connectors, memory, schedule, and chat
 - 5-layer middleware stack covering logging, auth, permission, rate limiting, and validation
 - Structured error response format with error codes, messages, and detail objects
@@ -175,6 +176,7 @@ https://api.Vaeloom.dev/v1/
 - Internal gRPC endpoints for AI service communication
 
 **Out of Scope:**
+
 - WebSocket or Server-Sent Events for real-time streaming
 - GraphQL or other query-language API layers
 - Client SDK generation or API client libraries
@@ -262,11 +264,11 @@ https://api.Vaeloom.dev/v1/
 |----------|---------|---------|----------|
 | API_PORT | HTTP listen port | 3000 | Yes |
 | API_PREFIX | Global route prefix | /v1 | Yes |
-| JWT_ISSUER | Expected JWT issuer claim | https://auth.Vaeloom.dev | Yes |
+| JWT_ISSUER | Expected JWT issuer claim | <https://auth.Vaeloom.dev> | Yes |
 | JWT_AUDIENCE | Expected JWT audience claim | api.Vaeloom.dev | Yes |
 | RATE_LIMIT_MAX | Max requests per window per user | 100 | No |
 | RATE_LIMIT_WINDOW | Window duration in seconds | 60 | No |
-| CORS_ORIGINS | Comma-separated allowed origins | http://localhost:3000 | No |
+| CORS_ORIGINS | Comma-separated allowed origins | <http://localhost:3000> | No |
 | REQUEST_TIMEOUT | Max request processing time in ms | 30000 | No |
 | LOG_BODY | Whether to log request bodies | false | No |
 

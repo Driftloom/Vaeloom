@@ -179,6 +179,7 @@ The MVP specifications and architecture documents focused heavily on product fea
 ## Scope
 
 ### In Scope
+
 - Index of all operations documents with direct links, status indicators, and brief descriptions for every file in the Operations directory
 - Best practices for operations documentation management: version control, quarterly testing, cross-referencing with monitoring
 - Workflow definitions for the monitor-respond-improve-maintain-plan-audit lifecycle that ties together all operations documents
@@ -186,6 +187,7 @@ The MVP specifications and architecture documents focused heavily on product fea
 - Cross-links to related documentation categories: DevOps, Testing, and Security
 
 ### Out of Scope
+
 - Detailed operational procedures for individual services (covered in individual documents linked from this index)
 - Incident response workflows and communication templates (covered in Incident Response Plan)
 - SLO/SLI targets and error budget policies (covered in SLO, SLI, and SRE documents)

@@ -68,9 +68,11 @@ graph TD
 ```
 
 ## Context
+
 Read `13-api-backend.md` first â€” every screen here consumes that API, nothing talks to a database or agent directly from the frontend. This phase is where the product becomes something a real user can actually use.
 
 ## Objective
+
 Build the Next.js frontend covering every MVP screen, replacing the placeholder Dashboard from file 01.
 
 ## Requirements
@@ -78,6 +80,7 @@ Build the Next.js frontend covering every MVP screen, replacing the placeholder 
 **Design system:** dark theme by default (reuse the established Vaeloom visual identity if design files are available in the repo/docs: deep ink background, periwinkle-blue accent, coral highlight, Space Grotesk for display type, IBM Plex Mono for labels/data) â€” consistent branding across every screen, not a generic admin-dashboard template look. Reference the design tokens in `Vaeloom-Documentation-Site.html` / `Vaeloom-How-It-Works-Visual.html` if present in the project for exact values.
 
 **Screens to build:**
+
 - **Dashboard** â€” aggregated summary (memory growth, active applications, upcoming deadlines, recent activity, suggestions) â€” read-only composition of other screens' data, no unique logic of its own.
 - **Workspace** â€” file/folder browser, in-app viewer (PDF, image, text minimum for MVP), Organization Agent proposal approval cards.
 - **Memory Graph** â€” a navigable (not just illustrative) view of the knowledge graph; clicking a node shows its connections and source documents.
@@ -95,9 +98,11 @@ Build the Next.js frontend covering every MVP screen, replacing the placeholder 
 **Approval flows:** anywhere an agent proposes a suggest-mode action (Organization Agent renames, Job Search Agent shortlist, Application Agent submission), the UI must make approve/reject a first-class, low-friction action â€” this is the primary interaction loop for most of the product, it should never feel buried.
 
 ## Out of scope
+
 Admin console, Analytics screen, Developer Mode/Plugin management UI, full accessibility audit pass (a basic keyboard-navigable pass is expected, a formal audit is enterprise phase), mobile app (a companion, not full parity).
 
 ## Acceptance criteria
+
 - [ ] A full click-through of the MVP user journey (sign up â†’ connect a source â†’ upload a resume â†’ see it organized â†’ see the master resume update â†’ search for and approve a job match â†’ see it on the Applications board) works against the real API with no mocked data.
 - [ ] Every screen has a tested empty state and error state.
 - [ ] Approval/rejection of any proposed agent action updates both the UI and the underlying `agent_actions` record correctly.
@@ -138,6 +143,7 @@ Admin console, Analytics screen, Developer Mode/Plugin management UI, full acces
 ## Scope
 
 ### In Scope
+
 - 11 MVP screens built with Next.js App Router: Dashboard, Workspace, Memory Graph, Resume, Jobs, Applications, Chat, Schedule, Connectors, History, Settings
 - Dark-theme Vaeloom design system across all screens (deep ink background, periwinkle-blue accent, coral highlight, Space Grotesk + IBM Plex Mono)
 - Empty states and error states for every screen
@@ -146,6 +152,7 @@ Admin console, Analytics screen, Developer Mode/Plugin management UI, full acces
 - End-to-end MVP user journey working against the real API with no mocked data
 
 ### Out of Scope
+
 - Admin console and Analytics screen (planned Q1 2027)
 - Developer Mode and Plugin management UI (planned Q2 2027)
 - Full accessibility audit pass for WCAG 2.1 AA compliance (planned Q2 2027)

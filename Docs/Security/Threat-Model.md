@@ -400,6 +400,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 ## Scope
 
 ### In Scope
+
 - All Vaeloom platform components: Web (Next.js), API (NestJS), AI Service (FastAPI), PostgreSQL, Redis, Object Storage
 - Third-party integrations: Supabase Auth, OpenAI API, SendGrid, GitHub OAuth, Google OAuth
 - All trust boundaries: user â†’ web, web â†’ API, API â†’ AI service, API â†’ database, API â†’ storage, service â†” third-party
@@ -407,6 +408,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 - Deployment environments: development, staging, production (different threat profiles per environment)
 
 ### Out of Scope
+
 - Physical security threats to cloud data centers (provider responsibility)
 - Supply chain attacks on third-party CI/CD infrastructure (covered in [SBOM-Policy.md](../DevOps/SBOM-Policy.md))
 - Social engineering attacks on development team (covered in security awareness training)

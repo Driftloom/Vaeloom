@@ -1,9 +1,10 @@
 ﻿# Enterprise
 
 > **Purpose:** Enterprise features, multi-tenancy, consent model, and the full enterprise product vision
-> **Status:** Active
+> **Status:** ✅ Active
 > **Owner:** Product Team
-> **Last Updated:** 2026-07-13
+> **Version:** 1.1
+> **Last Updated:** 2026-07-16
 
 ## Overview
 
@@ -17,11 +18,17 @@ The consent model is a critical architectural component that enables tenant-prov
 
 | Document | Location | Status |
 |----------|----------|--------|
-| Enterprise Product Vision | [`/Docs/06-Vaeloom-Enterprise-Paper.md`](../../Docs/06-Vaeloom-Enterprise-Paper.md) | âœ… Excellent |
-| Enterprise Architecture (AI) | [`/Docs/06-Vaeloom-Enterprise-Paper.md#20-ai-architecture`](../../Docs/06-Vaeloom-Enterprise-Paper.md#20-ai-architecture) | âœ… Excellent |
-| Multi-Tenant & Consent Model | [`/Docs/06-Vaeloom-Enterprise-Paper.md#192-the-consent-model`](../../Docs/06-Vaeloom-Enterprise-Paper.md#192-the-consent-model) | âœ… Good |
-| Enterprise Build Prompts | [`/Documents/build-prompts/enterprise/`](../../Documents/build-prompts/enterprise/) | âœ… Good |
-| Enterprise Future Innovations | [`/Docs/06-Vaeloom-Enterprise-Paper.md#21-future-innovations`](../../Docs/06-Vaeloom-Enterprise-Paper.md#21-future-innovations) | âœ… Good |
+| Enterprise Product Vision | [`/Docs/06-Vaeloom-Enterprise-Paper.md`](../../Docs/06-Vaeloom-Enterprise-Paper.md) | ✅ Excellent |
+| Enterprise Architecture | [`./Enterprise-Architecture.md`](./Enterprise-Architecture.md) | ✅ Complete |
+| Multi-Tenancy | [`./Multi-Tenancy.md`](./Multi-Tenancy.md) | 🆕 New |
+| Organizations | [`./Organizations.md`](./Organizations.md) | 🆕 New |
+| Billing | [`./Billing.md`](./Billing.md) | 🆕 New |
+| Licensing | [`./Licensing.md`](./Licensing.md) | 🆕 New |
+| Admin Portal | [`./Admin-Portal.md`](./Admin-Portal.md) | 🆕 New |
+| Feature Flags | [`./Feature-Flags.md`](./Feature-Flags.md) | 🆕 New |
+| Plugin Marketplace | [`./Plugin-Marketplace.md`](./Plugin-Marketplace.md) | 🆕 New |
+| Enterprise APIs | [`./Enterprise-APIs.md`](./Enterprise-APIs.md) | 🆕 New |
+| Enterprise Build Prompts | [`../Engineering/Implementation/`](../Engineering/Implementation/) | ✅ Canonical |
 
 ```mermaid
 graph LR
@@ -107,6 +114,7 @@ The MVP and Enterprise designs share the same architecture at two points in time
 ## Scope
 
 ### In Scope
+
 - Enterprise product vision overview
 - Multi-tenant and consent model description
 - MVP-to-enterprise migration path
@@ -114,6 +122,7 @@ The MVP and Enterprise designs share the same architecture at two points in time
 - Key differences between MVP and enterprise capabilities
 
 ### Out of Scope
+
 - Detailed enterprise architecture (covered in Enterprise-Architecture.md)
 - Full enterprise product spec (covered in Enterprise Paper)
 - Implementation timelines beyond MVP roadmap

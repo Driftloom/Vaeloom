@@ -246,6 +246,7 @@ For Vaeloom's users â€” typically career professionals managing resumes, jo
 ## Scope
 
 ### In Scope
+
 - Recharts implementation for Dashboard line charts (knowledge growth, entity trends), bar charts (applications per platform, skills by category), and pie/donut charts (memory type distribution)
 - D3.js force-directed knowledge graph for the Memory Graph page with search, filter, and expand/collapse interactions
 - CSS/SVG sparklines for compact trend indicators in widget headers and stat cards
@@ -253,6 +254,7 @@ For Vaeloom's users â€” typically career professionals managing resumes, jo
 - Tooltip interactivity with exact value display and click-through deep-linking
 
 ### Out of Scope
+
 - Real-time streaming charts with live data updates (future improvement)
 - Chart export to PDF or image formats (future improvement)
 - Third-party charting libraries beyond Recharts, D3.js, and inline SVG

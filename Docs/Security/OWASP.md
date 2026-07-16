@@ -395,6 +395,7 @@ Enterprise-grade security requires defense in depth: no single control is relied
 ## Scope
 
 ### In Scope
+
 - OWASP Top 10 (2021) risk assessment and mitigation per category
 - OWASP ASVS Level 2 verification requirements for authentication, session management, access control, and API security
 - Automated SAST scanning (Semgrep) and SCA scanning (Dependabot, Trivy) in CI
@@ -403,6 +404,7 @@ Enterprise-grade security requires defense in depth: no single control is relied
 - Risk register management with CWE mapping and resolution tracking
 
 ### Out of Scope
+
 - OWASP ASVS Level 3 (advanced) verification (planned for enterprise Phase 2)
 - Mobile application security (no mobile client in scope)
 - IoT or embedded system security (not applicable)

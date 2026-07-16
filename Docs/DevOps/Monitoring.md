@@ -246,6 +246,7 @@ Enterprise-grade monitoring requires a single unified observability platform to 
 ## Scope
 
 ### In Scope
+
 - Key Vaeloom metrics: API latency (p50/p95/p99), AI latency, queue depth, error rates, DB connection pool usage
 - Health check endpoints: `/health` (overall), `/health/ready` (readiness probe), `/health/live` (liveness probe)
 - OpenTelemetry-based metric collection from all services
@@ -254,6 +255,7 @@ Enterprise-grade monitoring requires a single unified observability platform to 
 - Monitoring infrastructure: OpenTelemetry Collector, Prometheus/Grafana Mimir, Grafana
 
 ### Out of Scope
+
 - Log aggregation and log-based alerting (covered in [Logging.md](./Logging.md))
 - Distributed tracing implementation (covered in [Tracing.md](./Tracing.md))
 - Alert routing and notification channels (covered in [Alerting.md](./Alerting.md))

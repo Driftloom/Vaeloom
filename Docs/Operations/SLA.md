@@ -207,6 +207,7 @@ The SLA is the outermost layer of Vaeloom's reliability framework â€” it si
 ## Scope
 
 ### In Scope
+
 - SLA targets for all four Vaeloom service categories with availability percentages, monthly downtime budgets, and applicable exclusions per service
 - SLA credit schedule for enterprise customers with three tiers of compensation based on measured uptime ranges
 - SLA exclusion definitions: scheduled maintenance (48-hour notice), force majeure, third-party model provider outages, user-side issues, and beta features
@@ -214,6 +215,7 @@ The SLA is the outermost layer of Vaeloom's reliability framework â€” it si
 - SLA monitoring metrics and alert thresholds for current month compliance, credit exposure, exclusion usage rate, and customer inquiry rate
 
 ### Out of Scope
+
 - Internal service level objectives and error budget policies (covered in SLO and SRE documents)
 - Service level indicators and measurement methodology (covered in SLI document)
 - Customer contract terms beyond SLA credits (covered in legal agreements)

@@ -194,6 +194,7 @@ The API Examples document provides ready-to-use curl commands covering Vaeloom's
 ## Scope
 
 ### In Scope
+
 - Authentication endpoints (signup, login)
 - Document CRUD operations (upload, list, organize)
 - Resume management (get, generate variant, score)
@@ -201,6 +202,7 @@ The API Examples document provides ready-to-use curl commands covering Vaeloom's
 - Agent chat messaging
 
 ### Out of Scope
+
 - Admin panel API endpoints
 - Enterprise SSO configuration APIs
 - Webhook registration and management

@@ -194,6 +194,7 @@ The Scripts document catalogs all development scripts in the Vaeloom monorepo â
 ## Scope
 
 ### In Scope
+
 - Root-level scripts (dev, reset-db, seed-data, smoke-test, CI-local)
 - Frontend scripts (dev, build, test, lint, analyze)
 - API scripts (dev, build, migrations)
@@ -201,6 +202,7 @@ The Scripts document catalogs all development scripts in the Vaeloom monorepo â
 - Script conventions and safety practices
 
 ### Out of Scope
+
 - CI/CD pipeline scripts (covered in DevOps docs)
 - Deployment scripts
 - Database migration scripts (covered in Database docs)

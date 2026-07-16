@@ -146,6 +146,7 @@ graph LR
 | Database | us-east-1 (RDS Multi-AZ) | us-west-2 (Read replica) | Manual promote |
 
 **Secondary region prerequisites:**
+
 - Pre-provisioned infrastructure via Terraform (always up-to-date)
 - Database read replica with continuous WAL streaming
 - Container images pre-pulled or available in cross-region ECR
@@ -276,9 +277,11 @@ graph LR
 - Validate continuity readiness through quarterly tabletop exercises, database failover tests, and an annual full regional failover drill
 
 ---
+
 ## Scope
 
 ### In Scope
+
 - Recovery strategies for all eight Vaeloom production services: API Gateway, PostgreSQL primary and read replicas, AI Inference Service, Redis cache, S3 document storage, background workers, and frontend hosting
 - Active-passive cross-region failover between us-east-1 (primary) and us-west-2 (secondary) including DNS cutover via Route53 health checks
 - Communication plan covering internal Slack channels, status.Vaeloom.dev automated updates, customer email notifications, and post-mortem publishing
@@ -286,6 +289,7 @@ graph LR
 - Testing schedule with defined frequency, scope, and participants for tabletop exercises, database failover tests, regional failover drills, communication exercises, and backup restore tests
 
 ### Out of Scope
+
 - Day-to-day incident response triage and post-mortem processes (covered in Incident Response Plan)
 - Standard operating procedures for routine maintenance, scaling, and deployment (covered in Operations Runbook)
 - Individual service-level runbooks for non-disaster scenarios
@@ -293,6 +297,7 @@ graph LR
 - Customer-specific business continuity requirements handled through enterprise SLA agreements
 
 ---
+
 ## Examples
 
 ### Failover Command (CLI)

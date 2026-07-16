@@ -219,6 +219,7 @@ The principle of "measure what matters" drives SLI selection. Every SLI in this 
 ## Scope
 
 ### In Scope
+
 - SLI definitions for all six indicators with good event vs total event criteria, measurement methods, and reporting cadences
 - Reference TypeScript implementation of SLI counters using OpenTelemetry with atomic good/total increment pattern
 - SLI reporting specifications: real-time dashboard integration for latency and availability SLIs, weekly aggregated reports for agent accuracy
@@ -226,6 +227,7 @@ The principle of "measure what matters" drives SLI selection. Every SLI in this 
 - Error handling for SLI data quality: counter divergence detection, missing data flatline alerts, 64-bit counter overflow prevention, versioned SLI definitions
 
 ### Out of Scope
+
 - Service level objective targets and error budget policies (covered in SLO and SRE documents)
 - SLA contractual commitments and credit calculations (covered in SLA document)
 - Business-level analytics and product event tracking (covered in Analytics documentation)

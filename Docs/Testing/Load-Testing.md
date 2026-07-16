@@ -205,6 +205,7 @@ Success criteria use a three-tier rating system per metric: Pass (green), Warn (
 ## Scope
 
 ### In Scope
+
 - Three load scenarios: normal (100 users, 30min), peak (1000 users, 15min), stress (gradual ramp to failure)
 - k6 for API load testing with structured ramp-up/hold/ramp-down patterns
 - Locust for user-simulation with realistic behavior models
@@ -213,6 +214,7 @@ Success criteria use a three-tier rating system per metric: Pass (green), Warn (
 - Pre-release load test gate with baseline comparison and regression detection
 
 ### Out of Scope
+
 - ML-generated load profiles from production traffic patterns (future improvement)
 - Distributed tracing correlation during load tests (future improvement)
 - Automated capacity recommendation from load test results (future improvement)

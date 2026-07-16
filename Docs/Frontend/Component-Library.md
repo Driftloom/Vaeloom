@@ -287,6 +287,7 @@ By enforcing a strict component hierarchy and shared conventions, the library en
 ## Scope
 
 ### In Scope
+
 - Five-layer atomic component hierarchy (primitives, molecules, layout, features, pages)
 - TypeScript strict mode with generic compound components (`Table<T>`, `List<T>`)
 - Consistent prop patterns (`className`, `variant`, `children`, event handlers)
@@ -294,6 +295,7 @@ By enforcing a strict component hierarchy and shared conventions, the library en
 - Keyboard navigation, focus management, and ARIA attributes on all interactive elements
 
 ### Out of Scope
+
 - Server components requiring hooks or Context (marked with `use client` boundary)
 - Visual regression test suite (covered in E2E Testing)
 - Storybook documentation site (planned for future improvement)

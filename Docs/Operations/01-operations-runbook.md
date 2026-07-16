@@ -663,6 +663,7 @@ Operations runbooks are only as reliable as their testing cadence. Every procedu
 ## Scope
 
 ### In Scope
+
 - Service architecture overview for MVP (PaaS) and Enterprise (Kubernetes) deployments including all microservices and dependencies
 - Health check endpoints, monitoring metrics, alert thresholds, and logging standards for all services
 - Common procedures: restart, log inspection, scaling, database migrations, cache clearing, and job re-processing
@@ -675,6 +676,7 @@ Operations runbooks are only as reliable as their testing cadence. Every procedu
 - Cost management for AI model inference and infrastructure spend with budget alerts
 
 ### Out of Scope
+
 - Incident response and post-mortem processes (covered in Incident Response Plan)
 - Business continuity and disaster recovery planning (covered in Business Continuity Plan)
 - SLA/SLO/SLI definitions and tracking (covered in SLA, SLO, and SLI documents)

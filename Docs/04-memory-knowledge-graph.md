@@ -155,6 +155,7 @@ Working Memory is the only type that's cleared per session â€” everything e
 ## Scope
 
 ### In Scope
+
 - Six memory types: Profile, Document, Career, Episodic, Preference, Working
 - Knowledge graph structure: entity types and typed relationships
 - Agentic RAG read path â€” hybrid search combining vector, keyword, and graph traversal
@@ -162,6 +163,7 @@ Working Memory is the only type that's cleared per session â€” everything e
 - Read/re-rank by relevance, recency, and confidence
 
 ### Out of Scope
+
 - Full 22-type enterprise memory taxonomy (enterprise paper)
 - Memory versioning and provenance audit trail
 - Cross-user memory sharing and anonymization framework

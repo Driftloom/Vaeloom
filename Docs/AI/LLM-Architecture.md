@@ -145,6 +145,7 @@ The Model Router is a centralized service that:
 ## Scope
 
 **In Scope:**
+
 - Multi-model orchestration across Claude Haiku, Claude Sonnet, and GPT-4o
 - Centralized Model Router with task classification, model selection, and fallback logic
 - Per-agent cost and latency monitoring and attribution
@@ -153,6 +154,7 @@ The Model Router is a centralized service that:
 - Configuration-driven model assignments via centralized config file
 
 **Out of Scope:**
+
 - Fine-tuning or custom model training
 - Self-hosted open-source model deployment
 - Multi-modal model support (image, audio generation)

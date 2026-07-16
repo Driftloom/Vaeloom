@@ -209,6 +209,7 @@ Within the Vaeloom architecture, branch hygiene directly impacts CI cost (every 
 ## Scope
 
 ### In Scope
+
 - Branch naming conventions for feature, fix, hotfix, release, chore, and docs branches
 - Protection rules for main and develop branches (no direct commits, require PR + CI + review)
 - Merge strategy per branch type (squash for features, merge commit for developâ†’main)
@@ -217,6 +218,7 @@ Within the Vaeloom architecture, branch hygiene directly impacts CI cost (every 
 - Branch cleanup automation (auto-delete on merge, scheduled archive)
 
 ### Out of Scope
+
 - Trunk-based development with feature flags (planned for Q2 2027 migration)
 - Per-team or per-service branch namespacing (team-a/feature/x â€” needed at 50+ engineers)
 - Git-flow multi-team release coordination (manual coordination suffices at current team size)

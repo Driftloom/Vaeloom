@@ -64,9 +64,11 @@ graph TD
 ```
 
 ## Context
+
 Read `08-specialist-agents.md` first. "It looks good in a manual test" is not a production metric — this phase makes agent quality measurable and regression-checkable in CI, before real users are affected by a quality drop.
 
 ## Objective
+
 Build a lightweight eval harness: a golden dataset per agent, an automated scoring run, and a CI gate that blocks a merge if an agent's measured quality regresses.
 
 ## Requirements
@@ -74,6 +76,7 @@ Build a lightweight eval harness: a golden dataset per agent, an automated scori
 **Golden datasets (`apps/ai-service/evals/datasets/`):** for each of the seven MVP agents (file 08), create a small (15–30 example) golden dataset of realistic inputs and expected/acceptable outputs — e.g. for Organization Agent: sample messy filenames + the correct proposed name/folder; for ATS Agent: a resume + JD pair + the expected score range and required flagged keywords.
 
 **Eval runner (`apps/ai-service/evals/runner.py`):**
+
 - Runs every agent against its golden dataset and scores each output. For agents with a clear correct answer (Organization Agent naming, ATS keyword detection), use exact/fuzzy match scoring. For agents with a range of acceptable outputs (Resume Agent phrasing, Job Search Agent ranking rationale), use LLM-as-judge scoring against a rubric — write the rubric explicitly in the dataset file, don't leave it to the judge model's own discretion.
 - Tracks per-agent: accuracy/quality score, latency, cost (pulled from file 09's token tracking), **and safety/policy-compliance rate** — pulled from how often the guardrail middleware (file 11) flagged or blocked that agent's outputs during the eval run. "Looks good" isn't just correctness; an agent that's accurate but frequently trips guardrails is not production-ready either, and this should be visible in the same report, not buried in a separate guardrails log nobody checks.
 
@@ -84,9 +87,11 @@ Build a lightweight eval harness: a golden dataset per agent, an automated scori
 **Human evaluation hook:** even in MVP, provide a simple CLI or script that samples N recent real agent outputs (from `agent_actions`) for a human to manually label pass/fail — this seeds future golden-dataset growth and catches gaps the initial dataset didn't anticipate.
 
 ## Out of scope
+
 A full benchmark suite, formal human-eval rotation process, per-tenant eval segmentation (all enterprise phase). Online (live-traffic) evaluation beyond the human-sampling hook.
 
 ## Acceptance criteria
+
 - [ ] Every one of the seven MVP agents has a golden dataset and passes its own eval run above a defined baseline.
 - [ ] Deliberately degrading one agent's prompt (as a test) causes the eval run to catch the regression and fail CI.
 - [ ] The human-eval sampling script successfully pulls real `agent_actions` entries and presents them for labeling.
@@ -129,6 +134,7 @@ A full benchmark suite, formal human-eval rotation process, per-tenant eval segm
 ## Scope
 
 ### In Scope
+
 - Golden datasets (15–30 examples each) for all seven MVP specialist agents
 - Automated eval runner supporting exact/fuzzy match and LLM-as-judge with explicit rubrics
 - CI regression gate blocking merges when agent quality drops beyond threshold (5 percentage points)
@@ -138,6 +144,7 @@ A full benchmark suite, formal human-eval rotation process, per-tenant eval segm
 - Stored baselines per dataset version with explicit update requirement on regression
 
 ### Out of Scope
+
 - Full benchmark suite with standardized industry metrics (planned Q2 2027)
 - Formal human-eval rotation process with labeled data management (planned Q1 2027)
 - Per-tenant eval segmentation for multi-tenant quality monitoring (planned Q2 2027)

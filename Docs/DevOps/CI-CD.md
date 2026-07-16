@@ -302,6 +302,7 @@ curl -f https://api.Vaeloom.dev/v1/health && \
 ## Scope
 
 **In Scope:**
+
 - GitHub Actions CI pipeline with lint, type check, unit test, integration test, and build stages
 - Docker image build and push to container registry with SHA-based immutable tags
 - Automated staging deployment on merge to main
@@ -310,6 +311,7 @@ curl -f https://api.Vaeloom.dev/v1/health && \
 - Rollback procedures for both staging and production
 
 **Out of Scope:**
+
 - Cross-repository CI/CD orchestration (monorepo only)
 - Third-party CI provider migration
 - Mobile app build and deployment

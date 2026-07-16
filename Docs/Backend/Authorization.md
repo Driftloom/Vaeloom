@@ -189,6 +189,7 @@ sequenceDiagram
 
     Note over Agent,AL: If action was incorrect:<br/>AA detects error â†’ revoke to suggest-mode
 ```
+
 > **Diagram:** Authorization with autonomy â€” Agent requests `act` permission; Permission Engine checks autonomy tracker, evaluates ABAC policy, and allows auto-execute for earned agents. Errors trigger automatic revocation to suggest-mode.
 
 ---

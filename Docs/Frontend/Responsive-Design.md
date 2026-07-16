@@ -250,6 +250,7 @@ Touch interactions are handled separately from mouse interactions using pointer 
 ## Scope
 
 ### In Scope
+
 - Four breakpoints: mobile (0px), tablet (640px), desktop (1024px), wide (1440px)
 - Mobile-first CSS with `min-width` media queries for progressive enhancement
 - Responsive components: sidebar (hiddenâ†’collapsibleâ†’visible), dashboard (1â†’2â†’3-4 columns), workspace (fullâ†’40/60â†’30/70 split), tables (cardâ†’compactâ†’full), chat (fullâ†’side panel)
@@ -257,6 +258,7 @@ Touch interactions are handled separately from mouse interactions using pointer 
 - Responsive images with `<picture>`, `srcset`, and `sizes` attributes
 
 ### Out of Scope
+
 - Container queries for component-level responsive design (future improvement when browser support reaches 95%)
 - Device client hints for server-rendered responsive layouts (future improvement)
 - AI-generated responsive image variants from master assets (future improvement)

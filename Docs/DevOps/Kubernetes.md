@@ -293,6 +293,7 @@ Enterprise-grade Kubernetes requires careful configuration of resource requests 
 ## Scope
 
 ### In Scope
+
 - Kubernetes Deployment, Service, and Ingress manifests for web, API, and AI service
 - Horizontal Pod Autoscaler configuration with CPU-based scaling (2â€“10 replicas per service)
 - Health check probes (liveness, readiness) for automated pod health management
@@ -301,6 +302,7 @@ Enterprise-grade Kubernetes requires careful configuration of resource requests 
 - Migration decision framework (service count > 5, PaaS insufficiency, multi-tenancy, team size > 5)
 
 ### Out of Scope
+
 - Service mesh (Istio/Linkerd) configuration (planned for enterprise Phase 2)
 - Cluster auto-scaling configuration (managed by cloud provider or cluster-autoscaler)
 - Multi-cluster federation and global load balancing (planned for enterprise Phase 3)

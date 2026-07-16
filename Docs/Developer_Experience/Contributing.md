@@ -157,6 +157,7 @@ The Contributing guide defines how developers can contribute to the Vaeloom proj
 ## Scope
 
 ### In Scope
+
 - Bug reporting process and template
 - Feature suggestion workflow (discussion, approval, implementation)
 - Pull request requirements (tests, docs, CI, permissions)
@@ -164,6 +165,7 @@ The Contributing guide defines how developers can contribute to the Vaeloom proj
 - Code of conduct expectations
 
 ### Out of Scope
+
 - Specific coding standards (referenced from Engineering docs)
 - Git workflow details (referenced from Engineering docs)
 - Release process and versioning

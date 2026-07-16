@@ -232,9 +232,11 @@ All vendors processing customer data must meet the following minimum requirement
 - Monitor vendor sub-processor changes quarterly and trigger re-assessment when vendors undergo acquisition, merger, or major funding rounds
 
 ---
+
 ## Scope
 
 ### In Scope
+
 - Complete vendor registry for all eight Vaeloom third-party vendors with risk tier, data classification, assessment frequency, DPA status, and certifications for each
 - Four-tier vendor risk classification: Tier 1 (Critical â€” customer data processed, no viable alternative), Tier 2 (High â€” customer data processed, alternative exists), Tier 3 (Medium â€” business operations, no customer data), Tier 4 (Low â€” ancillary service, easily replaceable)
 - Assessment process with tier-dependent depth: Tier 1 requires full assessment (SOC 2 + pen test + BCP), Tier 2 requires standard assessment (SOC 2 + DPA), Tier 3 requires basic assessment (DPA + public docs), Tier 4 requires light assessment (AUP review)
@@ -242,6 +244,7 @@ All vendors processing customer data must meet the following minimum requirement
 - Error handling for vendor risk events: SOC 2 certification expiry, vendor acquisition, data breach notification, and sub-processor changes
 
 ### Out of Scope
+
 - Vaeloom's own security architecture and compliance certifications (covered in Security documentation)
 - Individual vendor contract negotiation and pricing terms (handled by procurement)
 - Detailed penetration test results and security audit findings for each vendor
@@ -249,6 +252,7 @@ All vendors processing customer data must meet the following minimum requirement
 - Automated vendor risk scoring platform (future improvement)
 
 ---
+
 ## Examples
 
 ### Vendor Registry Entry (JSON)

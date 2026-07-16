@@ -64,9 +64,11 @@ graph TD
 ```
 
 ## Context
+
 Read `05-agent-harness-orchestration.md` first. Traditional apps mostly just fail; agents can drift, loop, or quietly do the wrong thing while "succeeding." This phase makes the whole request path — not just errors — inspectable.
 
 ## Objective
+
 Instrument the full chain (API request → Orchestrator → agent loop phases → tool calls → memory reads/writes) with distributed tracing, structured logs, and a queryable audit log, so any single request can be reconstructed end to end.
 
 ## Requirements
@@ -84,9 +86,11 @@ Instrument the full chain (API request → Orchestrator → agent loop phases �
 **Feedback signal tracking:** every approval, rejection, and correction a user makes on an agent's proposed action (file 08's suggest-mode flows) is surfaced as its own continuous, queryable stream — not just a status field buried inside individual `agent_actions` rows. Add a per-agent "approval rate" view to the same dashboards as call volume/latency/cost, so a declining approval rate for a given agent is visible the same way a rising failure rate would be. This is the signal the eval framework's human-eval hook (file 10) and, later, the Self-Improvement Agent (enterprise) actually consume — it needs to be a first-class observability concern, not an implicit byproduct of the audit log.
 
 ## Out of scope
+
 A polished observability UI (a hosted APM's own UI is sufficient for MVP), anomaly detection / drift alerting (enterprise — Security Agent territory), long-retention compliance-grade audit storage (enterprise phase).
 
 ## Acceptance criteria
+
 - [ ] A single test request can be traced from the API entry point through every agent loop phase to the final response, with no gaps in the span chain.
 - [ ] Every `agent_actions` row has enough stored detail to answer "what exactly did this agent do and why" without re-running it.
 - [ ] The per-agent dashboard query correctly surfaces a deliberately-injected slow/expensive test call as an outlier.
@@ -128,6 +132,7 @@ A polished observability UI (a hosted APM's own UI is sufficient for MVP), anoma
 ## Scope
 
 ### In Scope
+
 - OpenTelemetry distributed tracing across apps/api and apps/ai-service with single trace ID propagation from API entry through every agent loop phase, tool call, and memory read/write
 - Structured JSON logging with trace_id, workspace_id, agent_name, level, message, timestamp — no unstructured print() calls
 - agent_actions table wiring as audit log with input_ref/output_ref for full reconstructability
@@ -136,6 +141,7 @@ A polished observability UI (a hosted APM's own UI is sufficient for MVP), anoma
 - First-class feedback signal tracking (approvals, rejections, corrections) as queryable stream
 
 ### Out of Scope
+
 - Anomaly detection and drift alerting for agent behavior (planned Q2 2027)
 - Polished observability UI beyond hosted APM defaults (planned Q2 2027)
 - Long-retention compliance-grade audit storage (planned Q2 2027)

@@ -198,6 +198,7 @@ sequenceDiagram
     S-->>C: {id, status: "processing"}
     C-->>UI: 202 Accepted
 ```
+
 > **Diagram:** Service layer in action â€” Controller validates and checks permissions, Service applies business rules and persists, Repository handles data access, and Service publishes events asynchronously.
 
 ---

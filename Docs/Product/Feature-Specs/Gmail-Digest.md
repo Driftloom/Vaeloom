@@ -1,4 +1,5 @@
 ﻿## Header
+>
 > **Purpose:** Detailed specification for Gmail Digest
 > **Status:** ðŸ†• New
 > **Owner:** Product Team
