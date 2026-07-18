@@ -1,7 +1,7 @@
-﻿# Architecture
+# Architecture
 
 > **Purpose:** System architecture, deployment architecture, and architecture decision records
-> **Status:** ✅ Active
+> **Status:** ? Active
 > **Owner:** Architecture Team
 > **Version:** 1.1
 > **Last Updated:** 2026-07-16
@@ -18,41 +18,41 @@ The architecture follows six non-negotiable principles: agent contract uniformit
 
 | Document | Location | Status |
 |----------|----------|--------|
-| System Architecture (6-layer) | [`/Docs/02-system-architecture.md`](../../Docs/02-system-architecture.md) | ✅ Canonical |
-| System Architecture (8-layer, extended) | [`/Docs/Vaeloom-Complete-Documentation.md#4-system-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#4-system-architecture) | ✅ Extended |
-| Deployment Architecture | [`/Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture) | ✅ Canonical |
-| C4 Architecture Model | [`C4-Architecture.md`](./C4-Architecture.md) | 🆕 New |
-| Event Flow | [`Event-Flow.md`](./Event-Flow.md) | 🆕 New |
-| Data Flow | [`Data-Flow.md`](./Data-Flow.md) | 🆕 New |
-| Architecture Decision Records | [`03-adrs.md`](./03-adrs.md) | ✅ Started |
+| System Architecture (6-layer) | [`/docs/02-system-architecture.md`](../../docs/02-system-architecture.md) | ? Canonical |
+| System Architecture (8-layer, extended) | [`/docs/Vaeloom-Complete-Documentation.md#4-system-architecture`](../../docs/Vaeloom-Complete-Documentation.md#4-system-architecture) | ? Extended |
+| Deployment Architecture | [`/docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture`](../../docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture) | ? Canonical |
+| C4 Architecture Model | [`C4-Architecture.md`](./C4-Architecture.md) | ?? New |
+| Event Flow | [`Event-Flow.md`](./Event-Flow.md) | ?? New |
+| Data Flow | [`Data-Flow.md`](./Data-Flow.md) | ?? New |
+| Architecture Decision Records | [`03-adrs.md`](./03-adrs.md) | ? Started |
 
 ## Architecture overview
 
 ```mermaid
 graph TD
-    subgraph Layer01["01 Â· INTERFACE"]
-        L01["Web App Â· Desktop Companion Â· VS Code Extension Â· Mobile"]
+    subgraph Layer01["01 · INTERFACE"]
+        L01["Web App · Desktop Companion · VS Code Extension · Mobile"]
     end
-    subgraph Layer02["02 Â· CONNECTORS"]
-        L02["Gmail Â· GitHub Â· Drive Â· Local Folder Â· Plugin SDK / MCP"]
+    subgraph Layer02["02 · CONNECTORS"]
+        L02["Gmail · GitHub · Drive · Local Folder · Plugin SDK / MCP"]
     end
-    subgraph Layer03["03 Â· INGESTION"]
-        L03["Parser Â· OCR Â· Code Understanding Â· Semantic Extractor"]
+    subgraph Layer03["03 · INGESTION"]
+        L03["Parser · OCR · Code Understanding · Semantic Extractor"]
     end
-    subgraph Layer04["04 Â· AGENT ORCHESTRATION"]
+    subgraph Layer04["04 · AGENT ORCHESTRATION"]
         L04["Orchestrator + Specialist Agents"]
     end
-    subgraph Layer05["05 Â· MEMORY (CORE)"]
-        L05["Knowledge Graph Â· Vector Store<br/>Structured Memory Â· Agentic RAG"]
+    subgraph Layer05["05 · MEMORY (CORE)"]
+        L05["Knowledge Graph · Vector Store<br/>Structured Memory · Agentic RAG"]
     end
-    subgraph Layer06["06 Â· EVENTS & REALTIME"]
-        L06["Event Bus Â· WebSocket/Streaming Â· Notifications"]
+    subgraph Layer06["06 · EVENTS & REALTIME"]
+        L06["Event Bus · WebSocket/Streaming · Notifications"]
     end
-    subgraph Layer07["07 Â· DATA INFRASTRUCTURE"]
-        L07["Queues Â· Workers Â· Cache Â· Search Index"]
+    subgraph Layer07["07 · DATA INFRASTRUCTURE"]
+        L07["Queues · Workers · Cache · Search Index"]
     end
-    subgraph Layer08["08 Â· STORAGE & SECURITY"]
-        L08["Encrypted Storage Â· Secrets Manager<br/>Permission Engine Â· Audit Log"]
+    subgraph Layer08["08 · STORAGE & SECURITY"]
+        L08["Encrypted Storage · Secrets Manager<br/>Permission Engine · Audit Log"]
     end
 
     L01 --> L02
@@ -85,55 +85,55 @@ graph TD
 
 ## Non-negotiable architectural decisions
 
-1. **Agent contract** â€” every agent shares one structure (mission, tools, permissions, autonomy, fallback)
-2. **Agentic loop** â€” Plan â†’ Act â†’ Observe â†’ Reflect â†’ Improve, implemented once
-3. **Memory before features** â€” every agent action is a memory write; every feature is a memory read
-4. **MCP-shaped tools** â€” every connector and tool follows MCP schema from day one
-5. **Suggest-mode by default** â€” no agent takes consequential actions without approval in MVP
-6. **Two-service backend** â€” `apps/api` (NestJS) and `apps/ai-service` (FastAPI) with internal RPC boundary
+1. **Agent contract** — every agent shares one structure (mission, tools, permissions, autonomy, fallback)
+2. **Agentic loop** — Plan → Act → Observe → Reflect → Improve, implemented once
+3. **Memory before features** — every agent action is a memory write; every feature is a memory read
+4. **MCP-shaped tools** — every connector and tool follows MCP schema from day one
+5. **Suggest-mode by default** — no agent takes consequential actions without approval in MVP
+6. **Two-service backend** — `apps/api` (NestJS) and `apps/ai-service` (FastAPI) with internal RPC boundary
 
 ## Common Mistakes
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Referencing architecture docs without checking they reflect the current system | Architecture docs that describe a 6-layer system while the deployed system has evolved to 8 layers create confusion â€” keep the index's layer count and design decisions in sync |
+| Referencing architecture docs without checking they reflect the current system | Architecture docs that describe a 6-layer system while the deployed system has evolved to 8 layers create confusion — keep the index's layer count and design decisions in sync |
 | Adding new architecture docs without updating this index | Any new document in the Architecture/ directory that isn't listed here is effectively hidden from readers who start at this index |
-| Treating the non-negotiable decisions as suggestions | The 6 architectural decisions (agent contract, agentic loop, memory before features, MCP shapes, suggest-mode, two-service backend) are non-negotiable â€” every architecture discussion must start from them |
-| Linking to implementation docs as canonical architecture references | Implementation files change faster than architecture docs â€” link to the canonical architecture doc first and reference implementation as a supplementary detail |
+| Treating the non-negotiable decisions as suggestions | The 6 architectural decisions (agent contract, agentic loop, memory before features, MCP shapes, suggest-mode, two-service backend) are non-negotiable — every architecture discussion must start from them |
+| Linking to implementation docs as canonical architecture references | Implementation files change faster than architecture docs — link to the canonical architecture doc first and reference implementation as a supplementary detail |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Keep the architecture overview diagrams and layer descriptions in sync with the deployed system | If a new layer (e.g., Analytics) is added, update the overview diagram and the layer descriptions in this index â€” stale architecture diagrams mislead new team members |
-| Surface the 6 non-negotiable decisions prominently in every architecture discussion | These decisions represent the project's foundational architectural principles â€” they should be the starting point for any architecture design review |
-| List every document in the Architecture/ directory in this index | New team members enter through this README â€” if a document isn't listed here, it may be overlooked entirely |
-| Use canonical references (the Complete Documentation) as primary links, not implementation files | The Complete Documentation represents the agreed-upon architecture â€” implementation files document how it was built, not what was decided |
+| Keep the architecture overview diagrams and layer descriptions in sync with the deployed system | If a new layer (e.g., Analytics) is added, update the overview diagram and the layer descriptions in this index — stale architecture diagrams mislead new team members |
+| Surface the 6 non-negotiable decisions prominently in every architecture discussion | These decisions represent the project's foundational architectural principles — they should be the starting point for any architecture design review |
+| List every document in the Architecture/ directory in this index | New team members enter through this README — if a document isn't listed here, it may be overlooked entirely |
+| Use canonical references (the Complete Documentation) as primary links, not implementation files | The Complete Documentation represents the agreed-upon architecture — implementation files document how it was built, not what was decided |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Architecture overview revealing attack surface | The layer diagram and service topology shown in this index reveal the system's architectural attack surface â€” share the full diagram internally only; provide a redacted view for external stakeholders |
-| Non-negotiable decisions creating security assumptions | The "two-service backend" and "MCP-shaped tools" decisions create specific security properties (API gateway auth, permission checks) â€” if these are changed, the security model must be re-evaluated |
-| Links in this index exposing internal documentation structure | File paths in the index (e.g., `../../Engineering/Implementation/...`) reveal internal directory structure â€” these should not appear in external documentation |
+| Architecture overview revealing attack surface | The layer diagram and service topology shown in this index reveal the system's architectural attack surface — share the full diagram internally only; provide a redacted view for external stakeholders |
+| Non-negotiable decisions creating security assumptions | The "two-service backend" and "MCP-shaped tools" decisions create specific security properties (API gateway auth, permission checks) — if these are changed, the security model must be re-evaluated |
+| Links in this index exposing internal documentation structure | File paths in the index (e.g., `../../Engineering/Implementation/...`) reveal internal directory structure — these should not appear in external documentation |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Index page load time with Mermaid diagrams | The 8-layer architecture diagram can take 200-500ms to render on first load â€” consider caching the rendered SVG or using a static diagram image for the index |
-| Cross-directory link resolution cost | Relative paths (e.g., `../../Docs/...`) resolve at render time in markdown â€” as the doc set grows, consider a build-time link checker that validates all references |
-| Mermaid diagram complexity | The overview diagram has 8 layers with dashed and solid connections â€” keep diagrams at this granularity (no sub-diagrams embedded) to maintain render speed and readability |
+| Index page load time with Mermaid diagrams | The 8-layer architecture diagram can take 200-500ms to render on first load — consider caching the rendered SVG or using a static diagram image for the index |
+| Cross-directory link resolution cost | Relative paths (e.g., `../../docs/...`) resolve at render time in markdown — as the doc set grows, consider a build-time link checker that validates all references |
+| Mermaid diagram complexity | The overview diagram has 8 layers with dashed and solid connections — keep diagrams at this granularity (no sub-diagrams embedded) to maintain render speed and readability |
 
 ---
 
 ## Goals
 
-- **Define the architectural foundation** â€” document the 8-layer system architecture, deployment topology, and non-negotiable architectural decisions that govern all Vaeloom engineering work
-- **Centralize architecture references** â€” provide a single entry point linking all Architecture/ documents so engineers and stakeholders find canonical architecture docs quickly
-- **Encode architectural governance** â€” surface the six non-negotiable decisions (agent contract, agentic loop, memory-before-features, MCP-shaped tools, suggest-mode default, two-service backend) as the starting point for every design discussion
-- **Reduce onboarding friction** â€” give new team members a clear, navigable map of the architecture directory and an understanding of how the eight layers connect
+- **Define the architectural foundation** — document the 8-layer system architecture, deployment topology, and non-negotiable architectural decisions that govern all Vaeloom engineering work
+- **Centralize architecture references** — provide a single entry point linking all Architecture/ documents so engineers and stakeholders find canonical architecture docs quickly
+- **Encode architectural governance** — surface the six non-negotiable decisions (agent contract, agentic loop, memory-before-features, MCP-shaped tools, suggest-mode default, two-service backend) as the starting point for every design discussion
+- **Reduce onboarding friction** — give new team members a clear, navigable map of the architecture directory and an understanding of how the eight layers connect
 
 ---
 
@@ -192,12 +192,12 @@ Vaeloom arch diagram --format mermaid --output arch.mmd
 
 ## Related categories
 
-- [`AI/`](../AI/) â€” Agent system, memory, RAG
-- [`Engineering/`](../Engineering/) â€” Implementation of this architecture
-- [`Enterprise/`](../Enterprise/) â€” Enterprise-scale architecture decisions
+- [`AI/`](../AI/) — Agent system, memory, RAG
+- [`Engineering/`](../Engineering/) — Implementation of this architecture
+- [`Enterprise/`](../Enterprise/) — Enterprise-scale architecture decisions
 
 ## Related Documents
 
-- [System Architecture](../02-system-architecture.md) â€” Six-layer system architecture overview
-- [Architecture Decision Records](03-adrs.md) â€” Key architectural decisions
-- [Enterprise Architecture](../Enterprise/Enterprise-Architecture.md) â€” Multi-tenant architecture
+- [System Architecture](../02-system-architecture.md) — Six-layer system architecture overview
+- [Architecture Decision Records](03-adrs.md) — Key architectural decisions
+- [Enterprise Architecture](../Enterprise/Enterprise-Architecture.md) — Multi-tenant architecture

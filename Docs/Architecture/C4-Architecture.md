@@ -199,7 +199,7 @@ graph TB
     classDef guard fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
     subgraph AI["apps/ai-service (FastAPI)"]
-        HARNESS["Agent Harness<br/>Shared agentic loop<br/>(Plan→Act→Observe→Reflect)"]:::core
+        HARNESS["Agent Harness<br/>Shared agentic loop<br/>(Plan-->Act-->Observe-->Reflect)"]:::core
         ORCH["Orchestrator<br/>Request routing, plan assembly"]:::agent
         GUARD["Guardrails<br/>Input validation, output QA"]:::guard
 

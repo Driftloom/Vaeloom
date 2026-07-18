@@ -1,16 +1,16 @@
-﻿# System Design
+# System Design
 
 > **Purpose:** Detailed system design for the Vaeloom platform, including all layers, services, and data flows
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Architecture Team
 > **Last Updated:** 2026-07-12
-> **Canonical source:** [`/Docs/02-system-architecture.md`](../../Docs/02-system-architecture.md)
+> **Canonical source:** [`/docs/02-system-architecture.md`](../../docs/02-system-architecture.md)
 
 ---
 
 ## Overview
 
-Vaeloom is built as a layered architecture with a clear separation of concerns. Each layer exists to feed the memory layer at the center. Interfaces and connectors bring data in; agents act on it; everything that happens gets written back to memory â€” which is what every feature above ultimately reads from.
+Vaeloom is built as a layered architecture with a clear separation of concerns. Each layer exists to feed the memory layer at the center. Interfaces and connectors bring data in; agents act on it; everything that happens gets written back to memory — which is what every feature above ultimately reads from.
 
 This document covers the complete system design: layer architecture, service topology, data flow, security boundaries, and key design decisions.
 
@@ -76,12 +76,12 @@ graph TB
         Audit["Audit Log<br/>Append-Only"]
     end
 
-    %% Layer 01 â†’ 02: User interactions trigger connector calls
+    %% Layer 01 --> 02: User interactions trigger connector calls
     Web --> Gmail
     Desktop --> Local
     VSCode --> GitHub
 
-    %% Layer 02 â†’ 03: Raw data flows into ingestion
+    %% Layer 02 --> 03: Raw data flows into ingestion
     Gmail --> Parser
     GitHub --> Code
     Drive --> Parser
@@ -92,11 +92,11 @@ graph TB
     Code --> Semantic
     Semantic --> Dedup
 
-    %% Layer 03 â†’ 04: Extracted data reaches agents
+    %% Layer 03 --> 04: Extracted data reaches agents
     Dedup --> AgentsList
     AgentsList --> Router
 
-    %% Layer 04 â†’ 05: Agents read from and write to memory
+    %% Layer 04 --> 05: Agents read from and write to memory
     Router --> RAG
     RAG --> KG
     RAG --> VS
@@ -104,18 +104,18 @@ graph TB
     KG --> Consolidation
     VS --> Consolidation
 
-    %% Layer 04 â†’ 06: Agent actions emit events
+    %% Layer 04 --> 06: Agent actions emit events
     AgentsList --> Bus
     Bus --> WS
     Bus --> Notif
 
-    %% Layer 06 â†’ 07: Events drive background work
+    %% Layer 06 --> 07: Events drive background work
     Bus --> Queue
     Queue --> Workers
     Workers --> Cache
     Workers --> Search
 
-    %% Layer 08: Cross-cutting â€” protects all layers
+    %% Layer 08: Cross-cutting -- protects all layers
     Perm -.->|Enforces| AgentsList
     Perm -.->|Enforces| Conn
     Audit -.->|Logs All| AgentsList
@@ -148,16 +148,16 @@ graph TB
     end
 
     subgraph Frontend["Frontend Layer"]
-        Web["apps/web<br/>Next.js Â· React Â· TypeScript"]
+        Web["apps/web<br/>Next.js · React · TypeScript"]
     end
 
     subgraph API_Layer["Application Layer"]
-        API["apps/api<br/>NestJS Â· TypeScript"]
+        API["apps/api<br/>NestJS · TypeScript"]
     end
 
     subgraph AI_Layer["AI Layer"]
-        AISvc["apps/ai-service<br/>FastAPI Â· Python 3.11+"]
-        Router["Model Router<br/>Haiku Â· Sonnet Â· GPT-4o"]
+        AISvc["apps/ai-service<br/>FastAPI · Python 3.11+"]
+        Router["Model Router<br/>Haiku · Sonnet · GPT-4o"]
     end
 
     subgraph Data["Data Layer"]
@@ -180,10 +180,10 @@ graph TB
 
     %% Edge to Frontend
     WAF --> LB
-    LB -->|HTTPS Â· TLS 1.3| Web
+    LB -->|HTTPS · TLS 1.3| Web
 
     %% Frontend to API
-    Web -->|REST Â· JSON| API
+    Web -->|REST · JSON| API
 
     %% API to AI
     API -->|Internal RPC + mTLS| AISvc
@@ -233,13 +233,13 @@ graph TB
 ### Data Flow Summary
 
 ```text
-User â†’ Web (Next.js) â†’ API (NestJS) â†’ AI Service (FastAPI) â†’ Model API (Anthropic/OpenAI)
-                                    â†“                                   â†“
-                              PostgreSQL â†â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Embeddings + Entities
-                              Redis (Queue) â”€â”€â”€â†’ Background Workers
+User → Web (Next.js) → API (NestJS) → AI Service (FastAPI) → Model API (Anthropic/OpenAI)
+                                    ↓                                   ↓
+                              PostgreSQL ←────────────────────────── Embeddings + Entities
+                              Redis (Queue) ───→ Background Workers
 ```
 
-## Data Flow: Document Upload â†’ Memory
+## Data Flow: Document Upload → Memory
 
 ```mermaid
 sequenceDiagram
@@ -333,7 +333,7 @@ graph LR
 
 ## Performance Considerations
 
-- AI service is the bottleneck â€” queue-driven design prevents API from blocking
+- AI service is the bottleneck — queue-driven design prevents API from blocking
 - Cache dashboard data with event-based invalidation (not TTL)
 - Database connection pooling tuned per service
 - Pre-warm agent tool definitions (rarely change)
@@ -390,7 +390,7 @@ graph LR
 | Web App | Frontend rendering, SSR, client-side state | Next.js, React, TypeScript | Horizontal auto-scaling via CPU/latency |
 | API Service | Authentication, CRUD, permissions, event publishing | NestJS, TypeScript | Horizontal auto-scaling via request latency |
 | AI Service | Agent runtime, memory extraction, RAG, model routing | FastAPI, Python 3.11+ | Queue-driven, worker-per-agent scaling |
-| Knowledge Graph | Entity storage and relationship mapping | PostgreSQL + AGE | Vertical â†’ partitioning â†’ sharding |
+| Knowledge Graph | Entity storage and relationship mapping | PostgreSQL + AGE | Vertical → partitioning → sharding |
 | Event Bus | Decoupled agent event distribution | Redis / Kafka | Redis for MVP, Kafka for enterprise scale |
 
 ## Data Flow
@@ -433,10 +433,10 @@ graph LR
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `DATABASE_URL` | PostgreSQL connection string for primary database | â€” | Yes |
-| `REDIS_URL` | Redis connection string for queues and caching | â€” | Yes |
-| `ANTHROPIC_API_KEY` | Authentication key for Claude API access | â€” | Yes |
-| `OPENAI_API_KEY` | Authentication key for embedding API access | â€” | Yes |
+| `DATABASE_URL` | PostgreSQL connection string for primary database | — | Yes |
+| `REDIS_URL` | Redis connection string for queues and caching | — | Yes |
+| `ANTHROPIC_API_KEY` | Authentication key for Claude API access | — | Yes |
+| `OPENAI_API_KEY` | Authentication key for embedding API access | — | Yes |
 | `LOG_LEVEL` | Structured logging verbosity level | `info` | No |
 
 ## Risks
@@ -496,4 +496,4 @@ Vaeloom arch topology --format json | jq '.layers[].services[] | select(.status 
 - [High Level Design.md](./High-Level-Design.md)
 - [Event Architecture.md](./Event-Architecture.md)
 - [Service Architecture.md](./Service-Architecture.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#4-system-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#4-system-architecture)
+- [`/docs/Vaeloom-Complete-Documentation.md#4-system-architecture`](../../docs/Vaeloom-Complete-Documentation.md#4-system-architecture)
