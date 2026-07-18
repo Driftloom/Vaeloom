@@ -1,6 +1,6 @@
 ﻿# Non-Functional Requirements
 
-> **Purpose:** Define the quality attributes Vaeloom must satisfy â€” performance, scalability, availability, security, usability, accessibility, and compliance targets
+> **Purpose:** Define the quality attributes Vaeloom must satisfy — performance, scalability, availability, security, usability, accessibility, and compliance targets
 > **Status:** ðŸ†• New
 > **Owner:** Architecture Team
 > **Version:** 1.0
@@ -10,7 +10,7 @@
 
 ## Overview
 
-Non-functional requirements (NFRs) define *how well* the system must perform its functions â€” the quality attributes that distinguish a production-grade product from a prototype. This document specifies concrete, measurable targets for performance, scalability, availability, security, usability, accessibility, reliability, observability, and compliance.
+Non-functional requirements (NFRs) define *how well* the system must perform its functions — the quality attributes that distinguish a production-grade product from a prototype. This document specifies concrete, measurable targets for performance, scalability, availability, security, usability, accessibility, reliability, observability, and compliance.
 
 ## Goals
 
@@ -148,8 +148,8 @@ graph TD
 
 ## Related Documents
 
-- [`Functional-Requirements.md`](./Functional-Requirements.md) â€” functional requirements
-- [`../Architecture/Performance.md`](../Architecture/Performance.md) â€” performance architecture
-- [`../Architecture/Scalability.md`](../Architecture/Scalability.md) â€” scalability architecture
-- [`../Security/Security-Architecture.md`](../Security/Security-Architecture.md) â€” security architecture
-- [`../Testing/Testing-Strategy.md`](../Testing/Testing-Strategy.md) â€” testing strategy
+- [`Functional-Requirements.md`](./Functional-Requirements.md) — functional requirements
+- [`../Architecture/Performance.md`](../Architecture/Performance.md) — performance architecture
+- [`../Architecture/Scalability.md`](../Architecture/Scalability.md) — scalability architecture
+- [`../Security/Security-Architecture.md`](../Security/Security-Architecture.md) — security architecture
+- [`../Testing/Testing-Strategy.md`](../Testing/Testing-Strategy.md) — testing strategy

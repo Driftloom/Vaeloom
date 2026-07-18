@@ -7,11 +7,11 @@
 
 ## Overview
 
-Global Search is the unified search surface across all of Vaeloom's memory types â€” documents, entities, emails, schedule events, resume entries, applications, and past conversations. It uses the same Agentic RAG retrieval layer that powers internal agent queries, exposed as a first-class user-facing surface. A single search bar accepts natural language queries ("backend internships I applied to last month") or keyword searches ("python project resume"), and returns ranked, faceted results drawn from vector similarity, keyword matching, and graph traversal.
+Global Search is the unified search surface across all of Vaeloom's memory types — documents, entities, emails, schedule events, resume entries, applications, and past conversations. It uses the same Agentic RAG retrieval layer that powers internal agent queries, exposed as a first-class user-facing surface. A single search bar accepts natural language queries ("backend internships I applied to last month") or keyword searches ("python project resume"), and returns ranked, faceted results drawn from vector similarity, keyword matching, and graph traversal.
 
-The retrieval strategy is the same one agents use internally (Â§6.5 of the main docs): the search layer determines per-query which combination of vector, keyword, and graph retrieval will produce the best results. Long-tail natural language queries lean on vector search; precise terms (course codes, names, dates) lean on keyword; relationship queries ("what projects use Python") use graph traversal. Results are re-ranked using the same relevance Ã— freshness Ã— importance Ã— confidence scoring model (Â§6.7), ensuring the most useful results surface first regardless of memory type.
+The retrieval strategy is the same one agents use internally (§6.5 of the main docs): the search layer determines per-query which combination of vector, keyword, and graph retrieval will produce the best results. Long-tail natural language queries lean on vector search; precise terms (course codes, names, dates) lean on keyword; relationship queries ("what projects use Python") use graph traversal. Results are re-ranked using the same relevance Ã— freshness Ã— importance Ã— confidence scoring model (§6.7), ensuring the most useful results surface first regardless of memory type.
 
-Every result includes a source type badge (Document, Entity, Email, Event, etc.), a confidence indicator, the workspace location, and a direct link to open the source in its native screen (Document Viewer for files, Entity detail for graph nodes, etc.). Users can filter by memory type, date range, and confidence level. The search index is updated in near-real-time â€” new documents, entities, and events become searchable within seconds of creation.
+Every result includes a source type badge (Document, Entity, Email, Event, etc.), a confidence indicator, the workspace location, and a direct link to open the source in its native screen (Document Viewer for files, Entity detail for graph nodes, etc.). Users can filter by memory type, date range, and confidence level. The search index is updated in near-real-time — new documents, entities, and events become searchable within seconds of creation.
 
 ## Goals
 
@@ -23,7 +23,7 @@ Every result includes a source type badge (Document, Entity, Email, Event, etc.)
 
 ## User Story
 
-"As a student who has been using Vaeloom for months, I want to search across everything â€” files, skills, emails, deadlines â€” from a single place so that I can find what I need without remembering where I put it or what I called it."
+"As a student who has been using Vaeloom for months, I want to search across everything — files, skills, emails, deadlines — from a single place so that I can find what I need without remembering where I put it or what I called it."
 
 ## Acceptance Criteria
 
@@ -75,7 +75,7 @@ Search is powered by **Meilisearch** (keyword) + **pgvector** (semantic) + **AGE
 | QA Agent | Validate result relevance (internal) | Periodic quality check |
 | Orchestrator | Route search query to retrieval layer | Search submitted |
 
-No specialist agent is involved in search execution â€” it's a direct call to the retrieval layer. The "agent" involved is the Agentic RAG routing itself.
+No specialist agent is involved in search execution — it's a direct call to the retrieval layer. The "agent" involved is the Agentic RAG routing itself.
 
 ## Memory Impact
 
@@ -95,14 +95,14 @@ No specialist agent is involved in search execution â€” it's a direct call 
 | `search:read` | Execute searches, view history | Granted |
 | `search:write` | Save searches, clear history | Granted |
 
-Search results respect existing read permissions â€” a user cannot search for entities they don't have `memory:read` access to. Search is a read-only cross-cutting concern, not a super-user tool.
+Search results respect existing read permissions — a user cannot search for entities they don't have `memory:read` access to. Search is a read-only cross-cutting concern, not a super-user tool.
 
 ## Error Scenarios
 
 | Scenario | Error | User Impact | Recovery |
 |----------|-------|-------------|----------|
 | Vector search service unavailable | Degraded results | Results returned from keyword search only with "limited results" banner | Retry; fallback to keyword-only until vector store recovers |
-| Query returns no results | Empty results | "No results found â€” try different keywords or broaden your filters" | Suggest related entities or recent documents |
+| Query returns no results | Empty results | "No results found — try different keywords or broaden your filters" | Suggest related entities or recent documents |
 | Index update delayed | Slightly stale results | Newest memory briefly missing from results | Index lag <5s by design; stale results noted with "Indexing..." indicator |
 | Query is ambiguous (e.g., "Python" could be skill or document) | Mixed results | Both interpretations shown with type badges | User filters by type to narrow |
 | Query is extremely long (>200 chars) | Truncated query | "Query truncated to first 200 characters" | Process full query but prioritize first 200 chars |
@@ -121,7 +121,7 @@ Search results respect existing read permissions â€” a user cannot search f
 
 | Concern | Mitigation |
 |---------|------------|
-| Search exposes data from restricted memory types | Search results respect each memory type's read scope â€” user cannot search entities they can't read |
+| Search exposes data from restricted memory types | Search results respect each memory type's read scope — user cannot search entities they can't read |
 | Search index leaks cross-workspace data | All search indexes are scoped to `workspace_id`; queries are filtered by workspace before execution |
 | Query history reveals sensitive information | Search history is visible to the user only; clearable; never logged in audit trail |
 | Natural language query leaks PII to LLM | Queries are sent to the retrieval layer (vector database), not to an LLM; entity resolution is vector-based, not generative |
@@ -132,7 +132,7 @@ Search results respect existing read permissions â€” a user cannot search f
 - **Loading:** Search bar with subtle loading indicator; results area shows pulsing card skeletons (3-5)
 - **Empty:** "No results found" with illustration; suggestion to try different keywords or browse by type; "Did you mean?" suggestions for near-miss queries
 - **Error:** Partial results with "Some search sources unavailable" banner; per-source error indicators; retry button for failed search sources
-- **Edge cases:** Very common query ("resume") returns many results â€” grouped by type with count badges; query with typos triggers "Did you mean X?" with highlighted correction; query that matches a single entity with very high confidence shows "Jump to [entity]" quick action button; query returning no results but containing known entity names shows "These entities exist but don't match your query â€” try different terms"
+- **Edge cases:** Very common query ("resume") returns many results — grouped by type with count badges; query with typos triggers "Did you mean X?" with highlighted correction; query that matches a single entity with very high confidence shows "Jump to [entity]" quick action button; query returning no results but containing known entity names shows "These entities exist but don't match your query — try different terms"
 
 ## Risks
 
@@ -180,7 +180,7 @@ graph TD
     VS & KW & GR --- Index
 ```
 
-> **Diagram:** Global Search architecture â€” query routed to optimal retrieval strategy (vector, keyword, or graph) via Agentic RAG, then re-ranked.
+> **Diagram:** Global Search architecture — query routed to optimal retrieval strategy (vector, keyword, or graph) via Agentic RAG, then re-ranked.
 
 ## Components
 
@@ -198,7 +198,7 @@ graph TD
 ### Search Execution Workflow
 
 1. User types query in search bar (typeahead triggers at 3 chars)
-2. Retrieval Layer classifies query type: natural language (â†’ vector), precise term (â†’ keyword), relationship (â†’ graph)
+2. Retrieval Layer classifies query type: natural language (→ vector), precise term (→ keyword), relationship (→ graph)
 3. For hybrid queries, execute all three strategies in parallel
 4. Results from each strategy merged and de-duplicated
 5. Re-ranker scores each result: relevance Ã— freshness (recency weight) Ã— importance (entity centrality) Ã— confidence
@@ -216,7 +216,7 @@ sequenceDiagram
     participant RR as Re-ranker
 
     U->>RL: "backend internships I applied to"
-    RL->>RL: Classify â†’ hybrid query
+    RL->>RL: Classify --> hybrid query
     RL->>VS: Semantic search
     RL->>KW: Keyword search: "backend", "internship", "applied"
     VS-->>RL: Vector results
@@ -228,10 +228,10 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Indexing:** Memory write event â†’ 5s debounce â†’ index update in Meilisearch + pgvector + AGE
-2. **Query:** User input â†’ query classification â†’ parallel retrieval â†’ result merge â†’ re-ranking â†’ response
-3. **Typeahead:** Keystroke â†’ prefix search on entity names + recent searches â†’ top 5 suggestions
-4. **Filters:** Post-query applied on result set (type, date range, confidence) â€” no re-execution
+1. **Indexing:** Memory write event → 5s debounce → index update in Meilisearch + pgvector + AGE
+2. **Query:** User input → query classification → parallel retrieval → result merge → re-ranking → response
+3. **Typeahead:** Keystroke → prefix search on entity names + recent searches → top 5 suggestions
+4. **Filters:** Post-query applied on result set (type, date range, confidence) — no re-execution
 
 ## Non-Functional Requirements
 
@@ -292,9 +292,9 @@ curl -X GET "https://api.Vaeloom.dev/v1/workspaces/{id}/search/suggestions?q=pyt
 
 | Practice | Rationale |
 |----------|-----------|
-| Use natural language queries for best results | The retrieval layer is optimized for natural language â€” "what projects use React and Python" works better than keyword fragments |
+| Use natural language queries for best results | The retrieval layer is optimized for natural language — "what projects use React and Python" works better than keyword fragments |
 | Filter by type when searching for specific content | Adding `?types=documents` narrows results and improves precision for known-content-type searches |
-| Save recurring searches for quick access | If you frequently search "open applications", save it â€” saved searches execute with one click |
+| Save recurring searches for quick access | If you frequently search "open applications", save it — saved searches execute with one click |
 | Browse typeahead suggestions before completing your query | Typeahead often surfaces the exact entity or document you need before you finish typing |
 
 ## Limitations
@@ -303,7 +303,7 @@ curl -X GET "https://api.Vaeloom.dev/v1/workspaces/{id}/search/suggestions?q=pyt
 |------------|--------|------------|-------------------|
 | No cross-workspace search | Users with multiple workspaces must search each separately | Workspace switcher in UI allows quick context switching | Cross-workspace search (Enterprise) |
 | No search within file content (parsed only) | Recent files not yet parsed may not appear in results | Wait for parsing to complete (typically <30s) | Real-time indexing pipeline (v1.5) |
-| No search analytics for users | Users cannot see their own search patterns | â€” | Personal search insights dashboard (V2) |
+| No search analytics for users | Users cannot see their own search patterns | — | Personal search insights dashboard (V2) |
 
 ## Future Improvements
 

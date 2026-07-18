@@ -1,7 +1,7 @@
-﻿# FAQ
+# FAQ
 
 > **Purpose:** Frequently asked questions about Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** 🆕 New
 
 ## FAQ Categories
 
@@ -11,19 +11,19 @@ graph TD
     classDef privacy fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef tech fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph General["â“ General Questions"]
-        G1["Is Vaeloom a chatbot?<br/>No â€” memory system with agents. Chat is one interface."]
-        G2["Who is it for?<br/>Students to enterprise employees â€” anyone building a career."]
+    subgraph General["❓ General Questions"]
+        G1["Is Vaeloom a chatbot?<br/>No -- memory system with agents. Chat is one interface."]
+        G2["Who is it for?<br/>Students to enterprise employees -- anyone building a career."]
         G3["How is this different from ChatGPT?<br/>Persistent memory vs zero memory. Knowledge graph vs blank slate."]
     end
 
-    subgraph Privacy["ðŸ”’ Privacy & Security"]
+    subgraph Privacy["🔒 Privacy & Security"]
         P1["Can Vaeloom read all my files?<br/>Only what you explicitly connect. Read-only by default."]
-        P2["Is my data encrypted?<br/>Yes â€” at rest + in transit. Tokens in secrets manager."]
-        P3["Can I delete my data?<br/>Yes â€” Export Everything and Delete Everything from day one."]
+        P2["Is my data encrypted?<br/>Yes -- at rest + in transit. Tokens in secrets manager."]
+        P3["Can I delete my data?<br/>Yes -- Export Everything and Delete Everything from day one."]
     end
 
-    subgraph Technical["âš™ï¸ Technical Questions"]
+    subgraph Technical["⚙️ Technical Questions"]
         T1["What tech stack?<br/>Next.js + NestJS + FastAPI + PostgreSQL + Redis + Claude"]
         T2["What's an agent?<br/>Specialized AI with fixed mission, tools, and permissions."]
         T3["What is the knowledge graph?<br/>Structured network of entities + relationships built automatically."]
@@ -36,7 +36,7 @@ graph TD
     class T1,T2,T3 tech
 ```
 
-> **Diagram:** FAQ organized into 3 categories â€” **General** (chatbot misconception, audience, ChatGPT difference), **Privacy & Security** (file access, encryption, data deletion), and **Technical** (stack, agent definition, knowledge graph).
+> **Diagram:** FAQ organized into 3 categories — **General** (chatbot misconception, audience, ChatGPT difference), **Privacy & Security** (file access, encryption, data deletion), and **Technical** (stack, agent definition, knowledge graph).
 
 ---
 
@@ -46,7 +46,7 @@ graph TD
 A: No. Vaeloom is a memory system with agents attached to it. Chat is one of several interfaces into that memory.
 
 **Q: Who is Vaeloom for?**
-A: Students, job seekers, early-career professionals, researchers, developers, freelancers â€” anyone building a career.
+A: Students, job seekers, early-career professionals, researchers, developers, freelancers — anyone building a career.
 
 **Q: How is this different from ChatGPT/Claude?**
 A: Those tools have no persistent memory of you. Vaeloom builds a structured knowledge graph from your actual documents, emails, and code.
@@ -77,17 +77,17 @@ A: A structured network of entities (skills, projects, organizations) and relati
 
 | Misconception | Reality |
 |---------------|---------|
-| "Vaeloom is an AI chatbot" | Vaeloom is a memory system with agents â€” chat is just one interface into that memory |
-| "It reads all my files" | Only explicitly connected sources, read-only by default â€” write access is a separate grant |
-| "I need to learn a new workflow" | Vaeloom works alongside existing tools â€” you keep using Gmail, GitHub, Drive, etc. |
+| "Vaeloom is an AI chatbot" | Vaeloom is a memory system with agents — chat is just one interface into that memory |
+| "It reads all my files" | Only explicitly connected sources, read-only by default — write access is a separate grant |
+| "I need to learn a new workflow" | Vaeloom works alongside existing tools — you keep using Gmail, GitHub, Drive, etc. |
 | "It's only for students" | The wedge is students, but the platform serves everyone from freelancers to enterprise employees |
 
 ## Best Practices for New Users
 
 | Practice | Why |
 |----------|-----|
-| Connect 1â€“2 sources first | Starting with Gmail + GitHub gives the memory system rich signal without overwhelming permissions |
-| Review the first 10 proposals | Early approvals train the system to match your preferences â€” invest the time upfront |
+| Connect 1–2 sources first | Starting with Gmail + GitHub gives the memory system rich signal without overwhelming permissions |
+| Review the first 10 proposals | Early approvals train the system to match your preferences — invest the time upfront |
 | Use chat to ask specific questions | "What deadlines do I have this week?" works better than "tell me about my stuff" |
 | Check the Knowledge Graph weekly | Seeing what the system "knows" builds trust and lets you correct errors early |
 
@@ -95,17 +95,17 @@ A: A structured network of entities (skills, projects, organizations) and relati
 
 | Question | Answer |
 |----------|--------|
-| Are my files stored on Vaeloom's servers? | Connectors index metadata and content for search â€” original files stay in their source location |
-| Can I delete specific memories? | Yes â€” individual entities, relationships, or entire categories can be removed independently |
-| What happens if I disconnect a source? | All associated memory is preserved but no longer updated â€” full deletion is a separate action |
+| Are my files stored on Vaeloom's servers? | Connectors index metadata and content for search — original files stay in their source location |
+| Can I delete specific memories? | Yes — individual entities, relationships, or entire categories can be removed independently |
+| What happens if I disconnect a source? | All associated memory is preserved but no longer updated — full deletion is a separate action |
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
-| Answering what users didn't ask | Long FAQ entries lose the reader â€” answer the specific question concisely |
-| Letting the FAQ replace proper documentation | FAQs are for quick answers, not comprehensive guides â€” deep topics belong in dedicated docs |
-| Not updating FAQs as features evolve | Stale FAQ answers erode trust â€” review and update every release cycle |
+| Answering what users didn't ask | Long FAQ entries lose the reader — answer the specific question concisely |
+| Letting the FAQ replace proper documentation | FAQs are for quick answers, not comprehensive guides — deep topics belong in dedicated docs |
+| Not updating FAQs as features evolve | Stale FAQ answers erode trust — review and update every release cycle |
 
 ## Performance Considerations
 
@@ -119,13 +119,13 @@ A: A structured network of entities (skills, projects, organizations) and relati
 
 | Practice | Why |
 |----------|-----|
-| Keep FAQs updated with each product release | Stale FAQ entries mislead users and generate support tickets â€” review and update as part of every release |
+| Keep FAQs updated with each product release | Stale FAQ entries mislead users and generate support tickets — review and update as part of every release |
 | Organize questions by user journey stage | Grouping by onboarding, daily use, and troubleshooting helps users find answers faster than random ordering |
-| Link to canonical docs rather than duplicating answers | FAQ answers that duplicate longer docs become stale â€” link to the source doc and summarize the key point |
+| Link to canonical docs rather than duplicating answers | FAQ answers that duplicate longer docs become stale — link to the source doc and summarize the key point |
 
 ## Overview
 
-The Vaeloom FAQ addresses the most common questions users and stakeholders have about the platform, organized into General, Privacy & Security, and Technical categories. This document serves as both a user-facing reference and an internal source of truth for support teams, ensuring consistent answers across all touchpoints. Each question is grounded in Vaeloom's actual architecture and capabilities â€” answers never speculate about future features or overstate current capabilities.
+The Vaeloom FAQ addresses the most common questions users and stakeholders have about the platform, organized into General, Privacy & Security, and Technical categories. This document serves as both a user-facing reference and an internal source of truth for support teams, ensuring consistent answers across all touchpoints. Each question is grounded in Vaeloom's actual architecture and capabilities — answers never speculate about future features or overstate current capabilities.
 
 The FAQ is designed for quick scanning: questions are grouped by journey phase (onboarding, daily use, troubleshooting) and by concern type. Answers are concise and link to canonical documentation for depth. This document is reviewed and updated every release cycle to ensure accuracy as features evolve.
 
@@ -133,7 +133,7 @@ The FAQ is designed for quick scanning: questions are grouped by journey phase (
 
 - Reduce Tier-1 support tickets by 40% by addressing top 10 questions proactively
 - Achieve average time-to-answer under 30 seconds for any FAQ lookup
-- Maintain 100% accuracy across all answers â€” every claim verifiable against current product behavior
+- Maintain 100% accuracy across all answers — every claim verifiable against current product behavior
 - Provide answers in plain language accessible to non-technical users
 - Support team uses FAQ as primary training material for new hires
 
@@ -162,7 +162,7 @@ The FAQ is designed for quick scanning: questions are grouped by journey phase (
 |------------|--------|------------|-------------------|
 | FAQ cannot cover every edge case | Users with specific scenarios may need support | Provide search across all documentation and "contact support" CTA | AI-powered FAQ search that retrieves relevant doc sections (V2) |
 | Answers may become stale between release cycles | Users may see outdated information | Add "Last reviewed" date to every answer | Automated verification bot that flags potentially outdated answers |
-| Plain-language answers lose technical precision | Technical users may want more depth | Every answer links to canonical documentation | Tiered answers: brief â†’ detailed â†’ technical with expandable sections |
+| Plain-language answers lose technical precision | Technical users may want more depth | Every answer links to canonical documentation | Tiered answers: brief → detailed → technical with expandable sections |
 
 ## Examples
 
@@ -215,7 +215,7 @@ curl -s "https://api.Vaeloom.dev/v1/faq/search?q=how+is+data+encrypted" \
 | Concern | Mitigation |
 |---------|------------|
 | FAQ content revealing internal product details | Avoid including roadmap dates, pricing strategies, or competitive analysis in FAQ answers that customers read |
-| Support agents using FAQs as scripts | FAQs are reference material, not call scripts â€” train support agents to personalize responses based on user context |
+| Support agents using FAQs as scripts | FAQs are reference material, not call scripts — train support agents to personalize responses based on user context |
 | Outdated security claims in FAQ entries | Review security-related FAQ entries every quarter to ensure claims about encryption, data handling, and compliance are still accurate |
 
 ## Related Documents
@@ -225,4 +225,4 @@ curl -s "https://api.Vaeloom.dev/v1/faq/search?q=how+is+data+encrypted" \
 - [Mission.md](./Mission.md)
 - [Problem.md](./Problem.md)
 - [Features.md](./Features.md)
-- [`/Docs/01-Vaeloom-MVP-Spec.md`](../../Docs/01-Vaeloom-MVP-Spec.md)
+- [`/docs/01-Vaeloom-MVP-Spec.md`](../../docs/01-Vaeloom-MVP-Spec.md)

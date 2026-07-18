@@ -7,11 +7,11 @@
 
 ## Overview
 
-The Dashboard is Vaeloom's home screen â€” a single at-a-glance view composed entirely from other modules. It holds no unique logic of its own; every widget is a read against another feature's data, aggregated by the Analytics Agent. The Dashboard answers the user's most frequent question â€” "What should I pay attention to right now?" â€” without requiring them to open any other screen. It is the default landing page after login and the hub from which all other screens are reached.
+The Dashboard is Vaeloom's home screen — a single at-a-glance view composed entirely from other modules. It holds no unique logic of its own; every widget is a read against another feature's data, aggregated by the Analytics Agent. The Dashboard answers the user's most frequent question — "What should I pay attention to right now?" — without requiring them to open any other screen. It is the default landing page after login and the hub from which all other screens are reached.
 
 Widgets are arranged in a responsive grid that adapts to the user's screen size and usage patterns. The top strip shows the most time-sensitive information: active conflicts count, approaching deadlines, unread digest items. Below that, a row of metric cards shows memory health (entities added this week), knowledge growth (documents processed, new skills detected), and application pipeline status (shortlisted, submitted, interview, offer counts). A suggestion panel surfaces the most important AI-generated recommendations. A per-agent status grid shows each agent's last action and current confidence level. Every widget is clickable and deep-links into its full-screen source.
 
-The Dashboard is read-only by design. The only interactive element is the suggestion approval/dismiss flow: users can approve, dismiss, or snooze any AI-generated suggestion directly from the Dashboard without navigating elsewhere. This makes the Dashboard the primary surface for agent interaction â€” suggestions appear here, and the user's response feeds back into every agent's learning loop. The Dashboard also hosts the daily Gmail Digest summary, upcoming deadlines strip, and a recent activity feed showing the last 10 meaningful events across all modules.
+The Dashboard is read-only by design. The only interactive element is the suggestion approval/dismiss flow: users can approve, dismiss, or snooze any AI-generated suggestion directly from the Dashboard without navigating elsewhere. This makes the Dashboard the primary surface for agent interaction — suggestions appear here, and the user's response feeds back into every agent's learning loop. The Dashboard also hosts the daily Gmail Digest summary, upcoming deadlines strip, and a recent activity feed showing the last 10 meaningful events across all modules.
 
 ## Goals
 
@@ -23,7 +23,7 @@ The Dashboard is read-only by design. The only interactive element is the sugges
 
 ## User Story
 
-"As a busy student, I want to open Vaeloom and immediately see what needs my attention â€” deadlines, new matches, unread digest items â€” so that I never have to hunt through five different screens to figure out what's important today."
+"As a busy student, I want to open Vaeloom and immediately see what needs my attention — deadlines, new matches, unread digest items — so that I never have to hunt through five different screens to figure out what's important today."
 
 ## Acceptance Criteria
 
@@ -44,7 +44,7 @@ The Dashboard is read-only by design. The only interactive element is the sugges
 
 | Entity | Fields | Usage |
 |--------|--------|-------|
-| No new tables | â€” | Dashboard is an aggregate read across existing tables |
+| No new tables | — | Dashboard is an aggregate read across existing tables |
 
 Data sources per widget:
 
@@ -88,7 +88,7 @@ All Dashboard data is **read-only** from the agent perspective. No agents write 
 | All types | Yes (aggregate) | No | Read-only statistical aggregates |
 | Preference | Yes | Yes | Widget layout preferences saved |
 
-Dashboard is a pure read surface â€” it never writes to any memory type except user preference (widget layout).
+Dashboard is a pure read surface — it never writes to any memory type except user preference (widget layout).
 
 ## Permission Model
 
@@ -98,16 +98,16 @@ Dashboard is a pure read surface â€” it never writes to any memory type exc
 | `dashboard:write` | Save widget layout | Granted |
 | `suggestions:write` | Respond to suggestions | Granted |
 
-Dashboard respects existing per-module read permissions â€” it cannot show data from a module the user hasn't granted read access to. If Gmail is not connected, the Gmail Digest widget shows "Connect Gmail to see your daily digest."
+Dashboard respects existing per-module read permissions — it cannot show data from a module the user hasn't granted read access to. If Gmail is not connected, the Gmail Digest widget shows "Connect Gmail to see your daily digest."
 
 ## Error Scenarios
 
 | Scenario | Error | User Impact | Recovery |
 |----------|-------|-------------|----------|
 | Dashboard aggregation query times out (>3s) | Partial load | Loaded widgets shown; failed widgets show "Could not load" with retry button | Retry individually; full refresh |
-| One data source unavailable (e.g., Gmail connector down) | Partial data | Specific widget shows "Unavailable â€” [reason]" | Connector health check runs independently |
+| One data source unavailable (e.g., Gmail connector down) | Partial data | Specific widget shows "Unavailable — [reason]" | Connector health check runs independently |
 | No data for any widget yet | Empty Dashboard | "Welcome to Vaeloom! Upload your first file or connect a source to get started." Onboarding checklist widget replaces dashboard content for first week | Auto-recover on next data sync |
-| Suggestion generation returns nothing | Empty suggestions panel | "No suggestions right now â€” you're all caught up!" | Panel hides after 7 days of no suggestions |
+| Suggestion generation returns nothing | Empty suggestions panel | "No suggestions right now — you're all caught up!" | Panel hides after 7 days of no suggestions |
 | Cache miss on Dashboard aggregation | Cold load | Full aggregation query runs (slower but accurate) | Cache populated for next request |
 
 ## Performance Budgets
@@ -132,9 +132,9 @@ Dashboard respects existing per-module read permissions â€” it cannot show 
 ## UI States
 
 - **Loading:** Dashboard skeleton with widget-outline placeholders; each widget loads independently and appears as ready; top strip loads first (most time-critical)
-- **Empty:** Onboarding checklist replaces content for new users: "Upload a file â†’ Connect Gmail â†’ Explore your graph" with progress indicators; all widgets show their empty states with CTAs
+- **Empty:** Onboarding checklist replaces content for new users: "Upload a file → Connect Gmail → Explore your graph" with progress indicators; all widgets show their empty states with CTAs
 - **Error:** Per-widget error states with retry buttons; widget shows last known good data with "(stale)" indicator if available; full Dashboard failure shows refresh button
-- **Edge cases:** Very-high-activity user (50+ events/day) shows condensed activity feed with "and X more" expansion; user with no active applications shows "Start your job search" empty state on pipeline widget; Dashboard nighttime mode (10 PM-6 AM) shows tomorrow's deadlines instead of today's; first visit after long absence shows "Welcome back â€” here's what changed" summary widget highlighting new items since last visit
+- **Edge cases:** Very-high-activity user (50+ events/day) shows condensed activity feed with "and X more" expansion; user with no active applications shows "Start your job search" empty state on pipeline widget; Dashboard nighttime mode (10 PM-6 AM) shows tomorrow's deadlines instead of today's; first visit after long absence shows "Welcome back — here's what changed" summary widget highlighting new items since last visit
 
 ## Risks
 
@@ -173,7 +173,7 @@ graph TD
     AA --> W8[Growth Widget]
 ```
 
-> **Diagram:** Dashboard architecture â€” single Analytics Agent aggregates across all memory types to serve 8 widgets with caching.
+> **Diagram:** Dashboard architecture — single Analytics Agent aggregates across all memory types to serve 8 widgets with caching.
 
 ## Components
 
@@ -194,7 +194,7 @@ graph TD
 3. Cache check: if cached data exists and is <60s old, return immediately
 4. If cache miss: run parallel queries across all memory types
 5. Deadlines: `schedule_events` next 30 days, ordered by date
-6. Pipeline: `applications` grouped by status (shortlisted â†’ offer)
+6. Pipeline: `applications` grouped by status (shortlisted → offer)
 7. Memory health: `entities` count this week + `documents` added
 8. Suggestions: `memory_records` where type=preference AND status=pending
 9. All widget data returned in single response, rendered independently
@@ -225,10 +225,10 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Request:** User hits Dashboard â†’ API â†’ Analytics Agent
-2. **Cache:** Redis key `dashboard:{workspace_id}` â€” hit returns cached, miss triggers aggregation
+1. **Request:** User hits Dashboard → API → Analytics Agent
+2. **Cache:** Redis key `dashboard:{workspace_id}` — hit returns cached, miss triggers aggregation
 3. **Aggregation:** 8 parallel PostgreSQL queries across `schedule_events`, `applications`, `entities`, `agent_actions`, `memory_records`
-4. **Response:** Combined widget object returned â†’ Frontend renders each widget independently
+4. **Response:** Combined widget object returned → Frontend renders each widget independently
 5. **Refresh:** Each widget auto-refreshes on 60s interval; manual refresh button available
 
 ## Non-Functional Requirements
@@ -292,10 +292,10 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/suggestions/{suggestion_
 
 | Practice | Rationale |
 |----------|-----------|
-| Use Dashboard as daily starting point | The Dashboard surfaces what needs attention â€” start every session here before navigating to specific screens |
+| Use Dashboard as daily starting point | The Dashboard surfaces what needs attention — start every session here before navigating to specific screens |
 | Act on suggestions from Dashboard | Approving or dismissing suggestions from Dashboard is the fastest way to train all agents |
 | Customize widget layout for your workflow | Reorder widgets so most-used (deadlines, pipeline) appear above the fold; hide unused widgets |
-| Check agent status widget weekly | The per-agent status grid shows last action and confidence â€” review to identify agents that may need attention |
+| Check agent status widget weekly | The per-agent status grid shows last action and confidence — review to identify agents that may need attention |
 
 ## Limitations
 
@@ -303,7 +303,7 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/suggestions/{suggestion_
 |------------|--------|------------|-------------------|
 | Dashboard is read-only (no inline actions except suggestions) | Users must navigate to source screens for most actions | Deep-links take users directly to the relevant screen section | Inline actions for common operations (v1.5) |
 | Widgets show aggregate data only | Users cannot see full details without clicking through | Widgets are designed as summaries with clear "view all" links | Expandable widgets with inline detail (V2) |
-| No custom widget creation | Users cannot add third-party data sources to Dashboard | â€” | Plugin/MCP widget marketplace (Enterprise) |
+| No custom widget creation | Users cannot add third-party data sources to Dashboard | — | Plugin/MCP widget marketplace (Enterprise) |
 
 ## Future Improvements
 

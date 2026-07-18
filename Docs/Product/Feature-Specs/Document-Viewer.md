@@ -7,11 +7,11 @@
 
 ## Overview
 
-The In-App Document Viewer eliminates context-switching by letting users read documents directly inside Vaeloom. Every file the system ingests â€” PDFs, DOCX, images, code files, Markdown, plain text â€” renders inline with a consistent reading experience. On top of the viewer sits an annotation layer (highlighting, notes, bookmarks) and a chat sidebar scoped to the current document. The Document Agent powers the chat: users ask questions about the document's content, and the agent answers using the parsed document structure plus the user's broader memory context when relevant.
+The In-App Document Viewer eliminates context-switching by letting users read documents directly inside Vaeloom. Every file the system ingests — PDFs, DOCX, images, code files, Markdown, plain text — renders inline with a consistent reading experience. On top of the viewer sits an annotation layer (highlighting, notes, bookmarks) and a chat sidebar scoped to the current document. The Document Agent powers the chat: users ask questions about the document's content, and the agent answers using the parsed document structure plus the user's broader memory context when relevant.
 
-The viewer is accessible from the Workspace screen (click any file to open), the Resume screen (click source document links), and the Knowledge screen (dedicated full-viewer mode). It uses the same parsed document produced by the Ingestion pipeline, so it works on any file the system has already processed â€” no format-specific rendering engine needed beyond the initial parser. For files that failed parsing, the viewer falls back to showing the raw text or a "Could not parse â€” download original" option.
+The viewer is accessible from the Workspace screen (click any file to open), the Resume screen (click source document links), and the Knowledge screen (dedicated full-viewer mode). It uses the same parsed document produced by the Ingestion pipeline, so it works on any file the system has already processed — no format-specific rendering engine needed beyond the initial parser. For files that failed parsing, the viewer falls back to showing the raw text or a "Could not parse — download original" option.
 
-The chat sidebar is the bridge between document reading and the agent system. As the user reads, the Document Agent pre-indexes the document's entities into the working memory context, so the user can ask questions like "What were the key findings?" or "When was this written?" and get answers grounded in the specific document. The chat is purely read-only â€” it never modifies the document. If the user wants to extract an entity to their memory, they can do so with an explicit "Save to memory" action on a chat response.
+The chat sidebar is the bridge between document reading and the agent system. As the user reads, the Document Agent pre-indexes the document's entities into the working memory context, so the user can ask questions like "What were the key findings?" or "When was this written?" and get answers grounded in the specific document. The chat is purely read-only — it never modifies the document. If the user wants to extract an entity to their memory, they can do so with an explicit "Save to memory" action on a chat response.
 
 ## Goals
 
@@ -19,7 +19,7 @@ The chat sidebar is the bridge between document reading and the agent system. As
 - Load and render any document in <2s regardless of format
 - Provide scoped document Q&A with <5s response time
 - Support highlighting, inline notes, and page/line bookmarks
-- Never modify the original document â€” annotations are separate overlay data
+- Never modify the original document — annotations are separate overlay data
 
 ## User Story
 
@@ -92,8 +92,8 @@ Annotation schema (stored on `documents` record as `annotations` JSONB):
 | Memory Type | Read | Write | Notes |
 |-------------|------|-------|-------|
 | Document | Yes | No | Document content and parsed structure for rendering |
-| Profile | No | No | â€” |
-| Career | No | No | â€” |
+| Profile | No | No | — |
+| Career | No | No | — |
 | Episodic | Yes | Yes | Annotation saves, document views logged |
 | Preference | Yes | Yes | Annotation style preferences, viewer settings |
 | Working | Yes | Yes | Chat context scoped to current document |
@@ -106,17 +106,17 @@ Annotation schema (stored on `documents` record as `annotations` JSONB):
 | `documents:write` | Save annotations | Granted |
 | `memory:write` | Save chat entity to memory | Per-action consent |
 
-Autonomy level: **Read-only** â€” the Document Agent answers questions but never modifies documents. **Full** for user-initiated actions (annotations are direct user manipulation).
+Autonomy level: **Read-only** — the Document Agent answers questions but never modifies documents. **Full** for user-initiated actions (annotations are direct user manipulation).
 
 ## Error Scenarios
 
 | Scenario | Error | User Impact | Recovery |
 |----------|-------|-------------|----------|
-| Document parsing failed | Cannot render | "This file could not be parsed â€” download original" with download button | User downloads original; parsing retry scheduled |
-| Chat question exceeds document context window | Partial answer | "This question spans more content than I can analyze at once â€” try a more specific question" | User refines question |
-| Annotation save conflicts with concurrent edit | Optimistic lock | "Annotations were updated elsewhere â€” refresh to see latest" | Reload annotations |
+| Document parsing failed | Cannot render | "This file could not be parsed — download original" with download button | User downloads original; parsing retry scheduled |
+| Chat question exceeds document context window | Partial answer | "This question spans more content than I can analyze at once — try a more specific question" | User refines question |
+| Annotation save conflicts with concurrent edit | Optimistic lock | "Annotations were updated elsewhere — refresh to see latest" | Reload annotations |
 | Very large PDF (>100 pages) render is slow | Delayed load | Progress bar; pages load progressively as user scrolls | Virtual scrolling; only render visible pages |
-| Image file too large for browser render | Resize limit | "Image is too large to display â€” download to view at full resolution" | Download option; thumbnail shown inline |
+| Image file too large for browser render | Resize limit | "Image is too large to display — download to view at full resolution" | Download option; thumbnail shown inline |
 
 ## Performance Budgets
 
@@ -143,7 +143,7 @@ Autonomy level: **Read-only** â€” the Document Agent answers questions but 
 
 - **Loading:** Document skeleton with page outline; progressive page rendering; chat sidebar shows "Reading document..." while indexing
 - **Empty:** "Select a document to view" when no document is open; file browser sidebar visible for navigation
-- **Error:** Parsing-failed documents show error state with format icon and "Can't preview" message with download link; chat failure shows "Could not answer â€” try rephrasing" with the original question preserved
+- **Error:** Parsing-failed documents show error state with format icon and "Can't preview" message with download link; chat failure shows "Could not answer — try rephrasing" with the original question preserved
 - **Edge cases:** Right-to-left text in PDFs renders correctly based on detected language; embedded images in DOCX shown in-line at their approximate position; scanned documents (image-based PDFs) show text layer from OCR below the rendered page; password-protected documents prompt for password (sent to parser, never stored); code files >5000 lines show line number toggle and collapsing function blocks; annotations lost when document is re-parsed (e.g., new version) shown with "Annotations from previous version" separator
 
 ## Risks
@@ -186,7 +186,7 @@ graph TD
     AN --> DB[(PostgreSQL)]
 ```
 
-> **Diagram:** Document Viewer architecture â€” format-specific renderers + Document Agent-powered chat sidebar + annotation layer.
+> **Diagram:** Document Viewer architecture — format-specific renderers + Document Agent-powered chat sidebar + annotation layer.
 
 ## Components
 
@@ -236,10 +236,10 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Document Load:** Document ID â†’ `documents.parsed_storage_key` â†’ parsed content from S3 â†’ format renderer
-2. **Chat:** Question â†’ document text chunked and embedded â†’ vector similarity search â†’ LLM prompt â†’ answer with section references
-3. **Annotations:** User highlight â†’ `documents.annotations` JSONB updated (optimistic) â†’ rendered as overlay on document
-4. **Entity list:** Document ID â†’ Memory Agent query â†’ `entities` with `source_document_id` = document ID â†’ listed in sidebar
+1. **Document Load:** Document ID → `documents.parsed_storage_key` → parsed content from S3 → format renderer
+2. **Chat:** Question → document text chunked and embedded → vector similarity search → LLM prompt → answer with section references
+3. **Annotations:** User highlight → `documents.annotations` JSONB updated (optimistic) → rendered as overlay on document
+4. **Entity list:** Document ID → Memory Agent query → `entities` with `source_document_id` = document ID → listed in sidebar
 
 ## Non-Functional Requirements
 
@@ -301,10 +301,10 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/documents/{doc_id}/chat 
 
 | Practice | Rationale |
 |----------|-----------|
-| Use document chat to extract key information quickly | Document Q&A is faster than reading an entire document for specific details â€” ask targeted questions |
+| Use document chat to extract key information quickly | Document Q&A is faster than reading an entire document for specific details — ask targeted questions |
 | Save important extracted entities to memory | When you find a skill, achievement, or date in a document, use "Save to memory" to enrich your knowledge graph |
 | Bookmark critical pages for quick reference | For offer letters, contracts, and application forms, bookmark the key terms page for future access |
-| Review entity sidebar after opening a new document | The entity list shows what Vaeloom extracted â€” review to catch extraction errors early |
+| Review entity sidebar after opening a new document | The entity list shows what Vaeloom extracted — review to catch extraction errors early |
 
 ## Limitations
 

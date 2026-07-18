@@ -1,4 +1,4 @@
-﻿# Product
+# Product
 
 > **Purpose:** Product specifications, features, user flows, and roadmap
 > **Status:** Active
@@ -17,23 +17,23 @@ This directory should be cross-referenced with the AI and Engineering directorie
 
 | Document | Location | Status |
 |----------|----------|--------|
-| MVP Product Spec | [`/Docs/01-Vaeloom-MVP-Spec.md`](../../Docs/01-Vaeloom-MVP-Spec.md) | âœ… Canonical |
-| Features Table | [`/Docs/Vaeloom-Complete-Documentation.md#7-features`](../../Docs/Vaeloom-Complete-Documentation.md#7-features) | âœ… Canonical |
-| Screens & Pages | [`/Docs/Vaeloom-Complete-Documentation.md#8-screens`](../../Docs/Vaeloom-Complete-Documentation.md#8-screens) | âœ… Canonical |
-| Workflows | [`/Docs/Vaeloom-Complete-Documentation.md#9-workflows`](../../Docs/Vaeloom-Complete-Documentation.md#9-workflows) | âœ… Canonical |
-| Roadmap | [`/Docs/Vaeloom-Complete-Documentation.md#14-roadmap`](../../Docs/Vaeloom-Complete-Documentation.md#14-roadmap) | âœ… Canonical |
-| Gap Analysis | [`/Docs/Vaeloom-Complete-Documentation.md#15-gap-analysis`](../../Docs/Vaeloom-Complete-Documentation.md#15-gap-analysis) | âœ… Canonical |
+| MVP Product Spec | [`/docs/01-Vaeloom-MVP-Spec.md`](../../docs/01-Vaeloom-MVP-Spec.md) | ✅ Canonical |
+| Features Table | [`/docs/Vaeloom-Complete-Documentation.md#7-features`](../../docs/Vaeloom-Complete-Documentation.md#7-features) | ✅ Canonical |
+| Screens & Pages | [`/docs/Vaeloom-Complete-Documentation.md#8-screens`](../../docs/Vaeloom-Complete-Documentation.md#8-screens) | ✅ Canonical |
+| Workflows | [`/docs/Vaeloom-Complete-Documentation.md#9-workflows`](../../docs/Vaeloom-Complete-Documentation.md#9-workflows) | ✅ Canonical |
+| Roadmap | [`/docs/Vaeloom-Complete-Documentation.md#14-roadmap`](../../docs/Vaeloom-Complete-Documentation.md#14-roadmap) | ✅ Canonical |
+| Gap Analysis | [`/docs/Vaeloom-Complete-Documentation.md#15-gap-analysis`](../../docs/Vaeloom-Complete-Documentation.md#15-gap-analysis) | ✅ Canonical |
 
 ```mermaid
 graph TD
-    subgraph Principles["ðŸŽ¯ Core Product Principles"]
+    subgraph Principles["🎯 Core Product Principles"]
         P1["Suggest-Mode by Default<br/>Agents propose, users confirm. Trust is earned."]
         P2["Memory Before Features<br/>Every feature = read/write against memory."]
         P3["Never Destructive<br/>Files archive, not delete. Actions reversible."]
         P4["MCP-Shaped Connectors<br/>All tools share same data shape."]
     end
 
-    subgraph Docs["ðŸ“š Key Documents"]
+    subgraph Docs["📚 Key Documents"]
         D1["MVP Product Spec"]
         D2["Features Table"]
         D3["Screens & Pages"]
@@ -58,22 +58,22 @@ graph TD
 | Suggest-mode by default | Agents propose; users confirm. Trust is earned. |
 | Memory before features | Every feature is a read/write against memory. If it can't be expressed that way, question it. |
 | Never destructive | Files archive, not delete. Every action is reversible. |
-| MCP-shaped connectors | All tools share the same shape (name, input, output, scope) â€” transport layer can change later. |
+| MCP-shaped connectors | All tools share the same shape (name, input, output, scope) — transport layer can change later. |
 
 ## Common Mistakes
 
 | Mistake | Better Approach |
 |---------|----------------|
-| Reading product docs in isolation | Product decisions are shaped by AI capabilities and engineering constraints â€” cross-reference with [`AI/`](../AI/) and [`Engineering/`](../Engineering/) |
-| Treating canonical docs as the only source | The canonical specs (MVP Spec, Complete Documentation) are comprehensive â€” category docs are distilled views |
-| Skipping the Mermaid diagrams | Every product doc begins with an architecture diagram â€” it's the fastest way to understand the system structure |
+| Reading product docs in isolation | Product decisions are shaped by AI capabilities and engineering constraints — cross-reference with [`AI/`](../AI/) and [`Engineering/`](../Engineering/) |
+| Treating canonical docs as the only source | The canonical specs (MVP Spec, Complete Documentation) are comprehensive — category docs are distilled views |
+| Skipping the Mermaid diagrams | Every product doc begins with an architecture diagram — it's the fastest way to understand the system structure |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Start with the canonical MVP spec | [`/Docs/01-Vaeloom-MVP-Spec.md`](../../Docs/01-Vaeloom-MVP-Spec.md) contains the complete product definition â€” category docs focus on specific aspects |
-| Follow the principle hierarchy | Core Principles (this page) â†’ Product Decisions â†’ Feature Details â€” start at the right abstraction level |
+| Start with the canonical MVP spec | [`/docs/01-Vaeloom-MVP-Spec.md`](../../docs/01-Vaeloom-MVP-Spec.md) contains the complete product definition — category docs focus on specific aspects |
+| Follow the principle hierarchy | Core Principles (this page) → Product Decisions → Feature Details — start at the right abstraction level |
 | Cross-reference with the interactive dashboard | The [Documentation Dashboard](../../docs/Documentation-Dashboard.html) provides a visual overview of all docs and quality metrics |
 
 ## Security Considerations
@@ -82,13 +82,13 @@ graph TD
 |---------|------------|
 | Product docs reference internal architecture | Avoid including specific IP addresses, port numbers, or infrastructure details in product-facing docs |
 | Links to canonical docs may expose implementation details | Use relative links within the documentation system, not direct references to internal systems |
-| Product decision docs may reveal strategic roadmap | Classify roadmap docs appropriately â€” public product docs should describe what, not how |
+| Product decision docs may reveal strategic roadmap | Classify roadmap docs appropriately — public product docs should describe what, not how |
 
 ## Performance Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Product README is the entry point for many users | Keep the page lightweight â€” use inline SVGs for diagrams rather than heavy image assets |
+| Product README is the entry point for many users | Keep the page lightweight — use inline SVGs for diagrams rather than heavy image assets |
 | Cross-referencing many external canonical docs adds navigation overhead | Open canonical docs in new tabs to preserve the README context |
 | Documentation pages with multiple Mermaid diagrams can load slowly | Lazy-load diagrams below the fold and use diagram caching |
 
@@ -97,7 +97,7 @@ graph TD
 - Provide a clear, navigable entry point to all Vaeloom product documentation for every team member
 - Ensure every doc links to its canonical source and is tagged with current status and ownership
 - Maintain cross-referencing between Product, AI, and Engineering directories to reflect the interdependency of product decisions
-- Keep the README itself lightweight â€” principles and index only, not detail â€” so it loads fast and stays scannable
+- Keep the README itself lightweight — principles and index only, not detail — so it loads fast and stays scannable
 - Update the What's here table whenever a new product doc is created or promoted to canonical status
 
 ## Scope
@@ -114,9 +114,9 @@ graph TD
 ```json
 {
   "documents": [
-    { "name": "MVP Product Spec", "path": "/Docs/01-Vaeloom-MVP-Spec.md", "status": "canonical" },
-    { "name": "Features Table", "path": "/Docs/Vaeloom-Complete-Documentation.md#7-features", "status": "canonical" },
-    { "name": "Roadmap", "path": "/Docs/Vaeloom-Complete-Documentation.md#14-roadmap", "status": "canonical" }
+    { "name": "MVP Product Spec", "path": "/docs/01-Vaeloom-MVP-Spec.md", "status": "canonical" },
+    { "name": "Features Table", "path": "/docs/Vaeloom-Complete-Documentation.md#7-features", "status": "canonical" },
+    { "name": "Roadmap", "path": "/docs/Vaeloom-Complete-Documentation.md#14-roadmap", "status": "canonical" }
   ]
 }
 ```
@@ -139,12 +139,12 @@ curl -s "https://api.Vaeloom.dev/v1/docs/search?q=consent+architecture" \
 
 ## Related categories
 
-- [`Project/`](../Project/) â€” Project vision
-- [`AI/`](../AI/) â€” Agent system that powers these features
-- [`Engineering/`](../Engineering/) â€” How features are built
+- [`Project/`](../Project/) — Project vision
+- [`AI/`](../AI/) — Agent system that powers these features
+- [`Engineering/`](../Engineering/) — How features are built
 
 ## Related Documents
 
-- [MVP Product Spec](../01-Vaeloom-MVP-Spec.md) â€” Canonical MVP specification
-- [Enterprise Product Vision](../06-Vaeloom-Enterprise-Paper.md) â€” Enterprise-scale vision
-- [Product Strategy](./Product-Strategy.md) â€” Go-to-market and competitive moat
+- [MVP Product Spec](../01-Vaeloom-MVP-Spec.md) — Canonical MVP specification
+- [Enterprise Product Vision](../06-Vaeloom-Enterprise-Paper.md) — Enterprise-scale vision
+- [Product Strategy](./Product-Strategy.md) — Go-to-market and competitive moat

@@ -7,11 +7,11 @@
 
 ## Overview
 
-Deadline & Conflict Detection gives the user a unified, automatically-maintained schedule built from every source the system has access to: emails (application deadlines, interview dates extracted by the Gmail Agent), the user's connected calendar, uploaded documents (offer deadlines, event dates), and manually created entries. The Scheduler Agent continuously monitors this unified schedule for conflicts â€” overlapping events, insufficient buffer time between critical items, deadlines too close together â€” and surfaces them before they become problems.
+Deadline & Conflict Detection gives the user a unified, automatically-maintained schedule built from every source the system has access to: emails (application deadlines, interview dates extracted by the Gmail Agent), the user's connected calendar, uploaded documents (offer deadlines, event dates), and manually created entries. The Scheduler Agent continuously monitors this unified schedule for conflicts — overlapping events, insufficient buffer time between critical items, deadlines too close together — and surfaces them before they become problems.
 
 The system distinguishes between hard deadlines (application due dates, interview times, offer acceptance windows) and soft events (suggested study blocks, optional networking events). Conflicts between two hard deadlines are flagged at the highest priority with a mandatory review prompt. Conflicts involving one hard and one soft event suggest moving the soft event. The agent can autonomously schedule reminders for hard deadlines but never moves or deletes a user-created event without explicit permission.
 
-The Schedule screen presents this information in both calendar and list views, with a conflict indicator strip at the top showing how many active conflicts exist. Each conflict includes a suggested resolution (e.g., "You have 45 minutes between Interview A ending and Interview B starting â€” consider requesting a time change for one of them") that the user can accept, modify, or dismiss. Conflicts that are resolved or dismissed feed back into the agent's understanding of the user's preferences.
+The Schedule screen presents this information in both calendar and list views, with a conflict indicator strip at the top showing how many active conflicts exist. Each conflict includes a suggested resolution (e.g., "You have 45 minutes between Interview A ending and Interview B starting — consider requesting a time change for one of them") that the user can accept, modify, or dismiss. Conflicts that are resolved or dismissed feed back into the agent's understanding of the user's preferences.
 
 ## Goals
 
@@ -82,7 +82,7 @@ Schedule event types: `application_deadline`, `interview`, `offer_deadline`, `ca
 | Episodic | Yes | Yes | Schedule events, deadlines logged |
 | Preference | Yes | Yes | Conflict resolution preferences, accepted buffer times |
 | Career | Yes | Yes | Deadlines linked to application records |
-| Profile | No | No | â€” |
+| Profile | No | No | — |
 | Document | Yes | No | Source documents for extracted deadlines |
 | Working | Yes | No | Current schedule view session |
 
@@ -96,14 +96,14 @@ Schedule event types: `application_deadline`, `interview`, `offer_deadline`, `ca
 | `schedule:auto-move` | Autonomous event rescheduling | Never granted (MVP) |
 | `reminder:send` | Send deadline notifications | Full (notify only) |
 
-Autonomy level: **Suggest / Full for reminders** â€” auto-creates events from detected deadlines in suggest mode (user confirms before event is added to calendar). Reminders are Full (notify only â€” no action beyond notification).
+Autonomy level: **Suggest / Full for reminders** — auto-creates events from detected deadlines in suggest mode (user confirms before event is added to calendar). Reminders are Full (notify only — no action beyond notification).
 
 ## Error Scenarios
 
 | Scenario | Error | User Impact | Recovery |
 |----------|-------|-------------|----------|
-| Date extracted from email is ambiguous (e.g., "next Friday") | Low confidence date | Event created with "estimated â€” confirm date" flag | User taps to confirm; correction logged |
-| Calendar connector returns events with no timezone | Missing timezone | Event shown with "timezone unknown â€” verify" badge | User assigns timezone; preference learned for future |
+| Date extracted from email is ambiguous (e.g., "next Friday") | Low confidence date | Event created with "estimated — confirm date" flag | User taps to confirm; correction logged |
+| Calendar connector returns events with no timezone | Missing timezone | Event shown with "timezone unknown — verify" badge | User assigns timezone; preference learned for future |
 | Two auto-detected events from same source email | Duplicate merge | Duplicate events detected; only one kept | Conflict resolution suggests removal; user approves |
 | LLM hallucinates a deadline from non-deadline content | False event | Event created with low confidence score | User dismisses; dismissal teaches classifier |
 | Conflict resolution suggestions contradict user preference | Unhelpful suggestion | Resolution shown but user ignores | Agent learns from ignored suggestions; adjusts future proposals |
@@ -132,8 +132,8 @@ Autonomy level: **Suggest / Full for reminders** â€” auto-creates events fr
 
 - **Loading:** Calendar skeleton with gradient bars; conflict count shows pulsing number
 - **Empty:** "No upcoming deadlines. As you add events or connect your calendar, deadlines will appear here." Empty calendar illustration with "Connect Calendar" CTA
-- **Error:** Partial schedule shown; "Calendar sync failed for [source] â€” last synced [time]" banner; individual malformed events show "Could not parse" with raw data shown
-- **Edge cases:** Conflicting events across timezones are normalized to user's local time with original timezone shown in parentheses; all-day events vs. timed events use buffer check (hard deadline on same day as all-day event = potential conflict); events with no end time are assumed 1 hour; recurring events are unrolled for conflict detection up to 90 days; user in a high-volume week (>15 events) gets a "Busy week ahead â€” review conflicts" banner
+- **Error:** Partial schedule shown; "Calendar sync failed for [source] — last synced [time]" banner; individual malformed events show "Could not parse" with raw data shown
+- **Edge cases:** Conflicting events across timezones are normalized to user's local time with original timezone shown in parentheses; all-day events vs. timed events use buffer check (hard deadline on same day as all-day event = potential conflict); events with no end time are assumed 1 hour; recurring events are unrolled for conflict detection up to 90 days; user in a high-volume week (>15 events) gets a "Busy week ahead — review conflicts" banner
 
 ## Risks
 
@@ -173,7 +173,7 @@ graph TD
     D3 --> O4[Reminder Notifications]
 ```
 
-> **Diagram:** Deadline Detection architecture â€” 4 input sources feed the Scheduler Agent, which detects conflicts and suggests resolutions.
+> **Diagram:** Deadline Detection architecture — 4 input sources feed the Scheduler Agent, which detects conflicts and suggests resolutions.
 
 ## Components
 
@@ -220,11 +220,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Event Detection:** Email/document â†’ entity extraction â†’ date/time parsed â†’ `schedule_events` row
-2. **Conflict Detection:** New event â†’ query overlapping window â†’ pairwise comparison â†’ conflict record created
-3. **Resolution:** Conflict â†’ LLM suggestion â†’ stored on conflict record â†’ user reviews
-4. **Display:** Dashboard queries `schedule_events` with `conflict_flag=true` â†’ rendered as conflict strip
-5. **Reminder:** Cron job checks `schedule_events` within alert window â†’ sends notification
+1. **Event Detection:** Email/document → entity extraction → date/time parsed → `schedule_events` row
+2. **Conflict Detection:** New event → query overlapping window → pairwise comparison → conflict record created
+3. **Resolution:** Conflict → LLM suggestion → stored on conflict record → user reviews
+4. **Display:** Dashboard queries `schedule_events` with `conflict_flag=true` → rendered as conflict strip
+5. **Reminder:** Cron job checks `schedule_events` within alert window → sends notification
 
 ## Non-Functional Requirements
 
@@ -287,7 +287,7 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/schedule/conflicts/{conf
 
 | Practice | Rationale |
 |----------|-----------|
-| Review conflicts within 24 hours of detection | Conflicts become harder to resolve the closer the conflicting events get â€” early resolution maximizes options |
+| Review conflicts within 24 hours of detection | Conflicts become harder to resolve the closer the conflicting events get — early resolution maximizes options |
 | Set buffer preferences in Settings | Configure minimum buffer time between events (30 min default) to match your personal scheduling style |
 | Connect calendar for complete conflict coverage | Without calendar sync, only email-extracted and manually entered events are checked for conflicts |
 | Use manual events for non-digital commitments | Add events from offline sources (paper offers, in-person notices) manually to ensure full conflict coverage |
@@ -297,7 +297,7 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/schedule/conflicts/{conf
 | Limitation | Impact | Workaround | Future Resolution |
 |------------|--------|------------|-------------------|
 | Only Google Calendar sync in MVP | Outlook and Apple Calendar users get manual-entry-only coverage | User can export .ics from other calendars and upload | Multi-calendar sync (Outlook, Apple) in V2 |
-| No cross-user conflict detection | Team schedules cannot be checked for meeting conflicts | N/A â€” single-user feature by design | Enterprise: team calendar conflict detection (Enterprise) |
+| No cross-user conflict detection | Team schedules cannot be checked for meeting conflicts | N/A — single-user feature by design | Enterprise: team calendar conflict detection (Enterprise) |
 | Recurring event detection limited to 90-day horizon | Very-long-cycle events (yearly, multi-year) may not be unrolled | Manually add critical annual events | Extended recurrence unrolling (v1.5) |
 
 ## Future Improvements

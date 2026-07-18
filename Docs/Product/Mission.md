@@ -1,7 +1,7 @@
-﻿# Mission
+# Mission
 
 > **Purpose:** Define the mission that drives Vaeloom
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#2-the-product-story`](../../Docs/Vaeloom-Complete-Documentation.md#2-the-product-story)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#2-the-product-story`](../../docs/Vaeloom-Complete-Documentation.md#2-the-product-story)
 
 ## Mission Architecture
 
@@ -11,18 +11,18 @@ graph TD
     classDef pillar fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef why fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Mission["ðŸŽ¯ Mission"]
+    subgraph Mission["🎯 Mission"]
         M["Build the most trustworthy<br/>AI-native personal<br/>intelligence platform"]
     end
 
-    subgraph What["âš¡ What It Does"]
+    subgraph What["⚡ What It Does"]
         W1["Organizes digital life<br/>Documents, emails, code, career"]
         W2["Remembers everything<br/>Education, career, achievements"]
         W3["Actively works on your behalf<br/>Apply, prepare, surface"]
         W4["Keeps you in control<br/>Every consequential action approved"]
     end
 
-    subgraph Why["ðŸ’¡ Why This Mission"]
+    subgraph Why["💡 Why This Mission"]
         Y1["Status quo: Manual re-assembly<br/>Every time it matters"]
         Y2["Problem: Never prioritized<br/>Until deadline forces it"]
         Y3["Solution: Automatic + continuous<br/>No more last-minute scrambling"]
@@ -35,24 +35,24 @@ graph TD
     class Y1,Y2,Y3 why
 ```
 
-> **Diagram:** Mission architecture â€” **core mission** (most trustworthy AI-native platform) â†’ **4 capabilities** (organize, remember, act, control) â†’ **why** (status quo manual reassembly â†’ always last-minute â†’ automated approach).
+> **Diagram:** Mission architecture — **core mission** (most trustworthy AI-native platform) → **4 capabilities** (organize, remember, act, control) → **why** (status quo manual reassembly → always last-minute → automated approach).
 
 ---
 
 ## Mission Statement
 
-Build the most trustworthy AI-native personal intelligence platform: one that organizes a person's digital life, remembers everything that matters about their education and career, and actively works on their behalf â€” applying to opportunities, preparing them for interviews, surfacing what they'd otherwise forget â€” while keeping the person in control of every consequential action.
+Build the most trustworthy AI-native personal intelligence platform: one that organizes a person's digital life, remembers everything that matters about their education and career, and actively works on their behalf — applying to opportunities, preparing them for interviews, surfacing what they'd otherwise forget — while keeping the person in control of every consequential action.
 
 ## Why This Mission
 
-The status quo forces every person to manually re-assemble scattered information about their own life every time it matters â€” updating a resume, remembering achievements, applying to opportunities. This is exactly the kind of work that never gets prioritized until a deadline forces it, at which point it's too late to do well. Vaeloom exists to make this re-assembly automatic and continuous.
+The status quo forces every person to manually re-assemble scattered information about their own life every time it matters — updating a resume, remembering achievements, applying to opportunities. This is exactly the kind of work that never gets prioritized until a deadline forces it, at which point it's too late to do well. Vaeloom exists to make this re-assembly automatic and continuous.
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
-| Mission drift â€” expanding scope without updating the mission | The mission statement becomes meaningless if it tries to cover everything â€” "AI platform" without the "trustworthy" qualifier loses the differentiator |
-| Using jargon instead of plain language | "Memory layer with agentic RAG" doesn't land with users â€” "one place that knows your career" is the real mission |
+| Mission drift — expanding scope without updating the mission | The mission statement becomes meaningless if it tries to cover everything — "AI platform" without the "trustworthy" qualifier loses the differentiator |
+| Using jargon instead of plain language | "Memory layer with agentic RAG" doesn't land with users — "one place that knows your career" is the real mission |
 | Mission without measurable checkpoints | A vision without phase-level milestones means no way to know if you're still on track |
 
 ## Best Practices
@@ -61,7 +61,7 @@ The status quo forces every person to manually re-assemble scattered information
 |----------|-----|
 | Lead with the problem, not the solution | Users connect with "my resume is always outdated" before "memory layer with agentic RAG" |
 | Use the "one brain" metaphor consistently | "Chat is one view into your Vaeloom brain" builds a clear mental model for users |
-| Show compounding value over time | Month 1 value is organization; Month 6 is career intelligence â€” the mission scales |
+| Show compounding value over time | Month 1 value is organization; Month 6 is career intelligence — the mission scales |
 | Emphasize trust architecture | "Nothing happens without your approval" addresses the core objection before it's raised |
 
 ## Security Considerations
@@ -73,9 +73,9 @@ The status quo forces every person to manually re-assemble scattered information
 
 ## Overview
 
-Vaeloom's mission â€” to build the most trustworthy AI-native personal intelligence platform â€” defines the product's character, its boundaries, and the criteria by which every decision is judged. Unlike a vision (which describes a future state) or a strategy (which describes a path), the mission is the enduring purpose that remains constant as tactics shift. This document articulates the mission, the four capabilities it requires (organize, remember, act, control), and the reasoning behind why this mission matters.
+Vaeloom's mission — to build the most trustworthy AI-native personal intelligence platform — defines the product's character, its boundaries, and the criteria by which every decision is judged. Unlike a vision (which describes a future state) or a strategy (which describes a path), the mission is the enduring purpose that remains constant as tactics shift. This document articulates the mission, the four capabilities it requires (organize, remember, act, control), and the reasoning behind why this mission matters.
 
-The mission is designed to be memorable, actionable, and differentiating. It answers three questions for every stakeholder: what are we building (a personal intelligence platform), for whom (every person building a career), and what makes it different (trustworthy â€” earned through consent, transparency, and control).
+The mission is designed to be memorable, actionable, and differentiating. It answers three questions for every stakeholder: what are we building (a personal intelligence platform), for whom (every person building a career), and what makes it different (trustworthy — earned through consent, transparency, and control).
 
 ## Goals
 
@@ -153,7 +153,7 @@ curl -s -X POST https://api.Vaeloom.dev/v1/admin/mission-check \
 
 | Concern | Mitigation |
 |---------|------------|
-| Mission doc is accessed frequently by new team members | Cache at the documentation site level â€” mission content rarely changes |
+| Mission doc is accessed frequently by new team members | Cache at the documentation site level — mission content rarely changes |
 | Mermaid diagrams explaining mission add page weight | Use lightweight SVGs or simple diagrams for brand-adjacent content |
 | Translation/localization of mission for global teams | Pre-translate static mission content, serve based on locale |
 
@@ -164,4 +164,4 @@ curl -s -X POST https://api.Vaeloom.dev/v1/admin/mission-check \
 - [Product Strategy.md](./Product-Strategy.md)
 - [Goals.md](./Goals.md)
 - [Features.md](./Features.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#12-executive-summary`](../../Docs/Vaeloom-Complete-Documentation.md#12-executive-summary)
+- [`/docs/Vaeloom-Complete-Documentation.md#12-executive-summary`](../../docs/Vaeloom-Complete-Documentation.md#12-executive-summary)

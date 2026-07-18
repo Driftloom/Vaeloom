@@ -7,9 +7,9 @@
 
 ## Overview
 
-The Learning Roadmap transforms skill gaps â€” identified by the ATS Agent during resume scoring or by the Reflection Agent during pattern analysis â€” into structured, sequenced skill development plans. When the system detects a skill gap that matters for the user's career goals (a required skill for a target role type, a missing qualification for internships the user has been applying to), the Planning Agent generates a learning roadmap: a sequence of concrete steps (courses, projects, certifications, practice) ordered by dependency, estimated effort, and relevance to the user's stated goals.
+The Learning Roadmap transforms skill gaps — identified by the ATS Agent during resume scoring or by the Reflection Agent during pattern analysis — into structured, sequenced skill development plans. When the system detects a skill gap that matters for the user's career goals (a required skill for a target role type, a missing qualification for internships the user has been applying to), the Planning Agent generates a learning roadmap: a sequence of concrete steps (courses, projects, certifications, practice) ordered by dependency, estimated effort, and relevance to the user's stated goals.
 
-The roadmap is not a generic course list. It is personalized to the user's current skill graph, learning preferences (self-study vs. structured courses vs. project-based), available time budget, and deadline constraints (e.g., "I need this skill before internship applications open in 3 months"). Each step links to specific resources â€” online courses (Coursera, Udemy, edX via search), documentation, project ideas, or practice platforms â€” that the agent has identified as high-quality and appropriate for the user's current level. The user can mark steps complete, adjust timelines, or add their own learning resources.
+The roadmap is not a generic course list. It is personalized to the user's current skill graph, learning preferences (self-study vs. structured courses vs. project-based), available time budget, and deadline constraints (e.g., "I need this skill before internship applications open in 3 months"). Each step links to specific resources — online courses (Coursera, Udemy, edX via search), documentation, project ideas, or practice platforms — that the agent has identified as high-quality and appropriate for the user's current level. The user can mark steps complete, adjust timelines, or add their own learning resources.
 
 This is a V2 feature because it depends on several prerequisite conditions: a sufficiently populated skill graph (the system needs to know what the user already knows), a set of completed ATS scans with identified gaps (the system needs to know what's missing), and preferably some application outcome data (the system needs to know which gaps actually matter). It also requires a content source integration (course API or curated resource database) that adds integration complexity beyond the MVP scope. The feature is gated behind a minimum threshold of 10 identified skill gaps and 3 ATS scans.
 
@@ -32,10 +32,10 @@ This is a V2 feature because it depends on several prerequisite conditions: a su
 | LR-1 | Roadmap generated from skill gaps identified by ATS Agent | P0 |
 | LR-2 | Steps ordered by dependency (prerequisites first) | P0 |
 | LR-3 | Each step links to at least one concrete resource | P0 |
-| LR-4 | User can set a deadline goal â€” roadmap paces accordingly | P1 |
+| LR-4 | User can set a deadline goal — roadmap paces accordingly | P1 |
 | LR-5 | User can mark steps complete, adjust timeline, add custom steps | P1 |
 | LR-6 | Roadmap regenerates when new skill gaps are identified | P1 |
-| LR-7 | User can set a target role â€” roadmap fills all gaps for that role | P1 |
+| LR-7 | User can set a target role — roadmap fills all gaps for that role | P1 |
 | LR-8 | Learning progress tracked and shown on Dashboard | P2 |
 | LR-9 | Resource recommendations adapt to user's learning style preference | P2 |
 | LR-10 | Completion of steps updates skill confidence in memory graph | P2 |
@@ -81,7 +81,7 @@ Roadmap content stored as JSONB on `memory_records`: roadmap_id, target_role, go
 | Career | Yes | No | Target roles inform roadmap priority |
 | Preference | Yes | Yes | Learning style, pace, resource preferences |
 | Episodic | Yes | Yes | Step completions, roadmap changes logged |
-| Document | No | No | â€” |
+| Document | No | No | — |
 | Working | Yes | No | Current roadmap session |
 
 ## Permission Model
@@ -93,14 +93,14 @@ Roadmap content stored as JSONB on `memory_records`: roadmap_id, target_role, go
 | `profile:write` | Update skill confidence on completion | Per-action consent |
 | `settings:write` | Set learning preferences | Granted |
 
-Autonomy level: **Suggest** â€” the Planning Agent proposes roadmaps but does not enroll the user in courses or commit to deadlines without approval.
+Autonomy level: **Suggest** — the Planning Agent proposes roadmaps but does not enroll the user in courses or commit to deadlines without approval.
 
 ## Error Scenarios
 
 | Scenario | Error | User Impact | Recovery |
 |----------|-------|-------------|----------|
 | Insufficient skill gaps to generate a roadmap | Minimum threshold not met | "You need at least 10 identified skill gaps and 3 ATS scans to generate a roadmap." | Continue using ATS scoring until threshold is reached |
-| Resource search returns no relevant courses | Empty resource list | Step shown with "No resources found â€” add your own" | User can manually add a resource URL or skip the step |
+| Resource search returns no relevant courses | Empty resource list | Step shown with "No resources found — add your own" | User can manually add a resource URL or skip the step |
 | Course link is dead or behind a paywall | Broken resource | "Resource may no longer be available" flag | User can report broken link; alternative resources suggested |
 | User sets unrealistic deadline (e.g., 1 week for 120 hours of learning) | Pacing conflict | "This deadline may be tight for the estimated 120 hours of material" with suggested adjusted timeline | User can accept suggestion or keep original deadline |
 | Roadmap generation takes >30s | Timeout | Background generation with notification | Progress bar; notification when ready |
@@ -128,8 +128,8 @@ Autonomy level: **Suggest** â€” the Planning Agent proposes roadmaps but do
 
 - **Loading:** Roadmap skeleton with step list placeholders; each step appears as a progress bar fills; "Planning your learning path..." with estimated time remaining
 - **Empty:** "No skill gaps identified yet. Complete a few ATS scans to identify what to learn next." Link to ATS Scoring screen; progress indicator showing (current gaps / 10 minimum)
-- **Error:** Partial roadmap shown if some steps failed; "Some resources couldn't be found â€” add your own" for empty resource steps; full failure shows retry with "Could not generate roadmap â€” try again later"
-- **Edge cases:** User has no target role set â€” roadmap generated from most common gap across all past scans with "No target role set â€” roadmap based on general gaps" note; very ambitious roadmap (>50 steps) shows top 10 prioritized steps with "Show all steps" expansion; step with no available resources gets a "Find a resource" search input inline; user who completes all steps gets a "You've completed your roadmap â€” run a new ATS scan to see your improved scores" celebration state
+- **Error:** Partial roadmap shown if some steps failed; "Some resources couldn't be found — add your own" for empty resource steps; full failure shows retry with "Could not generate roadmap — try again later"
+- **Edge cases:** User has no target role set — roadmap generated from most common gap across all past scans with "No target role set — roadmap based on general gaps" note; very ambitious roadmap (>50 steps) shows top 10 prioritized steps with "Show all steps" expansion; step with no available resources gets a "Find a resource" search input inline; user who completes all steps gets a "You've completed your roadmap — run a new ATS scan to see your improved scores" celebration state
 
 ## Risks
 
@@ -167,7 +167,7 @@ graph TD
     ROAD --> PROG[Progress Tracker]
 ```
 
-> **Diagram:** Learning Roadmap architecture â€” ATS gaps + Reflection patterns â†’ Planning Agent â†’ dependency graph â†’ resources â†’ structured roadmap.
+> **Diagram:** Learning Roadmap architecture — ATS gaps + Reflection patterns → Planning Agent → dependency graph → resources → structured roadmap.
 
 ## Components
 
@@ -210,7 +210,7 @@ sequenceDiagram
     PA->>MEM: Check existing skills
     MEM-->>PA: Has: JavaScript, HTML, Git
     PA->>DG: Order by dependency
-    DG-->>PA: TypeScript â†’ React â†’ CSS Grid
+    DG-->>PA: TypeScript --> React --> CSS Grid
     PA->>RF: Find resources for each
     RF-->>PA: Course links + project ideas
     PA-->>U: 3-step roadmap (40 hours total)
@@ -220,11 +220,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Gap Collection:** ATS Agent scans â†’ `entities.skill.gap_flag = true` â†’ collected by Planning Agent
-2. **Dependency Resolution:** Skill graph traversed for `requires_skill` edges â†’ topological sort
-3. **Resource Search:** Skill name â†’ course API search â†’ filtered by quality + level â†’ resource URLs
+1. **Gap Collection:** ATS Agent scans → `entities.skill.gap_flag = true` → collected by Planning Agent
+2. **Dependency Resolution:** Skill graph traversed for `requires_skill` edges → topological sort
+3. **Resource Search:** Skill name → course API search → filtered by quality + level → resource URLs
 4. **Roadmap Storage:** `memory_records` (Learning type) with JSONB containing steps array, progress, goal
-5. **Progress Update:** Step completion â†’ skill confidence increases â†’ next ATS scan reflects improvement
+5. **Progress Update:** Step completion → skill confidence increases → next ATS scan reflects improvement
 
 ## Non-Functional Requirements
 
@@ -288,7 +288,7 @@ curl -X PATCH https://api.Vaeloom.dev/v1/workspaces/{id}/learning/roadmap/step/{
 | Practice | Rationale |
 |----------|-----------|
 | Set a target role before generating your first roadmap | A target role focuses the roadmap on career-relevant skills instead of filling every gap indiscriminately |
-| Start with the first dependency step, not the most interesting one | Dependency ordering ensures you build foundational skills before advanced ones â€” skipping dependencies leads to knowledge gaps |
+| Start with the first dependency step, not the most interesting one | Dependency ordering ensures you build foundational skills before advanced ones — skipping dependencies leads to knowledge gaps |
 | Use compressed pacing only if you have dedicated study time | Compressed pace doubles weekly hours; standard pacing (recommended) balances learning with other commitments |
 | Run a new ATS scan after completing key roadmap steps | The scan will show improved scores for the skills you've learned, validating your progress |
 
@@ -296,7 +296,7 @@ curl -X PATCH https://api.Vaeloom.dev/v1/workspaces/{id}/learning/roadmap/step/{
 
 | Limitation | Impact | Workaround | Future Resolution |
 |------------|--------|------------|-------------------|
-| V2 feature â€” not available at MVP launch | Users cannot address skill gaps until graph is sufficiently populated | ATS scoring provides manual gap visibility; users can track learning externally | V2 launch when threshold conditions met |
+| V2 feature — not available at MVP launch | Users cannot address skill gaps until graph is sufficiently populated | ATS scoring provides manual gap visibility; users can track learning externally | V2 launch when threshold conditions met |
 | Resource recommendations are search-based, not curated | Some recommended resources may be low quality or behind paywalls | User can report low-quality resources; add custom resources manually | Curated resource database with quality ratings (V3) |
 | No skill assessment to validate learning | "Mark complete" is self-reported, not verified | Skill confidence only updates when verified by a follow-up ATS scan | Integrated skill assessments (V3) |
 

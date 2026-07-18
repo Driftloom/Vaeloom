@@ -9,7 +9,7 @@
 
 Vaeloom uses a four-tier pricing model designed to maximize adoption among students while capturing value from power users and enterprises. The model is grounded in three principles: student-first (free tier must be genuinely useful), value-based (price on outcomes, not features), and data-driven (tiers validated through MVP usage data).
 
-This document defines the concrete pricing for all four tiers â€” Free, Pro ($12/month), Lifetime ($299 one-time), and Enterprise ($15/seat/month) â€” along with the feature boundaries, enforcement mechanisms, and billing architecture.
+This document defines the concrete pricing for all four tiers — Free, Pro ($12/month), Lifetime ($299 one-time), and Enterprise ($15/seat/month) — along with the feature boundaries, enforcement mechanisms, and billing architecture.
 
 ## Pricing Architecture
 
@@ -29,10 +29,10 @@ graph TD
     end
 
     subgraph Tiers["Tier Structure"]
-        Free["Free â€” $0/mo"]
-        Pro["Pro â€” $12/mo"]
-        Life["Lifetime â€” $299"]
-        Ent["Enterprise â€” $15/seat/mo"]
+        Free["Free -- $0/mo"]
+        Pro["Pro -- $12/mo"]
+        Life["Lifetime -- $299"]
+        Ent["Enterprise -- $15/seat/mo"]
     end
 
     subgraph Billing["Billing Infrastructure"]
@@ -62,12 +62,12 @@ graph TD
 | **Connectors** | 1 (Gmail or GitHub) | All connectors | All connectors | All + custom |
 | **Agents** | Basic agents only | All agents | All agents | All + custom agents |
 | **Resume Variants** | 1 | Unlimited | Unlimited | Unlimited |
-| **ATS Scoring** | â€” | 10 JDs/month | 10 JDs/month | Unlimited |
+| **ATS Scoring** | — | 10 JDs/month | 10 JDs/month | Unlimited |
 | **Priority Support** | Community | Priority | Priority | Dedicated SLA |
-| **SSO/SAML** | â€” | â€” | â€” | Included |
-| **Multi-tenant Admin** | â€” | â€” | â€” | Included |
-| **Audit Logs** | â€” | 30-day | 30-day | 7-year retention |
-| **Custom Integrations** | â€” | â€” | â€” | Available |
+| **SSO/SAML** | — | — | — | Included |
+| **Multi-tenant Admin** | — | — | — | Included |
+| **Audit Logs** | — | 30-day | 30-day | 7-year retention |
+| **Custom Integrations** | — | — | — | Available |
 | **SLA** | None | 99.5% | 99.5% | 99.99% |
 
 ## Billing Architecture
@@ -102,7 +102,7 @@ sequenceDiagram
 
 ## Pricing Philosophy
 
-- **Student-first:** Free tier must be genuinely useful, not a teaser. Students are the wedge â€” price accordingly.
+- **Student-first:** Free tier must be genuinely useful, not a teaser. Students are the wedge — price accordingly.
 - **Value-based:** Price on outcomes (applications submitted, interviews scheduled), not feature count.
 - **Data-driven:** Real usage data from MVP informs final pricing tiers. Prices above validated through beta testing.
 
@@ -110,16 +110,16 @@ sequenceDiagram
 
 | Practice | Rationale |
 |----------|----------|
-| Price below the pain threshold of the alternative | Free tier must be cheaper than a career coaching session ($50-200) â€” the product replaces that expense |
-| Enforce tiers server-side | Feature-gating must happen at the API layer, not the client â€” prevents privilege escalation via API calls |
-| Cache entitlements aggressively | Entitlement checks must complete in <5ms â€” use a dedicated entitlement service with TTL caching, not real-time billing API calls |
-| Keep enterprise pricing simple | Per-seat monthly with no usage-based complexity â€” enterprise procurement teams prefer predictable costs |
+| Price below the pain threshold of the alternative | Free tier must be cheaper than a career coaching session ($50-200) — the product replaces that expense |
+| Enforce tiers server-side | Feature-gating must happen at the API layer, not the client — prevents privilege escalation via API calls |
+| Cache entitlements aggressively | Entitlement checks must complete in <5ms — use a dedicated entitlement service with TTL caching, not real-time billing API calls |
+| Keep enterprise pricing simple | Per-seat monthly with no usage-based complexity — enterprise procurement teams prefer predictable costs |
 
 ## Common Mistakes
 
 | Mistake | Consequence | Fix |
 |---------|-------------|-----|
-| Making the free tier too restrictive | Users never experience real value â€” they churn before converting and tell peers the product is a teaser | Ensure free tier allows at least one complete workflow (upload â†’ agent process â†’ export) |
+| Making the free tier too restrictive | Users never experience real value — they churn before converting and tell peers the product is a teaser | Ensure free tier allows at least one complete workflow (upload → agent process → export) |
 | Client-side feature gating | Users can bypass restrictions by inspecting network requests or modifying client code | Move all entitlement checks to the API gateway with signed tier tokens |
 | Complex enterprise pricing | Tiered usage-based pricing (per-seat + per-connector + per-query) confuses procurement and slows deals | Use flat per-seat pricing with clear inclusion boundaries |
 | No grace period on downgrade | Users lose access to their data immediately on non-payment, causing data loss and churn | Preserve read access for 30 days post-expiry; only block new syncs and agent runs |
@@ -131,7 +131,7 @@ sequenceDiagram
 | Billing data exposure | Payment methods, invoices, and billing history stored separately from memory data with equivalent encryption (AES-256 at rest, TLS 1.3 in transit) |
 | Tier privilege escalation | Entitlement tokens signed with HMAC-SHA256 and verified at the API gateway on every request |
 | Trial abuse / fraud | Stripe Radar + rate-limited account creation; fraud scoring on checkout; email domain validation for enterprise |
-| Payment data storage | Never store raw payment details on Vaeloom infrastructure â€” Stripe tokenization only |
+| Payment data storage | Never store raw payment details on Vaeloom infrastructure — Stripe tokenization only |
 | Downgrade data safety | Grace periods preserve read access; hard delete with 30-day soft delete window per data retention policy |
 
 ## Performance Considerations
@@ -139,7 +139,7 @@ sequenceDiagram
 | Concern | Mitigation |
 |---------|-----------|
 | Entitlement check latency | Dedicated entitlement service with Redis cache (TTL 5 min); typical check <3ms |
-| Billing API dependency | Entitlement service operates independently of Stripe â€” webhook updates cache; no synchronous billing calls |
+| Billing API dependency | Entitlement service operates independently of Stripe — webhook updates cache; no synchronous billing calls |
 | Usage tracking at scale | Usage events batched and processed asynchronously via queue (Pub/Sub); never on critical request path |
 | Concurrent seat reconciliation | Enterprise seat counts reconciled nightly via async job; overages invoiced monthly |
 | Free tier limit enforcement | Storage limits enforced at write path (S3 presigned + rejection); document count checked at upload via cached counter |
@@ -229,7 +229,7 @@ curl -s https://api.Vaeloom.dev/v1/entitlements/me \
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Free tier users never convert to paid | High | Critical | Free tier capped at 10 docs/month â€” enough for evaluation, not indefinite use; conversion prompts at key friction points |
+| Free tier users never convert to paid | High | Critical | Free tier capped at 10 docs/month — enough for evaluation, not indefinite use; conversion prompts at key friction points |
 | Enterprise price too high for small universities | Medium | Medium | Offer educational discount (40% off) for under-2000-student institutions |
 | Pro pricing ($12/mo) undercuts perceived value | Medium | Low | Bundle Pro with features that demonstrate clear ROI (ATS scoring, tailored applications) |
 | Lifetime tier cannibalizes Pro revenue | Low | Medium | Limit lifetime offer to first 6 months post-launch; price at ~24x monthly for quick payback |

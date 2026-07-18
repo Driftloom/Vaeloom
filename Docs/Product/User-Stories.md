@@ -46,7 +46,7 @@ graph TD
     ONBOARD -.->|"enterprise"| ADMIN
 ```text
 
-> **Diagram:** Epic dependencies. Onboarding, Documents, and Memory are foundational â€” other epics depend on them.
+> **Diagram:** Epic dependencies. Onboarding, Documents, and Memory are foundational — other epics depend on them.
 
 ## Epic: Onboarding
 
@@ -85,7 +85,7 @@ graph TD
 |----|-------|---------------------|----------|
 | US-R01 | As a user, I want Vaeloom to extract achievements from my documents. | Achievements extracted in XYZ format; source cited | P0 |
 | US-R02 | As a user, I want to maintain a master resume that updates automatically. | New achievements added to master; user approves | P0 |
-| US-R03 | As a user, I want to generate a tailored resume for a specific job posting. | Job URL â†’ tailored resume; ATS-optimized; <30s | P0 |
+| US-R03 | As a user, I want to generate a tailored resume for a specific job posting. | Job URL → tailored resume; ATS-optimized; <30s | P0 |
 | US-R04 | As a user, I want to edit resume content manually. | Inline editing; changes saved; version history | P0 |
 | US-R05 | As a user, I want to export my resume as PDF. | Download in <5s; ATS-readable format | P0 |
 
@@ -151,7 +151,7 @@ graph TD
 
 ## Related Documents
 
-- [`User-Personas.md`](./User-Personas.md) â€” personas referenced in stories
-- [`PRD.md`](./PRD.md) â€” product requirements
-- [`Functional-Requirements.md`](./Functional-Requirements.md) â€” functional requirements (system perspective)
-- [`Feature-Specs/`](./Feature-Specs/) â€” detailed feature specs
+- [`User-Personas.md`](./User-Personas.md) — personas referenced in stories
+- [`PRD.md`](./PRD.md) — product requirements
+- [`Functional-Requirements.md`](./Functional-Requirements.md) — functional requirements (system perspective)
+- [`Feature-Specs/`](./Feature-Specs/) — detailed feature specs

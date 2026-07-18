@@ -7,7 +7,7 @@
 
 ## Overview
 
-The Gmail Digest keeps users on top of time-sensitive email without requiring them to constantly check their inbox. The Gmail Agent runs on a scheduled cadence (default 6 AM daily) plus push-based high-priority classification â€” when an email matches a critical category (interview invitation, offer letter, deadline reminder, application response), the agent classifies it within minutes rather than waiting for the next scheduled pass. Every message is classified into categories (actionable, deadline-related, career-opportunity, receipt/invoice, newsletter, personal, spam), with deadlines and dates extracted and forwarded to the Scheduler Agent for conflict detection.
+The Gmail Digest keeps users on top of time-sensitive email without requiring them to constantly check their inbox. The Gmail Agent runs on a scheduled cadence (default 6 AM daily) plus push-based high-priority classification — when an email matches a critical category (interview invitation, offer letter, deadline reminder, application response), the agent classifies it within minutes rather than waiting for the next scheduled pass. Every message is classified into categories (actionable, deadline-related, career-opportunity, receipt/invoice, newsletter, personal, spam), with deadlines and dates extracted and forwarded to the Scheduler Agent for conflict detection.
 
 The agent never auto-sends or auto-replies to any email. It operates exclusively in read-and-classify mode, with a single action allowed: drafting a reply that the user must review and manually send. Drafts are surfaced alongside the classified email in the daily digest, accessible from the Dashboard and the Schedule screen. The classification output feeds career memory (application outcomes inferred from interview/offer/rejection emails) and schedule events (deadlines extracted from confirmation emails).
 
@@ -50,7 +50,7 @@ The digest itself is a morning summary shown on the Dashboard: number of new cla
 | `agent_actions` | `id`, `workspace_id`, `agent_name`, `action_type`, `output_ref` | Classification audit log |
 | `connectors` | `id`, `workspace_id`, `type`, `last_synced_at`, `status` | Gmail connector state |
 
-No new tables â€” leverages existing memory and schedule models.
+No new tables — leverages existing memory and schedule models.
 
 ## API Endpoints
 
@@ -82,8 +82,8 @@ No new tables â€” leverages existing memory and schedule models.
 | Episodic | Yes | Yes | Classified emails, actions taken |
 | Career | Yes | Yes | Outcomes inferred from interview/offer emails |
 | Preference | Yes | Yes | Digest preferences, classification corrections |
-| Profile | No | No | â€” |
-| Document | No | No | â€” |
+| Profile | No | No | — |
+| Document | No | No | — |
 | Working | Yes | No | Current digest session state |
 
 ## Permission Model
@@ -96,7 +96,7 @@ No new tables â€” leverages existing memory and schedule models.
 | `connector:gmail:read` | Access Gmail API | OAuth grant required |
 | `scheduler:write` | Create schedule events from deadlines | Granted (ephemeral) |
 
-Autonomy level: **Read-only** for email content. **Suggest (drafts only)** for replies â€” drafts are generated but never sent without user action.
+Autonomy level: **Read-only** for email content. **Suggest (drafts only)** for replies — drafts are generated but never sent without user action.
 
 ## Error Scenarios
 
@@ -104,7 +104,7 @@ Autonomy level: **Read-only** for email content. **Suggest (drafts only)** for r
 |----------|-------|-------------|----------|
 | Gmail API rate limit hit | Delayed classification | New emails queued; processed when rate limit resets | Queue automatically drains; user sees "Delayed" indicator |
 | Push notification webhook fails | Missed push classification | Falls back to next scheduled pass; critical email delayed by up to 6h | Retry on backoff; alert operations if persistent |
-| Classification confidence low | Item flagged for review | Shown in digest with "Uncertain â€” please review" badge | User can reclassify; correction logged |
+| Classification confidence low | Item flagged for review | Shown in digest with "Uncertain — please review" badge | User can reclassify; correction logged |
 | Deadlines extracted from wrong email | False positive conflict | Schedule event created with "inferred, low confidence" flag | User can dismiss; dismissal logged as correction |
 | Gmail re-authentication required | Connector disconnected | Digest shows "Re-authenticate Gmail" banner | Connector Agent triggers re-auth before expiry; if missed, user clicks re-auth button |
 
@@ -132,7 +132,7 @@ Autonomy level: **Read-only** for email content. **Suggest (drafts only)** for r
 
 - **Loading:** Digest skeleton with card placeholders per category; "Checking your inbox..." with pulsing Gmail icon
 - **Empty:** "No new classified messages. Your inbox is up to date." Option to run manual check
-- **Error:** Partial digest shown with "Gmail sync delayed â€” last synced [time]" banner; per-message classification failures show "Could not classify" with manual category selector
+- **Error:** Partial digest shown with "Gmail sync delayed — last synced [time]" banner; per-message classification failures show "Could not classify" with manual category selector
 - **Edge cases:** Extremely high email volume day (>200) shows top 50, "and 150 more" with expand link; email from unknown sender with urgent keywords gets "Potential phishing?" warning if link-heavy; re-classified email updates in place with "reclassified" animation; email that was already actioned in another context (e.g., application already submitted) shows "Linked to application" badge
 
 ## Risks
@@ -140,7 +140,7 @@ Autonomy level: **Read-only** for email content. **Suggest (drafts only)** for r
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Critical email classified as non-actionable (false negative) | Medium | High | Push mode for high-priority categories; user can train classifier by re-classifying missed emails |
-| Non-urgent email classified as urgent (false positive) | High | Medium | Digest shows confidence score; frequent false positives degrade user trust â€” tune thresholds conservatively at launch |
+| Non-urgent email classified as urgent (false positive) | High | Medium | Digest shows confidence score; frequent false positives degrade user trust — tune thresholds conservatively at launch |
 | Over-notification erodes trust | Medium | High | Dashboard-only by default; push notifications only for highest-priority categories (interview, offer, deadline within 48h) |
 | Draft reply contains factually incorrect information | Low | Medium | QA Agent validates draft content against memory; user always reviews before sending |
 | Gmail API deprecation or scope restriction | Low | High | Abstract connector layer isolates API specifics; fallback to IMAP if API becomes restricted |
@@ -175,7 +175,7 @@ graph TD
     GA --> DR[Draft Generator]
 ```
 
-> **Diagram:** Gmail Digest architecture â€” Gmail API â†’ Gmail Agent â†’ Classifier (6 categories) â†’ Date extraction â†’ Digest generation.
+> **Diagram:** Gmail Digest architecture — Gmail API → Gmail Agent → Classifier (6 categories) → Date extraction → Digest generation.
 
 ## Components
 
@@ -211,7 +211,7 @@ sequenceDiagram
     participant D as Dashboard
 
     G-->>GA: Push: new email (interview@company.com)
-    GA->>GA: Classify â†’ "career opportunity" (0.94)
+    GA->>GA: Classify --> "career opportunity" (0.94)
     GA->>GA: Extract date: "Mar 15, 2PM PST"
     GA->>SA: New deadline: Interview at Company, Mar 15
     SA-->>GA: Deadine recorded
@@ -221,11 +221,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Fetch:** Gmail API â†’ OAuth-scoped read â†’ raw email (subject + first 500 chars body)
-2. **Classify:** Email text â†’ LLM classifier â†’ category + confidence + extracted dates
-3. **Store:** Classified email â†’ `memory_records` (Episodic type) with source connector ID
-4. **Forward:** Deadlines â†’ `schedule_events` creation; Application outcomes â†’ `applications` status update
-5. **Digest:** Aggregate today's records â†’ Dashboard widget â†’ user review
+1. **Fetch:** Gmail API → OAuth-scoped read → raw email (subject + first 500 chars body)
+2. **Classify:** Email text → LLM classifier → category + confidence + extracted dates
+3. **Store:** Classified email → `memory_records` (Episodic type) with source connector ID
+4. **Forward:** Deadlines → `schedule_events` creation; Application outcomes → `applications` status update
+5. **Digest:** Aggregate today's records → Dashboard widget → user review
 
 ## Non-Functional Requirements
 
@@ -289,9 +289,9 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/gmail/messages/{msg_id}/
 | Practice | Rationale |
 |----------|-----------|
 | Check the Gmail Digest daily at your scheduled time | The morning digest catches critical emails (interviews, offers, deadlines) before your day gets busy |
-| Review low-confidence classifications | Emails flagged with "Uncertain â€” please review" help train the classifier when you correct them |
-| Use the Draft feature for quick replies | Drafts are generated with context from your memory â€” review and send, don't compose from scratch |
-| Connect only career-relevant email accounts | The Gmail Agent processes ALL incoming email â€” connect only the account(s) where career communications arrive |
+| Review low-confidence classifications | Emails flagged with "Uncertain — please review" help train the classifier when you correct them |
+| Use the Draft feature for quick replies | Drafts are generated with context from your memory — review and send, don't compose from scratch |
+| Connect only career-relevant email accounts | The Gmail Agent processes ALL incoming email — connect only the account(s) where career communications arrive |
 
 ## Limitations
 

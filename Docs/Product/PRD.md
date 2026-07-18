@@ -1,8 +1,8 @@
-﻿# Product Requirements Document (PRD) â€” Vaeloom MVP
+﻿# Product Requirements Document (PRD) — Vaeloom MVP
 
 | Metadata         | Value                                                                |
 |------------------|----------------------------------------------------------------------|
-| **Purpose**      | Formal product requirements for Vaeloom MVP â€” scope, users, features, success criteria |
+| **Purpose**      | Formal product requirements for Vaeloom MVP — scope, users, features, success criteria |
 | **Status**       | âœ… Enterprise Ready |
 | **Owner**        | Product Team |
 | **Last Updated** | 2026-07-15 |
@@ -48,7 +48,7 @@ This document is the authoritative product requirements layer above implementati
 ```mermaid
 graph TD
     subgraph Users["Primary Users"]
-        U1["Student â€” CS/Engineering"]
+        U1["Student -- CS/Engineering"]
         U2["Early-Career Professional"]
     end
 
@@ -86,7 +86,7 @@ graph TD
 | FR-003 | Memory Agent extracts entities and relationships into knowledge graph | P0 | Entities queryable; graph visualized in Memory Graph view |
 | FR-004 | Organization Agent proposes file names, folders, deduplication | P0 | Suggestions shown; user approves before apply |
 | FR-005 | Resume Agent maintains master resume from memory | P0 | Resume updates reflect new achievements within 24h of ingestion |
-| FR-006 | ATS Agent scores resume against job descriptions | P1 | Score 0â€“100 with keyword gap analysis |
+| FR-006 | ATS Agent scores resume against job descriptions | P1 | Score 0–100 with keyword gap analysis |
 | FR-007 | Job Search Agent surfaces ranked opportunities | P1 | Shortlist with match rationale |
 | FR-008 | Gmail Agent classifies mail and detects deadlines | P0 | Deadlines appear in Schedule view |
 | FR-009 | Scheduler Agent detects conflicts and reminders | P1 | Calendar integration; conflict alerts |
@@ -112,9 +112,9 @@ graph TD
 
 | Persona | Job-to-be-Done | MVP Feature Mapping |
 |---------|----------------|---------------------|
-| **Alex â€” CS Student** | Keep resume current without manual effort | Resume Agent, Memory Agent |
+| **Alex — CS Student** | Keep resume current without manual effort | Resume Agent, Memory Agent |
 | **Alex** | Never miss internship deadlines | Gmail Agent, Scheduler Agent |
-| **Jordan â€” New Grad** | Find relevant jobs quickly | Job Search Agent, ATS Agent |
+| **Jordan — New Grad** | Find relevant jobs quickly | Job Search Agent, ATS Agent |
 | **Jordan** | Organize scattered project files | Organization Agent, Workspace |
 
 See [User Personas](./User-Personas.md) and [User Stories](./User-Stories.md).
@@ -175,9 +175,9 @@ See [Success Metrics](./Success-Metrics.md).
 
 ## Related Documents
 
-- BRD (Not yet created) â€” Business requirements
-- SRS (Not yet created) â€” Software requirements specification
-- [MVP Spec](../01-Vaeloom-MVP-Spec.md) â€” Detailed MVP specification
-- [Features](./Features.md) â€” Feature catalog
-- [Feature Specs](./Feature-Specs/) â€” Per-feature implementation docs
-- [Roadmap](./Roadmap.md) â€” Product timeline
+- BRD (Not yet created) — Business requirements
+- SRS (Not yet created) — Software requirements specification
+- [MVP Spec](../01-Vaeloom-MVP-Spec.md) — Detailed MVP specification
+- [Features](./Features.md) — Feature catalog
+- [Feature Specs](./Feature-Specs/) — Per-feature implementation docs
+- [Roadmap](./Roadmap.md) — Product timeline

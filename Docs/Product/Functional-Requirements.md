@@ -1,6 +1,6 @@
 ﻿# Functional Requirements
 
-> **Purpose:** Define the functional requirements for Vaeloom organized by module â€” what the system must do, with priority and acceptance criteria
+> **Purpose:** Define the functional requirements for Vaeloom organized by module — what the system must do, with priority and acceptance criteria
 > **Status:** ðŸ†• New
 > **Owner:** Product Team
 > **Version:** 1.0
@@ -10,7 +10,7 @@
 
 ## Overview
 
-Functional requirements define what the Vaeloom system must *do* â€” the behaviors, features, and capabilities it must provide. This document organizes requirements by module, each with a unique ID, priority, and acceptance criteria. It is the system-perspective complement to the user-perspective [`User-Stories.md`](./User-Stories.md).
+Functional requirements define what the Vaeloom system must *do* — the behaviors, features, and capabilities it must provide. This document organizes requirements by module, each with a unique ID, priority, and acceptance criteria. It is the system-perspective complement to the user-perspective [`User-Stories.md`](./User-Stories.md).
 
 ## Goals
 
@@ -81,7 +81,7 @@ graph LR
 | FR-AGT-001 | System must provide 8 specialist agents (MVP) | P0 | All 8 agents functional; routed by Orchestrator |
 | FR-AGT-002 | Agents must operate in suggest-mode by default | P0 | No consequential action without user approval |
 | FR-AGT-003 | Agents must read from and write to the memory system | P0 | Memory reads ground responses; writes logged |
-| FR-AGT-004 | Agents must follow the shared agentic loop (Planâ†’Actâ†’Observeâ†’Reflect) | P0 | Loop steps visible in trace |
+| FR-AGT-004 | Agents must follow the shared agentic loop (Plan→Act→Observe→Reflect) | P0 | Loop steps visible in trace |
 | FR-AGT-005 | System must route requests to the correct agent via Orchestrator | P0 | Routing accuracy >95% on golden dataset |
 | FR-AGT-006 | Agents must have a fallback behavior ("ask, never guess") | P0 | Ambiguous requests trigger clarification |
 | FR-AGT-007 | System must run all agent outputs through a QA gate | P0 | Guardrail checks; blocked outputs flagged |
@@ -92,7 +92,7 @@ graph LR
 |----|-------------|----------|---------------------|
 | FR-RES-001 | System must extract achievements from documents in XYZ format | P0 | Achievements extracted; source cited |
 | FR-RES-002 | System must maintain a master resume | P0 | Single source of truth; updates with new achievements |
-| FR-RES-003 | System must generate tailored resumes for job postings | P0 | Job URL â†’ tailored resume in <30s |
+| FR-RES-003 | System must generate tailored resumes for job postings | P0 | Job URL → tailored resume in <30s |
 | FR-RES-004 | System must score resumes against job postings (ATS) | P0 | Score 0-100; gap analysis |
 | FR-RES-005 | System must identify missing keywords for ATS optimization | P0 | Missing keywords listed with suggestions |
 
@@ -147,12 +147,12 @@ graph LR
 |---|----------|-----------|
 | 1 | Every requirement has a unique ID and testable acceptance criteria | Enables verification and traceability |
 | 2 | Requirements are prioritized (P0/P1/P2) | Guides sequencing and scope decisions |
-| 3 | Every requirement traces to a user story and a test case | Closes the requirementsâ†’implementationâ†’verification loop |
+| 3 | Every requirement traces to a user story and a test case | Closes the requirements→implementation→verification loop |
 
 ## Related Documents
 
-- [`PRD.md`](./PRD.md) â€” product requirements (higher level)
-- [`User-Stories.md`](./User-Stories.md) â€” user-perspective stories
-- [`Non-Functional-Requirements.md`](./Non-Functional-Requirements.md) â€” quality attributes
-- [`Business-Requirements.md`](./Business-Requirements.md) â€” business objectives
-- [`Feature-Specs/`](./Feature-Specs/) â€” detailed feature specifications
+- [`PRD.md`](./PRD.md) — product requirements (higher level)
+- [`User-Stories.md`](./User-Stories.md) — user-perspective stories
+- [`Non-Functional-Requirements.md`](./Non-Functional-Requirements.md) — quality attributes
+- [`Business-Requirements.md`](./Business-Requirements.md) — business objectives
+- [`Feature-Specs/`](./Feature-Specs/) — detailed feature specifications

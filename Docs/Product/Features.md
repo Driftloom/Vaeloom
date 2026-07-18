@@ -1,10 +1,10 @@
-﻿# Features
+# Features
 
 > **Purpose:** Catalogue of all Vaeloom features
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#7-features`](../../Docs/Vaeloom-Complete-Documentation.md#7-features)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#7-features`](../../docs/Vaeloom-Complete-Documentation.md#7-features)
 
 ## Feature Architecture
 
@@ -13,7 +13,7 @@ graph TD
     classDef mvp fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
     classDef v2 fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    subgraph MVP["ðŸ“‹ MVP Features"]
+    subgraph MVP["📋 MVP Features"]
         F1["Auto-Organization<br/>Problem: Manual filing never happens"]
         F2["Master Resume<br/>Problem: Resumes go stale"]
         F3["ATS Scoring<br/>Problem: No machine-readability visibility"]
@@ -28,7 +28,7 @@ graph TD
         F12["Chat with Agents<br/>Problem: No direct line to specialist agents"]
     end
 
-    subgraph V2["â¬œ V2 Features"]
+    subgraph V2["⬜ V2 Features"]
         V1["Learning Roadmap<br/>Problem: Skill gaps not actioned"]
     end
 
@@ -38,7 +38,7 @@ graph TD
     class V1 v2
 ```
 
-> **Diagram:** Features architecture â€” **12 MVP features** (auto-organization through chat with agents) and **1 V2 feature** (learning roadmap). Each feature solves a specific user problem and is backed by a specialist agent.
+> **Diagram:** Features architecture — **12 MVP features** (auto-organization through chat with agents) and **1 V2 feature** (learning roadmap). Each feature solves a specific user problem and is backed by a specialist agent.
 
 ---
 
@@ -46,19 +46,19 @@ graph TD
 
 | Feature | Problem It Solves | MVP? | Primary Agent |
 |---------|------------------|------|---------------|
-| Auto-Organization | Manual filing never happens consistently | âœ… | Organization Agent |
-| Master Resume | Resumes go stale between updates | âœ… | Resume Agent |
-| ATS Scoring | No visibility into machine-readability | âœ… | ATS Agent |
-| Job & Internship Search | Manual, unranked search across platforms | âœ… | Job Search Agent |
-| Tailored Applications | Generic applications underperform | âœ… | Application Agent |
-| Gmail Digest | Time-sensitive mail gets missed | âœ… | Gmail Agent |
-| Deadline & Conflict Detection | Deadlines collide unnoticed | âœ… | Scheduler Agent |
-| Memory Graph Explorer | Users can't see what the system "knows" | âœ… | Memory Agent |
-| In-App Document Viewer | Context-switching to read source files | âœ… | Document Agent |
-| Global Search | Info scattered across memory types | âœ… | Agentic RAG |
-| Dashboard | No single view of overall state | âœ… | Analytics Agent |
-| Learning Roadmap | Skill gaps identified but not actioned | â¬œ V2 | Planning Agent |
-| Chat with Agents | Direct line to specialist agents | âœ… | Orchestrator |
+| Auto-Organization | Manual filing never happens consistently | ✅ | Organization Agent |
+| Master Resume | Resumes go stale between updates | ✅ | Resume Agent |
+| ATS Scoring | No visibility into machine-readability | ✅ | ATS Agent |
+| Job & Internship Search | Manual, unranked search across platforms | ✅ | Job Search Agent |
+| Tailored Applications | Generic applications underperform | ✅ | Application Agent |
+| Gmail Digest | Time-sensitive mail gets missed | ✅ | Gmail Agent |
+| Deadline & Conflict Detection | Deadlines collide unnoticed | ✅ | Scheduler Agent |
+| Memory Graph Explorer | Users can't see what the system "knows" | ✅ | Memory Agent |
+| In-App Document Viewer | Context-switching to read source files | ✅ | Document Agent |
+| Global Search | Info scattered across memory types | ✅ | Agentic RAG |
+| Dashboard | No single view of overall state | ✅ | Analytics Agent |
+| Learning Roadmap | Skill gaps identified but not actioned | ⬜ V2 | Planning Agent |
+| Chat with Agents | Direct line to specialist agents | ✅ | Orchestrator |
 
 ## Common Mistakes
 
@@ -66,8 +66,8 @@ graph TD
 |---------|-------------|
 | Building features in isolation | Features that don't read from and write to the same memory model create a fragmented user experience |
 | Prioritizing visible features over memory improvements | A flashy UI on shallow memory performs worse than a plain UI on deep, compounding memory |
-| Calling too many things "MVP" | Every feature claimed as MVP dilutes focus â€” MVP features should be the critical path to proving the core loop |
-| Adding features without deletion criteria | Feature count grows indefinitely â€” every new feature needs an exit criterion for removal |
+| Calling too many things "MVP" | Every feature claimed as MVP dilutes focus — MVP features should be the critical path to proving the core loop |
+| Adding features without deletion criteria | Feature count grows indefinitely — every new feature needs an exit criterion for removal |
 
 ## Best Practices
 
@@ -76,13 +76,13 @@ graph TD
 | Every feature must teach the memory system | If a feature doesn't produce or consume memory entities, reconsider its priority |
 | Ship one agent at a time | Each agent needs time to build enough memory data before the next agent can use it effectively |
 | Measure feature adoption weekly | Stop or rework features below 10% weekly active usage after two months |
-| Surface features contextually | Don't show all 12 MVP features at once â€” introduce them as relevant moments in the user journey |
+| Surface features contextually | Don't show all 12 MVP features at once — introduce them as relevant moments in the user journey |
 
 ## Overview
 
 Vaeloom's feature set is organized around 12 MVP capabilities and 1 V2 capability, each solving a specific user problem and backed by a dedicated specialist agent. Every feature is designed with the core architectural principle that memory comes first: features are views into the user's persistent knowledge graph, not standalone tools. This document catalogues every feature, its user problem, its associated agent, and its priority level.
 
-Features are not built in isolation â€” each one reads from and writes to the same shared memory model, ensuring that insights from one feature compound the value of all others. The Auto-Organization Agent's file classifications enrich the Resume Agent's skill detection; the Gmail Agent's deadline extraction feeds the Scheduler Agent's conflict detection; the ATS Agent's gap analysis drives the Learning Roadmap Agent's recommendations.
+Features are not built in isolation — each one reads from and writes to the same shared memory model, ensuring that insights from one feature compound the value of all others. The Auto-Organization Agent's file classifications enrich the Resume Agent's skill detection; the Gmail Agent's deadline extraction feeds the Scheduler Agent's conflict detection; the ATS Agent's gap analysis drives the Learning Roadmap Agent's recommendations.
 
 ## Goals
 
@@ -156,23 +156,23 @@ curl -s https://api.Vaeloom.dev/v1/features/check \
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Feature count grows without deletion criteria | High | Medium | Every new feature must have an exit criterion; annual feature audit removes unused features |
-| Features built in isolation weaken memory cohesion | Medium | High | Architecture review gates every feature PR â€” must demonstrate memory read/write impact |
+| Features built in isolation weaken memory cohesion | Medium | High | Architecture review gates every feature PR — must demonstrate memory read/write impact |
 | Too many features overwhelm new users | High | Medium | Contextual feature introduction based on user journey stage; onboarding checklist limits to 3 features first session |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Feature-level permissions | Each agent (feature) operates with its own permission scope â€” a memory agent cannot trigger an application submission |
-| Read-only by default | All features that read user data start in read-only mode â€” write access is separately gated by user consent |
+| Feature-level permissions | Each agent (feature) operates with its own permission scope — a memory agent cannot trigger an application submission |
+| Read-only by default | All features that read user data start in read-only mode — write access is separately gated by user consent |
 | Cross-feature data access | Memory entities are visible across features, but actions (resume generation, job application) require explicit per-action consent |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Feature initialization | Heavy features (search, memory graph) should lazy-load â€” don't initialize all 12 agents on page load |
-| Background sync | Connector syncs should be queued and throttled per user â€” one concurrent sync per user source |
+| Feature initialization | Heavy features (search, memory graph) should lazy-load — don't initialize all 12 agents on page load |
+| Background sync | Connector syncs should be queued and throttled per user — one concurrent sync per user source |
 | Memory queries | Feature-level memory reads must be cached with TTL to avoid redundant LLM calls for the same entity |
 
 ## Related Documents
@@ -182,4 +182,4 @@ curl -s https://api.Vaeloom.dev/v1/features/check \
 - [Product Strategy.md](./Product-Strategy.md)
 - [Goals.md](./Goals.md)
 - [Success Metrics.md](./Success-Metrics.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#7-features`](../../Docs/Vaeloom-Complete-Documentation.md#7-features)
+- [`/docs/Vaeloom-Complete-Documentation.md#7-features`](../../docs/Vaeloom-Complete-Documentation.md#7-features)

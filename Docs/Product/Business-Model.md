@@ -1,7 +1,7 @@
 ﻿# Business Model
 
 > **Purpose:** Define the business model and monetization strategy for Vaeloom
-> **Status:** ðŸ†• New â€” placeholder for MVP learnings
+> **Status:** ðŸ†• New — placeholder for MVP learnings
 
 ## Business Model Architecture
 
@@ -31,7 +31,7 @@ graph TD
 
     subgraph Economics["ðŸ“Š Unit Economics (Est.)"]
         U1["COGS/user/mo: $0.50-$2.00<br/>(AI compute + storage)"]
-        U2["Freeâ†’Paid conversion: TBD"]
+        U2["Free-->Paid conversion: TBD"]
         U3["ARPU: TBD \| CAC: TBD"]
     end
 
@@ -43,7 +43,7 @@ graph TD
     class U1,U2,U3 economics
 ```
 
-> **Diagram:** Business model â€” **individual tier** (free/pro/lifetime), **enterprise tier** (university/company per-seat), **pricing principles** (student-accessible, value-based, data-driven), **unit economics** with MVP estimates.
+> **Diagram:** Business model — **individual tier** (free/pro/lifetime), **enterprise tier** (university/company per-seat), **pricing principles** (student-accessible, value-based, data-driven), **unit economics** with MVP estimates.
 
 ---
 
@@ -76,8 +76,8 @@ Vaeloom uses a **freemium individual tier + enterprise seat licensing** model.
 
 | Metric | MVP Estimate |
 |--------|-------------|
-| COGS per active user/month | $0.50â€“2.00 (AI compute + storage) |
-| Free-to-paid conversion | Unknown â€” will be measured |
+| COGS per active user/month | $0.50–2.00 (AI compute + storage) |
+| Free-to-paid conversion | Unknown — will be measured |
 | Average revenue per user (ARPU) | TBD |
 | Customer acquisition cost (CAC) | TBD |
 
@@ -85,9 +85,9 @@ Vaeloom uses a **freemium individual tier + enterprise seat licensing** model.
 
 | Mistake | Consequence |
 |---------|-------------|
-| Setting prices before understanding willingness to pay | Free tier too generous or Pro tier priced out of reach â€” no conversion path |
-| Overcomplicating the free tier | Crippled free tier drives users away before they see value â€” hurts word-of-mouth growth |
-| Ignoring unit economics early | COGS-per-user grows faster than revenue as users scale â€” margin erosion |
+| Setting prices before understanding willingness to pay | Free tier too generous or Pro tier priced out of reach — no conversion path |
+| Overcomplicating the free tier | Crippled free tier drives users away before they see value — hurts word-of-mouth growth |
+| Ignoring unit economics early | COGS-per-user grows faster than revenue as users scale — margin erosion |
 | Enterprise pricing based on guesses | Enterprise tiers set before MVP data leads to renegotiation and complexity |
 
 ## Best Practices
@@ -103,22 +103,22 @@ Vaeloom uses a **freemium individual tier + enterprise seat licensing** model.
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Free tier data isolation | Free users must have the same data-at-rest encryption as paid tiers â€” pricing is not a security tier |
+| Free tier data isolation | Free users must have the same data-at-rest encryption as paid tiers — pricing is not a security tier |
 | Enterprise billing data | Payment methods and billing history must be tenant-isolated with the same rigor as memory data |
-| Trial-to-paid transition | Ensure no data access leak during trial expiry â€” grace periods, not hard cuts |
+| Trial-to-paid transition | Ensure no data access leak during trial expiry — grace periods, not hard cuts |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Billing at scale | Invoice generation and payment processing must not block API requests â€” use async billing queue |
+| Billing at scale | Invoice generation and payment processing must not block API requests — use async billing queue |
 | Tier enforcement | Feature-gating checks must complete in <5ms to avoid perceptible latency on Pro-to-Free downgrade paths |
 
 ## Overview
 
 Vaeloom's business model is built on a freemium individual tier supplemented by enterprise seat licensing, designed to maximize adoption among students while capturing value from power users and institutional clients. The model is guided by three core principles: student-first (free tier must be genuinely useful, not a teaser), value-based (price on outcomes like applications submitted and interviews secured, not feature count), and data-driven (all tier boundaries validated through MVP usage data before finalization).
 
-The unit economics target a COGS-per-user range of $0.50â€“$2.00 per month driven by AI compute and storage costs, with a free-to-paid conversion rate that will be empirically measured during the MVP phase. The model deliberately avoids usage-based pricing complexity in the enterprise tier, opting for simple per-seat annual pricing that enterprise procurement teams favor.
+The unit economics target a COGS-per-user range of $0.50–$2.00 per month driven by AI compute and storage costs, with a free-to-paid conversion rate that will be empirically measured during the MVP phase. The model deliberately avoids usage-based pricing complexity in the enterprise tier, opting for simple per-seat annual pricing that enterprise procurement teams favor.
 
 Revenue diversification comes through three channels: individual subscriptions (Pro at $12/month and Lifetime at $299), university per-seat licensing with career office dashboards, and company per-seat licensing with internal mobility features. Each channel shares the same underlying infrastructure but offers differentiated feature sets and support SLAs.
 
@@ -143,7 +143,7 @@ Revenue diversification comes through three channels: individual subscriptions (
 
 1. User hits a Free-tier limit (document cap, agent restriction) in-product
 2. Upgrade CTA appears with comparison table showing Pro benefits
-3. User clicks "Upgrade to Pro" â€” redirected to Stripe checkout
+3. User clicks "Upgrade to Pro" — redirected to Stripe checkout
 4. Stripe handles payment and sends webhook to Entitlement Service
 5. Entitlement Service updates user's tier cache and broadcasts change
 6. User's next API request reflects new tier within <5ms cache refresh
@@ -154,7 +154,7 @@ Revenue diversification comes through three channels: individual subscriptions (
 1. Institution admin contacts sales or uses self-service signup
 2. Admin sets seat count, chooses annual commitment period
 3. Entitlement Service provisions tenant-isolated workspace pool
-4. Admin invites users via SSO (SAML/OIDC) â€” no individual signup
+4. Admin invites users via SSO (SAML/OIDC) — no individual signup
 5. Each user's memory is tenant-scoped and inaccessible to the institution
 6. Monthly billing based on confirmed seat count; overages invoiced quarterly
 7. Admin dashboard shows seat utilization, adoption metrics (aggregate only)
@@ -224,7 +224,7 @@ curl -s https://api.Vaeloom.dev/v1/admin/entitlements \
 |----------|-----------|------------|----------|
 | Stripe webhook delivery failure | Missing webhook for 5+ minutes after checkout | Queue webhook for retry (exponential backoff, max 5 retries) | Manual reconciliation job runs hourly to catch missed events |
 | Entitlement cache corruption | Tier mismatch between cache and Stripe | Cache TTL of 5 minutes; comparison check on every 10th request | Auto-rebuild cache from Stripe subscription state |
-| Billing API timeout during checkout | Stripe checkout fails to load | Graceful degradation â€” show "Payment temporarily unavailable" | Retry with alternative payment method; log to monitoring |
+| Billing API timeout during checkout | Stripe checkout fails to load | Graceful degradation — show "Payment temporarily unavailable" | Retry with alternative payment method; log to monitoring |
 | Free tier limit exceeded without upgrade path | API returns 403 with limit exceeded code | Graceful 403 with upgrade CTA and 24-hour grace period | Countdown timer on dashboard; extensions available via support |
 
 ## Monitoring

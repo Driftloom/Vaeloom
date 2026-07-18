@@ -7,7 +7,7 @@
 
 ## Overview
 
-The Master Resume is the first "wow" feature of Vaeloom â€” a living resume that assembles itself from everything the system knows about the user. When memory changes (a new project is extracted from a file, a skill is inferred from code, a certificate is parsed from an email), the Resume Agent checks whether the master resume is missing anything. If complete, it silently updates. If there's a gap â€” incomplete dates, missing context, an achievement without a source â€” it asks the user a specific question rather than guessing. The result is a resume that is always current, always traceable to original sources, and never contains fabricated information.
+The Master Resume is the first "wow" feature of Vaeloom — a living resume that assembles itself from everything the system knows about the user. When memory changes (a new project is extracted from a file, a skill is inferred from code, a certificate is parsed from an email), the Resume Agent checks whether the master resume is missing anything. If complete, it silently updates. If there's a gap — incomplete dates, missing context, an achievement without a source — it asks the user a specific question rather than guessing. The result is a resume that is always current, always traceable to original sources, and never contains fabricated information.
 
 The resume is not a single document. It's a structured JSON representation (the "master") from which any number of variants can be generated: a one-page PDF for a specific job, a two-page academic CV, a plain-text version for application portals, or a LinkedIn-format summary. Each variant is generated on demand from the same underlying master, with the target role's job description and the ATS Agent's gap analysis influencing which sections get emphasized, abbreviated, or reordered. Variants are cached and versioned for audit purposes.
 
@@ -19,7 +19,7 @@ This feature is the proof point for Vaeloom's core thesis: if memory is accurate
 - Achieve <5 questions per month for ongoing gap-filling after initial setup
 - Support 5+ variant types (standard, ATS-optimized, academic, short-form, LinkedIn)
 - Enable full traceability from every resume entry back to its source memory record
-- Never fabricate a skill, date, or achievement â€” always ask when confidence <80%
+- Never fabricate a skill, date, or achievement — always ask when confidence <80%
 
 ## User Story
 
@@ -150,16 +150,16 @@ Autonomy level: **Suggest** for auto-updates (proposes changes, doesn't apply si
 ## UI States
 
 - **Loading:** Skeleton layout matching resume structure; section placeholders pulse
-- **Empty:** "Your resume is empty â€” Vaeloom is analyzing your files. This usually takes a few minutes." Progress indicator for first-time ingestion
+- **Empty:** "Your resume is empty — Vaeloom is analyzing your files. This usually takes a few minutes." Progress indicator for first-time ingestion
 - **Error:** Inline error on failed variant generation; retry button; fallback to last known good version
-- **Edge cases:** Conflicting date ranges (e.g., two jobs overlapping) are shown with a conflict badge and explanation; entries with zero source entities show "manually added â€” no source document"; deleted entries show in version history as strikethrough diff
+- **Edge cases:** Conflicting date ranges (e.g., two jobs overlapping) are shown with a conflict badge and explanation; entries with zero source entities show "manually added — no source document"; deleted entries show in version history as strikethrough diff
 
 ## Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Resume contains plausible but fabricated content | Low | Critical | QA Agent checks every line against source memories; below-threshold content is flagged |
-| User relies on resume without verifying | Medium | High | Prominent "AI-generated â€” verify before submitting" banner on every export |
+| User relies on resume without verifying | Medium | High | Prominent "AI-generated — verify before submitting" banner on every export |
 | Stale memory causes resume to miss recent achievements | Medium | Medium | Gap-detection pass runs after every memory write; user notified of gaps within 5 minutes |
 | Variant generation cost at scale | High | Medium | Cache variants by target role; debounce re-generation when only minor memory changes occur |
 | User prefers manual control over auto-generated content | Medium | Low | Full manual editing available; auto-generated entries are suggestions that user can accept/reject individually |
@@ -191,7 +191,7 @@ graph TD
     QA --> R2[Validated Resume]
 ```
 
-> **Diagram:** Master Resume architecture â€” memory graph â†’ assembler â†’ gap detection â†’ variant generation â†’ QA validation.
+> **Diagram:** Master Resume architecture — memory graph → assembler → gap detection → variant generation → QA validation.
 
 ## Components
 
@@ -208,14 +208,14 @@ graph TD
 
 ### Resume Assembly Workflow
 
-1. User opens Resume screen â€” trigger master assembly
+1. User opens Resume screen — trigger master assembly
 2. Resume Agent queries all memory types: Profile (education, skills), Document (projects, experience), Career (employment history), Episodic (achievements)
 3. Assembly engine structures entries into sections (education, experience, projects, skills, certifications)
 4. Every entry linked to source entity IDs for provenance
 5. Gap Detector identifies missing fields (incomplete dates, missing context, unsourced achievements)
 6. Gap-fill questions generated as inline prompts
 7. Resume displayed with source-linked entries and gap prompts
-8. User edits trigger memory writes â€” edits are permanent learning, not one-time fixes
+8. User edits trigger memory writes — edits are permanent learning, not one-time fixes
 
 ## Sequence Diagrams
 
@@ -242,11 +242,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Assembly:** Memory query â†’ entities grouped by type (education, skill, project, certification, experience)
-2. **Structuring:** Entities â†’ sections â†’ entries with date ranges, descriptions, source links
-3. **Gap Detection:** Each entry checked for completeness â†’ missing fields â†’ gap questions
-4. **Generation:** User requests variant â†’ master + target JD + ATS analysis â†’ tailored resume
-5. **Export:** Resume JSON â†’ PDF template â†’ rendered PDF â†’ user download
+1. **Assembly:** Memory query → entities grouped by type (education, skill, project, certification, experience)
+2. **Structuring:** Entities → sections → entries with date ranges, descriptions, source links
+3. **Gap Detection:** Each entry checked for completeness → missing fields → gap questions
+4. **Generation:** User requests variant → master + target JD + ATS analysis → tailored resume
+5. **Export:** Resume JSON → PDF template → rendered PDF → user download
 
 ## Non-Functional Requirements
 
@@ -315,9 +315,9 @@ curl -X GET https://api.Vaeloom.dev/v1/workspaces/{id}/resume/export?format=pdf 
 
 | Practice | Rationale |
 |----------|-----------|
-| Review the first master resume thoroughly | The first assembly sets the baseline â€” verify every entry, fill all gaps, and correct errors to train the system |
+| Review the first master resume thoroughly | The first assembly sets the baseline — verify every entry, fill all gaps, and correct errors to train the system |
 | Fill gap prompts instead of editing entries directly | Gap prompts teach the system what information was missing; direct edits fix the resume but don't fill the memory gap |
-| Generate ATS-optimized variant before submitting | The ATS-optimized variant rearranges content for machine readability â€” always use this for online applications |
+| Generate ATS-optimized variant before submitting | The ATS-optimized variant rearranges content for machine readability — always use this for online applications |
 | Check version history before major edits | If you need to revert after editing, version history preserves the last 50 states |
 
 ## Limitations
@@ -334,7 +334,7 @@ curl -X GET https://api.Vaeloom.dev/v1/workspaces/{id}/resume/export?format=pdf 
 |-------------|----------|------------|----------|
 | Resume template marketplace | Low | High | V3 (2028) |
 | Multi-language resume variants | Low | High | Enterprise (2028) |
-| LinkedIn profile sync (read â†’ master â†’ write back) | Medium | Medium | V2 (2027 H2) |
+| LinkedIn profile sync (read → master → write back) | Medium | Medium | V2 (2027 H2) |
 | Portfolio-generator integration (link projects to resume entries) | Medium | Medium | v1.5 (2027 H1) |
 
 ## Related Documents
