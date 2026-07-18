@@ -1,0 +1,145 @@
+groups:
+  - name: vaeloom-service-health
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Service {{ $labels.service }} is down"
+          description: "{{ $labels.service }} has been unreachable for more than 5 minutes on {{ $labels.instance }}."
+          runbook_url: "https://vaeloom.dev/runbooks/service-down"
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{status=~"5.."}[5m])
+            /
+            rate(http_requests_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.service }} (threshold: 5%)."
+          runbook_url: "https://vaeloom.dev/runbooks/high-error-rate"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High p99 latency on {{ $labels.service }}"
+          description: "p99 latency is {{ $value }}s on {{ $labels.service }} (threshold: 5s)."
+          runbook_url: "https://vaeloom.dev/runbooks/high-latency"
+
+      - alert: HighP95Latency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High p95 latency on {{ $labels.service }}"
+          description: "p95 latency is {{ $value }}s on {{ $labels.service }} (threshold: 2s)."
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk space is {{ $value | humanizePercentage }} available on {{ $labels.device }} (threshold: 10%)."
+          runbook_url: "https://vaeloom.dev/runbooks/low-disk-space"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }} (threshold: 90%)."
+
+      - alert: CriticalMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Critical memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }} (threshold: 95%)."
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% for more than 10 minutes."
+
+      - alert: HighConnectionCount
+        expr: pg_stat_activity_count > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High database connection count"
+          description: "Database connection count is {{ $value }} (threshold: 100)."
+
+      - alert: TlsCertificateExpiring
+        expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 14
+        for: 1h
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "TLS certificate expiring soon on {{ $labels.instance }}"
+          description: "TLS certificate expires in {{ $value | humanizeDuration }}."
+
+      - alert: QueueBacklogGrowing
+        expr: rate(queue_depth[10m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Queue backlog growing on {{ $labels.service }}"
+          description: "Queue depth is increasing on {{ $labels.service }}."
+
+  - name: vaeloom-business-alerts
+    interval: 60s
+    rules:
+      - alert: HighFailedJobRate
+        expr: rate(job_failures_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High failed job rate"
+          description: "Job failure rate is {{ $value }}/s (threshold: 0.1/s)."
+
+      - alert: ApiRateLimitExceeded
+        expr: rate(rate_limit_exceeded_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Rate limit exceeded frequently"
+          description: "Rate limit exceeded {{ $value }} times in the last 5 minutes."
