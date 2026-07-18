@@ -139,7 +139,7 @@ The mandate from the project owner was clear: *work inside the existing `Docs/` 
 | [`Documents/README.md`](../Documents/README.md) (entire tree) | **DEPRECATED** — marked via new `../Documents/README.md` | Massive duplication (28 shared filenames, 4× build prompts); `Docs/` is canonical |
 | [`Vaeloom-Enterprise-Paper.md`](./Vaeloom-Enterprise-Paper.md) | **SUPERSEDED** banner added | Duplicate of `06-Vaeloom-Enterprise-Paper.md` (v2) |
 | [`05-Vaeloom-MVP-Spec.md`](./05-Vaeloom-MVP-Spec.md) | **SUPERSEDED** banner added | Alternative-formatting draft; `01-Vaeloom-MVP-Spec.md` is canonical |
-| `.vale.ini` `Meridian` references | **Fixed** → `Vaeloom` | Stale product name was breaking docs CI |
+| `.vale.ini` `Vaeloom` references | **Fixed** → `Vaeloom` | Stale product name was breaking docs CI |
 
 No files were deleted — all deprecations are reversible (banners + pointer READMEs).
 
@@ -235,7 +235,7 @@ xychart-beta
 | Every new doc has canonical header | Grep for `> **Purpose:**` + `> **Version:**` | ✅ All 33 |
 | Total corpus count | `find Docs -name "*.md" \| wc -l` | ✅ 253 (up from 218) |
 | `Documents/` deprecated | `Documents/README.md` exists with DEPRECATED notice | ✅ |
-| `.vale.ini` Meridian bug fixed | Grep for `Meridian` returns 0 | ✅ |
+| `.vale.ini` Vaeloom bug fixed | Grep for `Vaeloom` returns 0 | ✅ |
 | New docs indexed in master README | Coverage map + What's New section | ✅ |
 
 ---

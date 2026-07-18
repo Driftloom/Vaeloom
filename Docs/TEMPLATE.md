@@ -1,11 +1,11 @@
 ﻿# Enterprise Documentation Template
 
-> **Purpose:** This template defines the full 25-section enterprise quality standard for all Vaeloom documentation â€” target: 100/100
-> **Status:** ðŸ†• Template â€” apply to all docs
+> **Purpose:** This template defines the full 25-section enterprise quality standard for all Vaeloom documentation — target: 100/100
+> **Status:** ðŸ†• Template — apply to all docs
 > **Owner:** Architecture Team
 > **Last Updated:** 2026-07-13
 
-Every document in the Vaeloom documentation system MUST follow this structure. Apply sections **where applicable** â€” not every section fits every doc, but every applicable section must be present for 100/100 quality.
+Every document in the Vaeloom documentation system MUST follow this structure. Apply sections **where applicable** — not every section fits every doc, but every applicable section must be present for 100/100 quality.
 
 ---
 
@@ -45,7 +45,7 @@ when a document supersedes or mirrors another.
 
 Vaeloom is a second brain for education and career...
 
-This document covers [topic] â€” including [scope].
+This document covers [topic] — including [scope].
 
 Readers should understand [prerequisites] before reading.
 
@@ -371,17 +371,17 @@ curl -X GET https://api.Vaeloom.dev/v1/resource \
 
 | Dimension | Weight | Score (1-10) | Criteria |
 |-----------|--------|--------------|----------|
-| Section Completeness | 15% | â€” | All applicable sections present |
-| Clarity & Readability | 10% | â€” | Clear language, scannable |
-| Technical Accuracy | 15% | â€” | Facts, diagrams match system |
-| Architecture Diagrams | 10% | â€” | Mermaid diagrams with captions |
-| Security Coverage | 10% | â€” | Security table with mitigations |
-| Performance/Scalability | 10% | â€” | Budgets, limits, strategies |
-| Error Handling/Monitoring | 5% | â€” | Error scenarios, alerting |
-| Practical Examples | 10% | â€” | Code examples, API calls |
-| Cross-References | 5% | â€” | 3+ related docs |
-| Risks, Limitations, Future | 5% | â€” | Honest assessment of gaps |
-| Consistency & Formatting | 5% | â€” | Tables align, paths resolve |
+| Section Completeness | 15% | — | All applicable sections present |
+| Clarity & Readability | 10% | — | Clear language, scannable |
+| Technical Accuracy | 15% | — | Facts, diagrams match system |
+| Architecture Diagrams | 10% | — | Mermaid diagrams with captions |
+| Security Coverage | 10% | — | Security table with mitigations |
+| Performance/Scalability | 10% | — | Budgets, limits, strategies |
+| Error Handling/Monitoring | 5% | — | Error scenarios, alerting |
+| Practical Examples | 10% | — | Code examples, API calls |
+| Cross-References | 5% | — | 3+ related docs |
+| Risks, Limitations, Future | 5% | — | Honest assessment of gaps |
+| Consistency & Formatting | 5% | — | Tables align, paths resolve |
 | **Total** | **100%** | **/10** | Multiply by 10 for 0-100 |
 
 ---
@@ -416,8 +416,8 @@ curl -X GET https://api.Vaeloom.dev/v1/resource \
 
 ## Related Documents
 
-- [`README.md`](./README.md) â€” Documentation master index
-- [`AUDIT-REPORT.md`](./AUDIT-REPORT.md) â€” Quality audit report
-- [`.markdownlint.json`](../.markdownlint.json) â€” Linting rules
-- [`.github/workflows/docs-validate.yml`](../.github/workflows/docs-validate.yml) â€” CI validation workflow
-- [`Architecture/System-Design.md`](./Architecture/System-Design.md) â€” Full system architecture
+- [`README.md`](./README.md) — Documentation master index
+- [`AUDIT-REPORT.md`](./AUDIT-REPORT.md) — Quality audit report
+- [`.markdownlint.json`](../.markdownlint.json) — Linting rules
+- [`.github/workflows/docs-validate.yml`](../.github/workflows/docs-validate.yml) — CI validation workflow
+- [`Architecture/System-Design.md`](./Architecture/System-Design.md) — Full system architecture

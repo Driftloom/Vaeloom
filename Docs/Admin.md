@@ -1,6 +1,6 @@
 ﻿# Admin Documentation
 
-> **Purpose:** Define the Vaeloom Admin Panel â€” capabilities, architecture, security, and operational workflows for platform administrators
+> **Purpose:** Define the Vaeloom Admin Panel — capabilities, architecture, security, and operational workflows for platform administrators
 > **Status:** ðŸ†• New
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
@@ -11,7 +11,7 @@
 
 The Vaeloom Admin Panel is the central command center for platform administrators to manage users, workspaces, agents, billing, and system health. It provides a unified interface for day-to-day operations, compliance, and incident response across all tenants.
 
-This document covers the full admin panel â€” including user management, workspace administration, agent permissions, audit log viewer, system health monitoring, usage/billing, support tools, and content moderation. It defines the architecture, component responsibilities, security posture, and operational workflows.
+This document covers the full admin panel — including user management, workspace administration, agent permissions, audit log viewer, system health monitoring, usage/billing, support tools, and content moderation. It defines the architecture, component responsibilities, security posture, and operational workflows.
 
 **Audience:** Platform administrators, support engineers, product managers, and engineering teams building/administering the admin panel.
 
@@ -22,8 +22,8 @@ The admin panel is critical because it is the single point of operational contro
 ## Goals
 
 - Define the admin panel architecture, component hierarchy, and data flow for engineering implementation
-- Establish security standards for admin operations â€” MFA enforcement, IP allowlisting, audited actions, and separation of duties
-- Provide operational runbooks for common admin tasks â€” user suspension, workspace data export, impersonation, incident response
+- Establish security standards for admin operations — MFA enforcement, IP allowlisting, audited actions, and separation of duties
+- Provide operational runbooks for common admin tasks — user suspension, workspace data export, impersonation, incident response
 - Document performance budgets and scalability limits for admin operations at platform scale
 - Enable compliance through comprehensive audit logging, access reviews, and data retention policies
 
@@ -50,7 +50,7 @@ The admin panel is critical because it is the single point of operational contro
 - Agent configuration UI (covered in Agent Workflow documentation)
 - Infrastructure-level monitoring dashboards (covered in DevOps documentation)
 - Tenant provisioning automation (covered in DevOps/Deployment documentation)
-- Custom role creation (MVP limitation â€” see Limitations section)
+- Custom role creation (MVP limitation — see Limitations section)
 
 ---
 
@@ -64,7 +64,7 @@ graph TD
     classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
     classDef infra fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Frontend["ðŸ–¥ï¸ Admin Panel Frontend"]
+    subgraph Frontend["ðŸ-¥ï¸ Admin Panel Frontend"]
         ADM["Admin Dashboard<br/>React + Tailwind"]
         AM["User Mgmt<br/>Module"]
         AW["Workspace Admin<br/>Module"]
@@ -120,7 +120,7 @@ graph TD
     class EB infra
 ```text
 
-> **Diagram:** Admin Panel architecture flows through 5 layers â€” **Frontend** (8 modules) â†’ **Admin API Gateway** (JWT+MFA+IP filtering) â†’ **Admin Services** (8 domain services) â†’ **Data Layer** (PostgreSQL, TimescaleDB, Object Store, Redis Cache) â†’ **Event Bus** for async audit and moderation events. Each service is scoped to a single domain and independently deployable.
+> **Diagram:** Admin Panel architecture flows through 5 layers — **Frontend** (8 modules) → **Admin API Gateway** (JWT+MFA+IP filtering) → **Admin Services** (8 domain services) → **Data Layer** (PostgreSQL, TimescaleDB, Object Store, Redis Cache) → **Event Bus** for async audit and moderation events. Each service is scoped to a single domain and independently deployable.
 
 ---
 
@@ -148,17 +148,17 @@ The User Management module provides full CRUD operations for platform users.
 
 | Operation | Description | Audit Logged | Requires |
 |-----------|-------------|--------------|----------|
-| List users | Paginated list with search, filters (status, role, plan, date range) | â€” | Admin+ role |
-| Search users | Full-text search by name, email, user ID | â€” | Admin+ role |
-| Filter users | By status (active/suspended/deleted), role, workspace, plan tier, MFA status | â€” | Admin+ role |
+| List users | Paginated list with search, filters (status, role, plan, date range) | — | Admin+ role |
+| Search users | Full-text search by name, email, user ID | — | Admin+ role |
+| Filter users | By status (active/suspended/deleted), role, workspace, plan tier, MFA status | — | Admin+ role |
 | Create user | Create user with email, name, initial role, workspace assignment | âœ… | Admin+ role |
-| View user details | Profile, roles, workspaces, agent permissions, session history, last login | â€” | Admin+ role |
+| View user details | Profile, roles, workspaces, agent permissions, session history, last login | — | Admin+ role |
 | Update user | Change name, email, role, workspace assignment | âœ… | Admin+ role |
 | Suspend user | Immediate suspension with optional reason, auto-notification to workspace owners | âœ… | Admin+ role |
 | Delete user | Soft delete with configurable grace period (default 30 days), hard delete after grace | âœ… | Owner only |
 | Assign role | Set role at workspace or tenant scope with optional expiry date | âœ… | Admin+ role |
 | Enforce MFA | Require MFA for specific users or all users in a workspace | âœ… | Admin+ role |
-| View login history | IP, device, timestamp, success/failure for last 90 days | â€” | Admin+ role |
+| View login history | IP, device, timestamp, success/failure for last 90 days | — | Admin+ role |
 
 ### User List API
 
@@ -197,13 +197,13 @@ The Workspace Admin module provides oversight and management across all tenant w
 
 | Capability | Description | Audit Logged | Requires |
 |------------|-------------|--------------|----------|
-| List workspaces | Paginated, searchable by name, ID, owner, plan tier | â€” | Admin+ role |
-| View workspace details | Members, storage used, agent count, connector status, billing info | â€” | Admin+ role |
+| List workspaces | Paginated, searchable by name, ID, owner, plan tier | — | Admin+ role |
+| View workspace details | Members, storage used, agent count, connector status, billing info | — | Admin+ role |
 | Update workspace settings | Name, description, default agent config | âœ… | Admin+ role |
 | Manage storage quotas | Set per-workspace storage limits, view usage breakdown | âœ… | Admin+ role |
 | Manage members | Add/remove members, change member roles within workspace | âœ… | Admin+ role |
 | Export workspace data | Full export (documents, agents, config) as ZIP to object store | âœ… | Admin+ role |
-| Delete workspace | Soft delete â†’ 30-day grace â†’ permanent removal | âœ… | Owner only |
+| Delete workspace | Soft delete → 30-day grace → permanent removal | âœ… | Owner only |
 | Transfer ownership | Reassign workspace ownership to another admin user | âœ… | Owner only |
 
 ### Storage Quota Management
@@ -231,13 +231,13 @@ The Agent Permissions module allows administrators to override agent-level permi
 
 | Capability | Description | Audit Logged | Requires |
 |------------|-------------|--------------|----------|
-| View agent permissions | See all agents and their current permission scope | â€” | Admin+ role |
+| View agent permissions | See all agents and their current permission scope | — | Admin+ role |
 | Override agent permission | Grant/restrict specific capabilities (memory read, connector access, tool use) | âœ… | Admin+ role |
 | Set workspace-level defaults | Default agent permissions for all users in a workspace | âœ… | Admin+ role |
 | Set user-level overrides | Override agent permissions for a specific user | âœ… | Admin+ role |
-| Audit agent activity | View all actions taken by an agent with full I/O context | â€” | Admin+ role |
+| Audit agent activity | View all actions taken by an agent with full I/O context | — | Admin+ role |
 | Revoke agent access | Immediately disable a specific agent across all scopes | âœ… | Admin+ role |
-| View permission conflicts | Highlight where user-level override contradicts workspace default | â€” | Admin+ role |
+| View permission conflicts | Highlight where user-level override contradicts workspace default | — | Admin+ role |
 
 ### Agent Permission Override Schema
 
@@ -299,7 +299,7 @@ The Audit Log Viewer provides a searchable, filterable interface for investigati
     "id": "usr_target99"
   },
   "details": {
-    "reason": "Violation of terms of service â€” spam",
+    "reason": "Violation of terms of service — spam",
     "notified_workspace_owners": true
   },
   "previous_state": { "status": "active" },
@@ -339,10 +339,10 @@ The System Health dashboard provides real-time and historical visibility into th
 | Agent Runtime | ðŸŸ¡ Degraded | 99.80% | 350ms | 2026-07-13* |
 | LLM Gateway | ðŸŸ¢ Healthy | 99.97% | 2100ms | 2026-07-09 |
 | Audit Service | ðŸŸ¢ Healthy | 99.99% | 30ms | 2026-06-28 |
-| Billing Service | ðŸŸ¢ Healthy | 100.00% | 60ms | â€” |
+| Billing Service | ðŸŸ¢ Healthy | 100.00% | 60ms | — |
 | Database (Primary) | ðŸŸ¢ Healthy | 99.99% | 5ms | 2026-07-07 |
 
-\* Active incident â€” see Incident #INC-2026-0713
+\* Active incident — see Incident #INC-2026-0713
 
 ### Key Metrics
 
@@ -350,7 +350,7 @@ The System Health dashboard provides real-time and historical visibility into th
 |--------|---------|--------|-----------------|
 | Error rate (all services) | 0.12% | 0.08% | >1% for 5 min |
 | p99 API latency | 320ms | 280ms | >1000ms |
-| Active sessions | 4,231 | 3,987 | â€” |
+| Active sessions | 4,231 | 3,987 | — |
 | Queued audit events | 142 | 89 | >10,000 |
 | Queue consumer lag | 8s | 3s | >60s |
 | Database connections | 143/250 | 138/250 | >200 |
@@ -363,11 +363,11 @@ The Usage & Billing module provides financial and consumption oversight for all 
 
 | Capability | Description | Audit Logged | Requires |
 |------------|-------------|--------------|----------|
-| Usage reports | Per-workspace usage by agent actions, storage, API calls, LLM tokens | â€” | Admin+ role |
+| Usage reports | Per-workspace usage by agent actions, storage, API calls, LLM tokens | — | Admin+ role |
 | Invoice management | View/download invoices, payment history, payment method details | âœ… | Admin+ role |
 | Plan changes | Upgrade/downgrade workspace plans, override plan tier | âœ… | Owner only |
 | Credit management | Add/remove credits, view credit usage history, set auto-reload | âœ… | Admin+ role |
-| Billing analytics | MRR, churn rate, usage trends, top-billing workspaces | â€” | Owner only |
+| Billing analytics | MRR, churn rate, usage trends, top-billing workspaces | — | Owner only |
 | Payment failures | View failed payments, retry, configure dunning settings | âœ… | Admin+ role |
 
 ### Usage Report Sample
@@ -409,7 +409,7 @@ Support tools provide customer support engineers with the capabilities needed to
 | Session management | View active sessions, force logout specific sessions | âœ… | Admin+ role |
 | Feature flag overrides | Enable/disable features for a specific user or workspace | âœ… | Support+ role |
 | API request replay | Replay a user's API request to diagnose issues | âœ… | Support+ role (opt-in user consent) |
-| Config viewer | View user/workspace configuration without editing | â€” | Support+ role |
+| Config viewer | View user/workspace configuration without editing | — | Support+ role |
 | Notifications | Send test email/in-app notifications to a user | âœ… | Support+ role |
 
 ### Impersonation Flow
@@ -425,7 +425,7 @@ Support tools provide customer support engineers with the capabilities needed to
 POST /api/v1/admin/support/impersonate
 {
   "target_user_id": "usr_target99",
-  "reason": "User reports inability to add connectors â€” investigating",
+  "reason": "User reports inability to add connectors — investigating",
   "duration_minutes": 15,
   "mfa_token": "123456"
 }
@@ -439,13 +439,13 @@ The Content Moderation module provides tools to review, action, and manage user-
 
 | Capability | Description | Audit Logged | Requires |
 |------------|-------------|--------------|----------|
-| Flagged content queue | Queue of content flagged by automated moderation (profanity, PII, policy violations) | â€” | Moderator+ role |
-| User report queue | Queue of content manually reported by other users | â€” | Moderator+ role |
-| Content review | View content in context, including surrounding conversation and user history | â€” | Moderator+ role |
+| Flagged content queue | Queue of content flagged by automated moderation (profanity, PII, policy violations) | — | Moderator+ role |
+| User report queue | Queue of content manually reported by other users | — | Moderator+ role |
+| Content review | View content in context, including surrounding conversation and user history | — | Moderator+ role |
 | Take action | Remove content, warn user, suspend user, escalate to admin | âœ… | Moderator+ role |
 | Automated actions | AI-moderated auto-removal of high-confidence violations (e.g., explicit PII) | âœ… | Configurable threshold |
 | Appeal processing | Review user appeals against moderation actions | âœ… | Moderator+ role |
-| Moderation stats | Actions taken, response times, false positive rate, trend analysis | â€” | Admin+ role |
+| Moderation stats | Actions taken, response times, false positive rate, trend analysis | — | Admin+ role |
 
 ### Moderation Action
 
@@ -541,16 +541,16 @@ The Content Moderation module provides tools to review, action, and manage user-
 
 | # | Practice | Rationale |
 |---|----------|-----------|
-| 1 | Apply the principle of least privilege to all admin role assignments | An admin who only needs user management should not have billing access â€” reduces blast radius of a compromised account |
+| 1 | Apply the principle of least privilege to all admin role assignments | An admin who only needs user management should not have billing access — reduces blast radius of a compromised account |
 | 2 | Always use impersonation instead of sharing credentials | Impersonation is fully audited and time-limited; credential sharing creates untraceable access and security risk |
-| 3 | Set expiry dates on all temporary role assignments | Contractors, interns, and temporary support staff should not retain admin access indefinitely â€” expiry ensures automatic revocation |
+| 3 | Set expiry dates on all temporary role assignments | Contractors, interns, and temporary support staff should not retain admin access indefinitely — expiry ensures automatic revocation |
 | 4 | Review admin audit logs daily for anomalous patterns | Early detection of suspicious admin activity (off-hours logins, mass operations, unusual IPs) limits breach impact |
-| 5 | Use bulk operations in limited batches (max 500 per request) | Large bulk operations can time out or create partial failures â€” batches of 500 with clear success/failure reporting are manageable |
-| 6 | Test impersonation flows in staging before using in production | Impersonation involves sensitive user data â€” test the flow and your MFA setup in staging to avoid surprises during a live support case |
-| 7 | Enable IP allowlisting for all admin environments | Admin panel should only be accessible from trusted networks (corporate VPN, office IPs) â€” reduces attack surface for credential theft |
-| 8 | Document the reason for every sensitive admin action | A suspension without a documented reason is untraceable in audit â€” always include a reason string in sensitive operations |
-| 9 | Run monthly access reviews for all admin accounts | Stale admin accounts are a top security risk â€” automated review reminders ensure active pruning of unused privileged access |
-| 10 | Use the audit log export feature for compliance reporting instead of direct DB queries | Export generates a consistent, timestamped, validated report â€” direct DB access bypasses audit controls and may produce inconsistent data |
+| 5 | Use bulk operations in limited batches (max 500 per request) | Large bulk operations can time out or create partial failures — batches of 500 with clear success/failure reporting are manageable |
+| 6 | Test impersonation flows in staging before using in production | Impersonation involves sensitive user data — test the flow and your MFA setup in staging to avoid surprises during a live support case |
+| 7 | Enable IP allowlisting for all admin environments | Admin panel should only be accessible from trusted networks (corporate VPN, office IPs) — reduces attack surface for credential theft |
+| 8 | Document the reason for every sensitive admin action | A suspension without a documented reason is untraceable in audit — always include a reason string in sensitive operations |
+| 9 | Run monthly access reviews for all admin accounts | Stale admin accounts are a top security risk — automated review reminders ensure active pruning of unused privileged access |
+| 10 | Use the audit log export feature for compliance reporting instead of direct DB queries | Export generates a consistent, timestamped, validated report — direct DB access bypasses audit controls and may produce inconsistent data |
 
 ---
 
@@ -558,13 +558,13 @@ The Content Moderation module provides tools to review, action, and manage user-
 
 | Mistake | Consequence |
 |---------|-------------|
-| Assigning admin role to a user who only needs workspace-level access | That user now has tenant-wide access to billing, all workspaces, and user management â€” a compromised account becomes a platform-level breach |
-| Running impersonation in production without testing the flow first | Impersonation session may fail silently, or the support engineer may accidentally perform a write operation (if not read-only) â€” always test in staging |
-| Missing audit events for admin actions | If user.suspend doesn't log before/after state and reason, a compliance investigation of an improper suspension has no evidence trail â€” every state-changing action must be audited with full context |
-| Bulk operations without reviewing the affected user/workspace list | A bulk suspension of "inactive users" without reviewing the list may accidentally suspend active users â€” always preview affected entities before confirming a bulk action |
-| Disabling MFA for an admin account for "convenience" | The admin account without MFA is the weakest link â€” a leaked password with a non-MFA admin account is a single-factor bypass of the entire admin security model |
-| Granting data export access without reviewing content sensitivity | An admin can export all documents from any workspace â€” without content sensitivity training and export justification, this becomes a data exfiltration vector |
-| Using admin tools for non-admin tasks (e.g., a developer using the audit log viewer for debugging their own feature) | Admin tools are audited and operate with elevated privileges â€” using them for routine debugging creates audit noise and risks accidental state changes |
+| Assigning admin role to a user who only needs workspace-level access | That user now has tenant-wide access to billing, all workspaces, and user management — a compromised account becomes a platform-level breach |
+| Running impersonation in production without testing the flow first | Impersonation session may fail silently, or the support engineer may accidentally perform a write operation (if not read-only) — always test in staging |
+| Missing audit events for admin actions | If user.suspend doesn't log before/after state and reason, a compliance investigation of an improper suspension has no evidence trail — every state-changing action must be audited with full context |
+| Bulk operations without reviewing the affected user/workspace list | A bulk suspension of "inactive users" without reviewing the list may accidentally suspend active users — always preview affected entities before confirming a bulk action |
+| Disabling MFA for an admin account for "convenience" | The admin account without MFA is the weakest link — a leaked password with a non-MFA admin account is a single-factor bypass of the entire admin security model |
+| Granting data export access without reviewing content sensitivity | An admin can export all documents from any workspace — without content sensitivity training and export justification, this becomes a data exfiltration vector |
+| Using admin tools for non-admin tasks (e.g., a developer using the audit log viewer for debugging their own feature) | Admin tools are audited and operate with elevated privileges — using them for routine debugging creates audit noise and risks accidental state changes |
 
 ---
 
@@ -572,13 +572,13 @@ The Content Moderation module provides tools to review, action, and manage user-
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Admin account compromise | Medium | Critical â€” full platform access | MFA enforcement, IP allowlisting, session timeout, anomalous activity alerts, quarterly access reviews |
-| Privilege escalation from member to admin | Low | High â€” unauthorized admin access | Strict role assignment validation, audit of all role changes, automated detection of suspicious role grants |
-| Data exposure via admin search tools | Medium | High â€” user data leaked | Search result masking for sensitive fields, export justification requirement, time-limited download URLs |
-| Impersonation abuse | Low | Critical â€” full user data accessible | Read-only by default, MFA required, 30 min max duration, full keylog audit, automated anomaly detection on impersonation sessions |
-| Insider threat (malicious admin) | Low | Critical â€” data exfiltration, platform damage | Separation of duties, all actions audited, anomaly detection, quarterly access reviews, data access justification requirements |
-| Bulk operation mistakes | Medium | High â€” mass user suspension, data loss | Preview before confirm, batch size limits, confirmation prompts, rollback capability for certain operations |
-| Audit log tampering | Low | High â€” compliance failure, undetected breach | Append-only immutable audit storage, cryptographic signing, restricted audit log access |
+| Admin account compromise | Medium | Critical — full platform access | MFA enforcement, IP allowlisting, session timeout, anomalous activity alerts, quarterly access reviews |
+| Privilege escalation from member to admin | Low | High — unauthorized admin access | Strict role assignment validation, audit of all role changes, automated detection of suspicious role grants |
+| Data exposure via admin search tools | Medium | High — user data leaked | Search result masking for sensitive fields, export justification requirement, time-limited download URLs |
+| Impersonation abuse | Low | Critical — full user data accessible | Read-only by default, MFA required, 30 min max duration, full keylog audit, automated anomaly detection on impersonation sessions |
+| Insider threat (malicious admin) | Low | Critical — data exfiltration, platform damage | Separation of duties, all actions audited, anomaly detection, quarterly access reviews, data access justification requirements |
+| Bulk operation mistakes | Medium | High — mass user suspension, data loss | Preview before confirm, batch size limits, confirmation prompts, rollback capability for certain operations |
+| Audit log tampering | Low | High — compliance failure, undetected breach | Append-only immutable audit storage, cryptographic signing, restricted audit log access |
 
 ---
 
@@ -620,25 +620,25 @@ Vaeloom admin security rotate-keys --service api-gateway
 
 | Improvement | Priority | Complexity | Timeline |
 |-------------|----------|------------|----------|
-| Custom role builder â€” define granular roles with custom permission sets | High | High | Q1 2027 |
-| Granular permission builder â€” toggle individual permissions per role/resource | High | Medium | Q1 2027 |
-| Automated moderation AI â€” ML-powered content review with confidence scoring | Medium | High | Q2 2027 |
-| Scheduled audit report delivery â€” automated compliance report generation and email delivery | Medium | Low | Q2 2027 |
+| Custom role builder — define granular roles with custom permission sets | High | High | Q1 2027 |
+| Granular permission builder — toggle individual permissions per role/resource | High | Medium | Q1 2027 |
+| Automated moderation AI — ML-powered content review with confidence scoring | Medium | High | Q2 2027 |
+| Scheduled audit report delivery — automated compliance report generation and email delivery | Medium | Low | Q2 2027 |
 | Chunked bulk operations with progress tracking and checkpoint recovery | Medium | Medium | Q4 2026 |
-| Admin notification preferences â€” configurable alert channels, thresholds, and mute windows | Low | Low | Q1 2027 |
-| Per-admin API rate limits â€” customize rate limits per admin account | Low | Low | Q3 2027 |
-| Global search across all admin modules â€” cross-domain search (users, workspaces, agents, audit) | Low | High | Q2 2027 |
+| Admin notification preferences — configurable alert channels, thresholds, and mute windows | Low | Low | Q1 2027 |
+| Per-admin API rate limits — customize rate limits per admin account | Low | Low | Q3 2027 |
+| Global search across all admin modules — cross-domain search (users, workspaces, agents, audit) | Low | High | Q2 2027 |
 
 ---
 
 ## Related Documents
 
-- [`Security/IAM.md`](./Security/IAM.md) â€” Identity & Access Management strategy
-- [`Backend/RBAC.md`](./Backend/RBAC.md) â€” Role-Based Access Control model
-- [`Backend/ABAC.md`](./Backend/ABAC.md) â€” Attribute-Based Access Control (enterprise)
-- [`Security/Audit-Logs.md`](./Security/Audit-Logs.md) â€” Audit logging system and schema
-- [`Backend/Authentication.md`](./Backend/Authentication.md) â€” Authentication flows and JWT strategy
-- [`Security/Security-Architecture.md`](./Security/Security-Architecture.md) â€” Overall security architecture
-- [`Product/Roadmap.md`](./Product/Roadmap.md) â€” Product roadmap with admin feature milestones
-- [`02-system-architecture.md`](./02-system-architecture.md) â€” Vaeloom system architecture overview
-- [`06-Vaeloom-Enterprise-Paper.md`](./06-Vaeloom-Enterprise-Paper.md) â€” Enterprise feature catalog
+- [`Security/IAM.md`](./Security/IAM.md) — Identity & Access Management strategy
+- [`Backend/RBAC.md`](./Backend/RBAC.md) — Role-Based Access Control model
+- [`Backend/ABAC.md`](./Backend/ABAC.md) — Attribute-Based Access Control (enterprise)
+- [`Security/Audit-Logs.md`](./Security/Audit-Logs.md) — Audit logging system and schema
+- [`Backend/Authentication.md`](./Backend/Authentication.md) — Authentication flows and JWT strategy
+- [`Security/Security-Architecture.md`](./Security/Security-Architecture.md) — Overall security architecture
+- [`Product/Roadmap.md`](./Product/Roadmap.md) — Product roadmap with admin feature milestones
+- [`02-system-architecture.md`](./02-system-architecture.md) — Vaeloom system architecture overview
+- [`06-Vaeloom-Enterprise-Paper.md`](./06-Vaeloom-Enterprise-Paper.md) — Enterprise feature catalog

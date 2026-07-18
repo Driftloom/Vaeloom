@@ -52,17 +52,17 @@ The **Vaeloom SDK** is a first-class, type-safe client library that enables deve
 
 **Audience:** Backend engineers, data engineers, and platform integrators building against Vaeloom APIs.
 
-**Why SDK Architecture:** A dedicated SDK reduces boilerplate, centralizes error handling, enforces consistent authentication flows, and provides discoverable APIs with full editor intellisense â€” dramatically reducing integration time compared to raw HTTP calls.
+**Why SDK Architecture:** A dedicated SDK reduces boilerplate, centralizes error handling, enforces consistent authentication flows, and provides discoverable APIs with full editor intellisense — dramatically reducing integration time compared to raw HTTP calls.
 
 ---
 
 ## 2. Goals
 
-1. **Type Safety** â€” Leverage TypeScript generics and Python type hints to catch contract violations at compile time.
-2. **Consistency** â€” Uniform patterns across auth, query, CRUD, and agent modules so developers can predict API shapes.
-3. **Resilience** â€” Built-in retry, backoff, rate-limit awareness, and timeout enforcement without user configuration.
-4. **Discoverability** â€” Self-documenting method signatures, comprehensive JSDoc/Python docstrings, and exported TypeScript interfaces.
-5. **Minimal Dependencies** â€” Keep the dependency surface small to avoid version conflicts in consumer projects.
+1. **Type Safety** — Leverage TypeScript generics and Python type hints to catch contract violations at compile time.
+2. **Consistency** — Uniform patterns across auth, query, CRUD, and agent modules so developers can predict API shapes.
+3. **Resilience** — Built-in retry, backoff, rate-limit awareness, and timeout enforcement without user configuration.
+4. **Discoverability** — Self-documenting method signatures, comprehensive JSDoc/Python docstrings, and exported TypeScript interfaces.
+5. **Minimal Dependencies** — Keep the dependency surface small to avoid version conflicts in consumer projects.
 
 ---
 
@@ -86,7 +86,7 @@ The **Vaeloom SDK** is a first-class, type-safe client library that enables deve
 | Mobile SDK (iOS/Android)| Separate native team; REST compatibility only   |
 | Frontend Components     | UI concerns are owned by the web app team       |
 | CLI Tool                | Covered by `Vaeloom-cli` package separately    |
-| GraphQL Client          | Future consideration (see Â§25)                  |
+| GraphQL Client          | Future consideration (see §25)                  |
 
 ---
 
@@ -127,7 +127,7 @@ graph TD
     API --> AGT
 ```
 
-**Request flow:** Consumer calls a public method â†’ resource client builds the request â†’ base client enriches with auth headers â†’ transport dispatches via connection pool â†’ response is unwrapped, errors are classified, and a typed result is returned.
+**Request flow:** Consumer calls a public method → resource client builds the request → base client enriches with auth headers → transport dispatches via connection pool → response is unwrapped, errors are classified, and a typed result is returned.
 
 ---
 
@@ -491,7 +491,7 @@ import { VaeloomClient, eq, inList, gt } from "@vaeloom/sdk-ts";
 
 const client = new VaeloomClient({ apiKey: process.env.Vaeloom_API_KEY });
 
-// Typed query â€” `documents` maps to the Document interface
+// Typed query — `documents` maps to the Document interface
 const query = client
   .query("documents")
   .filter("status", eq("published"))
@@ -606,14 +606,14 @@ page = await client.entity("documents").list(
 
 ```typescript
 const updated = await client.entity("documents").update("doc_abc123", {
-  title: "Q4 Financial Report â€” Final",
+  title: "Q4 Financial Report — Final",
   attributes: { approved: true },
 });
 ```
 
 ```python
 updated = await client.entity("documents").update("doc_abc123", {
-    "title": "Q4 Financial Report â€” Final",
+    "title": "Q4 Financial Report — Final",
     "attributes": {"approved": True},
 })
 ```
@@ -634,7 +634,7 @@ await client.entity("documents").delete("doc_abc123")
 const results = await client.entity("documents").batch([
   { op: "create", data: { title: "Doc A", type: "note" } },
   { op: "create", data: { title: "Doc B", type: "note" } },
-  { op: "update", id: "doc_existing", data: { title: "Doc B â€” Updated" } },
+  { op: "update", id: "doc_existing", data: { title: "Doc B — Updated" } },
 ]);
 ```
 
@@ -729,7 +729,7 @@ All SDK errors extend a base `VaeloomError` class, which exposes `statusCode`, `
 | Error Class             | HTTP Status | When Raised                           |
 |-------------------------|-------------|---------------------------------------|
 | `AuthenticationError`   | 401         | Invalid or expired credentials        |
-| `RateLimitError`        | 429         | Too many requests (see Â§14)           |
+| `RateLimitError`        | 429         | Too many requests (see §14)           |
 | `ValidationError`       | 422         | Request payload failed schema validation |
 | `NotFoundError`         | 404         | Requested resource does not exist     |
 | `ServerError`           | 500+        | Upstream server failure               |
@@ -749,7 +749,7 @@ try {
   const doc = await client.entity("documents").get("doc_invalid");
 } catch (error) {
   if (error instanceof AuthenticationError) {
-    console.error("Auth failed â€” check Vaeloom_API_KEY");
+    console.error("Auth failed — check Vaeloom_API_KEY");
     process.exit(1);
   }
   if (error instanceof RateLimitError) {
@@ -773,7 +773,7 @@ from Vaeloom_sdk.errors import AuthenticationError, RateLimitError, ValidationEr
 try:
     doc = await client.entity("documents").get("doc_invalid")
 except AuthenticationError:
-    print("Auth failed â€” check Vaeloom_API_KEY")
+    print("Auth failed — check Vaeloom_API_KEY")
     raise
 except RateLimitError as e:
     print(f"Rate limited, retry after {e.retry_after_ms}ms")
@@ -793,7 +793,7 @@ The SDK retries on transient failures (429, 503, network errors) with exponentia
 | `maxRetries`         | 3       | Maximum number of retries              |
 | `baseDelayMs`        | 500     | Initial delay before first retry       |
 | `maxDelayMs`         | 30_000  | Maximum delay cap                      |
-| `backoffMultiplier`  | 2       | Exponential factor (500 â†’ 1000 â†’ 2000) |
+| `backoffMultiplier`  | 2       | Exponential factor (500 → 1000 → 2000) |
 
 These can be overridden at the client level:
 
@@ -1046,7 +1046,7 @@ for await (const batch of stream) {
 
 ### 18.1 SDK Logging
 
-The SDK logs at configurable levels. Logs include request method, path, status code, and duration â€” but **never** credentials or payload bodies.
+The SDK logs at configurable levels. Logs include request method, path, status code, and duration — but **never** credentials or payload bodies.
 
 ```typescript
 const client = new VaeloomClient({
@@ -1117,20 +1117,20 @@ The SDK follows strict [SemVer 2.0.0](https://semver.org/):
 
 | Version Bump | Meaning                                      | Example    |
 |--------------|----------------------------------------------|------------|
-| **Major**    | Breaking API changes, removed functionality  | `1.x â†’ 2.0.0` |
-| **Minor**    | New features, backward-compatible            | `1.0 â†’ 1.1.0` |
-| **Patch**    | Bug fixes, performance improvements          | `1.0.0 â†’ 1.0.1` |
+| **Major**    | Breaking API changes, removed functionality  | `1.x → 2.0.0` |
+| **Minor**    | New features, backward-compatible            | `1.0 → 1.1.0` |
+| **Patch**    | Bug fixes, performance improvements          | `1.0.0 → 1.0.1` |
 
 ### 19.2 Changelog
 
 Each release includes a `CHANGELOG.md` entry with:
 
-- **Added** â€” New features and endpoints
-- **Changed** â€” Behavior modifications (backward-compatible)
-- **Deprecated** â€” Features scheduled for removal
-- **Removed** â€” Features removed in this version
-- **Fixed** â€” Bug fixes
-- **Security** â€” Vulnerability patches
+- **Added** — New features and endpoints
+- **Changed** — Behavior modifications (backward-compatible)
+- **Deprecated** — Features scheduled for removal
+- **Removed** — Features removed in this version
+- **Fixed** — Bug fixes
+- **Security** — Vulnerability patches
 
 ### 19.3 Migration Guides
 
@@ -1161,7 +1161,7 @@ Use entityClient.bulk() instead. This feature will be removed in v2.0.
 
 ## 20. Examples
 
-### 20.1 End-to-End: Authenticate â†’ Query â†’ Run Agent â†’ Check Results
+### 20.1 End-to-End: Authenticate → Query → Run Agent → Check Results
 
 ```typescript
 import { VaeloomClient, eq, gt } from "@vaeloom/sdk-ts";
@@ -1194,7 +1194,7 @@ for (const doc of pendingDocs.data) {
     webhookSecret: process.env.Vaeloom_WEBHOOK_SECRET,
   });
   taskIds.push(task.taskId);
-  console.log(`Submitted ${doc.id} â†’ task ${task.taskId}`);
+  console.log(`Submitted ${doc.id} → task ${task.taskId}`);
 }
 
 // 4. Poll for completion
@@ -1246,7 +1246,7 @@ async def main():
             "webhookSecret": os.environ["Vaeloom_WEBHOOK_SECRET"],
         })
         task_ids.append(task["taskId"])
-        print(f"Submitted {doc['id']} â†’ task {task['taskId']}")
+        print(f"Submitted {doc['id']} → task {task['taskId']}")
 
     # 4. Poll for completion
     results = []
@@ -1282,14 +1282,14 @@ asyncio.run(main())
 Always dispose of the client when shutting down to flush pending requests:
 
 ```typescript
-// TypeScript â€” client implements AsyncDisposable
+// TypeScript — client implements AsyncDisposable
 await using client = new VaeloomClient({ ... });
 // ... work ...
 // Client is automatically disposed when scope exits
 ```
 
 ```python
-# Python â€” use context manager
+# Python — use context manager
 async with VaeloomClient(api_key=os.environ["Vaeloom_API_KEY"]) as client:
     # ... work ...
 ```
@@ -1347,8 +1347,8 @@ const client = new VaeloomClient({
 3. **Maximum page size** of 1,000 records per `pageSize` parameter.
 4. **Browser support** is limited to modern browsers (Chrome 90+, Firefox 90+, Safari 15+, Edge 90+).
 5. **Python SDK** requires Python 3.11 or later (no 3.10 support).
-6. **No WebSocket support** â€” real-time updates require polling or webhooks.
-7. **No offline mode** â€” all operations require a network connection to the Vaeloom API.
+6. **No WebSocket support** — real-time updates require polling or webhooks.
+7. **No offline mode** — all operations require a network connection to the Vaeloom API.
 
 ---
 

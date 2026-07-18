@@ -1,619 +1,584 @@
-﻿# Vaeloom â€” Documentation Index
+# Vaeloom Documentation
 
-| Metadata         | Value                                                                |
-|------------------|----------------------------------------------------------------------|
-| **Purpose**      | Root index of the complete Vaeloom documentation system |
-| **Status**       | Enterprise-grade — complete |
-| **Owner**        | Documentation Team |
-| **Version**      | 2.0 |
-| **Last Updated** | 2026-07-16 |
+> **Purpose:** Master index and navigation hub for all Vaeloom documentation
+> **Status:** ✅ Published
+> **Owner:** Platform Team
+> **Version:** 2.0
+> **Last Updated:** 2026-07-17
+> **Total Documents:** 256
 
-> **Status:** Enterprise-grade documentation system — complete
-> **Total documents:** 254 | **Last updated:** 2026-07-16
-> **Canonical:** [`Docs/`](.) · **Legacy (deprecated):** [`Documents/`](../Documents/)
-
----
-
-## Overview
-
-Vaeloom is a second brain for a person's education and career: it ingests documents, code, and communications; builds a continuously updated, structured memory; and runs specialized, permission-scoped agents on top of that memory to organize files, maintain a resume, search for and apply to jobs, and track deadlines.
-
-This index is the single entry point into the complete documentation system â€” 254 files across 16 categories covering product, architecture, engineering, AI, security, operations, and more.
-
-## Goals
-
-- Provide a single entry point to all Vaeloom documentation
-- Enable developers, product managers, and enterprise stakeholders to quickly find relevant docs
-- Maintain clear navigation and cross-referencing between related documents
-- Document the MVP product scope, system architecture, agent workflows, and memory system
-
-## Scope
-
-### In Scope
-
-- Root-level documentation index and cross-reference
-- MVP spec, architecture, agent workflow, and memory/knowledge graph docs
-- API reference, backend service docs, and architecture ADRs
-- Enterprise paper and documentation site structure
-
-### Out of Scope
-
-- Detailed implementation guides (in Backend/)
-- Code-level API documentation (auto-generated from code)
-- User-facing product documentation (separate product site)
-- Third-party integration documentation
+## Documentation Taxonomy
 
 ```mermaid
 graph TD
-    subgraph Product["ðŸ“‹ Product (35 docs)"]
-        PRD["MVP Spec, Features, Strategy<br/>Roadmap, Personas, Pricing, FAQ"]
-    end
-    subgraph Architecture["ðŸ—ï¸ Architecture (19 docs)"]
-        ARCH["System Design, HLD, LLD, Events<br/>Microservices, Scalability, Caching, DR"]
-    end
-    subgraph AI["ðŸ§  AI (24 docs)"]
-        AI_D["LLM, Agents, Memory, KG, RAG<br/>Agentic RAG, Prompts, Guardrails"]
-    end
-    subgraph Frontend["ðŸŽ¨ Frontend (17 docs)"]
-        FE["Architecture, Design System, Components<br/>Accessibility, Animation, Theme"]
-    end
-    subgraph Backend["âš™ï¸ Backend (21 docs)"]
-        BE["API, REST, Auth, RBAC, ABAC<br/>Validation, Workers, Cron, Rate Limiting"]
-    end
-    subgraph Database["ðŸ—„ï¸ Database (10 docs)"]
-        DB["Schema, ERD, Indexes, Migrations<br/>Partitioning, Replication, Backups"]
-    end
-    subgraph Security["ðŸ”’ Security (15 docs)"]
-        SEC["Threat Model, IAM, Encryption<br/>Secrets, OWASP, GDPR, Compliance"]
-    end
-    subgraph DevOps["ðŸ› ï¸ DevOps (13 docs)"]
-        DO["CI/CD, Docker, K8s, Terraform<br/>Monitoring, Logging, Tracing, Alerting"]
-    end
-    subgraph Testing["âœ… Testing (13 docs)"]
-        TEST["Strategy, Unit, Integration, E2E<br/>Load, AI, Prompt, Security, Coverage"]
-    end
-    subgraph Engineering["ðŸ“ Engineering (29 docs)"]
-        ENG["Coding Standards, Git Workflow<br/>Branch Strategy, Code Review"]
-    end
-    subgraph DevExp["ðŸš€ Developer Experience (9 docs)"]
-        DX["Setup, Contributing, Debugging<br/>API Examples, CLI"]
-    end
-    subgraph Operations["ðŸ“Š Operations (18 docs)"]
-        OPS["Runbooks, Incident Response, SRE<br/>SLA, SLO, Capacity Planning"]
-    end
-    subgraph Enterprise["🏢 Enterprise (10 docs)"]
-        ENTERPRISE["Multi-Tenancy, Billing, Orgs<br/>Admin Portal, Licensing, APIs"]
-    end
-    subgraph Build_Prompts["🔨 Build_Prompts (1 doc)"]
-        BP["Build Order"]
-    end
+    classDef core fill:#e3f2fd,stroke:#1565c0
+    classDef platform fill:#e8f5e9,stroke:#2e7d32
+    classDef product fill:#fff3e0,stroke:#e65100
+    classDef ops fill:#f3e5f5,stroke:#6a1b9a
 
-    Product --> Architecture
-    Architecture --> AI
-    Architecture --> Frontend
-    Architecture --> Backend
-    Architecture --> Database
-    Architecture --> Security
-    AI --> Testing
-    Backend --> Testing
-    DevOps --> Operations
-    Engineering --> DevExp
-    Enterprise --> Architecture
-    Build_Prompts --> Engineering
+    DOC["📚 Vaeloom Docs"] --> ARCH["Architecture"]
+    DOC --> AI["AI / Agents"]
+    DOC --> BACKEND["Backend"]
+    DOC --> DB["Database"]
+    DOC --> DEVOPS["DevOps"]
+    DOC --> ENG["Engineering"]
+    DOC --> ENT["Enterprise"]
+    DOC --> FE["Frontend"]
+    DOC --> OPS["Operations"]
+    DOC --> PROD["Product"]
+    DOC --> SEC["Security"]
+    DOC --> TEST["Testing"]
+    DOC --> API["API Reference"]
+    DOC --> GUIDES["Guides"]
+    DOC --> CONTRIB["Contributing"]
 
-    classDef product fill:#e3f2fd,stroke:#1565c0
-    classDef arch fill:#e8f5e9,stroke:#2e7d32
-    classDef ai fill:#fff3e0,stroke:#e65100
-    classDef frontend fill:#f3e5f5,stroke:#7b1fa2
-    classDef backend fill:#ffebee,stroke:#c62828
-    classDef db fill:#e0f2f1,stroke:#00695c
-    classDef security fill:#f5f5f5,stroke:#616161
-    classDef devops fill:#eceff1,stroke:#37474f
-    classDef testing fill:#fff8e1,stroke:#f57f17
-    classDef eng fill:#e8eaf6,stroke:#283593
-    classDef dx fill:#fce4ec,stroke:#880e4f
-    classDef ops fill:#e0f7fa,stroke:#006064
-    classDef enterprise fill:#fce4ec,stroke:#b71c1c
-    classDef bp fill:#f1f8e9,stroke:#558b2f
-
-    class PRD product
-    class ARCH arch
-    class AI_D ai
-    class FE frontend
-    class BE backend
-    class DB db
-    class SEC security
-    class DO devops
-    class TEST testing
-    class ENG eng
-    class DX dx
-    class OPS ops
-    class ENTERPRISE enterprise
-    class BP bp
+    class ARCH,AI,BACKEND,DB core
+    class DEVOPS,ENG,ENT platform
+    class FE,OPS,PROD product
+    class SEC,TEST,API,GUIDES,CONTRIB ops
 ```
 
----
+## Category Index
 
-## Documentation Structure
+### 🏗️ Architecture
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [System Design](./Architecture/System-Design.md) | High-level system architecture |
+| 2 | [High Level Design](./Architecture/High-Level-Design.md) | HLD with component breakdown |
+| 3 | [Low Level Design](./Architecture/Low-Level-Design.md) | LLD with detailed specifications |
+| 4 | [Service Architecture](./Architecture/Service-Architecture.md) | Service decomposition |
+| 5 | [Microservices](./Architecture/Microservices.md) | Microservices architecture |
+| 6 | [C4 Architecture](./Architecture/C4-Architecture.md) | C4 model diagrams |
+| 7 | [Event Architecture](./Architecture/Event-Architecture.md) | Event-driven architecture |
+| 8 | [Event Flow](./Architecture/Event-Flow.md) | Event flow diagrams |
+| 9 | [Data Flow](./Architecture/Data-Flow.md) | Data flow across services |
+| 10 | [Caching](./Architecture/Caching.md) | Caching strategy |
+| 11 | [Queue](./Architecture/Queue.md) | Message queue architecture |
+| 12 | [Search](./Architecture/Search.md) | Search architecture |
+| 13 | [Storage](./Architecture/Storage.md) | Storage strategy |
+| 14 | [Scalability](./Architecture/Scalability.md) | Scaling strategy |
+| 15 | [Performance](./Architecture/Performance.md) | Performance targets |
+| 16 | [Disaster Recovery](./Architecture/Disaster-Recovery.md) | DR plan |
+| 17 | [Infrastructure](./Architecture/Infrastructure.md) | Infrastructure overview |
+| 18 | [ADRs](./Architecture/03-adrs.md) | Architecture Decision Records |
 
-```text
-docs/
-ââââ README.md                     â You are here
-ââââ 00-GAP-ANALYSIS-REPORT.md     â Enterprise gap analysis (2026-07-16)
-ââââ 00-DOCUMENTATION-COMPLETION-REPORT.md â Completion report
-ââââ TEMPLATE.md                   â Enterprise doc template
-ââââ Analytics.md                  â Analytics tracking and metrics
-ââââ Integration-Guide.md         â Third-party integration guide
-ââââ Admin.md                     â Admin operations guide
-â
-ââââ Project/                      â 1 doc â Overview, vision
-ââââ Product/                      â 35 docs â MVP spec, features, strategy, business/user reqs, KPIs
-ââââ Architecture/                 â 19 docs â System design, HLD, LLD, events, C4 model, flows
-ââââ AI/                           â 24 docs â Agents, memory, RAG, LLM, prompts, eval, benchmarking, cost
-â
-ââââ Frontend/                     â 17 docs â Architecture, components, design system, i18n, mobile, accessibility audit
-ââââ Backend/                      â 21 docs â API, auth, validation, workers, service contracts, event catalog
-ââââ Database/                     â 10 docs â Schema, indexes, migrations, backups, data dictionary
-ââââ Security/                     â 15 docs â Threat model, IAM, encryption, GDPR, SOC2, audit policy
-â
-ââââ DevOps/                       â 13 docs â CI/CD, Docker, K8s, Terraform, monitoring, SBOM, container signing
-ââââ Testing/                      â 13 docs â Strategy, unit, E2E, AI, load, security, chaos
-ââââ Engineering/                  â 29 docs â Standards, git workflow, code review, implementation
-ââââ Developer_Experience/         â 9 docs â Setup, contributing, debugging
-â
-ââââ Operations/                   â 18 docs â Runbooks, incident response, SRE, BCP, rollback strategy
-ââââ Enterprise/                   â 10 docs â Multi-tenancy, orgs, billing, licensing, admin, feature flags, marketplace
-ââââ Build_Prompts/                â 1 doc â Build prompt references
-```
+### 🤖 AI / Agents
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [AI Agents](./AI/AI-Agents.md) | Agent architecture overview |
+| 2 | [Memory](./AI/Memory.md) | Memory system design |
+| 3 | [Knowledge Graph](./AI/Knowledge-Graph.md) | Knowledge graph architecture |
+| 4 | [LLM Architecture](./AI/LLM-Architecture.md) | LLM integration |
+| 5 | [RAG](./AI/RAG.md) | RAG pipeline |
+| 6 | [Agentic RAG](./AI/Agentic-RAG.md) | Agentic retrieval |
+| 7 | [MCP](./AI/MCP.md) | Model Context Protocol |
+| 8 | [Tool Calling](./AI/Tool-Calling.md) | Tool execution |
+| 9 | [Reasoning](./AI/Reasoning.md) | Reasoning patterns |
+| 10 | [Guardrails](./AI/Guardrails.md) | Safety guardrails |
+| 11 | [Safety](./AI/Safety.md) | AI safety |
+| 12 | [Prompt Engineering](./AI/Prompt-Engineering.md) | Prompt design |
+| 13 | [Prompt Standards](./AI/Prompt-Standards.md) | Prompt conventions |
+| 14 | [Prompt Library](./AI/Prompt-Library.md) | Prompt templates |
+| 15 | [Agent Prompt Specs](./AI/Agent-Prompt-Specs.md) | Agent prompt specifications |
+| 16 | [Evaluation](./AI/Evaluation.md) | AI evaluation framework |
+| 17 | [Eval Datasets](./AI/Eval-Datasets.md) | Evaluation datasets |
+| 18 | [Model Routing](./AI/Model-Routing.md) | Model routing logic |
+| 19 | [Model Benchmarking](./AI/Model-Benchmarking.md) | Model benchmarks |
+| 20 | [Inference Pipeline](./AI/Inference-Pipeline.md) | Inference pipeline |
+| 21 | [AI Cost Strategy](./AI/AI-Cost-Strategy.md) | Cost optimization |
+| 22 | [AI Versioning](./AI/AI-Versioning.md) | Versioning strategy |
+| 23 | [Embeddings](./AI/Embeddings.md) | Embedding strategy |
 
----
+### ⚙️ Backend
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Backend Architecture](./Backend/Backend-Architecture.md) | Backend overview |
+| 2 | [API Architecture](./Backend/API-Architecture.md) | API design |
+| 3 | [API Reference](./Backend/API-Reference.md) | API endpoint reference |
+| 4 | [API Versioning](./Backend/API-Versioning.md) | Versioning strategy |
+| 5 | [REST Standards](./Backend/REST-Standards.md) | REST conventions |
+| 6 | [GraphQL](./Backend/GraphQL.md) | GraphQL integration |
+| 7 | [Authentication](./Backend/Authentication.md) | Auth patterns |
+| 8 | [Authorization](./Backend/Authorization.md) | Authorization model |
+| 9 | [RBAC](./Backend/RBAC.md) | Role-based access control |
+| 10 | [ABAC](./Backend/ABAC.md) | Attribute-based access control |
+| 11 | [Validation](./Backend/Validation.md) | Input validation |
+| 12 | [Error Standards](./Backend/Error-Standards.md) | Error handling |
+| 13 | [Service Contracts](./Backend/Service-Contracts.md) | Service interfaces |
+| 14 | [Module Specs](./Backend/Module-Specs.md) | Module specifications |
+| 15 | [Event Catalog](./Backend/Event-Catalog.md) | Event definitions |
+| 16 | [Business Logic](./Backend/Business-Logic.md) | Business logic patterns |
+| 17 | [Connectors](./Backend/Connectors.md) | Connector architecture |
+| 18 | [Workers](./Backend/Workers.md) | Background workers |
+| 19 | [Cron Jobs](./Backend/Cron-Jobs.md) | Scheduled tasks |
+| 20 | [Rate Limiting](./Backend/Rate-Limiting.md) | Rate limiting |
+| 21 | [Queue](./Backend/Queue.md) | Queue management |
 
-## What's New (2026-07-16 Enterprise Completion Pass)
+### 🗄️ Database
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Database Design](./Database/Database-Design.md) | Database architecture |
+| 2 | [Schema](./Database/Schema.md) | Schema definitions |
+| 3 | [ER Diagram](./Database/ER-Diagram.md) | Entity-relationship model |
+| 4 | [Data Dictionary](./Database/Data-Dictionary.md) | Data definitions |
+| 5 | [Indexes](./Database/Indexes.md) | Index strategy |
+| 6 | [Migrations](./Database/Migrations.md) | Migration strategy |
+| 7 | [Backups](./Database/Backups.md) | Backup strategy |
+| 8 | [Replication](./Database/Replication.md) | Replication setup |
+| 9 | [Partitioning](./Database/Partitioning.md) | Partitioning strategy |
+| 10 | [Optimization](./Database/Optimization.md) | Query optimization |
 
-33 new documents were added in the 2026-07-16 enterprise documentation completion pass:
+### 🚀 DevOps
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [CI/CD](./DevOps/CI-CD.md) | Pipeline architecture |
+| 2 | [Docker](./DevOps/Docker.md) | Containerization |
+| 3 | [Kubernetes](./DevOps/Kubernetes.md) | K8s deployment |
+| 4 | [Terraform](./DevOps/Terraform.md) | IaC configuration |
+| 5 | [Monitoring](./DevOps/Monitoring.md) | Monitoring setup |
+| 6 | [Alerting](./DevOps/Alerting.md) | Alert configuration |
+| 7 | [Logging](./DevOps/Logging.md) | Logging infrastructure |
+| 8 | [Tracing](./DevOps/Tracing.md) | Distributed tracing |
+| 9 | [Configuration Management](./DevOps/Configuration-Management.md) | Config management |
+| 10 | [Deployment](./DevOps/Deployment.md) | Deployment strategy |
+| 11 | [Container Signing](./DevOps/Container-Signing.md) | Container security |
+| 12 | [SBOM Policy](./DevOps/SBOM-Policy.md) | SBOM compliance |
 
-- **Enterprise (8):** Multi-Tenancy, Organizations, Billing, Licensing, Admin-Portal, Feature-Flags, Plugin-Marketplace, Enterprise-APIs
-- **Architecture (3):** C4-Architecture, Event-Flow, Data-Flow
-- **Backend (5):** Service-Contracts, Module-Specs, Event-Catalog, Error-Standards, API-Versioning
-- **AI (6):** Prompt-Library, Agent-Prompt-Specs, Eval-Datasets, Model-Benchmarking, AI-Versioning, AI-Cost-Strategy
-- **Database (1):** Data-Dictionary
-- **Product (6):** Business-Requirements, User-Research, User-Stories, Functional-Requirements, Non-Functional-Requirements, KPIs
-- **Security (2):** SOC2, Audit-Policy
-- **Testing (1):** Chaos-Testing
-- **Operations (1):** Rollback-Strategy
+### 📐 Engineering
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Coding Standards](./Engineering/Coding-Standards.md) | Code style guide |
+| 2 | [Naming Convention](./Engineering/Naming-Convention.md) | Naming rules |
+| 3 | [Branch Strategy](./Engineering/Branch-Strategy.md) | Git branching |
+| 4 | [Git Workflow](./Engineering/Git-Workflow.md) | Git process |
+| 5 | [Commit Convention](./Engineering/Commit-Convention.md) | Commit standards |
+| 6 | [Code Review](./Engineering/Code-Review.md) | Review process |
+| 7 | [PR Guidelines](./Engineering/PR-Guidelines.md) | PR standards |
+| 8 | [Release Process](./Engineering/Release-Process.md) | Release management |
+| 9 | [Versioning](./Engineering/Versioning.md) | Version strategy |
+| 10 | [Folder Structure](./Engineering/Folder-Structure.md) | Repository layout |
+| 11 | [TEMPLATE.md](./TEMPLATE.md) | Document template |
 
-See [`00-GAP-ANALYSIS-REPORT.md`](./00-GAP-ANALYSIS-REPORT.md) for the baseline analysis and [`00-DOCUMENTATION-COMPLETION-REPORT.md`](./00-DOCUMENTATION-COMPLETION-REPORT.md) for the final completion assessment.
+### 🏢 Enterprise
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Enterprise Architecture](./Enterprise/Enterprise-Architecture.md) | Enterprise design |
+| 2 | [Multi-Tenancy](./Enterprise/Multi-Tenancy.md) | Tenant isolation |
+| 3 | [Organizations](./Enterprise/Organizations.md) | Org structure |
+| 4 | [Admin Portal](./Enterprise/Admin-Portal.md) | Admin UI |
+| 5 | [Billing](./Enterprise/Billing.md) | Billing system |
+| 6 | [Licensing](./Enterprise/Licensing.md) | License management |
+| 7 | [Feature Flags](./Enterprise/Feature-Flags.md) | Feature toggles |
+| 8 | [Enterprise APIs](./Enterprise/Enterprise-APIs.md) | Enterprise API specs |
+| 9 | [Plugin Marketplace](./Enterprise/Plugin-Marketplace.md) | Plugin ecosystem |
 
----
+### 🎨 Frontend
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Frontend Architecture](./Frontend/Frontend-Architecture.md) | Frontend overview |
+| 2 | [UI Architecture](./Frontend/UI-Architecture.md) | UI structure |
+| 3 | [Component Library](./Frontend/Component-Library.md) | Component catalog |
+| 4 | [Design System](./Frontend/Design-System.md) | Design tokens |
+| 5 | [Theme System](./Frontend/Theme-System.md) | Theming |
+| 6 | [State Management](./Frontend/State-Management.md) | State patterns |
+| 7 | [Navigation](./Frontend/Navigation.md) | Navigation system |
+| 8 | [Responsive Design](./Frontend/Responsive-Design.md) | Responsive strategy |
+| 9 | [Accessibility](./Frontend/Accessibility.md) | WCAG compliance |
+| 10 | [Animation System](./Frontend/Animation-System.md) | Motion design |
+| 11 | [UX Guidelines](./Frontend/UX-Guidelines.md) | UX principles |
+| 12 | [Dashboard](./Frontend/Dashboard.md) | Dashboard spec |
+| 13 | [Forms](./Frontend/Forms.md) | Form patterns |
+| 14 | [Charts](./Frontend/Charts.md) | Chart components |
+| 15 | [Mobile Architecture](./Frontend/Mobile-Architecture.md) | React Native |
+| 16 | [Internationalization](./Frontend/Internationalization.md) | i18n strategy |
 
-## Category Coverage Map
+### 🔧 Operations
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Operations Runbook](./Operations/01-operations-runbook.md) | Operations guide |
+| 2 | [Incident Response](./Operations/02-incident-response.md) | Incident management |
+| 3 | [SLA](./Operations/SLA.md) | Service level agreements |
+| 4 | [SLI](./Operations/SLI.md) | Service level indicators |
+| 5 | [SLO](./Operations/SLO.md) | Service level objectives |
+| 6 | [SRE](./Operations/SRE.md) | Site reliability engineering |
+| 7 | [Observability](./Operations/Observability.md) | Observability stack |
+| 8 | [Business Continuity](./Operations/Business-Continuity-Plan.md) | BC/DR plan |
+| 9 | [Capacity Planning](./Operations/Capacity-Planning.md) | Capacity management |
+| 10 | [Cost Optimization](./Operations/Cost-Optimization.md) | Cost management |
+| 11 | [Rollback Strategy](./Operations/Rollback-Strategy.md) | Rollback procedures |
+| 12 | [Support](./Operations/Support.md) | Support model |
+| 13 | [Vendor Risk](./Operations/Vendor-Risk-Assessment.md) | Vendor assessment |
+| 14 | [Maintenance](./Operations/Maintenance.md) | Maintenance schedules |
 
-| Category | Docs | Coverage | Status |
-|----------|------|----------|--------|
-| **Product** | 35 | ✅ Complete | Vision, mission, strategy, roadmap, personas, pricing, FAQ, business reqs, user research, user stories, FR, NFR, KPIs, feature specs |
-| **Architecture** | 19 | ✅ Complete | System design, HLD, LLD, events, microservices, scalability, caching, **C4 model, event flow, data flow** |
-| **Frontend** | 17 | ✅ Complete | Architecture, design system, components, accessibility, animation, i18n, mobile |
-| **Backend** | 21 | ✅ Complete | API, REST, auth, RBAC, ABAC, validation, workers, **service contracts, module specs, event catalog, error standards, API versioning** |
-| **AI** | 24 | ✅ Complete | LLM, agents, memory, knowledge graph, RAG, **prompt library, agent prompt specs, eval datasets, model benchmarking, AI versioning, AI cost strategy** |
-| **Database** | 10 | ✅ Complete | Schema, ERD, indexes, migrations, partitioning, replication, backups, **data dictionary** |
-| **Security** | 15 | ✅ Complete | Threat model, IAM, encryption, secrets, OWASP, GDPR, compliance, **SOC2, audit policy** |
-| **DevOps** | 13 | ✅ Complete | CI/CD, Docker, K8s, Terraform, monitoring, logging, tracing, alerting, deployment, SBOM, container signing |
-| **Testing** | 13 | ✅ Complete | Strategy, unit, integration, E2E, load, performance, AI, prompt, security, regression, coverage, **chaos testing** |
-| **Engineering** | 29 | ✅ Complete | Coding standards, git workflow, branch strategy, code review, implementation guides |
-| **Developer Experience** | 9 | ✅ Complete | Setup, contributing, debugging, API examples, CLI |
-| **Operations** | 18 | ✅ Complete | Runbooks, incident response, SRE, SLA, SLO, capacity planning, BCP, **rollback strategy** |
-| **Enterprise** | 10 | ✅ Complete | Enterprise architecture, **multi-tenancy, organizations, billing, licensing, admin portal, feature flags, plugin marketplace, enterprise APIs** |
-| **Build Prompts** | 1 | ✅ Good | Build order reference |
+### 📈 Product
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Vision](./Product/Vision.md) | Product vision |
+| 2 | [Mission](./Product/Mission.md) | Company mission |
+| 3 | [PRD](./Product/PRD.md) | Product requirements |
+| 4 | [MVP Spec](./01-Vaeloom-MVP-Spec.md) | MVP specification |
+| 5 | [Business Requirements](./Product/Business-Requirements.md) | Business needs |
+| 6 | [Functional Requirements](./Product/Functional-Requirements.md) | Functional specs |
+| 7 | [Non-Functional Requirements](./Product/Non-Functional-Requirements.md) | NFRs |
+| 8 | [Features](./Product/Features.md) | Feature catalog |
+| 9 | [User Stories](./Product/User-Stories.md) | User stories |
+| 10 | [User Personas](./Product/User-Personas.md) | User profiles |
+| 11 | [User Journey](./Product/User-Journey.md) | Journey maps |
+| 12 | [User Research](./Product/User-Research.md) | Research findings |
+| 13 | [Product Strategy](./Product/Product-Strategy.md) | Strategy document |
+| 14 | [Roadmap](./Product/Roadmap.md) | Product roadmap |
+| 15 | [Goals](./Product/Goals.md) | Product goals |
+| 16 | [KPIs](./Product/KPIs.md) | Key performance indicators |
+| 17 | [Success Metrics](./Product/Success-Metrics.md) | Success measures |
+| 18 | [Competitive Analysis](./Product/Competitive-Analysis.md) | Competitive landscape |
+| 19 | [Pricing](./Product/Pricing.md) | Pricing model |
+| 20 | [Business Model](./Product/Business-Model.md) | Business model |
+| 21 | [FAQ](./Product/FAQ.md) | Frequently asked questions |
+| 22 | [Problem](./Product/Problem.md) | Problem statement |
 
----
+### 🔒 Security
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Security Architecture](./Security/Security-Architecture.md) | Security overview |
+| 2 | [Threat Model](./Security/Threat-Model.md) | Threat analysis |
+| 3 | [OWASP](./Security/OWASP.md) | OWASP compliance |
+| 4 | [IAM](./Security/IAM.md) | Identity & access |
+| 5 | [Encryption](./Security/Encryption.md) | Encryption strategy |
+| 6 | [Secrets](./Security/Secrets.md) | Secrets management |
+| 7 | [Privacy](./Security/Privacy.md) | Privacy policy |
+| 8 | [GDPR](./Security/GDPR.md) | GDPR compliance |
+| 9 | [SOC2](./Security/SOC2.md) | SOC 2 compliance |
+| 10 | [Compliance](./Security/Compliance.md) | Compliance overview |
+| 11 | [Audit Policy](./Security/Audit-Policy.md) | Audit framework |
+| 12 | [Audit Logs](./Security/Audit-Logs.md) | Audit logging |
+| 13 | [Data Retention](./Security/Data-Retention-Policy.md) | Data retention |
+| 14 | [Penetration Test](./Security/Penetration-Test-Procedure.md) | Pentest procedures |
 
-## Complete Document Map
+### 🧪 Testing
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Testing Strategy](./Testing/Testing-Strategy.md) | Testing overview |
+| 2 | [Unit Testing](./Testing/Unit-Testing.md) | Unit test patterns |
+| 3 | [Integration Testing](./Testing/Integration-Testing.md) | Integration tests |
+| 4 | [E2E Testing](./Testing/E2E-Testing.md) | End-to-end tests |
+| 5 | [Performance Testing](./Testing/Performance-Testing.md) | Performance tests |
+| 6 | [Load Testing](./Testing/Load-Testing.md) | Load tests |
+| 7 | [Security Testing](./Testing/Security-Testing.md) | Security tests |
+| 8 | [Regression Testing](./Testing/Regression-Testing.md) | Regression tests |
+| 9 | [Chaos Testing](./Testing/Chaos-Testing.md) | Chaos engineering |
+| 10 | [Coverage](./Testing/Coverage.md) | Coverage targets |
+| 11 | [AI Testing](./Testing/AI-Testing.md) | AI evaluation |
+| 12 | [Prompt Testing](./Testing/Prompt-Testing.md) | Prompt testing |
 
-### Project (1 doc)
+### 📡 API Reference
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [SDK Documentation](./SDK-Documentation.md) | SDK overview |
+| 2 | [Integration Guide](./Integration-Guide.md) | Integration docs |
+| 3 | See also: [API Architecture](./Backend/API-Architecture.md) | |
+| 4 | See also: [API Reference](./Backend/API-Reference.md) | |
 
-| Document | Path | Description |
-|----------|------|-------------|
-| Project Overview | [`Project/README.md`](./Project/README.md) | Project-level overview and vision |
+### 📖 Guides
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Developer Guide](./Developer_Experience/Developer-Guide.md) | Developer setup |
+| 2 | [Setup Guide](./Developer_Experience/Setup.md) | Environment setup |
+| 3 | [Architecture Walkthrough](./Developer_Experience/Architecture-Walkthrough.md) | Codebase tour |
+| 4 | [API Examples](./Developer_Experience/API-Examples.md) | API usage examples |
+| 5 | [CLI Reference](./Developer_Experience/CLI.md) | CLI commands |
+| 6 | [Debugging](./Developer_Experience/Debugging.md) | Debug guide |
+| 7 | [Scripts](./Developer_Experience/Scripts.md) | Automation scripts |
+| 8 | [How It Works](./Vaeloom-How-It-Works-Visual.md) | Visual overview |
+| 9 | [Enterprise Paper](./Vaeloom-Enterprise-Paper.md) | Enterprise whitepaper |
 
-### Product (35 docs)
+### 🤝 Contributing
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Contributing](./Contributing/README.md) | Contribution guide |
+| 2 | [Environment Setup](./Developer_Experience/Environment.md) | Environment config |
 
-| Document | Path | Description |
-|----------|------|-------------|
-| Product Overview | [`Product/README.md`](./Product/README.md) | Product category index |
-| Vision | [`Product/Vision.md`](./Product/Vision.md) | Long-term strategic vision |
-| Mission | [`Product/Mission.md`](./Product/Mission.md) | Mission statement |
-| Problem | [`Product/Problem.md`](./Product/Problem.md) | Problem definition |
-| Goals | [`Product/Goals.md`](./Product/Goals.md) | Product goals and milestones |
-| Product Strategy | [`Product/Product-Strategy.md`](./Product/Product-Strategy.md) | Go-to-market and moat |
-| Business Model | [`Product/Business-Model.md`](./Product/Business-Model.md) | Revenue model and pricing |
-| Roadmap | [`Product/Roadmap.md`](./Product/Roadmap.md) | Product roadmap (MVP â†’ Enterprise) |
-| Features | [`Product/Features.md`](./Product/Features.md) | Feature catalog |
-| User Personas | [`Product/User-Personas.md`](./Product/User-Personas.md) | Target user personas |
-| User Journey | [`Product/User-Journey.md`](./Product/User-Journey.md) | End-to-end user journey |
-| Competitive Analysis | [`Product/Competitive-Analysis.md`](./Product/Competitive-Analysis.md) | Competitive landscape |
-| Success Metrics | [`Product/Success-Metrics.md`](./Product/Success-Metrics.md) | Key metrics and targets |
-| Pricing | [`Product/Pricing.md`](./Product/Pricing.md) | Pricing tiers |
-| FAQ | [`Product/FAQ.md`](./Product/FAQ.md) | Frequently asked questions |
-| ATS Scoring | [`Product/Feature-Specs/ATS-Scoring.md`](./Product/Feature-Specs/ATS-Scoring.md) | Resume scoring against job descriptions |
-| Auto-Organization | [`Product/Feature-Specs/Auto-Organization.md`](./Product/Feature-Specs/Auto-Organization.md) | Automatic file and document organization |
-| Chat | [`Product/Feature-Specs/Chat.md`](./Product/Feature-Specs/Chat.md) | Conversational interface |
-| Deadline Detection | [`Product/Feature-Specs/Deadline-Detection.md`](./Product/Feature-Specs/Deadline-Detection.md) | Deadline extraction and tracking |
-| Document Viewer | [`Product/Feature-Specs/Document-Viewer.md`](./Product/Feature-Specs/Document-Viewer.md) | Document rendering and annotation |
-| Global Search | [`Product/Feature-Specs/Global-Search.md`](./Product/Feature-Specs/Global-Search.md) | Cross-document full-text search |
-| Gmail Digest | [`Product/Feature-Specs/Gmail-Digest.md`](./Product/Feature-Specs/Gmail-Digest.md) | Email summarization and digest |
-| Job Search | [`Product/Feature-Specs/Job-Search.md`](./Product/Feature-Specs/Job-Search.md) | Job listing aggregation and search |
-| Learning Roadmap | [`Product/Feature-Specs/Learning-Roadmap.md`](./Product/Feature-Specs/Learning-Roadmap.md) | Skill gap analysis and learning paths |
-| Master Resume | [`Product/Feature-Specs/Master-Resume.md`](./Product/Feature-Specs/Master-Resume.md) | Centralized resume management |
-| Memory Graph | [`Product/Feature-Specs/Memory-Graph.md`](./Product/Feature-Specs/Memory-Graph.md) | Knowledge graph visualization |
-| Tailored Applications | [`Product/Feature-Specs/Tailored-Applications.md`](./Product/Feature-Specs/Tailored-Applications.md) | Customized job applications |
+## Quick Navigation
 
-### Architecture (19 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Architecture Overview | [`Architecture/README.md`](./Architecture/README.md) | Architecture category index |
-| System Design | [`Architecture/System-Design.md`](./Architecture/System-Design.md) | Full system design with diagrams |
-| High-Level Design | [`Architecture/High-Level-Design.md`](./Architecture/High-Level-Design.md) | HLD with context diagram |
-| Low-Level Design | [`Architecture/Low-Level-Design.md`](./Architecture/Low-Level-Design.md) | LLD with component details |
-| Event Architecture | [`Architecture/Event-Architecture.md`](./Architecture/Event-Architecture.md) | Event bus design |
-| Service Architecture | [`Architecture/Service-Architecture.md`](./Architecture/Service-Architecture.md) | Service decomposition |
-| Microservices | [`Architecture/Microservices.md`](./Architecture/Microservices.md) | Microservices design |
-| Infrastructure | [`Architecture/Infrastructure.md`](./Architecture/Infrastructure.md) | Infrastructure components |
-| Scalability | [`Architecture/Scalability.md`](./Architecture/Scalability.md) | Scaling strategy |
-| Performance | [`Architecture/Performance.md`](./Architecture/Performance.md) | Performance budgets |
-| Caching | [`Architecture/Caching.md`](./Architecture/Caching.md) | Caching strategy |
-| Queue | [`Architecture/Queue.md`](./Architecture/Queue.md) | Job queue architecture |
-| Search | [`Architecture/Search.md`](./Architecture/Search.md) | Search architecture |
-| Storage | [`Architecture/Storage.md`](./Architecture/Storage.md) | Storage architecture |
-| Disaster Recovery | [`Architecture/Disaster-Recovery.md`](./Architecture/Disaster-Recovery.md) | DR procedures |
-| ADRs | [`Architecture/03-adrs.md`](./Architecture/03-adrs.md) | Architecture Decision Records |
-
-### Frontend (17 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Frontend Architecture | [`Frontend/Frontend-Architecture.md`](./Frontend/Frontend-Architecture.md) | Frontend tech stack and structure |
-| UI Architecture | [`Frontend/UI-Architecture.md`](./Frontend/UI-Architecture.md) | Component hierarchy and rendering |
-| UX Guidelines | [`Frontend/UX-Guidelines.md`](./Frontend/UX-Guidelines.md) | UX principles and patterns |
-| Design System | [`Frontend/Design-System.md`](./Frontend/Design-System.md) | Design tokens and colors |
-| Component Library | [`Frontend/Component-Library.md`](./Frontend/Component-Library.md) | Component catalog |
-| Navigation | [`Frontend/Navigation.md`](./Frontend/Navigation.md) | Navigation architecture |
-| State Management | [`Frontend/State-Management.md`](./Frontend/State-Management.md) | TanStack Query strategy |
-| Dashboard | [`Frontend/Dashboard.md`](./Frontend/Dashboard.md) | Dashboard page design |
-| Forms | [`Frontend/Forms.md`](./Frontend/Forms.md) | Form patterns and validation |
-| Charts | [`Frontend/Charts.md`](./Frontend/Charts.md) | Data visualization |
-| Animation System | [`Frontend/Animation-System.md`](./Frontend/Animation-System.md) | Animation principles |
-| Theme System | [`Frontend/Theme-System.md`](./Frontend/Theme-System.md) | Light/dark theme tokens |
-| Responsive Design | [`Frontend/Responsive-Design.md`](./Frontend/Responsive-Design.md) | Breakpoints and layouts |
-| Accessibility | [`Frontend/Accessibility.md`](./Frontend/Accessibility.md) | WCAG 2.2 AA standards |
-| Accessibility Audit | [`Frontend/Accessibility-Audit.md`](./Frontend/Accessibility-Audit.md) | Formal accessibility audit |
-| Internationalization | [`Frontend/Internationalization.md`](./Frontend/Internationalization.md) | i18n and localization strategy |
-| Mobile Architecture | [`Frontend/Mobile-Architecture.md`](./Frontend/Mobile-Architecture.md) | Companion mobile app architecture |
-
-### Backend (21 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Backend Architecture | [`Backend/Backend-Architecture.md`](./Backend/Backend-Architecture.md) | Backend service architecture |
-| API Architecture | [`Backend/API-Architecture.md`](./Backend/API-Architecture.md) | REST API design |
-| REST Standards | [`Backend/REST-Standards.md`](./Backend/REST-Standards.md) | REST conventions |
-| GraphQL | [`Backend/GraphQL.md`](./Backend/GraphQL.md) | GraphQL API design |
-| Authentication | [`Backend/Authentication.md`](./Backend/Authentication.md) | Auth flows and providers |
-| Authorization | [`Backend/Authorization.md`](./Backend/Authorization.md) | Permission Engine model |
-| RBAC | [`Backend/RBAC.md`](./Backend/RBAC.md) | Role-based access control |
-| ABAC | [`Backend/ABAC.md`](./Backend/ABAC.md) | Attribute-based access control |
-| Validation | [`Backend/Validation.md`](./Backend/Validation.md) | Input validation standards |
-| Rate Limiting | [`Backend/Rate-Limiting.md`](./Backend/Rate-Limiting.md) | Rate limit tiers |
-| Business Logic | [`Backend/Business-Logic.md`](./Backend/Business-Logic.md) | Business logic layer |
-| Workers | [`Backend/Workers.md`](./Backend/Workers.md) | Background worker architecture |
-| Cron Jobs | [`Backend/Cron-Jobs.md`](./Backend/Cron-Jobs.md) | Scheduled job design |
-| Queue | [`Backend/Queue.md`](./Backend/Queue.md) | Message queue architecture |
-| Connectors | [`Backend/Connectors.md`](./Backend/Connectors.md) | External connector integration |
-| API Reference | [`Backend/API-Reference.md`](./Backend/API-Reference.md) | Complete OpenAPI endpoint reference |
-
-### AI (24 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| AI Overview | [`AI/README.md`](./AI/README.md) | AI system category index |
-| LLM Architecture | [`AI/LLM-Architecture.md`](./AI/LLM-Architecture.md) | Multi-model strategy |
-| AI Agents | [`AI/AI-Agents.md`](./AI/AI-Agents.md) | Agent system and contract |
-| Memory | [`AI/Memory.md`](./AI/Memory.md) | Memory system architecture |
-| Knowledge Graph | [`AI/Knowledge-Graph.md`](./AI/Knowledge-Graph.md) | Entity and relationship design |
-| RAG | [`AI/RAG.md`](./AI/RAG.md) | Retrieval-Augmented Generation |
-| Agentic RAG | [`AI/Agentic-RAG.md`](./AI/Agentic-RAG.md) | Adaptive retrieval strategy |
-| Embeddings | [`AI/Embeddings.md`](./AI/Embeddings.md) | Embedding model and storage |
-| Prompt Engineering | [`AI/Prompt-Engineering.md`](./AI/Prompt-Engineering.md) | Prompt design standards |
-| Prompt Standards | [`AI/Prompt-Standards.md`](./AI/Prompt-Standards.md) | Prompt conventions |
-| Model Routing | [`AI/Model-Routing.md`](./AI/Model-Routing.md) | Model selection strategy |
-| Tool Calling | [`AI/Tool-Calling.md`](./AI/Tool-Calling.md) | Tool-calling architecture |
-| MCP | [`AI/MCP.md`](./AI/MCP.md) | Model Context Protocol |
-| Inference Pipeline | [`AI/Inference-Pipeline.md`](./AI/Inference-Pipeline.md) | Full inference flow |
-| Evaluation | [`AI/Evaluation.md`](./AI/Evaluation.md) | AI evaluation framework |
-| Guardrails | [`AI/Guardrails.md`](./AI/Guardrails.md) | Safety guardrails |
-| Safety | [`AI/Safety.md`](./AI/Safety.md) | AI safety mechanisms |
-| Reasoning | [`AI/Reasoning.md`](./AI/Reasoning.md) | Agent reasoning strategies |
-
-### Database (10 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Database Design | [`Database/Database-Design.md`](./Database/Database-Design.md) | Overall database architecture |
-| ER Diagram | [`Database/ER-Diagram.md`](./Database/ER-Diagram.md) | Entity-relationship diagram |
-| Schema | [`Database/Schema.md`](./Database/Schema.md) | Core table schemas |
-| Indexes | [`Database/Indexes.md`](./Database/Indexes.md) | Indexing strategy |
-| Migrations | [`Database/Migrations.md`](./Database/Migrations.md) | Migration workflow |
-| Partitioning | [`Database/Partitioning.md`](./Database/Partitioning.md) | Table partitioning |
-| Replication | [`Database/Replication.md`](./Database/Replication.md) | Read replica strategy |
-| Backups | [`Database/Backups.md`](./Database/Backups.md) | Backup and restore |
-| Optimization | [`Database/Optimization.md`](./Database/Optimization.md) | Query and pool optimization |
-
-### Security (15 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Security Overview | [`Security/README.md`](./Security/README.md) | Security category index |
-| Security Architecture | [`Security/Security-Architecture.md`](./Security/Security-Architecture.md) | Security architecture overview |
-| Threat Model | [`Security/Threat-Model.md`](./Security/Threat-Model.md) | STRIDE threat model |
-| Encryption | [`Security/Encryption.md`](./Security/Encryption.md) | Encryption standards |
-| Secrets | [`Security/Secrets.md`](./Security/Secrets.md) | Secrets management |
-| IAM | [`Security/IAM.md`](./Security/IAM.md) | Identity and access management |
-| OWASP | [`Security/OWASP.md`](./Security/OWASP.md) | OWASP Top 10 mitigations |
-| Privacy | [`Security/Privacy.md`](./Security/Privacy.md) | Privacy principles |
-| GDPR | [`Security/GDPR.md`](./Security/GDPR.md) | GDPR compliance posture |
-| Compliance | [`Security/Compliance.md`](./Security/Compliance.md) | Compliance frameworks |
-| Audit Logs | [`Security/Audit-Logs.md`](./Security/Audit-Logs.md) | Audit logging system |
-| Data Retention Policy | [`Security/Data-Retention-Policy.md`](./Security/Data-Retention-Policy.md) | Data retention schedules |
-| Penetration Test Procedure | [`Security/Penetration-Test-Procedure.md`](./Security/Penetration-Test-Procedure.md) | Penetration testing methodology |
-
-### DevOps (13 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| DevOps Overview | [`DevOps/README.md`](./DevOps/README.md) | DevOps category index |
-| Deployment | [`DevOps/Deployment.md`](./DevOps/Deployment.md) | Deployment strategy |
-| CI/CD | [`DevOps/CI-CD.md`](./DevOps/CI-CD.md) | CI/CD pipeline |
-| Docker | [`DevOps/Docker.md`](./DevOps/Docker.md) | Docker configuration |
-| Kubernetes | [`DevOps/Kubernetes.md`](./DevOps/Kubernetes.md) | K8s deployment (Enterprise) |
-| Terraform | [`DevOps/Terraform.md`](./DevOps/Terraform.md) | Infrastructure as Code (Enterprise) |
-| Monitoring | [`DevOps/Monitoring.md`](./DevOps/Monitoring.md) | Monitoring stack |
-| Logging | [`DevOps/Logging.md`](./DevOps/Logging.md) | Structured logging |
-| Tracing | [`DevOps/Tracing.md`](./DevOps/Tracing.md) | Distributed tracing |
-| Alerting | [`DevOps/Alerting.md`](./DevOps/Alerting.md) | Alerting rules |
-| SBOM Policy | [`DevOps/SBOM-Policy.md`](./DevOps/SBOM-Policy.md) | Software bill of materials |
-| Container Signing | [`DevOps/Container-Signing.md`](./DevOps/Container-Signing.md) | Image signing and verification |
-| Configuration Management | [`DevOps/Configuration-Management.md`](./DevOps/Configuration-Management.md) | Infrastructure configuration management |
-
-### Testing (13 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Testing Overview | [`Testing/README.md`](./Testing/README.md) | Testing category index |
-| Testing Strategy | [`Testing/Testing-Strategy.md`](./Testing/Testing-Strategy.md) | Full testing strategy |
-| Unit Testing | [`Testing/Unit-Testing.md`](./Testing/Unit-Testing.md) | Unit test standards |
-| Integration Testing | [`Testing/Integration-Testing.md`](./Testing/Integration-Testing.md) | Integration test standards |
-| E2E Testing | [`Testing/E2E-Testing.md`](./Testing/E2E-Testing.md) | E2E test standards |
-| Load Testing | [`Testing/Load-Testing.md`](./Testing/Load-Testing.md) | Load and stress testing |
-| Performance Testing | [`Testing/Performance-Testing.md`](./Testing/Performance-Testing.md) | Performance budgets |
-| Security Testing | [`Testing/Security-Testing.md`](./Testing/Security-Testing.md) | SAST, DAST, penetration testing |
-| AI Testing | [`Testing/AI-Testing.md`](./Testing/AI-Testing.md) | AI golden datasets |
-| Prompt Testing | [`Testing/Prompt-Testing.md`](./Testing/Prompt-Testing.md) | Prompt evaluation |
-| Regression Testing | [`Testing/Regression-Testing.md`](./Testing/Regression-Testing.md) | Regression test process |
-| Coverage | [`Testing/Coverage.md`](./Testing/Coverage.md) | Coverage targets |
-
-### Engineering (29 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Engineering Overview | [`Engineering/README.md`](./Engineering/README.md) | Engineering category index |
-| Coding Standards | [`Engineering/Coding-Standards.md`](./Engineering/Coding-Standards.md) | TypeScript and Python standards |
-| Folder Structure | [`Engineering/Folder-Structure.md`](./Engineering/Folder-Structure.md) | Monorepo structure |
-| Naming Convention | [`Engineering/Naming-Convention.md`](./Engineering/Naming-Convention.md) | Naming conventions |
-| Git Workflow | [`Engineering/Git-Workflow.md`](./Engineering/Git-Workflow.md) | Git branching model |
-| Branch Strategy | [`Engineering/Branch-Strategy.md`](./Engineering/Branch-Strategy.md) | Branch naming and rules |
-| Commit Convention | [`Engineering/Commit-Convention.md`](./Engineering/Commit-Convention.md) | Commit message format |
-| PR Guidelines | [`Engineering/PR-Guidelines.md`](./Engineering/PR-Guidelines.md) | Pull request standards |
-| Code Review | [`Engineering/Code-Review.md`](./Engineering/Code-Review.md) | Code review process |
-| Release Process | [`Engineering/Release-Process.md`](./Engineering/Release-Process.md) | Release and versioning |
-| Versioning | [`Engineering/Versioning.md`](./Engineering/Versioning.md) | SemVer policy |
-
-### Developer Experience (9 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Contributing | [`Developer_Experience/Contributing.md`](./Developer_Experience/Contributing.md) | Contribution guide |
-| Setup Guide | [`Developer_Experience/Setup.md`](./Developer_Experience/Setup.md) | Local development setup |
-| Environment | [`Developer_Experience/Environment.md`](./Developer_Experience/Environment.md) | Environment configuration |
-| Scripts | [`Developer_Experience/Scripts.md`](./Developer_Experience/Scripts.md) | Development scripts |
-| CLI | [`Developer_Experience/CLI.md`](./Developer_Experience/CLI.md) | CLI tools reference |
-| Developer Guide | [`Developer_Experience/Developer-Guide.md`](./Developer_Experience/Developer-Guide.md) | Developer onboarding |
-| Architecture Walkthrough | [`Developer_Experience/Architecture-Walkthrough.md`](./Developer_Experience/Architecture-Walkthrough.md) | Architecture tour |
-| API Examples | [`Developer_Experience/API-Examples.md`](./Developer_Experience/API-Examples.md) | Common API calls |
-| Debugging | [`Developer_Experience/Debugging.md`](./Developer_Experience/Debugging.md) | Debugging guide |
-
-### Operations (19 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Operations Overview | [`Operations/README.md`](./Operations/README.md) | Operations category index |
-| Operations Runbook | [`Operations/01-operations-runbook.md`](./Operations/01-operations-runbook.md) | Standard operating procedures |
-| Incident Response | [`Operations/02-incident-response.md`](./Operations/02-incident-response.md) | Incident response plan |
-| SRE | [`Operations/SRE.md`](./Operations/SRE.md) | SRE practices and error budgets |
-| SLA | [`Operations/SLA.md`](./Operations/SLA.md) | Service Level Agreement |
-| SLO | [`Operations/SLO.md`](./Operations/SLO.md) | Service Level Objectives |
-| SLI | [`Operations/SLI.md`](./Operations/SLI.md) | Service Level Indicators |
-| Capacity Planning | [`Operations/Capacity-Planning.md`](./Operations/Capacity-Planning.md) | Growth projections |
-| Cost Optimization | [`Operations/Cost-Optimization.md`](./Operations/Cost-Optimization.md) | AI and infra cost strategy |
-| Admin Guide | [`Admin.md`](./Admin.md) | Admin operations guide |
-| Observability | [`Operations/Observability.md`](./Operations/Observability.md) | Three pillars of observability |
-| Support | [`Operations/Support.md`](./Operations/Support.md) | Support tiers and processes |
-| Maintenance | [`Operations/Maintenance.md`](./Operations/Maintenance.md) | Maintenance procedures |
-| Business Continuity | [`Operations/Business-Continuity-Plan.md`](./Operations/Business-Continuity-Plan.md) | BCP and disaster recovery plan |
-| Vendor Risk Assessment | [`Operations/Vendor-Risk-Assessment.md`](./Operations/Vendor-Risk-Assessment.md) | Third-party vendor risk evaluation |
-| DB Failover Runbook | [`Operations/Runbooks/DB-Failover.md`](./Operations/Runbooks/DB-Failover.md) | Database failover procedure |
-| AI Service Outage Runbook | [`Operations/Runbooks/AI-Service-Outage.md`](./Operations/Runbooks/AI-Service-Outage.md) | AI service outage response |
-| Cache Failure Runbook | [`Operations/Runbooks/Cache-Failure.md`](./Operations/Runbooks/Cache-Failure.md) | Redis cache failure response |
-
-### Enterprise (10 docs)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Enterprise Overview | [`Enterprise/README.md`](./Enterprise/README.md) | Enterprise category index |
-| Enterprise Architecture | [`Enterprise/Enterprise-Architecture.md`](./Enterprise/Enterprise-Architecture.md) | Multi-tenant architecture |
-| Multi-Tenancy | [`Enterprise/Multi-Tenancy.md`](./Enterprise/Multi-Tenancy.md) | Multi-tenant data isolation |
-| Organizations | [`Enterprise/Organizations.md`](./Enterprise/Organizations.md) | Organization management |
-| Billing | [`Enterprise/Billing.md`](./Enterprise/Billing.md) | Billing and invoicing |
-| Licensing | [`Enterprise/Licensing.md`](./Enterprise/Licensing.md) | Licensing model |
-| Admin Portal | [`Enterprise/Admin-Portal.md`](./Enterprise/Admin-Portal.md) | Administration interface |
-| Feature Flags | [`Enterprise/Feature-Flags.md`](./Enterprise/Feature-Flags.md) | Feature flag system |
-| Plugin Marketplace | [`Enterprise/Plugin-Marketplace.md`](./Enterprise/Plugin-Marketplace.md) | Plugin ecosystem |
-| Enterprise APIs | [`Enterprise/Enterprise-APIs.md`](./Enterprise/Enterprise-APIs.md) | Enterprise-grade API surface |
-
-### Build_Prompts (1 doc)
-
-| Document | Path | Description |
-|----------|------|-------------|
-| Build Prompts Reference | [`Build_Prompts/README.md`](./Build_Prompts/README.md) | Build prompt index |
-
-### Legacy Documents (in `/docs/` root)
-
-These are copied from the original `/Docs/` folder for convenience. The canonical versions remain in `/Docs/`.
-
-| Document | Path | Description |
-|----------|------|-------------|
-| MVP Product Spec (v1) | [`01-Vaeloom-MVP-Spec.md`](./01-Vaeloom-MVP-Spec.md) | Full MVP specification |
-| MVP Product Spec (v2) | [`05-Vaeloom-MVP-Spec.md`](./05-Vaeloom-MVP-Spec.md) | Alternative MVP formatting |
-| System Architecture | [`02-system-architecture.md`](./02-system-architecture.md) | 6-layer architecture |
-| Agent Workflow | [`03-agent-workflow.md`](./03-agent-workflow.md) | Agent interaction flows |
-| Memory & Knowledge Graph | [`04-memory-knowledge-graph.md`](./04-memory-knowledge-graph.md) | Memory system overview |
-| Enterprise Paper (v1) | [`06-Vaeloom-Enterprise-Paper.md`](./06-Vaeloom-Enterprise-Paper.md) | Enterprise product vision |
-| Enterprise Paper (v2) | [`Vaeloom-Enterprise-Paper.md`](./Vaeloom-Enterprise-Paper.md) | Alternative enterprise paper |
-| Complete Documentation | [`Vaeloom-Complete-Documentation.md`](./Vaeloom-Complete-Documentation.md) | ~18K-word comprehensive doc |
-| Documentation Site | [`Vaeloom-Documentation-Site.md`](./Vaeloom-Documentation-Site.md) | Alternative formatting |
-| How It Works Visual | [`Vaeloom-How-It-Works-Visual.md`](./Vaeloom-How-It-Works-Visual.md) | Visual walkthrough |
-| Audit Report | [`AUDIT-REPORT.md`](./AUDIT-REPORT.md) | Documentation quality audit |
-| Analytics | [`Analytics.md`](./Analytics.md) | Analytics tracking and metrics |
-| Integration Guide | [`Integration-Guide.md`](./Integration-Guide.md) | Third-party integration guide |
-| Admin Guide | [`Admin.md`](./Admin.md) | Admin operations guide |
-| SDK Documentation | [`SDK-Documentation.md`](./SDK-Documentation.md) | SDK architecture and usage |
-
-### Implementation Files (17 docs)
-
-Located in [`Engineering/Implementation/`](./Engineering/Implementation/). These are the build-order prompts for coding agents.
-
-| # | File | Builds |
-|---|------|--------|
-| 00 | [Master Build Order](./Engineering/Implementation/00-master-build-order.md) | Entry point â€” read first |
-| 01 | [Foundation Infra](./Engineering/Implementation/01-foundation-infra.md) | Repo scaffold, CI, auth |
-| 02 | [Database Schema](./Engineering/Implementation/02-database-schema.md) | Postgres schema, migrations |
-| 03 | [Ingestion Pipeline](./Engineering/Implementation/03-ingestion-pipeline.md) | File parsing, OCR, extraction |
-| 04 | [Memory System](./Engineering/Implementation/04-memory-system.md) | Memory Agent, graph, vector store |
-| 05 | [Agent Harness](./Engineering/Implementation/05-agent-harness-orchestration.md) | Shared agent runtime |
-| 06 | [RAG Retrieval](./Engineering/Implementation/06-rag-retrieval.md) | Agentic RAG |
-| 07 | [MCP Tools](./Engineering/Implementation/07-mcp-tool-ecosystem.md) | MCP-shaped connectors |
-| 08 | [Specialist Agents](./Engineering/Implementation/08-specialist-agents.md) | All 8 MVP agents |
-| 09 | [AI Gateway](./Engineering/Implementation/09-ai-gateway-model-routing.md) | Model router |
-| 10 | [Evaluation](./Engineering/Implementation/10-evaluation-framework.md) | Golden datasets, CI gating |
-| 11 | [Guardrails](./Engineering/Implementation/11-guardrails-safety.md) | Safety and guardrails |
-| 12 | [Observability](./Engineering/Implementation/12-observability-tracing.md) | Tracing, structured logs |
-| 13 | [API Backend](./Engineering/Implementation/13-api-backend.md) | Core REST API |
-| 14 | [Frontend](./Engineering/Implementation/14-frontend-workspace.md) | Next.js frontend |
-| 15 | [Security](./Engineering/Implementation/15-security-compliance.md) | Encryption, secrets |
-| 16 | [Deployment](./Engineering/Implementation/16-deployment-infrastructure.md) | Containers, CI/CD |
-| 17 | [Agent Orchestration at Scale](./Engineering/Implementation/17-agent-orchestration-at-scale.md) | Multi-agent coordination and scaling |
+| I want to... | Start here |
+|---|---|
+| Understand the overall architecture | [System Design](./Architecture/System-Design.md) |
+| Learn about AI agents | [AI Agents](./AI/AI-Agents.md) + [Memory](./AI/Memory.md) |
+| Set up my dev environment | [Developer Guide](./Developer_Experience/Developer-Guide.md) |
+| Review API endpoints | [API Reference](./Backend/API-Reference.md) |
+| Deploy the platform | [Deployment](./DevOps/Deployment.md) |
+| Review security posture | [Security Architecture](./Security/Security-Architecture.md) |
+| Understand the product vision | [Vision](./Product/Vision.md) + [PRD](./Product/PRD.md) |
+| Start contributing code | [Contributing](./Contributing/README.md) |
 
 ---
 
-## Enterprise Template
+## Document Lifecycle
 
-| Document | Path | Description |
-|----------|------|-------------|
-| Doc Template | [`TEMPLATE.md`](./TEMPLATE.md) | Enterprise documentation template with required sections |
-
----
-
-## Quick Start â€” Finding What You Need
-
-| I'm looking for... | Start here |
-|-------------------|------------|
-| What is Vaeloom? | `Project/README.md` or complete doc |
-| Product strategy? | `Product/Vision.md` â†’ `Product/Product-Strategy.md` |
-| User personas? | `Product/User-Personas.md` |
-| System architecture? | `Architecture/System-Design.md` |
-| Agent system? | `AI/AI-Agents.md` â†’ `AI/Agentic-RAG.md` |
-| Database schema? | `Database/Schema.md` â†’ `Database/ER-Diagram.md` |
-| API design? | `Backend/API-Architecture.md` â†’ `Backend/REST-Standards.md` |
-| Security model? | `Security/Security-Architecture.md` â†’ `Security/Threat-Model.md` |
-| Frontend? | `Frontend/Frontend-Architecture.md` â†’ `Frontend/Design-System.md` |
-| CI/CD? | `DevOps/CI-CD.md` â†’ `DevOps/Deployment.md` |
-| Testing? | `Testing/Testing-Strategy.md` â†’ per-test-type docs |
-| Operations? | `Operations/01-operations-runbook.md` â†’ `Operations/SRE.md` |
-| Engineering standards? | `Engineering/Coding-Standards.md` â†’ `Engineering/Git-Workflow.md` |
-| Developer setup? | `Developer_Experience/Setup.md` â†’ `Developer_Experience/Contributing.md` |
-| Enterprise features? | `Enterprise/README.md` |
-| Build order? | `Engineering/Implementation/00-master-build-order.md` |
+| Status | Meaning |
+|---|---|
+| 🆕 New | Initial draft, under review |
+| ✅ Upgraded | Reviewed, approved, enterprise quality |
+| 🔄 Needs Update | Content is stale, needs refresh |
+| 🗄️ Deprecated | Superseded, kept for reference |
 
 ---
 
-## Consolidation Notes
+*Last generated: 2026-07-17 | Total documents: 256*
 
-This documentation system was built in three passes:
 
-| Pass | What Was Done | When |
-|------|---------------|------|
-| **1 â€” Structure** | Created 14 category folders with READMEs, ADR log, master index | Initial restructure |
-| **2 â€” Generation** | Created ~140 documents across all categories (96% coverage of target) | Full generation pass |
-| **3 â€” Quality** | Upgraded 9 strategic docs to enterprise quality, fixed broken references | Enterprise upgrade pass |
+## Unindexed Documents
 
-Legacy documentation in `/Docs/` and `/Documents/` remains untouched. This `/docs/` folder is the canonical documentation system going forward.
-
----
-
-*Maintained by the Vaeloom engineering team. Last updated: Q4 2026.*
-
----
-
-## Examples
-
-### Navigate the documentation tree
-
-```bash
-Vaeloom docs list
-Vaeloom docs show --path Architecture/System-Design.md
-```
-
-### Find docs by category
-
-```bash
-Vaeloom docs search --category "AI Agents" --format markdown
-```
-
-### Check for missing enterprise sections
-
-```bash
-Vaeloom docs audit --template enterprise
-```
-
-### Generate a cross-reference map
-
-```bash
-Vaeloom docs graph --output xref.md
-```
-
-## Future Improvements
-
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| Auto-generated doc index from directory scan | High | Medium | Q1 2027 |
-| Search across all documentation files | Medium | Medium | Q2 2027 |
-| Documentation health monitoring dashboard | Low | Low | Q4 2026 |
-
-## Related Documents
-
-| Document | Description |
-|----------|-------------|
-| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1/MVP product scope |
-| [Complete Documentation](Vaeloom-Complete-Documentation.md) | Full product and engineering reference |
-| [Enterprise Product Vision](06-Vaeloom-Enterprise-Paper.md) | Enterprise-scale vision |
-| [TEMPLATE.md](TEMPLATE.md) | Enterprise documentation template |
-| [Audit Report](AUDIT-REPORT.md) | Quality audit of the documentation system |
+- [00-DOCUMENTATION-COMPLETION-REPORT](./00-DOCUMENTATION-COMPLETION-REPORT.md)
+- [00-GAP-ANALYSIS-REPORT](./00-GAP-ANALYSIS-REPORT.md)
+- [02-system-architecture](./02-system-architecture.md)
+- [03-agent-workflow](./03-agent-workflow.md)
+- [04-memory-knowledge-graph](./04-memory-knowledge-graph.md)
+- [05-Vaeloom-MVP-Spec](./05-Vaeloom-MVP-Spec.md)
+- [06-Vaeloom-Enterprise-Paper](./06-Vaeloom-Enterprise-Paper.md)
+- [Admin](./Admin.md)
+- [Analytics](./Analytics.md)
+- [AUDIT-REPORT](./AUDIT-REPORT.md)
+- [DOCUMENTATION-MAP](./DOCUMENTATION-MAP.md)
+- [USAGE-GUIDE](./USAGE-GUIDE.md)
+- [Vaeloom-Complete-Documentation](./Vaeloom-Complete-Documentation.md)
+- [Vaeloom-Documentation-Site](./Vaeloom-Documentation-Site.md)
+- [AI\Agent-Prompt-Specs](./AI\Agent-Prompt-Specs.md)
+- [AI\Agentic-RAG](./AI\Agentic-RAG.md)
+- [AI\AI-Agents](./AI\AI-Agents.md)
+- [AI\AI-Cost-Strategy](./AI\AI-Cost-Strategy.md)
+- [AI\AI-Versioning](./AI\AI-Versioning.md)
+- [AI\Embeddings](./AI\Embeddings.md)
+- [AI\Eval-Datasets](./AI\Eval-Datasets.md)
+- [AI\Evaluation](./AI\Evaluation.md)
+- [AI\Guardrails](./AI\Guardrails.md)
+- [AI\Inference-Pipeline](./AI\Inference-Pipeline.md)
+- [AI\Knowledge-Graph](./AI\Knowledge-Graph.md)
+- [AI\LLM-Architecture](./AI\LLM-Architecture.md)
+- [AI\MCP](./AI\MCP.md)
+- [AI\Memory](./AI\Memory.md)
+- [AI\Model-Benchmarking](./AI\Model-Benchmarking.md)
+- [AI\Model-Routing](./AI\Model-Routing.md)
+- [AI\Prompt-Engineering](./AI\Prompt-Engineering.md)
+- [AI\Prompt-Library](./AI\Prompt-Library.md)
+- [AI\Prompt-Standards](./AI\Prompt-Standards.md)
+- [AI\RAG](./AI\RAG.md)
+- [AI\README](./AI\README.md)
+- [AI\Reasoning](./AI\Reasoning.md)
+- [AI\Safety](./AI\Safety.md)
+- [AI\Tool-Calling](./AI\Tool-Calling.md)
+- [API\README](./API\README.md)
+- [Architecture\03-adrs](./Architecture\03-adrs.md)
+- [Architecture\C4-Architecture](./Architecture\C4-Architecture.md)
+- [Architecture\Caching](./Architecture\Caching.md)
+- [Architecture\Data-Flow](./Architecture\Data-Flow.md)
+- [Architecture\Disaster-Recovery](./Architecture\Disaster-Recovery.md)
+- [Architecture\Event-Architecture](./Architecture\Event-Architecture.md)
+- [Architecture\Event-Flow](./Architecture\Event-Flow.md)
+- [Architecture\High-Level-Design](./Architecture\High-Level-Design.md)
+- [Architecture\Infrastructure](./Architecture\Infrastructure.md)
+- [Architecture\Low-Level-Design](./Architecture\Low-Level-Design.md)
+- [Architecture\Microservices](./Architecture\Microservices.md)
+- [Architecture\Performance](./Architecture\Performance.md)
+- [Architecture\Queue](./Architecture\Queue.md)
+- [Architecture\README](./Architecture\README.md)
+- [Architecture\Scalability](./Architecture\Scalability.md)
+- [Architecture\Search](./Architecture\Search.md)
+- [Architecture\Service-Architecture](./Architecture\Service-Architecture.md)
+- [Architecture\Storage](./Architecture\Storage.md)
+- [Architecture\System-Design](./Architecture\System-Design.md)
+- [Backend\ABAC](./Backend\ABAC.md)
+- [Backend\API-Architecture](./Backend\API-Architecture.md)
+- [Backend\API-Reference](./Backend\API-Reference.md)
+- [Backend\API-Versioning](./Backend\API-Versioning.md)
+- [Backend\Authentication](./Backend\Authentication.md)
+- [Backend\Authorization](./Backend\Authorization.md)
+- [Backend\Backend-Architecture](./Backend\Backend-Architecture.md)
+- [Backend\Business-Logic](./Backend\Business-Logic.md)
+- [Backend\Connectors](./Backend\Connectors.md)
+- [Backend\Cron-Jobs](./Backend\Cron-Jobs.md)
+- [Backend\Error-Standards](./Backend\Error-Standards.md)
+- [Backend\Event-Catalog](./Backend\Event-Catalog.md)
+- [Backend\GraphQL](./Backend\GraphQL.md)
+- [Backend\Module-Specs](./Backend\Module-Specs.md)
+- [Backend\Queue](./Backend\Queue.md)
+- [Backend\Rate-Limiting](./Backend\Rate-Limiting.md)
+- [Backend\RBAC](./Backend\RBAC.md)
+- [Backend\README](./Backend\README.md)
+- [Backend\REST-Standards](./Backend\REST-Standards.md)
+- [Backend\Service-Contracts](./Backend\Service-Contracts.md)
+- [Backend\Validation](./Backend\Validation.md)
+- [Backend\Workers](./Backend\Workers.md)
+- [Build_Prompts\README](./Build_Prompts\README.md)
+- [Contributing\README](./Contributing\README.md)
+- [Database\Backups](./Database\Backups.md)
+- [Database\Data-Dictionary](./Database\Data-Dictionary.md)
+- [Database\Database-Design](./Database\Database-Design.md)
+- [Database\ER-Diagram](./Database\ER-Diagram.md)
+- [Database\Indexes](./Database\Indexes.md)
+- [Database\Migrations](./Database\Migrations.md)
+- [Database\Optimization](./Database\Optimization.md)
+- [Database\Partitioning](./Database\Partitioning.md)
+- [Database\README](./Database\README.md)
+- [Database\Replication](./Database\Replication.md)
+- [Database\Schema](./Database\Schema.md)
+- [Developer_Experience\API-Examples](./Developer_Experience\API-Examples.md)
+- [Developer_Experience\Architecture-Walkthrough](./Developer_Experience\Architecture-Walkthrough.md)
+- [Developer_Experience\CLI](./Developer_Experience\CLI.md)
+- [Developer_Experience\Contributing](./Developer_Experience\Contributing.md)
+- [Developer_Experience\Debugging](./Developer_Experience\Debugging.md)
+- [Developer_Experience\Developer-Guide](./Developer_Experience\Developer-Guide.md)
+- [Developer_Experience\Environment](./Developer_Experience\Environment.md)
+- [Developer_Experience\Scripts](./Developer_Experience\Scripts.md)
+- [Developer_Experience\Setup](./Developer_Experience\Setup.md)
+- [DevOps\Alerting](./DevOps\Alerting.md)
+- [DevOps\CI-CD](./DevOps\CI-CD.md)
+- [DevOps\Configuration-Management](./DevOps\Configuration-Management.md)
+- [DevOps\Container-Signing](./DevOps\Container-Signing.md)
+- [DevOps\Deployment](./DevOps\Deployment.md)
+- [DevOps\Docker](./DevOps\Docker.md)
+- [DevOps\Kubernetes](./DevOps\Kubernetes.md)
+- [DevOps\Logging](./DevOps\Logging.md)
+- [DevOps\Monitoring](./DevOps\Monitoring.md)
+- [DevOps\README](./DevOps\README.md)
+- [DevOps\SBOM-Policy](./DevOps\SBOM-Policy.md)
+- [DevOps\Terraform](./DevOps\Terraform.md)
+- [DevOps\Tracing](./DevOps\Tracing.md)
+- [Engineering\Branch-Strategy](./Engineering\Branch-Strategy.md)
+- [Engineering\Code-Review](./Engineering\Code-Review.md)
+- [Engineering\Coding-Standards](./Engineering\Coding-Standards.md)
+- [Engineering\Commit-Convention](./Engineering\Commit-Convention.md)
+- [Engineering\Folder-Structure](./Engineering\Folder-Structure.md)
+- [Engineering\Git-Workflow](./Engineering\Git-Workflow.md)
+- [Engineering\Naming-Convention](./Engineering\Naming-Convention.md)
+- [Engineering\PR-Guidelines](./Engineering\PR-Guidelines.md)
+- [Engineering\README](./Engineering\README.md)
+- [Engineering\Release-Process](./Engineering\Release-Process.md)
+- [Engineering\Versioning](./Engineering\Versioning.md)
+- [Engineering\Implementation\00-master-build-order](./Engineering\Implementation\00-master-build-order.md)
+- [Engineering\Implementation\01-foundation-infra](./Engineering\Implementation\01-foundation-infra.md)
+- [Engineering\Implementation\02-database-schema](./Engineering\Implementation\02-database-schema.md)
+- [Engineering\Implementation\03-ingestion-pipeline](./Engineering\Implementation\03-ingestion-pipeline.md)
+- [Engineering\Implementation\04-memory-system](./Engineering\Implementation\04-memory-system.md)
+- [Engineering\Implementation\05-agent-harness-orchestration](./Engineering\Implementation\05-agent-harness-orchestration.md)
+- [Engineering\Implementation\06-rag-retrieval](./Engineering\Implementation\06-rag-retrieval.md)
+- [Engineering\Implementation\07-mcp-tool-ecosystem](./Engineering\Implementation\07-mcp-tool-ecosystem.md)
+- [Engineering\Implementation\08-specialist-agents](./Engineering\Implementation\08-specialist-agents.md)
+- [Engineering\Implementation\09-ai-gateway-model-routing](./Engineering\Implementation\09-ai-gateway-model-routing.md)
+- [Engineering\Implementation\10-evaluation-framework](./Engineering\Implementation\10-evaluation-framework.md)
+- [Engineering\Implementation\11-guardrails-safety](./Engineering\Implementation\11-guardrails-safety.md)
+- [Engineering\Implementation\12-observability-tracing](./Engineering\Implementation\12-observability-tracing.md)
+- [Engineering\Implementation\13-api-backend](./Engineering\Implementation\13-api-backend.md)
+- [Engineering\Implementation\14-frontend-workspace](./Engineering\Implementation\14-frontend-workspace.md)
+- [Engineering\Implementation\15-security-compliance](./Engineering\Implementation\15-security-compliance.md)
+- [Engineering\Implementation\16-deployment-infrastructure](./Engineering\Implementation\16-deployment-infrastructure.md)
+- [Engineering\Implementation\17-agent-orchestration-at-scale](./Engineering\Implementation\17-agent-orchestration-at-scale.md)
+- [Enterprise\Admin-Portal](./Enterprise\Admin-Portal.md)
+- [Enterprise\Billing](./Enterprise\Billing.md)
+- [Enterprise\Enterprise-APIs](./Enterprise\Enterprise-APIs.md)
+- [Enterprise\Enterprise-Architecture](./Enterprise\Enterprise-Architecture.md)
+- [Enterprise\Feature-Flags](./Enterprise\Feature-Flags.md)
+- [Enterprise\Licensing](./Enterprise\Licensing.md)
+- [Enterprise\Multi-Tenancy](./Enterprise\Multi-Tenancy.md)
+- [Enterprise\Organizations](./Enterprise\Organizations.md)
+- [Enterprise\Plugin-Marketplace](./Enterprise\Plugin-Marketplace.md)
+- [Enterprise\README](./Enterprise\README.md)
+- [Frontend\Accessibility-Audit](./Frontend\Accessibility-Audit.md)
+- [Frontend\Accessibility](./Frontend\Accessibility.md)
+- [Frontend\Animation-System](./Frontend\Animation-System.md)
+- [Frontend\Charts](./Frontend\Charts.md)
+- [Frontend\Component-Library](./Frontend\Component-Library.md)
+- [Frontend\Dashboard](./Frontend\Dashboard.md)
+- [Frontend\Design-System](./Frontend\Design-System.md)
+- [Frontend\Forms](./Frontend\Forms.md)
+- [Frontend\Frontend-Architecture](./Frontend\Frontend-Architecture.md)
+- [Frontend\Internationalization](./Frontend\Internationalization.md)
+- [Frontend\Mobile-Architecture](./Frontend\Mobile-Architecture.md)
+- [Frontend\Navigation](./Frontend\Navigation.md)
+- [Frontend\Responsive-Design](./Frontend\Responsive-Design.md)
+- [Frontend\State-Management](./Frontend\State-Management.md)
+- [Frontend\Theme-System](./Frontend\Theme-System.md)
+- [Frontend\UI-Architecture](./Frontend\UI-Architecture.md)
+- [Frontend\UX-Guidelines](./Frontend\UX-Guidelines.md)
+- [Guides\README](./Guides\README.md)
+- [Operations\01-operations-runbook](./Operations\01-operations-runbook.md)
+- [Operations\02-incident-response](./Operations\02-incident-response.md)
+- [Operations\Business-Continuity-Plan](./Operations\Business-Continuity-Plan.md)
+- [Operations\Capacity-Planning](./Operations\Capacity-Planning.md)
+- [Operations\Cost-Optimization](./Operations\Cost-Optimization.md)
+- [Operations\Maintenance](./Operations\Maintenance.md)
+- [Operations\Observability](./Operations\Observability.md)
+- [Operations\README](./Operations\README.md)
+- [Operations\Rollback-Strategy](./Operations\Rollback-Strategy.md)
+- [Operations\SLA](./Operations\SLA.md)
+- [Operations\SLI](./Operations\SLI.md)
+- [Operations\SLO](./Operations\SLO.md)
+- [Operations\SRE](./Operations\SRE.md)
+- [Operations\Support](./Operations\Support.md)
+- [Operations\Vendor-Risk-Assessment](./Operations\Vendor-Risk-Assessment.md)
+- [Operations\Runbooks\AI-Service-Outage](./Operations\Runbooks\AI-Service-Outage.md)
+- [Operations\Runbooks\Cache-Failure](./Operations\Runbooks\Cache-Failure.md)
+- [Operations\Runbooks\DB-Failover](./Operations\Runbooks\DB-Failover.md)
+- [Product\Business-Model](./Product\Business-Model.md)
+- [Product\Business-Requirements](./Product\Business-Requirements.md)
+- [Product\Competitive-Analysis](./Product\Competitive-Analysis.md)
+- [Product\FAQ](./Product\FAQ.md)
+- [Product\Features](./Product\Features.md)
+- [Product\Functional-Requirements](./Product\Functional-Requirements.md)
+- [Product\Goals](./Product\Goals.md)
+- [Product\KPIs](./Product\KPIs.md)
+- [Product\Mission](./Product\Mission.md)
+- [Product\Non-Functional-Requirements](./Product\Non-Functional-Requirements.md)
+- [Product\PRD](./Product\PRD.md)
+- [Product\Pricing](./Product\Pricing.md)
+- [Product\Problem](./Product\Problem.md)
+- [Product\Product-Strategy](./Product\Product-Strategy.md)
+- [Product\README](./Product\README.md)
+- [Product\Roadmap](./Product\Roadmap.md)
+- [Product\Success-Metrics](./Product\Success-Metrics.md)
+- [Product\User-Journey](./Product\User-Journey.md)
+- [Product\User-Personas](./Product\User-Personas.md)
+- [Product\User-Research](./Product\User-Research.md)
+- [Product\User-Stories](./Product\User-Stories.md)
+- [Product\Vision](./Product\Vision.md)
+- [Product\Feature-Specs\ATS-Scoring](./Product\Feature-Specs\ATS-Scoring.md)
+- [Product\Feature-Specs\Auto-Organization](./Product\Feature-Specs\Auto-Organization.md)
+- [Product\Feature-Specs\Chat](./Product\Feature-Specs\Chat.md)
+- [Product\Feature-Specs\Dashboard](./Product\Feature-Specs\Dashboard.md)
+- [Product\Feature-Specs\Deadline-Detection](./Product\Feature-Specs\Deadline-Detection.md)
+- [Product\Feature-Specs\Document-Viewer](./Product\Feature-Specs\Document-Viewer.md)
+- [Product\Feature-Specs\Global-Search](./Product\Feature-Specs\Global-Search.md)
+- [Product\Feature-Specs\Gmail-Digest](./Product\Feature-Specs\Gmail-Digest.md)
+- [Product\Feature-Specs\Job-Search](./Product\Feature-Specs\Job-Search.md)
+- [Product\Feature-Specs\Learning-Roadmap](./Product\Feature-Specs\Learning-Roadmap.md)
+- [Product\Feature-Specs\Master-Resume](./Product\Feature-Specs\Master-Resume.md)
+- [Product\Feature-Specs\Memory-Graph](./Product\Feature-Specs\Memory-Graph.md)
+- [Product\Feature-Specs\Tailored-Applications](./Product\Feature-Specs\Tailored-Applications.md)
+- [Project\README](./Project\README.md)
+- [Security\Audit-Logs](./Security\Audit-Logs.md)
+- [Security\Audit-Policy](./Security\Audit-Policy.md)
+- [Security\Compliance](./Security\Compliance.md)
+- [Security\Data-Retention-Policy](./Security\Data-Retention-Policy.md)
+- [Security\Encryption](./Security\Encryption.md)
+- [Security\GDPR](./Security\GDPR.md)
+- [Security\IAM](./Security\IAM.md)
+- [Security\OWASP](./Security\OWASP.md)
+- [Security\Penetration-Test-Procedure](./Security\Penetration-Test-Procedure.md)
+- [Security\Privacy](./Security\Privacy.md)
+- [Security\README](./Security\README.md)
+- [Security\Secrets](./Security\Secrets.md)
+- [Security\Security-Architecture](./Security\Security-Architecture.md)
+- [Security\SOC2](./Security\SOC2.md)
+- [Security\Threat-Model](./Security\Threat-Model.md)
+- [Testing\AI-Testing](./Testing\AI-Testing.md)
+- [Testing\Chaos-Testing](./Testing\Chaos-Testing.md)
+- [Testing\Coverage](./Testing\Coverage.md)
+- [Testing\E2E-Testing](./Testing\E2E-Testing.md)
+- [Testing\Integration-Testing](./Testing\Integration-Testing.md)
+- [Testing\Load-Testing](./Testing\Load-Testing.md)
+- [Testing\Performance-Testing](./Testing\Performance-Testing.md)
+- [Testing\Prompt-Testing](./Testing\Prompt-Testing.md)
+- [Testing\README](./Testing\README.md)
+- [Testing\Regression-Testing](./Testing\Regression-Testing.md)
+- [Testing\Security-Testing](./Testing\Security-Testing.md)
+- [Testing\Testing-Strategy](./Testing\Testing-Strategy.md)
+- [Testing\Unit-Testing](./Testing\Unit-Testing.md)
