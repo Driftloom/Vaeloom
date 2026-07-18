@@ -1,0 +1,30 @@
+{
+  "name": "@vaeloom/plugin-translator",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Translation plugin that prepares structured requests for AI service integration",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": ["src/**/*.ts"],
+  "scripts": {
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@vaeloom/plugin-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@vaeloom/eslint-config": "workspace:*",
+    "@vaeloom/tsconfig": "workspace:*",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
