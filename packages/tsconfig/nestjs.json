@@ -1,0 +1,13 @@
+{
+  "extends": "./base.json",
+  "compilerOptions": {
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "noPropertyAccessFromIndexSignature": false,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  }
+}
