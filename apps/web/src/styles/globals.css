@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-text font-sans antialiased;
+  }
+}
+
+@layer components {
+  /* Common UI Elements */
+  .btn-primary {
+    @apply bg-primary text-white font-medium px-4 py-2 rounded-md hover:bg-primary-hover active:bg-primary-active transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-surface-hover text-text font-medium px-4 py-2 rounded-md hover:bg-surface-active transition-colors;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-white font-medium px-4 py-2 rounded-md hover:bg-accent-hover transition-colors;
+  }
+
+  .card {
+    @apply bg-surface rounded-lg border border-border p-4 shadow-sm;
+  }
+}
