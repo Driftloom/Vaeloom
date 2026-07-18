@@ -5,9 +5,9 @@
 
 ## Overview
 
-The database backup strategy is Vaeloom's last line of defense against data loss â€” ensuring that every byte of user data can be recovered within defined recovery time objectives (RTO) and recovery point objectives (RPO). The strategy combines daily full PostgreSQL backups with continuous WAL archiving for point-in-time recovery, S3's built-in durability (11x9s) with cross-region replication for object storage, and Redis AOF persistence for cache recoverability. Every backup must be tested: monthly staging restores validate the backup chain, and quarterly disaster recovery drills exercise the full runbook.
+The database backup strategy is Vaeloom's last line of defense against data loss — ensuring that every byte of user data can be recovered within defined recovery time objectives (RTO) and recovery point objectives (RPO). The strategy combines daily full PostgreSQL backups with continuous WAL archiving for point-in-time recovery, S3's built-in durability (11x9s) with cross-region replication for object storage, and Redis AOF persistence for cache recoverability. Every backup must be tested: monthly staging restores validate the backup chain, and quarterly disaster recovery drills exercise the full runbook.
 
-This document defines the backup schedule, commands, verification procedures, and restore workflows for all Vaeloom data stores. It is intended for database administrators, SRE engineers, and on-call engineers responsible for data recovery. A backup that has never been restored is a hope, not a backup â€” verification is an integral part of the backup strategy, not an afterthought.
+This document defines the backup schedule, commands, verification procedures, and restore workflows for all Vaeloom data stores. It is intended for database administrators, SRE engineers, and on-call engineers responsible for data recovery. A backup that has never been restored is a hope, not a backup — verification is an integral part of the backup strategy, not an afterthought.
 
 ## Goals
 
@@ -32,7 +32,7 @@ This document defines the backup schedule, commands, verification procedures, an
 **Out of Scope:**
 
 - Incremental or differential backup strategies (future improvement)
-- Third-party backup tools (pgBackrest, WAL-G) â€” currently using native pg_dump
+- Third-party backup tools (pgBackrest, WAL-G) — currently using native pg_dump
 - Backup of ephemeral or transient data (session caches, working memory)
 - Multi-region active-active backup topology
 - Self-service restore UI for end users
@@ -48,10 +48,10 @@ graph TD
     classDef redis fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef verify fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph PG_Backup["ðŸ—„ï¸ PostgreSQL Backup"]
+    subgraph PG_Backup["ðŸ--„ï¸ PostgreSQL Backup"]
         direction TB
         P1["Daily: pg_dump full<br/>custom format, compress 9"]
-        P2["Continuous WAL archiving<br/>archive_command cp â†’ /backups/wal/"]
+        P2["Continuous WAL archiving<br/>archive_command cp --> /backups/wal/"]
         P3["Retention: 30 days daily<br/>12 months weekly"]
     end
 
@@ -138,35 +138,35 @@ pg_restore -h localhost -U Vaeloom -d Vaeloom_db \
 
 | Mistake | Consequence |
 |---------|-------------|
-| Never testing restores | A backup that has never been restored is a hope, not a backup â€” the first restore attempt often fails due to corruption or version mismatch |
-| Relying on a single backup method | Daily full backup without WAL archiving means up to 24 hours of data loss on failure â€” always pair full backups with continuous WAL |
-| Storing backups in the same region as the database | A region-level outage destroys both the database and its backups â€” WAL archives must be in a separate region |
-| Ignoring backup compression | Uncompressed backups consume 3-5x more storage and take longer to transfer â€” use pg_dump's custom format with compression level 9 |
+| Never testing restores | A backup that has never been restored is a hope, not a backup — the first restore attempt often fails due to corruption or version mismatch |
+| Relying on a single backup method | Daily full backup without WAL archiving means up to 24 hours of data loss on failure — always pair full backups with continuous WAL |
+| Storing backups in the same region as the database | A region-level outage destroys both the database and its backups — WAL archives must be in a separate region |
+| Ignoring backup compression | Uncompressed backups consume 3-5x more storage and take longer to transfer — use pg_dump's custom format with compression level 9 |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
 | Test restores monthly in staging | A successful restore in an isolated environment proves the backup chain works before a real disaster |
-| Use WAL archiving for point-in-time recovery | Continuous WAL allows recovery to any second, not just the last full backup â€” critical for data corruption scenarios |
-| Encrypt backups at rest and in transit | Backup files contain all database data â€” use S3 server-side encryption and TLS for transfers |
+| Use WAL archiving for point-in-time recovery | Continuous WAL allows recovery to any second, not just the last full backup — critical for data corruption scenarios |
+| Encrypt backups at rest and in transit | Backup files contain all database data — use S3 server-side encryption and TLS for transfers |
 | Automate backup integrity checks | Run `pg_verify_backup` or custom checksum validation immediately after each backup completes |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Backup file access | Backup storage must have stricter access control than the database itself â€” stolen backups bypass all database-level auth |
-| Encryption key management | If backups are encrypted, key loss = data loss â€” use a managed KMS with key rotation, not static passphrases |
-| Long-term retention exposure | Archived backups (12-month retention) contain historical data that may include PII â€” apply the same data governance policies |
+| Backup file access | Backup storage must have stricter access control than the database itself — stolen backups bypass all database-level auth |
+| Encryption key management | If backups are encrypted, key loss = data loss — use a managed KMS with key rotation, not static passphrases |
+| Long-term retention exposure | Archived backups (12-month retention) contain historical data that may include PII — apply the same data governance policies |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Backup window impact | Schedule full backups during lowest traffic periods â€” WAL archiving has negligible overhead and runs continuously |
-| Compression trade-off | Higher compression (level 9) reduces storage but increases CPU during backup â€” acceptable for daily jobs, not for continuous WAL shipping |
-| Parallel restore | Use pg_restore with `--jobs` flag to parallelize restore on multi-core systems â€” significantly reduces recovery time |
+| Backup window impact | Schedule full backups during lowest traffic periods — WAL archiving has negligible overhead and runs continuously |
+| Compression trade-off | Higher compression (level 9) reduces storage but increases CPU during backup — acceptable for daily jobs, not for continuous WAL shipping |
+| Parallel restore | Use pg_restore with `--jobs` flag to parallelize restore on multi-core systems — significantly reduces recovery time |
 
 ---
 
@@ -300,7 +300,7 @@ sequenceDiagram
     PG->>S3: WAL segments streamed continuously
 ```
 
-> **Diagram:** Daily backup workflow â€” cron triggers pg_dump at 02:00 UTC, backup is written locally then uploaded to S3 with SSE encryption while integrity verification runs in parallel. Continuous WAL archiving runs independently 24/7 for point-in-time recovery.
+> **Diagram:** Daily backup workflow — cron triggers pg_dump at 02:00 UTC, backup is written locally then uploaded to S3 with SSE encryption while integrity verification runs in parallel. Continuous WAL archiving runs independently 24/7 for point-in-time recovery.
 
 ---
 
@@ -311,7 +311,7 @@ sequenceDiagram
 | Incremental backup (pgBackrest or WAL-G) | High | Medium | Q4 2026 |
 | Automated weekly restore test in staging | High | Low | Q3 2026 |
 | Cross-region WAL archive automatic failover | Medium | High | Q1 2027 |
-| Backup storage tiering (hot â†’ cold â†’ archive) | Low | Medium | Q2 2027 |
+| Backup storage tiering (hot → cold → archive) | Low | Medium | Q2 2027 |
 | Point-in-time recovery UI for self-service restore | Low | High | Q2 2027 |
 
 ---

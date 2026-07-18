@@ -1,14 +1,14 @@
-﻿# Database Design
+# Database Design
 
 > **Purpose:** Define the database architecture for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Database Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../Docs/Vaeloom-Complete-Documentation.md#11-database-design)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../docs/Vaeloom-Complete-Documentation.md#11-database-design)
 
 ## Overview
 
-Vaeloom's database architecture uses a three-store design unified by workspace_id scoping: PostgreSQL for relational data (users, workspaces, documents, memory records, audit log), Apache AGE (MVP) or Neo4j (Enterprise) for graph entity relationships, and pgvector (MVP) or Qdrant (Enterprise) for semantic embedding storage. This coordinated multi-store approach enables each query pattern to use the optimal storage engine â€” ACID transactions for relational data, Cypher traversal for graph queries, and vector similarity search for semantic retrieval â€” all scoped by the same workspace_id for tenant isolation.
+Vaeloom's database architecture uses a three-store design unified by workspace_id scoping: PostgreSQL for relational data (users, workspaces, documents, memory records, audit log), Apache AGE (MVP) or Neo4j (Enterprise) for graph entity relationships, and pgvector (MVP) or Qdrant (Enterprise) for semantic embedding storage. This coordinated multi-store approach enables each query pattern to use the optimal storage engine — ACID transactions for relational data, Cypher traversal for graph queries, and vector similarity search for semantic retrieval — all scoped by the same workspace_id for tenant isolation.
 
 This document defines the storage architecture, core table design, cross-store consistency patterns, and the unified workspace_id scoping strategy. It is intended for database engineers, backend developers writing data access code, and infrastructure engineers planning storage scaling. The architecture prioritizes data integrity (foreign keys, NOT NULL constraints, soft deletes), query performance (index strategies, vector indexes, graph traversal limits), and tenant isolation (workspace_id on every table).
 
@@ -23,7 +23,7 @@ graph TD
     classDef vector fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef table fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Relational["ðŸ—„ï¸ Relational Store (PostgreSQL)"]
+    subgraph Relational["🗄️ Relational Store (PostgreSQL)"]
         direction TB
         R1["users<br/>Account identity"]
         R2["workspaces<br/>Memory namespace"]
@@ -35,15 +35,15 @@ graph TD
         R8["agent_actions<br/>Append-only audit log"]
     end
 
-    subgraph Graph["ðŸ”— Graph Store (Apache AGE / Neo4j)"]
+    subgraph Graph["🔗 Graph Store (Apache AGE / Neo4j)"]
         G1["Entity Relationships<br/>Traversal queries<br/>Path analysis"]
     end
 
-    subgraph Vector["ðŸ“ Vector Store (pgvector / Qdrant)"]
+    subgraph Vector["📐 Vector Store (pgvector / Qdrant)"]
         V1["Semantic Embeddings<br/>1536 dimensions<br/>text-embedding-3-small"]
     end
 
-    subgraph Unified["ðŸ”‘ Unified by workspace_id"]
+    subgraph Unified["🔑 Unified by workspace_id"]
         U1["All three stores scope<br/>queries by workspace_id<br/>Cross-store consistency"]
     end
 
@@ -89,34 +89,34 @@ graph TD
 | Mistake | Consequence |
 |---------|-------------|
 | Designing for the final schema before understanding query patterns | A schema designed without knowing the queries it serves results in slow JOINs, missing indexes, and frequent migrations |
-| Using JSONB as a catch-all for anything unstructured | JSONB is convenient but lacks type safety, indexing flexibility, and referential integrity â€” structured columns should be the default |
-| Ignoring workspace_id in the schema design | Every table must have workspace_id â€” retrofitting tenant isolation later requires rewriting queries and adding indexes across millions of rows |
-| Using UUIDs as primary keys without considering index bloat | UUID v4 is random â€” it causes index fragmentation and insert performance degradation on large tables. Use sequential UUIDs (v7) or ULIDs |
+| Using JSONB as a catch-all for anything unstructured | JSONB is convenient but lacks type safety, indexing flexibility, and referential integrity — structured columns should be the default |
+| Ignoring workspace_id in the schema design | Every table must have workspace_id — retrofitting tenant isolation later requires rewriting queries and adding indexes across millions of rows |
+| Using UUIDs as primary keys without considering index bloat | UUID v4 is random — it causes index fragmentation and insert performance degradation on large tables. Use sequential UUIDs (v7) or ULIDs |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Design schema around query patterns, not entity relationships | The ER diagram shows what data exists â€” the schema design should optimize for the most frequent and expensive queries first |
-| Keep the 3-store architecture (relational, graph, vector) unified by workspace_id | Cross-store queries are scoped by workspace_id â€” this is the tenant isolation boundary and should be the primary access pattern |
-| Use JSONB for semi-structured memory data only | Memory records vary by type â€” JSONB content is appropriate here. Do not use JSONB for entities, relationships, or audit data |
-| Add NOT NULL constraints and foreign keys from the start | Soft schemas lead to data quality issues â€” constraints enforce integrity at the database level and prevent application bugs from corrupting data |
+| Design schema around query patterns, not entity relationships | The ER diagram shows what data exists — the schema design should optimize for the most frequent and expensive queries first |
+| Keep the 3-store architecture (relational, graph, vector) unified by workspace_id | Cross-store queries are scoped by workspace_id — this is the tenant isolation boundary and should be the primary access pattern |
+| Use JSONB for semi-structured memory data only | Memory records vary by type — JSONB content is appropriate here. Do not use JSONB for entities, relationships, or audit data |
+| Add NOT NULL constraints and foreign keys from the start | Soft schemas lead to data quality issues — constraints enforce integrity at the database level and prevent application bugs from corrupting data |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| workspace_id as the security boundary | Every query must be scoped by workspace_id â€” a query without a WHERE workspace_id clause is a cross-tenant data leak vulnerability |
-| Foreign key relationships across stores | Graph and vector stores do not enforce referential integrity â€” application-level validation must ensure entity IDs exist before creating relationships |
-| Soft deletes over hard deletes | Use a `deleted_at` timestamp column â€” hard deletes remove audit trail and make recovery impossible |
+| workspace_id as the security boundary | Every query must be scoped by workspace_id — a query without a WHERE workspace_id clause is a cross-tenant data leak vulnerability |
+| Foreign key relationships across stores | Graph and vector stores do not enforce referential integrity — application-level validation must ensure entity IDs exist before creating relationships |
+| Soft deletes over hard deletes | Use a `deleted_at` timestamp column — hard deletes remove audit trail and make recovery impossible |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| pgvector query performance | Vector similarity search is O(n) â€” use vector indexes for sub-100ms queries on embeddings up to 1M rows |
-| Graph traversal depth | Limit graph traversal to 5 levels deep â€” deeper traversals degrade exponentially and often indicate a schema design issue |
-| JSONB indexing | JSONB queries should use GIN indexes on paths that appear in WHERE clauses â€” scanning all rows because JSONB access lacks an index |
+| pgvector query performance | Vector similarity search is O(n) — use vector indexes for sub-100ms queries on embeddings up to 1M rows |
+| Graph traversal depth | Limit graph traversal to 5 levels deep — deeper traversals degrade exponentially and often indicate a schema design issue |
+| JSONB indexing | JSONB queries should use GIN indexes on paths that appear in WHERE clauses — scanning all rows because JSONB access lacks an index |
 
 ## Goals
 
@@ -183,11 +183,11 @@ graph TD
 
 ## Data Flow
 
-1. **Write Request** â€” Application sends INSERT/UPDATE query with workspace_id scoping, connection pooler assigns connection, query executes within transaction boundary with NOT NULL and FK constraint validation
-2. **Read Query** â€” Application sends SELECT query scoped by workspace_id, connection pooler routes to read replica (if configured), executor uses index scan for primary access patterns (workspace_id + id composite)
-3. **Vector Search** â€” Application sends vector similarity query with workspace_id filter, pgvector uses HNSW index to find nearest neighbors, returns top-K results with distance scores within 200ms
-4. **Graph Traversal** â€” Application sends recursive graph query with workspace_id scoping, AGE extension executes traversal with configurable max depth (default 5), returns path results with relationship metadata
-5. **Audit Log Write** â€” Application writes append-only audit entry with workspace_id, agent_id, action_type, and timestamp to agent_actions table using unlogged table optimization for write throughput
+1. **Write Request** — Application sends INSERT/UPDATE query with workspace_id scoping, connection pooler assigns connection, query executes within transaction boundary with NOT NULL and FK constraint validation
+2. **Read Query** — Application sends SELECT query scoped by workspace_id, connection pooler routes to read replica (if configured), executor uses index scan for primary access patterns (workspace_id + id composite)
+3. **Vector Search** — Application sends vector similarity query with workspace_id filter, pgvector uses HNSW index to find nearest neighbors, returns top-K results with distance scores within 200ms
+4. **Graph Traversal** — Application sends recursive graph query with workspace_id scoping, AGE extension executes traversal with configurable max depth (default 5), returns path results with relationship metadata
+5. **Audit Log Write** — Application writes append-only audit entry with workspace_id, agent_id, action_type, and timestamp to agent_actions table using unlogged table optimization for write throughput
 
 ## Scalability
 
@@ -337,7 +337,7 @@ sequenceDiagram
     POOL-->>APP: Unified result (merged by application)
 ```
 
-> **Diagram:** Cross-store query pattern â€” application sends a single request that fans out to all three stores (relational, graph, vector) in parallel via the connection pooler. Results are merged by the application layer.
+> **Diagram:** Cross-store query pattern — application sends a single request that fans out to all three stores (relational, graph, vector) in parallel via the connection pooler. Results are merged by the application layer.
 
 ---
 
@@ -355,4 +355,4 @@ sequenceDiagram
 
 - [Schema.md](./Schema.md)
 - [Indexes.md](./Indexes.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../Docs/Vaeloom-Complete-Documentation.md#11-database-design)
+- [`/docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../docs/Vaeloom-Complete-Documentation.md#11-database-design)

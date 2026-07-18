@@ -1,11 +1,11 @@
-﻿# Database Schema
+# Database Schema
 
 > **Purpose:** Define the complete database schema for Vaeloom
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../Docs/Vaeloom-Complete-Documentation.md#11-database-design), [`/Docs/Engineering/Implementation/02-database-schema.md`](../../Docs/Engineering/Implementation/02-database-schema.md)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../docs/Vaeloom-Complete-Documentation.md#11-database-design), [`/docs/Engineering/Implementation/02-database-schema.md`](../../docs/Engineering/Implementation/02-database-schema.md)
 
 ## Overview
 
-The database schema is the physical implementation of Vaeloom's relational data model â€” defining 9 core tables with complete column types, constraints (primary keys, foreign keys, NOT NULL, UNIQUE), and relationships that together store all user data, memory records, knowledge graph entities, application data, and audit logs. The schema is implemented as PostgreSQL DDL with UUID primary keys, workspace_id foreign keys for tenant isolation, JSONB for semi-structured memory content, and TIMESTAMPTZ for temporal data. The schema is managed through version-controlled ORM migrations (Prisma or Alembic) and must never be modified directly in production.
+The database schema is the physical implementation of Vaeloom's relational data model — defining 9 core tables with complete column types, constraints (primary keys, foreign keys, NOT NULL, UNIQUE), and relationships that together store all user data, memory records, knowledge graph entities, application data, and audit logs. The schema is implemented as PostgreSQL DDL with UUID primary keys, workspace_id foreign keys for tenant isolation, JSONB for semi-structured memory content, and TIMESTAMPTZ for temporal data. The schema is managed through version-controlled ORM migrations (Prisma or Alembic) and must never be modified directly in production.
 
 This document defines the complete DDL for all 9 tables, constraint definitions, estimated row counts at MVP scale, and key design decisions (UUID v7, soft deletes, JSONB usage, append-only audit). It serves as the authoritative reference for database engineers, backend developers writing queries, and anyone reviewing schema changes in migration PRs.
 
@@ -31,8 +31,8 @@ This document defines the complete DDL for all 9 tables, constraint definitions,
 
 - Index definitions (covered in Indexes.md)
 - Partitioning strategy (covered in Partitioning.md)
-- Graph store schema (AGE â€” covered in Knowledge-Graph.md)
-- Vector store schema (pgvector â€” covered in Embeddings.md)
+- Graph store schema (AGE — covered in Knowledge-Graph.md)
+- Vector store schema (pgvector — covered in Embeddings.md)
 - Row-Level Security policies (future improvement)
 - Materialized views or denormalized reporting tables
 
@@ -127,7 +127,7 @@ erDiagram
     }
 ```
 
-> **Diagram:** Entity-relationship diagram showing 9 core tables in Vaeloom's PostgreSQL schema. **users** â†’ **workspaces** is the root hierarchy â€” every other table is scoped by `workspace_id`. **documents** have a version chain via **document_versions**. **entities** and **relationships** form the knowledge graph. **memory_records** link back to their source documents. **agent_actions** provides the append-only audit log.
+> **Diagram:** Entity-relationship diagram showing 9 core tables in Vaeloom's PostgreSQL schema. **users** → **workspaces** is the root hierarchy — every other table is scoped by `workspace_id`. **documents** have a version chain via **document_versions**. **entities** and **relationships** form the knowledge graph. **memory_records** link back to their source documents. **agent_actions** provides the append-only audit log.
 
 ---
 
@@ -178,34 +178,34 @@ CREATE TABLE memory_records (
 
 | Mistake | Consequence |
 |---------|-------------|
-| Missing foreign key constraints between related tables | Without foreign keys, orphaned rows accumulate â€” documents without a workspace, memory_records without a source document |
-| Using TEXT for all string columns instead of specific types | TEXT columns lose the semantic meaning of the data â€” use UUID for IDs, TIMESTAMPTZ for dates, and domain-specific types like FLOAT for confidence scores |
-| Forgetting to add NOT NULL constraints to required columns | Nullable columns that should never be null force every query to handle NULL â€” leading to application bugs and inconsistent data quality |
-| Schema drift between development and production | Hand-editing the production schema without generating a migration creates drift â€” the next deploy will overwrite the change or fail trying |
+| Missing foreign key constraints between related tables | Without foreign keys, orphaned rows accumulate — documents without a workspace, memory_records without a source document |
+| Using TEXT for all string columns instead of specific types | TEXT columns lose the semantic meaning of the data — use UUID for IDs, TIMESTAMPTZ for dates, and domain-specific types like FLOAT for confidence scores |
+| Forgetting to add NOT NULL constraints to required columns | Nullable columns that should never be null force every query to handle NULL — leading to application bugs and inconsistent data quality |
+| Schema drift between development and production | Hand-editing the production schema without generating a migration creates drift — the next deploy will overwrite the change or fail trying |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Define all constraints (PK, FK, NOT NULL, UNIQUE) in the schema | Constraints are the database's self-defense against application bugs â€” a missing FK constraint lets orphaned data accumulate silently |
-| Use domain-appropriate types for every column | UUID for identifiers, TIMESTAMPTZ for timestamps, FLOAT for confidence scores, JSONB for unstructured content â€” types are documentation |
-| Keep the Prisma/SQLAlchemy schema as the single source of truth | All schema changes must be made through the ORM's migration system â€” direct SQL changes to the database create drift that breaks the next deployment |
-| Document every table's purpose and expected row count in the schema comments | Schema comments travel with the code and survive migrations â€” they are the most durable form of documentation |
+| Define all constraints (PK, FK, NOT NULL, UNIQUE) in the schema | Constraints are the database's self-defense against application bugs — a missing FK constraint lets orphaned data accumulate silently |
+| Use domain-appropriate types for every column | UUID for identifiers, TIMESTAMPTZ for timestamps, FLOAT for confidence scores, JSONB for unstructured content — types are documentation |
+| Keep the Prisma/SQLAlchemy schema as the single source of truth | All schema changes must be made through the ORM's migration system — direct SQL changes to the database create drift that breaks the next deployment |
+| Document every table's purpose and expected row count in the schema comments | Schema comments travel with the code and survive migrations — they are the most durable form of documentation |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Row-Level Security (RLS) for workspace isolation | Enable RLS on all tenant-scoped tables with a policy that checks `workspace_id = current_setting('app.workspace_id')` â€” provides a defense-in-depth layer |
-| Avoiding SELECT * in production code | Selecting all columns from a table may inadvertently expose sensitive columns â€” always specify the columns needed |
-| Audit log immutability | The agent_actions table must be append-only â€” use database triggers or application-level enforcement to prevent UPDATE or DELETE on audit rows |
+| Row-Level Security (RLS) for workspace isolation | Enable RLS on all tenant-scoped tables with a policy that checks `workspace_id = current_setting('app.workspace_id')` — provides a defense-in-depth layer |
+| Avoiding SELECT * in production code | Selecting all columns from a table may inadvertently expose sensitive columns — always specify the columns needed |
+| Audit log immutability | The agent_actions table must be append-only — use database triggers or application-level enforcement to prevent UPDATE or DELETE on audit rows |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| JSONB schema flexibility vs query performance | JSONB allows schema flexibility but queries that lack an index scan all rows â€” extract frequently-queried JSONB fields to indexed columns |
-| UUID primary key performance | Random UUID v4 as primary key causes index fragmentation on large tables â€” use sequential UUID v7 for high-write tables |
+| JSONB schema flexibility vs query performance | JSONB allows schema flexibility but queries that lack an index scan all rows — extract frequently-queried JSONB fields to indexed columns |
+| UUID primary key performance | Random UUID v4 as primary key causes index fragmentation on large tables — use sequential UUID v7 for high-write tables |
 | Column ordering for storage efficiency | Place fixed-size columns (UUID, TIMESTAMPTZ) before variable-size columns (TEXT, JSONB) for better storage alignment and query performance |
 
 ---
@@ -214,15 +214,15 @@ CREATE TABLE memory_records (
 
 | Table | Primary Key | Foreign Keys | Key Constraints | Estimated Rows at MVP Scale |
 |-------|-------------|--------------|-----------------|------------------------------|
-| `users` | `id UUID` | â€” | `email UNIQUE` | < 10K |
-| `workspaces` | `id UUID` | `user_id â†’ users(id)` | â€” | < 15K |
-| `documents` | `id UUID` | `workspace_id â†’ workspaces(id)` | â€” | < 100K |
-| `document_versions` | `id UUID` | `document_id â†’ documents(id)` | â€” | < 500K |
-| `memory_records` | `id UUID` | `workspace_id â†’ workspaces(id)`, `source_document_id â†’ documents(id)` | â€” | < 500K |
-| `entities` | `id UUID` | `workspace_id â†’ workspaces(id)` | â€” | < 50K |
-| `relationships` | `id UUID` | `from_entity_id â†’ entities(id)`, `to_entity_id â†’ entities(id)` | â€” | < 200K |
-| `applications` | `id UUID` | `workspace_id â†’ workspaces(id)` | â€” | < 10K |
-| `agent_actions` | `id UUID` | `workspace_id â†’ workspaces(id)` | Append-only (no UPDATE/DELETE) | < 1M |
+| `users` | `id UUID` | — | `email UNIQUE` | < 10K |
+| `workspaces` | `id UUID` | `user_id → users(id)` | — | < 15K |
+| `documents` | `id UUID` | `workspace_id → workspaces(id)` | — | < 100K |
+| `document_versions` | `id UUID` | `document_id → documents(id)` | — | < 500K |
+| `memory_records` | `id UUID` | `workspace_id → workspaces(id)`, `source_document_id → documents(id)` | — | < 500K |
+| `entities` | `id UUID` | `workspace_id → workspaces(id)` | — | < 50K |
+| `relationships` | `id UUID` | `from_entity_id → entities(id)`, `to_entity_id → entities(id)` | — | < 200K |
+| `applications` | `id UUID` | `workspace_id → workspaces(id)` | — | < 10K |
+| `agent_actions` | `id UUID` | `workspace_id → workspaces(id)` | Append-only (no UPDATE/DELETE) | < 1M |
 
 ---
 
@@ -356,4 +356,4 @@ WHERE workspace_id = 'ws_abc'
 
 - [Database Design.md](./Database-Design.md)
 - [Indexes.md](./Indexes.md)
-- [`/Docs/Engineering/Implementation/02-database-schema.md`](../../Docs/Engineering/Implementation/02-database-schema.md)
+- [`/docs/Engineering/Implementation/02-database-schema.md`](../../docs/Engineering/Implementation/02-database-schema.md)
