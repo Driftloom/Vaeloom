@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance } from 'axios';
+import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 import type { GraphQLConfig, GraphQLResponse, GraphQLSchema } from './types';
 import { INTROSPECTION_QUERY, parseIntrospectionResult } from './introspection';
 import { buildQuery } from './query-builder';
@@ -17,6 +17,29 @@ export class GraphQLConnector {
         ...config.headers,
       },
     });
+
+    this.client.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (!axios.isAxiosError(error) || !error.config || !error.response) {
+          return Promise.reject(error);
+        }
+
+        const { status } = error.response;
+
+        if (status >= 500) {
+          const retryCount = (error.config as AxiosRequestConfig & { _retryCount?: number })._retryCount ?? 0;
+          if (retryCount < 3) {
+            (error.config as AxiosRequestConfig & { _retryCount?: number })._retryCount = retryCount + 1;
+            const backoff = Math.pow(2, retryCount) * 1000;
+            await delay(backoff);
+            return this.client!.request(error.config);
+          }
+        }
+
+        return Promise.reject(error);
+      },
+    );
   }
 
   async query<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
@@ -63,4 +86,8 @@ export class GraphQLConnector {
     this.client = null;
     this.config = null;
   }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

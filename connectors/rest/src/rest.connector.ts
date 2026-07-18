@@ -54,7 +54,7 @@ export class RestConnector {
         if (status === 429) {
           const retryAfter = parseInt(headers['retry-after'] ?? '5', 10);
           this.rateLimiter?.setRetryAfter(retryAfter);
-          await this.delay(retryAfter * 1000);
+          await delay(retryAfter * 1000);
           return this.client!.request(error.config);
         }
 
@@ -63,7 +63,7 @@ export class RestConnector {
           if (retryCount < 3) {
             error.config._retryCount = retryCount + 1;
             const backoff = Math.pow(2, retryCount) * 1000;
-            await this.delay(backoff);
+            await delay(backoff);
             return this.client!.request(error.config);
           }
         }
@@ -168,7 +168,8 @@ export class RestConnector {
     return allItems as T;
   }
 
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

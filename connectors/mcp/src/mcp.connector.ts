@@ -60,6 +60,7 @@ export class McpConnector {
   private async sendRequest(
     method: string,
     params?: Record<string, unknown>,
+    retryCount = 0,
   ): Promise<JSONRPCResponse> {
     if (!this.transport) throw new Error('Not connected. Call connect() first.');
 
@@ -71,6 +72,11 @@ export class McpConnector {
     });
 
     if (response.error) {
+      if (response.error.code === -32000 && retryCount < 3) {
+        const backoff = Math.pow(2, retryCount) * 1000;
+        await delay(backoff);
+        return this.sendRequest(method, params, retryCount + 1);
+      }
       throw new Error(
         `MCP error ${response.error.code}: ${response.error.message}`,
       );
@@ -78,4 +84,8 @@ export class McpConnector {
 
     return response;
   }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
