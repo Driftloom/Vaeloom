@@ -17,6 +17,18 @@ from app.agents.application_agent.handler import ApplicationAgent
 from app.agents.gmail_agent.handler import GmailAgent
 from app.agents.scheduler_agent.handler import SchedulerAgent
 from app.agents.qa_agent.handler import QAAgent, QAValidationResult
+from app.agents.career_agent.handler import CareerAgent  # G1
+from app.agents.learning_agent.handler import LearningAgent  # G2
+from app.agents.research_agent.handler import ResearchAgent  # G3
+from app.agents.github_agent.handler import GitHubAgent  # G4
+from app.agents.coding_agent.handler import CodingAgent  # G5
+from app.agents.reminder_agent.handler import ReminderAgent  # G6
+from app.agents.analytics_agent.handler import AnalyticsAgent  # G7
+from app.agents.recommendation_agent.handler import RecommendationAgent  # G8
+from app.agents.reflection_agent.handler import ReflectionAgent  # G9
+from app.agents.security_agent.handler import SecurityAgent  # G10
+from app.agents.connector_agent.handler import ConnectorAgent  # G11
+from app.agents.plugin_agent.handler import PluginAgent  # G12
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +43,18 @@ AGENT_REGISTRY: Dict[str, type] = {
     "application": ApplicationAgent,
     "gmail": GmailAgent,
     "scheduler": SchedulerAgent,
+    "career": CareerAgent,
+    "learning": LearningAgent,
+    "research": ResearchAgent,
+    "github": GitHubAgent,
+    "coding": CodingAgent,
+    "reminder": ReminderAgent,
+    "analytics": AnalyticsAgent,
+    "recommendation": RecommendationAgent,
+    "reflection": ReflectionAgent,
+    "security": SecurityAgent,
+    "connector": ConnectorAgent,
+    "plugin": PluginAgent,
 }
 
 # ── Intent Classification Categories ───────────────────────────────
@@ -42,6 +66,14 @@ CATEGORY_AGENT_MAP = {
     "communication": ["gmail"],
     "schedule_time": ["scheduler"],
     "memory_extraction": ["memory"],
+    "career_development": ["career", "learning"],
+    "research_github": ["research", "github"],
+    "coding_interview": ["coding"],
+    "reminders_analytics": ["reminder", "analytics"],
+    "recommendations": ["recommendation"],
+    "reflection": ["reflection"],
+    "security_monitoring": ["security"],
+    "integrations": ["connector", "plugin"],
 }
 
 # Keywords for coarse category classification
@@ -52,6 +84,14 @@ CATEGORY_KEYWORDS = {
     "communication": ["email", "gmail", "inbox", "draft", "reply", "mail"],
     "schedule_time": ["schedule", "deadline", "calendar", "reminder", "conflict", "event"],
     "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember"],
+    "career_development": ["career", "path", "skill", "course", "learn", "training", "certification"],
+    "research_github": ["research", "company", "industry", "trend", "github", "repository", "profile"],
+    "coding_interview": ["coding", "challenge", "leetcode", "algorithm", "code review", "interview prep"],
+    "reminders_analytics": ["deadline", "remind", "follow up", "analytics", "metrics", "report", "trend"],
+    "recommendations": ["recommend", "suggest", "match", "curate", "similar"],
+    "reflection": ["weekly", "monthly", "summary", "digest", "review", "goal", "progress"],
+    "security_monitoring": ["security", "pii", "monitor", "alert", "access", "suspicious"],
+    "integrations": ["connector", "plugin", "integration", "extension", "setup", "configure", "install"],
 }
 
 
@@ -103,6 +143,26 @@ async def classify_intent(message: str) -> tuple[str, float]:
             return "application", confidence
         return "job_search", confidence
 
+    if best_category == "career_development":
+        if any(kw in msg_lower for kw in ["course", "learn", "training", "certification", "study"]):
+            return "learning", confidence
+        return "career", confidence
+
+    if best_category == "research_github":
+        if any(kw in msg_lower for kw in ["github", "repository", "repo", "profile"]):
+            return "github", confidence
+        return "research", confidence
+
+    if best_category == "reminders_analytics":
+        if any(kw in msg_lower for kw in ["deadline", "remind", "follow up", "task", "todo"]):
+            return "reminder", confidence
+        return "analytics", confidence
+
+    if best_category == "integrations":
+        if any(kw in msg_lower for kw in ["connector", "integration", "connect", "setup", "configure"]):
+            return "connector", confidence
+        return "plugin", confidence
+
     return agents_in_category[0], confidence
 
 
@@ -134,8 +194,10 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
                 "proposals": [],
                 "questions": [
                     "Could you clarify what you'd like help with? "
-                    "Options: organize files, build resume, score resume, "
-                    "search jobs, apply, check email, manage schedule."
+                    "Options: organize files, build/score resume, career guidance, "
+                    "learning courses, company research, GitHub analysis, coding prep, "
+                    "reminders, analytics, recommendations, weekly reflection, "
+                    "security scan, integrations, plugins, email, schedule."
                 ],
             },
         }
