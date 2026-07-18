@@ -1,6 +1,6 @@
 ﻿# Event Catalog
 
-> **Purpose:** Provide the authoritative catalog of every event in Vaeloom's event-driven system â€” name, schema, producer, consumers, version, and retention
+> **Purpose:** Provide the authoritative catalog of every event in Vaeloom's event-driven system — name, schema, producer, consumers, version, and retention
 > **Status:** ðŸ†• New
 > **Owner:** Architecture Team
 > **Version:** 1.0
@@ -10,7 +10,7 @@
 
 ## Overview
 
-This is the single source of truth for every event that flows through Vaeloom's event bus. An event is a fact that something happened in the past â€” "document uploaded," "agent run completed," "tenant suspended." Events are immutable, named in past tense, and carry enough context for any consumer to react. This catalog lists every event type, its payload schema, who produces it, who consumes it, its current version, and how long it is retained.
+This is the single source of truth for every event that flows through Vaeloom's event bus. An event is a fact that something happened in the past — "document uploaded," "agent run completed," "tenant suspended." Events are immutable, named in past tense, and carry enough context for any consumer to react. This catalog lists every event type, its payload schema, who produces it, who consumes it, its current version, and how long it is retained.
 
 If an event is not in this catalog, it does not exist. Adding a new event requires a PR that updates this document.
 
@@ -240,8 +240,8 @@ Every event conforms to the CloudEvents 1.0 spec:
 | `billing.subscription_updated` | v1 | API Service (BillingModule) | Notifications, Audit | 7 years |
 | `billing.subscription_cancelled` | v1 | API Service (BillingModule) | Notifications, Analytics, Audit | 7 years |
 | `billing.invoice_generated` | v1 | API Service (BillingModule) | Notifications, Audit | 7 years |
-| `billing.payment_succeeded` | v1 | Stripe webhook â†’ BillingModule | Notifications, Audit | 7 years |
-| `billing.payment_failed` | v1 | Stripe webhook â†’ BillingModule | Notifications, Dunning, Audit | 7 years |
+| `billing.payment_succeeded` | v1 | Stripe webhook → BillingModule | Notifications, Audit | 7 years |
+| `billing.payment_failed` | v1 | Stripe webhook → BillingModule | Notifications, Dunning, Audit | 7 years |
 | `billing.usage_threshold_reached` | v1 | API Service (BillingModule) | Notifications | 1 year |
 
 ## Versioning Strategy
@@ -250,7 +250,7 @@ Every event conforms to the CloudEvents 1.0 spec:
 |-------------|---------|---------|
 | Add optional field | No version bump | Add `metadata.source_app` to `document.uploaded` |
 | Add required field | Bump to v2; both versions supported for 90 days | Add `tenant_id` (required) |
-| Rename field | Bump to v2; deprecate old for 90 days | `file_name` â†’ `filename` |
+| Rename field | Bump to v2; deprecate old for 90 days | `file_name` → `filename` |
 | Remove field | Bump to v2; migrate all consumers first | Remove `legacy_id` |
 
 ## Dead-Letter Queue
@@ -283,7 +283,7 @@ DLQ events are reviewed daily; ops can retry, drop, or edit-and-retry.
 
 ## Related Documents
 
-- [`../Architecture/Event-Architecture.md`](../Architecture/Event-Architecture.md) â€” event bus design
-- [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md) â€” event flow traces
-- [`Queue.md`](./Queue.md) â€” queue architecture
-- [`../Security/Audit-Logs.md`](../Security/Audit-Logs.md) â€” audit event details
+- [`../Architecture/Event-Architecture.md`](../Architecture/Event-Architecture.md) — event bus design
+- [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md) — event flow traces
+- [`Queue.md`](./Queue.md) — queue architecture
+- [`../Security/Audit-Logs.md`](../Security/Audit-Logs.md) — audit event details

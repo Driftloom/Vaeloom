@@ -26,8 +26,8 @@ graph TD
         direction TB
         E1["Job Handler invoked<br/>with context"] --> E2["Acquire distributed lock<br/>(Redis / Advisory)"]
         E2 --> E3{"Lock acquired?"}
-        E3 -->|Yes| E4["Execute job logic<br/>DB queries â†’ Processing â†’ Writes"]
-        E3 -->|No| E5["Skip â€” another instance<br/>already running"]
+        E3 -->|Yes| E4["Execute job logic<br/>DB queries --> Processing --> Writes"]
+        E3 -->|No| E5["Skip -- another instance<br/>already running"]
     end
 
     %% â”€â”€â”€ Result Phase â”€â”€â”€
@@ -42,7 +42,7 @@ graph TD
     subgraph Retry["ðŸ” 4. Retry Phase"]
         direction TB
         R3 --> T1{"Retries left?<br/><strong>maxRetries = 3</strong>"}
-        T1 -->|Yes| T2["Increment attempt counter<br/>Exponential backoff: 1m â†’ 5m â†’ 15m"]
+        T1 -->|Yes| T2["Increment attempt counter<br/>Exponential backoff: 1m --> 5m --> 15m"]
         T2 --> E4
         T1 -->|No| T3["â›” Final failure<br/>Mark job as `failed`<br/>No more retries"]
     end
@@ -78,7 +78,7 @@ graph TD
 
 ```
 
-> **Diagram:** The cron job lifecycle flows through five stages â€” Schedule â†’ Execute â†’ Result â†’ Retry â†’ Monitor. Failed jobs retry up to 3 times with exponential backoff before escalating to pager alerts. All stages emit metrics and structured logs for observability.
+> **Diagram:** The cron job lifecycle flows through five stages — Schedule → Execute → Result → Retry → Monitor. Failed jobs retry up to 3 times with exponential backoff before escalating to pager alerts. All stages emit metrics and structured logs for observability.
 
 ---
 
@@ -133,44 +133,44 @@ async handleGmailDailyScan() {
 
 | Mistake | Consequence |
 |---------|-------------|
-| Jobs that are not idempotent | If a cron job runs twice (missed heartbeat, manual retry), duplicate data or actions occur â€” every job must produce the same result regardless of how many times it runs |
-| Missing distributed locks in multi-instance deployments | Without a distributed lock, every API instance runs the same cron job simultaneously â€” duplicate work, database contention, rate limit spikes |
+| Jobs that are not idempotent | If a cron job runs twice (missed heartbeat, manual retry), duplicate data or actions occur — every job must produce the same result regardless of how many times it runs |
+| Missing distributed locks in multi-instance deployments | Without a distributed lock, every API instance runs the same cron job simultaneously — duplicate work, database contention, rate limit spikes |
 | Not setting a timeout on job execution | A job that hangs (external API timeout, infinite loop) blocks the cron scheduler and subsequent jobs never run |
-| Jobs that run longer than their schedule interval | A 6-hour job scheduled every hour creates an ever-growing backlog of overlapping executions â€” monitor job duration against schedule |
+| Jobs that run longer than their schedule interval | A 6-hour job scheduled every hour creates an ever-growing backlog of overlapping executions — monitor job duration against schedule |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Acquire a distributed lock before executing | Use Redis or advisory locks to ensure only one instance executes the job â€” other instances skip with a log entry |
-| Set an explicit timeout for every job | Jobs that exceed their timeout should be killed and logged as failed â€” prevents hung jobs from blocking the scheduler |
-| Use dead letter queues for persistently failing jobs | After 3 retries, move the job to a dead letter queue for manual review â€” don't let jobs retry indefinitely |
+| Acquire a distributed lock before executing | Use Redis or advisory locks to ensure only one instance executes the job — other instances skip with a log entry |
+| Set an explicit timeout for every job | Jobs that exceed their timeout should be killed and logged as failed — prevents hung jobs from blocking the scheduler |
+| Use dead letter queues for persistently failing jobs | After 3 retries, move the job to a dead letter queue for manual review — don't let jobs retry indefinitely |
 | Monitor job duration vs. schedule interval | A job duration approaching its schedule interval signals that the job needs optimization or more workers |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Insecure job payloads with user-supplied data | A cron job that reads user-supplied data from the database and executes it without validation can be exploited â€” sanitize all job payloads and never execute dynamic code from user data |
-| Unauthorized job triggering via API | If cron job endpoints are exposed without authentication, an attacker can trigger expensive jobs (e.g., backup, full re-sync) on demand â€” protect trigger endpoints with admin-only access |
-| Credentials hardcoded in job configuration | Cron jobs that connect to external services often embed API keys or passwords in configuration â€” use a secrets manager and reference secrets by key, never by value |
+| Insecure job payloads with user-supplied data | A cron job that reads user-supplied data from the database and executes it without validation can be exploited — sanitize all job payloads and never execute dynamic code from user data |
+| Unauthorized job triggering via API | If cron job endpoints are exposed without authentication, an attacker can trigger expensive jobs (e.g., backup, full re-sync) on demand — protect trigger endpoints with admin-only access |
+| Credentials hardcoded in job configuration | Cron jobs that connect to external services often embed API keys or passwords in configuration — use a secrets manager and reference secrets by key, never by value |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Overlapping job execution causing resource spikes | If a job scheduled every 5 minutes takes 6 minutes, multiple instances overlap and compound database load â€” monitor job duration vs. interval and tune concurrency to prevent stacking |
-| Scheduled jobs all firing at the same minute | Cron expressions like `0 * * * *` (top of every hour) cause all hourly jobs to execute simultaneously â€” stagger job schedules by distributing across the hour, not the minute boundary |
-| Database lock contention during maintenance jobs | Jobs that rewrite large tables (consolidation, backup) hold table locks that block user-facing queries â€” schedule destructive jobs during lowest traffic windows and use lock-free operations where possible |
+| Overlapping job execution causing resource spikes | If a job scheduled every 5 minutes takes 6 minutes, multiple instances overlap and compound database load — monitor job duration vs. interval and tune concurrency to prevent stacking |
+| Scheduled jobs all firing at the same minute | Cron expressions like `0 * * * *` (top of every hour) cause all hourly jobs to execute simultaneously — stagger job schedules by distributing across the hour, not the minute boundary |
+| Database lock contention during maintenance jobs | Jobs that rewrite large tables (consolidation, backup) hold table locks that block user-facing queries — schedule destructive jobs during lowest traffic windows and use lock-free operations where possible |
 
 ---
 
 ## Goals
 
-1. **Reliable scheduled execution** â€” Run maintenance and data-processing jobs on time, every time, with distributed locking to prevent duplicate execution
-2. **Graceful failure handling** â€” Retry failed jobs up to 3 times with exponential backoff before escalating to pager alerts
-3. **Observable job health** â€” Emit metrics for every job execution (duration, success/fail, records processed) and alert on prolonged failures
-4. **Idempotent job design** â€” Every job must produce the same result regardless of how many times it runs, enabling safe manual retries
+1. **Reliable scheduled execution** — Run maintenance and data-processing jobs on time, every time, with distributed locking to prevent duplicate execution
+2. **Graceful failure handling** — Retry failed jobs up to 3 times with exponential backoff before escalating to pager alerts
+3. **Observable job health** — Emit metrics for every job execution (duration, success/fail, records processed) and alert on prolonged failures
+4. **Idempotent job design** — Every job must produce the same result regardless of how many times it runs, enabling safe manual retries
 
 ---
 
@@ -185,9 +185,9 @@ async handleGmailDailyScan() {
 
 ### Out of Scope
 
-- Ad-hoc job execution (triggered by user action â€” handled by queue system)
-- Real-time job scheduling (sub-second precision â€” not required for maintenance tasks)
-- Complex workflow orchestration (DAGs, dependencies â€” use separate workflow engine if needed)
+- Ad-hoc job execution (triggered by user action — handled by queue system)
+- Real-time job scheduling (sub-second precision — not required for maintenance tasks)
+- Complex workflow orchestration (DAGs, dependencies — use separate workflow engine if needed)
 
 ---
 
@@ -197,7 +197,7 @@ async handleGmailDailyScan() {
 |----|-------------|----------|
 | F-001 | System SHALL support cron expression scheduling for time-based job triggers | P0 |
 | F-002 | System SHALL acquire a distributed lock before job execution to prevent duplicate runs | P0 |
-| F-003 | System SHALL retry failed jobs up to 3 times with exponential backoff (1m â†’ 5m â†’ 15m) | P0 |
+| F-003 | System SHALL retry failed jobs up to 3 times with exponential backoff (1m → 5m → 15m) | P0 |
 | F-004 | System SHALL emit metrics (duration, success/fail, records processed) for every job execution | P0 |
 | F-005 | System SHALL support per-job timeout configuration | P1 |
 | F-006 | System SHALL move persistently failing jobs to a dead letter queue for manual review | P1 |
@@ -240,7 +240,7 @@ sequenceDiagram
     C->>L: Release lock
 ```
 
-> **Diagram:** Cron job execution â€” Scheduler triggers at cron time, acquires Redis lock to prevent duplicate execution, runs job handler with database operations, emits metrics for observability, then releases the lock.
+> **Diagram:** Cron job execution — Scheduler triggers at cron time, acquires Redis lock to prevent duplicate execution, runs job handler with database operations, emits metrics for observability, then releases the lock.
 
 ---
 
@@ -302,7 +302,7 @@ sequenceDiagram
 |----------|-----------|------------|----------|
 | Job timeout exceeded | Execution exceeds configured timeout | Force-kill job handler; mark as failed | Retry up to 3 times with backoff |
 | Distributed lock lost | Lock TTL expiry during execution | Job continues execution but may be duplicated | Make job handlers idempotent |
-| External dependency unavailable | API/database connection failure | Retry with backoff (1m â†’ 5m â†’ 15m) | Skip if dependency down > 3 attempts |
+| External dependency unavailable | API/database connection failure | Retry with backoff (1m → 5m → 15m) | Skip if dependency down > 3 attempts |
 | Concurrent job overlap | Lock acquisition failed | Skip execution; log "another instance running" | Next scheduled run will execute normally |
 
 ---
@@ -346,7 +346,7 @@ sequenceDiagram
 
 | Limitation | Impact | Workaround | Future Resolution |
 |------------|--------|------------|-------------------|
-| No job dependency/chaining support | Jobs that depend on each other (backup â†’ verify) must be managed externally | Run sequential jobs in a single handler | Add workflow orchestration with DAG support |
+| No job dependency/chaining support | Jobs that depend on each other (backup → verify) must be managed externally | Run sequential jobs in a single handler | Add workflow orchestration with DAG support |
 | No dynamic cron expression updates | Changing a job schedule requires code deploy | Use environment variable for schedule | Support runtime schedule updates via admin API |
 | Single-region cron scheduling | Jobs run in one region; regional outage stops all jobs | Multi-region EventBridge rules | Distributed cron with regional failover |
 

@@ -50,14 +50,14 @@ graph TD
     class P1,P2,P3,P4 pattern
 ```
 
-> **Diagram:** Business logic architecture â€” **3-layer pattern** (Controllerâ†’Serviceâ†’Repository), **5 service modules** (Document, Memory, Resume, Application, Connector), **4 logic locations** (agents, CRUD, permissions, events), **4 patterns** (propose-then-execute, event-driven, saga, observer).
+> **Diagram:** Business logic architecture — **3-layer pattern** (Controller→Service→Repository), **5 service modules** (Document, Memory, Resume, Application, Connector), **4 logic locations** (agents, CRUD, permissions, events), **4 patterns** (propose-then-execute, event-driven, saga, observer).
 
 ---
 
 ## Layer Architecture
 
 ```text
-Controller (route handling) â†’ Service (business logic) â†’ Repository (data access)
+Controller (route handling) → Service (business logic) → Repository (data access)
 ```
 
 ## Business Logic Location
@@ -92,44 +92,44 @@ Controller (route handling) â†’ Service (business logic) â†’ Repositor
 
 | Mistake | Consequence |
 |---------|-------------|
-| Putting business logic in controllers | Controllers should only handle HTTP concerns (routing, status codes) â€” logic in controllers is untestable and leaks into API layer |
+| Putting business logic in controllers | Controllers should only handle HTTP concerns (routing, status codes) — logic in controllers is untestable and leaks into API layer |
 | Anemic service layers with logic distributed across handlers | If services are just thin wrappers around repositories, the business rules end up scattered across event handlers and cron jobs |
-| Mixing CRUD and agent workflow logic | CRUD operations are synchronous and deterministic â€” agent workflows involve LLM calls with variable latency â€” keep them in separate service modules |
+| Mixing CRUD and agent workflow logic | CRUD operations are synchronous and deterministic — agent workflows involve LLM calls with variable latency — keep them in separate service modules |
 | Skipping the repository layer | Direct database access from services makes it impossible to switch databases or add caching without rewriting business logic |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Strict layering: Controller â†’ Service â†’ Repository | Each layer has one responsibility â€” controllers handle HTTP, services contain rules, repositories manage data access |
-| Use the propose-then-execute pattern for agent workflows | AI actions that modify state should propose first, execute after user approval â€” prevents unintended consequences from inaccurate LLM outputs |
-| Keep event handling as thin wrappers | Event handlers should validate the event and delegate to the appropriate service â€” no business logic in event consumers |
-| Write service methods that return domain objects, not DTOs | Services should return entities/models â€” let controllers or serializers transform them into API responses |
+| Strict layering: Controller → Service → Repository | Each layer has one responsibility — controllers handle HTTP, services contain rules, repositories manage data access |
+| Use the propose-then-execute pattern for agent workflows | AI actions that modify state should propose first, execute after user approval — prevents unintended consequences from inaccurate LLM outputs |
+| Keep event handling as thin wrappers | Event handlers should validate the event and delegate to the appropriate service — no business logic in event consumers |
+| Write service methods that return domain objects, not DTOs | Services should return entities/models — let controllers or serializers transform them into API responses |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Business logic bypass via direct repository access | If a controller or event handler directly calls the repository, it bypasses all business rules in the service layer â€” enforce that only services can access repositories through dependency injection patterns |
-| Unauthorized service method invocation | Internal services exposed without proper authorization let an attacker call sensitive operations (e.g., `archiveAll()` on a connector) â€” every service method must check permissions before executing |
-| Data leakage through service error messages | A service that returns detailed error messages ("Document not found in workspace X") leaks workspace existence â€” always return generic error responses, log details server-side |
+| Business logic bypass via direct repository access | If a controller or event handler directly calls the repository, it bypasses all business rules in the service layer — enforce that only services can access repositories through dependency injection patterns |
+| Unauthorized service method invocation | Internal services exposed without proper authorization let an attacker call sensitive operations (e.g., `archiveAll()` on a connector) — every service method must check permissions before executing |
+| Data leakage through service error messages | A service that returns detailed error messages ("Document not found in workspace X") leaks workspace existence — always return generic error responses, log details server-side |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Service methods that are too granular | A UI action that triggers 15 separate service calls (fetch, validate, update, notify, log) creates N+1 latency â€” batch related operations into a single service method with a transaction |
-| Transaction scope holding locks too long | Long-running service methods wrapped in a single DB transaction hold row locks for seconds â€” split read operations outside the transaction and keep write transactions under 100ms |
-| Event handler overhead from synchronous publishing | A service that publishes events synchronously after every write operation adds latency for every HTTP request â€” use `fire-and-forget` event patterns or queue the event for async publishing |
+| Service methods that are too granular | A UI action that triggers 15 separate service calls (fetch, validate, update, notify, log) creates N+1 latency — batch related operations into a single service method with a transaction |
+| Transaction scope holding locks too long | Long-running service methods wrapped in a single DB transaction hold row locks for seconds — split read operations outside the transaction and keep write transactions under 100ms |
+| Event handler overhead from synchronous publishing | A service that publishes events synchronously after every write operation adds latency for every HTTP request — use `fire-and-forget` event patterns or queue the event for async publishing |
 
 ---
 
 ## Goals
 
-1. **Clean separation of concerns** â€” Enforce strict layering (Controller â†’ Service â†’ Repository) so each layer has a single, testable responsibility
-2. **Domain logic centralization** â€” Keep all Vaeloom business rules (document processing, memory extraction, resume generation) in dedicated service modules, not scattered across controllers or event handlers
-3. **Pattern-driven complex workflows** â€” Use proven patterns (propose-then-execute, saga, event-driven) for multi-step operations involving AI agents and external services
-4. **Testability** â€” Ensure every service method can be unit-tested without HTTP or database dependencies
+1. **Clean separation of concerns** — Enforce strict layering (Controller → Service → Repository) so each layer has a single, testable responsibility
+2. **Domain logic centralization** — Keep all Vaeloom business rules (document processing, memory extraction, resume generation) in dedicated service modules, not scattered across controllers or event handlers
+3. **Pattern-driven complex workflows** — Use proven patterns (propose-then-execute, saga, event-driven) for multi-step operations involving AI agents and external services
+4. **Testability** — Ensure every service method can be unit-tested without HTTP or database dependencies
 
 ---
 
@@ -138,7 +138,7 @@ Controller (route handling) â†’ Service (business logic) â†’ Repositor
 ### In Scope
 
 - Service layer implementation for DocumentService, MemoryService, ResumeService, ApplicationService, ConnectorService
-- Controller â†’ Service â†’ Repository layering for all CRUD operations
+- Controller → Service → Repository layering for all CRUD operations
 - Business logic patterns: propose-then-execute, event-driven, saga, observer
 - Permissions integration with Permission Engine at the service boundary
 - Event publishing from service layer for async side effects
@@ -156,7 +156,7 @@ Controller (route handling) â†’ Service (business logic) â†’ Repositor
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| F-001 | System SHALL enforce Controller â†’ Service â†’ Repository layering â€” repositories accessible only through services | P0 |
+| F-001 | System SHALL enforce Controller → Service → Repository layering — repositories accessible only through services | P0 |
 | F-002 | System SHALL implement propose-then-execute pattern for all agent-initiated state mutations | P0 |
 | F-003 | System SHALL dispatch events asynchronously after service method completion | P1 |
 | F-004 | System SHALL implement saga pattern for multi-step job application workflow | P1 |
@@ -170,9 +170,9 @@ Controller (route handling) â†’ Service (business logic) â†’ Repositor
 |----|-------------|--------|
 | NF-001 | Service method execution (non-agent) | < 100ms p95 |
 | NF-002 | Transaction duration for write operations | < 200ms |
-| NF-003 | Event publication latency (service â†’ queue) | < 50ms |
+| NF-003 | Event publication latency (service → queue) | < 50ms |
 | NF-004 | Service layer test coverage | > 90% |
-| NF-005 | Propose â†’ execute approval turnaround | < 5s for user decision |
+| NF-005 | Propose → execute approval turnaround | < 5s for user decision |
 
 ---
 
@@ -199,7 +199,7 @@ sequenceDiagram
     C-->>UI: 202 Accepted
 ```
 
-> **Diagram:** Service layer in action â€” Controller validates and checks permissions, Service applies business rules and persists, Repository handles data access, and Service publishes events asynchronously.
+> **Diagram:** Service layer in action — Controller validates and checks permissions, Service applies business rules and persists, Repository handles data access, and Service publishes events asynchronously.
 
 ---
 
