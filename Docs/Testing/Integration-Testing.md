@@ -13,11 +13,11 @@ graph TD
 
     subgraph Tests["ðŸ§ª Integration Test Scenarios"]
         direction TB
-        T1["API â†’ Database<br/>CRUD operations<br/>PostgreSQL test instance"]
-        T2["API â†’ AI Service<br/>Agent request routing<br/>Real agent, mocked LLM"]
-        T3["API â†’ Redis<br/>Queue + cache<br/>Redis test instance"]
-        T4["AI â†’ Database<br/>Memory read/write<br/>PostgreSQL test instance"]
-        T5["Web â†’ API<br/>Frontend-backend contract<br/>Pact contract testing"]
+        T1["API --> Database<br/>CRUD operations<br/>PostgreSQL test instance"]
+        T2["API --> AI Service<br/>Agent request routing<br/>Real agent, mocked LLM"]
+        T3["API --> Redis<br/>Queue + cache<br/>Redis test instance"]
+        T4["AI --> Database<br/>Memory read/write<br/>PostgreSQL test instance"]
+        T5["Web --> API<br/>Frontend-backend contract<br/>Pact contract testing"]
     end
 
     subgraph Infra["âš™ï¸ Test Infrastructure"]
@@ -40,7 +40,7 @@ graph TD
     class D1,D2,D3 data
 ```
 
-> **Diagram:** Integration tests cover 5 service boundary scenarios (APIâ†’DB, APIâ†’AI, APIâ†’Redis, AIâ†’DB, Webâ†’API). Each test runs against **dedicated test infrastructure** with in-memory PostgreSQL and ephemeral Redis. The **test data strategy** uses three tiers: seed data (migrations), test-specific (factories), and golden datasets (JSON fixtures).
+> **Diagram:** Integration tests cover 5 service boundary scenarios (API→DB, API→AI, API→Redis, AI→DB, Web→API). Each test runs against **dedicated test infrastructure** with in-memory PostgreSQL and ephemeral Redis. The **test data strategy** uses three tiers: seed data (migrations), test-specific (factories), and golden datasets (JSON fixtures).
 
 ---
 
@@ -50,11 +50,11 @@ Integration tests verify that services work correctly together:
 
 | Test | Services Involved | What It Verifies |
 |------|------------------|-----------------|
-| API â†’ Database | apps/api + PostgreSQL | CRUD operations |
-| API â†’ AI Service | apps/api + ai-service | Agent request routing |
-| API â†’ Redis | apps/api + Redis | Queue and cache |
-| AI â†’ Database | ai-service + PostgreSQL | Memory read/write |
-| Web â†’ API | apps/web + apps/api | Frontend-backend contract |
+| API → Database | apps/api + PostgreSQL | CRUD operations |
+| API → AI Service | apps/api + ai-service | Agent request routing |
+| API → Redis | apps/api + Redis | Queue and cache |
+| AI → Database | ai-service + PostgreSQL | Memory read/write |
+| Web → API | apps/web + apps/api | Frontend-backend contract |
 
 ## Test Infrastructure
 
@@ -131,7 +131,7 @@ describe('Document Integration', () => {
 |---------|-------------|
 | Using production-like data without isolation | Test data leaks between test runs, causing flaky failures |
 | Not resetting state between test cases | Tests become order-dependent and unreliable |
-| Mocking the service under test's dependencies incorrectly | False confidence â€” tests pass but real integration fails |
+| Mocking the service under test's dependencies incorrectly | False confidence — tests pass but real integration fails |
 
 ## Best Practices
 
@@ -159,10 +159,10 @@ describe('Document Integration', () => {
 
 ## Workflows
 
-1. **API â†’ Database integration test**: Test container starts PostgreSQL (in-memory tmpfs) â†’ migration runs â†’ test seeds data â†’ test sends HTTP request to API â†’ API queries test database â†’ response verified against expectations â†’ transaction rolled back â†’ clean state for next test
-2. **API â†’ AI Service integration test**: Test spins up API service + mocked LLM endpoint â†’ test sends document to API â†’ API routes to AI service agent â†’ agent calls mocked LLM â†’ structured response returned â†’ API returns enhanced document â†’ verify extraction accuracy
-3. **Web â†’ API contract test (Pact)**: Frontend team defines expected API contract â†’ Pact file generated â†’ API team runs provider verification against Pact â†’ if contract broken, CI fails with diff â†’ teams coordinate on API change
-4. **AI â†’ Database memory integration**: Test creates memory entities via AI service â†’ service writes to PostgreSQL â†’ test reads back from database â†’ verifies entity graph structure â†’ cleans up test data
+1. **API → Database integration test**: Test container starts PostgreSQL (in-memory tmpfs) → migration runs → test seeds data → test sends HTTP request to API → API queries test database → response verified against expectations → transaction rolled back → clean state for next test
+2. **API → AI Service integration test**: Test spins up API service + mocked LLM endpoint → test sends document to API → API routes to AI service agent → agent calls mocked LLM → structured response returned → API returns enhanced document → verify extraction accuracy
+3. **Web → API contract test (Pact)**: Frontend team defines expected API contract → Pact file generated → API team runs provider verification against Pact → if contract broken, CI fails with diff → teams coordinate on API change
+4. **AI → Database memory integration**: Test creates memory entities via AI service → service writes to PostgreSQL → test reads back from database → verifies entity graph structure → cleans up test data
 
 ## Scalability
 
@@ -186,10 +186,10 @@ describe('Document Integration', () => {
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Integration test pass rate | < 98% | Critical | Grafana â€” Test Dashboard |
-| Container startup time | > 30s | Warning | CI Pipeline â€” Integration Setup |
-| Pact contract verification failures | > 0 per PR | Critical | GitHub Checks â€” Pact Report |
-| Test data isolation violations | > 1 per test run | Warning | CI Pipeline â€” Test Logs |
+| Integration test pass rate | < 98% | Critical | Grafana — Test Dashboard |
+| Container startup time | > 30s | Warning | CI Pipeline — Integration Setup |
+| Pact contract verification failures | > 0 per PR | Critical | GitHub Checks — Pact Report |
+| Test data isolation violations | > 1 per test run | Warning | CI Pipeline — Test Logs |
 
 ## Risks
 
@@ -212,7 +212,7 @@ describe('Document Integration', () => {
 
 Integration tests at Vaeloom verify that services work correctly together across their defined boundaries. Five integration scenarios are tested: API to Database (CRUD operations with PostgreSQL), API to AI Service (agent request routing with mocked LLM), API to Redis (queue publishing and cache operations), AI Service to Database (memory entity read/write), and Web to API (frontend-backend contract via Pact).
 
-Each integration test runs against dedicated test infrastructure â€” PostgreSQL on tmpfs for in-memory speed, ephemeral Redis without persistence, and mocked external services. This infrastructure is defined in a `docker-compose.test.yml` that CI spins up before the test run and tears down after, ensuring clean state every time.
+Each integration test runs against dedicated test infrastructure — PostgreSQL on tmpfs for in-memory speed, ephemeral Redis without persistence, and mocked external services. This infrastructure is defined in a `docker-compose.test.yml` that CI spins up before the test run and tears down after, ensuring clean state every time.
 
 For Vaeloom's AI-driven workflows, the API-to-AI-Service integration test is critical. It verifies that the API correctly routes documents to the appropriate AI agent, that the agent processes the request (with a mocked LLM to avoid non-determinism and API costs), and that the structured response is correctly returned to the caller. This test catches routing errors, schema mismatches, and timeout misconfigurations that unit tests would miss.
 
@@ -230,7 +230,7 @@ Contract tests (Pact) between the web frontend and API serve as an early warning
 
 ### In Scope
 
-- Five integration scenarios: APIâ†’DB, APIâ†’AI Service, APIâ†’Redis, AIâ†’DB, Webâ†’API (Pact contract)
+- Five integration scenarios: API→DB, API→AI Service, API→Redis, AI→DB, Web→API (Pact contract)
 - Dedicated test infrastructure: PostgreSQL on tmpfs, ephemeral Redis, mocked external services
 - Transaction rollback for per-test database state isolation
 - Pact contract testing between web frontend and API with CI provider verification
@@ -280,7 +280,7 @@ sequenceDiagram
 | Ephemeral production-replica test environments per PR | High | High | Q4 2027 |
 | Shadow-mode AI integration testing with traffic mirroring | High | High | Q3 2027 |
 | Automated contract test generation from API schemas | Medium | Medium | Q2 2027 |
-| Integration test impact analysis â€” only run affected tests | Medium | High | Q2 2027 |
+| Integration test impact analysis — only run affected tests | Medium | High | Q2 2027 |
 
 ## Examples
 

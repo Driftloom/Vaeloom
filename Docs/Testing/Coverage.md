@@ -120,7 +120,7 @@ module.exports = {
 | Mistake | Consequence |
 |---------|-------------|
 | Treating 100% coverage as the goal | Team writes shallow tests to hit targets, missing real bugs |
-| Measuring coverage only at the end of a sprint | Too late to improve â€” coverage debt accumulates |
+| Measuring coverage only at the end of a sprint | Too late to improve — coverage debt accumulates |
 | Ignoring branch coverage in favor of line coverage | Misses untested conditional logic paths |
 
 ## Best Practices
@@ -149,10 +149,10 @@ module.exports = {
 
 ## Workflows
 
-1. **Developer runs tests with coverage**: `npm test -- --coverage` â†’ Jest instruments code with Istanbul â†’ tests execute â†’ coverage report generated â†’ thresholds checked â†’ if below targets, CI fails with line/branch numbers â†’ developer adds missing tests
-2. **Coverage threshold enforcement in CI**: PR pushed â†’ `npm run test -- --coverage` runs â†’ Jest outputs JSON summary â†’ custom script parses `coverage-summary.json` â†’ compares line/branch coverage per module against thresholds â†’ if below, PR blocked with detailed report
-3. **Coverage gap analysis**: Quarterly coverage review â†’ script identifies modules below threshold â†’ sorts by gap severity â†’ generates report with specific uncovered lines â†’ tickets created for critical gaps â†’ team assigns to sprints
-4. **Incremental coverage on PR**: CI runs tests on only changed files (`--changedSince`) â†’ coverage measured only on diff â†’ incremental coverage must meet module target â†’ prevents new code from reducing overall coverage
+1. **Developer runs tests with coverage**: `npm test -- --coverage` → Jest instruments code with Istanbul → tests execute → coverage report generated → thresholds checked → if below targets, CI fails with line/branch numbers → developer adds missing tests
+2. **Coverage threshold enforcement in CI**: PR pushed → `npm run test -- --coverage` runs → Jest outputs JSON summary → custom script parses `coverage-summary.json` → compares line/branch coverage per module against thresholds → if below, PR blocked with detailed report
+3. **Coverage gap analysis**: Quarterly coverage review → script identifies modules below threshold → sorts by gap severity → generates report with specific uncovered lines → tickets created for critical gaps → team assigns to sprints
+4. **Incremental coverage on PR**: CI runs tests on only changed files (`--changedSince`) → coverage measured only on diff → incremental coverage must meet module target → prevents new code from reducing overall coverage
 
 ## Scalability
 
@@ -176,11 +176,11 @@ module.exports = {
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Overall line coverage | < 80% | Warning | Grafana â€” Code Quality Dashboard |
-| Branch coverage in critical modules (auth, encryption) | < 90% | Critical | Grafana â€” Security Dashboard |
-| Coverage delta per PR | < -1% | Warning | GitHub Checks â€” Coverage Report |
-| Modules below threshold | > 3 modules | Warning | Code Quality â€” Quarterly Review |
-| Time since last full coverage run | > 7 days | Info | CI Pipeline â€” Coverage Schedule |
+| Overall line coverage | < 80% | Warning | Grafana — Code Quality Dashboard |
+| Branch coverage in critical modules (auth, encryption) | < 90% | Critical | Grafana — Security Dashboard |
+| Coverage delta per PR | < -1% | Warning | GitHub Checks — Coverage Report |
+| Modules below threshold | > 3 modules | Warning | Code Quality — Quarterly Review |
+| Time since last full coverage run | > 7 days | Info | CI Pipeline — Coverage Schedule |
 
 ## Risks
 
@@ -330,7 +330,7 @@ sequenceDiagram
 | Improvement | Priority | Complexity | Timeline |
 |-------------|----------|------------|----------|
 | Mutation testing integration (Stryker) for test quality | Medium | High | Q3 2027 |
-| Test Impact Analysis â€” run only tests affected by code change | High | High | Q2 2027 |
+| Test Impact Analysis — run only tests affected by code change | High | High | Q2 2027 |
 | Automatic test generation for uncovered code paths | Low | High | Q4 2027 |
 | Coverage trend dashboard with ML anomaly detection | Medium | Medium | Q2 2027 |
 

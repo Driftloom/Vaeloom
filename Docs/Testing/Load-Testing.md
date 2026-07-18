@@ -48,7 +48,7 @@ graph TD
     class C1,C2,C3,C4 success
 ```
 
-> **Diagram:** Load testing strategy flows from **goals** (throughput, concurrency, ingestion, agent response) â†’ **scenarios** (normal, peak, stress) â†’ **tools** (k6, Locust, Artillery) â†’ **success criteria** with pass/warn/fail thresholds.
+> **Diagram:** Load testing strategy flows from **goals** (throughput, concurrency, ingestion, agent response) → **scenarios** (normal, peak, stress) → **tools** (k6, Locust, Artillery) → **success criteria** with pass/warn/fail thresholds.
 
 ---
 
@@ -134,10 +134,10 @@ graph TD
 
 ## Workflows
 
-1. **Normal load test execution**: QA engineer configures k6 script with 100 concurrent users â†’ 80/20 read/write mix â†’ 5m ramp-up â†’ 20m steady state â†’ 5m cooldown â†’ monitors API latency, error rate, and resource usage â†’ compares against success criteria â†’ generates HTML report
-2. **Peak load simulation (exam season)**: 1000 concurrent users with burst writes (file uploads, application submissions) â†’ 2m ramp-up â†’ 15m peak â†’ monitors database connection pool utilization â†’ verifies graceful degradation (no crashes, queued writes) â†’ identifies bottleneck
-3. **Stress test to find breaking point**: Gradual user increase from 100 to 2000 over 30m â†’ system metrics monitored â†’ breaking point identified (where latency exceeds 3s or error rate > 1%) â†’ documented as "maximum sustainable load" â†’ capacity planning adjusted
-4. **Load test result analysis**: k6 outputs JSON results â†’ parsed by reporting script â†’ compared against baseline from previous run â†’ trends plotted in Grafana â†’ regression identified â†’ root cause investigation opened
+1. **Normal load test execution**: QA engineer configures k6 script with 100 concurrent users → 80/20 read/write mix → 5m ramp-up → 20m steady state → 5m cooldown → monitors API latency, error rate, and resource usage → compares against success criteria → generates HTML report
+2. **Peak load simulation (exam season)**: 1000 concurrent users with burst writes (file uploads, application submissions) → 2m ramp-up → 15m peak → monitors database connection pool utilization → verifies graceful degradation (no crashes, queued writes) → identifies bottleneck
+3. **Stress test to find breaking point**: Gradual user increase from 100 to 2000 over 30m → system metrics monitored → breaking point identified (where latency exceeds 3s or error rate > 1%) → documented as "maximum sustainable load" → capacity planning adjusted
+4. **Load test result analysis**: k6 outputs JSON results → parsed by reporting script → compared against baseline from previous run → trends plotted in Grafana → regression identified → root cause investigation opened
 
 ## Scalability
 
@@ -161,11 +161,11 @@ graph TD
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| API p99 latency under load | > 1s at 1000 users | Critical | Grafana â€” Load Test Dashboard |
-| Error rate during peak | > 0.1% | Warning | Grafana â€” API Errors |
-| Database connection pool utilization | > 80% | Warning | Grafana â€” Database Dashboard |
-| Load generator resource usage | > 85% CPU | Warning | CI Pipeline â€” Load Test Infra |
-| Throughput degradation from baseline | > 20% drop | Critical | Grafana â€” Performance Trends |
+| API p99 latency under load | > 1s at 1000 users | Critical | Grafana — Load Test Dashboard |
+| Error rate during peak | > 0.1% | Warning | Grafana — API Errors |
+| Database connection pool utilization | > 80% | Warning | Grafana — Database Dashboard |
+| Load generator resource usage | > 85% CPU | Warning | CI Pipeline — Load Test Infra |
+| Throughput degradation from baseline | > 20% drop | Critical | Grafana — Performance Trends |
 
 ## Risks
 
@@ -186,7 +186,7 @@ graph TD
 
 ## Overview
 
-Load testing at Vaeloom validates that the platform can handle expected traffic patterns and identifies breaking points before they reach production. The system targets 1,000 requests per second API throughput, 1,000 concurrent active sessions, 100 documents ingested per minute, and sub-15-second p99 agent response times under load. These targets are validated through three load scenarios â€” normal, peak, and stress â€” run against production-like staging environments.
+Load testing at Vaeloom validates that the platform can handle expected traffic patterns and identifies breaking points before they reach production. The system targets 1,000 requests per second API throughput, 1,000 concurrent active sessions, 100 documents ingested per minute, and sub-15-second p99 agent response times under load. These targets are validated through three load scenarios — normal, peak, and stress — run against production-like staging environments.
 
 Three tools cover different load testing needs: k6 for API-level load testing with precise metrics, Locust for user-simulation scenarios with Python-based behavior modeling, and Artillery for spike testing with rapid traffic surges. Each scenario follows a structured ramp-up/hold/ramp-down pattern to observe how the system behaves under gradual load increases, sustained peak traffic, and recovery.
 
@@ -286,13 +286,13 @@ sequenceDiagram
     participant MON as Monitoring
 
     QA->>K6: k6 run scenarios/api-load.js
-    K6->>K6: Ramp up: 0â†’100 users (5min)
+    K6->>K6: Ramp up: 0-->100 users (5min)
     K6->>TARGET: 100 concurrent req/s
     TARGET-->>K6: Responses
     K6->>MON: Collect metrics
     K6->>K6: Hold: 100 users (20min)
     K6->>TARGET: Steady load
-    K6->>K6: Ramp down: 100â†’0 (5min)
+    K6->>K6: Ramp down: 100-->0 (5min)
     K6->>K6: Compute results
     K6-->>QA: HTML report
     alt Thresholds met

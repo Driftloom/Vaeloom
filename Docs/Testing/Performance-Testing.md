@@ -21,8 +21,8 @@ graph TD
     end
 
     subgraph Scenarios["ðŸ“‹ Load Scenarios"]
-        S1["Normal Load<br/>100 users â†’ 5m ramp â†’ 20m hold â†’ 5m cooldown<br/>Threshold: p95 < 500ms, p99 < 2s"]
-        S2["Peak Load<br/>500 users â†’ 2m ramp â†’ 5m hold â†’ 2m cooldown<br/>Threshold: < 1% error rate"]
+        S1["Normal Load<br/>100 users --> 5m ramp --> 20m hold --> 5m cooldown<br/>Threshold: p95 < 500ms, p99 < 2s"]
+        S2["Peak Load<br/>500 users --> 2m ramp --> 5m hold --> 2m cooldown<br/>Threshold: < 1% error rate"]
     end
 
     subgraph Budgets["ðŸŽ¯ Performance Budgets"]
@@ -129,16 +129,16 @@ export const options = {
 
 | Concern | Approach |
 |---------|----------|
-| Test environment resource contention | Running performance tests alongside other workloads skews results â€” use dedicated or ephemeral environments for accurate benchmarking |
-| Cold-start latency measurement | First request after deployment is significantly slower â€” measure both steady-state and cold-start latency separately and track both in dashboards |
-| Baseline comparison drift over time | Performance baselines become outdated as infrastructure changes â€” regenerate baselines after every significant infrastructure or dependency update |
+| Test environment resource contention | Running performance tests alongside other workloads skews results — use dedicated or ephemeral environments for accurate benchmarking |
+| Cold-start latency measurement | First request after deployment is significantly slower — measure both steady-state and cold-start latency separately and track both in dashboards |
+| Baseline comparison drift over time | Performance baselines become outdated as infrastructure changes — regenerate baselines after every significant infrastructure or dependency update |
 
 ## Workflows
 
-1. **Performance test baseline establishment**: Run normal load test against staging â†’ collect all metrics (API latency, agent latency, page load, DB query time) â†’ store as baseline v1.0 â†’ label with git commit SHA â†’ subsequent runs compared against this baseline
-2. **Performance regression detection in CI**: PR merged â†’ performance test suite triggered â†’ k6 runs load test against staging â†’ results compared against baseline â†’ if any metric exceeds budget (e.g., API p99 > 500ms), CI fails â†’ developer notified with regression report
-3. **Agent performance profiling**: Memory Agent invoked with test document â†’ OpenTelemetry trace captured â†’ agent processing time measured separately from LLM API call time â†’ breakdown: prompt building (50ms), LLM call (2s), response parsing (30ms) â†’ bottleneck identified (LLM call) â†’ optimization explored
-4. **Performance budget enforcement**: Lighthouse CI runs on every PR â†’ measures LCP, TBT, CLS â†’ compares against budgets (`lcp: 2s, tbt: 200ms, cls: 0.1`) â†’ if budget exceeded, PR check fails with detailed breakdown â†’ developer optimizes and re-runs
+1. **Performance test baseline establishment**: Run normal load test against staging → collect all metrics (API latency, agent latency, page load, DB query time) → store as baseline v1.0 → label with git commit SHA → subsequent runs compared against this baseline
+2. **Performance regression detection in CI**: PR merged → performance test suite triggered → k6 runs load test against staging → results compared against baseline → if any metric exceeds budget (e.g., API p99 > 500ms), CI fails → developer notified with regression report
+3. **Agent performance profiling**: Memory Agent invoked with test document → OpenTelemetry trace captured → agent processing time measured separately from LLM API call time → breakdown: prompt building (50ms), LLM call (2s), response parsing (30ms) → bottleneck identified (LLM call) → optimization explored
+4. **Performance budget enforcement**: Lighthouse CI runs on every PR → measures LCP, TBT, CLS → compares against budgets (`lcp: 2s, tbt: 200ms, cls: 0.1`) → if budget exceeded, PR check fails with detailed breakdown → developer optimizes and re-runs
 
 ## Scalability
 
@@ -162,11 +162,11 @@ export const options = {
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| API p99 latency vs baseline | > 20% increase | Critical | Grafana â€” Performance Dashboard |
-| Agent p99 latency | > 10s | Warning | Grafana â€” AI Performance |
-| Lighthouse LCP | > 2.0s | Warning | Grafana â€” Web Vitals |
-| DB query p99 | > 100ms | Warning | Grafana â€” Database Dashboard |
-| Performance budget violation rate | > 1 per week | Info | Product â€” Performance Tracker |
+| API p99 latency vs baseline | > 20% increase | Critical | Grafana — Performance Dashboard |
+| Agent p99 latency | > 10s | Warning | Grafana — AI Performance |
+| Lighthouse LCP | > 2.0s | Warning | Grafana — Web Vitals |
+| DB query p99 | > 100ms | Warning | Grafana — Database Dashboard |
+| Performance budget violation rate | > 1 per week | Info | Product — Performance Tracker |
 
 ## Risks
 
@@ -186,11 +186,11 @@ export const options = {
 
 ## Overview
 
-Performance testing at Vaeloom ensures that the platform meets latency, throughput, and responsiveness targets for every operation â€” from API requests and database queries to AI agent processing and page loads. Five test types (load, stress, endurance, spike, scalability) provide comprehensive coverage of different performance dimensions, each with specific ramp-up patterns and success thresholds.
+Performance testing at Vaeloom ensures that the platform meets latency, throughput, and responsiveness targets for every operation — from API requests and database queries to AI agent processing and page loads. Five test types (load, stress, endurance, spike, scalability) provide comprehensive coverage of different performance dimensions, each with specific ramp-up patterns and success thresholds.
 
 Performance budgets define concrete targets for every critical operation: API p99 latency under 500ms, AI agent p99 processing under 10 seconds, page load under 2 seconds (Lighthouse LCP), and database query p99 under 100ms. These budgets are enforced in CI through automated performance test runs that compare results against stored baselines, blocking deployments on regression.
 
-For Vaeloom's AI agents, performance measurement separates LLM API call time from internal processing time (prompt building, response parsing). This breakdown is critical for identifying where optimization effort should be focused â€” if the bottleneck is the LLM API call, the solution differs from a prompt construction bottleneck. OpenTelemetry traces capture this breakdown for every agent invocation.
+For Vaeloom's AI agents, performance measurement separates LLM API call time from internal processing time (prompt building, response parsing). This breakdown is critical for identifying where optimization effort should be focused — if the bottleneck is the LLM API call, the solution differs from a prompt construction bottleneck. OpenTelemetry traces capture this breakdown for every agent invocation.
 
 Performance baselines are versioned alongside the codebase, labeled with git commit SHAs, and regenerated after every significant infrastructure or dependency update. This ensures that performance comparisons remain valid as the environment evolves. Quarterly budget reviews adjust targets based on feature complexity and device capability changes.
 

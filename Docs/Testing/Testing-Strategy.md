@@ -1,10 +1,10 @@
-﻿# Testing Strategy
+# Testing Strategy
 
-> **Purpose:** Comprehensive testing strategy for Vaeloom â€” from unit tests to production monitoring
-> **Status:** âœ… Upgraded to enterprise quality
+> **Purpose:** Comprehensive testing strategy for Vaeloom — from unit tests to production monitoring
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** QA Team
 > **Last Updated:** 2026-07-12
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#12-implementation-plan`](../../Docs/Vaeloom-Complete-Documentation.md#12-implementation-plan)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#12-implementation-plan`](../../docs/Vaeloom-Complete-Documentation.md#12-implementation-plan)
 
 ---
 
@@ -29,7 +29,7 @@ graph TB
     
     subgraph "Integration Tests (20%)"
         IT[API + Database<br/>Service Boundaries<br/>3rd Party Mocks]
-        CT[Contract Tests<br/>Web â†” API]
+        CT[Contract Tests<br/>Web ↔ API]
     end
     
     subgraph "Unit Tests (75%)"
@@ -50,7 +50,7 @@ graph TB
 | **Unit** | Individual functions, components | < 100ms each | Low (isolated) | Jest, pytest, RTL | Every PR |
 | **Golden** | AI prompt output correctness | < 5s each | Medium | Custom eval runner | Every prompt change |
 | **Integration** | Service boundaries (API + DB) | < 10s each | Medium | Supertest, pytest-django | Every PR |
-| **Contract** | Frontend â†” API interface | < 5s each | Medium | Pact | Every PR |
+| **Contract** | Frontend ↔ API interface | < 5s each | Medium | Pact | Every PR |
 | **E2E** | Full user flows | < 60s each | High | Playwright | Staging deploy |
 | **Smoke** | Critical endpoints post-deploy | < 30s total | High | curl + assertions | Every deploy |
 | **Load** | System under expected load | < 30 min | High | k6 | Pre-release |
@@ -60,19 +60,19 @@ graph TB
 
 | Phase | Unit | Integration | E2E | AI Evals | Coverage Target |
 |-------|------|-------------|-----|----------|-----------------|
-| 0 â€” Infrastructure | âœ… | âœ… (health check) | âœ… (signup flow) | â€” | 60% |
-| 1 â€” Ingestion | âœ… | âœ… (parser accuracy) | â€” | âœ… (golden files) | 80% |
-| 2 â€” Organization Agent | âœ… | âœ… | âœ… (upload â†’ organize) | âœ… (proposal accuracy) | 80% |
-| 3 â€” Resume & ATS | âœ… | âœ… | âœ… (resume â†’ ATS score) | âœ… (generation quality) | 85% |
-| 4 â€” Career Intelligence | âœ… | âœ… | âœ… (search â†’ apply) | âœ… (ranking quality) | 85% |
-| 5 â€” Communication | âœ… | âœ… | âœ… (Gmail â†’ schedule) | âœ… (classification) | 85% |
-| 6 â€” Dashboard & Settings | âœ… | âœ… | âœ… (export â†’ delete) | â€” | 80% |
-| 7 â€” Enterprise | âœ… | âœ… | âœ… (tenant isolation) | â€” | 90% |
+| 0 — Infrastructure | ✅ | ✅ (health check) | ✅ (signup flow) | — | 60% |
+| 1 — Ingestion | ✅ | ✅ (parser accuracy) | — | ✅ (golden files) | 80% |
+| 2 — Organization Agent | ✅ | ✅ | ✅ (upload → organize) | ✅ (proposal accuracy) | 80% |
+| 3 — Resume & ATS | ✅ | ✅ | ✅ (resume → ATS score) | ✅ (generation quality) | 85% |
+| 4 — Career Intelligence | ✅ | ✅ | ✅ (search → apply) | ✅ (ranking quality) | 85% |
+| 5 — Communication | ✅ | ✅ | ✅ (Gmail → schedule) | ✅ (classification) | 85% |
+| 6 — Dashboard & Settings | ✅ | ✅ | ✅ (export → delete) | — | 80% |
+| 7 — Enterprise | ✅ | ✅ | ✅ (tenant isolation) | — | 90% |
 
 ## Unit Testing Standards
 
 ```typescript
-// âœ… Good: Tests business logic in isolation
+// ✅ Good: Tests business logic in isolation
 // apps/api/src/services/document.service.test.ts
 describe('DocumentService', () => {
   let service: DocumentService;
@@ -265,7 +265,7 @@ class TestMemoryAgent:
 | Mistake | Consequence | Fix |
 |---------|-------------|-----|
 | Testing implementation details | Tests break on refactoring | Test public API / behavior |
-| Integration tests without test DB | Use production DB â†’ data pollution | Dedicated test database with transactions |
+| Integration tests without test DB | Use production DB → data pollution | Dedicated test database with transactions |
 | Skipping AI eval tests | Prompt regression in production | Block deploys on eval failure |
 | Flaky E2E tests | Ignored test failures | Retry flaky tests, fix root cause |
 | No performance baseline | Can't detect regressions | Store historical performance data |
@@ -278,7 +278,7 @@ class TestMemoryAgent:
 | apps/api (services) | 90% | 80% | Core business logic |
 | ai-service (agents) | 90% | 80% | Critical AI logic |
 | ai-service (retrieval) | 85% | 75% | RAG pipeline |
-| Golden datasets | 95% accuracy | â€” | AI correctness |
+| Golden datasets | 95% accuracy | — | AI correctness |
 
 ## Performance Testing Considerations
 
@@ -302,17 +302,17 @@ class TestMemoryAgent:
 
 | Concern | Mitigation |
 |---------|------------|
-| AI model prompt injection in tests | Eval suites must include adversarial prompts designed to bypass guardrails â€” integrate these into the golden dataset and block deploys on critical failures |
-| Test data containing real user PII | Golden datasets and test fixtures must use synthetic or anonymized data â€” scan test data for patterns resembling real user information before committing |
+| AI model prompt injection in tests | Eval suites must include adversarial prompts designed to bypass guardrails — integrate these into the golden dataset and block deploys on critical failures |
+| Test data containing real user PII | Golden datasets and test fixtures must use synthetic or anonymized data — scan test data for patterns resembling real user information before committing |
 | SAST false positives masking real vulnerabilities | Tune static analysis rules per service to reduce noise, but maintain a manual triage process for all findings labeled critical or high |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| AI golden test execution time | Running a full golden dataset evaluation on every commit can take 10+ minutes â€” run a smoke subset on PRs and the full suite nightly |
-| E2E test suite duration | A growing E2E suite that takes >30 minutes blocks CI â€” parallelize test execution across multiple runners and prioritize critical user journeys |
-| Integration test database overhead | Each integration test that creates and tears down database state adds 50-200ms â€” use transaction rollback tests that share a single connection for significant speedup |
+| AI golden test execution time | Running a full golden dataset evaluation on every commit can take 10+ minutes — run a smoke subset on PRs and the full suite nightly |
+| E2E test suite duration | A growing E2E suite that takes >30 minutes blocks CI — parallelize test execution across multiple runners and prioritize critical user journeys |
+| Integration test database overhead | Each integration test that creates and tears down database state adds 50-200ms — use transaction rollback tests that share a single connection for significant speedup |
 
 ## Goals
 
@@ -381,11 +381,11 @@ class TestMemoryAgent:
 
 ## Data Flow
 
-1. **PR Submission** â€” Developer pushes code; CI triggers test pipeline; dependencies are restored from cache; test shards are allocated across parallel workers
-2. **Unit Test Execution** â€” Jest and pytest run unit tests in parallel shards with mock external services; simple functions complete in <50ms; services with DB mocks complete in <200ms
-3. **Integration Test Execution** â€” Integration tests spin up PostgreSQL and Redis service containers, run API requests against test endpoints, verify responses with schema assertions, and clean up test data via transaction rollback
-4. **Golden Dataset Evaluation** â€” On prompt changes, custom evaluator runs agent prompts against predefined input/output pairs, compares results to expected outputs, and calculates accuracy metrics (must exceed 95% threshold)
-5. **Coverage Aggregation** â€” All test results are collected; coverage reports are generated per module and uploaded to Codecov; coverage thresholds are validated against targets â€” pipeline fails if thresholds are not met
+1. **PR Submission** — Developer pushes code; CI triggers test pipeline; dependencies are restored from cache; test shards are allocated across parallel workers
+2. **Unit Test Execution** — Jest and pytest run unit tests in parallel shards with mock external services; simple functions complete in <50ms; services with DB mocks complete in <200ms
+3. **Integration Test Execution** — Integration tests spin up PostgreSQL and Redis service containers, run API requests against test endpoints, verify responses with schema assertions, and clean up test data via transaction rollback
+4. **Golden Dataset Evaluation** — On prompt changes, custom evaluator runs agent prompts against predefined input/output pairs, compares results to expected outputs, and calculates accuracy metrics (must exceed 95% threshold)
+5. **Coverage Aggregation** — All test results are collected; coverage reports are generated per module and uploaded to Codecov; coverage thresholds are validated against targets — pipeline fails if thresholds are not met
 
 ## Scalability
 
@@ -515,7 +515,7 @@ async def test_skill_extraction(handler, document, expected):
 ### Integration test with Pact contract
 
 ```typescript
-describe('Web â†’ API contract', () => {
+describe('Web → API contract', () => {
   it('should return proposals', async () => {
     await provider
       .given('proposals exist')

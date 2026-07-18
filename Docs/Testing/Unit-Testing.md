@@ -45,7 +45,7 @@ graph TD
     class S1,S2 scope
 ```
 
-> **Diagram:** Unit testing frameworks across services (Jest/RTL for frontend, Jest for API, pytest for AI) guide **requirements** (coverage, naming, isolation, speed) â†’ **AAA test pattern** (Arrange/Act/Assert) â†’ **scope** (what to test vs what to leave for integration tests).
+> **Diagram:** Unit testing frameworks across services (Jest/RTL for frontend, Jest for API, pytest for AI) guide **requirements** (coverage, naming, isolation, speed) → **AAA test pattern** (Arrange/Act/Assert) → **scope** (what to test vs what to leave for integration tests).
 
 ---
 
@@ -141,10 +141,10 @@ apps/api/src/
 
 ## Workflows
 
-1. **Write unit test following AAA pattern**: Developer creates `document.service.test.ts` â†’ writes Arrange block (set up test data and mocks) â†’ writes Act block (call function under test) â†’ writes Assert block (verify expected output) â†’ runs `npm test -- --testPathPattern=document` â†’ test passes in < 100ms
-2. **Mock external dependencies**: Test uses `jest.mock('@vaeloom/api-client')` â†’ mock returns controlled response â†’ test verifies business logic without network calls â†’ mock assertion verifies API was called with correct params â†’ test completes in 50ms
-3. **Edge case testing for document service**: Test null `userId` â†’ test empty document name â†’ test invalid file type â†’ test document exceeding size limit â†’ test concurrent uploads â†’ each edge case in separate `it()` block â†’ all pass within < 100ms each
-4. **Coverage-driven test gap filling**: CI reports module `document.service.ts` at 65% coverage (below 80% threshold) â†’ developer reviews uncovered lines via `coverage/lcov-report/index.html` â†’ identifies untested error branch â†’ writes test covering the branch â†’ re-runs coverage â†’ module now at 82%
+1. **Write unit test following AAA pattern**: Developer creates `document.service.test.ts` → writes Arrange block (set up test data and mocks) → writes Act block (call function under test) → writes Assert block (verify expected output) → runs `npm test -- --testPathPattern=document` → test passes in < 100ms
+2. **Mock external dependencies**: Test uses `jest.mock('@vaeloom/api-client')` → mock returns controlled response → test verifies business logic without network calls → mock assertion verifies API was called with correct params → test completes in 50ms
+3. **Edge case testing for document service**: Test null `userId` → test empty document name → test invalid file type → test document exceeding size limit → test concurrent uploads → each edge case in separate `it()` block → all pass within < 100ms each
+4. **Coverage-driven test gap filling**: CI reports module `document.service.ts` at 65% coverage (below 80% threshold) → developer reviews uncovered lines via `coverage/lcov-report/index.html` → identifies untested error branch → writes test covering the branch → re-runs coverage → module now at 82%
 
 ## Scalability
 
@@ -168,11 +168,11 @@ apps/api/src/
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Unit test pass rate | < 98% | Critical | Grafana â€” Test Dashboard |
-| Average test execution time | > 100ms per test | Warning | CI Pipeline â€” Test Duration |
-| Module coverage below threshold | > 3 modules | Warning | Grafana â€” Code Quality Dashboard |
-| Mock mismatch incidents | > 1 per sprint | Warning | Sentry â€” Test Infrastructure |
-| Flaky unit test rate | > 1% of runs | Warning | Grafana â€” Test Quality Dashboard |
+| Unit test pass rate | < 98% | Critical | Grafana — Test Dashboard |
+| Average test execution time | > 100ms per test | Warning | CI Pipeline — Test Duration |
+| Module coverage below threshold | > 3 modules | Warning | Grafana — Code Quality Dashboard |
+| Mock mismatch incidents | > 1 per sprint | Warning | Sentry — Test Infrastructure |
+| Flaky unit test rate | > 1% of runs | Warning | Grafana — Test Quality Dashboard |
 
 ## Risks
 
@@ -289,7 +289,7 @@ it('should fetch document metadata', async () => {
 
 ## Overview
 
-Unit testing is a foundational practice in Vaeloom's quality assurance strategy. This document defines the standards, frameworks, and patterns for writing effective unit tests across the Vaeloom codebase â€” including backend services, frontend components, AI agent logic, and utility functions.
+Unit testing is a foundational practice in Vaeloom's quality assurance strategy. This document defines the standards, frameworks, and patterns for writing effective unit tests across the Vaeloom codebase — including backend services, frontend components, AI agent logic, and utility functions.
 
 The unit testing strategy covers test structure (AAA pattern), mocking strategies, coverage thresholds, test naming conventions, and CI integration. Every module in Vaeloom must have corresponding unit tests that validate individual units of behavior in isolation.
 

@@ -144,10 +144,10 @@ test('dashboard renders consistently', async ({ page }) => {
 
 ## Workflows
 
-1. **Bug fix triggers regression test**: Bug reported â†’ developer fixes code â†’ adds test case reproducing the bug â†’ `npm run test:regression` runs full suite â†’ verifies fix passes â†’ ensures no existing tests break â†’ PR merged with all checks green
-2. **Feature addition with selective regression**: New feature implemented â†’ CI determines affected modules (Test Impact Analysis) â†’ runs only affected module tests + critical integration tests â†’ if pass, runs full regression suite in parallel â†’ full results reported
-3. **Visual regression on UI change**: Frontend component modified â†’ Playwright screenshot comparison runs â†’ `maxDiffPixelRatio: 0.001` threshold checked â†’ if diffs found, screenshots uploaded to visual review dashboard â†’ reviewer approves or rejects changes â†’ approved changes become new baseline
-4. **Prompt change regression**: AI agent prompt updated â†’ golden dataset regression suite runs (`python -m eval.test_golden --all`) â†’ all 50 golden tests must pass at > 90% tolerance â†’ adversarial tests (20) must pass at 100% â†’ if regression, prompt revision required
+1. **Bug fix triggers regression test**: Bug reported → developer fixes code → adds test case reproducing the bug → `npm run test:regression` runs full suite → verifies fix passes → ensures no existing tests break → PR merged with all checks green
+2. **Feature addition with selective regression**: New feature implemented → CI determines affected modules (Test Impact Analysis) → runs only affected module tests + critical integration tests → if pass, runs full regression suite in parallel → full results reported
+3. **Visual regression on UI change**: Frontend component modified → Playwright screenshot comparison runs → `maxDiffPixelRatio: 0.001` threshold checked → if diffs found, screenshots uploaded to visual review dashboard → reviewer approves or rejects changes → approved changes become new baseline
+4. **Prompt change regression**: AI agent prompt updated → golden dataset regression suite runs (`python -m eval.test_golden --all`) → all 50 golden tests must pass at > 90% tolerance → adversarial tests (20) must pass at 100% → if regression, prompt revision required
 
 ## Scalability
 
@@ -171,11 +171,11 @@ test('dashboard renders consistently', async ({ page }) => {
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Regression test pass rate | < 99% | Critical | Grafana â€” Test Dashboard |
-| Visual regression review queue | > 10 pending approvals | Warning | Chromatic â€” Review Dashboard |
-| Golden dataset regression rate | > 5% of prompt changes | Warning | Grafana â€” AI Eval Dashboard |
-| Regression escape to production | > 0 per release | Critical | Product â€” Bug Tracker |
-| Regression suite runtime | > 30 min | Warning | CI Pipeline â€” Test Duration |
+| Regression test pass rate | < 99% | Critical | Grafana — Test Dashboard |
+| Visual regression review queue | > 10 pending approvals | Warning | Chromatic — Review Dashboard |
+| Golden dataset regression rate | > 5% of prompt changes | Warning | Grafana — AI Eval Dashboard |
+| Regression escape to production | > 0 per release | Critical | Product — Bug Tracker |
+| Regression suite runtime | > 30 min | Warning | CI Pipeline — Test Duration |
 
 ## Risks
 
@@ -198,7 +198,7 @@ test('dashboard renders consistently', async ({ page }) => {
 
 Regression testing at Vaeloom ensures that code changes, dependency updates, and prompt modifications don't break existing functionality. Five triggers initiate regression tests: bug fixes (add the failing case and verify), feature additions (run full regression suite), dependency updates (run affected module tests), prompt changes (run golden dataset tests), and model provider changes (run all AI evaluation tests).
 
-The regression test suite is organized by test type rather than by trigger â€” unit tests for frontend components and API endpoints, integration tests for service boundaries, golden dataset tests for AI agent prompts, and visual regression tests for UI changes. Targeted test selection based on change impact determines which tests run on each PR, balancing fast feedback with comprehensive coverage.
+The regression test suite is organized by test type rather than by trigger — unit tests for frontend components and API endpoints, integration tests for service boundaries, golden dataset tests for AI agent prompts, and visual regression tests for UI changes. Targeted test selection based on change impact determines which tests run on each PR, balancing fast feedback with comprehensive coverage.
 
 For Vaeloom's AI agents, regression testing is critical for maintaining prompt quality over time. Every bug fix that involves an AI agent prompt must add the failing case to the golden dataset, verify the fix passes, and then run all existing golden tests to ensure no regression. This "fix it, prove it, don't break anything else" cycle prevents the common AI anti-pattern of fixing one bug while introducing two new ones.
 
@@ -220,7 +220,7 @@ Visual regression testing via Playwright screenshot comparison catches unintende
 - Selective regression test execution based on change impact analysis
 - Golden dataset regression for all AI agent prompts on every prompt change
 - Playwright visual regression with screenshot comparison (0.1% pixel diff tolerance)
-- Bug-fix regression pattern: add case â†’ verify fix â†’ run full suite
+- Bug-fix regression pattern: add case → verify fix → run full suite
 - Test impact analysis to minimize per-PR regression test runtime
 
 ### Out of Scope
@@ -252,10 +252,10 @@ sequenceDiagram
         REPORT-->>CI: âœ… Regression suite passed
         CI-->>DEV: PR approved
     else New test fails other golden cases
-        GOLDEN-->>SUITE: âŒ 49/51 â€” fix broke existing case
+        GOLDEN-->>SUITE: âŒ 49/51 -- fix broke existing case
         SUITE-->>REPORT: Generate failure breakdown
         REPORT-->>CI: âŒ Prompt change caused regression
-        CI-->>DEV: Fix required â€” prompt broke other cases
+        CI-->>DEV: Fix required -- prompt broke other cases
     end
 ```
 

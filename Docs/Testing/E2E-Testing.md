@@ -7,7 +7,7 @@
 
 ```mermaid
 sequenceDiagram
-    participant DEV as ðŸ‘¨â€ðŸ’» Developer / CI
+    participant DEV as ðŸ‘¨”ðŸ’» Developer / CI
     participant PW as ðŸŽ­ Playwright CLI
     participant DIS as ðŸ“‹ Test Discovery
     participant W1 as âš™ï¸ Worker 1<br/>(Chromium)
@@ -85,7 +85,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** The Playwright test runner flow from spec discovery through parallel execution, retries, and reporting. **Two parallel workers** run different specs concurrently â€” Worker 1 runs Chromium, Worker 2 runs Firefox. **Failures** trigger screenshots + trace capture, then up to 2 retries. **Reports** generate in HTML, JSON, and JUnit XML formats. CI posts a summary to the PR.
+> **Diagram:** The Playwright test runner flow from spec discovery through parallel execution, retries, and reporting. **Two parallel workers** run different specs concurrently — Worker 1 runs Chromium, Worker 2 runs Firefox. **Failures** trigger screenshots + trace capture, then up to 2 retries. **Reports** generate in HTML, JSON, and JUnit XML formats. CI posts a summary to the PR.
 
 ---
 
@@ -95,14 +95,14 @@ E2E tests cover full user flows across all services:
 
 | Flow | Description | Critical? |
 |------|-------------|-----------|
-| Sign up â†’ Workspace | New user creates account, sees dashboard | âœ… |
-| Upload â†’ Organize | Upload file, agent proposes name, user approves | âœ… |
-| Resume â†’ ATS | Generate resume, score against JD | âœ… |
-| Job Search â†’ Apply | Find jobs, rank, tailor, submit | âœ… |
-| Gmail â†’ Schedule | Email scanned, deadline extracted, shown on schedule | âœ… |
-| Connector â†’ Sync | Connect Gmail, initial sync completes | âœ… |
-| Settings â†’ Export | Export all data, verify completeness | âœ… |
-| Settings â†’ Delete | Delete all data, verify workspace is empty | âœ… |
+| Sign up → Workspace | New user creates account, sees dashboard | âœ… |
+| Upload → Organize | Upload file, agent proposes name, user approves | âœ… |
+| Resume → ATS | Generate resume, score against JD | âœ… |
+| Job Search → Apply | Find jobs, rank, tailor, submit | âœ… |
+| Gmail → Schedule | Email scanned, deadline extracted, shown on schedule | âœ… |
+| Connector → Sync | Connect Gmail, initial sync completes | âœ… |
+| Settings → Export | Export all data, verify completeness | âœ… |
+| Settings → Delete | Delete all data, verify workspace is empty | âœ… |
 
 ## Test Implementation
 
@@ -164,7 +164,7 @@ test('user uploads resume and sees organization proposal', async ({ page }) => {
 | Concern | Mitigation |
 |---------|------------|
 | E2E tests are slow (30-60s each) | Limit to critical user flows, parallelize across workers |
-| Running full E2E suite blocks deploys | Use staged test execution: smoke â†’ critical â†’ extended |
+| Running full E2E suite blocks deploys | Use staged test execution: smoke → critical → extended |
 | Parallel browser instances consume significant resources | Cap parallel workers based on CI runner capacity |
 
 ## Architecture
@@ -202,14 +202,14 @@ graph TD
     class R1,R2,R3,R4 report
 ```
 
-> **Diagram:** E2E testing infrastructure â€” **Playwright CLI** with browser workers (Chromium, Firefox, WebKit) runs against **test databases** and **auth fixtures**. Three test suites (smoke, critical, full) run at different cadences. **Reports** include HTML, trace viewer, screenshots, and JUnit XML.
+> **Diagram:** E2E testing infrastructure — **Playwright CLI** with browser workers (Chromium, Firefox, WebKit) runs against **test databases** and **auth fixtures**. Three test suites (smoke, critical, full) run at different cadences. **Reports** include HTML, trace viewer, screenshots, and JUnit XML.
 
 ## Workflows
 
-1. **PR smoke test execution**: Developer pushes PR â†’ CI triggers Playwright smoke suite â†’ 3 critical flows run (login, upload, approve) â†’ each flow runs in parallel Chromium workers â†’ results posted as GitHub Check â†’ if all pass, PR proceeds; if any fail, screenshots + traces captured
-2. **Full E2E suite before production deploy**: Release candidate deployed to staging â†’ CI triggers full E2E suite (20+ flows) â†’ tests run across Chromium + Firefox in parallel (4 workers) â†’ each test isolates data via unique test accounts â†’ results published to Grafana â†’ deploy proceeds only if all critical flows pass
-3. **Flaky test management**: E2E test fails â†’ auto-retry (max 2 retries) â†’ if retry passes, marked as flaky â†’ flaky test report generated â†’ team triages weekly â†’ test fixed or quarantined
-4. **Test data seeding**: E2E test starts â†’ `beforeAll` hook seeds test database with fixtures â†’ test account created with known credentials â†’ test assertions run against seeded data â†’ `afterAll` cleans up test data
+1. **PR smoke test execution**: Developer pushes PR → CI triggers Playwright smoke suite → 3 critical flows run (login, upload, approve) → each flow runs in parallel Chromium workers → results posted as GitHub Check → if all pass, PR proceeds; if any fail, screenshots + traces captured
+2. **Full E2E suite before production deploy**: Release candidate deployed to staging → CI triggers full E2E suite (20+ flows) → tests run across Chromium + Firefox in parallel (4 workers) → each test isolates data via unique test accounts → results published to Grafana → deploy proceeds only if all critical flows pass
+3. **Flaky test management**: E2E test fails → auto-retry (max 2 retries) → if retry passes, marked as flaky → flaky test report generated → team triages weekly → test fixed or quarantined
+4. **Test data seeding**: E2E test starts → `beforeAll` hook seeds test database with fixtures → test account created with known credentials → test assertions run against seeded data → `afterAll` cleans up test data
 
 ## Scalability
 
@@ -233,11 +233,11 @@ graph TD
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| E2E pass rate (critical suite) | < 100% | Critical | Grafana â€” E2E Dashboard |
-| Flaky test rate | > 5% of test runs | Warning | Grafana â€” Test Quality Dashboard |
-| E2E suite runtime | > 20 min | Warning | CI Pipeline â€” E2E Duration |
-| Screenshot diff threshold exceeded | > 0.1% pixel diff | Warning | Chromatic â€” Visual Regression |
-| Test data cleanup failure rate | > 1% | Info | Cron Job â€” Cleanup Logs |
+| E2E pass rate (critical suite) | < 100% | Critical | Grafana — E2E Dashboard |
+| Flaky test rate | > 5% of test runs | Warning | Grafana — Test Quality Dashboard |
+| E2E suite runtime | > 20 min | Warning | CI Pipeline — E2E Duration |
+| Screenshot diff threshold exceeded | > 0.1% pixel diff | Warning | Chromatic — Visual Regression |
+| Test data cleanup failure rate | > 1% | Info | Cron Job — Cleanup Logs |
 
 ## Risks
 
@@ -258,11 +258,11 @@ graph TD
 
 ## Overview
 
-End-to-end testing at Vaeloom validates complete user workflows across all services â€” from signup through workspace management, resume generation, job applications, and data export. E2E tests are the highest-confidence tests in the pyramid, verifying that the frontend, API, database, and AI agents all work together correctly for critical user journeys.
+End-to-end testing at Vaeloom validates complete user workflows across all services — from signup through workspace management, resume generation, job applications, and data export. E2E tests are the highest-confidence tests in the pyramid, verifying that the frontend, API, database, and AI agents all work together correctly for critical user journeys.
 
 Tests are built with Playwright and run against dedicated test databases with isolated test accounts. The test suite is organized into three tiers: a smoke suite (3 critical flows) that runs on every PR for fast feedback, a critical suite (8 core flows) that runs on every staging deploy, and a full suite (20+ flows) that runs before every production deploy. This tiered approach balances speed with confidence.
 
-For Vaeloom's AI-driven workflows, E2E tests cover the complete proposal lifecycle: upload a document, wait for the AI agent to process it and generate a proposal, review the proposal card with diff view, approve or reject, and verify the result appears in the workspace. These tests use mocked AI responses to ensure determinism â€” AI-specific output quality is tested separately through golden dataset evaluations.
+For Vaeloom's AI-driven workflows, E2E tests cover the complete proposal lifecycle: upload a document, wait for the AI agent to process it and generate a proposal, review the proposal card with diff view, approve or reject, and verify the result appears in the workspace. These tests use mocked AI responses to ensure determinism — AI-specific output quality is tested separately through golden dataset evaluations.
 
 Playwright's auto-retrying assertions, trace viewer for debugging failures, and parallel browser execution across Chromium and Firefox make the E2E suite reliable and maintainable. Test artifacts (screenshots, traces, video) are captured on any failure and stored for debugging.
 
@@ -271,7 +271,7 @@ Playwright's auto-retrying assertions, trace viewer for debugging failures, and 
 - Achieve 100% pass rate for critical path E2E tests on every deploy
 - Complete the full E2E suite (20+ flows) in under 15 minutes through parallel execution
 - Reduce flaky test rate below 5% through systematic detection and auto-quarantine
-- Cover all 8 critical user flows: signup, uploadâ†’organize, resumeâ†’ATS, job searchâ†’apply, Gmailâ†’schedule, connectorâ†’sync, export, delete
+- Cover all 8 critical user flows: signup, upload→organize, resume→ATS, job search→apply, Gmail→schedule, connector→sync, export, delete
 - Maintain test data isolation with zero cross-test contamination
 
 ## Scope
