@@ -600,8 +600,8 @@ importers:
   packages/queue:
     dependencies:
       bullmq:
-        specifier: ^5.12.0
-        version: 5.80.7
+        specifier: ^5.80.8
+        version: 5.80.8
       ioredis:
         specifier: ^5.4.0
         version: 5.11.1
@@ -1902,8 +1902,8 @@ importers:
         specifier: ^1.7.0
         version: 1.18.1
       bullmq:
-        specifier: ^5.12.0
-        version: 5.80.7
+        specifier: ^5.80.8
+        version: 5.80.8
       class-transformer:
         specifier: ^0.5.0
         version: 0.5.1
@@ -4853,8 +4853,8 @@ packages:
   buffer@6.0.3:
     resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
 
-  bullmq@5.80.7:
-    resolution: {integrity: sha512-hMBxHhwmpP8Yy94AhI9WI2H2mLaa7I9AMTmwD2HZW2Iij3lHOkMC9/MjUnwj5v6QbknYTV2sF7Z41Km2trbLMw==}
+  bullmq@5.80.8:
+    resolution: {integrity: sha512-tMLIjj3tE6toX5SuVv4XyzkaKEuE334R1SubVJ6PNrUPQXsbyWW1VlGElx6Jp6HUcvAFMmNOOp1ez/wWTjCgXg==}
     engines: {node: '>=12.22.0'}
     peerDependencies:
       redis: '>=5.0.0'
@@ -10744,7 +10744,7 @@ snapshots:
       base64-js: 1.5.1
       ieee754: 1.2.1
 
-  bullmq@5.80.7:
+  bullmq@5.80.8:
     dependencies:
       cron-parser: 4.9.0
       ioredis: 5.11.1
