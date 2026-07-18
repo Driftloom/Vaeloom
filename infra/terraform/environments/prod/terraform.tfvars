@@ -1,0 +1,12 @@
+environment         = "prod"
+aws_region          = "us-east-1"
+vpc_cidr            = "10.2.0.0/16"
+availability_zones  = ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1e", "us-east-1f"]
+cluster_version     = "1.29"
+node_instance_types = ["t3.large", "t3.xlarge"]
+node_group_min_size = 3
+node_group_max_size = 20
+node_group_desired_size = 3
+db_instance_class   = "db.r6g.large"
+db_allocated_storage = 500
+enable_monitoring   = true
