@@ -65,6 +65,7 @@ coverage/
 # AI session artifacts
 .qoder/
 .zcode/
+.opencode/
 
 # Python build artifacts
 *.egg-info/
