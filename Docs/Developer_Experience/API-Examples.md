@@ -14,12 +14,12 @@ graph TD
     classDef chat fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
     subgraph Auth["ðŸ”‘ Authentication"]
-        A1["POST /v1/auth/signup<br/>Email + password â†’ Create account"]
-        A2["POST /v1/auth/login<br/>Email + password â†’ Token + workspace_id"]
+        A1["POST /v1/auth/signup<br/>Email + password --> Create account"]
+        A2["POST /v1/auth/login<br/>Email + password --> Token + workspace_id"]
     end
 
     subgraph Documents["ðŸ“„ Documents"]
-        D1["POST /workspaces/{id}/documents<br/>Upload file â†’ Document created"]
+        D1["POST /workspaces/{id}/documents<br/>Upload file --> Document created"]
         D2["GET /workspaces/{id}/documents<br/>List with pagination"]
         D3["POST .../organize/approve<br/>Approve agent proposal"]
     end
@@ -48,7 +48,7 @@ graph TD
     class C1 chat
 ```
 
-> **Diagram:** API endpoint overview â€” **Authentication** (signup/login), **Documents** (upload/list/approve), **Resume** (get/generate/score), **Memory** (search/graph), **Chat** (agent messages). All endpoints use Bearer token auth and workspace scoping.
+> **Diagram:** API endpoint overview — **Authentication** (signup/login), **Documents** (upload/list/approve), **Resume** (get/generate/score), **Memory** (search/graph), **Chat** (agent messages). All endpoints use Bearer token auth and workspace scoping.
 
 ---
 
@@ -129,26 +129,26 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/chat/messages \
 
 | Mistake | Consequence |
 |---------|-------------|
-| Hardcoding workspace IDs in example code | Examples that use literal workspace IDs train developers to hardcode them â€” workspace IDs must always come from auth context or environment variables |
-| Not handling pagination in list endpoints | Examples that omit pagination parameters give the impression that list endpoints return all results â€” breaks in production when datasets exceed one page |
-| Using expired or placeholder tokens in examples | Token examples that aren't clearly labeled as placeholders get copied directly into production code â€” results in 401 errors and debugging confusion |
-| Mixing example code with production patterns | Examples should use simplified patterns â€” production concerns like retry logic, error handling, and rate limiting belong in a separate reference |
+| Hardcoding workspace IDs in example code | Examples that use literal workspace IDs train developers to hardcode them — workspace IDs must always come from auth context or environment variables |
+| Not handling pagination in list endpoints | Examples that omit pagination parameters give the impression that list endpoints return all results — breaks in production when datasets exceed one page |
+| Using expired or placeholder tokens in examples | Token examples that aren't clearly labeled as placeholders get copied directly into production code — results in 401 errors and debugging confusion |
+| Mixing example code with production patterns | Examples should use simplified patterns — production concerns like retry logic, error handling, and rate limiting belong in a separate reference |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Use `{workspace_id}` as a clear placeholder | A placeholder that's obviously a placeholder (not a real value) prevents accidental copying â€” use angle brackets or descriptive variable names |
-| Include pagination params in every list example | Every list endpoint example should show `?page=1&limit=20` â€” developers mirror what they see in examples |
-| Show both success and error responses | An example that only shows 200 OK gives no guidance on what happens when things fail â€” include at least 400, 401, and 403 responses |
-| Keep examples runnable with copy-paste | Use `$TOKEN` and `{workspace_id}` so a developer can set variables and run the exact command â€” reduces friction for getting started |
+| Use `{workspace_id}` as a clear placeholder | A placeholder that's obviously a placeholder (not a real value) prevents accidental copying — use angle brackets or descriptive variable names |
+| Include pagination params in every list example | Every list endpoint example should show `?page=1&limit=20` — developers mirror what they see in examples |
+| Show both success and error responses | An example that only shows 200 OK gives no guidance on what happens when things fail — include at least 400, 401, and 403 responses |
+| Keep examples runnable with copy-paste | Use `$TOKEN` and `{workspace_id}` so a developer can set variables and run the exact command — reduces friction for getting started |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Token exposure in example commands | Examples using `Bearer $TOKEN` with real tokens in shell history are a risk â€” use environment variables or a dev-only token that expires frequently |
-| Example data containing PII | Example responses should use fake data (`user@example.com`, Acme Corp) â€” real-looking data might be copied into demos that end up in screenshots |
+| Token exposure in example commands | Examples using `Bearer $TOKEN` with real tokens in shell history are a risk — use environment variables or a dev-only token that expires frequently |
+| Example data containing PII | Example responses should use fake data (`user@example.com`, Acme Corp) — real-looking data might be copied into demos that end up in screenshots |
 
 ## Error Handling
 
@@ -164,7 +164,7 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/chat/messages \
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Example code copied verbatim into production | High | Medium | Include prominent "example only" disclaimers in code comments and surrounding text |
-| Example tokens leaked via shell history | Medium | High | Recommend using environment variables or `$TOKEN` placeholders â€” never show real tokens in examples |
+| Example tokens leaked via shell history | Medium | High | Recommend using environment variables or `$TOKEN` placeholders — never show real tokens in examples |
 | Example assumes API version that doesn't exist yet | Low | Medium | Version all example URLs (`/v1/`) and update examples when API versions change |
 | Incorrect example parameters cause confusion | Medium | Low | Test every example against the actual API before publishing |
 
@@ -178,7 +178,7 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/chat/messages \
 
 ## Overview
 
-The API Examples document provides ready-to-use curl commands covering Vaeloom's core API surfaces â€” authentication, documents, resume management, memory/knowledge graph queries, and agent chat interactions. Each example includes request parameters, response structures, and common error patterns to help developers integrate with the Vaeloom API quickly and correctly.
+The API Examples document provides ready-to-use curl commands covering Vaeloom's core API surfaces — authentication, documents, resume management, memory/knowledge graph queries, and agent chat interactions. Each example includes request parameters, response structures, and common error patterns to help developers integrate with the Vaeloom API quickly and correctly.
 
 ---
 
@@ -224,8 +224,8 @@ The API Examples document provides ready-to-use curl commands covering Vaeloom's
 
 | Consideration | Approach |
 |--------------|----------|
-| Example rate limits | Examples should note rate limits for each endpoint (e.g., POST /chat/message at 20/min) â€” developers running example scripts in loops may hit 429 errors |
-| Large payload handling | Document upload examples should show multipart form data for files, not base64-encoded JSON â€” base64 inflates payload size by 33% |
+| Example rate limits | Examples should note rate limits for each endpoint (e.g., POST /chat/message at 20/min) — developers running example scripts in loops may hit 429 errors |
+| Large payload handling | Document upload examples should show multipart form data for files, not base64-encoded JSON — base64 inflates payload size by 33% |
 
 ## Examples
 

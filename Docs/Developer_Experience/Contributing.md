@@ -1,7 +1,7 @@
-﻿# Contributing
+# Contributing
 
 > **Purpose:** Guide for contributing to the Vaeloom project
-> **Status:** ðŸ†• New
+> **Status:** 🆕 New
 
 ## Contribution Overview
 
@@ -12,25 +12,25 @@ graph TD
     classDef features fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef pr fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Steps["ðŸš€ Getting Started"]
+    subgraph Steps["🚀 Getting Started"]
         S1["1. Read Setup Guide<br/>Get project running locally"]
         S2["2. Read Architecture Walkthrough<br/>Understand the system"]
         S3["3. Check Project Board<br/>Find open issues"]
         S4["4. Join Discord<br/>Ask questions"]
     end
 
-    subgraph Bugs["ðŸ› Reporting Bugs"]
+    subgraph Bugs["🐛 Reporting Bugs"]
         B1["Check if already reported"]
         B2["Open issue with:<br/>Title, steps to reproduce,<br/>expected vs actual, screenshots"]
     end
 
-    subgraph Features["ðŸ’¡ Suggesting Features"]
+    subgraph Features["💡 Suggesting Features"]
         F1["Check if already planned (Roadmap)"]
         F2["Open discussion for feedback"]
-        F3["If approved â†’ feature request issue"]
+        F3["If approved --> feature request issue"]
     end
 
-    subgraph PRs["ðŸ“¤ Pull Requests"]
+    subgraph PRs["📤 Pull Requests"]
         P1["Follow Git Workflow"]
         P2["Follow Coding Standards"]
         P3["Include tests"]
@@ -45,7 +45,7 @@ graph TD
     class P1,P2,P3,P4 pr
 ```
 
-> **Diagram:** Contribution workflow â€” **4 getting started steps** â†’ **3 contribution paths** (bug reports, feature suggestions, pull requests) â€” each with specific requirements.
+> **Diagram:** Contribution workflow — **4 getting started steps** → **3 contribution paths** (bug reports, feature suggestions, pull requests) — each with specific requirements.
 
 ---
 
@@ -94,26 +94,26 @@ All contributors must adhere to our code of conduct: be respectful, assume good 
 
 | Mistake | Consequence |
 |---------|-------------|
-| Opening a PR without checking the project board first | Multiple contributors independently solving the same issue wastes effort â€” always comment on the issue to claim it before starting work |
+| Opening a PR without checking the project board first | Multiple contributors independently solving the same issue wastes effort — always comment on the issue to claim it before starting work |
 | Skipping the setup guide and architecture walkthrough | PRs from developers who haven't set up the full environment often have configuration issues, missing dependencies, or misunderstand service boundaries |
-| PRs that are too large to review effectively | A 2000-line PR is rarely reviewed thoroughly â€” small, focused PRs get better reviews and merge faster |
-| Submitting a feature without an associated discussion | Features that skip the discussion phase may be rejected after implementation â€” use a feature request discussion for early feedback |
+| PRs that are too large to review effectively | A 2000-line PR is rarely reviewed thoroughly — small, focused PRs get better reviews and merge faster |
+| Submitting a feature without an associated discussion | Features that skip the discussion phase may be rejected after implementation — use a feature request discussion for early feedback |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Claim an issue before starting work | Comment `I'd like to work on this` on the issue â€” prevents duplicate work and lets maintainers know who's working on what |
-| Run the full CI pipeline locally before submitting | `./scripts/ci-local.sh` catches lint, test, and type errors before CI â€” faster feedback loop than waiting for CI results |
-| Keep PRs small and focused on a single concern | A PR should do one thing â€” fix one bug, add one feature, refactor one module. Multiple concerns in one PR are hard to review and risky to merge |
-| Update documentation alongside code changes | A feature that adds a new API endpoint should include the API example â€” documentation should be part of the PR, not a separate follow-up |
+| Claim an issue before starting work | Comment `I'd like to work on this` on the issue — prevents duplicate work and lets maintainers know who's working on what |
+| Run the full CI pipeline locally before submitting | `./scripts/ci-local.sh` catches lint, test, and type errors before CI — faster feedback loop than waiting for CI results |
+| Keep PRs small and focused on a single concern | A PR should do one thing — fix one bug, add one feature, refactor one module. Multiple concerns in one PR are hard to review and risky to merge |
+| Update documentation alongside code changes | A feature that adds a new API endpoint should include the API example — documentation should be part of the PR, not a separate follow-up |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Third-party dependency contributions | External contributors may introduce malicious dependencies â€” all new dependencies must be reviewed by a maintainer and scanned for vulnerabilities |
-| Sensitive information in issues | Bug reports may include logs or screenshots containing tokens or PII â€” remind contributors to redact sensitive information before posting |
+| Third-party dependency contributions | External contributors may introduce malicious dependencies — all new dependencies must be reviewed by a maintainer and scanned for vulnerabilities |
+| Sensitive information in issues | Bug reports may include logs or screenshots containing tokens or PII — remind contributors to redact sensitive information before posting |
 
 ## Error Handling
 
@@ -140,7 +140,7 @@ All contributors must adhere to our code of conduct: be respectful, assume good 
 
 ## Overview
 
-The Contributing guide defines how developers can contribute to the Vaeloom project â€” reporting bugs, suggesting features, and submitting pull requests. It covers the contribution workflow from discovering issues through merging PRs, including coding standards, testing requirements, and documentation expectations.
+The Contributing guide defines how developers can contribute to the Vaeloom project — reporting bugs, suggesting features, and submitting pull requests. It covers the contribution workflow from discovering issues through merging PRs, including coding standards, testing requirements, and documentation expectations.
 
 ---
 
@@ -186,8 +186,8 @@ The Contributing guide defines how developers can contribute to the Vaeloom proj
 
 | Consideration | Approach |
 |--------------|----------|
-| PR performance regression checks | Every PR that touches a database query or API endpoint must include before/after performance data â€” prevent accidental regressions from entering main |
-| Test suite runtime | A growing test suite that takes >10 minutes to run discourages contributors from running it locally â€” aim for <5 minute local test run |
+| PR performance regression checks | Every PR that touches a database query or API endpoint must include before/after performance data — prevent accidental regressions from entering main |
+| Test suite runtime | A growing test suite that takes >10 minutes to run discourages contributors from running it locally — aim for <5 minute local test run |
 
 ## Examples
 
@@ -261,4 +261,4 @@ gh issue comment 142 --body "I'd like to work on this"
 - [Architecture Walkthrough.md](./Architecture-Walkthrough.md)
 - [Debugging.md](./Debugging.md)
 - [CLI.md](./CLI.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md`](../../Docs/Vaeloom-Complete-Documentation.md)
+- [`/docs/Vaeloom-Complete-Documentation.md`](../../docs/Vaeloom-Complete-Documentation.md)

@@ -14,32 +14,32 @@ graph TD
 
     subgraph Root["ðŸ“ Root-Level Scripts"]
         R1["./scripts/dev.sh<br/>Start all services"]
-        R2["./scripts/reset-db.sh<br/>Drop â†’ recreate â†’ migrate â†’ seed"]
+        R2["./scripts/reset-db.sh<br/>Drop --> recreate --> migrate --> seed"]
         R3["./scripts/seed-data.sh<br/>Load seed data"]
         R4["./scripts/smoke-test.sh &lt;env&gt;<br/>Smoke tests"]
         R5["./scripts/ci-local.sh<br/>Run CI pipeline locally"]
     end
 
     subgraph Frontend["ðŸŒ Frontend (apps/web)"]
-        F1["npm run dev â†’ Start (port 3000)"]
-        F2["npm run build â†’ Production build"]
-        F3["npm run test â†’ Run tests"]
-        F4["npm run lint â†’ Lint"]
-        F5["npm run analyze â†’ Bundle analysis"]
+        F1["npm run dev --> Start (port 3000)"]
+        F2["npm run build --> Production build"]
+        F3["npm run test --> Run tests"]
+        F4["npm run lint --> Lint"]
+        F5["npm run analyze --> Bundle analysis"]
     end
 
-    subgraph API["ðŸ–¥ï¸ API (apps/api)"]
-        A1["npm run dev â†’ Start (port 4000)"]
-        A2["npm run migration:run â†’ DB migration"]
-        A3["npm run migration:revert â†’ Rollback"]
+    subgraph API["ðŸ-¥ï¸ API (apps/api)"]
+        A1["npm run dev --> Start (port 4000)"]
+        A2["npm run migration:run --> DB migration"]
+        A3["npm run migration:revert --> Rollback"]
     end
 
     subgraph AIService["ðŸ§  AI Service (apps/ai-service)"]
-        AI1["uvicorn main:app --reload â†’ Dev server"]
-        AI2["pytest â†’ Run tests"]
-        AI3["ruff check . â†’ Lint"]
-        AI4["mypy . â†’ Type check"]
-        AI5["python -m eval.run_all â†’ Run evals"]
+        AI1["uvicorn main:app --reload --> Dev server"]
+        AI2["pytest --> Run tests"]
+        AI3["ruff check . --> Lint"]
+        AI4["mypy . --> Type check"]
+        AI5["python -m eval.run_all --> Run evals"]
     end
 
     Root --> Frontend & API & AIService
@@ -50,7 +50,7 @@ graph TD
     class AI1,AI2,AI3,AI4,AI5 ai
 ```
 
-> **Diagram:** Script architecture â€” **root-level scripts** (dev, reset-db, seed, smoke-test, CI) serve **3 services**: **Frontend** (dev/build/test/lint/analyze), **API** (dev/migrations), and **AI Service** (dev/test/lint/typecheck/eval).
+> **Diagram:** Script architecture — **root-level scripts** (dev, reset-db, seed, smoke-test, CI) serve **3 services**: **Frontend** (dev/build/test/lint/analyze), **API** (dev/migrations), and **AI Service** (dev/test/lint/typecheck/eval).
 
 ---
 
@@ -130,27 +130,27 @@ mypy .
 
 | Mistake | Consequence |
 |---------|-------------|
-| Running `reset-db.sh` without checking the target environment | The script drops and recreates all tables â€” running it against staging or production destroys all user data. Always check `NODE_ENV` or the database URL before running |
-| Hardcoding paths or credentials inside scripts | A script with hardcoded `/Users/name/Vaeloom` paths breaks for every other developer â€” scripts must use relative paths and environment variables |
-| Skipping error handling in CI scripts | A CI script that doesn't `set -e` continues executing after a failure â€” the next step may run against corrupted state, masking the original error |
-| Not making scripts idempotent | A seed script that creates the same data twice causes duplicate keys or constraint violations â€” scripts should check for existing data before inserting |
+| Running `reset-db.sh` without checking the target environment | The script drops and recreates all tables — running it against staging or production destroys all user data. Always check `NODE_ENV` or the database URL before running |
+| Hardcoding paths or credentials inside scripts | A script with hardcoded `/Users/name/Vaeloom` paths breaks for every other developer — scripts must use relative paths and environment variables |
+| Skipping error handling in CI scripts | A CI script that doesn't `set -e` continues executing after a failure — the next step may run against corrupted state, masking the original error |
+| Not making scripts idempotent | A seed script that creates the same data twice causes duplicate keys or constraint violations — scripts should check for existing data before inserting |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Always use shell safety flags at the top of shell scripts | Exits on errors, catches unset variables, and surfaces pipe failures â€” prevents silent failures in script pipelines |
+| Always use shell safety flags at the top of shell scripts | Exits on errors, catches unset variables, and surfaces pipe failures — prevents silent failures in script pipelines |
 | Use relative paths derived from the script's own location | `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` allows the script to work from any working directory |
-| Add a confirmation prompt to destructive operations | `read -p "Reset database? This will delete all data. Type 'yes': " confirm` â€” a simple prompt prevents the most common script accidents |
+| Add a confirmation prompt to destructive operations | `read -p "Reset database? This will delete all data. Type 'yes': " confirm` — a simple prompt prevents the most common script accidents |
 | Use `--dry-run` flags for operations that change state | Adding a `--dry-run` flag that logs what would happen without executing it lets developers verify script behavior safely |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Secrets in script output | Scripts that run database queries or API calls may output sensitive data â€” ensure script output is piped through a redaction filter or only shown in debug mode |
-| Script execution by untrusted users | Shell scripts run with the user's permissions â€” a malicious script in the repository could read `.env` files or access credentials. Review scripts as part of PR review |
-| CI script credential exposure | CI scripts often have access to deployment keys and tokens â€” scripts should not log environment variables or pass them as command-line arguments |
+| Secrets in script output | Scripts that run database queries or API calls may output sensitive data — ensure script output is piped through a redaction filter or only shown in debug mode |
+| Script execution by untrusted users | Shell scripts run with the user's permissions — a malicious script in the repository could read `.env` files or access credentials. Review scripts as part of PR review |
+| CI script credential exposure | CI scripts often have access to deployment keys and tokens — scripts should not log environment variables or pass them as command-line arguments |
 
 ## Error Handling
 
@@ -177,7 +177,7 @@ mypy .
 
 ## Overview
 
-The Scripts document catalogs all development scripts in the Vaeloom monorepo â€” root-level shell scripts for service orchestration, npm scripts for frontend and API services, and Python commands for the AI service. It defines conventions for script safety (idempotency, error handling, confirmation prompts) and documents usage patterns for each script.
+The Scripts document catalogs all development scripts in the Vaeloom monorepo — root-level shell scripts for service orchestration, npm scripts for frontend and API services, and Python commands for the AI service. It defines conventions for script safety (idempotency, error handling, confirmation prompts) and documents usage patterns for each script.
 
 ---
 
@@ -222,8 +222,8 @@ The Scripts document catalogs all development scripts in the Vaeloom monorepo â
 
 | Consideration | Approach |
 |--------------|----------|
-| Script startup overhead | Shell scripts invoked via npm run can add 200-500ms startup time â€” for frequently-run scripts, consider using a faster alternative like a direct command alias |
-| Seed data script execution time | Loading large seed datasets can take minutes â€” provide a `--minimal` flag that loads only essential seed data for quick setup |
+| Script startup overhead | Shell scripts invoked via npm run can add 200-500ms startup time — for frequently-run scripts, consider using a faster alternative like a direct command alias |
+| Seed data script execution time | Loading large seed datasets can take minutes — provide a `--minimal` flag that loads only essential seed data for quick setup |
 
 ## Examples
 

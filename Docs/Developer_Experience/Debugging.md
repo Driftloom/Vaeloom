@@ -12,13 +12,13 @@ graph TD
     classDef perf fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef frontend fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Agent["ðŸ¤– Agent Debugging"]
+    subgraph Agent["ðŸ¤- Agent Debugging"]
         A1["kubectl logs -l agent=memory-agent<br/>Check agent logs"]
         A2["python -m eval.run_single memory_agent<br/>Run eval locally"]
         A3["python -m agents.test_prompt --prompt=v2<br/>Test prompt directly"]
     end
 
-    subgraph Database["ðŸ—„ï¸ Database Debugging"]
+    subgraph Database["ðŸ--„ï¸ Database Debugging"]
         D1["SELECT count(*) FROM pg_stat_activity<br/>Check connection count"]
         D2["SELECT query, mean_time FROM pg_stat_statements<br/>Find slow queries"]
         D3["SELECT * FROM pg_locks WHERE granted = false<br/>Find blocking locks"]
@@ -31,9 +31,9 @@ graph TD
     end
 
     subgraph Frontend["ðŸŒ Frontend Debugging"]
-        F1["npm run lint â†’ React errors"]
+        F1["npm run lint --> React errors"]
         F2["npm run test -- --watch --testPathPattern=Dashboard"]
-        F3["npm run analyze â†’ Bundle size"]
+        F3["npm run analyze --> Bundle size"]
     end
 
     subgraph Tools["ðŸ”§ Debugging Tools"]
@@ -49,7 +49,7 @@ graph TD
     class T1 tools
 ```
 
-> **Diagram:** Debugging guide organized by area â€” **Agent** (logs, eval, prompt testing), **Database** (connections, slow queries, locks), **Performance** (latency, queue depth, cache), **Frontend** (lint, test, bundle). All feed into **5 debugging tools** (curl, redis-cli, psql, kubectl, Chrome DevTools).
+> **Diagram:** Debugging guide organized by area — **Agent** (logs, eval, prompt testing), **Database** (connections, slow queries, locks), **Performance** (latency, queue depth, cache), **Frontend** (lint, test, bundle). All feed into **5 debugging tools** (curl, redis-cli, psql, kubectl, Chrome DevTools).
 
 ---
 
@@ -125,27 +125,27 @@ npm run analyze
 
 | Mistake | Consequence |
 |---------|-------------|
-| Jumping to complex debugging tools before checking logs | Running `kubectl exec` or debuggers when the issue is visible in application logs wastes time â€” always check `kubectl logs` first |
-| Running EXPLAIN ANALYZE on production queries | EXPLAIN ANALYZE executes the query against real data â€” on production this can lock tables, consume resources, and expose PII in the output |
-| Debugging performance issues without baseline metrics | A query that "feels slow" without knowing the normal latency leads to optimizing the wrong thing â€” always capture baseline metrics before tuning |
-| Using `curl` without verbose flags for debugging | A `curl` call that returns an error without `-v` gives no insight into headers, status codes, or response bodies â€” always use `-v` for debugging |
+| Jumping to complex debugging tools before checking logs | Running `kubectl exec` or debuggers when the issue is visible in application logs wastes time — always check `kubectl logs` first |
+| Running EXPLAIN ANALYZE on production queries | EXPLAIN ANALYZE executes the query against real data — on production this can lock tables, consume resources, and expose PII in the output |
+| Debugging performance issues without baseline metrics | A query that "feels slow" without knowing the normal latency leads to optimizing the wrong thing — always capture baseline metrics before tuning |
+| Using `curl` without verbose flags for debugging | A `curl` call that returns an error without `-v` gives no insight into headers, status codes, or response bodies — always use `-v` for debugging |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Always start with application logs | `kubectl logs`, `docker compose logs`, and application log files contain structured error information â€” they're faster and safer than attaching debuggers |
-| Use EXPLAIN (not ANALYZE) on production | EXPLAIN shows the query plan without executing the query â€” safe for production use. ANALYZE executes the query and should only run on staging |
-| Collect baseline metrics before investigating performance | Capture normal latency, throughput, and error rate before making changes â€” without a baseline, you can't tell if your fix actually improved things |
-| Use curl with -v, -i, or -w for API debugging | `curl -v` shows headers and status, `curl -i` includes response headers, `curl -w` outputs timing data â€” each provides different diagnostic information |
+| Always start with application logs | `kubectl logs`, `docker compose logs`, and application log files contain structured error information — they're faster and safer than attaching debuggers |
+| Use EXPLAIN (not ANALYZE) on production | EXPLAIN shows the query plan without executing the query — safe for production use. ANALYZE executes the query and should only run on staging |
+| Collect baseline metrics before investigating performance | Capture normal latency, throughput, and error rate before making changes — without a baseline, you can't tell if your fix actually improved things |
+| Use curl with -v, -i, or -w for API debugging | `curl -v` shows headers and status, `curl -i` includes response headers, `curl -w` outputs timing data — each provides different diagnostic information |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Debug logs containing sensitive data | Application logs may contain tokens, PII, or query parameters with sensitive values â€” ensure debug logging redacts sensitive fields before output |
-| Remote debugging in production | Never attach debuggers or enable remote profiling on production instances â€” use structured logging and metrics instead |
-| kubectl exec access control | `kubectl exec` provides shell access to running containers â€” restrict to developers who need it and audit its usage |
+| Debug logs containing sensitive data | Application logs may contain tokens, PII, or query parameters with sensitive values — ensure debug logging redacts sensitive fields before output |
+| Remote debugging in production | Never attach debuggers or enable remote profiling on production instances — use structured logging and metrics instead |
+| kubectl exec access control | `kubectl exec` provides shell access to running containers — restrict to developers who need it and audit its usage |
 
 ## Error Handling
 
@@ -172,7 +172,7 @@ npm run analyze
 
 ## Overview
 
-The Debugging guide provides diagnostic commands and troubleshooting patterns for each layer of the Vaeloom stack â€” agent execution, database performance, API latency, frontend rendering, and infrastructure health. It covers common failure scenarios with detection commands, mitigation steps, and recovery procedures.
+The Debugging guide provides diagnostic commands and troubleshooting patterns for each layer of the Vaeloom stack — agent execution, database performance, API latency, frontend rendering, and infrastructure health. It covers common failure scenarios with detection commands, mitigation steps, and recovery procedures.
 
 ---
 
@@ -218,8 +218,8 @@ The Debugging guide provides diagnostic commands and troubleshooting patterns fo
 
 | Consideration | Approach |
 |--------------|----------|
-| Debug overhead in production | Verbose debug logging can increase latency by 10-20% â€” keep production log levels at `info` and only enable `debug` for targeted, temporary investigations |
-| Query debugging vs query execution | Running debugging queries (pg_stat_activity, pg_locks) on a busy database can itself consume resources â€” use read replicas for diagnostic queries |
+| Debug overhead in production | Verbose debug logging can increase latency by 10-20% — keep production log levels at `info` and only enable `debug` for targeted, temporary investigations |
+| Query debugging vs query execution | Running debugging queries (pg_stat_activity, pg_locks) on a busy database can itself consume resources — use read replicas for diagnostic queries |
 
 ## Examples
 

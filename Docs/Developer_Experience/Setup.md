@@ -1,7 +1,7 @@
-﻿# Setup Guide
+# Setup Guide
 
-> **Purpose:** Complete setup guide for new Vaeloom developers â€” from cloning to running all services locally
-> **Status:** âœ… Upgraded to enterprise quality
+> **Purpose:** Complete setup guide for new Vaeloom developers — from cloning to running all services locally
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-12
 
@@ -14,7 +14,7 @@ graph TD
     classDef step fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
     classDef verify fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    subgraph Steps["ðŸ“‹ Setup Steps"]
+    subgraph Steps["📋 Setup Steps"]
         S1["1. Clone repo<br/>git clone Vaeloom.git"]
         S2["2. Configure env<br/>cp .env.example .env<br/>Set ANTHROPIC_API_KEY"]
         S3["3. Start infra<br/>docker compose up -d<br/>postgres + redis"]
@@ -24,12 +24,12 @@ graph TD
         S7["7. Start Frontend<br/>cd apps/web && npm run dev<br/>Port 3000"]
     end
 
-    subgraph Verify["âœ… Verification"]
-        V1["curl localhost:3000 â†’ 200"]
-        V2["curl localhost:4000/v1/health â†’ 200"]
-        V3["curl localhost:8000/health â†’ 200"]
+    subgraph Verify["✅ Verification"]
+        V1["curl localhost:3000 --> 200"]
+        V2["curl localhost:4000/v1/health --> 200"]
+        V3["curl localhost:8000/health --> 200"]
         V4["docker compose exec postgres pg_isready"]
-        V5["docker compose exec redis redis-cli ping â†’ PONG"]
+        V5["docker compose exec redis redis-cli ping --> PONG"]
     end
 
     S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> Verify
@@ -38,7 +38,7 @@ graph TD
     class V1,V2,V3,V4,V5 verify
 ```
 
-> **Diagram:** Complete setup workflow â€” **7 sequential steps** (clone â†’ configure â†’ infra â†’ migrations â†’ API â†’ AI â†’ frontend) â†’ **5 verification checks** (all services returning 200 + DB/Redis reachable).
+> **Diagram:** Complete setup workflow — **7 sequential steps** (clone → configure → infra → migrations → API → AI → frontend) → **5 verification checks** (all services returning 200 + DB/Redis reachable).
 
 ---
 
@@ -193,17 +193,17 @@ echo "5. Redis: $(docker compose exec redis redis-cli ping)"
 
 ```text
 Vaeloom/
-â”œâ”€â”€ apps/
-â”‚   â”œâ”€â”€ web/              # Next.js frontend (port 3000)
-â”‚   â”œâ”€â”€ api/              # NestJS API (port 4000)
-â”‚   â””â”€â”€ ai-service/       # FastAPI AI service (port 8000)
-â”œâ”€â”€ packages/
-â”‚   â”œâ”€â”€ shared-types/     # Shared type definitions
-â”‚   â””â”€â”€ ui-kit/           # Shared UI components
-â”œâ”€â”€ infra/
-â”‚   â”œâ”€â”€ docker/           # Docker configuration
-â”‚   â””â”€â”€ migrations/       # Database migrations
-â””â”€â”€ docs/                 # Documentation
+├── apps/
+│   ├── web/              # Next.js frontend (port 3000)
+│   ├── api/              # NestJS API (port 4000)
+│   └── ai-service/       # FastAPI AI service (port 8000)
+├── packages/
+│   ├── shared-types/     # Shared type definitions
+│   └── ui-kit/           # Shared UI components
+├── infra/
+│   ├── docker/           # Docker configuration
+│   └── migrations/       # Database migrations
+└── docs/                 # Documentation
 ```
 
 ## Troubleshooting
@@ -257,9 +257,9 @@ docker stats
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| API key exposure in local development | Store `ANTHROPIC_API_KEY` in `.env` with permissions `600` â€” never paste API keys directly into terminal commands where they appear in shell history |
-| Docker container access | PostgreSQL and Redis containers run without authentication in local dev â€” don't expose Docker ports to the public internet or use default credentials in production |
-| OAuth credentials in source code | Gmail and GitHub OAuth client secrets must never be committed â€” use `.env.example` with placeholder values and keep real credentials in secrets manager |
+| API key exposure in local development | Store `ANTHROPIC_API_KEY` in `.env` with permissions `600` — never paste API keys directly into terminal commands where they appear in shell history |
+| Docker container access | PostgreSQL and Redis containers run without authentication in local dev — don't expose Docker ports to the public internet or use default credentials in production |
+| OAuth credentials in source code | Gmail and GitHub OAuth client secrets must never be committed — use `.env.example` with placeholder values and keep real credentials in secrets manager |
 
 ## Error Handling
 
@@ -330,9 +330,9 @@ docker stats
 
 | Consideration | Approach |
 |--------------|----------|
-| Docker resource allocation | PostgreSQL and Redis containers share system resources â€” allocate at least 4GB RAM to Docker for smooth development, or use lightweight alternatives (SQLite for dev) |
-| First migration speed | Running `npx prisma migrate dev` for the first time creates all tables at once â€” this can take 30-60 seconds even on fast machines. Consider a pre-built dev database snapshot for new contributors |
-| npm install time | `npm install` in `apps/api` and `apps/web` installs all dependencies â€” this takes 2-5 minutes depending on network. Use `--prefer-offline` if you've run it before, or use a package manager cache |
+| Docker resource allocation | PostgreSQL and Redis containers share system resources — allocate at least 4GB RAM to Docker for smooth development, or use lightweight alternatives (SQLite for dev) |
+| First migration speed | Running `npx prisma migrate dev` for the first time creates all tables at once — this can take 30-60 seconds even on fast machines. Consider a pre-built dev database snapshot for new contributors |
+| npm install time | `npm install` in `apps/api` and `apps/web` installs all dependencies — this takes 2-5 minutes depending on network. Use `--prefer-offline` if you've run it before, or use a package manager cache |
 
 ## Examples
 
@@ -405,4 +405,4 @@ npx prisma migrate reset
 - [CLI.md](./CLI.md)
 - [Scripts.md](./Scripts.md)
 - [Contributing.md](./Contributing.md)
-- [`/Docs/Engineering/Implementation/01-foundation-infra.md`](../../Docs/Engineering/Implementation/01-foundation-infra.md)
+- [`/docs/Engineering/Implementation/01-foundation-infra.md`](../../docs/Engineering/Implementation/01-foundation-infra.md)

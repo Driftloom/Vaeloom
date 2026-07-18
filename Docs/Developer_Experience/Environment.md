@@ -11,7 +11,7 @@ graph TD
     classDef vars fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef config fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Types["ðŸ—‚ï¸ Environment Types"]
+    subgraph Types["ðŸ--‚ï¸ Environment Types"]
         T1["Development<br/>Local development<br/>Source: .env (gitignored)"]
         T2["Staging<br/>Integration testing<br/>Source: PaaS secrets / CI"]
         T3["Production<br/>Live user traffic<br/>Source: Secrets manager"]
@@ -39,7 +39,7 @@ graph TD
     class C1,C2,C3 config
 ```
 
-> **Diagram:** Environment architecture â€” **3 environment types** (dev/staging/prod) with configuration sources â†’ **key variables** (core, database, auth, AI, storage, connectors) â†’ **environment-specific config** (log level, rate limits vary by environment).
+> **Diagram:** Environment architecture — **3 environment types** (dev/staging/prod) with configuration sources → **key variables** (core, database, auth, AI, storage, connectors) → **environment-specific config** (log level, rate limits vary by environment).
 
 ---
 
@@ -136,34 +136,34 @@ const config = {
 
 | Mistake | Consequence |
 |---------|-------------|
-| Committing `.env` files to version control | A committed `.env` file exposes API keys, database credentials, and secrets to everyone with repository access â€” it's the most common source of credential leaks |
-| Using production API keys in local development | A local development error (infinite loop, accidental delete) with a production API key can incur real costs or modify production data â€” API keys should be scoped per environment |
-| Sharing `.env` files via unencrypted channels | Sending `.env` files over Slack, email, or chat exposes secrets in transport logs â€” use a secrets manager or encrypted sharing instead |
-| Hardcoding fallback values when environment variables are missing | A fallback like `ANTHROPIC_API_KEY` with a default fake key silently uses the fake key â€” prefer failing fast with a clear error message |
+| Committing `.env` files to version control | A committed `.env` file exposes API keys, database credentials, and secrets to everyone with repository access — it's the most common source of credential leaks |
+| Using production API keys in local development | A local development error (infinite loop, accidental delete) with a production API key can incur real costs or modify production data — API keys should be scoped per environment |
+| Sharing `.env` files via unencrypted channels | Sending `.env` files over Slack, email, or chat exposes secrets in transport logs — use a secrets manager or encrypted sharing instead |
+| Hardcoding fallback values when environment variables are missing | A fallback like `ANTHROPIC_API_KEY` with a default fake key silently uses the fake key — prefer failing fast with a clear error message |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Keep `.env` in `.gitignore` and never commit it | The `.env` file is in `.gitignore` by default â€” verify with `git status` before committing. Use `.env.example` as the template |
-| Use separate API keys for development, staging, and production | Dev keys should have rate limits and no access to production data â€” API key scoping prevents cross-environment accidents |
-| Use a secrets manager for sharing credentials | For team environments, use a vault or secrets manager (1Password CLI, Doppler, AWS Secrets Manager) â€” never share `.env` files directly |
-| Fail fast with clear error messages for missing variables | `if (!DATABASE_URL) throw new Error('DATABASE_URL is required')` â€” catching missing config early prevents confusing connection errors at runtime |
+| Keep `.env` in `.gitignore` and never commit it | The `.env` file is in `.gitignore` by default — verify with `git status` before committing. Use `.env.example` as the template |
+| Use separate API keys for development, staging, and production | Dev keys should have rate limits and no access to production data — API key scoping prevents cross-environment accidents |
+| Use a secrets manager for sharing credentials | For team environments, use a vault or secrets manager (1Password CLI, Doppler, AWS Secrets Manager) — never share `.env` files directly |
+| Fail fast with clear error messages for missing variables | `if (!DATABASE_URL) throw new Error('DATABASE_URL is required')` — catching missing config early prevents confusing connection errors at runtime |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| .env file permissions | The `.env` file should have file permissions `600` (owner read/write only) â€” prevent other processes on the same machine from reading secrets |
-| Environment variable injection in CI | CI/CD pipeline variables can be printed in logs or leaked through build artifacts â€” mark sensitive variables as "masked" or "secret" in CI configuration |
-| Local environment isolation | Each project should use its own `.env` file â€” shared dotfiles (`.bashrc`, `.zshrc`) with global environment variables create conflicts between projects |
+| .env file permissions | The `.env` file should have file permissions `600` (owner read/write only) — prevent other processes on the same machine from reading secrets |
+| Environment variable injection in CI | CI/CD pipeline variables can be printed in logs or leaked through build artifacts — mark sensitive variables as "masked" or "secret" in CI configuration |
+| Local environment isolation | Each project should use its own `.env` file — shared dotfiles (`.bashrc`, `.zshrc`) with global environment variables create conflicts between projects |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Environment variable lookups are not free | Reading `process.env` thousands of times per request adds overhead â€” cache env vars at startup in a config object, not per-request lookups |
-| Development vs production config differences | Dev config uses debug logging and higher rate limits â€” ensure the config system correctly reads `NODE_ENV` and doesn't fall through to a default that could apply the wrong settings |
+| Environment variable lookups are not free | Reading `process.env` thousands of times per request adds overhead — cache env vars at startup in a config object, not per-request lookups |
+| Development vs production config differences | Dev config uses debug logging and higher rate limits — ensure the config system correctly reads `NODE_ENV` and doesn't fall through to a default that could apply the wrong settings |
 
 ## Error Handling
 
