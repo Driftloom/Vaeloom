@@ -1,0 +1,658 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["fullTextSearch", "postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgcrypto, vector]
+}
+
+// ─── Core: Users & Auth ───
+
+model User {
+  id            String       @id @default(uuid()) @db.Uuid
+  email         String       @unique
+  passwordHash  String?      @map("password_hash")
+  displayName   String       @map("display_name")
+  avatarUrl     String?      @map("avatar_url")
+  authProvider  String       @default("email") @map("auth_provider")
+  status        UserStatus   @default(ACTIVE)
+  preferences   Json         @default("{}")
+  tenantId      String?      @db.Uuid @map("tenant_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  tenant        Tenant?      @relation(fields: [tenantId], references: [id])
+  sessions      AuthSession[]
+  workspaces    Workspace[]
+  workspaceUsers WorkspaceUser[]
+  memories      Memory[]
+  agents        Agent[]
+
+  @@map("users")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+model AuthSession {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @db.Uuid @map("user_id")
+  provider      String        @default("email")
+  status        SessionStatus @default(ACTIVE)
+  token         String        @unique
+  refreshToken  String        @unique @map("refresh_token")
+  expiresAt     DateTime      @map("expires_at")
+  lastActivity  DateTime      @default(now()) @map("last_activity")
+  deviceInfo    Json?         @map("device_info")
+  ipAddress     String?       @map("ip_address")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_sessions")
+}
+
+enum SessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  SUSPENDED
+}
+
+model ApiKey {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  keyPrefix   String   @map("key_prefix")
+  keyHash     String   @unique @map("key_hash")
+  permissions Json     @default("[]")
+  tenantId    String?  @db.Uuid @map("tenant_id")
+  userId      String   @db.Uuid @map("user_id")
+  expiresAt   DateTime? @map("expires_at")
+  lastUsed    DateTime? @map("last_used")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("api_keys")
+}
+
+// ─── Tenant (Enterprise) ───
+
+model Tenant {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String       @unique
+  domain      String?
+  status      TenantStatus @default(ACTIVE)
+  isolation   String       @default("pooled")
+  plan        String       @default("free")
+  settings    Json         @default("{}")
+  limits      Json         @default("{}")
+  features    String[]
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  users       User[]
+
+  @@map("tenants")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  EXPIRED
+  DELETED
+}
+
+// ─── Workspace ───
+
+model Workspace {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid @map("user_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owner       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members     WorkspaceUser[]
+  documents   Document[]
+  memories    Memory[]
+  memoryRecords MemoryRecord[]
+  entities    Entity[]
+  resumes     Resume[]
+  applications Application[]
+  scheduleEvents ScheduleEvent[]
+  agentActions AgentAction[]
+  permissions  Permission[]
+  connectors  Connector[]
+  agents      Agent[]
+
+  @@index([userId])
+  @@map("workspaces")
+}
+
+model WorkspaceUser {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @db.Uuid @map("workspace_id")
+  userId      String        @db.Uuid @map("user_id")
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now()) @map("joined_at")
+
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_users")
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// ─── Connectors ───
+
+model Connector {
+  id            String          @id @default(uuid()) @db.Uuid
+  workspaceId   String          @db.Uuid @map("workspace_id")
+  type          String          // gmail, github, drive, slack, notion, calendar
+  scopes        String[]
+  status        ConnectorStatus @default(DISCONNECTED)
+  tokenRef      String?         @map("token_ref")  // reference to secrets manager
+  lastSyncedAt  DateTime?       @map("last_synced_at")
+  config        Json            @default("{}")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documents     Document[]
+
+  @@index([workspaceId])
+  @@unique([workspaceId, type])
+  @@map("connectors")
+}
+
+enum ConnectorStatus {
+  CONNECTED
+  DISCONNECTED
+  SYNCING
+  ERROR
+  REVOKED
+}
+
+// ─── Documents ───
+
+model Document {
+  id                String   @id @default(uuid()) @db.Uuid
+  workspaceId       String   @db.Uuid @map("workspace_id")
+  sourceConnectorId String?  @db.Uuid @map("source_connector_id")
+  path              String
+  type              String   // pdf, text, markdown, html, etc.
+  rawStorageKey     String?  @map("raw_storage_key")
+  summary           String?
+  metadata          Json     @default("{}")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  workspace         Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connector         Connector?    @relation(fields: [sourceConnectorId], references: [id])
+  versions          DocumentVersion[]
+  memoryRecords     MemoryRecord[]
+
+  @@index([workspaceId])
+  @@index([sourceConnectorId])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id             String   @id @default(uuid()) @db.Uuid
+  documentId     String   @db.Uuid @map("document_id")
+  versionNumber  Int      @map("version_number")
+  storageKey     String   @map("storage_key")
+  supersededBy   String?  @db.Uuid @map("superseded_by")
+  checksum       String?
+  sizeBytes      Int?     @map("size_bytes")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, versionNumber])
+  @@map("document_versions")
+}
+
+// ─── Memory Layer ───
+
+model MemoryRecord {
+  id               String       @id @default(uuid()) @db.Uuid
+  workspaceId      String       @db.Uuid @map("workspace_id")
+  type             MemoryType
+  content          Json
+  confidence       Float        @default(1.0)
+  importance       Float        @default(0.5)
+  freshnessAt      DateTime     @default(now()) @map("freshness_at")
+  sourceDocumentId String?      @db.Uuid @map("source_document_id")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceDocument   Document?    @relation(fields: [sourceDocumentId], references: [id])
+
+  @@index([workspaceId, type])
+  @@index([workspaceId, freshnessAt(sort: Desc)])
+  @@map("memory_records")
+}
+
+enum MemoryType {
+  profile
+  document
+  career
+  episodic
+  preference
+  working
+}
+
+model Entity {
+  id            String   @id @default(uuid()) @db.Uuid
+  workspaceId   String   @db.Uuid @map("workspace_id")
+  type          String
+  canonicalName String   @map("canonical_name")
+  aliases       String[]
+  embeddingId   String?  @db.Uuid @map("embedding_id")
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  outRelations  Relationship[] @relation("FromEntity")
+  inRelations   Relationship[] @relation("ToEntity")
+
+  @@index([workspaceId])
+  @@index([workspaceId, type])
+  @@map("entities")
+}
+
+model Relationship {
+  id             String   @id @default(uuid()) @db.Uuid
+  workspaceId    String   @db.Uuid @map("workspace_id")
+  fromEntityId   String   @db.Uuid @map("from_entity_id")
+  toEntityId     String   @db.Uuid @map("to_entity_id")
+  relationType   String   @map("relation_type")
+  confidence     Float    @default(1.0)
+  sourceMemoryId String?  @db.Uuid @map("source_memory_id")
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  fromEntity     Entity   @relation("FromEntity", fields: [fromEntityId], references: [id], onDelete: Cascade)
+  toEntity       Entity   @relation("ToEntity", fields: [toEntityId], references: [id], onDelete: Cascade)
+
+  @@index([fromEntityId])
+  @@index([toEntityId])
+  @@map("relationships")
+}
+
+// ─── Embeddings (pgvector) ───
+
+model Embedding {
+  id           String   @id @default(uuid()) @db.Uuid
+  workspaceId  String   @db.Uuid @map("workspace_id")
+  sourceType   String   @map("source_type")  // memory_record, entity, document
+  sourceId     String   @db.Uuid @map("source_id")
+  vector       Unsupported("vector(1536)")
+  modelVersion String   @default("text-embedding-3-small") @map("model_version")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([workspaceId])
+  @@index([sourceType, sourceId])
+  @@map("embeddings")
+}
+
+// ─── Legacy Memory (for backward compatibility with existing modules) ───
+
+model Memory {
+  id          String       @id @default(uuid()) @db.Uuid
+  type        String
+  status      MemoryStatus @default(PROCESSING)
+  title       String
+  summary     String?
+  content     String?
+  contentHash String       @map("content_hash")
+  size        Int          @default(0)
+  embedding   Unsupported("vector(1536)")?
+  metadata    Json         @default("{}")
+  tags        String[]
+  tenantId    String?      @db.Uuid @map("tenant_id")
+  userId      String?      @db.Uuid @map("user_id")
+  workspaceId String?      @db.Uuid @map("workspace_id")
+  sourceType  String?      @map("source_type")
+  sourceUri   String?      @map("source_uri")
+  sourceLabel String?      @map("source_label")
+  connectorId String?      @db.Uuid @map("connector_id")
+  vectorId    String?      @map("vector_id")
+  graphNodeId String?      @db.Uuid @map("graph_node_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user        User?        @relation(fields: [userId], references: [id])
+  workspace   Workspace?   @relation(fields: [workspaceId], references: [id])
+
+  @@index([tenantId, type])
+  @@index([tenantId, status])
+  @@index([workspaceId])
+  @@map("memories")
+}
+
+enum MemoryStatus {
+  PROCESSING
+  INDEXED
+  FAILED
+  ARCHIVED
+  DELETED
+}
+
+// ─── Agent & Output Tables ───
+
+model Resume {
+  id                    String   @id @default(uuid()) @db.Uuid
+  workspaceId           String   @db.Uuid @map("workspace_id")
+  variantType           String   @map("variant_type")  // master, tailored, academic, etc.
+  content               Json
+  version               Int      @default(1)
+  generatedFromSnapshot String?  @map("generated_from_snapshot")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  workspace             Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("resumes")
+}
+
+model Application {
+  id              String            @id @default(uuid()) @db.Uuid
+  workspaceId     String            @db.Uuid @map("workspace_id")
+  jobExternalId   String?           @map("job_external_id")
+  platform        String?           // linkedin, indeed, company_site, etc.
+  status          ApplicationStatus @default(DRAFT)
+  resumeVersionId String?           @db.Uuid @map("resume_version_id")
+  coverLetter     String?           @map("cover_letter")
+  submittedAt     DateTime?         @map("submitted_at")
+  outcome         String?
+  outcomeAt       DateTime?         @map("outcome_at")
+  metadata        Json              @default("{}")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@map("applications")
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  INTERVIEW
+  OFFER
+  REJECTED
+  ACCEPTED
+  WITHDRAWN
+}
+
+model ScheduleEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  workspaceId  String   @db.Uuid @map("workspace_id")
+  source       String   // manual, calendar_sync, agent_generated
+  title        String
+  description  String?
+  date         DateTime
+  endDate      DateTime? @map("end_date")
+  type         String   // interview, deadline, reminder, task
+  conflictFlag Boolean  @default(false) @map("conflict_flag")
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, date])
+  @@map("schedule_events")
+}
+
+/// Append-only audit log. DO NOT add UPDATE or DELETE operations on this table.
+/// Immutability is enforced by application-level policy and will be backed by
+/// a database trigger in production (Docs/Security/Audit-Logs.md).
+model AgentAction {
+  id          String            @id @default(uuid()) @db.Uuid
+  workspaceId String            @db.Uuid @map("workspace_id")
+  agentName   String            @map("agent_name")
+  actionType  String            @map("action_type")
+  inputRef    String?           @map("input_ref")
+  outputRef   String?           @map("output_ref")
+  status      AgentActionStatus @default(STARTED)
+  error       String?
+  durationMs  Int?              @map("duration_ms")
+  tokensUsed  Int?              @map("tokens_used")
+  cost        Float?
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([workspaceId, agentName])
+  @@map("agent_actions")
+}
+
+enum AgentActionStatus {
+  STARTED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Permission {
+  id           String    @id @default(uuid()) @db.Uuid
+  workspaceId  String    @db.Uuid @map("workspace_id")
+  connectorId  String?   @db.Uuid @map("connector_id")
+  agentName    String    @map("agent_name")
+  actionType   String    @map("action_type")
+  scope        String    // read, write, execute, admin
+  grantedAt    DateTime  @default(now()) @map("granted_at")
+  revokedAt    DateTime? @map("revoked_at")
+
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, agentName])
+  @@map("permissions")
+}
+
+// ─── AI Agents ───
+
+model Agent {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  description  String?
+  category     String
+  status       AgentStatus  @default(IDLE)
+  version      String       @default("0.1.0")
+  config       Json         @default("{}")
+  capabilities String[]
+  permissions  Json         @default("{}")
+  workspaceId  String?      @db.Uuid @map("workspace_id")
+  tenantId     String?      @db.Uuid @map("tenant_id")
+  userId       String?      @db.Uuid @map("user_id")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  user         User?        @relation(fields: [userId], references: [id])
+  workspace    Workspace?   @relation(fields: [workspaceId], references: [id])
+  executions   AgentExecution[]
+
+  @@index([workspaceId])
+  @@map("agents")
+}
+
+enum AgentStatus {
+  IDLE
+  RUNNING
+  PAUSED
+  ERROR
+  DISABLED
+}
+
+model AgentExecution {
+  id          String          @id @default(uuid()) @db.Uuid
+  agentId     String          @db.Uuid @map("agent_id")
+  status      ExecutionStatus @default(PENDING)
+  input       Json            @default("{}")
+  output      Json?
+  error       String?
+  tokensUsed  Int?            @map("tokens_used")
+  cost        Float?
+  duration    Int?            @map("duration_ms")
+  startedAt   DateTime        @default(now()) @map("started_at")
+  completedAt DateTime?       @map("completed_at")
+
+  agent       Agent           @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@map("agent_executions")
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  TIMEOUT
+}
+
+// ─── Events ───
+
+model Event {
+  id            String        @id @default(uuid()) @db.Uuid
+  type          String
+  source        String
+  category      String
+  status        EventStatus   @default(PUBLISHED)
+  priority      EventPriority @default(NORMAL)
+  correlationId String        @db.Uuid @map("correlation_id")
+  causationId   String?       @db.Uuid @map("causation_id")
+  payload       Json          @default("{}")
+  metadata      Json          @default("{}")
+  tenantId      String?       @db.Uuid @map("tenant_id")
+  userId        String?       @db.Uuid @map("user_id")
+  retryCount    Int           @default(0) @map("retry_count")
+  maxRetries    Int           @default(3) @map("max_retries")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  publishedAt   DateTime?     @map("published_at")
+
+  @@index([tenantId, type])
+  @@index([tenantId, status])
+  @@index([correlationId])
+  @@map("events")
+}
+
+enum EventStatus {
+  PUBLISHED
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRYING
+}
+
+enum EventPriority {
+  CRITICAL
+  HIGH
+  NORMAL
+  LOW
+}
+
+model EventSubscription {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventType   String   @map("event_type")
+  handlerId   String   @db.Uuid @map("handler_id")
+  handlerType String   @default("service") @map("handler_type")
+  config      Json     @default("{}")
+  filters     Json?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("event_subscriptions")
+}
+
+model DeadLetterEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  originalEventId String   @db.Uuid @map("original_event_id")
+  error           String
+  errorCount      Int      @default(1) @map("error_count")
+  lastErrorAt     DateTime @default(now()) @map("last_error_at")
+  payload         Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("dead_letter_events")
+}
+
+// ─── Billing ───
+
+model Subscription {
+  id                   String   @id @default(uuid()) @db.Uuid
+  tenantId             String?  @unique @db.Uuid @map("tenant_id")
+  userId               String?  @db.Uuid @map("user_id")
+  plan                 String
+  status               String   @default("active")
+  currentPeriodStart   DateTime @default(now()) @map("current_period_start")
+  currentPeriodEnd     DateTime @map("current_period_end")
+  cancelAtPeriodEnd    Boolean  @default(false) @map("cancel_at_period_end")
+  stripeCustomerId     String?  @map("stripe_customer_id")
+  stripeSubscriptionId String?  @map("stripe_subscription_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("subscriptions")
+}
+
+model UsageRecord {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String?  @db.Uuid @map("tenant_id")
+  userId    String?  @db.Uuid @map("user_id")
+  metric    String
+  value     Float
+  timestamp DateTime @default(now())
+
+  @@index([tenantId, metric, timestamp])
+  @@map("usage_records")
+}
+
+// ─── Integrations (legacy, kept for backward compat) ───
+
+model Integration {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  provider    String
+  config      Json     @default("{}")
+  status      String   @default("disconnected")
+  tenantId    String?  @db.Uuid @map("tenant_id")
+  userId      String   @db.Uuid @map("user_id")
+  lastSyncAt  DateTime? @map("last_sync_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, provider])
+  @@map("integrations")
+}
