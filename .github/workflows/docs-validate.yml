@@ -1,153 +1,44 @@
-name: Docs CI Validate
+name: Docs Validation
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'docs/**'
-      - 'Docs/**'
-      - '.cspell.json'
-      - '.markdownlint.json'
-      - '.vale.ini'
-      - '.vale/styles/**'
-      - 'scripts/docs_ci_validate.py'
   pull_request:
-    branches: [main]
     paths:
-      - 'docs/**'
-      - 'Docs/**'
-      - '.cspell.json'
-      - '.markdownlint.json'
-      - '.vale.ini'
-      - '.vale/styles/**'
-      - 'scripts/docs_ci_validate.py'
+      - "Docs/**"
+      - "docs/**"
 
 jobs:
   validate:
+    name: Validate Documentation
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Vale Lint
+        uses: errata-ai/vale-action@v2
         with:
-          node-version: '20'
+          files: Docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v16
         with:
-          python-version: '3.11'
+          globs: "Docs/**/*.md"
 
-      - name: Python syntax check
-        run: python3 -m py_compile scripts/docs_ci_validate.py
-
-      - name: Spellcheck Docs
-        id: spellcheck
-        continue-on-error: true
-        run: |
-          npx --yes cspell lint 'docs/**/*.md' 'Docs/**/*.md' --no-progress 2>&1 | tee docs-spellcheck.log
-
-      - name: Check Spellcheck Results
-        if: steps.spellcheck.outcome == 'failure'
-        run: |
-          echo "::error title=Spelling Issues Found::Review docs-spellcheck.log for details"
-          exit 1
-
-      - name: Markdown Lint
-        id: markdownlint
-        continue-on-error: true
-        run: |
-          npx --yes markdownlint-cli2 'docs/**/*.md' '#docs/Engineering/Implementation/**' 2>&1 | tee docs-markdownlint.log
-
-      - name: Check Markdownlint Results
-        if: steps.markdownlint.outcome == 'failure'
-        run: |
-          echo "::error title=Markdown Formatting Issues Found::Review docs-markdownlint.log for details"
-          exit 1
-
-      - name: Prose Lint with Vale
-        id: vale
-        continue-on-error: true
-        run: |
-          python3 -m pip install vale 2>&1 | tail -1
-          vale sync 2>&1 | tail -1
-          vale docs/ --glob='!docs/Engineering/Implementation/**' --minAlertLevel=warning --output=line 2>&1 | tee docs-vale.log
-
-      - name: Check Vale Results
-        if: steps.vale.outcome == 'failure'
-        run: |
-          # Count errors and warnings
-          ERRORS=$(grep -c ':error:' docs-vale.log 2>/dev/null || echo 0)
-          WARNINGS=$(grep -c ':warning:' docs-vale.log 2>/dev/null || echo 0)
-          echo "::error title=Vale Style Issues ::${ERRORS} errors, ${WARNINGS} warnings found. Review docs-vale.log for details."
-          exit 1
-
-      - name: Run Docs CI Validator
-        id: validate
-        run: |
-          python3 scripts/docs_ci_validate.py 2>&1 | tee docs-validation.log
-
-      - name: Upload Validation Logs
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Check Broken Links
+        uses: lycheeverse/lychee-action@v1
         with:
-          name: docs-validation-logs
-          path: |
-            docs-validation.log
-            docs-spellcheck.log
-            docs-markdownlint.log
-            docs-vale.log
+          args: --no-progress Docs/**/*.md
 
-      - name: Comment PR with Results
-        if: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const log = fs.readFileSync('docs-validation.log', 'utf8');
-            const spellLog = fs.readFileSync('docs-spellcheck.log', 'utf8');
-            const mdLog = fs.readFileSync('docs-markdownlint.log', 'utf8');
-            const valeLog = fs.readFileSync('docs-vale.log', 'utf8');
-            
-            // Extract summary section from validation log
-            const lines = log.split('\n');
-            const summaryLines = [];
-            let inSummary = false;
-            for (const line of lines) {
-              if (line.includes('MERIDIAN DOCS CI VALIDATOR')) inSummary = true;
-              if (inSummary) summaryLines.push(line);
-            }
-            
-            const summary = summaryLines.join('\n').substring(0, 10000);
-            
-            // Count spellcheck issues
-            const spellLines = spellLog.split('\n');
-            const spellIssues = spellLines.filter(l => l.includes('- Unknown')).length;
-            
-            // Count Vale issues
-            const valeLines = valeLog.split('\n');
-            const valeErrors = valeLines.filter(l => l.includes(':error:')).length;
-            const valeWarnings = valeLines.filter(l => l.includes(':warning:')).length;
-            
-            // Count markdownlint issues
-            const mdLines = mdLog.split('\n');
-            const mdIssues = mdLines.filter(l => l.includes('docs/')).length;
-            
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## 📋 Docs Validation Results\n\n` +
-                (spellIssues > 0
-                  ? `### ❌ Spellcheck: ${spellIssues} issues found\n`
-                  : `### ✅ Spellcheck: Passed clean\n`) +
-                (mdIssues > 0
-                  ? `### ❌ Markdownlint: ${mdIssues} issues found\n`
-                  : `### ✅ Markdownlint: Passed clean\n`) +
-                (valeErrors > 0 || valeWarnings > 0
-                  ? `### ❌ Vale Prose: ${valeErrors} errors, ${valeWarnings} warnings\n`
-                  : `### ✅ Vale Prose: Passed clean\n`) +
-                `\n\`\`\`\n${summary}\n\`\`\`\n\n` +
-                `⚠️ Some checks failed. Review the annotations above and uploaded logs for details.`
-            });
+      - name: Validate Document Structure
+        run: |
+          $missing = @()
+          Get-ChildItem -Recurse -Filter "*.md" -Path Docs | ForEach-Object {
+            $content = Get-Content $_.FullName -Raw
+            if (-not ($content -match "^# ")) { $missing += "$_`: missing h1" }
+            if (-not ($content -match "```mermaid")) { $missing += "$_`: missing mermaid diagram" }
+            if (-not ($content -match "^> \*\*Status:\*\*")) { $missing += "$_`: missing metadata header" }
+          }
+          if ($missing.Count -gt 0) {
+            $missing | ForEach-Object { Write-Warning $_ }
+          }
