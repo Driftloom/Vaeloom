@@ -91,6 +91,7 @@ jobs:
             echo "dockerfile=services/${{ matrix.service }}/Dockerfile" >> $GITHUB_OUTPUT
           fi
       - name: Build and push
+        id: build-push
         uses: docker/build-push-action@v5
         with:
           context: ${{ steps.build-context.outputs.context }}
@@ -101,6 +102,30 @@ jobs:
             ${{ secrets.ECR_REGISTRY }}/vaeloom/${{ matrix.service }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+        with:
+          cosign-release: 'v2.2.4'
+      - name: Sign container image
+        run: |
+          cosign sign --yes \
+            --key awskms:///${{ secrets.AWS_KMS_KEY_ID }} \
+            ${{ secrets.ECR_REGISTRY }}/vaeloom/${{ matrix.service }}@${{ steps.build-push.outputs.digest }}
+        env:
+          COSIGN_EXPERIMENTAL: false
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ secrets.ECR_REGISTRY }}/vaeloom/${{ matrix.service }}:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.service }}.spdx.json
+      - name: Attach SBOM attestation
+        run: |
+          cosign attach attestation \
+            --key awskms:///${{ secrets.AWS_KMS_KEY_ID }} \
+            --type spdx \
+            --predicate sbom-${{ matrix.service }}.spdx.json \
+            ${{ secrets.ECR_REGISTRY }}/vaeloom/${{ matrix.service }}:${{ github.sha }}
 
   load-test-gate:
     name: Load Test Gate
