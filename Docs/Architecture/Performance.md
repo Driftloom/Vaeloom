@@ -1,7 +1,7 @@
-﻿# Performance
+# Performance
 
 > **Purpose:** Define performance targets and optimization strategy for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
@@ -15,38 +15,38 @@ graph TD
     classDef db fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef ai fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
 
-    subgraph Budgets["ðŸŽ¯ Performance Targets (p99)"]
+    subgraph Budgets["🎯 Performance Targets (p99)"]
         direction TB
-        B1["ðŸŒ Page Load<br/>Initial: < 2s<br/>Subsequent: < 500ms"]
-        B2["ðŸ”Œ API Response<br/>< 500ms"]
-        B3["ðŸ¤– AI Agent<br/>< 10s"]
-        B4["ðŸ“„ Document Ingestion<br/>< 30s"]
-        B5["ðŸ” Search Query<br/>< 3s"]
-        B6["ðŸ§  Memory Retrieval<br/>< 2s"]
+        B1["🌐 Page Load<br/>Initial: < 2s<br/>Subsequent: < 500ms"]
+        B2["🔌 API Response<br/>< 500ms"]
+        B3["🤖 AI Agent<br/>< 10s"]
+        B4["📄 Document Ingestion<br/>< 30s"]
+        B5["🔍 Search Query<br/>< 3s"]
+        B6["🧠 Memory Retrieval<br/>< 2s"]
     end
 
-    subgraph Caching["âš¡ Caching Strategy"]
+    subgraph Caching["⚡ Caching Strategy"]
         direction TB
         CA1["Dashboard Data<br/>Event-invalidated"]
         CA2["Resume Renders<br/>Invalidated on memory change"]
         CA3["Agent Responses<br/>Cached for repeated queries<br/>TTL: 5 min"]
     end
 
-    subgraph Queue_Opt["ðŸ“Š Queue Management"]
+    subgraph Queue_Opt["📊 Queue Management"]
         direction TB
         Q1["Priority Tiers<br/>Real-time > Normal > Batch"]
         Q2["Independent Workers<br/>Scale per queue type"]
         Q3["Debounced Reprocessing<br/>Don't re-embed on every touch"]
     end
 
-    subgraph DB_Opt["ðŸ—„ï¸ Database Optimization"]
+    subgraph DB_Opt["🗄️ Database Optimization"]
         direction TB
         D1["workspace_id indexed<br/>on every table"]
         D2["Composite indexes<br/>on common query patterns"]
         D3["Connection pooling<br/>With limits per service"]
     end
 
-    subgraph AI_Opt["ðŸ§  AI Cost/Latency Optimization"]
+    subgraph AI_Opt["🧠 AI Cost/Latency Optimization"]
         direction TB
         A1["Tiered Model Routing<br/>Haiku for classification<br/>Sonnet for reasoning"]
         A2["Prompt Caching<br/>Repeated invocations"]
@@ -114,27 +114,27 @@ graph TD
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Optimizing performance before measuring | Premature optimization adds complexity without evidence â€” always profile first to find the real bottleneck, then optimize based on data, not intuition |
-| Ignoring p99 latency in favor of averages | Average latency hides outliers â€” a service with 100ms average but 5s p99 is unusable for interactive features even though the "average" looks fine |
-| Caching everything without an invalidation strategy | A cache without an invalidation plan serves stale data â€” eventually users notice and stop trusting the data, which is worse than having no cache at all |
-| Over-optimizing cold paths that users rarely hit | Spending 2 weeks optimizing a data migration job that runs once per quarter is wasteful â€” focus optimization effort on the hot paths users interact with daily |
+| Optimizing performance before measuring | Premature optimization adds complexity without evidence — always profile first to find the real bottleneck, then optimize based on data, not intuition |
+| Ignoring p99 latency in favor of averages | Average latency hides outliers — a service with 100ms average but 5s p99 is unusable for interactive features even though the "average" looks fine |
+| Caching everything without an invalidation strategy | A cache without an invalidation plan serves stale data — eventually users notice and stop trusting the data, which is worse than having no cache at all |
+| Over-optimizing cold paths that users rarely hit | Spending 2 weeks optimizing a data migration job that runs once per quarter is wasteful — focus optimization effort on the hot paths users interact with daily |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Measure p99, p95, p50, and average â€” optimize the tail, not the mean | p99 latency is what users actually experience for the worst 1% of requests â€” target p99 improvements and accept that average may not change much |
-| Profile before optimizing; use the 80/20 rule | 80% of performance issues come from 20% of the code â€” profiling identifies which 20% matters, preventing wasted effort on optimizing already-fast paths |
-| Define invalidation strategy before implementing the cache | Every cache key should know what event or condition invalidates it â€” event-based invalidation (invalidate on `document.ingested`) is more reliable than TTL-based guessing |
+| Measure p99, p95, p50, and average — optimize the tail, not the mean | p99 latency is what users actually experience for the worst 1% of requests — target p99 improvements and accept that average may not change much |
+| Profile before optimizing; use the 80/20 rule | 80% of performance issues come from 20% of the code — profiling identifies which 20% matters, preventing wasted effort on optimizing already-fast paths |
+| Define invalidation strategy before implementing the cache | Every cache key should know what event or condition invalidates it — event-based invalidation (invalidate on `document.ingested`) is more reliable than TTL-based guessing |
 | Prioritize optimization on user-facing hot paths (page loads, API responses, agent responses) | A 500ms improvement on the dashboard (visited 1000x/day) has 100x the user impact of a 500ms improvement on a batch ingestion job (run 10x/day) |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Performance profiling data revealing system internals | Response times, query plans, and cache hit rates can reveal database structure and workload patterns â€” ensure performance metrics are stored in internal monitoring only, not exposed in API responses |
-| Timing attacks on authentication endpoints | Login endpoints that respond faster for valid usernames (because the hash comparison fails at a different point) enable username enumeration â€” use constant-time comparison and consistent response timing for all auth failures |
-| Resource exhaustion leading to denial of service | An unoptimized query or endpoint that consumes excessive CPU/memory under normal load can be exploited by sending many concurrent requests â€” set rate limits and resource quotas per user |
+| Performance profiling data revealing system internals | Response times, query plans, and cache hit rates can reveal database structure and workload patterns — ensure performance metrics are stored in internal monitoring only, not exposed in API responses |
+| Timing attacks on authentication endpoints | Login endpoints that respond faster for valid usernames (because the hash comparison fails at a different point) enable username enumeration — use constant-time comparison and consistent response timing for all auth failures |
+| Resource exhaustion leading to denial of service | An unoptimized query or endpoint that consumes excessive CPU/memory under normal load can be exploited by sending many concurrent requests — set rate limits and resource quotas per user |
 
 ## Performance Considerations
 
@@ -195,7 +195,7 @@ graph TD
 ## Data Flow
 
 1. User request reaches API Gateway which attaches trace context, checks rate limits, and records start timestamp
-2. Gateway routes to the appropriate service â€” SSR pages go to Next.js renderer, API calls go to backend service handler
+2. Gateway routes to the appropriate service — SSR pages go to Next.js renderer, API calls go to backend service handler
 3. Service checks Redis cache layer: on cache hit, response is returned immediately and latency is recorded
 4. On cache miss, service queries PostgreSQL using optimized indexed queries via connection pool and populates cache
 5. Response is measured end-to-end by OpenTelemetry, aggregated into Prometheus, and visualized on Grafana dashboards with p50/p95/p99 percentile breakdowns
@@ -298,4 +298,4 @@ Vaeloom perf budget set --page dashboard --lcp 2s --fid 100ms --cls 0.1
 
 - [Scalability.md](./Scalability.md)
 - [Caching.md](./Caching.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#47-queues-workers-and-caching`](../../Docs/Vaeloom-Complete-Documentation.md#47-queues-workers-and-caching)
+- [`/docs/Vaeloom-Complete-Documentation.md#47-queues-workers-and-caching`](../../docs/Vaeloom-Complete-Documentation.md#47-queues-workers-and-caching)

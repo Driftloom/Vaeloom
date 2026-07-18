@@ -1,6 +1,6 @@
 ﻿# Disaster Recovery
 
-> **Purpose:** Define disaster recovery procedures for Vaeloom â€” ensuring data integrity and service continuity across failure scenarios
+> **Purpose:** Define disaster recovery procedures for Vaeloom — ensuring data integrity and service continuity across failure scenarios
 > **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-12
@@ -128,7 +128,7 @@ kubectl rollout undo deployment/Vaeloom-ai -n Vaeloom
 # Verify all services are healthy
 curl -f https://api.Vaeloom.dev/v1/health && \
   echo "API healthy" || \
-  echo "API recovery failed â€” escalate"
+  echo "API recovery failed — escalate"
 ```
 
 ### Tier 3: Cross-Region Failover
@@ -139,7 +139,7 @@ aws rds promote-read-replica \
   --db-instance-identifier Vaeloom-db-replica
 
 # 2. Update DNS to point to failover region
-# (Managed via Route53 health checks â€” automatic)
+# (Managed via Route53 health checks — automatic)
 
 # 3. Verify all services in failover region
 curl -f https://api.Vaeloom.dev/v1/health && \
@@ -163,9 +163,9 @@ curl -f https://api.Vaeloom.dev/v1/health && \
 |----------|-----------|
 | Automate recovery procedures | Manual recovery is error-prone under pressure |
 | Test restores, not just backups | A backup that can't be restored is worthless |
-| Document runbooks in version control | Runbooks stale quickly â€” keep them with code |
+| Document runbooks in version control | Runbooks stale quickly — keep them with code |
 | Cross-region for critical data | Single region = single point of failure |
-| Immutable infrastructure | Redeploy, don't repair â€” reduces recovery time |
+| Immutable infrastructure | Redeploy, don't repair — reduces recovery time |
 
 ## Common Mistakes
 
@@ -248,7 +248,7 @@ curl -f https://api.Vaeloom.dev/v1/health && \
 1. Daily full PostgreSQL backup runs at 01:00 UTC using pg_dump with compression and parallel jobs, uploaded to S3
 2. Continuous WAL archiving streams every transaction to S3 in near-real-time, providing sub-5-minute RPO
 3. On critical failure, the Restore Engine pulls the latest full backup and replays WAL to the target point-in-time
-4. Data integrity verification queries run automatically â€” if checks pass, traffic is routed to the restored database
+4. Data integrity verification queries run automatically — if checks pass, traffic is routed to the restored database
 5. For cross-region failover, the read replica in the secondary region is promoted to primary and DNS records are updated via health check automation
 
 ## Scalability

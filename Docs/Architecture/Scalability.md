@@ -1,8 +1,8 @@
-﻿# Scalability
+# Scalability
 
 > **Purpose:** Define the scalability strategy for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#10-tech-stack`](../../Docs/Vaeloom-Complete-Documentation.md#10-tech-stack)
+> **Status:** ✅ Upgraded to enterprise quality
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#10-tech-stack`](../../docs/Vaeloom-Complete-Documentation.md#10-tech-stack)
 
 ## Scalability Architecture
 
@@ -14,21 +14,21 @@ graph TD
     classDef trigger fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
     classDef phase fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph AutoScaling["ðŸ“ˆ Auto-Scaling Services"]
+    subgraph AutoScaling["📈 Auto-Scaling Services"]
         direction TB
         WEB["apps/web<br/>Auto-scale: CPU > 70% 10m<br/>Scale-down: CPU < 30% 30m"]
         API["apps/api<br/>Auto-scale: p99 > 1s 5m<br/>Scale-down: p99 < 200ms 30m"]
         AI["apps/ai-service<br/>Auto-scale: Queue > 500 5m<br/>Scale-down: Queue < 50 30m"]
     end
 
-    subgraph Triggers["âš¡ Scaling Triggers"]
+    subgraph Triggers["⚡ Scaling Triggers"]
         direction TB
         T1["CPU Threshold<br/>Scale up > 70% / Scale down < 30%"]
         T2["Latency p99<br/>Scale up > 1s / Scale down < 200ms"]
         T3["Queue Depth<br/>Scale up > 500 / Scale down < 50"]
     end
 
-    subgraph Database_Scale["ðŸ—„ï¸ Database Scaling Phases"]
+    subgraph Database_Scale["🗄️ Database Scaling Phases"]
         direction TB
         P1["Phase 1: Vertical<br/>Larger instance (MVP)"]
         P2["Phase 2: Read Replicas<br/>Query offloading"]
@@ -36,7 +36,7 @@ graph TD
         P4["Phase 4: Sharding<br/>By workspace_id range"]
     end
 
-    subgraph Stateful["ðŸ”’ Stateful Scaling"]
+    subgraph Stateful["🔒 Stateful Scaling"]
         REDIS["( Redis<br/>MVP: Vertical<br/>Enterprise: Cluster )"]
         PG["( PostgreSQL<br/>MVP: Vertical<br/>Enterprise: Replicas )"]
     end
@@ -62,7 +62,7 @@ graph TD
 
 ```
 
-> **Diagram:** Scalability is achieved through horizontal auto-scaling for stateless services and phased vertical-to-horizontal scaling for databases. **Frontend** and **API** services auto-scale based on CPU and latency. **AI service** auto-scales based on queue depth. **PostgreSQL** evolves through 4 phases: vertical â†’ read replicas â†’ partitioning â†’ sharding. **Redis** grows from single instance to cluster mode.
+> **Diagram:** Scalability is achieved through horizontal auto-scaling for stateless services and phased vertical-to-horizontal scaling for databases. **Frontend** and **API** services auto-scale based on CPU and latency. **AI service** auto-scales based on queue depth. **PostgreSQL** evolves through 4 phases: vertical → read replicas → partitioning → sharding. **Redis** grows from single instance to cluster mode.
 
 ---
 
@@ -105,39 +105,39 @@ graph TD
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Scaling prematurely before product validation | Building a horizontally-scaled, auto-scaling Kubernetes cluster before the product has 1000 users wastes engineering time that should be spent on product-market fit â€” start simple, scale when metrics demand it |
-| Scaling stateless services without addressing stateful bottlenecks | Adding more web server instances doesn't help if the single PostgreSQL database is the bottleneck â€” address database scaling (read replicas, partitioning) at the same time as compute scaling |
-| Auto-scaling based on the wrong metric | Scaling based on CPU alone is insufficient â€” a service blocked on I/O (database queries, external API calls) has low CPU but high latency; scale on latency p99 and queue depth in addition to CPU |
-| Ignoring the cost of data migration during scaling phase changes | Moving from single-instance PostgreSQL to read replicas, or from replicas to sharding, requires data migration â€” each phase transition should be designed and tested before it's needed in production |
+| Scaling prematurely before product validation | Building a horizontally-scaled, auto-scaling Kubernetes cluster before the product has 1000 users wastes engineering time that should be spent on product-market fit — start simple, scale when metrics demand it |
+| Scaling stateless services without addressing stateful bottlenecks | Adding more web server instances doesn't help if the single PostgreSQL database is the bottleneck — address database scaling (read replicas, partitioning) at the same time as compute scaling |
+| Auto-scaling based on the wrong metric | Scaling based on CPU alone is insufficient — a service blocked on I/O (database queries, external API calls) has low CPU but high latency; scale on latency p99 and queue depth in addition to CPU |
+| Ignoring the cost of data migration during scaling phase changes | Moving from single-instance PostgreSQL to read replicas, or from replicas to sharding, requires data migration — each phase transition should be designed and tested before it's needed in production |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Prove product-market fit before investing in horizontal scaling | A PaaS with vertical scaling handles thousands of users â€” invest in Kubernetes, read replicas, and sharding only when metrics (latency p99 > 1s, CPU > 70% at peak) consistently demand it |
-| Scale compute and data layers together | Auto-scaling web instances without addressing database capacity is like adding lanes to a highway without widening the bridge â€” the database becomes the bottleneck regardless of compute instances |
-| Use multiple scaling signals â€” CPU, latency p99, queue depth, and memory | Each service has a different bottleneck â€” web services scale on CPU+latency, API services on latency+connection count, AI services on queue depth |
-| Design and test each database scaling phase before it's needed | Vertical â†’ read replicas â†’ partitioning â†’ sharding â€” each transition is complex and risky; validate the migration process in staging before the production need arises |
+| Prove product-market fit before investing in horizontal scaling | A PaaS with vertical scaling handles thousands of users — invest in Kubernetes, read replicas, and sharding only when metrics (latency p99 > 1s, CPU > 70% at peak) consistently demand it |
+| Scale compute and data layers together | Auto-scaling web instances without addressing database capacity is like adding lanes to a highway without widening the bridge — the database becomes the bottleneck regardless of compute instances |
+| Use multiple scaling signals — CPU, latency p99, queue depth, and memory | Each service has a different bottleneck — web services scale on CPU+latency, API services on latency+connection count, AI services on queue depth |
+| Design and test each database scaling phase before it's needed | Vertical → read replicas → partitioning → sharding — each transition is complex and risky; validate the migration process in staging before the production need arises |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Auto-scaling bypassing security controls | New instances spawned by auto-scaling should inherit the same security configuration (network policies, IAM roles, secrets) as existing instances â€” script instance initialization with immutable security configuration |
-| Read replicas having different security posture than primary | A read replica intended for reporting might have weaker access controls than the primary â€” enforce the same security policies on all replicas, especially regarding data access and encryption |
-| Scaling events as an attack vector | A sudden traffic spike (legitimate or attack) triggers auto-scaling, which costs money â€” set maximum instance caps per service to prevent unlimited scaling that burns through budget |
+| Auto-scaling bypassing security controls | New instances spawned by auto-scaling should inherit the same security configuration (network policies, IAM roles, secrets) as existing instances — script instance initialization with immutable security configuration |
+| Read replicas having different security posture than primary | A read replica intended for reporting might have weaker access controls than the primary — enforce the same security policies on all replicas, especially regarding data access and encryption |
+| Scaling events as an attack vector | A sudden traffic spike (legitimate or attack) triggers auto-scaling, which costs money — set maximum instance caps per service to prevent unlimited scaling that burns through budget |
 
 ## Performance
 
 | Concern | Approach |
 |---------|----------|
 | Database read replica lag affecting cache consistency | Read replicas may serve stale data immediately after a write; use primary database reads for write-after-read patterns and balance `max_standby_archive_delay` against replication freshness requirements |
-| Auto-scaling latency during traffic spikes | Auto-scaling triggers have a 5-10 minute cooldown period after detection â€” cache warming and request queuing must absorb traffic spikes within that window without dropping or degrading requests |
+| Auto-scaling latency during traffic spikes | Auto-scaling triggers have a 5-10 minute cooldown period after detection — cache warming and request queuing must absorb traffic spikes within that window without dropping or degrading requests |
 | AI service instance startup time vs queue backlog | New AI service instances take 30-60s to become ready; the job queue must buffer 5-10 minutes of backlog at peak ingestion rate to prevent job loss or timeouts during scale-out events |
 
 ## Goals
 
-- Define a phased database scaling strategy (vertical â†’ read replicas â†’ partitioning â†’ sharding)
+- Define a phased database scaling strategy (vertical → read replicas → partitioning → sharding)
 - Establish auto-scaling triggers based on multiple signals (CPU, latency, queue depth)
 - Ensure stateless compute scaling is paired with stateful data layer capacity
 - Document performance budgets for every critical user-facing operation
@@ -148,7 +148,7 @@ graph TD
 | In Scope | Out of Scope |
 |----------|--------------|
 | Horizontal auto-scaling strategy for stateless services | Specific Kubernetes cluster configuration |
-| Four-phase database scaling evolution (vertical â†’ replicas â†’ partitioning â†’ sharding) | Cloud provider-specific scaling service details |
+| Four-phase database scaling evolution (vertical → replicas → partitioning → sharding) | Cloud provider-specific scaling service details |
 | Scaling triggers and thresholds per service type | Load testing methodology and tooling |
 | Performance budgets for page load, API, agent, and ingestion operations | Client-side performance optimization techniques |
 | Cost-aware scaling with maximum instance caps | Reserved instance and savings plan procurement |
@@ -180,7 +180,7 @@ graph TD
 | Web Auto-Scaler | Monitor CPU + latency; add/remove web instances | CloudWatch / K8s HPA | CPU > 70% scale-up; CPU < 30% scale-down |
 | API Auto-Scaler | Monitor p99 latency; add/remove API instances | CloudWatch / K8s HPA | p99 > 1s scale-up; p99 < 200ms scale-down |
 | AI Auto-Scaler | Monitor queue depth; add/remove AI workers | BullMQ / K8s HPA | Queue > 500 scale-up; Queue < 50 scale-down |
-| Database Scaler | Phase vertical â†’ read replicas â†’ partitioning â†’ sharding | PostgreSQL + AGE | Manual phase transitions with validation |
+| Database Scaler | Phase vertical → read replicas → partitioning → sharding | PostgreSQL + AGE | Manual phase transitions with validation |
 
 ## Data Flow
 
@@ -289,4 +289,4 @@ Vaeloom scale simulate --rps 1000 --duration 5m --service api
 
 - [Performance.md](./Performance.md)
 - [Infrastructure.md](./Infrastructure.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#10-tech-stack`](../../Docs/Vaeloom-Complete-Documentation.md#10-tech-stack)
+- [`/docs/Vaeloom-Complete-Documentation.md#10-tech-stack`](../../docs/Vaeloom-Complete-Documentation.md#10-tech-stack)
