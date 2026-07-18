@@ -1,0 +1,305 @@
+version: "3.9"
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-service-base: &service-base
+  networks:
+    - vaeloom-net
+  logging: *default-logging
+  restart: unless-stopped
+
+x-nestjs-base: &nestjs-base
+  <<: *service-base
+  environment:
+    NODE_ENV: development
+    LOG_LEVEL: debug
+    DATABASE_URL: postgresql://vaeloom:vaeloom_dev@postgres:5432/vaeloom
+    REDIS_URL: redis://redis:6379/0
+    JWT_SECRET: dev-jwt-secret-not-for-production
+    AI_SERVICE_URL: http://ai-service:8000
+    EVENT_BUS_URL: http://event-bus:3040
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+networks:
+  vaeloom-net:
+    name: vaeloom-network
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  pgadmin-data:
+
+services:
+  # ─── Infrastructure ───
+  postgres:
+    image: postgres:16-alpine
+    container_name: vaeloom-postgres
+    environment:
+      POSTGRES_DB: vaeloom
+      POSTGRES_USER: vaeloom
+      POSTGRES_PASSWORD: vaeloom_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vaeloom"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    <<: *service-base
+
+  redis:
+    image: redis:7-alpine
+    container_name: vaeloom-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    <<: *service-base
+
+  # ─── Gateway Apps ───
+  api:
+    build: ./apps/api
+    container_name: vaeloom-api
+    environment:
+      PORT: 4000
+      NODE_ENV: development
+      DATABASE_URL: postgresql://vaeloom:vaeloom_dev@postgres:5432/vaeloom
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev-jwt-secret-not-for-production
+      AI_SERVICE_URL: http://ai-service:8000
+      EVENT_BUS_URL: http://event-bus:3040
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    <<: *service-base
+
+  web:
+    build: ./apps/web
+    container_name: vaeloom-web
+    environment:
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    <<: *service-base
+
+  ai-service:
+    build: ./apps/ai-service
+    container_name: vaeloom-ai-service
+    environment:
+      SERVICE_PORT: 8000
+      SERVICE_ENVIRONMENT: development
+      DATABASE__URL: postgresql+asyncpg://vaeloom:vaeloom_dev@postgres:5432/vaeloom
+      REDIS__URL: redis://redis:6379/0
+      JWT_SECRET: dev-jwt-secret-not-for-production
+      LOG_LEVEL: DEBUG
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    <<: *service-base
+
+  # ─── Microservices ───
+  memory-store:
+    build: ./services/memory-store
+    container_name: vaeloom-memory-store
+    environment:
+      PORT: 3010
+    ports:
+      - "3010:3010"
+    <<: *nestjs-base
+
+  auth-service:
+    build: ./services/auth-service
+    container_name: vaeloom-auth-service
+    environment:
+      PORT: 3020
+    ports:
+      - "3020:3020"
+    <<: *nestjs-base
+
+  knowledge-graph:
+    build: ./services/knowledge-graph
+    container_name: vaeloom-knowledge-graph
+    environment:
+      PORT: 3030
+    ports:
+      - "3030:3030"
+    <<: *nestjs-base
+
+  event-bus:
+    build: ./services/event-bus
+    container_name: vaeloom-event-bus
+    environment:
+      PORT: 3040
+    ports:
+      - "3040:3040"
+    <<: *nestjs-base
+
+  search-service:
+    build: ./services/search-service
+    container_name: vaeloom-search-service
+    environment:
+      PORT: 3050
+    ports:
+      - "3050:3050"
+    <<: *nestjs-base
+
+  agent-engine:
+    build: ./services/agent-engine
+    container_name: vaeloom-agent-engine
+    environment:
+      PORT: 3060
+    ports:
+      - "3060:3060"
+    <<: *nestjs-base
+
+  analytics-service:
+    build: ./services/analytics-service
+    container_name: vaeloom-analytics-service
+    environment:
+      PORT: 3070
+    ports:
+      - "3070:3070"
+    <<: *nestjs-base
+
+  audit-service:
+    build: ./services/audit-service
+    container_name: vaeloom-audit-service
+    environment:
+      PORT: 3080
+    ports:
+      - "3080:3080"
+    <<: *nestjs-base
+
+  billing-service:
+    build: ./services/billing-service
+    container_name: vaeloom-billing-service
+    environment:
+      PORT: 3090
+    ports:
+      - "3090:3090"
+    <<: *nestjs-base
+
+  connector-service:
+    build: ./services/connector-service
+    container_name: vaeloom-connector-service
+    environment:
+      PORT: 3100
+    ports:
+      - "3100:3100"
+    <<: *nestjs-base
+
+  document-ingestion:
+    build: ./services/document-ingestion
+    container_name: vaeloom-document-ingestion
+    environment:
+      PORT: 3110
+    ports:
+      - "3110:3110"
+    <<: *nestjs-base
+
+  iam-service:
+    build: ./services/iam-service
+    container_name: vaeloom-iam-service
+    environment:
+      PORT: 3120
+    ports:
+      - "3120:3120"
+    <<: *nestjs-base
+
+  integration-service:
+    build: ./services/integration-service
+    container_name: vaeloom-integration-service
+    environment:
+      PORT: 3130
+    ports:
+      - "3130:3130"
+    <<: *nestjs-base
+
+  job-scheduler:
+    build: ./services/job-scheduler
+    container_name: vaeloom-job-scheduler
+    environment:
+      PORT: 3140
+    ports:
+      - "3140:3140"
+    <<: *nestjs-base
+
+  notification-service:
+    build: ./services/notification-service
+    container_name: vaeloom-notification-service
+    environment:
+      PORT: 3150
+    ports:
+      - "3150:3150"
+    <<: *nestjs-base
+
+  plugin-service:
+    build: ./services/plugin-service
+    container_name: vaeloom-plugin-service
+    environment:
+      PORT: 3160
+    ports:
+      - "3160:3160"
+    <<: *nestjs-base
+
+  rbac-service:
+    build: ./services/rbac-service
+    container_name: vaeloom-rbac-service
+    environment:
+      PORT: 3170
+    ports:
+      - "3170:3170"
+    <<: *nestjs-base
+
+  recommendation-service:
+    build: ./services/recommendation-service
+    container_name: vaeloom-recommendation-service
+    environment:
+      PORT: 3180
+    ports:
+      - "3180:3180"
+    <<: *nestjs-base
+
+  # ─── Tools (opt-in via profiles) ───
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vaeloom-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@vaeloom.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+    <<: *service-base
