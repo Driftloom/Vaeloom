@@ -1,0 +1,24 @@
+{
+  "name": "@vaeloom/sdk",
+  "version": "0.1.0",
+  "description": "Vaeloom TypeScript SDK — memory-first personal intelligence API client",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src/",
+    "test": "jest --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "axios": "^1.7.0"
+  },
+  "devDependencies": {
+    "@vaeloom/eslint-config": "workspace:*",
+    "@vaeloom/tsconfig": "workspace:*",
+    "typescript": "^5.5.0",
+    "jest": "^29.7.0"
+  }
+}
