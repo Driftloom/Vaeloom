@@ -1,0 +1,12 @@
+node_modules
+dist
+.next
+build
+.turbo
+.nx
+coverage
+pnpm-lock.yaml
+package-lock.json
+*.svg
+*.png
+*.jpg
