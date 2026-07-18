@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility Audit Report - Vaeloom</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #1a1a1a;
+      padding: 2rem;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+    .subtitle { color: #666; margin-bottom: 2rem; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .stat-card .label {
+      font-size: 0.875rem;
+      color: #666;
+      margin-top: 0.25rem;
+    }
+    .stat-card.critical .value { color: #d32f2f; }
+    .stat-card.passed .value { color: #2e7d32; }
+    .stat-card.warning .value { color: #f57c00; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    th {
+      background: #fafafa;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #666;
+    }
+    tr:last-child td { border-bottom: none; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge.critical { background: #ffebee; color: #c62828; }
+    .badge.serious { background: #fff3e0; color: #e65100; }
+    .badge.moderate { background: #fff8e1; color: #f9a825; }
+    .badge.minor { background: #e8f5e9; color: #2e7d32; }
+    .status-pass { color: #2e7d32; }
+    .status-fail { color: #c62828; }
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.75rem;
+    }
+    .timestamp { color: #999; font-size: 0.8rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Accessibility Audit Report</h1>
+    <p class="subtitle">WCAG 2.2 AA Standards — Automated Scan</p>
+
+    <div class="summary-grid">
+      <div class="stat-card">
+        <div class="value">{{TOTAL_PAGES}}</div>
+        <div class="label">Pages Audited</div>
+      </div>
+      <div class="stat-card passed">
+        <div class="value">{{PASSED_PAGES}}</div>
+        <div class="label">Pages Passed</div>
+      </div>
+      <div class="stat-card critical">
+        <div class="value">{{TOTAL_VIOLATIONS}}</div>
+        <div class="label">Total Violations</div>
+      </div>
+      <div class="stat-card critical">
+        <div class="value">{{CRITICAL_COUNT}}</div>
+        <div class="label">Critical Violations</div>
+      </div>
+    </div>
+
+    <h2>Detailed Results</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Page</th>
+          <th>URL</th>
+          <th>Violations</th>
+          <th>Passes</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="results-body">
+      </tbody>
+    </table>
+
+    <h2>Raw Results (JSON)</h2>
+    <pre>{{RESULTS_JSON}}</pre>
+
+    <p class="timestamp">Generated: {{TIMESTAMP}}</p>
+  </div>
+
+  <script>
+    const results = JSON.parse(document.getElementById('raw-data').textContent);
+    const tbody = document.getElementById('results-body');
+    const totalPages = document.getElementById('total-pages');
+    const passedPages = document.getElementById('passed-pages');
+
+    results.forEach(r => {
+      const critical = r.violations.filter(v => v.impact === 'critical').length;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${r.page}</strong></td>
+        <td>${r.url}</td>
+        <td>${r.violations.map(v => `<span class="badge ${v.impact}">${v.id}</span>`).join(' ')}</td>
+        <td>${r.passes}</td>
+        <td class="${critical > 0 ? 'status-fail' : 'status-pass'}">
+          ${critical > 0 ? 'FAIL' : 'PASS'}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  </script>
+  <script id="raw-data" type="application/json">{{RESULTS_JSON}}</script>
+</body>
+</html>

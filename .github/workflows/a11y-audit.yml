@@ -1,0 +1,70 @@
+name: Accessibility Audit
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  a11y:
+    name: axe-core a11y audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        working-directory: apps/web
+        run: pnpm build
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+
+      - name: Install Playwright
+        working-directory: apps/web
+        run: npx playwright install chromium
+
+      - name: Start preview server
+        working-directory: apps/web
+        run: |
+          npx playwright test --reporter=null &
+          npx next start -p 3000 &
+          sleep 5
+          curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || (echo "Server failed to start" && exit 1)
+
+      - name: Run axe-core audit
+        working-directory: testing/a11y
+        run: npx tsx audit-pages.ts
+        env:
+          BASE_URL: http://localhost:3000
+          CI: true
+
+      - name: Upload accessibility report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-report
+          path: testing/a11y/reports/
+          retention-days: 30
+
+      - name: Fail on critical violations
+        run: |
+          if [[ -f testing/a11y/reports/critical-violations.txt ]]; then
+            echo "Critical accessibility violations found:"
+            cat testing/a11y/reports/critical-violations.txt
+            exit 1
+          fi
