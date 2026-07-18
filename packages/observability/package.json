@@ -21,7 +21,7 @@
     "@opentelemetry/resources": "^1.25.0",
     "@opentelemetry/sdk-node": "^0.55.0",
     "@opentelemetry/semantic-conventions": "^1.25.0",
-    "nestjs-pino": "^4.1.0",
+    "nestjs-pino": "^4.6.1",
     "pino": "^9.4.0",
     "pino-http": "^10.3.0",
     "prom-client": "^15.1.0"
