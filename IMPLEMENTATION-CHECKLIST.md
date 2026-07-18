@@ -53,20 +53,21 @@ Source: `Docs/Engineering/Implementation/01-foundation-infra.md`, `Docs/DevOps/*
 - [x] Create seed scripts (`seed.ts`) with robust initial data for all 13 tables.
 - [x] Add raw SQL migrations for `pgvector` and AGE graph enablement.
 - [x] Add SQL triggers for immutable audit logging (`agent_actions`).
+- [x] pgvector `vector(1536)` in Prisma schema + IVFFlat index in `database/schemas/extensions.sql`
+- [x] AGE conditional enablement + graph creation (`vaeloom_knowledge`) in extensions SQL
 - [ ] Partitioning + replication config (enterprise)
-- [ ] pgvector + AGE schema (Embeddings.md, Knowledge-Graph.md)
 
 ## Phase 3 — Backend core
 
 Source: `Docs/Backend/*`, `Docs/Security/*`, `Docs/Engineering/Implementation/13-api-backend.md`
 
 - [x] Modules / services / repositories / controllers
-- [ ] Events + queues (BullMQ/Redis)
-- [ ] Caching, search
-- [ ] Validation (zod/class-validator)
-- [ ] Rate limiting
+- [ ] Events + queues (BullMQ/Redis) — BullMQ dep declared but NOT wired in any service
+- [~] Caching (in-memory only, no Redis), search (HTTP proxy to memory+KG)
+- [x] Validation — `class-validator ^0.14.1` + `zod ^3.23.0` in all DTOs
+- [x] Rate limiting — `@nestjs/throttler` global guard (100 req/60s)
 - [x] RBAC + ABAC permission engine
-- [ ] Audit logging, observability
+- [x] Audit logging + observability — Pino structured logs, OpenTelemetry tracing, Prometheus metrics, immutable `agent_actions` table
 - [x] Internal RPC boundary to ai-service
 
 ## Phase 4: AI Foundation (ai-service) [COMPLETED]
@@ -91,15 +92,15 @@ Source: `Docs/Backend/*`, `Docs/Security/*`, `Docs/Engineering/Implementation/13
 
 Source: `Docs/AI/AI-Agents.md`, `Docs/AI/Agent-Prompt-Specs.md`, `Implementation/08,17`
 
-MVP (8):
-- [ ] Orchestrator
-- [ ] Organization Agent
-- [ ] Memory Agent
-- [ ] Resume Agent
-- [ ] ATS Agent
-- [ ] Job Search Agent
-- [ ] Gmail Agent
-- [ ] Scheduler Agent
+MVP (8) — all functional prototypes (rule-based, mock data, no real LLM/API):
+- [~] Orchestrator — `router.py` production-ready (186 lines, 2-stage intent classification, QA gate); `loop.py` skeleton (mocked phases); `state.py` stub (no Redis persistence)
+- [~] Organization Agent — strong prototype (150 lines, regex classification, version chain detection)
+- [~] Memory Agent — most complete (211 lines across 4 files, hybrid retrieval strategy, entity extraction/merge)
+- [~] Resume Agent — strong prototype (148 lines, source-tracing, section builder)
+- [~] ATS Agent — functional prototype (111 lines, keyword scoring, format compliance)
+- [~] Job Search Agent — functional prototype (123 lines, skill matching, mock listings)
+- [~] Gmail Agent — functional prototype (132 lines, email classification, deadline extraction)
+- [~] Scheduler Agent — functional prototype (127 lines, conflict detection)
 
 Enterprise agents (implement only those with a documenting spec; flag the rest):
 - [ ] Career / Learning / Research / GitHub / Coding / Reminder / Analytics /
@@ -125,7 +126,8 @@ Source: `Docs/Backend/Connectors.md`, `Docs/Architecture/*`
 
 Source: `Docs/Testing/*`
 
-- [ ] Unit, integration, API, frontend, AI, agent, memory
+- [~] 67 test files exist (38 spec.ts api, 12 pytest ai-service, 7 connectors, 6 integrations, 2 web, 1+ services)
+- [ ] E2E (Playwright not wired), load (k6 scripts exist but not automated), coverage targets not enforced
 - [ ] Performance, security, load, regression, E2E to documented coverage targets
 
 ## Phase 9 — Optimization
@@ -140,4 +142,6 @@ Source: `Docs/Architecture/{Performance,Caching,Scalability}.md`, `Docs/Operatio
 Source: `Docs/Security/*`, `Docs/Operations/*`, `Docs/DevOps/*`
 
 - [ ] Security / architecture / dependency / secrets / perf / a11y / docs / deployment reviews
-- [ ] K8s + Terraform + container signing + SBOM
+- [x] K8s manifests (base + dev/staging/prod overlays) + Terraform (7 modules + 3 environments) — done
+- [~] SBOM generation (`anchore/sbom-action`) + Trivy scanning in CI — done
+- [ ] Container signing (Cosign) — documented but NOT wired into CI/CD
