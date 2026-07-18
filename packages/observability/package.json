@@ -30,7 +30,7 @@
     "@nestjs/common": "^10.0.0"
   },
   "devDependencies": {
-    "@nestjs/common": "^10.3.0",
+    "@nestjs/common": "^11.1.28",
     "@vaeloom/eslint-config": "workspace:*",
     "@vaeloom/tsconfig": "workspace:*",
     "typescript": "^5.5.0",
