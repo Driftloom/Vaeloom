@@ -35,7 +35,7 @@ graph TD
         E3["Fetch resource attributes"]
         E4["Fetch context attributes"]
         E5["Evaluate policies against ALL attributes"]
-        E6["Deny by default â†’ Allow if policy matches"]
+        E6["Deny by default --> Allow if policy matches"]
     end
 
     S1 & R1 & A1 & C1 --> E1 --> E2 & E3 & E4 --> E5 --> E6
@@ -47,7 +47,7 @@ graph TD
     class E1,E2,E3,E4,E5,E6 decision
 ```
 
-> **Diagram:** ABAC model â€” requests are evaluated against **4 attribute categories**: Subject (who), Resource (what), Action (how), Context (when/where). **Policy evaluation** fetches all attributes, evaluates policies, and denies by default â€” only allowing if a matching policy is found.
+> **Diagram:** ABAC model — requests are evaluated against **4 attribute categories**: Subject (who), Resource (what), Action (how), Context (when/where). **Policy evaluation** fetches all attributes, evaluates policies, and denies by default — only allowing if a matching policy is found.
 
 ---
 
@@ -103,51 +103,51 @@ Fetch context attributes (time=10:30, source=internal)
     â†“
 Evaluate policies against all attributes
     â†“
-Deny by default â†’ Allow if policy matches â†’ Return decision
+Deny by default → Allow if policy matches → Return decision
 ```
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
-| Using too many attribute categories | Every additional attribute dimension multiplies policy complexity â€” start with Subject + Resource, add Context only when needed |
-| Storing user attributes in the wrong system | Role and group membership must live in the auth provider, not duplicated in the Permission Engine â€” stale attributes cause authorization gaps |
-| Policy explosion from over-specific rules | Writing individual policies for every (Subject, Resource, Action) combination creates thousands of unmaintainable rules â€” use resource hierarchy and wildcards |
-| Ignoring the context attribute source | Context like IP range or time of day must come from the request itself, not user-supplied headers â€” attackers can spoof context |
+| Using too many attribute categories | Every additional attribute dimension multiplies policy complexity — start with Subject + Resource, add Context only when needed |
+| Storing user attributes in the wrong system | Role and group membership must live in the auth provider, not duplicated in the Permission Engine — stale attributes cause authorization gaps |
+| Policy explosion from over-specific rules | Writing individual policies for every (Subject, Resource, Action) combination creates thousands of unmaintainable rules — use resource hierarchy and wildcards |
+| Ignoring the context attribute source | Context like IP range or time of day must come from the request itself, not user-supplied headers — attackers can spoof context |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Deny by default, allow by explicit policy | Every request that doesn't match a policy must be denied â€” silent "allow" is a security vulnerability |
-| Keep attribute sources authoritative | Subject attributes from auth provider, resource attributes from the resource service, context from the request environment â€” never mix sources |
+| Deny by default, allow by explicit policy | Every request that doesn't match a policy must be denied — silent "allow" is a security vulnerability |
+| Keep attribute sources authoritative | Subject attributes from auth provider, resource attributes from the resource service, context from the request environment — never mix sources |
 | Test policies with a matrix | Every policy change should be validated against a permission matrix of all known (Subject, Resource, Action, Context) combinations |
-| Log every policy decision | Denied requests are as important as allowed ones â€” audit trails of "why wasn't this allowed" are essential for debugging access issues |
+| Log every policy decision | Denied requests are as important as allowed ones — audit trails of "why wasn't this allowed" are essential for debugging access issues |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Policy injection via crafted attributes | Sanitize and validate all attribute values at the API boundary â€” an attacker supplying `role: admin` as a resource attribute should not elevate privileges |
-| Attribute spoofing through request tampering | Context attributes (IP range, time) must come from the trusted request environment, not user-supplied headers â€” never trust `X-Forwarded-For` for authorization decisions |
-| Policy evaluation bypass | Every request path must go through the Permission Engine â€” bypassing policy evaluation at the API layer shouldn't be possible via internal RPC or event bus consumers |
+| Policy injection via crafted attributes | Sanitize and validate all attribute values at the API boundary — an attacker supplying `role: admin` as a resource attribute should not elevate privileges |
+| Attribute spoofing through request tampering | Context attributes (IP range, time) must come from the trusted request environment, not user-supplied headers — never trust `X-Forwarded-For` for authorization decisions |
+| Policy evaluation bypass | Every request path must go through the Permission Engine — bypassing policy evaluation at the API layer shouldn't be possible via internal RPC or event bus consumers |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Policy evaluation latency with many attribute sources | Fetching subject, resource, action, and context attributes sequentially adds latency â€” batch attribute fetches and cache frequently accessed attribute values |
-| Policy rule matching on every request | Evaluating every policy rule against every attribute combination is O(nÃ—m) â€” index policies by (action, resource_type) and skip irrelevant rules early |
-| Attribute source availability during evaluation | If a context service (e.g., IP geolocation) is slow, it blocks the entire evaluation â€” use timeouts and fallback defaults for non-critical attributes |
+| Policy evaluation latency with many attribute sources | Fetching subject, resource, action, and context attributes sequentially adds latency — batch attribute fetches and cache frequently accessed attribute values |
+| Policy rule matching on every request | Evaluating every policy rule against every attribute combination is O(nÃ—m) — index policies by (action, resource_type) and skip irrelevant rules early |
+| Attribute source availability during evaluation | If a context service (e.g., IP geolocation) is slow, it blocks the entire evaluation — use timeouts and fallback defaults for non-critical attributes |
 
 ---
 
 ## Goals
 
-1. **Fine-grained access control** â€” Enable policies that consider not just who the user is, but what resource they're accessing, what action they're performing, and under what context
-2. **Multi-agent isolation** â€” Ensure that AI agents (Memory Agent, Organization Agent, Scheduler Agent) can only access resources within their authorized scope
-3. **Auditable permission decisions** â€” Every allow/deny decision must be logged with the full attribute context for compliance and debugging
-4. **Self-service policy management** â€” Allow workspace owners to define custom policies without engineering intervention
+1. **Fine-grained access control** — Enable policies that consider not just who the user is, but what resource they're accessing, what action they're performing, and under what context
+2. **Multi-agent isolation** — Ensure that AI agents (Memory Agent, Organization Agent, Scheduler Agent) can only access resources within their authorized scope
+3. **Auditable permission decisions** — Every allow/deny decision must be logged with the full attribute context for compliance and debugging
+4. **Self-service policy management** — Allow workspace owners to define custom policies without engineering intervention
 
 ---
 
@@ -175,7 +175,7 @@ Deny by default â†’ Allow if policy matches â†’ Return decision
 |----|-------------|----------|
 | F-001 | System SHALL evaluate ABAC policies using Subject, Resource, Action, and Context attributes | P0 |
 | F-002 | System SHALL support wildcard matching (`*`) in action and resource patterns (e.g., `actions: ['read', 'write']`) | P0 |
-| F-003 | System SHALL enforce deny-by-default â€” any request not matching a policy is denied | P0 |
+| F-003 | System SHALL enforce deny-by-default — any request not matching a policy is denied | P0 |
 | F-004 | System SHALL support attribute conditions (e.g., `workspace: '{user.workspace_id}'`) for dynamic policy matching | P1 |
 | F-005 | System SHALL evaluate agent-specific policies separately from user-specific policies | P1 |
 | F-006 | System SHALL cache evaluated permission decisions per (subject, resource, action) tuple for request duration | P1 |
@@ -220,7 +220,7 @@ sequenceDiagram
     GW-->>C: 200 OK + result
 ```
 
-> **Diagram:** ABAC sequence â€” API Gateway delegates evaluation to Permission Engine, which aggregates attributes from Auth Provider and Resource Service, evaluates policies, and logs every decision to the audit log.
+> **Diagram:** ABAC sequence — API Gateway delegates evaluation to Permission Engine, which aggregates attributes from Auth Provider and Resource Service, evaluates policies, and logs every decision to the audit log.
 
 ---
 
@@ -353,6 +353,8 @@ console.log(result.allowed); // true | false
 
 ```python
 # Vaeloom ABAC policy definition
+
+### The AI Operating System for Autonomous Career and Education Management
 from Vaeloom.access_control import ABACPolicy
 
 policy = ABACPolicy(

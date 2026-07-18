@@ -1,7 +1,7 @@
-﻿# Authentication
+# Authentication
 
 > **Purpose:** Define the authentication strategy for Vaeloom
-> **Canonical source:** [`/Docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access`](../../Docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access)
+> **Canonical source:** [`/docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access`](../../docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access)
 
 ## Auth Strategy
 
@@ -14,17 +14,17 @@
 
 ### Login & API Call Flow
 
-The following sequence diagram shows the complete authentication flow â€” from user login through OAuth, JWT issuance, to an authenticated API call with automatic token refresh:
+The following sequence diagram shows the complete authentication flow — from user login through OAuth, JWT issuance, to an authenticated API call with automatic token refresh:
 
 ```mermaid
 sequenceDiagram
-    participant User as "ðŸ‘¤ User"
-    participant Web as "ðŸŒ Web App<br/>Next.js"
-    participant Auth as "ðŸ” Auth Provider<br/>Clerk / Auth0"
-    participant API as "âš™ï¸ API Service<br/>NestJS"
-    participant Sec as "ðŸ”‘ Secrets Manager"
+    participant User as "👤 User"
+    participant Web as "🌐 Web App<br/>Next.js"
+    participant Auth as "🔐 Auth Provider<br/>Clerk / Auth0"
+    participant API as "⚙️ API Service<br/>NestJS"
+    participant Sec as "🔑 Secrets Manager"
 
-    %% â”€â”€ LOGIN PHASE â”€â”€
+    %% ── LOGIN PHASE ──
     User->>Web: Click "Sign in with Google"
     Web->>Auth: Redirect to OAuth consent
     Auth->>User: Google login page
@@ -37,7 +37,7 @@ sequenceDiagram
 
     Note over Web,Auth: Session established (24h access + 30d refresh)
 
-    %% â”€â”€ API CALL PHASE â”€â”€
+    %% ── API CALL PHASE ──
     User->>Web: Request dashboard data
     Web->>API: GET /api/dashboard<br/>Authorization: Bearer JWT
     API->>API: Validate JWT signature + expiry
@@ -46,9 +46,9 @@ sequenceDiagram
     API-->>Web: 200 OK + dashboard data
     Web-->>User: Render dashboard
 
-    Note over Web,API: Permission Engine evaluates Subject Ã— Resource Ã— Action Ã— Context
+    Note over Web,API: Permission Engine evaluates Subject × Resource × Action × Context
 
-    %% â”€â”€ TOKEN REFRESH PHASE â”€â”€
+    %% ── TOKEN REFRESH PHASE ──
     Web->>API: GET /api/documents<br/>Authorization: Bearer EXPIRED_JWT
     API-->>Web: 401 Unauthorized
     Web->>Auth: POST /oauth/token (refresh_token)
@@ -57,7 +57,7 @@ sequenceDiagram
     API-->>Web: 200 OK + documents
     Web-->>User: Show documents
 
-    %% â”€â”€ CONNECTOR OAUTH PHASE â”€â”€
+    %% ── CONNECTOR OAUTH PHASE ──
     User->>Web: "Connect Gmail"
     Web->>API: POST /connectors/gmail/auth
     API->>Auth: Initiate OAuth with Gmail scopes
@@ -66,7 +66,7 @@ sequenceDiagram
     Auth-->>API: OAuth tokens for Gmail
     API->>Sec: Store encrypted tokens
     API-->>Web: Gmail connected
-    Web-->>User: âœ… Gmail connected
+    Web-->>User: ✅ Gmail connected
 
     Note over API,Sec: Connector tokens stored in Secrets Manager, never in DB
 ```
@@ -75,10 +75,10 @@ sequenceDiagram
 
 | Flow | Step-by-Step | Key Detail |
 |------|-------------|------------|
-| **Login** | Redirect â†’ Consent â†’ Code â†’ Token Exchange â†’ Session | OAuth PKCE flow; tokens stored in httpOnly cookies |
-| **API Call** | JWT in Authorization header â†’ Validate â†’ Permission Check â†’ Response | `workspace_id` extracted from JWT, never from request body |
-| **Token Refresh** | 401 â†’ Refresh endpoint â†’ New JWT â†’ Retry | Refresh token rotation; old token invalidated on use |
-| **Connector OAuth** | UI trigger â†’ Initiate â†’ User consent â†’ Token storage | Scoped per-connector tokens; read-only by default |
+| **Login** | Redirect → Consent → Code → Token Exchange → Session | OAuth PKCE flow; tokens stored in httpOnly cookies |
+| **API Call** | JWT in Authorization header → Validate → Permission Check → Response | `workspace_id` extracted from JWT, never from request body |
+| **Token Refresh** | 401 → Refresh endpoint → New JWT → Retry | Refresh token rotation; old token invalidated on use |
+| **Connector OAuth** | UI trigger → Initiate → User consent → Token storage | Scoped per-connector tokens; read-only by default |
 
 ## Session Management
 
@@ -93,7 +93,7 @@ sequenceDiagram
 
 | Concern | Mitigation |
 |---------|------------|
-| Passwords | Never stored â€” delegated entirely to auth provider |
+| Passwords | Never stored — delegated entirely to auth provider |
 | OAuth tokens | Stored in Secrets Manager, never in DB or logs |
 | Session hijacking | httpOnly + Secure + SameSite cookies; short-lived JWTs |
 | Token leakage | Bearer tokens never in URL params; only in headers |
@@ -105,36 +105,36 @@ sequenceDiagram
 
 | Mistake | Consequence |
 |---------|-------------|
-| Storing JWTs in localStorage | Accessible to XSS attacks â€” use httpOnly, Secure, SameSite cookies for web clients |
-| Not rotating refresh tokens | A leaked refresh token gives permanent access â€” rotate on each use and invalidate the previous one |
-| Extracting workspace_id from request body | A user could send another workspace's ID â€” workspace_id must come from the JWT claims, never from user input |
-| Skipping rate limiting on auth endpoints | Login endpoints without rate limiting are vulnerable to brute force attacks â€” apply strict per-IP and per-account limits |
+| Storing JWTs in localStorage | Accessible to XSS attacks — use httpOnly, Secure, SameSite cookies for web clients |
+| Not rotating refresh tokens | A leaked refresh token gives permanent access — rotate on each use and invalidate the previous one |
+| Extracting workspace_id from request body | A user could send another workspace's ID — workspace_id must come from the JWT claims, never from user input |
+| Skipping rate limiting on auth endpoints | Login endpoints without rate limiting are vulnerable to brute force attacks — apply strict per-IP and per-account limits |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Use OAuth PKCE flow for SPA clients | The authorization code with PKCE prevents authorization code interception attacks â€” never use implicit flow |
+| Use OAuth PKCE flow for SPA clients | The authorization code with PKCE prevents authorization code interception attacks — never use implicit flow |
 | Short-lived access tokens, longer-lived refresh tokens | 24h access + 30d refresh with rotation limits the blast radius of a leaked token |
-| Issue a new session on role/permission changes | Old tokens with stale permissions must be invalidated â€” force re-login on privilege changes |
+| Issue a new session on role/permission changes | Old tokens with stale permissions must be invalidated — force re-login on privilege changes |
 | Log all authentication events | Successful logins, failed attempts, and token refreshes should all be logged for security auditing |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| JWT verification latency on every request | Asymmetric key (RS256) verification is 10-100x slower than symmetric (HS256) â€” cache the JWKS response and verify with the local public key to avoid network calls per request |
-| Token refresh creating write contention | Every token refresh triggers a DB write to rotate the refresh token â€” batch rotations during quiet hours and use Redis for refresh token storage to reduce DB load |
-| Session lookup on every API call | If session state is stored in the database, every API call incurs a 2-5ms query â€” cache session metadata in Redis with a short TTL to eliminate this round trip |
+| JWT verification latency on every request | Asymmetric key (RS256) verification is 10-100x slower than symmetric (HS256) — cache the JWKS response and verify with the local public key to avoid network calls per request |
+| Token refresh creating write contention | Every token refresh triggers a DB write to rotate the refresh token — batch rotations during quiet hours and use Redis for refresh token storage to reduce DB load |
+| Session lookup on every API call | If session state is stored in the database, every API call incurs a 2-5ms query — cache session metadata in Redis with a short TTL to eliminate this round trip |
 
 ---
 
 ## Goals
 
-1. **Seamless user authentication** â€” Provide a frictionless login experience via OAuth (Google, Microsoft, GitHub) with automatic token refresh
-2. **Multi-environment auth strategy** â€” Support email/password + OAuth for MVP and SAML/OIDC SSO for enterprise tenants
-3. **Secure session management** â€” Ensure tokens are stored with httpOnly cookies, rotated on use, and revoked on permission changes
-4. **Audit-ready authentication** â€” Log every login, token refresh, and failed attempt for security analysis
+1. **Seamless user authentication** — Provide a frictionless login experience via OAuth (Google, Microsoft, GitHub) with automatic token refresh
+2. **Multi-environment auth strategy** — Support email/password + OAuth for MVP and SAML/OIDC SSO for enterprise tenants
+3. **Secure session management** — Ensure tokens are stored with httpOnly cookies, rotated on use, and revoked on permission changes
+4. **Audit-ready authentication** — Log every login, token refresh, and failed attempt for security analysis
 
 ---
 
@@ -165,7 +165,7 @@ sequenceDiagram
 | F-002 | System SHALL issue JWT access tokens with 24h expiry and refresh tokens with 30d expiry | P0 |
 | F-003 | System SHALL support Bearer token authentication via `Authorization` header | P0 |
 | F-004 | System SHALL rotate refresh tokens on each use, invalidating the previous token | P0 |
-| F-005 | System SHALL support API key authentication with configurable expiry (30dâ€“1yr) | P1 |
+| F-005 | System SHALL support API key authentication with configurable expiry (30d–1yr) | P1 |
 | F-006 | System SHALL integrate with SAML/OIDC SSO providers for enterprise tenants | P2 |
 
 ---
@@ -220,7 +220,7 @@ graph TD
     REFRESH --> REDIS
 ```
 
-> **Diagram:** Authentication architecture â€” Web and mobile clients authenticate via Clerk/Auth0 with OAuth; API clients use JWT access tokens. Enterprise layer adds SAML/OIDC SSO and SCIM provisioning. Tokens stored in httpOnly cookies (web), secure storage (mobile), or Secrets Manager (connector tokens). Session metadata cached in Redis for fast lookup.
+> **Diagram:** Authentication architecture — Web and mobile clients authenticate via Clerk/Auth0 with OAuth; API clients use JWT access tokens. Enterprise layer adds SAML/OIDC SSO and SCIM provisioning. Tokens stored in httpOnly cookies (web), secure storage (mobile), or Secrets Manager (connector tokens). Session metadata cached in Redis for fast lookup.
 
 ---
 
@@ -248,7 +248,7 @@ graph TD
 6. For API calls: JWT extracted from cookie, attached as Bearer header
 7. API validates JWT signature (cached JWKS), extracts user_id + workspace_id
 8. Permission Engine evaluates scope against requested resource
-9. On 401: refresh flow triggered â€” refresh token exchanged for new access token
+9. On 401: refresh flow triggered — refresh token exchanged for new access token
 10. On password change / permission change: all sessions invalidated
 ```
 
@@ -319,7 +319,7 @@ graph TD
 | Environment | Method | Trigger | Verification |
 |-------------|--------|---------|--------------|
 | Development | Clerk dev environment + local JWT service | Git push | Login flow works with test OAuth app |
-| Staging | Clerk staging environment + deployed API | PR merged to main | Automated auth test suite passes (login â†’ call â†’ refresh â†’ logout) |
+| Staging | Clerk staging environment + deployed API | PR merged to main | Automated auth test suite passes (login → call → refresh → logout) |
 | Production | Clerk production (multi-region) + auto-scaled API | Tagged release via CI/CD | Canary: 10% traffic verify login success rate > 99% |
 
 ---
@@ -328,12 +328,12 @@ graph TD
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `AUTH_JWT_SECRET` | RS256 private key for signing | â€” | Yes (production) |
+| `AUTH_JWT_SECRET` | RS256 private key for signing | — | Yes (production) |
 | `AUTH_JWT_EXPIRY` | Access token lifetime | 24h | Yes |
 | `AUTH_REFRESH_EXPIRY` | Refresh token lifetime | 30d | Yes |
 | `AUTH_API_KEY_MAX_AGE` | Max API key validity | 365d | No |
 | `AUTH_SESSION_CACHE_TTL` | Redis cache TTL for session data | 300s | No |
-| `AUTH_PROVIDER_URL` | Clerk/Auth0 tenant URL | â€” | Yes |
+| `AUTH_PROVIDER_URL` | Clerk/Auth0 tenant URL | — | Yes |
 
 ---
 
@@ -395,4 +395,4 @@ curl -X POST "https://auth.Vaeloom.ai/oauth/token" \
 
 - [Authorization.md](./Authorization.md)
 - [Security Architecture](../Security/Security-Architecture.md)
-- [`/Docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access`](../../Docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access)
+- [`/docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access`](../../docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access)
