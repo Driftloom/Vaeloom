@@ -1,0 +1,14 @@
+{
+  "extends": "@vaeloom/tsconfig/base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
+}
