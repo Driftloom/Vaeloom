@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vaeloom â€” Animation System Preview</title>
+<title>Vaeloom — The AI Operating System for Autonomous Career and Education Management</title>
 <style>
   :root {
     --color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;
@@ -129,7 +129,7 @@
 <body>
 
 <div class="theme-toggle-bar">
-  <span class="logo">âœ¨ Vaeloom â€” Animation System Preview</span>
+  <span class="logo">âœ¨ Vaeloom — Animation System Preview</span>
   <span class="hint"><a href="./Animation-System.md">ðŸ“„ View Source Doc</a></span>
   <div class="theme-toggle-group">
     <button class="theme-btn active" onclick="setTheme('light')">â˜€ï¸ Light</button>
@@ -181,7 +181,7 @@
 </div>
 
 <div class="anim-track" id="reducedMotionTrack">
-  <div class="anim-box" id="reducedMotionBox" style="position:absolute;left:10px;top:10px;transition:left var(--animation-normal) var(--easing-standard)">â€¢</div>
+  <div class="anim-box" id="reducedMotionBox" style="position:absolute;left:10px;top:10px;transition:left var(--animation-normal) var(--easing-standard)">”¢</div>
 </div>
 <div class="anim-ctrl">
   <button class="demo-btn demo-btn-primary" onclick="animateReducedMotion()">â–¶ Animate</button>
@@ -228,7 +228,7 @@
     <h4>ðŸ”˜ Button Micro-interaction</h4>
     <p class="subtitle"><code>100ms Â· ease-out</code></p>
     <div class="element-preview"><div class="element-demo" style="flex-direction:column;gap:var(--space-2)"><button class="demo-btn demo-btn-primary micro-btn" onclick="this.style.transform='scale(.92)';setTimeout(()=>this.style.transform='scale(1)',100)">Click me</button><button class="demo-btn demo-btn-secondary micro-btn">Hover me</button></div></div>
-    <p class="subtitle">Click the primary button for press feedback (scale .92 â†’ 1). Hover the secondary button for background transition.</p>
+    <p class="subtitle">Click the primary button for press feedback (scale .92 → 1). Hover the secondary button for background transition.</p>
     <style>.micro-btn{transition:transform var(--animation-fast) ease-out,background var(--animation-fast) ease-out}.micro-btn:hover{transform:translateY(-1px)}</style>
   </div>
 </div>
@@ -236,7 +236,7 @@
 <!-- SECTION 5: PRINCIPLES -->
 <h2>ðŸŽ¯ Animation Principles</h2>
 <div class="demo-grid">
-  <div class="demo-card"><h4>ðŸŽ¯ Purposeful</h4><p>Every animation serves a function â€” state change, feedback, or navigation. No decoration-only motion.</p></div>
+  <div class="demo-card"><h4>ðŸŽ¯ Purposeful</h4><p>Every animation serves a function — state change, feedback, or navigation. No decoration-only motion.</p></div>
   <div class="demo-card"><h4>âš¡ Performant</h4><p>Only <code>transform</code> and <code>opacity</code> are animated. No layout-triggering properties (<code>width</code>, <code>height</code>, <code>top</code>, <code>left</code>).</p></div>
   <div class="demo-card"><h4>ðŸŒ¸ Subtle</h4><p>All animations under 300ms for transitions. No gratuitous motion. Micro-interactions at 100-150ms.</p></div>
   <div class="demo-card"><h4>â™¿ Accessible</h4><p><code>prefers-reduced-motion</code> respected. Toggle above to test. Durations forced to 0.01ms when active.</p></div>

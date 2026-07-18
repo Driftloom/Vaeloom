@@ -1,13 +1,13 @@
 ﻿# Accessibility Audit
 
 > **Purpose:** Define the WCAG 2.2 AA compliance audit program, testing methodology, and remediation SLAs for Vaeloom
-> **Status:** ðŸ†• New
-> **Owner:** Frontend Team
-> **Last Updated:** 2026-07-13
+> **Status:** ✅ Upgraded to enterprise quality
+> **Version:** 2.0
+> **Last Updated:** 2026-07-17
 
 ## Overview
 
-Vaeloom is committed to WCAG 2.2 AA compliance across all user-facing interfaces. This document defines the formal accessibility audit schedule, testing categories, tooling, severity classification, and remediation SLAs. Accessibility is treated as a quality gate in CI/CD â€” pull requests that introduce AA violations are blocked from merging.
+Vaeloom is committed to WCAG 2.2 AA compliance across all user-facing interfaces. This document defines the formal accessibility audit schedule, testing categories, tooling, severity classification, and remediation SLAs. Accessibility is treated as a quality gate in CI/CD — pull requests that introduce AA violations are blocked from merging.
 
 The audit program covers automated scanning (axe-core, Lighthouse) and manual testing (VoiceOver, NVDA, keyboard-only navigation) on a quarterly cycle, with continuous monitoring per commit via CI integration.
 
@@ -84,10 +84,10 @@ graph TD
 
 | Severity | Definition | Remediation SLA | Examples |
 |----------|-----------|-----------------|----------|
-| **Critical** | Complete barrier â€” user cannot complete a core task | Blocking â€” must fix before merge; 7 days if found in production | Missing form labels, keyboard trap, no alt text on info images |
-| **High** | Significant barrier â€” user can complete task but with great difficulty | 14 days from identification | Low contrast text, missing focus indicator, no skip link |
-| **Medium** | Partial barrier â€” user can complete task but with some friction | 30 days from identification | Non-descriptive link text, missing ARIA landmarks, heading hierarchy issues |
-| **Low** | Minor friction â€” does not prevent task completion | Next regular sprint | Decorative images with redundant alt text, slightly suboptimal heading order |
+| **Critical** | Complete barrier — user cannot complete a core task | Blocking — must fix before merge; 7 days if found in production | Missing form labels, keyboard trap, no alt text on info images |
+| **High** | Significant barrier — user can complete task but with great difficulty | 14 days from identification | Low contrast text, missing focus indicator, no skip link |
+| **Medium** | Partial barrier — user can complete task but with some friction | 30 days from identification | Non-descriptive link text, missing ARIA landmarks, heading hierarchy issues |
+| **Low** | Minor friction — does not prevent task completion | Next regular sprint | Decorative images with redundant alt text, slightly suboptimal heading order |
 
 ## WCAG 2.2 AA Success Criteria Coverage
 
@@ -137,12 +137,12 @@ jobs:
 | Mistake | Consequence | Fix |
 |---------|-------------|-----|
 | Relying solely on automated tools | Misses ~70% of WCAG issues including keyboard traps, focus order, and screen reader context | Schedule manual audits quarterly; train developers on basic screen reader testing |
-| ARIA overuse | "When you have a hammer, everything looks like a nail" â€” ARIA added to divs that should be semantic HTML | Use native HTML elements first; ARIA only when no semantic element exists |
+| ARIA overuse | "When you have a hammer, everything looks like a nail" — ARIA added to divs that should be semantic HTML | Use native HTML elements first; ARIA only when no semantic element exists |
 | Color-only indicators | Success/failure states conveyed purely through color inaccessible to colorblind users | Add icons, text labels, and patterns alongside color indicators |
 | Focus management in SPAs | Page transitions without focus management trap keyboard users in dead space | Programmatically move focus to `h1` on route change; announce navigation via live region |
 | Ignoring zoom / text resize | Fixed units (px) prevent text scaling up to 200% as required by WCAG | Use relative units (rem, em) for all text and layout containers |
 
-## Security Considerations
+## Security
 
 | Concern | Mitigation |
 |---------|-----------|
@@ -152,7 +152,7 @@ jobs:
 | CAPTCHA accessibility | hCaptcha invisible mode used as primary; fallback to audio CAPTCHA for manual verification |
 | Motion trigger incidents | All animations respect `prefers-reduced-motion`; flashing content analyzed with PEAT tool before deployment |
 
-## Performance Considerations
+## Performance
 
 | Concern | Mitigation |
 |---------|-----------|
@@ -160,23 +160,23 @@ jobs:
 | Lighthouse audit overhead | Run on 3 representative pages per commit; full suite runs nightly |
 | Screen reader testing time | Allocate 2 person-days per quarterly audit; create test scripts for repeatability |
 | Accessibility overlay performance | No third-party overlays used (known to degrade performance and miss WCAG issues) |
-| Focus indicator rendering | CSS `:focus-visible` used instead of JS-based focus management â€” zero runtime cost |
+| Focus indicator rendering | CSS `:focus-visible` used instead of JS-based focus management — zero runtime cost |
 
 ## Components
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| AxeScanner | Automated WCAG scanning of all routes | axe-core + GitHub Actions | Scaled per route â€” runs only on changed routes for PRs, full scan nightly |
-| ContrastVerifier | Validate all design token pairs against 4.5:1 | Custom Node script + token parser | Build-time â€” verifies 400+ token pairs in <2s |
-| LighthouseReporter | Generate accessibility score reports | Lighthouse CI + Grafana | Scaled per environment â€” 3 representative pages per commit |
-| ManualTestRunner | Orchestrate quarterly manual audit workflows | Notion + TestRail | Linear â€” 2 person-days per quarter, fixed scope |
+| AxeScanner | Automated WCAG scanning of all routes | axe-core + GitHub Actions | Scaled per route — runs only on changed routes for PRs, full scan nightly |
+| ContrastVerifier | Validate all design token pairs against 4.5:1 | Custom Node script + token parser | Build-time — verifies 400+ token pairs in <2s |
+| LighthouseReporter | Generate accessibility score reports | Lighthouse CI + Grafana | Scaled per environment — 3 representative pages per commit |
+| ManualTestRunner | Orchestrate quarterly manual audit workflows | Notion + TestRail | Linear — 2 person-days per quarter, fixed scope |
 
 ## Workflows
 
-1. **Developer submits PR**: CI triggers axe-core scan across all changed routes â†’ results posted as GitHub Check â†’ if 0 new violations, PR proceeds; if violations found, PR is blocked with detailed report
-2. **Quarterly manual audit**: QA lead creates audit plan in TestRail â†’ screen reader specialists test NVDA + VoiceOver â†’ findings categorized by severity â†’ remediation tickets filed with SLA
-3. **Contrast compliance check**: Design token file updated â†’ CI runs ContrastVerifier â†’ all light/dark pairs checked against WCAG 4.5:1/3:1 â†’ non-compliant tokens flagged with suggested alternatives
-4. **Bug regression verification**: a11y bug fixed â†’ failing test case added to golden dataset â†’ full suite re-run â†’ all routes re-scanned â†’ fix verified and deployed
+1. **Developer submits PR**: CI triggers axe-core scan across all changed routes → results posted as GitHub Check → if 0 new violations, PR proceeds; if violations found, PR is blocked with detailed report
+2. **Quarterly manual audit**: QA lead creates audit plan in TestRail → screen reader specialists test NVDA + VoiceOver → findings categorized by severity → remediation tickets filed with SLA
+3. **Contrast compliance check**: Design token file updated → CI runs ContrastVerifier → all light/dark pairs checked against WCAG 4.5:1/3:1 → non-compliant tokens flagged with suggested alternatives
+4. **Bug regression verification**: a11y bug fixed → failing test case added to golden dataset → full suite re-run → all routes re-scanned → fix verified and deployed
 
 ## Sequence Diagrams
 
@@ -191,10 +191,10 @@ sequenceDiagram
     CI->>AXE: Run scan on changed routes
     AXE-->>CI: Violation report (JSON)
     alt 0 new violations
-        CI->>GH: âœ… Pass â€” post report
+        CI->>GH: âœ… Pass -- post report
         GH-->>DEV: PR passes a11y gate
     else Violations found
-        CI->>GH: âŒ Fail â€” post detailed report
+        CI->>GH: âŒ Fail -- post detailed report
         GH-->>DEV: PR blocked; fix required
         DEV->>DEV: Fix violations and re-push
     end
@@ -202,11 +202,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: A11y scan configuration loaded from `.a11yrc` â†’ axe-core scans all HTML routes â†’ violation data structured as JSON report
-2. **Processing**: Report parsed by CI action â†’ violations categorized by severity and WCAG criterion â†’ duplicates de-duplicated â†’ hash computed for change detection
-3. **Storage**: Violation history stored in Grafana Loki â†’ baseline snapshot kept per release tag â†’ screenshots stored in S3 with 90-day retention
-4. **Retrieval**: Developer views report in GitHub Checks â†’ Grafana dashboard shows violation trends over time â†’ weekly a11y health score computed
-5. **Deletion**: Old screenshot artifacts deleted after 90 days â†’ violation history aggregated after 6 months â†’ PII in test artifacts purged quarterly
+1. **Ingestion**: A11y scan configuration loaded from `.a11yrc` → axe-core scans all HTML routes → violation data structured as JSON report
+2. **Processing**: Report parsed by CI action → violations categorized by severity and WCAG criterion → duplicates de-duplicated → hash computed for change detection
+3. **Storage**: Violation history stored in Grafana Loki → baseline snapshot kept per release tag → screenshots stored in S3 with 90-day retention
+4. **Retrieval**: Developer views report in GitHub Checks → Grafana dashboard shows violation trends over time → weekly a11y health score computed
+5. **Deletion**: Old screenshot artifacts deleted after 90 days → violation history aggregated after 6 months → PII in test artifacts purged quarterly
 
 ## Scalability
 
@@ -231,10 +231,10 @@ sequenceDiagram
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
 | Violations per PR | > 0 new violations | Critical | GitHub Checks dashboard |
-| Lighthouse a11y score | < 90 | Warning | Grafana â€” Frontend Health |
-| Audit completion rate | < 100% of quarterly audits on time | High | Notion â€” A11y Audit Tracker |
-| Contrast compliance | < 100% of semantic tokens | Warning | CI Pipeline â€” Contrast step |
-| Time to remediate critical violations | > 7 days | Critical | Sentry â€” a11y SLA tracker |
+| Lighthouse a11y score | < 90 | Warning | Grafana — Frontend Health |
+| Audit completion rate | < 100% of quarterly audits on time | High | Notion — A11y Audit Tracker |
+| Contrast compliance | < 100% of semantic tokens | Warning | CI Pipeline — Contrast step |
+| Time to remediate critical violations | > 7 days | Critical | Sentry — a11y SLA tracker |
 
 ## Risks
 
@@ -276,9 +276,102 @@ sequenceDiagram
 - WCAG 2.2 AAA compliance (monitored but not required)
 - Third-party embedded content accessibility (assessed per integration)
 - Accessibility of user-generated content (documents, uploaded files)
-- Native mobile platform accessibility (Android TalkBack, iOS VoiceOver â€” covered in Mobile Architecture)
+- Native mobile platform accessibility (Android TalkBack, iOS VoiceOver — covered in Mobile Architecture)
 
 ---
+
+## Functional Requirements
+
+| ID | Requirement | Priority |
+|----|------------|----------|
+| FR-01 | Automated axe-core scan must run on all frontend routes per pull request | High |
+| FR-02 | Manual accessibility audits must cover keyboard navigation, screen reader, and focus management | High |
+| FR-03 | Color contrast must be validated for every design token pair across light and dark themes | High |
+| FR-04 | WCAG 2.2 AA success criteria must be covered for navigation, forms, images, color, keyboard, screen reader, focus, and motion | High |
+| FR-05 | Severity-classified remediation must enforce SLAs (Critical: block merge, High: 14 days, Medium: 30 days, Low: next sprint) | Medium |
+
+## Non-Functional Requirements
+
+| ID | Requirement | Target | Measurement |
+|----|------------|--------|-------------|
+| NFR-01 | All automated scans must complete within CI pipeline time limits | < 2 minutes per PR scan | CI pipeline duration metric |
+| NFR-02 | Lighthouse accessibility score must remain above threshold after every deployment | >= 90 | Lighthouse CI score |
+| NFR-03 | Manual audits must be performed on a regular cadence | Quarterly | Audit completion rate in Notion tracker |
+| NFR-04 | No new accessibility violations may be introduced in any pull request | 0 violations | axe-core CI gate |
+| NFR-05 | Remediation of critical violations must meet defined SLA | < 7 days | Sentry SLA tracker |
+
+## Architecture
+
+The accessibility audit program follows a layered quality architecture combining automated CI gates, scheduled manual reviews, and continuous monitoring:
+
+```mermaid
+graph TD
+    classDef gate fill:#e3f2fd,stroke:#1565c0,color:#000
+    classDef audit fill:#e8f5e9,stroke:#2e7d32,color:#000
+    classDef monitor fill:#fff3e0,stroke:#e65100,color:#000
+
+    subgraph CI_Gate["CI Gate (Per Commit)"]
+        A1["axe-core scan on changed routes"]
+        A2["Color contrast token validation"]
+        A3["Lighthouse CI score check"]
+    end
+
+    subgraph Scheduled_Audits["Scheduled Audits (Quarterly)"]
+        B1["Full WCAG 2.2 AA audit"]
+        B2["Manual screen reader review"]
+        B3["Keyboard navigation review"]
+        B4["Motion sensitivity review"]
+    end
+
+    subgraph Monitoring["Continuous Monitoring"]
+        C1["Violation trend dashboard"]
+        C2["SLA tracking per severity"]
+        C3["Screenshot artifact storage"]
+    end
+
+    A1 & A2 & A3 -->|Pass| D["PR Merge Gate"]
+    A1 & A2 & A3 -->|Fail| E["Fix Required"]
+    D --> B1 & B2 & B3 & B4
+    B1 & B2 & B3 & B4 --> C1 & C2 & C3
+
+    class A1,A2,A3 gate
+    class B1,B2,B3,B4 audit
+    class C1,C2,C3 monitor
+```
+
+The system is driven by the audit schedule (see Audit Schedule Gantt), categorized by testing domain (see Audit Categories), and gated by severity-classified SLAs.
+
+## APIs
+
+N/A — The accessibility audit program does not expose any HTTP APIs. It operates as a CI-integrated quality gate using axe-core, Lighthouse CI, and manual testing procedures. No programmatic API access is provided to external consumers.
+
+## Database
+
+N/A — The accessibility audit program does not use a database for operation. Violation reports are stored as CI artifacts (JSON), trend data in Grafana Loki (log storage), and screenshots in S3 object storage. There is no relational or document database schema.
+
+## Deployment
+
+| Environment | Strategy | Rollback | Notes |
+|-------------|----------|----------|-------|
+| CI (GitHub Actions) | Per-commit deployment of a11y scanning config via `.a11yrc` and workflow YAML | Revert config commit | Scans run automatically on every PR; no service deployment required |
+| Staging | Full suite triggered on staging deployment | Re-run prior passing scan | Validates a11y before production release |
+| Production | Nightly full-suite scan; per-commit scan on changed routes only | N/A — scans are stateless | Results stored in Grafana Loki; dashboards updated automatically |
+| Tooling updates | axe-core, Lighthouse CI version bumps via Renovate | Pin previous version in package.json | Version changes validated in CI before merge |
+
+## Configuration
+
+| Variable | Purpose | Default | Required |
+|----------|---------|---------|----------|
+| `AXE_SCAN_DIR` | Directory containing built HTML routes for scanning | `./out` | Yes |
+| `AXE_RULESET` | axe-core ruleset selection (section508, wcag21, wcag22, best-practice) | `wcag22` | Yes |
+| `LHCI_SCORE_THRESHOLD` | Minimum Lighthouse accessibility score | `90` | Yes |
+| `CONTRAST_TOKEN_FILE` | Path to design token file for contrast validation | `./src/tokens/colors.ts` | Yes |
+| `A11Y_ARTIFACT_RETENTION_DAYS` | Retention period for screenshot artifacts | `90` | No |
+| `EXCLUDED_ROUTES` | Comma-separated routes excluded from automated scanning | `` | No |
+
+---
+
+## Future Improvements
 
 | Improvement | Priority | Complexity | Timeline |
 |-------------|----------|------------|----------|

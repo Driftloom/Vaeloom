@@ -1,9 +1,77 @@
-﻿# State Management
+# State Management
 
-> **Purpose:** Define state management strategy for Vaeloom frontend
-> **Status:** ðŸ†• New
+> **Purpose:** Define state management strategy, cache invalidation patterns, and data fetching architecture for Vaeloom frontend
+> **Status:** ? Upgraded to enterprise quality
+> **Owner:** Frontend Team
+> **Version:** 2.0
+> **Last Updated:** 2026-07-17
+> **Dependencies:** Frontend-Architecture.md, UX-Guidelines.md, Forms.md
+> **Implementation Status:** ?? Spec Only
+> **Review Checklist:** Standard
+> **Canonical source:** docs/Frontend/State-Management.md
 
-## State Architecture
+## Overview
+
+Vaeloom's state management strategy separates application state into four distinct categories, each with its own technology and ownership model. Server state (documents, agents, resumes, jobs) is managed by TanStack Query, which provides caching, background refetching, optimistic updates, and granular cache invalidation. UI state (sidebar open, active tab, modal visibility) stays local with React Context or `useState`, never polluting a global store. Form state is owned by React Hook Form's uncontrolled input model. URL state (page, filter, search query) lives in Next.js search params for shareable, bookmarkable URLs.
+
+This four-category separation is deliberate: it prevents the common anti-pattern of putting everything into a single global store. Server state is the most complex category � TanStack Query normalizes cached data by entity ID, supports workspace-scoped query keys for multi-tenant isolation, and provides stale-while-revalidate semantics so users always see cached data instantly while fresh data loads in the background.
+
+For Vaeloom's AI-driven workflows, state management directly impacts user experience. When a user approves an agent proposal, an optimistic update immediately removes the proposal card from the UI while the server processes the request. If the server rejects the mutation, the optimistic update is rolled back and the card reappears with an error toast. This pattern makes the application feel responsive even when server operations take 500ms+.
+
+Cache invalidation follows a cascade pattern: when a document is uploaded, the `documents` query is invalidated, which in turn invalidates the `dashboard` summary query (since the document count changed) and the `memory` query (since the document may contain new entities). This automatic cascade ensures data consistency without developers needing to manually track every dependency.
+
+## Goals
+
+- Maintain cache hit ratio above 70% across all TanStack Query operations
+- Achieve sub-500ms query fetch latency (p95) for all server state requests
+- Ensure zero cross-tenant data leakage through workspace-scoped query keys
+- Support optimistic updates on all mutation operations with automatic rollback on failure
+- Keep UI state out of global stores � zero global state for sidebar, modal, or tab visibility
+
+## Scope
+
+### In Scope
+
+| Area | Description |
+|------|-------------|
+| TanStack Query | All server state with configurable staleTime per data type |
+| React Context | UI-only state spanning component trees (sidebar, theme) |
+| React Hook Form | All form state with debounced auto-save |
+| URL Search Params | Page-level state (filters, pagination, active tab) |
+| Optimistic Updates | All mutation operations with automatic rollback on failure |
+| Cache Invalidation | Cascade pattern on mutation success |
+
+### Out of Scope
+
+| Area | Reason |
+|------|--------|
+| IndexedDB-backed persistent cache | Future improvement for offline support |
+| Offline mutation queue with retry | Future improvement beyond MVP |
+| Real-time cache invalidation via WebSocket | Future improvement for live collaboration |
+| GraphQL normalized cache with type policies | Future improvement � consider Apollo migration |
+
+## Functional Requirements
+
+| ID | Description | Priority |
+|----|-------------|----------|
+| FR-SM-001 | System shall cache server state using TanStack Query with configurable staleTime per data type | P0 |
+| FR-SM-002 | System shall provide optimistic updates for all mutation operations with rollback on error | P0 |
+| FR-SM-003 | System shall support workspace-scoped query keys for multi-tenant isolation | P0 |
+| FR-SM-004 | System shall invalidate related queries on mutation success following cascade pattern | P1 |
+| FR-SM-005 | System shall manage UI-only state via React Context without global stores | P1 |
+| FR-SM-006 | System shall expose pagination, filters, and active tab via URL search params | P1 |
+
+## Non-Functional Requirements
+
+| ID | Description | Target | Measurement |
+|----|-------------|--------|-------------|
+| NFR-SM-001 | Cache hit ratio | >= 70% | TanStack Query Devtools / Grafana |
+| NFR-SM-002 | Query fetch latency (p95) | < 500ms | Grafana APM |
+| NFR-SM-003 | Mutation rollback time | < 100ms | PerformanceObserver |
+| NFR-SM-004 | Cache invalidation propagation | < 200ms | Custom metric |
+| NFR-SM-005 | Cross-tenant data leakage | Zero incidents | Security audit / Sentry |
+
+## Architecture
 
 ```mermaid
 graph TD
@@ -11,22 +79,22 @@ graph TD
     classDef tech fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef invalidate fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Categories["ðŸ“¦ State Categories"]
+    subgraph Categories["State Categories"]
         C1["Server State<br/>Documents, agents, resumes<br/>TanStack Query"]
         C2["UI State<br/>Sidebar open, active tab<br/>React Context / useState"]
         C3["Form State<br/>Resume editor, settings<br/>React Hook Form"]
         C4["URL State<br/>Page, filter, search query<br/>Next.js search params"]
     end
 
-    subgraph FetchPattern["ðŸ“¡ Data Fetching Pattern"]
-        F1["useQuery({<br/>  queryKey: ['documents', workspaceId],<br/>  queryFn: () => fetch(...),<br/>  staleTime: 30s,<br/>  cacheTime: 5min<br/>})"]
+    subgraph FetchPattern["Data Fetching Pattern"]
+        F1["useQuery({<br/>  queryKey: ['documents', workspaceId],<br/>  queryFn: () => fetch(...),<br/>  staleTime: 30s,<br/>  gcTime: 5min<br/>})"]
     end
 
-    subgraph Invalidation["ðŸ”„ Cache Invalidation Events"]
-        I1["Document uploaded<br/>â†’ Invalidate 'documents'"]
-        I2["Memory updated<br/>â†’ Invalidate 'memory' + 'dashboard'"]
-        I3["Application submitted<br/>â†’ Invalidate 'applications'"]
-        I4["Agent action approved<br/>â†’ Invalidate relevant queries"]
+    subgraph Invalidation["Cache Invalidation Events"]
+        I1["Document uploaded<br/>? Invalidate 'documents'"]
+        I2["Memory updated<br/>? Invalidate 'memory' + 'dashboard'"]
+        I3["Application submitted<br/>? Invalidate 'applications'"]
+        I4["Agent action approved<br/>? Invalidate relevant queries"]
     end
 
     Categories --> FetchPattern --> Invalidation
@@ -36,111 +104,23 @@ graph TD
     class I1,I2,I3,I4 invalidate
 ```
 
-> **Diagram:** State management architecture â€” **4 state categories** (server â†’ TanStack Query, UI â†’ Context, form â†’ React Hook Form, URL â†’ Next.js params). **Data fetching pattern** uses TanStack Query with 30s stale time and 5min cache. **Cache invalidation** events trigger on document upload, memory update, application submission, and agent action approval.
-
----
-
-## Strategy Overview
-
-Vaeloom uses **TanStack Query** as the primary state management layer, with React Context for UI-level state only.
-
-## State Categories
-
-| Category | Technology | Examples |
-|----------|------------|---------|
-| Server state | TanStack Query | Documents, agents, resumes, jobs |
-| UI state | React Context/useState | Sidebar open, active tab, modal state |
-| Form state | React Hook Form | Resume editor, settings forms |
-| URL state | Next.js search params | Page, filter, search query |
-
-## Data Fetching Pattern
-
-```typescript
-// Example: Fetch documents with TanStack Query
-function useDocuments(workspaceId: string) {
-  return useQuery({
-    queryKey: ['documents', workspaceId],
-    queryFn: () => fetch(`/api/workspaces/${workspaceId}/documents`).then(r => r.json()),
-    staleTime: 30_000, // 30 seconds
-    cacheTime: 5 * 60_000, // 5 minutes
-  })
-}
-```
-
-## Cache Invalidation
-
-| Event | Cache Invalidation |
-|-------|-------------------|
-| Document uploaded | Invalidate `documents` query |
-| Memory updated | Invalidate `memory` + `dashboard` queries |
-| Application submitted | Invalidate `applications` query |
-| Agent action approved | Invalidate relevant queries |
-
-## Common Mistakes
-
-| Mistake | Why It's a Problem |
-|---------|-------------------|
-| Over-fetching data the component doesn't use | Every unused field returned by an API query adds payload size and parsing time; use GraphQL or field selectors to request only what's needed |
-| Stale cache displaying outdated information | A cache that never invalidates shows users old data and erodes trust â€” always set appropriate `staleTime` and invalidate on mutations |
-| No optimistic updates for common actions | Users expect instant feedback when approving a proposal or submitting a form; waiting for server confirmation feels sluggish |
-| Putting UI state (sidebar open, modal visibility) in a global store | Global state stores become unmanageable when they hold transient UI concerns â€” keep UI state local with Context or component state |
-
-## Best Practices
-
-| Practice | Rationale |
-|----------|-----------|
-| Normalize cache data by entity ID | Storing `{ [workspaceId]: { [docId]: data } }` enables independent invalidation of single items without clearing entire collections |
-| Tune `staleTime` per data type | Agent status (staleTime: 5s), documents (30s), settings (5min) â€” each data type has a different freshness requirement |
-| Use mutation responses to update the cache | After a successful mutation, update the query cache with the response data rather than refetching â€” eliminates the refetch flash |
-| Separate server state from UI state | TanStack Query owns server state; React Context owns UI state; React Hook Form owns form state â€” each has a single, clear owner |
-
-## Security
-
-| Concern | Mitigation |
-|---------|------------|
-| Sensitive data in URL search params | Avoid storing tokens, session IDs, or Personally Identifiable Information in URL query parameters â€” they are visible in browser history, referrer headers, and server logs |
-| Client-side state exposing unauthorized data | Never load data from client-side cache without re-validating permissions â€” cached data may reflect a previous session with different access levels |
-| Race conditions in optimistic updates | Optimistically updating state before server confirmation can temporarily display incorrect data; ensure rollback logic handles the case where the server rejects the mutation |
-
-## Performance
-
-| Concern | Guideline |
-|---------|-----------|
-| Cache-first strategy with background refetch | Return cached data immediately, then silently refresh in the background â€” users see instant UI while data stays fresh; use TanStack Query's `staleTime` + `refetchInterval` |
-| Pagination and infinite scrolling | For lists larger than 50 items, use cursor-based pagination or virtual scrolling â€” loading 1000 items into the DOM at once causes significant layout and memory overhead |
-| Query key structure for granular invalidation | Structured query keys (`['documents', workspaceId, { status: 'active' }]`) enable targeted invalidation â€” avoid broad `invalidateQueries()` calls that clear unrelated caches |
-
-## Security Considerations
-
-| Concern | Mitigation |
-|---------|------------|
-| Sensitive data in URL search params | Avoid storing tokens, session IDs, or PII in URL query parameters â€” they are visible in browser history, referrer headers, and server logs |
-| Client-side state exposing unauthorized data | Never load data from client-side cache without re-validating permissions â€” cached data may reflect a previous session with different access levels |
-| Race conditions in optimistic updates | Optimistically updating state before server confirmation can temporarily display incorrect data; ensure rollback logic handles server rejection |
-
-## Performance Considerations
-
-| Concern | Approach |
-|---------|----------|
-| Cache-first strategy with background refetch | Return cached data immediately, then silently refresh in the background â€” users see instant UI while data stays fresh |
-| Pagination and infinite scrolling | For lists larger than 50 items, use cursor-based pagination or virtual scrolling â€” loading 1000 items into the DOM causes significant overhead |
-| Query key structure for granular invalidation | Structured query keys (`['documents', workspaceId, { status: 'active' }]`) enable targeted invalidation â€” avoid broad `invalidateQueries()` calls |
-
 ## Components
 
-| State Category | Technology | Scale Strategy | Key Example |
-|---------------|------------|----------------|-------------|
-| Server state | TanStack Query | Normalized cache by entity ID; paginated queries for lists | `useQuery(['documents', workspaceId], fn, { staleTime: 30s })` |
-| UI state | React Context / useState | Kept local to component tree; never global | `useState` for sidebar open, active tab |
-| Form state | React Hook Form | Scoped per form instance; `useFormContext` for nested forms | Resume editor with 50+ fields across 5 sections |
-| URL state | Next.js searchParams | Single source of truth for page state; shareable URLs | `useSearchParams` for filters, page, search query |
+| Component | Responsibility | Technology | Scale Strategy |
+|-----------|---------------|------------|----------------|
+| QueryClientProvider | TanStack Query root provider with default options | TanStack Query v5 | Singleton per app; configured with default staleTime and gcTime |
+| WorkspaceQueries | All server data queries scoped to workspace | TanStack Query | Workspace-scoped query keys (`['entity', workspaceId]`) |
+| MutationHooks | Optimistic mutations with rollback logic | TanStack Query | Self-contained per feature; return rollback context |
+| SidebarContext | UI state for sidebar collapse/expand | React Context | Scoped to layout component tree; never global |
+| FormState | Form state managed by RHF | React Hook Form | Scoped per form instance; `useFormContext` for nested forms |
 
 ## Workflows
 
-1. **Server data fetch and cache**: Component mounts â†’ `useQuery` checks cache â†’ staleTime (30s) not exceeded â†’ return cached data â†’ if stale, background refetch â†’ cache updated â†’ UI re-renders
-2. **Mutation with optimistic update**: User approves proposal â†’ `useMutation` fires optimistic update â†’ UI immediately shows approved state â†’ `onSettled` invalidates related queries â†’ on error, optimistic update rolled back â†’ toast shows result
-3. **Cache invalidation cascade**: Document uploaded â†’ mutation `onSuccess` invalidates `['documents', workspaceId]` â†’ also invalidates `['dashboard']` and `['memory', workspaceId]` â†’ all dependent components refetch â†’ UI refreshed
-4. **Form state to server sync**: User edits resume â†’ React Hook Form manages local state â†’ 2s debounce â†’ serializes changed fields â†’ `useMutation` PATCH â†’ server validates â†’ response updates TanStack Query cache â†’ form indicates "Saved"
+1. **Server data fetch and cache**: Component mounts ? `useQuery` checks cache ? staleTime (30s) not exceeded ? return cached data ? if stale, background refetch ? cache updated ? UI re-renders
+2. **Mutation with optimistic update**: User approves proposal ? `useMutation` fires optimistic update ? UI immediately shows approved state ? `onSettled` invalidates related queries ? on error, optimistic update rolled back ? toast shows result
+3. **Cache invalidation cascade**: Document uploaded ? mutation `onSuccess` invalidates `['documents', workspaceId]` ? also invalidates `['dashboard']` and `['memory', workspaceId]` ? all dependent components refetch ? UI refreshed
+4. **Form state to server sync**: User edits resume ? React Hook Form manages local state ? 2s debounce ? serializes changed fields ? `useMutation` PATCH ? server validates ? response updates TanStack Query cache ? form indicates "Saved"
+5. **URL state synchronization**: User sets filter ? `useSearchParams` updates URL ? downstream components react to search param changes ? page state is shareable via URL ? back/forward navigation restores filters
 
 ## Sequence Diagrams
 
@@ -164,8 +144,8 @@ sequenceDiagram
 
     Note over C,API: Optimistic mutation
     U->>C: Approve proposal (proposalId: 5)
-    C->>TQ: useMutation â†’ optimistic update
-    TQ->>TQ: Update cache: proposal 5 â†’ approved
+    C->>TQ: useMutation ? optimistic update
+    TQ->>TQ: Update cache: proposal 5 ? approved
     TQ-->>C: Instant UI update
     TQ->>API: POST /proposals/5/approve
     alt Success
@@ -178,13 +158,71 @@ sequenceDiagram
     end
 ```
 
+```mermaid
+sequenceDiagram
+    participant C as Component
+    participant TQ as TanStack Query
+    participant API as Vaeloom API
+
+    Note over C,API: Cache Invalidation Cascade
+
+    C->>API: POST /documents (upload file)
+    API-->>C: 201 Created (doc metadata)
+
+    C->>TQ: invalidateQueries(['documents', wsId])
+    TQ->>TQ: Remove stale query cache
+    TQ-->>C: Documents component refetches
+
+    C->>TQ: invalidateQueries(['dashboard'])
+    TQ->>TQ: Remove dashboard cache
+    TQ-->>C: Dashboard component refetches
+
+    C->>TQ: invalidateQueries(['memory', wsId])
+    TQ->>TQ: Remove memory cache
+    TQ-->>C: Memory graph refetches
+```
+
 ## Data Flow
 
-1. **Ingestion**: User action triggers mutation â†’ mutation function executes â†’ optimistic update modifies cache â†’ server receives request â†’ server processes and responds
-2. **Processing**: TanStack Query normalizes response data â†’ merges with existing cache â†’ deduplicates by entity ID â†’ updates timestamps for staleTime tracking
-3. **Storage**: Cache stored in memory as normalized JS object â†’ persisted to sessionStorage for tab recovery â†’ URL params stored in browser history
-4. **Retrieval**: `useQuery` key matches cached data â†’ if within staleTime, return cached â†’ if stale, background refetch â†’ stale data returned immediately, fresh data on next render
-5. **Deletion**: Cache garbage collected after `cacheTime` (5 min default) â†’ manual `invalidateQueries` clears specific keys â†’ `resetQueries` clears + refetches
+1. **Ingestion**: User action triggers mutation ? mutation function executes ? optimistic update modifies cache ? server receives request ? server processes and responds
+2. **Processing**: TanStack Query normalizes response data ? merges with existing cache ? deduplicates by entity ID ? updates timestamps for staleTime tracking
+3. **Storage**: Cache stored in memory as normalized JS object ? persisted to sessionStorage for tab recovery ? URL params stored in browser history
+4. **Retrieval**: `useQuery` key matches cached data ? if within staleTime, return cached ? if stale, background refetch ? stale data returned immediately, fresh data on next render
+5. **Deletion**: Cache garbage collected after `gcTime` (5 min default) ? manual `invalidateQueries` clears specific keys ? `resetQueries` clears + refetches ? workspace deletion purges all associated keys
+
+## APIs
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/workspaces/{wsId}/documents` | Fetch workspace documents (primary TanStack Query target) |
+| GET | `/api/workspaces/{wsId}/agents` | Fetch workspace agents |
+| GET | `/api/workspaces/{wsId}/proposals` | Fetch pending proposals |
+| GET | `/api/dashboard/summary` | Fetch dashboard widget data |
+| POST | `/api/proposals/{id}/approve` | Approve proposal (triggers invalidation cascade) |
+| POST | `/api/proposals/{id}/reject` | Reject proposal |
+| POST | `/api/documents` | Upload document (triggers invalidation cascade) |
+| PATCH | `/api/resumes/{id}` | Update resume (debounced auto-save) |
+
+## Database
+
+N/A � State management is a client-side concern. Server data is persisted via API calls to PostgreSQL. TanStack Query acts as a client-side cache layer over server data. See API routes for persistence.
+
+## Security
+
+| Concern | Mitigation |
+|---------|------------|
+| Sensitive data in URL search params | Avoid storing tokens, session IDs, or PII in URL query parameters � visible in browser history, referrer headers, and server logs |
+| Client-side state exposing unauthorized data | Never load data from client-side cache without re-validating permissions � cached data may reflect a previous session with different access levels |
+| Race conditions in optimistic updates | Ensure rollback logic handles the case where the server rejects the mutation; use version fields for conflict detection |
+
+## Performance
+
+| Concern | Budget | Measurement | Optimization |
+|---------|--------|-------------|--------------|
+| Cache-first strategy with background refetch | < 50ms cache read | TanStack Query Devtools | Return cached data immediately, silently refresh in background |
+| Pagination and infinite scrolling | < 200ms render | Chrome Performance tab | Cursor-based pagination; virtual scrolling for 50+ items |
+| Query key structure for granular invalidation | < 100ms invalidation | Custom metric | Structured keys (`['entity', id, { filter }]`) avoid broad clears |
+| Mutation optimistic update | < 50ms UI update | User Timing API | Immediate cache mutation before server round-trip |
 
 ## Scalability
 
@@ -208,73 +246,29 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Query fetch latency (p95) | > 500ms | Warning | Grafana â€” API Dashboard |
-| Mutation failure rate | > 1% | Critical | Grafana â€” API Errors |
-| Cache hit ratio | < 70% | Info | Grafana â€” Cache Performance |
-| Optimistic rollback rate | > 0.5% | Warning | Sentry â€” Mutation Errors |
-| Stale data display incidents | > 1 reported per week | Warning | Product â€” Bug Tracker |
+| Query fetch latency (p95) | > 500ms | Warning | Grafana � API Dashboard |
+| Mutation failure rate | > 1% | Critical | Grafana � API Errors |
+| Cache hit ratio | < 70% | Info | Grafana � Cache Performance |
+| Optimistic rollback rate | > 0.5% | Warning | Sentry � Mutation Errors |
+| Stale data display incidents | > 1 reported per week | Warning | Product � Bug Tracker |
 
-## Risks
+## Deployment
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| StaleTime too short causes excessive refetching | High | Medium | Tune staleTime per data type; monitor query frequency |
-| Cache invalidation misses cause stale data | Medium | High | Invalidate broader query keys on mutations; use query cancellation |
-| Optimistic update shows incorrect state | Medium | Medium | Conflict detection via version field; rollback on server rejection |
-| Memory leak from unremoved query observers | Low | Medium | Use `gcTime` to clean up unused queries; monitor memory usage |
+| Environment | Strategy | Rollback | Notes |
+|-------------|----------|----------|-------|
+| Development | Direct deploy with debug devtools | Revert commit | TanStack Query Devtools enabled for debugging |
+| Staging | Gradual rollout to team | Feature flag toggle | Validate cache invalidation patterns with realistic data |
+| Production | Feature-flagged rollout per workspace | Disable flag; invalidate all caches | Monitor cache hit ratio and query latency during rollout |
 
-## Limitations
+## Configuration
 
-| Limitation | Impact | Workaround | Future Resolution |
-|------------|--------|------------|-------------------|
-| TanStack Query cache is in-memory only | Cache lost on page refresh | Persist to sessionStorage for key queries | IndexedDB adapter for TanStack Query (community plugin in beta) |
-| No built-in offline mutation queue | Mutations fail when offline | Redux Offline-like pattern with custom mutation queue | TanStack Query v6 offline mutations (planned) |
-| URL searchParams doesn't support arrays well | Complex filter state hard to serialize | Use JSON.stringify/parse for complex filter values | URLSearchParams array support via custom serializer |
-
-## Overview
-
-Vaeloom's state management strategy separates application state into four distinct categories, each with its own technology and ownership model. Server state (documents, agents, resumes, jobs) is managed by TanStack Query, which provides caching, background refetching, optimistic updates, and granular cache invalidation. UI state (sidebar open, active tab, modal visibility) stays local with React Context or `useState`, never polluting a global store. Form state is owned by React Hook Form's uncontrolled input model. URL state (page, filter, search query) lives in Next.js search params for shareable, bookmarkable URLs.
-
-This four-category separation is deliberate: it prevents the common anti-pattern of putting everything into a single global store. Server state is the most complex category â€” TanStack Query normalizes cached data by entity ID, supports workspace-scoped query keys for multi-tenant isolation, and provides stale-while-revalidate semantics so users always see cached data instantly while fresh data loads in the background.
-
-For Vaeloom's AI-driven workflows, state management directly impacts user experience. When a user approves an agent proposal, an optimistic update immediately removes the proposal card from the UI while the server processes the request. If the server rejects the mutation, the optimistic update is rolled back and the card reappears with an error toast. This pattern makes the application feel responsive even when server operations take 500ms+.
-
-Cache invalidation follows a cascade pattern: when a document is uploaded, the `documents` query is invalidated, which in turn invalidates the `dashboard` summary query (since the document count changed) and the `memory` query (since the document may contain new entities). This automatic cascade ensures data consistency without developers needing to manually track every dependency.
-
-## Goals
-
-- Maintain cache hit ratio above 70% across all TanStack Query operations
-- Achieve sub-500ms query fetch latency (p95) for all server state requests
-- Ensure zero cross-tenant data leakage through workspace-scoped query keys
-- Support optimistic updates on all mutation operations with automatic rollback on failure
-- Keep UI state out of global stores â€” zero global state for sidebar, modal, or tab visibility
-
-## Scope
-
-### In Scope
-
-- TanStack Query for all server state with configurable staleTime per data type (5s for agent status, 30s for documents, 5min for settings)
-- React Context for UI-only state that spans component trees (sidebar collapse, theme preference)
-- React Hook Form for all form state with debounced auto-save
-- URL search params for page-level state (filters, pagination, active tab)
-- Optimistic updates with rollback for all mutation operations
-- Cache invalidation cascade on mutation success
-
-### Out of Scope
-
-- IndexedDB-backed persistent cache (future improvement)
-- Offline mutation queue with retry (future improvement)
-- Real-time cache invalidation via WebSocket (future improvement)
-- GraphQL normalized cache with type policies (future improvement â€” consider Apollo migration)
-
----
-
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| IndexedDB-backed persistent cache | High | Medium | Q3 2027 |
-| Offline mutation queue with retry | Medium | High | Q4 2027 |
-| Real-time cache invalidation via WebSocket | High | Medium | Q2 2027 |
-| GraphQL normalized cache with type policies | Low | High | Q4 2027 |
+| Variable | Purpose | Default | Required |
+|----------|---------|---------|----------|
+| `DEFAULT_STALE_TIME_MS` | Default staleTime for queries | 30000 | No |
+| `DEFAULT_GC_TIME_MS` | Default garbage collection time | 300000 | No |
+| `AGENT_STATUS_STALE_MS` | staleTime for agent status queries | 5000 | No |
+| `SETTINGS_STALE_MS` | staleTime for settings queries | 300000 | No |
+| `MUTATION_TIMEOUT_MS` | Mutation request timeout | 10000 | No |
 
 ## Examples
 
@@ -344,9 +338,58 @@ function SidebarProvider({ children }: { children: React.ReactNode }) {
 }
 ```
 
----
+## Best Practices
+
+| # | Practice | Rationale |
+|---|----------|-----------|
+| 1 | Normalize cache data by entity ID | Storing `{ [workspaceId]: { [docId]: data } }` enables independent invalidation of single items without clearing entire collections |
+| 2 | Tune `staleTime` per data type | Agent status (staleTime: 5s), documents (30s), settings (5min) � each data type has a different freshness requirement |
+| 3 | Use mutation responses to update the cache | After a successful mutation, update the query cache with the response data rather than refetching � eliminates the refetch flash |
+| 4 | Separate server state from UI state | TanStack Query owns server state; React Context owns UI state; React Hook Form owns form state � each has a single, clear owner |
+| 5 | Use workspace-scoped query keys | All multi-tenant queries must include `workspaceId` in the query key to prevent cross-tenant data leakage |
+| 6 | Cancel in-flight queries before mutations | Call `queryClient.cancelQueries` before optimistic updates to prevent race conditions between refetch and mutation |
+
+## Risks
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| staleTime too short causes excessive refetching | High | Medium | Tune staleTime per data type; monitor query frequency |
+| Cache invalidation misses cause stale data | Medium | High | Invalidate broader query keys on mutations; use query cancellation |
+| Optimistic update shows incorrect state | Medium | Medium | Conflict detection via version field; rollback on server rejection |
+| Memory leak from unremoved query observers | Low | Medium | Use `gcTime` to clean up unused queries; monitor memory usage |
+
+## Limitations
+
+| Limitation | Impact | Workaround | Future Resolution |
+|------------|--------|------------|-------------------|
+| TanStack Query cache is in-memory only | Cache lost on page refresh | Persist to sessionStorage for key queries | IndexedDB adapter for TanStack Query (community plugin in beta) |
+| No built-in offline mutation queue | Mutations fail when offline | Custom mutation queue with retry logic | TanStack Query v6 offline mutations (planned) |
+| URL searchParams doesn't support arrays well | Complex filter state hard to serialize | Use JSON.stringify/parse for complex filter values | URLSearchParams array support via custom serializer |
+
+## Future Improvements
+
+| Improvement | Priority | Complexity | Timeline |
+|-------------|----------|------------|----------|
+| IndexedDB-backed persistent cache | High | Medium | Q3 2027 |
+| Offline mutation queue with retry | Medium | High | Q4 2027 |
+| Real-time cache invalidation via WebSocket | High | Medium | Q2 2027 |
+| GraphQL normalized cache with type policies | Low | High | Q4 2027 |
 
 ## Related Documents
 
-- [Frontend Architecture.md](./Frontend-Architecture.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#10-tech-stack`](../../Docs/Vaeloom-Complete-Documentation.md#10-tech-stack)
+- [Accessibility.md](./Accessibility.md)
+- [Accessibility-Audit.md](./Accessibility-Audit.md)
+- [Animation-System.md](./Animation-System.md)
+- [Charts.md](./Charts.md)
+- [Component-Library.md](./Component-Library.md)
+- [Dashboard.md](./Dashboard.md)
+- [Design-System.md](./Design-System.md)
+- [Forms.md](./Forms.md)
+- [Frontend-Architecture.md](./Frontend-Architecture.md)
+- [Internationalization.md](./Internationalization.md)
+- [Mobile-Architecture.md](./Mobile-Architecture.md)
+- [Navigation.md](./Navigation.md)
+- [Responsive-Design.md](./Responsive-Design.md)
+- [Theme-System.md](./Theme-System.md)
+- [UI-Architecture.md](./UI-Architecture.md)
+- [UX-Guidelines.md](./UX-Guidelines.md)

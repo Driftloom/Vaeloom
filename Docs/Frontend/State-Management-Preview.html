@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vaeloom â€” State Management Preview</title>
+<title>Vaeloom — The AI Operating System for Autonomous Career and Education Management</title>
 <style>
   :root{--color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;--color-gray-500:#6b7280;--color-gray-600:#4b5563;--color-gray-700:#374151;--color-gray-800:#1f2937;--color-gray-900:#111827;--color-blue-500:#3b82f6;--color-blue-600:#2563eb;--color-green-500:#10b981;--color-green-600:#059669;--color-amber-500:#f59e0b;--color-red-500:#ef4444;--color-red-600:#dc2626;--font-family-sans:'Inter',system-ui,-apple-system,sans-serif;--font-family-mono:'JetBrains Mono','SF Mono','Fira Code',monospace;--font-size-xs:.75rem;--font-size-sm:.875rem;--font-size-base:1rem;--font-size-lg:1.125rem;--font-size-xl:1.25rem;--font-size-2xl:1.5rem;--font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--space-1:.25rem;--space-2:.5rem;--space-3:.75rem;--space-4:1rem;--space-6:1.5rem;--space-8:2rem;--space-12:3rem;--radius-sm:.25rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;--radius-full:9999px;--shadow-sm:0 1px 2px 0 rgb(0 0 0 / .05);--shadow-md:0 4px 6px -1px rgb(0 0 0 / .1);--shadow-lg:0 10px 15px -3px rgb(0 0 0 / .1);--shadow-xl:0 20px 25px -5px rgb(0 0 0 / .1);--transition-fast:150ms ease;--transition-base:250ms ease;--transition-slow:400ms ease;}
   :root,[data-theme="light"]{--bg-primary:#fff;--bg-secondary:#f9fafb;--bg-tertiary:#f3f4f6;--bg-elevated:#fff;--bg-inset:#f3f4f6;--text-primary:#111827;--text-secondary:#4b5563;--text-muted:#9ca3af;--text-inverse:#fff;--text-link:#3b82f6;--accent-primary:#3b82f6;--accent-primary-hover:#2563eb;--accent-success:#10b981;--accent-warning:#f59e0b;--accent-error:#ef4444;--border-light:#e5e7eb;--border-medium:#d1d5db;--border-focus:#3b82f6;--shadow-card:0 1px 3px 0 rgb(0 0 0 / .1);--card-bg:var(--bg-secondary);--card-border:var(--border-light);--card-radius:var(--radius-xl);--card-shadow:var(--shadow-card);--card-padding:var(--space-5);--accent-dev:#8b5cf6;--accent-orange:#f97316}
@@ -84,9 +84,9 @@
 </style>
 </head>
 <body>
-<div class="theme-toggle-bar"><span class="logo">ðŸ“¦ Vaeloom â€” State Management Preview</span><span class="hint"><a href="./State-Management.md">ðŸ“„ View Source Doc</a></span><div class="theme-toggle-group"><button class="theme-btn active" onclick="setTheme('light')">â˜€ï¸ Light</button><button class="theme-btn" onclick="setTheme('dark')">ðŸŒ™ Dark</button><button class="theme-btn" onclick="setTheme('system')">ðŸ–¥ï¸ System</button></div></div>
+<div class="theme-toggle-bar"><span class="logo">ðŸ“¦ Vaeloom — State Management Preview</span><span class="hint"><a href="./State-Management.md">ðŸ“„ View Source Doc</a></span><div class="theme-toggle-group"><button class="theme-btn active" onclick="setTheme('light')">â˜€ï¸ Light</button><button class="theme-btn" onclick="setTheme('dark')">ðŸŒ™ Dark</button><button class="theme-btn" onclick="setTheme('system')">ðŸ–¥ï¸ System</button></div></div>
 <h1>ðŸ“¦ State Management Preview</h1>
-<p class="subtitle">Interactive demo of Vaeloom's state management strategy â€” TanStack Query, state categories, cache invalidation, and data fetching patterns.</p>
+<p class="subtitle">Interactive demo of Vaeloom's state management strategy — TanStack Query, state categories, cache invalidation, and data fetching patterns.</p>
 <div class="stats-bar"><span class="stat-chip"><strong>4</strong> state categories</span><span class="stat-chip"><strong>4</strong> invalidation events</span><span class="stat-chip"><strong>30s</strong> stale time</span><span class="stat-chip"><strong>5m</strong> cache time</span></div>
 
 <div class="demo-grid">
@@ -111,9 +111,9 @@
 }</pre>
     <div class="query-flow" id="queryFlow">
       <div class="qf-step" id="qf-request"><span class="qf-icon waiting-icon" id="qf-request-icon">ðŸ”</span><span>Check cache for <code>['documents', 'ws-1']</code></span></div>
-      <div class="qf-step" id="qf-cache"><span class="qf-icon waiting-icon" id="qf-cache-icon">ðŸ’¾</span><span>Cache miss â†’ fetching from API</span></div>
-      <div class="qf-step" id="qf-response"><span class="qf-icon waiting-icon" id="qf-response-icon">ðŸ“¥</span><span>Response received â†’ caching for 5min</span></div>
-      <div class="qf-step" id="qf-stale"><span class="qf-icon waiting-icon" id="qf-stale-icon">â±ï¸</span><span>Stale after 30s â†’ background refetch</span></div>
+      <div class="qf-step" id="qf-cache"><span class="qf-icon waiting-icon" id="qf-cache-icon">ðŸ’¾</span><span>Cache miss → fetching from API</span></div>
+      <div class="qf-step" id="qf-response"><span class="qf-icon waiting-icon" id="qf-response-icon">ðŸ“¥</span><span>Response received → caching for 5min</span></div>
+      <div class="qf-step" id="qf-stale"><span class="qf-icon waiting-icon" id="qf-stale-icon">â±ï¸</span><span>Stale after 30s → background refetch</span></div>
     </div>
     <div class="btn-group">
       <button class="btn btn-primary" id="fetchBtn" onclick="simulateFetch()">â–¶ Simulate Fetch</button>
@@ -135,7 +135,7 @@
   <div class="cache-entry"><span class="ce-key">['applications', 'all']</span><span class="ce-status ce-fresh" id="cache-applications">Fresh</span><span style="font-size:10px;color:var(--text-muted)">Expires in 4:55</span></div>
   <div class="cache-entry"><span class="ce-key">['dashboard', 'summary']</span><span class="ce-status ce-fresh" id="cache-dashboard">Fresh</span><span style="font-size:10px;color:var(--text-muted)">Expires in 2:40</span></div>
   <div class="event-log" id="eventLog">
-    <div class="event-item"><span class="event-time">init</span><span class="event-msg">Cache initialized â€” all queries fresh</span></div>
+    <div class="event-item"><span class="event-time">init</span><span class="event-msg">Cache initialized — all queries fresh</span></div>
   </div>
 </div>
 
@@ -143,8 +143,8 @@
 <h2>ðŸ“Š Why TanStack Query?</h2>
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-3)">
   <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">ðŸ’¾ Automatic Caching</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">Responses are cached automatically. Configuration via <code>staleTime</code> and <code>cacheTime</code>. No manual reducer or context provider needed.</p></div>
-  <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">ðŸ”„ Background Refetch</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">When data goes stale, TanStack Query automatically refetches in the background. UI never blocks â€” users see cached data while fresh data loads.</p></div>
-  <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">ðŸ”Œ Declarative Invalidation</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">Invalidate entire query groups with a single call. <code>queryClient.invalidateQueries({ queryKey: ['documents'] })</code> â€” all document queries refetch automatically.</p></div>
+  <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">ðŸ”„ Background Refetch</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">When data goes stale, TanStack Query automatically refetches in the background. UI never blocks — users see cached data while fresh data loads.</p></div>
+  <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">ðŸ”Œ Declarative Invalidation</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">Invalidate entire query groups with a single call. <code>queryClient.invalidateQueries({ queryKey: ['documents'] })</code> — all document queries refetch automatically.</p></div>
   <div style="padding:var(--space-4);border:1px solid var(--border-light);border-radius:var(--radius-lg);background:var(--bg-secondary)"><h4 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)">ðŸ“‹ DevTools</h4><p style="font-size:var(--font-size-sm);color:var(--text-secondary)">React Query DevTools provide real-time insight into cache state, active queries, and mutation status during development.</p></div>
 </div>
 
@@ -201,11 +201,11 @@
       if(el) {
         el.className = 'ce-status ce-invalid';
         el.textContent = 'â³ Refetching...';
-        addLog(`  â†’ Invalidated ['${k}'] â€” refetch queued`);
+        addLog(`  → Invalidated ['${k}'] — refetch queued`);
         setTimeout(() => {
           el.className = 'ce-status ce-fresh';
           el.textContent = 'Fresh';
-          addLog(`  â†’ ['${k}'] refetched âœ“`);
+          addLog(`  → ['${k}'] refetched âœ“`);
         }, 1200);
       }
     });

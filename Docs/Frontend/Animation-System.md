@@ -48,7 +48,7 @@ graph TD
     class A1 a11y
 ```
 
-> **Diagram:** Animation system built on **4 principles** (purposeful, performant, subtle, accessible) â†’ **4 timing categories** (micro-interactions 100ms â†’ loading 1000ms) â†’ **5 element-specific animations** (all using transform + opacity only). **Reduced motion** respects system preferences by setting durations to near-zero.
+> **Diagram:** Animation system built on **4 principles** (purposeful, performant, subtle, accessible) → **4 timing categories** (micro-interactions 100ms → loading 1000ms) → **5 element-specific animations** (all using transform + opacity only). **Reduced motion** respects system preferences by setting durations to near-zero.
 
 ---
 
@@ -57,7 +57,7 @@ graph TD
 | Principle | Application |
 |-----------|-------------|
 | Purposeful | Every animation serves a function (state change, feedback, navigation) |
-| Performant | Only animate `transform` and `opacity` â€” avoid layout-triggering properties |
+| Performant | Only animate `transform` and `opacity` — avoid layout-triggering properties |
 | Subtle | Animations under 300ms, no gratuitous motion |
 | Accessible | Respect `prefers-reduced-motion` |
 
@@ -108,25 +108,25 @@ graph TD
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Animating layout properties (width, height, top) | Triggers forced reflows and repaints â€” causes stutter, dropped frames, and poor battery life |
+| Animating layout properties (width, height, top) | Triggers forced reflows and repaints — causes stutter, dropped frames, and poor battery life |
 | Ignoring `prefers-reduced-motion` | Users with vestibular disorders experience nausea from unnecessary motion; always respect the OS preference |
-| Gratuitous or purely decorative animation | Every animation should communicate a state change or direct attention â€” decorative motion adds cognitive load |
+| Gratuitous or purely decorative animation | Every animation should communicate a state change or direct attention — decorative motion adds cognitive load |
 | Inconsistent easing and duration | Mixing ease-in, ease-out, and linear across components feels disjointed and unprofessional |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Only animate `transform` and `opacity` | These properties are GPU-composited and never trigger layout or paint â€” guarantees 60fps |
+| Only animate `transform` and `opacity` | These properties are GPU-composited and never trigger layout or paint — guarantees 60fps |
 | Keep animations under 300ms | Users perceive sub-300ms animations as instant feedback; longer animations feel slow and frustrating |
 | Use a consistent easing curve per type | Enter animations ease-out (decelerate), exit animations ease-in (accelerate), transitions ease-in-out |
-| Test on low-end devices | A silky 120fps animation on an M-series Mac may stutter on a budget Android â€” test on the lowest target device |
+| Test on low-end devices | A silky 120fps animation on an M-series Mac may stutter on a budget Android — test on the lowest target device |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Animation-based DOS/UI stress | Limit animation count and duration â€” hundreds of simultaneous CSS animations can freeze browser tabs on low-end devices |
+| Animation-based DOS/UI stress | Limit animation count and duration — hundreds of simultaneous CSS animations can freeze browser tabs on low-end devices |
 | `prefers-reduced-motion` spoofing | Treat reduced-motion preference as a user-controlled setting, not a security boundary; never rely on it for access control |
 | Motion-triggered data leakage through callbacks | Ensure animation callbacks (e.g., `animationend`) do not expose internal state or timing side-channels |
 
@@ -134,15 +134,15 @@ graph TD
 
 | Concern | Guideline |
 |---------|-----------|
-| GPU compositing vs CPU painting | Use `will-change: transform` sparingly â€” it promotes elements to their own compositor layer, consuming GPU memory |
+| GPU compositing vs CPU painting | Use `will-change: transform` sparingly — it promotes elements to their own compositor layer, consuming GPU memory |
 | Animation frame budgeting | Profile animation performance with Chrome DevTools FPS meter; keep frame budget under 10ms for non-interactive animations |
-| Off-screen animation culling | Use `content-visibility: auto` on off-screen animated elements â€” browsers skip rendering for elements outside the viewport |
+| Off-screen animation culling | Use `content-visibility: auto` on off-screen animated elements — browsers skip rendering for elements outside the viewport |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Animation-based DOS/UI stress | Limit animation count and duration â€” hundreds of simultaneous CSS animations can freeze browser tabs on low-end devices |
+| Animation-based DOS/UI stress | Limit animation count and duration — hundreds of simultaneous CSS animations can freeze browser tabs on low-end devices |
 | `prefers-reduced-motion` spoofing | Treat reduced-motion preference as a user-controlled setting, not a security boundary; never rely on it for access control |
 | Motion-triggered data leakage through callbacks | Ensure animation callbacks (e.g., `animationend`) do not expose internal state or timing side-channels |
 
@@ -150,25 +150,25 @@ graph TD
 
 | Concern | Approach |
 |---------|----------|
-| GPU compositing vs CPU painting | Use `will-change: transform` sparingly â€” it promotes elements to their own compositor layer, consuming GPU memory |
+| GPU compositing vs CPU painting | Use `will-change: transform` sparingly — it promotes elements to their own compositor layer, consuming GPU memory |
 | Animation frame budgeting | Profile animation performance with Chrome DevTools FPS meter; keep frame budget under 10ms for non-interactive animations |
-| Off-screen animation culling | Use `content-visibility: auto` on off-screen animated elements â€” browsers skip rendering for elements outside the viewport |
+| Off-screen animation culling | Use `content-visibility: auto` on off-screen animated elements — browsers skip rendering for elements outside the viewport |
 
 ## Components
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| MotionProvider | Root-level reduced-motion context detection | React Context + matchMedia | Singleton â€” wraps app root; subscribes to OS preference changes |
+| MotionProvider | Root-level reduced-motion context detection | React Context + matchMedia | Singleton — wraps app root; subscribes to OS preference changes |
 | FadeIn | Generic fade + translateY entrance animation | Framer Motion | Instance per animated element; configurable via props (duration, delay, distance) |
 | SlidePanel | Sidebar/drawer slide animation | CSS transform + transition | Instance per drawer; dynamic width from theme tokens |
 | SkeletonScreen | Loading placeholder animation | CSS keyframes + Tailwind | Scoped per component; matches component shape via props |
 
 ## Workflows
 
-1. **Page transition**: User clicks sidebar link â†’ route changes â†’ old content fades out (150ms ease-out) â†’ new content fades in (250ms ease-in-out) â†’ focus is moved to page h1
-2. **Toast notification appears**: Agent action completes â†’ toast slides from top (translateY -100% â†’ 0, 200ms ease-out) â†’ auto-dismisses after 4s â†’ slides back up (150ms ease-in)
-3. **Modal opens with reduced motion**: User clicks "Edit" â†’ modal overlay fades (opacity 0â†’1, 1ms if reduced motion) â†’ content scales (if motion allowed) â†’ focus trapped inside
-4. **Knowledge graph layout update**: New entity added â†’ D3 force simulation re-heats (300ms) â†’ nodes settle in new positions â†’ transitions smoothed with CSS `transition: transform`
+1. **Page transition**: User clicks sidebar link → route changes → old content fades out (150ms ease-out) → new content fades in (250ms ease-in-out) → focus is moved to page h1
+2. **Toast notification appears**: Agent action completes → toast slides from top (translateY -100% → 0, 200ms ease-out) → auto-dismisses after 4s → slides back up (150ms ease-in)
+3. **Modal opens with reduced motion**: User clicks "Edit" → modal overlay fades (opacity 0→1, 1ms if reduced motion) → content scales (if motion allowed) → focus trapped inside
+4. **Knowledge graph layout update**: New entity added → D3 force simulation re-heats (300ms) → nodes settle in new positions → transitions smoothed with CSS `transition: transform`
 
 ## Sequence Diagrams
 
@@ -200,11 +200,11 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Ingestion**: Animation tokens defined as CSS custom properties (`--animation-fast`, `--easing-standard`) â†’ consumed by Tailwind config and component CSS
-2. **Processing**: Framer Motion reads animation props (duration, easing, delay) â†’ computes optimal animation path (transform/opacity only) â†’ applies to element via animate prop
-3. **Storage**: Animation preferences stored in localStorage (`Vaeloom-reduced-motion`) â†’ OS preference monitored via matchMedia listener
-4. **Retrieval**: MotionProvider reads stored preference on mount â†’ exposes via React Context â†’ all animation components consume context to decide whether to animate
-5. **Deletion**: Component unmount triggers exit animation if allowed â†’ animation completes â†’ element removed from DOM after `onAnimationComplete`
+1. **Ingestion**: Animation tokens defined as CSS custom properties (`--animation-fast`, `--easing-standard`) → consumed by Tailwind config and component CSS
+2. **Processing**: Framer Motion reads animation props (duration, easing, delay) → computes optimal animation path (transform/opacity only) → applies to element via animate prop
+3. **Storage**: Animation preferences stored in localStorage (`Vaeloom-reduced-motion`) → OS preference monitored via matchMedia listener
+4. **Retrieval**: MotionProvider reads stored preference on mount → exposes via React Context → all animation components consume context to decide whether to animate
+5. **Deletion**: Component unmount triggers exit animation if allowed → animation completes → element removed from DOM after `onAnimationComplete`
 
 ## Scalability
 
@@ -228,10 +228,10 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| FPS during page transitions | < 50fps sustained | Warning | Grafana â€” Web Vitals (interaction-to-next-paint) |
+| FPS during page transitions | < 50fps sustained | Warning | Grafana — Web Vitals (interaction-to-next-paint) |
 | Animation frame drop count | > 3% of frames dropped | Warning | Chrome DevTools performance trace |
-| Reduced-motion users percentage | N/A (tracked trend) | Info | Analytics dashboard â€” accessibility segment |
-| Long animation tasks (>50ms) | > 2 tasks per navigation | Warning | Lighthouse â€” Total Blocking Time |
+| Reduced-motion users percentage | N/A (tracked trend) | Info | Analytics dashboard — accessibility segment |
+| Long animation tasks (>50ms) | > 2 tasks per navigation | Warning | Lighthouse — Total Blocking Time |
 
 ## Risks
 
@@ -252,11 +252,11 @@ sequenceDiagram
 
 ## Overview
 
-Vaeloom's animation system is designed to enhance user experience through purposeful, performant motion that communicates state changes and directs attention without overwhelming the user. Every animation in the application serves a functional purpose â€” whether indicating a button press, signaling a page transition, or drawing focus to a new proposal card.
+Vaeloom's animation system is designed to enhance user experience through purposeful, performant motion that communicates state changes and directs attention without overwhelming the user. Every animation in the application serves a functional purpose — whether indicating a button press, signaling a page transition, or drawing focus to a new proposal card.
 
 The system is built on four core principles: purposeful (every animation communicates something), performant (only `transform` and `opacity` are animated to guarantee GPU compositing), subtle (durations stay under 300ms for micro-interactions), and accessible (all motion respects the user's `prefers-reduced-motion` system preference).
 
-Animations are defined as CSS custom property tokens (`--animation-fast`, `--easing-standard`) consumed by both Tailwind CSS utility classes and Framer Motion components. This token-driven approach ensures consistent timing and easing across all components â€” a button hover in the sidebar uses the same easing curve as a button hover in the chat interface.
+Animations are defined as CSS custom property tokens (`--animation-fast`, `--easing-standard`) consumed by both Tailwind CSS utility classes and Framer Motion components. This token-driven approach ensures consistent timing and easing across all components — a button hover in the sidebar uses the same easing curve as a button hover in the chat interface.
 
 For Vaeloom's AI-driven workflows, animations play a critical role in maintaining user trust and orientation. Proposal cards slide in to indicate new agent suggestions, the knowledge graph uses physics-based D3 force simulations to reveal entity relationships, and toast notifications slide from the top to confirm actions without blocking the user's workflow.
 
@@ -280,7 +280,7 @@ For Vaeloom's AI-driven workflows, animations play a critical role in maintainin
 
 ### Out of Scope
 
-- Animation of layout properties (`width`, `height`, `top`, `left`) â€” only `transform` and `opacity` are permitted
+- Animation of layout properties (`width`, `height`, `top`, `left`) — only `transform` and `opacity` are permitted
 - Decorative or purely ornamental animations without functional purpose
 - Third-party animation libraries beyond Framer Motion and CSS transitions
 - Canvas-based animations beyond the D3.js knowledge graph

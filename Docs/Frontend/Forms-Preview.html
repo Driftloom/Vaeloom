@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vaeloom â€” Forms Preview</title>
+<title>Vaeloom — The AI Operating System for Autonomous Career and Education Management</title>
 <style>
   :root{--color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;--color-gray-500:#6b7280;--color-gray-600:#4b5563;--color-gray-700:#374151;--color-gray-800:#1f2937;--color-gray-900:#111827;--color-blue-500:#3b82f6;--color-blue-600:#2563eb;--color-green-500:#10b981;--color-green-600:#059669;--color-amber-500:#f59e0b;--color-red-500:#ef4444;--color-red-600:#dc2626;--font-family-sans:'Inter',system-ui,-apple-system,sans-serif;--font-family-mono:'JetBrains Mono','SF Mono','Fira Code',monospace;--font-size-xs:.75rem;--font-size-sm:.875rem;--font-size-base:1rem;--font-size-lg:1.125rem;--font-size-xl:1.25rem;--font-size-2xl:1.5rem;--font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--space-1:.25rem;--space-2:.5rem;--space-3:.75rem;--space-4:1rem;--space-6:1.5rem;--space-8:2rem;--space-12:3rem;--radius-sm:.25rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;--radius-full:9999px;--shadow-sm:0 1px 2px 0 rgb(0 0 0 / .05);--shadow-md:0 4px 6px -1px rgb(0 0 0 / .1);--shadow-lg:0 10px 15px -3px rgb(0 0 0 / .1);--shadow-xl:0 20px 25px -5px rgb(0 0 0 / .1);--transition-fast:150ms ease;--transition-base:250ms ease;--transition-slow:400ms ease;}
   :root,[data-theme="light"]{--bg-primary:#fff;--bg-secondary:#f9fafb;--bg-tertiary:#f3f4f6;--bg-elevated:#fff;--bg-inset:#f3f4f6;--text-primary:#111827;--text-secondary:#4b5563;--text-muted:#9ca3af;--text-inverse:#fff;--text-link:#3b82f6;--accent-primary:#3b82f6;--accent-primary-hover:#2563eb;--accent-success:#10b981;--accent-warning:#f59e0b;--accent-error:#ef4444;--accent-error-hover:#dc2626;--border-light:#e5e7eb;--border-medium:#d1d5db;--border-focus:#3b82f6;--border-error:#ef4444;--shadow-card:0 1px 3px 0 rgb(0 0 0 / .1);--card-bg:var(--bg-secondary);--card-border:var(--border-light);--card-radius:var(--radius-xl);--card-shadow:var(--shadow-card);--card-padding:var(--space-5);--input-bg:var(--bg-primary);--input-text:var(--text-primary);--input-border:var(--border-medium);--input-focus-border:var(--border-focus);--input-focus-ring:0 0 0 3px color-mix(in srgb,var(--accent-primary) 20%,transparent);--input-error-border:var(--border-error);--input-radius:var(--radius-md);--input-padding:var(--space-3);--btn-primary-bg:var(--accent-primary);--btn-primary-text:var(--text-inverse);--btn-primary-hover-bg:var(--accent-primary-hover);--btn-primary-radius:var(--radius-md);--btn-primary-padding:var(--space-2)var(--space-4);--btn-secondary-bg:var(--bg-secondary);--btn-secondary-text:var(--text-primary);--btn-secondary-border:var(--border-medium);--btn-secondary-hover-bg:var(--bg-tertiary)}
@@ -66,12 +66,12 @@
   .stat-chip strong{font-weight:var(--font-weight-semibold);color:var(--text-primary)}
   .valid-list{list-style:none;padding:0;font-size:var(--font-size-sm)}
   .valid-list li{padding:var(--space-1)0;color:var(--text-secondary);display:flex;align-items:center;gap:var(--space-2)}
-  .valid-list li::before{content:'â€¢';color:var(--text-muted)}
+  .valid-list li::before{content:'”¢';color:var(--text-muted)}
   .footer{margin-top:var(--space-12);padding-top:var(--space-6);border-top:1px solid var(--border-light);text-align:center;font-size:var(--font-size-sm);color:var(--text-muted)}
 </style>
 </head>
 <body>
-<div class="theme-toggle-bar"><span class="logo">âœï¸ Vaeloom â€” Forms Preview</span><span class="hint"><a href="./Forms.md">ðŸ“„ View Source Doc</a></span><div class="theme-toggle-group"><button class="theme-btn active" onclick="setTheme('light')">â˜€ï¸ Light</button><button class="theme-btn" onclick="setTheme('dark')">ðŸŒ™ Dark</button><button class="theme-btn" onclick="setTheme('system')">ðŸ–¥ï¸ System</button></div></div>
+<div class="theme-toggle-bar"><span class="logo">âœï¸ Vaeloom — Forms Preview</span><span class="hint"><a href="./Forms.md">ðŸ“„ View Source Doc</a></span><div class="theme-toggle-group"><button class="theme-btn active" onclick="setTheme('light')">â˜€ï¸ Light</button><button class="theme-btn" onclick="setTheme('dark')">ðŸŒ™ Dark</button><button class="theme-btn" onclick="setTheme('system')">ðŸ–¥ï¸ System</button></div></div>
 <h1>âœï¸ Forms Preview</h1>
 <p class="subtitle">Interactive form demos with inline validation, debounced save, multi-step wizard, and state machine visualization.</p>
 <div class="stats-bar"><span class="stat-chip"><strong>2</strong> libraries</span><span class="stat-chip"><strong>4</strong> patterns</span><span class="stat-chip"><strong>5</strong> validation rules</span><span class="stat-chip"><strong>6</strong> states</span></div>
@@ -86,11 +86,11 @@
     <div class="btn-group"><button class="btn btn-primary" onclick="submitForm()">Submit</button><button class="btn btn-secondary" onclick="resetForm()">Reset</button></div>
     <div class="form-success" id="formSuccess">âœ… Form submitted successfully!</div>
     <div class="state-machine" id="formStateMachine">
-      <span class="state-node active" id="stateIdle">Idle</span><span class="state-arrow">â†’</span>
-      <span class="state-node" id="stateTyping">Typing</span><span class="state-arrow">â†’</span>
-      <span class="state-node" id="stateValidating">Validating</span><span class="state-arrow">â†’</span>
-      <span class="state-node" id="stateValid">Valid</span><span class="state-arrow">â†’</span>
-      <span class="state-node" id="stateSubmitting">Submitting</span><span class="state-arrow">â†’</span>
+      <span class="state-node active" id="stateIdle">Idle</span><span class="state-arrow">→</span>
+      <span class="state-node" id="stateTyping">Typing</span><span class="state-arrow">→</span>
+      <span class="state-node" id="stateValidating">Validating</span><span class="state-arrow">→</span>
+      <span class="state-node" id="stateValid">Valid</span><span class="state-arrow">→</span>
+      <span class="state-node" id="stateSubmitting">Submitting</span><span class="state-arrow">→</span>
       <span class="state-node" id="stateDone">Success</span>
     </div>
   </div>
@@ -102,7 +102,7 @@
     <div class="wizard-step hidden" id="wizardStep1"><h4 style="font-size:var(--font-size-base);margin-bottom:var(--space-2)">Step 2: Connect</h4><div class="form-group"><label class="form-label">LinkedIn URL</label><input class="form-input" placeholder="linkedin.com/in/..." value="linkedin.com/in/alex"></div><div class="form-group"><label class="form-label">GitHub URL</label><input class="form-input" placeholder="github.com/..." value="github.com/alex"></div></div>
     <div class="wizard-step hidden" id="wizardStep2"><h4 style="font-size:var(--font-size-base);margin-bottom:var(--space-2)">Step 3: Goals</h4><div class="form-group"><label class="form-label">Target Companies</label><input class="form-input" placeholder="Google, Meta, Stripe" value="Google, Meta, Stripe"></div><div class="form-group"><label class="form-label">Start Date</label><input class="form-input" type="date" value="2026-06-01"></div></div>
     <div class="wizard-step hidden" id="wizardStep3"><h4 style="font-size:var(--font-size-base);margin-bottom:var(--space-2)">Step 4: Confirm</h4><div style="font-size:var(--font-size-sm);padding:var(--space-3);border:1px solid var(--border-light);border-radius:var(--radius-md);margin-bottom:var(--space-2)"><strong>Alex</strong> Â· SDE Intern<br>LinkedIn + GitHub connected<br>Targeting Google, Meta, Stripe</div></div>
-    <div class="btn-group"><button class="btn btn-secondary" id="wizardBack" onclick="wizardStep(-1)" style="display:none">â† Back</button><button class="btn btn-primary" id="wizardNext" onclick="wizardStep(1)">Next â†’</button><button class="btn btn-primary" id="wizardFinish" onclick="finishWizard()" style="display:none">âœ“ Finish</button></div>
+    <div class="btn-group"><button class="btn btn-secondary" id="wizardBack" onclick="wizardStep(-1)" style="display:none">← Back</button><button class="btn btn-primary" id="wizardNext" onclick="wizardStep(1)">Next →</button><button class="btn btn-primary" id="wizardFinish" onclick="finishWizard()" style="display:none">âœ“ Finish</button></div>
     <div class="form-success" id="wizardSuccess">ðŸŽ‰ Onboarding complete! Welcome to Vaeloom.</div>
   </div>
 </div>

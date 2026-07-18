@@ -1,13 +1,13 @@
 ﻿# Mobile Architecture
 
 > **Purpose:** Define the React Native mobile companion app architecture for Vaeloom
-> **Status:** ðŸ†• New
-> **Owner:** Frontend Team
-> **Last Updated:** 2026-07-13
+> **Status:** ✅ Upgraded to enterprise quality
+> **Version:** 2.0
+> **Last Updated:** 2026-07-17
 
 ## Overview
 
-Vaeloom provides a React Native companion app for iOS and Android that serves as a mobile extension of the web application â€” not a full parity client. The companion is designed for on-the-go access to the most critical workflows: reviewing dashboards, managing workspaces, chatting with agents, receiving notifications, and quick document uploads.
+Vaeloom provides a React Native companion app for iOS and Android that serves as a mobile extension of the web application — not a full parity client. The companion is designed for on-the-go access to the most critical workflows: reviewing dashboards, managing workspaces, chatting with agents, receiving notifications, and quick document uploads.
 
 The mobile app shares TypeScript types, GraphQL fragments, and core business logic with the web frontend through a shared monorepo package (`packages/shared`). Platform-specific UI is built using React Native components while reusing design tokens from the web design system.
 
@@ -140,7 +140,7 @@ sequenceDiagram
         P-->>U: Display notification
     end
     
-    U->>API: Tap notification â†’ deep link
+    U->>API: Tap notification --> deep link
     API-->>U: Navigate to target screen
 ```
 
@@ -162,7 +162,7 @@ sequenceDiagram
 | Overfetching GraphQL on mobile | Slow screen loads on cellular connections | Use persisted queries + fragment masking; prefetch key screens on app launch |
 | No biometric session lock | Unencrypted local data accessible if device is unlocked | Bind local cache encryption to biometric key; re-prompt on app background/resume |
 
-## Security Considerations
+## Security
 
 | Concern | Mitigation |
 |---------|-----------|
@@ -172,7 +172,7 @@ sequenceDiagram
 | Push notification data leakage | Push payloads contain only message IDs; full content fetched via authenticated API call |
 | Screenshot protection | Enable FLAG_SECURE on sensitive screens (chat, documents) for enterprise-managed devices |
 
-## Performance Considerations
+## Performance
 
 | Concern | Mitigation |
 |---------|-----------|
@@ -193,18 +193,72 @@ sequenceDiagram
 
 ## Workflows
 
-1. **App cold start**: User opens app â†’ splash screen displays â†’ biometric auth prompt appears â†’ Face ID / Fingerprint authenticates â†’ tab navigator renders â†’ active tab (Dashboard) fires data queries â†’ skeleton screens show while loading â†’ data renders
-2. **Offline document upload**: User taps FAB â†’ selects camera â†’ captures document â†’ WatermelonDB stores locally with `synced: false` â†’ optimistic UI shows document in list â†’ network reconnects â†’ background sync pushes to server â†’ conflict resolved (LWW) â†’ sync badge updates
-3. **Push notification â†’ deep link**: User receives notification â†’ taps it â†’ app opens â†’ deep link parsed â†’ target screen resolved in navigator â†’ screen loads with context from notification payload â†’ WebSocket connects for real-time updates
-4. **Biometric session lock**: App backgrounds â†’ timer starts (5 min default) â†’ user returns within timer â†’ no re-auth â†’ user returns after timer â†’ biometric prompt shown â†’ success â†’ continue session â†’ failure â†’ logout with data preserved
+1. **App cold start**: User opens app → splash screen displays → biometric auth prompt appears → Face ID / Fingerprint authenticates → tab navigator renders → active tab (Dashboard) fires data queries → skeleton screens show while loading → data renders
+2. **Offline document upload**: User taps FAB → selects camera → captures document → WatermelonDB stores locally with `synced: false` → optimistic UI shows document in list → network reconnects → background sync pushes to server → conflict resolved (LWW) → sync badge updates
+3. **Push notification → deep link**: User receives notification → taps it → app opens → deep link parsed → target screen resolved in navigator → screen loads with context from notification payload → WebSocket connects for real-time updates
+4. **Biometric session lock**: App backgrounds → timer starts (5 min default) → user returns within timer → no re-auth → user returns after timer → biometric prompt shown → success → continue session → failure → logout with data preserved
+
+## Sequence Diagrams
+
+### Offline Document Sync
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant APP as Mobile App
+    participant WDB as WatermelonDB
+    participant API as Vaeloom API
+
+    U->>APP: Capture document
+    APP->>WDB: Write locally (synced: false)
+    WDB-->>APP: Optimistic UI update
+    Note over APP: Document shows in list instantly
+    
+    alt Online
+        APP->>API: POST /api/documents/upload
+        API-->>APP: 201 Created (server ID)
+        APP->>WDB: Update record (synced: true, server_id)
+    else Offline
+        Note over APP: Queue mutation for later sync
+        APP->>WDB: Add to sync queue
+        Note over APP,WDB: Network reconnects...
+        APP->>API: Batch sync queued mutations
+        API-->>APP: Confirmation responses
+        APP->>WDB: Mark all synced
+    end
+```
+
+### App Cold Start & Biometric Auth
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant APP as React Native App
+    participant BIO as Biometric SDK
+    participant API as Vaeloom API
+    participant CACHE as WatermelonDB
+
+    U->>APP: Open app
+    APP->>APP: Splash screen
+    APP->>BIO: Request biometric auth
+    BIO-->>U: Face ID / Fingerprint prompt
+    U->>BIO: Authenticate
+    BIO-->>APP: Auth success
+    APP->>CACHE: Read cached data
+    CACHE-->>APP: Dashboard data (cache-first)
+    APP->>API: Fetch fresh data (background)
+    API-->>APP: Updated data
+    APP->>CACHE: Update cache
+    APP-->>U: Render dashboard with data
+```
 
 ## Data Flow
 
-1. **Ingestion**: User actions on mobile â†’ optimistic update to WatermelonDB local store â†’ queued for sync â†’ when online, differential sync transmits only changed records â†’ server processes and returns confirmation
-2. **Processing**: Apollo GraphQL client fragments shared with web â†’ persisted queries reduce payload â†’ normalized cache merged with WatermelonDB local data â†’ conflict resolution via LWW
-3. **Storage**: WatermelonDB SQLite database encrypted via SQLCipher â†’ encryption key bound to biometric keychain â†’ Clerk session tokens in iOS Keychain / Android EncryptedSharedPreferences
-4. **Retrieval**: Reads use cache-first strategy â†’ WatermelonDB queried first â†’ stale data returned instantly â†’ background sync updates cache â†’ UI re-renders with fresh data
-5. **Deletion**: User deletes document locally â†’ optimistic removal from FlatList â†’ sync sends DELETE to server â†’ server confirms â†’ record purged from WatermelonDB
+1. **Ingestion**: User actions on mobile → optimistic update to WatermelonDB local store → queued for sync → when online, differential sync transmits only changed records → server processes and returns confirmation
+2. **Processing**: Apollo GraphQL client fragments shared with web → persisted queries reduce payload → normalized cache merged with WatermelonDB local data → conflict resolution via LWW
+3. **Storage**: WatermelonDB SQLite database encrypted via SQLCipher → encryption key bound to biometric keychain → Clerk session tokens in iOS Keychain / Android EncryptedSharedPreferences
+4. **Retrieval**: Reads use cache-first strategy → WatermelonDB queried first → stale data returned instantly → background sync updates cache → UI re-renders with fresh data
+5. **Deletion**: User deletes document locally → optimistic removal from FlatList → sync sends DELETE to server → server confirms → record purged from WatermelonDB
 
 ## Scalability
 
@@ -228,11 +282,11 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Offline sync failure rate | > 2% | Warning | Grafana â€” Mobile Sync Dashboard |
-| App cold start time (p95) | > 3s | Critical | Grafana â€” Mobile Performance |
-| Biometric auth failure rate | > 5% | Warning | Sentry â€” Mobile Auth |
+| Offline sync failure rate | > 2% | Warning | Grafana — Mobile Sync Dashboard |
+| App cold start time (p95) | > 3s | Critical | Grafana — Mobile Performance |
+| Biometric auth failure rate | > 5% | Warning | Sentry — Mobile Auth |
 | Push notification delivery rate | < 95% | Critical | FCM/APNs Console |
-| Navigation jank (dropped frames) | > 5% of navigations | Warning | Grafana â€” Mobile Web Vitals |
+| Navigation jank (dropped frames) | > 5% of navigations | Warning | Grafana — Mobile Web Vitals |
 
 ## Risks
 
@@ -271,10 +325,77 @@ sequenceDiagram
 
 ### Out of Scope
 
-- Full web parity â€” mobile is a companion app for on-the-go access, not a complete replacement
+- Full web parity — mobile is a companion app for on-the-go access, not a complete replacement
 - Real-time collaborative editing on mobile (future improvement)
 - Apple Watch companion app (future improvement)
 - Android Widget/iOS Shortcut support (future improvement)
+
+## Functional Requirements
+
+| ID | Requirement | Priority |
+|----|------------|----------|
+| FR-01 | The mobile app must support offline-first reads for Dashboard, Workspace, and Chat screens | High |
+| FR-02 | Biometric authentication (Face ID / Fingerprint) must unlock the local session as a secondary factor | High |
+| FR-03 | Push notifications via FCM/APNs must deep-link to the target screen on tap | High |
+| FR-04 | The app must share TypeScript types, GraphQL fragments, and design tokens with the web monorepo | High |
+| FR-05 | Quick Upload must support camera capture, file picker, and document scanner | Medium |
+
+## Non-Functional Requirements
+
+| ID | Requirement | Target | Measurement |
+|----|------------|--------|-------------|
+| NFR-01 | App cold start time must be fast across devices | < 3 seconds (p95) | Grafana Mobile Performance dashboard |
+| NFR-02 | Offline sync conflict rate must remain low | < 2% conflict rate | WatermelonDB sync audit logs |
+| NFR-03 | All locally stored data must be encrypted | 100% coverage | Security audit |
+| NFR-04 | Mobile bundle size must be optimized for OTA distribution | < 10 MB | Metro bundler output |
+| NFR-05 | Navigation must be smooth with minimal dropped frames | < 5% dropped frames | Grafana Mobile Web Vitals |
+
+## APIs
+
+The mobile app shares API endpoints with the web frontend through the monorepo `packages/shared` package. All API communication uses Apollo GraphQL with persisted queries.
+
+| Method | Path | Purpose | Auth |
+|--------|------|---------|------|
+| GraphQL | `POST /api/graphql` | All data queries and mutations (dashboard, workspace, documents, chat) | Clerk session token (Bearer) |
+| WebSocket | `wss://api.vaeloom.com/ws` | Real-time notifications and chat updates | Clerk session token (handshake) |
+| REST | `POST /api/documents/upload` | Document file upload (multipart) | Clerk session token (Bearer) |
+| REST | `POST /api/push/register` | Register FCM/APNs device token for push notifications | Clerk session token (Bearer) |
+| REST | `DELETE /api/push/register` | Unregister device token on logout | Clerk session token (Bearer) |
+
+## Database
+
+The mobile app uses **WatermelonDB** (SQLite-based) for offline-first local storage. All records are encrypted at rest via SQLCipher.
+
+| Entity | Key Fields | Purpose |
+|--------|-----------|---------|
+| `documents` | `id`, `workspace_id`, `title`, `file_url`, `synced`, `updated_at`, `server_id` | Local cache of user documents with sync status |
+| `workspaces` | `id`, `name`, `icon`, `member_count`, `last_accessed`, `synced` | Workspace metadata for offline browsing |
+| `conversations` | `id`, `agent_id`, `title`, `last_message_at`, `message_count`, `synced` | Chat conversation list with unread counts |
+| `messages` | `id`, `conversation_id`, `role`, `content`, `created_at`, `synced` | Individual chat messages (last 1000 cached) |
+| `notifications` | `id`, `type`, `title`, `body`, `target_screen`, `deep_link`, `read`, `received_at` | Push notification history |
+| `sync_queue` | `id`, `record_id`, `table`, `operation`, `payload`, `retry_count`, `status` | Outgoing mutation queue for offline-to-online sync |
+
+## Deployment
+
+| Environment | Strategy | Rollback | Notes |
+|-------------|----------|----------|-------|
+| iOS App Store | Manual release via TestFlight → App Store Connect | Halt rollout; submit hotfix update | 1-2 day review window; allocate buffer for rejection |
+| Android Play Store | Staged rollout (10% → 50% → 100%) via Play Console | Halt staged rollout; publish previous APK | No review gate for existing apps; instant rollback |
+| Beta (TestFlight) | Internal testing via TestFlight (up to 100 testers) | Remove build from TestFlight | Fast feedback cycle before production submission |
+| Beta (Firebase) | Open testing via Firebase App Distribution | Disable distribution link | Android beta distributed alongside iOS beta |
+| OTA Updates | CodePush / Expo Updates for JS bundle patches | Roll back to previous bundle version | Only JS bundle changes; native code requires store submission |
+
+## Configuration
+
+| Variable | Purpose | Default | Required |
+|----------|---------|---------|----------|
+| `API_URL` | Vaeloom GraphQL API endpoint | `https://api.vaeloom.com/graphql` | Yes |
+| `WS_URL` | WebSocket endpoint for real-time features | `wss://api.vaeloom.com/ws` | Yes |
+| `WATERMELONDB_ENCRYPTION_KEY` | Encryption key derived from biometric keychain | — (runtime derived) | Yes |
+| `PUSH_ENABLED` | Enable push notification registration | `true` | No |
+| `BIOMETRIC_TIMEOUT_MINUTES` | Minutes before biometric re-auth is required | `5` | No |
+| `MAX_OFFLINE_DOCUMENTS` | Maximum documents cached offline | `500` | No |
+| `LOG_LEVEL` | Logging verbosity for debug builds | `debug` (dev), `error` (prod) | No |
 
 ## Examples
 
@@ -330,6 +451,8 @@ async function authenticateUser(): Promise<boolean> {
 ```
 
 ---
+
+## Future Improvements
 
 | Improvement | Priority | Complexity | Timeline |
 |-------------|----------|------------|----------|

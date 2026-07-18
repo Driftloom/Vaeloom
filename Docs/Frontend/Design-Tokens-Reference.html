@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vaeloom â€” Design Tokens Reference</title>
+<title>Vaeloom — The AI Operating System for Autonomous Career and Education Management</title>
 <style>
   /* ============================================================
      PRIMITIVE TOKENS (Layer 1)
@@ -61,7 +61,7 @@
   }
 
   /* ============================================================
-     SEMANTIC TOKENS (Layer 2) â€” Light Theme
+     SEMANTIC TOKENS (Layer 2) — Light Theme
      ============================================================ */
   :root,
   [data-theme="light"] {
@@ -96,7 +96,7 @@
   }
 
   /* ============================================================
-     SEMANTIC TOKENS (Layer 2) â€” Dark Theme
+     SEMANTIC TOKENS (Layer 2) — Dark Theme
      ============================================================ */
   [data-theme="dark"] {
     --bg-primary: #111827;
@@ -712,7 +712,7 @@
 <!-- ============================================================
      HEADER
      ============================================================ -->
-<h1>ðŸŽ¨ Vaeloom â€” Design Tokens Reference</h1>
+<h1>ðŸŽ¨ Vaeloom — Design Tokens Reference</h1>
 <p>
   Interactive reference for the three-layer token architecture.
   All CSS custom properties with live light/dark mode preview.
@@ -723,7 +723,7 @@
 <div class="theme-toggle-bar">
   <span>
     <span id="currentThemeLabel">â˜€ï¸ Light Mode</span>
-    <span class="hint">â€” preview every component in both themes</span>
+    <span class="hint">— preview every component in both themes</span>
   </span>
   <div class="theme-toggle-group">
     <button class="theme-btn active" onclick="setTheme('light')">â˜€ï¸ Light</button>
@@ -748,7 +748,7 @@
      ============================================================ -->
 <h2>ðŸ“ Three-Layer Token Architecture</h2>
 <p>
-  Tokens are organized into three layers â€” each layer builds on the one below.
+  Tokens are organized into three layers — each layer builds on the one below.
   Components must only reference <strong>Layer 2 (Semantic)</strong> or <strong>Layer 3 (Component)</strong> tokens.
 </p>
 
@@ -771,8 +771,8 @@
 <!-- ============================================================
      SECTION 2: SEMANTIC TOKENS (LAYER 2)
      ============================================================ -->
-<h2>ðŸŽ¯ Layer 2 â€” Semantic Tokens</h2>
-<p>These are the tokens you'll use most often. <strong>Components must only use these</strong> â€” never raw hex values or Layer 1 primitives.</p>
+<h2>ðŸŽ¯ Layer 2 — Semantic Tokens</h2>
+<p>These are the tokens you'll use most often. <strong>Components must only use these</strong> — never raw hex values or Layer 1 primitives.</p>
 
 <h3>Backgrounds</h3>
 <div class="token-grid token-group" data-category="backgrounds">
@@ -937,7 +937,7 @@
 <!-- ============================================================
      SECTION 3: COMPONENT TOKENS (LAYER 3)
      ============================================================ -->
-<h2>ðŸ§© Layer 3 â€” Component Tokens</h2>
+<h2>ðŸ§© Layer 3 — Component Tokens</h2>
 <p>Component-scoped overrides referencing semantic tokens. For use in specific UI patterns.</p>
 
 <h3>Layout</h3>
@@ -1010,8 +1010,8 @@
       <button class="demo-btn demo-btn-danger">Delete</button>
     </div>
     <div class="btn-group">
-      <button class="demo-btn demo-btn-primary">â† Previous</button>
-      <button class="demo-btn demo-btn-primary">Next â†’</button>
+      <button class="demo-btn demo-btn-primary">← Previous</button>
+      <button class="demo-btn demo-btn-primary">Next →</button>
     </div>
     <div class="text-muted" style="font-size: var(--font-size-xs); margin-top: var(--space-2);">
       Hover over buttons to see hover tokens
@@ -1206,7 +1206,7 @@
 <!-- ============================================================
      SECTION 6: CSS CODE
      ============================================================ -->
-<h2>ðŸ“„ Quick Reference â€” CSS</h2>
+<h2>ðŸ“„ Quick Reference — CSS</h2>
 <p>Copy-paste these into your project's <code>:root</code> and <code>[data-theme="dark"]</code> blocks.</p>
 
 <h3>Light Theme (default)</h3>
