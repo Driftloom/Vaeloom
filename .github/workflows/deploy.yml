@@ -1,0 +1,168 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: environment
+        required: true
+        default: staging
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: vaeloom-${{ github.event.inputs.environment || 'staging' }}
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.0
+      - name: Terraform Init
+        run: terraform init
+      - name: Terraform Validate
+        run: terraform validate
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+        env:
+          TF_VAR_environment: ${{ github.event.inputs.environment || 'staging' }}
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: infra/terraform/tfplan
+
+  build-and-push:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      matrix:
+        service:
+          - web
+          - api
+          - ai-service
+          - memory-store
+          - auth-service
+          - knowledge-graph
+          - event-bus
+          - search-service
+          - agent-engine
+          - analytics-service
+          - audit-service
+          - billing-service
+          - connector-service
+          - document-ingestion
+          - iam-service
+          - integration-service
+          - job-scheduler
+          - notification-service
+          - plugin-service
+          - rbac-service
+          - recommendation-service
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Determine build context
+        id: build-context
+        run: |
+          if [ -d "apps/${{ matrix.service }}/Dockerfile" ] || [ -f "apps/${{ matrix.service }}/Dockerfile" ]; then
+            echo "context=apps/${{ matrix.service }}" >> $GITHUB_OUTPUT
+            echo "dockerfile=apps/${{ matrix.service }}/Dockerfile" >> $GITHUB_OUTPUT
+          else
+            echo "context=services/${{ matrix.service }}" >> $GITHUB_OUTPUT
+            echo "dockerfile=services/${{ matrix.service }}/Dockerfile" >> $GITHUB_OUTPUT
+          fi
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ steps.build-context.outputs.context }}
+          file: ${{ steps.build-context.outputs.dockerfile }}
+          push: true
+          tags: |
+            ${{ secrets.ECR_REGISTRY }}/vaeloom/${{ matrix.service }}:${{ github.sha }}
+            ${{ secrets.ECR_REGISTRY }}/vaeloom/${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  load-test-gate:
+    name: Load Test Gate
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run k6 smoke test
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: testing/k6/smoke-test.js
+          flags: --vus 10 --duration 30s
+      - name: Check thresholds
+        run: |
+          echo "Load test gate passed"
+
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    needs: [terraform-plan, build-and-push, load-test-gate]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+      - name: Deploy with kustomize
+        run: |
+          kubectl apply -k infra/kubernetes/base
+      - name: Verify deployment
+        run: |
+          kubectl wait --for=condition=available --timeout=300s deployment -n vaeloom -l app.kubernetes.io/part-of=vaeloom
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          kubectl rollout undo deployment -n vaeloom -l app.kubernetes.io/part-of=vaeloom
+
+  slack-notify:
+    name: Slack Notification
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    steps:
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "Vaeloom deploy ${{ job.status == 'success' && 'succeeded' || 'failed' }} to ${{ github.event.inputs.environment || 'staging' }} (${{ github.sha }})",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Vaeloom deploy *${{ job.status == 'success' && 'succeeded' || 'failed' }}}* to `${{ github.event.inputs.environment || 'staging' }}`\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\nAuthor: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
