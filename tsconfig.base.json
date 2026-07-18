@@ -28,7 +28,8 @@
     "paths": {
       "@vaeloom/shared-types": ["packages/shared-types/src"],
       "@vaeloom/plugin-sdk": ["packages/plugin-sdk/src"],
-      "@vaeloom/ui-kit": ["packages/ui-kit/src"]
+      "@vaeloom/ui-kit": ["packages/ui-kit/src"],
+      "@vaeloom/queue": ["packages/queue/src"]
     }
   },
   "exclude": ["node_modules", "tmp", "dist", "**/*.spec.ts", "**/*.test.ts"]
