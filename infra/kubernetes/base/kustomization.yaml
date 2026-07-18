@@ -1,0 +1,62 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: vaeloom
+commonLabels:
+  app.kubernetes.io/part-of: vaeloom
+  app.kubernetes.io/managed-by: kustomize
+resources:
+  - vaeloom-namespace.yaml
+  - ../../apps/web/deployment.yaml
+  - ../../apps/web/service.yaml
+  - ../../apps/api/deployment.yaml
+  - ../../apps/api/service.yaml
+  - ../../apps/ai-service/deployment.yaml
+  - ../../apps/ai-service/service.yaml
+  - ../../apps/memory-store/deployment.yaml
+  - ../../apps/memory-store/service.yaml
+  - ../../apps/auth-service/deployment.yaml
+  - ../../apps/auth-service/service.yaml
+  - ../../apps/knowledge-graph/deployment.yaml
+  - ../../apps/knowledge-graph/service.yaml
+  - ../../apps/event-bus/deployment.yaml
+  - ../../apps/event-bus/service.yaml
+  - ../../apps/search-service/deployment.yaml
+  - ../../apps/search-service/service.yaml
+  - ../../apps/agent-engine/deployment.yaml
+  - ../../apps/agent-engine/service.yaml
+  - ../../apps/analytics-service/deployment.yaml
+  - ../../apps/analytics-service/service.yaml
+  - ../../apps/audit-service/deployment.yaml
+  - ../../apps/audit-service/service.yaml
+  - ../../apps/billing-service/deployment.yaml
+  - ../../apps/billing-service/service.yaml
+  - ../../apps/connector-service/deployment.yaml
+  - ../../apps/connector-service/service.yaml
+  - ../../apps/document-ingestion/deployment.yaml
+  - ../../apps/document-ingestion/service.yaml
+  - ../../apps/iam-service/deployment.yaml
+  - ../../apps/iam-service/service.yaml
+  - ../../apps/integration-service/deployment.yaml
+  - ../../apps/integration-service/service.yaml
+  - ../../apps/job-scheduler/deployment.yaml
+  - ../../apps/job-scheduler/service.yaml
+  - ../../apps/notification-service/deployment.yaml
+  - ../../apps/notification-service/service.yaml
+  - ../../apps/plugin-service/deployment.yaml
+  - ../../apps/plugin-service/service.yaml
+  - ../../apps/rbac-service/deployment.yaml
+  - ../../apps/rbac-service/service.yaml
+  - ../../apps/recommendation-service/deployment.yaml
+  - ../../apps/recommendation-service/service.yaml
+  - ../../infra/network-policies.yaml
+  - ../../infra/pod-disruption-budgets.yaml
+  - ../../infra/resource-quotas.yaml
+  - ../../infra/service-accounts.yaml
+  - ../../infra/configmap.yaml
+configMapGenerator:
+  - name: vaeloom-config
+    behavior: merge
+    literals:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - API_RATE_LIMIT=100
