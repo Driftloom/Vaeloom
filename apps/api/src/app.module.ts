@@ -6,7 +6,7 @@ import { MetricsModule, MetricsInterceptor } from '@vaeloom/observability';
 
 import { AuthModule } from './auth/auth.module';
 import { GatewayModule } from './gateway/gateway.module';
-import { appConfig, authConfig, databaseConfig, gatewayConfig, logConfig, serviceAuthConfig } from './config/configuration';
+import { appConfig, authConfig, gatewayConfig, logConfig, serviceAuthConfig } from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { HealthController } from './health.controller';
 import { ObservabilityModule } from './observability/observability.module';
@@ -38,7 +38,7 @@ import { PermissionsModule } from './permissions/permissions.module';
       isGlobal: true,
       cache: true,
       validate: validateEnv,
-      load: [appConfig, authConfig, logConfig, gatewayConfig, serviceAuthConfig, databaseConfig],
+      load: [appConfig, authConfig, logConfig, gatewayConfig, serviceAuthConfig],
     }),
     ObservabilityModule,
     MetricsModule,

@@ -33,6 +33,30 @@ export const envSchema = z.object({
   // LOG_FORMAT selects JSON (production default) vs. pretty (local dev).
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
+
+  // Gateway configuration
+  GATEWAY_TIMEOUT: z.coerce.number().int().positive().default(10000),
+  GATEWAY_RETRY_COUNT: z.coerce.number().int().min(0).default(2),
+  AUTH_SERVICE_URL: z.string().url().optional(),
+  IAM_SERVICE_URL: z.string().url().optional(),
+  RBAC_SERVICE_URL: z.string().url().optional(),
+  MEMORY_STORE_URL: z.string().url().optional(),
+  KNOWLEDGE_GRAPH_URL: z.string().url().optional(),
+  SEARCH_SERVICE_URL: z.string().url().optional(),
+  AGENT_ENGINE_URL: z.string().url().optional(),
+  EVENT_BUS_URL: z.string().url().optional(),
+  DOCUMENT_INGESTION_URL: z.string().url().optional(),
+  CONNECTOR_SERVICE_URL: z.string().url().optional(),
+  INTEGRATION_SERVICE_URL: z.string().url().optional(),
+  PLUGIN_SERVICE_URL: z.string().url().optional(),
+  NOTIFICATION_SERVICE_URL: z.string().url().optional(),
+  BILLING_SERVICE_URL: z.string().url().optional(),
+  ANALYTICS_SERVICE_URL: z.string().url().optional(),
+  AUDIT_SERVICE_URL: z.string().url().optional(),
+  JOB_SCHEDULER_URL: z.string().url().optional(),
+  RECOMMENDATION_SERVICE_URL: z.string().url().optional(),
+  SERVICE_AUTH_SECRET: z.string().min(16, 'SERVICE_AUTH_SECRET must be at least 16 characters'),
+  SERVICE_AUTH_TOKEN_TTL: z.coerce.number().int().positive().default(60),
 });
 
 export type Env = z.infer<typeof envSchema>;

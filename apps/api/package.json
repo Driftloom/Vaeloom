@@ -24,7 +24,6 @@
   "dependencies": {
     "@nestjs/axios": "^3.0.2",
     "@nestjs/cache-manager": "^2.2.2",
-    "@nestjs/cache-manager-ioredis": "^2.0.0",
     "ioredis": "^5.4.0",
     "@nestjs/common": "^10.3.0",
     "@nestjs/config": "^3.2.0",
@@ -48,6 +47,7 @@
     "rxjs": "^7.8.0",
     "zod": "^3.23.0",
     "@vaeloom/observability": "workspace:*",
+    "@vaeloom/service-auth": "workspace:*",
     "@vaeloom/shared-types": "workspace:*",
     "@vaeloom/queue": "workspace:*"
   },
