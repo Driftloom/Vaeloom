@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from contextlib import asynccontextmanager
 
@@ -12,18 +13,36 @@ from .logging import setup_logging, get_logger, correlation_id_var, tenant_id_va
 from .middleware.auth import AuthMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
 from .routers import health, memory, agents, embeddings
+from .workers.queue_worker import BullMQWorker, handle_event_publish, handle_subscription_create
 
 logger = get_logger(__name__)
 
 
+_queue_worker: BullMQWorker | None = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _queue_worker
     setup_logging()
     logger.info("Starting Vaeloom AI Service v%s (env=%s)", settings.service_version, settings.service_environment)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables verified")
+
+    _queue_worker = BullMQWorker(queue_name="events")
+    _queue_worker.register("event.publish", handle_event_publish)
+    _queue_worker.register("subscription.create", handle_subscription_create)
+    worker_task = asyncio.create_task(_queue_worker.start())
+    logger.info("Queue worker started")
+
     yield
+
+    await _queue_worker.stop()
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
     await engine.dispose()
     logger.info("AI Service shutdown complete")
 

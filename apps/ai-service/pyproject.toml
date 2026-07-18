@@ -33,3 +33,6 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.scripts]
+vaeloom-queue-worker = "app.workers.queue_worker:run_worker"

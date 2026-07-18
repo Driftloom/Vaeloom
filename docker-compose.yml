@@ -251,6 +251,19 @@ services:
       - "3140:3140"
     <<: *nestjs-base
 
+  queue-worker:
+    build: ./apps/ai-service
+    container_name: vaeloom-queue-worker
+    entrypoint: ["python", "-m", "app.workers.queue_worker"]
+    environment:
+      REDIS__URL: redis://redis:6379/0
+      SERVICE_ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+    depends_on:
+      redis:
+        condition: service_healthy
+    <<: *service-base
+
   notification-service:
     build: ./services/notification-service
     container_name: vaeloom-notification-service
