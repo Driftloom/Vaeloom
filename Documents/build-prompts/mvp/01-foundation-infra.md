@@ -1,4 +1,4 @@
-﻿# 01 â€” Foundation & Infrastructure Scaffolding (MVP)
+﻿# 01 — Foundation & Infrastructure Scaffolding (MVP)
 
 ```mermaid
 graph TD
@@ -39,7 +39,7 @@ graph TD
 ```
 
 ## Context
-Read `00-master-build-order.md` first. This is the first build phase â€” the deployable skeleton every later phase builds on top of. No feature logic yet.
+Read `00-master-build-order.md` first. This is the first build phase — the deployable skeleton every later phase builds on top of. No feature logic yet.
 
 ## Objective
 Stand up a working, deployable, empty version of Vaeloom: three services that boot, talk to each other, pass CI, and let a user sign up and see a blank workspace.
@@ -65,7 +65,7 @@ Vaeloom/
 - Health-check endpoint (`GET /health`) returning service status.
 - Auth module: email/password signup + login to start (bcrypt-hashed passwords), structured so an OAuth/SSO provider can be swapped in later (file 15) without changing the interface.
 - Auth middleware/guard usable by every future endpoint.
-- `POST /workspaces` â€” provisions a new, empty workspace for the authenticated user (see file 02 for the table this writes to).
+- `POST /workspaces` — provisions a new, empty workspace for the authenticated user (see file 02 for the table this writes to).
 
 **apps/ai-service (FastAPI):**
 - Health-check endpoint.
@@ -73,7 +73,7 @@ Vaeloom/
 
 **apps/web (Next.js):**
 - Signup and login pages, calling the api service.
-- An empty, authenticated Dashboard route that renders "Workspace ready" once a workspace exists â€” this is the placeholder file 14 replaces.
+- An empty, authenticated Dashboard route that renders "Workspace ready" once a workspace exists — this is the placeholder file 14 replaces.
 
 **CI (`infra/ci/`, GitHub Actions):**
 - On every PR: lint (ESLint + Python ruff/flake8), typecheck (`tsc --noEmit`, `mypy`), unit tests, build, for all three apps.
@@ -81,10 +81,10 @@ Vaeloom/
 
 **Local dev:**
 - `docker-compose.yml` bringing up Postgres, Redis, and all three apps with hot reload.
-- `.env.example` at the repo root documenting every required variable (DB URL, Redis URL, JWT secret, etc.) â€” no service should require an undocumented env var to boot.
+- `.env.example` at the repo root documenting every required variable (DB URL, Redis URL, JWT secret, etc.) — no service should require an undocumented env var to boot.
 
 ## Out of scope
-Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any memory or ingestion logic (files 02â€“04), production deployment (file 16 â€” this phase is local + CI only).
+Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any memory or ingestion logic (files 02–04), production deployment (file 16 — this phase is local + CI only).
 
 ## Acceptance criteria
 - [ ] `docker-compose up` boots all services with no manual steps beyond copying `.env.example` to `.env`.

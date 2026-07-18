@@ -2,7 +2,7 @@
 
 # Six layers, one spine of memory
 
-Every layer exists to feed the one in the middle. Interfaces and connectors bring data in; agents act on it; everything that happens gets written back to memory â€” which is what every feature above ultimately reads from.
+Every layer exists to feed the one in the middle. Interfaces and connectors bring data in; agents act on it; everything that happens gets written back to memory — which is what every feature above ultimately reads from.
 
 01
 
@@ -10,7 +10,7 @@ Every layer exists to feed the one in the middle. Interfaces and connectors brin
 
 Where the person actually touches the product.
 
-Web AppPrimary surface â€” all pages live here
+Web AppPrimary surface — all pages live here
 
 Desktop CompanionScoped local-folder access, file watcher
 
@@ -22,7 +22,7 @@ Mobile (future)Push notifications, quick capture
 
 ## Connectors & Plugin Layer
 
-Scoped, OAuth-based access â€” read-only until the user grants more.
+Scoped, OAuth-based access — read-only until the user grants more.
 
 GmailOAuth, read + draft scope only
 
@@ -72,7 +72,7 @@ Scheduler AgentDeadlines, reminders, conflict checks
 
 05
 
-## Memory & Knowledge Layer â€” CORE
+## Memory & Knowledge Layer — CORE
 
 Everything above reads from and writes to this layer. This is the actual product.
 
@@ -100,6 +100,6 @@ Permission EnginePer-connector, per-agent scopes
 
 Audit LogEvery agent action, reversible
 
-â— Core layer â€” the knowledge graph + memory store everything else depends on
+â— Core layer — the knowledge graph + memory store everything else depends on
 
 Read access is default Â· Write access is always a separate, explicit grant

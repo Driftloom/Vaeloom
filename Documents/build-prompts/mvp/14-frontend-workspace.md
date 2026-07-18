@@ -1,4 +1,4 @@
-﻿# 14 â€” Frontend & Workspace UI (MVP)
+﻿# 14 — Frontend & Workspace UI (MVP)
 
 ```mermaid
 graph TD
@@ -47,37 +47,37 @@ graph TD
 ```
 
 ## Context
-Read `13-api-backend.md` first â€” every screen here consumes that API, nothing talks to a database or agent directly from the frontend. This phase is where the product becomes something a real user can actually use.
+Read `13-api-backend.md` first — every screen here consumes that API, nothing talks to a database or agent directly from the frontend. This phase is where the product becomes something a real user can actually use.
 
 ## Objective
 Build the Next.js frontend covering every MVP screen, replacing the placeholder Dashboard from file 01.
 
 ## Requirements
 
-**Design system:** dark theme by default (reuse the established Vaeloom visual identity if design files are available in the repo/docs: deep ink background, periwinkle-blue accent, coral highlight, Space Grotesk for display type, IBM Plex Mono for labels/data) â€” consistent branding across every screen, not a generic admin-dashboard template look. Reference the design tokens in `Vaeloom-Documentation-Site.html` / `Vaeloom-How-It-Works-Visual.html` if present in the project for exact values.
+**Design system:** dark theme by default (reuse the established Vaeloom visual identity if design files are available in the repo/docs: deep ink background, periwinkle-blue accent, coral highlight, Space Grotesk for display type, IBM Plex Mono for labels/data) — consistent branding across every screen, not a generic admin-dashboard template look. Reference the design tokens in `Vaeloom-Documentation-Site.html` / `Vaeloom-How-It-Works-Visual.html` if present in the project for exact values.
 
 **Screens to build:**
-- **Dashboard** â€” aggregated summary (memory growth, active applications, upcoming deadlines, recent activity, suggestions) â€” read-only composition of other screens' data, no unique logic of its own.
-- **Workspace** â€” file/folder browser, in-app viewer (PDF, image, text minimum for MVP), Organization Agent proposal approval cards.
-- **Memory Graph** â€” a navigable (not just illustrative) view of the knowledge graph; clicking a node shows its connections and source documents.
-- **Resume** â€” rich text/structured editor for the master resume, variant picker, gap-fill question prompts inline.
-- **Jobs** â€” ranked shortlist cards with fit reasons, approve/reject actions.
-- **Applications** â€” status board (kanban-style: shortlisted â†’ tailoring â†’ submitted â†’ interviewing â†’ offer/rejected).
-- **Chat** â€” message thread with the Orchestrator, showing which agent responded and citing sources (file 06's provenance).
-- **Schedule** â€” calendar + list view, conflict flags visible.
-- **Connectors** â€” connection cards with status, connect/revoke actions.
-- **History** â€” filterable `agent_actions` log (audit trail from file 12).
-- **Settings** â€” per-agent autonomy level controls, data export/delete buttons (file 15).
+- **Dashboard** — aggregated summary (memory growth, active applications, upcoming deadlines, recent activity, suggestions) — read-only composition of other screens' data, no unique logic of its own.
+- **Workspace** — file/folder browser, in-app viewer (PDF, image, text minimum for MVP), Organization Agent proposal approval cards.
+- **Memory Graph** — a navigable (not just illustrative) view of the knowledge graph; clicking a node shows its connections and source documents.
+- **Resume** — rich text/structured editor for the master resume, variant picker, gap-fill question prompts inline.
+- **Jobs** — ranked shortlist cards with fit reasons, approve/reject actions.
+- **Applications** — status board (kanban-style: shortlisted → tailoring → submitted → interviewing → offer/rejected).
+- **Chat** — message thread with the Orchestrator, showing which agent responded and citing sources (file 06's provenance).
+- **Schedule** — calendar + list view, conflict flags visible.
+- **Connectors** — connection cards with status, connect/revoke actions.
+- **History** — filterable `agent_actions` log (audit trail from file 12).
+- **Settings** — per-agent autonomy level controls, data export/delete buttons (file 15).
 
-**Empty and error states:** every screen needs an explicit empty state (e.g. Workspace with zero files yet) and error state (API unreachable, permission denied) â€” not a blank white screen or an unhandled exception.
+**Empty and error states:** every screen needs an explicit empty state (e.g. Workspace with zero files yet) and error state (API unreachable, permission denied) — not a blank white screen or an unhandled exception.
 
-**Approval flows:** anywhere an agent proposes a suggest-mode action (Organization Agent renames, Job Search Agent shortlist, Application Agent submission), the UI must make approve/reject a first-class, low-friction action â€” this is the primary interaction loop for most of the product, it should never feel buried.
+**Approval flows:** anywhere an agent proposes a suggest-mode action (Organization Agent renames, Job Search Agent shortlist, Application Agent submission), the UI must make approve/reject a first-class, low-friction action — this is the primary interaction loop for most of the product, it should never feel buried.
 
 ## Out of scope
 Admin console, Analytics screen, Developer Mode/Plugin management UI, full accessibility audit pass (a basic keyboard-navigable pass is expected, a formal audit is enterprise phase), mobile app (a companion, not full parity).
 
 ## Acceptance criteria
-- [ ] A full click-through of the MVP user journey (sign up â†’ connect a source â†’ upload a resume â†’ see it organized â†’ see the master resume update â†’ search for and approve a job match â†’ see it on the Applications board) works against the real API with no mocked data.
+- [ ] A full click-through of the MVP user journey (sign up → connect a source → upload a resume → see it organized → see the master resume update → search for and approve a job match → see it on the Applications board) works against the real API with no mocked data.
 - [ ] Every screen has a tested empty state and error state.
 - [ ] Approval/rejection of any proposed agent action updates both the UI and the underlying `agent_actions` record correctly.
 - [ ] Basic keyboard navigation works across all screens (tab order, focus states, no mouse-only interactions).
@@ -95,7 +95,7 @@ Admin console, Analytics screen, Developer Mode/Plugin management UI, full acces
 | Practice | Why |
 |----------|-----|
 | Build against the real API from day one (not mocked data) | Catches API contract mismatches early, not during the integration phase |
-| Implement approval flows as first-class UI components | Approve/reject is the most frequent user action â€” it should be a single click, not a multi-step form |
+| Implement approval flows as first-class UI components | Approve/reject is the most frequent user action — it should be a single click, not a multi-step form |
 | Test every screen's empty state by loading with a fresh workspace | The first-run experience must feel intentional, not broken |
 
 ## Security Considerations
