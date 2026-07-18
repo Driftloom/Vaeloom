@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Agent, AgentExecution, PaginatedResponse } from '@vaeloom/shared-types';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -7,6 +7,7 @@ import type { AuthedUser } from '../auth/jwt.strategy';
 import { AgentsService } from './agents.service';
 import { CreateAgentDto } from './dto/create-agent.dto';
 import { ExecuteAgentDto } from './dto/execute-agent.dto';
+import type { Request, Response } from 'express';
 
 @ApiTags('agents')
 @ApiBearerAuth()
@@ -54,5 +55,59 @@ export class AgentsController {
     @Param('id') id: string,
   ): Promise<PaginatedResponse<AgentExecution>> {
     return this.agents.getExecutions(id, user.id);
+  }
+
+  @Get(':id/execute/stream')
+  @ApiOperation({ summary: 'Execute an agent with SSE streaming' })
+  async executeStream(
+    @CurrentUser() user: AuthedUser,
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const aiUrl = `${(this.agents as any).aiServiceUrl}/agents/${id}/execute/stream`;
+
+    try {
+      const apiRes = await fetch(aiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': user.id,
+        },
+        body: JSON.stringify({ input: req.query, tenantId: user.id }),
+      });
+
+      if (!apiRes.ok) {
+        res.write(`event: error\ndata: ${JSON.stringify({ message: 'AI service error' })}\n\n`);
+        res.end();
+        return;
+      }
+
+      const reader = apiRes.body?.getReader();
+      if (!reader) {
+        res.write(`event: error\ndata: ${JSON.stringify({ message: 'No response body' })}\n\n`);
+        res.end();
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      req.on('close', () => { reader.cancel(); });
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        res.write(chunk);
+      }
+      res.end();
+    } catch {
+      res.write(`event: error\ndata: ${JSON.stringify({ message: 'Stream failed' })}\n\n`);
+      res.end();
+    }
   }
 }
