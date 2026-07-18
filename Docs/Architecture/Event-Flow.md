@@ -136,12 +136,12 @@ sequenceDiagram
     API-->>U: 202 Accepted
 
     STREAM->>ORCH: consume agent.run.requested
-    ORCH->>ORCH: Classify intent → select Resume Agent
+    ORCH->>ORCH: Classify intent --> select Resume Agent
     ORCH->>STREAM: emit agent.run.dispatched { id, agent: "resume", plan }
 
     STREAM->>AGENT: consume agent.run.dispatched
     AGENT->>MEMORY: Read user's career memories, skills, achievements
-    AGENT->>AGENT: Generate resume optimization (via AI Gateway → LLM)
+    AGENT->>AGENT: Generate resume optimization (via AI Gateway --> LLM)
     AGENT->>GUARD: Submit output for QA check
     GUARD->>GUARD: Validate: no hallucination, no PII leak, format correct
     GUARD-->>AGENT: approved / rejected

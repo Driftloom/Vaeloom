@@ -1,11 +1,11 @@
-﻿# Storage Architecture
+# Storage Architecture
 
 > **Purpose:** Define the storage architecture for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 >
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../Docs/Vaeloom-Complete-Documentation.md#11-database-design)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../docs/Vaeloom-Complete-Documentation.md#11-database-design)
 
 ## Storage Systems
 
@@ -44,34 +44,34 @@ graph LR
 | Mistake | Why It's a Problem |
 |---------|-------------------|
 | Choosing a dedicated database (Neo4j, Qdrant) before the MVP is validated | Running separate database systems for graph and vector at MVP adds operational complexity, cost, and migration risk before the product proves its value |
-| No data retention policy for object storage | Raw uploaded documents accumulate indefinitely without a retention policy â€” storage costs grow linearly with time, and stale documents may contain outdated or superseded information |
-| Using PostgreSQL for everything including ephemeral data | Session data, cache-hot data, and working memory should live in Redis, not PostgreSQL â€” storing ephemeral data in Postgres wastes connection pool slots and I/O on data that doesn't need durability |
-| Ignoring the cost of vector storage at scale | Embeddings (1536 dimensions per vector) grow linearly with content â€” at 100K documents, the vector store alone can consume 2-3GB of storage and degrade query performance without proper indexing |
+| No data retention policy for object storage | Raw uploaded documents accumulate indefinitely without a retention policy — storage costs grow linearly with time, and stale documents may contain outdated or superseded information |
+| Using PostgreSQL for everything including ephemeral data | Session data, cache-hot data, and working memory should live in Redis, not PostgreSQL — storing ephemeral data in Postgres wastes connection pool slots and I/O on data that doesn't need durability |
+| Ignoring the cost of vector storage at scale | Embeddings (1536 dimensions per vector) grow linearly with content — at 100K documents, the vector store alone can consume 2-3GB of storage and degrade query performance without proper indexing |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Start with PostgreSQL + AGE + pgvector at MVP; migrate to dedicated stores only when performance metrics demand it | One database to operate at MVP reduces complexity; the migration path (AGEâ†’Neo4j, pgvectorâ†’Qdrant) is additive â€” the dedicated store runs alongside Postgres until the migration is validated |
-| Define retention policies per data type | Raw documents: 90 days without read access â†’ archive; memory records: permanent; session cache: 24 hours; agent logs: 30 days â€” each data type has a different durability and access pattern |
-| Use the right storage for the right data class | Relational data â†’ PostgreSQL; graph data â†’ AGE/Neo4j; vectors â†’ pgvector/Qdrant; ephemeral/queue â†’ Redis; raw files â†’ S3 â€” using one store for everything creates a single point of failure and performance bottleneck |
-| Index vector stores with IVFFlat indexing for sub-100ms queries | Without proper indexing, vector similarity searches are O(n) â€” IVFFlat provides approximate nearest neighbor search that stays fast even with 100K+ vectors |
+| Start with PostgreSQL + AGE + pgvector at MVP; migrate to dedicated stores only when performance metrics demand it | One database to operate at MVP reduces complexity; the migration path (AGE→Neo4j, pgvector→Qdrant) is additive — the dedicated store runs alongside Postgres until the migration is validated |
+| Define retention policies per data type | Raw documents: 90 days without read access → archive; memory records: permanent; session cache: 24 hours; agent logs: 30 days — each data type has a different durability and access pattern |
+| Use the right storage for the right data class | Relational data → PostgreSQL; graph data → AGE/Neo4j; vectors → pgvector/Qdrant; ephemeral/queue → Redis; raw files → S3 — using one store for everything creates a single point of failure and performance bottleneck |
+| Index vector stores with IVFFlat indexing for sub-100ms queries | Without proper indexing, vector similarity searches are O(n) — IVFFlat provides approximate nearest neighbor search that stays fast even with 100K+ vectors |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Object storage bucket misconfiguration | S3 buckets containing raw documents must not be publicly accessible â€” enforce bucket policies that restrict access to the application service account only |
-| Cache data including sensitive user information | Cached dashboard data, resume renders, and agent responses may contain PII â€” ensure Redis cache is encrypted at rest and flushed on workspace deletion |
-| Cross-tenant data leakage in shared database instances | A shared PostgreSQL instance serving multiple workspaces must enforce workspace_id scoping on every query â€” a missing WHERE workspace_id clause is a cross-tenant data leak |
+| Object storage bucket misconfiguration | S3 buckets containing raw documents must not be publicly accessible — enforce bucket policies that restrict access to the application service account only |
+| Cache data including sensitive user information | Cached dashboard data, resume renders, and agent responses may contain PII — ensure Redis cache is encrypted at rest and flushed on workspace deletion |
+| Cross-tenant data leakage in shared database instances | A shared PostgreSQL instance serving multiple workspaces must enforce workspace_id scoping on every query — a missing WHERE workspace_id clause is a cross-tenant data leak |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Connection pool sizing per service | Each service (api, ai-service, worker) needs its own connection pool â€” allocate extra connections to handle traffic spikes without exhausting database connections (max: 80% of DB's max_connections) |
-| Query performance degradation with vector store growth | As embedding count grows, exact nearest-neighbor search slows linearly â€” use IVFFlat (inverted file) indexing with appropriate lists parameter (lists = sqrt(rows)) for sub-10ms approximate search |
-| Cache hit ratio monitoring | If application cache (Redis) hit ratio falls below 80%, the cache configuration needs adjustment â€” increase cache TTL, pre-warm on deploy, or review invalidation policy |
+| Connection pool sizing per service | Each service (api, ai-service, worker) needs its own connection pool — allocate extra connections to handle traffic spikes without exhausting database connections (max: 80% of DB's max_connections) |
+| Query performance degradation with vector store growth | As embedding count grows, exact nearest-neighbor search slows linearly — use IVFFlat (inverted file) indexing with appropriate lists parameter (lists = sqrt(rows)) for sub-10ms approximate search |
+| Cache hit ratio monitoring | If application cache (Redis) hit ratio falls below 80%, the cache configuration needs adjustment — increase cache TTL, pre-warm on deploy, or review invalidation policy |
 
 ## Goals
 
@@ -117,13 +117,13 @@ graph LR
 |-----------|---------------|------------|---------------|
 | PostgreSQL Primary | Structured data, audit trail, query processing | PostgreSQL 16 | Vertical scale then read replicas |
 | Object Storage | Raw documents, uploaded files | S3-compatible (MinIO / AWS S3) | Multi-region replication |
-| Vector Store | Semantic embeddings for search and RAG | pgvector â†’ Qdrant | IVFFlat then dedicated Qdrant cluster |
-| Graph Store | Entity relationships and knowledge graph | Apache AGE â†’ Neo4j | Read replicas then dedicated Neo4j |
+| Vector Store | Semantic embeddings for search and RAG | pgvector → Qdrant | IVFFlat then dedicated Qdrant cluster |
+| Graph Store | Entity relationships and knowledge graph | Apache AGE → Neo4j | Read replicas then dedicated Neo4j |
 | Cache Store | Frequently accessed data for low-latency reads | Redis | Redis Cluster with sharding |
 
 ## Data Flow
 
-1. User uploads a document â€” the file is stored in S3 object storage with versioning enabled and metadata written to PostgreSQL
+1. User uploads a document — the file is stored in S3 object storage with versioning enabled and metadata written to PostgreSQL
 2. Ingestion pipeline reads the file from S3, processes it, and stores extracted entities in the graph store and embeddings in the vector store
 3. Application queries data through PostgreSQL for structured queries, AGE for relationship traversal, and pgvector for semantic similarity
 4. Frequently accessed results are cached in Redis with event-based invalidation to reduce load on primary stores
@@ -231,4 +231,4 @@ store.create_index(dimensions=1536, lists=100)
 
 - [Database Design](../Database/Database-Design.md)
 - [Caching.md](./Caching.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../Docs/Vaeloom-Complete-Documentation.md#11-database-design)
+- [`/docs/Vaeloom-Complete-Documentation.md#11-database-design`](../../docs/Vaeloom-Complete-Documentation.md#11-database-design)

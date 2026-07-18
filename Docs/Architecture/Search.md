@@ -1,10 +1,10 @@
-﻿# Search Architecture
+# Search Architecture
 
-> **Purpose:** Define the search architecture for Vaeloom â€” how users and agents find information across documents, memory, knowledge graph, and connected services
-> **Status:** âœ… Upgraded to enterprise quality
+> **Purpose:** Define the search architecture for Vaeloom — how users and agents find information across documents, memory, knowledge graph, and connected services
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-12
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#18-global-search`](../../Docs/06-Vaeloom-Enterprise-Paper.md#18-global-search)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#18-global-search`](../../docs/06-Vaeloom-Enterprise-Paper.md#18-global-search)
 
 ---
 
@@ -231,7 +231,7 @@ function typePriority(source: string): number {
 
 ## Data Flow
 
-1. User submits search query through search bar or API â€” query router captures intent, query text, and workspace context
+1. User submits search query through search bar or API — query router captures intent, query text, and workspace context
 2. Router classifies query type (natural language, exact term, relationship, or hybrid) and dispatches to appropriate backends
 3. Each backend (keyword, vector, graph) executes search in parallel with workspace_id filter applied
 4. Results are merged, deduplicated, and scored using the weighted ranking algorithm (relevance 0.5, freshness 0.2, importance 0.15, type priority 0.15)
@@ -335,4 +335,4 @@ curl -X POST "https://api.Vaeloom.dev/search" \
 - [`AI/Embeddings.md`](../AI/Embeddings.md)
 - [`AI/Knowledge-Graph.md`](../AI/Knowledge-Graph.md)
 - [`Database/Indexes.md`](../Database/Indexes.md)
-- [`/Docs/06-Vaeloom-Enterprise-Paper.md#18-global-search`](../../Docs/06-Vaeloom-Enterprise-Paper.md#18-global-search)
+- [`/docs/06-Vaeloom-Enterprise-Paper.md#18-global-search`](../../docs/06-Vaeloom-Enterprise-Paper.md#18-global-search)

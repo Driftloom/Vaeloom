@@ -54,7 +54,7 @@ graph LR
 
     subgraph Processing["Processing"]
     INGEST["Ingestion Pipeline<br/>(parse, extract, chunk)"]:::process
-    EMBED["Embedding Service<br/>(text → vectors)"]:::process
+    EMBED["Embedding Service<br/>(text --> vectors)"]:::process
     GRAPH["Knowledge Graph<br/>(entity extraction, linking)"]:::process
     REDACT["PII Redaction<br/>(detect, mask, log)"]:::process
     GUARD["Guardrails<br/>(validate, QA)"]:::process
