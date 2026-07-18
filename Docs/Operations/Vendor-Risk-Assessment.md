@@ -33,10 +33,10 @@ graph TD
     end
 
     subgraph Tiers["Risk Tiers"]
-        T1["Tier 1 â€” Critical<br/>Customer data processed<br/>No viable alternative"]
-        T2["Tier 2 â€” High<br/>Customer data processed<br/>Alternative exists"]
-        T3["Tier 3 â€” Medium<br/>Business operations<br/>No customer data"]
-        T4["Tier 4 â€” Low<br/>Ancillary service<br/>Easily replaceable"]
+        T1["Tier 1 -- Critical<br/>Customer data processed<br/>No viable alternative"]
+        T2["Tier 2 -- High<br/>Customer data processed<br/>Alternative exists"]
+        T3["Tier 3 -- Medium<br/>Business operations<br/>No customer data"]
+        T4["Tier 4 -- Low<br/>Ancillary service<br/>Easily replaceable"]
     end
 
     subgraph Assessment["Assessment Process"]
@@ -75,14 +75,14 @@ graph TD
 
 | Vendor | Service | Risk Tier | Data Classification | Assessment Frequency | DPA Signed | Certifications |
 |--------|---------|-----------|-------------------|---------------------|------------|----------------|
-| **Anthropic** | AI model inference (Claude API) | Tier 1 â€” Critical | User documents, agent inputs/outputs | Annual | âœ… Signed | SOC 2 Type II |
-| **OpenAI** | AI model inference (fallback) | Tier 1 â€” Critical | User documents, agent inputs/outputs | Annual | âœ… Signed | SOC 2 Type II |
-| **Clerk / Auth0** | Authentication, SSO, MFA | Tier 1 â€” Critical | User identities, email, hashed passwords | Annual | âœ… Signed | SOC 2 Type II, ISO 27001 |
-| **AWS** | Compute (ECS), Storage (S3), Database (RDS) | Tier 1 â€” Critical | All customer data at rest | Annual | âœ… Signed (DDA) | SOC 2 Type II, ISO 27001, FedRAMP |
-| **Vercel** | Frontend hosting, Edge Functions | Tier 2 â€” High | Session tokens, page views | Annual | âœ… Signed | SOC 2 Type II |
-| **Fly.io** | AI service hosting, GPU instances | Tier 2 â€” High | Agent inference inputs/outputs (transient) | Annual | âœ… Signed | SOC 2 Type II |
-| **Resend / AWS SES** | Transactional email delivery | Tier 3 â€” Medium | Email addresses, notification content | Annual | âœ… Signed | SOC 2 Type II (SES) |
-| **GitHub** | Source control, CI/CD | Tier 4 â€” Low | Source code, CI config, deployment keys | Annual | âœ… Signed | SOC 2 Type II |
+| **Anthropic** | AI model inference (Claude API) | Tier 1 — Critical | User documents, agent inputs/outputs | Annual | âœ… Signed | SOC 2 Type II |
+| **OpenAI** | AI model inference (fallback) | Tier 1 — Critical | User documents, agent inputs/outputs | Annual | âœ… Signed | SOC 2 Type II |
+| **Clerk / Auth0** | Authentication, SSO, MFA | Tier 1 — Critical | User identities, email, hashed passwords | Annual | âœ… Signed | SOC 2 Type II, ISO 27001 |
+| **AWS** | Compute (ECS), Storage (S3), Database (RDS) | Tier 1 — Critical | All customer data at rest | Annual | âœ… Signed (DDA) | SOC 2 Type II, ISO 27001, FedRAMP |
+| **Vercel** | Frontend hosting, Edge Functions | Tier 2 — High | Session tokens, page views | Annual | âœ… Signed | SOC 2 Type II |
+| **Fly.io** | AI service hosting, GPU instances | Tier 2 — High | Agent inference inputs/outputs (transient) | Annual | âœ… Signed | SOC 2 Type II |
+| **Resend / AWS SES** | Transactional email delivery | Tier 3 — Medium | Email addresses, notification content | Annual | âœ… Signed | SOC 2 Type II (SES) |
+| **GitHub** | Source control, CI/CD | Tier 4 — Low | Source code, CI config, deployment keys | Annual | âœ… Signed | SOC 2 Type II |
 
 ## Assessment Process
 
@@ -121,7 +121,7 @@ All vendors processing customer data must meet the following minimum requirement
 
 | Practice | Rationale |
 |----------|----------|
-| Classify vendors by data sensitivity and criticality | Not all vendors pose the same risk â€” tiered assessment focuses resources on highest-risk relationships |
+| Classify vendors by data sensitivity and criticality | Not all vendors pose the same risk — tiered assessment focuses resources on highest-risk relationships |
 | Require SOC 2 Type II or equivalent for Tier 1 vendors | Independent audit reduces Vaeloom's audit burden; provides objective evidence of controls |
 | Document exit strategy before onboarding | Switching AI providers mid-crisis is harder than planning the switch in advance |
 | Monitor vendor status pages proactively | Vendors announce incidents before they escalate to Vaeloom's customers; early warning enables proactive communication |
@@ -158,13 +158,13 @@ All vendors processing customer data must meet the following minimum requirement
 
 ## Workflows
 
-1. **Vendor onboarding:** Procurement request â†’ security questionnaire â†’ risk tier determination â†’ DPA execution â†’ ongoing monitoring
-2. **Initial assessment:** Send security questionnaire â†’ review SOC 2/ISO certs â†’ assess BCP â†’ determine data classification
-3. **Risk tier assignment:** Tier 1 (critical, no alternative) â†’ Tier 2 (high, alternative exists) â†’ Tier 3 (medium, ops only) â†’ Tier 4 (low)
-4. **DPA execution:** Review data processing terms â†’ confirm sub-processors â†’ sign DPA â†’ store in compliance repository
-5. **Annual re-assessment:** Re-evaluate vendor security posture â†’ check for changes in certifications, acquisitions, or data handling
-6. **Vendor offboarding:** Confirm data deletion â†’ revoke access â†’ archive DPA â†’ document exit summary
-7. **Incident notification:** Vendor breach notification (within 24h) â†’ assess impact â†’ notify stakeholders â†’ update risk assessment
+1. **Vendor onboarding:** Procurement request → security questionnaire → risk tier determination → DPA execution → ongoing monitoring
+2. **Initial assessment:** Send security questionnaire → review SOC 2/ISO certs → assess BCP → determine data classification
+3. **Risk tier assignment:** Tier 1 (critical, no alternative) → Tier 2 (high, alternative exists) → Tier 3 (medium, ops only) → Tier 4 (low)
+4. **DPA execution:** Review data processing terms → confirm sub-processors → sign DPA → store in compliance repository
+5. **Annual re-assessment:** Re-evaluate vendor security posture → check for changes in certifications, acquisitions, or data handling
+6. **Vendor offboarding:** Confirm data deletion → revoke access → archive DPA → document exit summary
+7. **Incident notification:** Vendor breach notification (within 24h) → assess impact → notify stakeholders → update risk assessment
 
 ---
 
@@ -238,7 +238,7 @@ All vendors processing customer data must meet the following minimum requirement
 ### In Scope
 
 - Complete vendor registry for all eight Vaeloom third-party vendors with risk tier, data classification, assessment frequency, DPA status, and certifications for each
-- Four-tier vendor risk classification: Tier 1 (Critical â€” customer data processed, no viable alternative), Tier 2 (High â€” customer data processed, alternative exists), Tier 3 (Medium â€” business operations, no customer data), Tier 4 (Low â€” ancillary service, easily replaceable)
+- Four-tier vendor risk classification: Tier 1 (Critical — customer data processed, no viable alternative), Tier 2 (High — customer data processed, alternative exists), Tier 3 (Medium — business operations, no customer data), Tier 4 (Low — ancillary service, easily replaceable)
 - Assessment process with tier-dependent depth: Tier 1 requires full assessment (SOC 2 + pen test + BCP), Tier 2 requires standard assessment (SOC 2 + DPA), Tier 3 requires basic assessment (DPA + public docs), Tier 4 requires light assessment (AUP review)
 - Data processing requirements for all vendors: DPA compliance, data classification acknowledgment, sub-processor notification, data deletion within 30 days, breach notification within 24 hours, audit rights, and data residency
 - Error handling for vendor risk events: SOC 2 certification expiry, vendor acquisition, data breach notification, and sub-processor changes
@@ -263,7 +263,7 @@ All vendors processing customer data must meet the following minimum requirement
     {
       "name": "Anthropic",
       "service": "AI model inference",
-      "risk_tier": "Tier 1 â€” Critical",
+      "risk_tier": "Tier 1 — Critical",
       "data_classification": "User documents, agent inputs/outputs",
       "dpa_signed": true,
       "certifications": ["SOC 2 Type II"],
@@ -272,7 +272,7 @@ All vendors processing customer data must meet the following minimum requirement
     {
       "name": "GitHub",
       "service": "Source control + CI/CD",
-      "risk_tier": "Tier 4 â€” Low",
+      "risk_tier": "Tier 4 — Low",
       "data_classification": "Source code, CI config",
       "dpa_signed": true,
       "certifications": ["SOC 2 Type II"]

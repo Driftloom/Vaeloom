@@ -22,13 +22,13 @@ graph TD
     classDef action fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
     classDef monitor fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph PrimaryRegion["Primary Region â€” us-east-1"]
+    subgraph PrimaryRegion["Primary Region -- us-east-1"]
         PG1["PostgreSQL Primary<br/>RDS Multi-AZ<br/>Writes + reads"]
         WAL["WAL Archives<br/>S3 bucket (encrypted)"]
         MON["Monitoring<br/>CloudWatch + pg_stat_replication"]
     end
 
-    subgraph SecondaryRegion["Secondary Region â€” us-west-2"]
+    subgraph SecondaryRegion["Secondary Region -- us-west-2"]
         PG2["PostgreSQL Replica<br/>Cross-region read replica<br/>Streaming replication"]
         PROMO["Promotion Candidate<br/>Ready for failover"]
     end
@@ -253,11 +253,11 @@ aws rds create-db-instance-read-replica \
 ## Workflows
 
 1. **Detect failure:** CloudWatch alarm (replica lag > 30s, connection failures, write failures, RDS instance degraded)
-2. **Verify primary status:** Confirm primary unreachable via `pg_isready` â†’ check last WAL position on replica
+2. **Verify primary status:** Confirm primary unreachable via `pg_isready` → check last WAL position on replica
 3. **Decide failover:** Automated (3 consecutive health check failures, no response in 5 min) or manual (IC decision)
-4. **Promote replica:** `aws rds promote-read-replica` â†’ verify `pg_is_in_recovery` returns false
-5. **Update connection strings:** Secrets Manager â†’ PgBouncer reload â†’ verify apps connecting to new primary
-6. **Verify reads + writes:** Insert health check row â†’ read it back â†’ check app health endpoint
+4. **Promote replica:** `aws rds promote-read-replica` → verify `pg_is_in_recovery` returns false
+5. **Update connection strings:** Secrets Manager → PgBouncer reload → verify apps connecting to new primary
+6. **Verify reads + writes:** Insert health check row → read it back → check app health endpoint
 7. **Create new replica:** Provision new read replica in secondary region for future failover
 8. **Post-mortem:** Document timeline, data loss (if any), action items to prevent recurrence
 
@@ -322,7 +322,7 @@ aws rds create-db-instance-read-replica \
 ## Goals
 
 - Achieve automated database failover within 5 minutes (RTO) when the primary PostgreSQL instance becomes unavailable, with less than 1 minute of data loss (RPO) through streaming replication
-- Provide clear manual failover procedures with verification steps at each stage â€” primary failure confirmation, replica promotion, connection string update, and read/write verification â€” for scenarios where automated failover does not trigger
+- Provide clear manual failover procedures with verification steps at each stage — primary failure confirmation, replica promotion, connection string update, and read/write verification — for scenarios where automated failover does not trigger
 - Maintain cross-region disaster recovery capability by keeping a warm read replica in us-west-2 with continuous WAL streaming from the primary in us-east-1
 - Ensure rollback procedures are documented and tested quarterly so the team can safely reinstate the original primary if the failover was triggered by a network partition rather than an actual primary failure
 - Prevent split-brain scenarios by enforcing single-writer PostgreSQL architecture and monitoring replication lag at 30-second alert thresholds

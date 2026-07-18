@@ -22,10 +22,10 @@ graph TD
     end
 
     subgraph Budgets["ðŸ“Š Error Budgets (30 days)"]
-        B1["99.9% SLO â†’ 43 min budget"]
-        B2["99.5% SLO â†’ 3.6 hours"]
-        B3["99.0% SLO â†’ 7.2 hours"]
-        B4["99.95% DB â†’ 21.6 min"]
+        B1["99.9% SLO --> 43 min budget"]
+        B2["99.5% SLO --> 3.6 hours"]
+        B3["99.0% SLO --> 7.2 hours"]
+        B4["99.95% DB --> 21.6 min"]
     end
 
     subgraph Response["ðŸ”” SLO Violation Response"]
@@ -42,7 +42,7 @@ graph TD
     class R1,R2,R3,R4 response
 ```
 
-> **Diagram:** SLO architecture â€” **6 objectives** (API availability/latency, AI latency/accuracy, ingestion speed, DB availability) with measurement windows â†’ **error budgets** (43min to 7.2 hours) â†’ **violation response** (4 tiers from normal ops to emergency).
+> **Diagram:** SLO architecture — **6 objectives** (API availability/latency, AI latency/accuracy, ingestion speed, DB availability) with measurement windows → **error budgets** (43min to 7.2 hours) → **violation response** (4 tiers from normal ops to emergency).
 
 ---
 
@@ -79,58 +79,58 @@ graph TD
 
 | Mistake | Consequence |
 |---------|-------------|
-| Setting SLO targets that are too aggressive for the current system maturity | A 99.99% SLO for a new MVP service that hasn't been load-tested will exhaust its error budget in the first week â€” start at 99.5-99.9% and tighten SLOs as the system matures |
-| SLOs that don't distinguish between internal and external objectives | Using a 99.9% SLO for both the load-balanced API (achievable) and AI agent execution (depends on model provider) sets the team up for failure â€” set different SLOs per service based on what's controllable |
-| Error budget policies that are defined but never enforced | A policy that says "freeze features at 75% budget" is meaningless if deploy pipelines don't enforce it â€” automate gating: CI should reject feature deploys when budget consumption is above the threshold |
+| Setting SLO targets that are too aggressive for the current system maturity | A 99.99% SLO for a new MVP service that hasn't been load-tested will exhaust its error budget in the first week — start at 99.5-99.9% and tighten SLOs as the system matures |
+| SLOs that don't distinguish between internal and external objectives | Using a 99.9% SLO for both the load-balanced API (achievable) and AI agent execution (depends on model provider) sets the team up for failure — set different SLOs per service based on what's controllable |
+| Error budget policies that are defined but never enforced | A policy that says "freeze features at 75% budget" is meaningless if deploy pipelines don't enforce it — automate gating: CI should reject feature deploys when budget consumption is above the threshold |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Start with looser SLOs and tighten as the system matures | A 99.9% SLO is appropriate for a mature system; 99.5% is better for a new service â€” adjusting SLOs down later is hard, but starting conservative and proving you can tighten them builds trust |
-| Set separate SLOs per service based on what's controllable | API availability (controllable) and AI agent availability (depends on model provider) should have different SLOs â€” align each SLO with the team's ability to influence the outcome |
-| Automate error budget enforcement in the deployment pipeline | Manual policy enforcement fails under schedule pressure â€” CI should block feature deploys when budget is above the freeze threshold and allow only reliability improvements |
+| Start with looser SLOs and tighten as the system matures | A 99.9% SLO is appropriate for a mature system; 99.5% is better for a new service — adjusting SLOs down later is hard, but starting conservative and proving you can tighten them builds trust |
+| Set separate SLOs per service based on what's controllable | API availability (controllable) and AI agent availability (depends on model provider) should have different SLOs — align each SLO with the team's ability to influence the outcome |
+| Automate error budget enforcement in the deployment pipeline | Manual policy enforcement fails under schedule pressure — CI should block feature deploys when budget is above the freeze threshold and allow only reliability improvements |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| SLO data being manipulated to avoid feature freezes | A team that resets error budget counters or adjusts measurement windows to avoid a freeze is undermining the SLO system â€” make SLO data immutable and auditable with access restricted to SRE |
-| Error budget consumed by DDoS attacks triggering feature freezes | A DDoS attack can exhaust the API error budget in minutes, wrongly triggering a feature freeze â€” separate security incidents (DDoS, breach) from the error budget and handle them under incident response |
-| SLO dashboards exposed to unauthorized users | SLO compliance data reveals service reliability, which is business-sensitive â€” ensure SLO dashboards require authentication and are not shared publicly without aggregation |
+| SLO data being manipulated to avoid feature freezes | A team that resets error budget counters or adjusts measurement windows to avoid a freeze is undermining the SLO system — make SLO data immutable and auditable with access restricted to SRE |
+| Error budget consumed by DDoS attacks triggering feature freezes | A DDoS attack can exhaust the API error budget in minutes, wrongly triggering a feature freeze — separate security incidents (DDoS, breach) from the error budget and handle them under incident response |
+| SLO dashboards exposed to unauthorized users | SLO compliance data reveals service reliability, which is business-sensitive — ensure SLO dashboards require authentication and are not shared publicly without aggregation |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| SLO calculation at high granularity creating performance overhead | Calculating SLO compliance at per-minute granularity across all services every minute is expensive â€” calculate compliance on a sliding window at query time using pre-aggregated SLI data rather than real-time computation |
-| Error budget alerts that fire too frequently causing alert fatigue | A burn-rate alert that fires every 5 minutes when budget is being consumed quickly creates noise â€” implement multi-window burn-rate alerts (e.g., 1-hour and 6-hour windows) that reduce false positives |
-| SLO compliance queries slowing down the monitoring database | A dashboard query that computes 30-day SLO compliance across 6 services at per-minute granularity scans millions of data points â€” pre-compute SLO compliance daily and cache the results for dashboard queries |
+| SLO calculation at high granularity creating performance overhead | Calculating SLO compliance at per-minute granularity across all services every minute is expensive — calculate compliance on a sliding window at query time using pre-aggregated SLI data rather than real-time computation |
+| Error budget alerts that fire too frequently causing alert fatigue | A burn-rate alert that fires every 5 minutes when budget is being consumed quickly creates noise — implement multi-window burn-rate alerts (e.g., 1-hour and 6-hour windows) that reduce false positives |
+| SLO compliance queries slowing down the monitoring database | A dashboard query that computes 30-day SLO compliance across 6 services at per-minute granularity scans millions of data points — pre-compute SLO compliance daily and cache the results for dashboard queries |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| SLO data being manipulated to avoid feature freezes | A team that resets error budget counters or adjusts measurement windows to avoid a freeze is undermining the SLO system â€” make SLO data immutable and auditable with access restricted to SRE |
-| Error budget consumed by DDoS attacks triggering feature freezes | A DDoS attack can exhaust the API error budget in minutes, wrongly triggering a feature freeze â€” separate security incidents (DDoS, breach) from the error budget and handle them under incident response |
-| SLO dashboards exposed to unauthorized users | SLO compliance data reveals service reliability, which is business-sensitive â€” ensure SLO dashboards require authentication and are not shared publicly without aggregation |
+| SLO data being manipulated to avoid feature freezes | A team that resets error budget counters or adjusts measurement windows to avoid a freeze is undermining the SLO system — make SLO data immutable and auditable with access restricted to SRE |
+| Error budget consumed by DDoS attacks triggering feature freezes | A DDoS attack can exhaust the API error budget in minutes, wrongly triggering a feature freeze — separate security incidents (DDoS, breach) from the error budget and handle them under incident response |
+| SLO dashboards exposed to unauthorized users | SLO compliance data reveals service reliability, which is business-sensitive — ensure SLO dashboards require authentication and are not shared publicly without aggregation |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| SLO calculation at high granularity creating performance overhead | Calculating SLO compliance at per-minute granularity across all services every minute is expensive â€” calculate compliance on a sliding window at query time using pre-aggregated SLI data rather than real-time computation |
-| Error budget alerts that fire too frequently causing alert fatigue | A burn-rate alert that fires every 5 minutes when budget is being consumed quickly creates noise â€” implement multi-window burn-rate alerts (e.g., 1-hour and 6-hour windows) that reduce false positives |
-| SLO compliance queries slowing down the monitoring database | A dashboard query that computes 30-day SLO compliance across 6 services at per-minute granularity scans millions of data points â€” pre-compute SLO compliance daily and cache the results for dashboard queries |
+| SLO calculation at high granularity creating performance overhead | Calculating SLO compliance at per-minute granularity across all services every minute is expensive — calculate compliance on a sliding window at query time using pre-aggregated SLI data rather than real-time computation |
+| Error budget alerts that fire too frequently causing alert fatigue | A burn-rate alert that fires every 5 minutes when budget is being consumed quickly creates noise — implement multi-window burn-rate alerts (e.g., 1-hour and 6-hour windows) that reduce false positives |
+| SLO compliance queries slowing down the monitoring database | A dashboard query that computes 30-day SLO compliance across 6 services at per-minute granularity scans millions of data points — pre-compute SLO compliance daily and cache the results for dashboard queries |
 
 ## Workflows
 
-1. **Define SLO:** Select SLI â†’ set target percentage â†’ define measurement window â†’ set error budget
-2. **Monitor SLO compliance:** Collect SLI data â†’ calculate rolling window compliance â†’ compare to target
-3. **Track error budget:** Compute `(1 - SLO) Ã— period` â†’ deduct consumed budget from failures â†’ check consumption level
-4. **Respond to budget consumption:** < 50% (normal) â†’ 50-75% (reduce deploys) â†’ 75-100% (freeze features) â†’ > 100% (emergency)
-5. **SLO review cycle:** Monthly budget review â†’ quarterly target adjustment â†’ annual SLO renegotiation
-6. **SLO violation post-mortem:** Identify contributing events â†’ analyze burn rate â†’ adjust SLO or error budget policy
+1. **Define SLO:** Select SLI → set target percentage → define measurement window → set error budget
+2. **Monitor SLO compliance:** Collect SLI data → calculate rolling window compliance → compare to target
+3. **Track error budget:** Compute `(1 - SLO) Ã— period` → deduct consumed budget from failures → check consumption level
+4. **Respond to budget consumption:** < 50% (normal) → 50-75% (reduce deploys) → 75-100% (freeze features) → > 100% (emergency)
+5. **SLO review cycle:** Monthly budget review → quarterly target adjustment → annual SLO renegotiation
+6. **SLO violation post-mortem:** Identify contributing events → analyze burn rate → adjust SLO or error budget policy
 
 ---
 
@@ -152,7 +152,7 @@ graph TD
 | Error budget consumed in first week | Burn-rate alert (fast consumption) | Immediate reliability sprint | Adjust SLO or investigate root cause |
 | SLO target too tight for system maturity | Budget exhausted every month | Loosen SLO target temporarily | Tighten as system matures |
 | Multi-service SLO calculation error | Composite SLO shows incorrect value | Verify per-service SLIs independently | Fix composite SLO calculation formula |
-| SLO data gap (no SLIs collected) | Missing compliance data | Extend previous window forward | Fix SLI collection â†’ backfill |
+| SLO data gap (no SLIs collected) | Missing compliance data | Extend previous window forward | Fix SLI collection → backfill |
 
 ---
 
@@ -191,7 +191,7 @@ graph TD
 
 ## Overview
 
-Service Level Objectives (SLOs) are the internal reliability targets that Vaeloom's engineering team commits to achieving. Each SLO translates a raw SLI measurement into a target percentage over a rolling time window â€” for example, "99.9% of API health checks succeed over a rolling 30-day period." SLOs are tighter than SLA commitments, providing a buffer that ensures Vaeloom consistently exceeds customer expectations.
+Service Level Objectives (SLOs) are the internal reliability targets that Vaeloom's engineering team commits to achieving. Each SLO translates a raw SLI measurement into a target percentage over a rolling time window — for example, "99.9% of API health checks succeed over a rolling 30-day period." SLOs are tighter than SLA commitments, providing a buffer that ensures Vaeloom consistently exceeds customer expectations.
 
 This document is intended for the SRE team, engineering managers, and all developers who deploy changes to Vaeloom's production environment. It defines the SLO targets, error budgets, and violation response policies that balance feature velocity against reliability.
 

@@ -23,10 +23,10 @@ graph TD
     T1["Incident Detected<br/>PagerDuty Alert"] --> CMD["Command Center<br/>Establish Incident Command"]
 
     subgraph Tier["Service Recovery Tiers"]
-        T0["Tier 0 â€” Critical<br/>API, Auth, Database<br/>RTO: 1 hour"]
-        T1S["Tier 1 â€” High<br/>AI Service, Document Processing<br/>RTO: 2 hours"]
-        T2S["Tier 2 â€” Medium<br/>Webhooks, Email, Background Jobs<br/>RTO: 4 hours"]
-        T3S["Tier 3 â€” Low<br/>Analytics, Admin Reports<br/>RTO: 24 hours"]
+        T0["Tier 0 -- Critical<br/>API, Auth, Database<br/>RTO: 1 hour"]
+        T1S["Tier 1 -- High<br/>AI Service, Document Processing<br/>RTO: 2 hours"]
+        T2S["Tier 2 -- Medium<br/>Webhooks, Email, Background Jobs<br/>RTO: 4 hours"]
+        T3S["Tier 3 -- Low<br/>Analytics, Admin Reports<br/>RTO: 24 hours"]
     end
 
     subgraph Strategies["Recovery Strategies"]
@@ -57,10 +57,10 @@ graph TD
 
 | Service | Strategy | RTO | RPO | Dependencies |
 |---------|----------|-----|-----|--------------|
-| **API Gateway** | Active-passive cross-region (us-east-1 â†’ us-west-2) | 15 min | 0 | Route53 health check, ALB |
+| **API Gateway** | Active-passive cross-region (us-east-1 → us-west-2) | 15 min | 0 | Route53 health check, ALB |
 | **PostgreSQL (Primary)** | Streaming replica promotion to primary | 5 min | <1 min | WAL archiving, pg_rewind |
 | **PostgreSQL (Read replicas)** | Auto-failover to replica in secondary region | 2 min | 0 | etcd based cluster mgmt |
-| **AI Inference Service** | Fallback model provider (Anthropic â†’ OpenAI) | 10 min | 0 | API key rotation |
+| **AI Inference Service** | Fallback model provider (Anthropic → OpenAI) | 10 min | 0 | API key rotation |
 | **Redis Cache** | Rebuild from database (graceful degradation) | 30 min | 0 | No persistent data loss |
 | **Document Storage (S3)** | Cross-region replication (CRR) | 0 (auto) | 15 min | S3 CRR configuration |
 | **Background Workers** | Re-provision in secondary region via ASG | 30 min | 0 | Queue draining (SQS) |
@@ -81,7 +81,7 @@ sequenceDiagram
 
     alt Automated failover (no response in 5 min)
         C->>C: Auto-failover timer expires
-        C->>DNS: Update health check â†’ failover
+        C->>DNS: Update health check --> failover
         DNS->>REG: Route traffic to secondary region
         REG->>DB: Promote streaming replica
         DB-->>REG: Replica promoted (read-write)
@@ -121,10 +121,10 @@ graph LR
     end
 
     subgraph Templates["Message Templates"]
-        T1["Investigating â€”<br/>'We are investigating reports...'"]
-        T2["Identified â€”<br/>'We have identified the cause...'"]
-        T3["Mitigating â€”<br/>'We are applying a fix...'"]
-        T4["Resolved â€”<br/>'Service has been restored...'"]
+        T1["Investigating --<br/>'We are investigating reports...'"]
+        T2["Identified --<br/>'We have identified the cause...'"]
+        T3["Mitigating --<br/>'We are applying a fix...'"]
+        T4["Resolved --<br/>'Service has been restored...'"]
     end
 
     Internal --> I1 & I2 & I3 & I4
@@ -166,10 +166,10 @@ graph LR
 
 | Practice | Rationale |
 |----------|----------|
-| Document runbooks for every service | During an incident, cognitive load is high â€” runbooks reduce decision time and prevent mistakes |
+| Document runbooks for every service | During an incident, cognitive load is high — runbooks reduce decision time and prevent mistakes |
 | Test failover outside business hours | Real failover may happen at 3 AM; testing during business hours gives false confidence |
 | Automate detection and initial response | Automated failover for Tier 0 services reduces RTO to minutes; manual approval for full failover |
-| Include third-party dependencies in BCP | Clerk/Auth0, Stripe, Anthropic â€” if these go down, what's the fallback? Document each vendor's BCP |
+| Include third-party dependencies in BCP | Clerk/Auth0, Stripe, Anthropic — if these go down, what's the fallback? Document each vendor's BCP |
 
 ## Common Mistakes
 
@@ -203,13 +203,13 @@ graph LR
 ## Workflows
 
 1. **Incident detected** via PagerDuty alert, monitoring dashboard, or user report
-2. **Incident Commander established** â€” first responder declares severity and opens incident channel
-3. **Impact assessment** â€” determine which services/users are affected, data at risk
-4. **Failover decision** â€” automated (no response in 5 min) or manual (IC decision)
-5. **Execute failover** â€” DNS cutover, replica promotion, secondary region activation
-6. **Verify recovery** â€” health checks on secondary region, smoke tests
-7. **Communicate** â€” update status page, notify customers (if > 15 min outage)
-8. **Post-mortem** â€” within 5 business days, identify root cause and action items
+2. **Incident Commander established** — first responder declares severity and opens incident channel
+3. **Impact assessment** — determine which services/users are affected, data at risk
+4. **Failover decision** — automated (no response in 5 min) or manual (IC decision)
+5. **Execute failover** — DNS cutover, replica promotion, secondary region activation
+6. **Verify recovery** — health checks on secondary region, smoke tests
+7. **Communicate** — update status page, notify customers (if > 15 min outage)
+8. **Post-mortem** — within 5 business days, identify root cause and action items
 
 ---
 
@@ -272,8 +272,8 @@ graph LR
 
 - Achieve recovery time objective (RTO) of 4 hours or less for all Vaeloom service tiers, with Tier 0 critical services (API, auth, database) recovering within 1 hour
 - Maintain recovery point objective (RPO) of 1 hour or less, limiting data loss to the last hour of changes to user knowledge graphs, documents, and agent memory
-- Establish automated failover for Tier 0 services and documented manual failover procedures for Tiers 1â€“3, covering AI inference, document processing, and background job execution
-- Ensure communication plans reach all stakeholders â€” internal teams, affected users, and public status page â€” within 15 minutes of disaster declaration
+- Establish automated failover for Tier 0 services and documented manual failover procedures for Tiers 1–3, covering AI inference, document processing, and background job execution
+- Ensure communication plans reach all stakeholders — internal teams, affected users, and public status page — within 15 minutes of disaster declaration
 - Validate continuity readiness through quarterly tabletop exercises, database failover tests, and an annual full regional failover drill
 
 ---

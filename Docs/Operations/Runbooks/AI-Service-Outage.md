@@ -28,12 +28,12 @@ graph TD
         OPENAI["OpenAI GPT-4o<br/>Fallback provider"]
     end
 
-    subgraph AI["AI Service â€” Fly.io"]
+    subgraph AI["AI Service -- Fly.io"]
         ROUTER["Model Router<br/>Smart request distribution"]
-        CB1["Circuit Breaker: Anthropic<br/>5% error â†’ half-open â†’ open"]
-        CB2["Circuit Breaker: OpenAI<br/>5% error â†’ half-open â†’ open"]
+        CB1["Circuit Breaker: Anthropic<br/>5% error --> half-open --> open"]
+        CB2["Circuit Breaker: OpenAI<br/>5% error --> half-open --> open"]
         AGENTS["Agent Executors<br/>Resume, Cover Letter, ATS..."]
-        EMBED["Embedding Service<br/>Text â†’ vector embeddings"]
+        EMBED["Embedding Service<br/>Text --> vector embeddings"]
         CACHE["Inference Cache<br/>Semantic cache (Redis)"]
     end
 
@@ -53,8 +53,8 @@ graph TD
     AGENTS --> CACHE
     EMBED --> CACHE
 
-    CB1 -.->|Open â†’ fallback| F3
-    CB2 -.->|Open â†’ fallback| F3
+    CB1 -.->|Open --> fallback| F3
+    CB2 -.->|Open --> fallback| F3
     CACHE --> F4
 
     class ANTHROPIC,OPENAI upstream
@@ -68,8 +68,8 @@ graph TD
 
 | Metric | Threshold | Window | Severity | Action |
 |--------|-----------|--------|----------|--------|
-| Anthropic Error Rate | > 5% | 1 minute | Critical | Open circuit breaker â†’ fallback to OpenAI |
-| OpenAI Error Rate | > 5% | 1 minute | Critical | Open circuit breaker â†’ degraded mode |
+| Anthropic Error Rate | > 5% | 1 minute | Critical | Open circuit breaker → fallback to OpenAI |
+| OpenAI Error Rate | > 5% | 1 minute | Critical | Open circuit breaker → degraded mode |
 | Inference Latency p99 | > 10s | 5 minutes | Warning | Route to alternative provider |
 | AI Service Health | Not 200 | Immediate | Critical | PagerDuty incident |
 | Embedding Queue Depth | > 1000 | 5 minutes | Warning | Scale up workers |
@@ -135,7 +135,7 @@ const circuitBreakerConfig = {
     failureThreshold: 0.05,
     recoveryTimeoutMs: 60_000, // 60s before half-open
     halfOpenMaxRequests: 2,
-    fallbackProvider: null,    // No further fallback â†’ degraded
+    fallbackProvider: null,    // No further fallback → degraded
   },
 };
 ```
@@ -145,14 +145,14 @@ const circuitBreakerConfig = {
 ```markdown
 # Slack: #ai-service
 :warning: AI Service Degraded
-- Provider: Anthropic â†’ OpenAI (fallback activated)
+- Provider: Anthropic → OpenAI (fallback activated)
 - Circuit breaker: OPEN (5% error rate threshold exceeded)
 - Expected impact: Slightly higher latency, same capabilities
 - ETA: Investigating root cause (incident AI-2026-0713-01)
 
 # Status page update (if outage > 5 minutes)
 Title: AI Service Degraded Performance
-Status: Investigating â†’ Identified â†’ Monitoring â†’ Resolved
+Status: Investigating → Identified → Monitoring → Resolved
 Components: AI Agent Processing
 ```
 
@@ -161,7 +161,7 @@ Components: AI Agent Processing
 ```mermaid
 flowchart LR
     A["Monitor provider status<br/>Check Anthropic status page"] --> B{"Provider healthy?"}
-    B -->|Yes| C["Close circuit breaker<br/>Half-open â†’ probe â†’ close"]
+    B -->|Yes| C["Close circuit breaker<br/>Half-open --> probe --> close"]
     C --> D["Verify inference quality<br/>Compare fallback vs primary results"]
     D --> E["Restore primary provider<br/>Flip feature flag"]
     E --> F["Monitor 30 minutes<br/>Error rate < 1%"]
@@ -192,8 +192,8 @@ curl -s https://ai.Vaeloom.dev/v1/health
 | Practice | Rationale |
 |----------|----------|
 | Always have a fallback provider configured | Single-provider dependency means any upstream outage is a full Vaeloom outage; two providers reduces blast radius |
-| Use semantic caching for common queries | Resume optimization and cover letter generation often produce similar results â€” cache saves cost and reduces fallback load during partial outages |
-| Test fallback activation monthly | Fallback that has never been tested will fail when needed â€” run monthly chaos experiments that simulate provider outages |
+| Use semantic caching for common queries | Resume optimization and cover letter generation often produce similar results — cache saves cost and reduces fallback load during partial outages |
+| Test fallback activation monthly | Fallback that has never been tested will fail when needed — run monthly chaos experiments that simulate provider outages |
 | Implement gradual fallback activation | Switching all traffic instantly may overwhelm fallback provider; ramp up over 2-3 minutes |
 
 ## Common Mistakes
@@ -201,8 +201,8 @@ curl -s https://ai.Vaeloom.dev/v1/health
 | Mistake | Consequence | Fix |
 |---------|-------------|-----|
 | No fallback provider configured | Any upstream outage = complete AI service outage | Always maintain a warm fallback provider; test failover monthly |
-| Circuit breaker reset too quickly | Provider still degraded â†’ immediate re-failure â†’ oscillation | Use half-open state with minimum recovery timeout (30s) and probe requests before closing |
-| Fallback provider rate limit exceeded | All traffic shifted to fallback exceeds its rate limit â†’ secondary failure | Reduce request rate via rate_limit_multiplier during fallback; pre-negotiate higher limits with fallback provider |
+| Circuit breaker reset too quickly | Provider still degraded → immediate re-failure → oscillation | Use half-open state with minimum recovery timeout (30s) and probe requests before closing |
+| Fallback provider rate limit exceeded | All traffic shifted to fallback exceeds its rate limit → secondary failure | Reduce request rate via rate_limit_multiplier during fallback; pre-negotiate higher limits with fallback provider |
 | Not distinguishing provider vs. infrastructure outage | Model router flaps between providers when both are healthy but Fly.io has a networking issue | Add infrastructure health checks separate from provider health checks |
 
 ## Security Considerations
@@ -222,19 +222,19 @@ curl -s https://ai.Vaeloom.dev/v1/health
 | Fallback provider latency | OpenAI fallback typically 200-500ms slower than Anthropic; timeout increased to 15s in degraded mode |
 | Circuit breaker overhead | State checks add <1ms per request; state stored in Redis with 1s TTL |
 | Semantic cache hit rate | Target 30% cache hit rate for agent results; cache warmed by prefixing common prompt patterns |
-| Fallback provider concurrency | Fallback provider may have lower rate limits â€” concurrency throttled to 50% of normal during fallback |
+| Fallback provider concurrency | Fallback provider may have lower rate limits — concurrency throttled to 50% of normal during fallback |
 | Cache rebuild on provider restore | Inference cache invalidated when switching providers (different response characteristics); cache warms naturally within 10 minutes |
 
 ## Workflows
 
-1. **Detect outage:** Monitoring alert (5% error rate over 1 min) or user report â†’ acknowledge within SLA
-2. **Verify scope:** Check circuit breaker states â†’ check provider status pages â†’ determine if provider or infra issue
-3. **Activate fallback:** Feature flag to switch provider â†’ verify circuit breaker opens â†’ confirm fallback responding
-4. **Enable degraded mode:** Reduce request rate â†’ increase timeouts â†’ enable cache-only for non-critical paths
-5. **Notify stakeholders:** Update Slack #ai-service â†’ update status page â†’ notify support team
-6. **Monitor recovery:** Check provider status â†’ observe error rate declining â†’ prepare to close circuit breaker
-7. **Restore primary:** Close circuit breaker â†’ switch back to primary â†’ verify quality â†’ monitor 30 minutes
-8. **Post-mortem:** Document timeline, root cause mitigation gaps â†’ update runbook
+1. **Detect outage:** Monitoring alert (5% error rate over 1 min) or user report → acknowledge within SLA
+2. **Verify scope:** Check circuit breaker states → check provider status pages → determine if provider or infra issue
+3. **Activate fallback:** Feature flag to switch provider → verify circuit breaker opens → confirm fallback responding
+4. **Enable degraded mode:** Reduce request rate → increase timeouts → enable cache-only for non-critical paths
+5. **Notify stakeholders:** Update Slack #ai-service → update status page → notify support team
+6. **Monitor recovery:** Check provider status → observe error rate declining → prepare to close circuit breaker
+7. **Restore primary:** Close circuit breaker → switch back to primary → verify quality → monitor 30 minutes
+8. **Post-mortem:** Document timeline, root cause mitigation gaps → update runbook
 
 ---
 
@@ -299,7 +299,7 @@ curl -s https://ai.Vaeloom.dev/v1/health
 - Restore AI service functionality within 10 minutes of detection by activating the fallback provider (OpenAI GPT-4o) when the primary provider (Anthropic Claude) becomes unavailable
 - Achieve full recovery within 2 hours by diagnosing the root cause and restoring primary provider operations
 - Maintain graceful degradation during outages by leveraging semantic inference caching for common queries (resume optimization, cover letter generation) and reducing request rate to protect the fallback provider
-- Ensure circuit breaker patterns prevent cascading failures â€” opening the provider circuit at 5% error rate over 1 minute with automatic half-open probing for recovery
+- Ensure circuit breaker patterns prevent cascading failures — opening the provider circuit at 5% error rate over 1 minute with automatic half-open probing for recovery
 - Test fallback activation monthly through chaos experiments that simulate provider outages, ensuring the failover path works when needed
 
 ## Scope
@@ -318,7 +318,7 @@ curl -s https://ai.Vaeloom.dev/v1/health
 - Infrastructure-level outages affecting Fly.io GPU instance availability (covered in Operations Runbook)
 - Database or cache failures that may accompany or compound AI service degradation (covered in Cache Failure runbook)
 - Vendor risk assessment and DPA review for AI model providers (covered in Vendor Risk Assessment)
-- Multi-provider routing beyond the Anthropic â†’ OpenAI â†’ degraded fallback chain (third provider is a future improvement)
+- Multi-provider routing beyond the Anthropic → OpenAI → degraded fallback chain (third provider is a future improvement)
 
 ---
 

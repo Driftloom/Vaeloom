@@ -13,8 +13,8 @@ graph TD
     classDef biz fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
     subgraph Pillars["ðŸ“¡ Three Pillars of Observability"]
-        P1["Metrics<br/>OpenTelemetry â†’ APM<br/>Retention: 90d raw / 2yr aggregated"]
-        P2["Logs<br/>Structured JSON â†’ Log store<br/>Retention: 30d MVP / 1yr enterprise"]
+        P1["Metrics<br/>OpenTelemetry --> APM<br/>Retention: 90d raw / 2yr aggregated"]
+        P2["Logs<br/>Structured JSON --> Log store<br/>Retention: 30d MVP / 1yr enterprise"]
         P3["Traces<br/>OpenTelemetry<br/>Retention: 30 days"]
     end
 
@@ -32,13 +32,13 @@ graph TD
     end
 
     subgraph Business["ðŸ“ˆ Business Metrics"]
-        B1["active_users_daily â†’ DAU"]
-        B2["documents_uploaded â†’ Per day"]
-        B3["applications_submitted â†’ Per day"]
-        B4["proposal_approval_rate â†’ Per agent"]
+        B1["active_users_daily --> DAU"]
+        B2["documents_uploaded --> Per day"]
+        B3["applications_submitted --> Per day"]
+        B4["proposal_approval_rate --> Per agent"]
     end
 
-    subgraph Dashboards["ðŸ–¥ï¸ Dashboards"]
+    subgraph Dashboards["ðŸ-¥ï¸ Dashboards"]
         D1["System Health Â· Real-time Â· Engineering"]
         D2["AI Agent Performance Â· Real-time Â· AI Team"]
         D3["Business Metrics Â· Daily Â· Product"]
@@ -56,7 +56,7 @@ graph TD
     class D1,D2,D3,D4,D5 dash
 ```
 
-> **Diagram:** Observability architectureâ€”**3 pillars** (metrics, logs, traces with retention) â†’ **3 metric categories** (system: CPU/memory/disk; application: latency/errors/queue; business: DAU/docs/apps/approval) â†’ **5 dashboards** (System, AI, Business, Cost, SLO) at different refresh cadences for different audiences.
+> **Diagram:** Observability architecture—**3 pillars** (metrics, logs, traces with retention) → **3 metric categories** (system: CPU/memory/disk; application: latency/errors/queue; business: DAU/docs/apps/approval) → **5 dashboards** (System, AI, Business, Cost, SLO) at different refresh cadences for different audiences.
 
 ---
 
@@ -64,8 +64,8 @@ graph TD
 
 | Pillar | Tool | Data | Retention |
 |--------|------|------|-----------|
-| Metrics | OpenTelemetry â†’ APM | CPU, latency, error rates | 90 days (raw), 2 years (aggregated) |
-| Logs | Structured JSON â†’ Log store | Agent actions, API requests | 30 days (MVP), 1 year (enterprise) |
+| Metrics | OpenTelemetry → APM | CPU, latency, error rates | 90 days (raw), 2 years (aggregated) |
+| Logs | Structured JSON → Log store | Agent actions, API requests | 30 days (MVP), 1 year (enterprise) |
 | Traces | OpenTelemetry | Request paths across services | 30 days |
 
 ## Metrics to Collect
@@ -112,58 +112,58 @@ graph TD
 
 | Mistake | Consequence |
 |---------|-------------|
-| Collecting all metrics but never acting on them | A dashboard with 50 graphs that nobody looks at is just noise â€” every metric you collect should have a corresponding alert threshold or a documented reason for manual review. If you're not using it, stop collecting it |
-| Logging at the wrong level | Debug-level logs in production create noise and cost; error-level logs that miss stack traces lose debugging context â€” define log level standards (debug=dev, info=production events, warn=unexpected but handled, error=failures needing attention) |
-| Metrics without dimensional context | A metric named `http_request_duration` without labels for service, endpoint, or status code is nearly useless â€” you know latency is high but not where. Always include at least service and endpoint dimensions |
+| Collecting all metrics but never acting on them | A dashboard with 50 graphs that nobody looks at is just noise — every metric you collect should have a corresponding alert threshold or a documented reason for manual review. If you're not using it, stop collecting it |
+| Logging at the wrong level | Debug-level logs in production create noise and cost; error-level logs that miss stack traces lose debugging context — define log level standards (debug=dev, info=production events, warn=unexpected but handled, error=failures needing attention) |
+| Metrics without dimensional context | A metric named `http_request_duration` without labels for service, endpoint, or status code is nearly useless — you know latency is high but not where. Always include at least service and endpoint dimensions |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Define alert rules alongside each metric | Every metric should have a documented alert threshold and a runbook reference â€” if a metric goes red, the on-call engineer should know what to do without guessing |
-| Use structured logging with consistent field names | `{service, level, timestamp, message, trace_id}` fields across all services let you correlate logs from different services â€” inconsistent field names make cross-service debugging impossible |
-| Keep dashboards focused and actionable | A dashboard should answer a specific question ("is the system healthy?") with the fewest possible graphs â€” one per service: request rate, error rate, latency, saturation. More graphs = less clarity |
+| Define alert rules alongside each metric | Every metric should have a documented alert threshold and a runbook reference — if a metric goes red, the on-call engineer should know what to do without guessing |
+| Use structured logging with consistent field names | `{service, level, timestamp, message, trace_id}` fields across all services let you correlate logs from different services — inconsistent field names make cross-service debugging impossible |
+| Keep dashboards focused and actionable | A dashboard should answer a specific question ("is the system healthy?") with the fewest possible graphs — one per service: request rate, error rate, latency, saturation. More graphs = less clarity |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Logs containing PII or sensitive data | Agent actions, document processing, and connector syncs may log user content or tokens â€” implement log scrubbing that redacts emails, tokens, and personal data before writing to the log store |
-| Observability tooling becoming an attack vector | A compromised Grafana or Kibana instance with access to all logs and metrics is a goldmine for attackers â€” secure observability tools with authentication, restrict access by role, and audit access logs |
-| Metrics revealing system architecture to unauthorized users | Public dashboards or shared monitoring links may expose service names, instance counts, and scaling patterns â€” use authenticated dashboards and restrict sharing to authorized team members |
+| Logs containing PII or sensitive data | Agent actions, document processing, and connector syncs may log user content or tokens — implement log scrubbing that redacts emails, tokens, and personal data before writing to the log store |
+| Observability tooling becoming an attack vector | A compromised Grafana or Kibana instance with access to all logs and metrics is a goldmine for attackers — secure observability tools with authentication, restrict access by role, and audit access logs |
+| Metrics revealing system architecture to unauthorized users | Public dashboards or shared monitoring links may expose service names, instance counts, and scaling patterns — use authenticated dashboards and restrict sharing to authorized team members |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Metric collection overhead impacting application performance | High-cardinality metrics (per-user, per-document) or sub-second collection intervals can consume 5-10% of CPU â€” limit metric cardinality to service-level granularity and use 10-15 second collection intervals for production |
-| Log volume growing faster than storage capacity | At 1000 requests/second, each with 2KB of structured logs, you generate 170GB of logs per day â€” implement log sampling for high-volume debug logs and increase retention only for error/warn levels in production |
-| Distributed tracing overhead at high request rates | Tracing every request through every service adds 5-15% latency overhead â€” use head-based sampling (trace 10% of requests in production, 100% in staging) to maintain fidelity without the performance cost |
+| Metric collection overhead impacting application performance | High-cardinality metrics (per-user, per-document) or sub-second collection intervals can consume 5-10% of CPU — limit metric cardinality to service-level granularity and use 10-15 second collection intervals for production |
+| Log volume growing faster than storage capacity | At 1000 requests/second, each with 2KB of structured logs, you generate 170GB of logs per day — implement log sampling for high-volume debug logs and increase retention only for error/warn levels in production |
+| Distributed tracing overhead at high request rates | Tracing every request through every service adds 5-15% latency overhead — use head-based sampling (trace 10% of requests in production, 100% in staging) to maintain fidelity without the performance cost |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Logs containing PII or sensitive data | Agent actions, document processing, and connector syncs may log user content or tokens â€” implement log scrubbing that redacts emails, tokens, and personal data before writing to the log store |
-| Observability tooling becoming an attack vector | A compromised Grafana or Kibana instance with access to all logs and metrics is a goldmine for attackers â€” secure observability tools with authentication, restrict access by role, and audit access logs |
-| Metrics revealing system architecture to unauthorized users | Public dashboards or shared monitoring links may expose service names, instance counts, and scaling patterns â€” use authenticated dashboards and restrict sharing to authorized team members |
+| Logs containing PII or sensitive data | Agent actions, document processing, and connector syncs may log user content or tokens — implement log scrubbing that redacts emails, tokens, and personal data before writing to the log store |
+| Observability tooling becoming an attack vector | A compromised Grafana or Kibana instance with access to all logs and metrics is a goldmine for attackers — secure observability tools with authentication, restrict access by role, and audit access logs |
+| Metrics revealing system architecture to unauthorized users | Public dashboards or shared monitoring links may expose service names, instance counts, and scaling patterns — use authenticated dashboards and restrict sharing to authorized team members |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Metric collection overhead impacting application performance | High-cardinality metrics (per-user, per-document) or sub-second collection intervals can consume 5-10% of CPU â€” limit metric cardinality to service-level granularity and use 10-15 second collection intervals for production |
-| Log volume growing faster than storage capacity | At 1000 requests/second, each with 2KB of structured logs, you generate 170GB of logs per day â€” implement log sampling for high-volume debug logs and increase retention only for error/warn levels |
-| Distributed tracing overhead at high request rates | Tracing every request through every service adds 5-15% latency overhead â€” use head-based sampling (trace 10% of requests in production, 100% in staging) to maintain fidelity without the performance cost |
+| Metric collection overhead impacting application performance | High-cardinality metrics (per-user, per-document) or sub-second collection intervals can consume 5-10% of CPU — limit metric cardinality to service-level granularity and use 10-15 second collection intervals for production |
+| Log volume growing faster than storage capacity | At 1000 requests/second, each with 2KB of structured logs, you generate 170GB of logs per day — implement log sampling for high-volume debug logs and increase retention only for error/warn levels |
+| Distributed tracing overhead at high request rates | Tracing every request through every service adds 5-15% latency overhead — use head-based sampling (trace 10% of requests in production, 100% in staging) to maintain fidelity without the performance cost |
 
 ## Workflows
 
-1. **Instrument a new service:** Add OpenTelemetry SDK â†’ configure metrics/logs/traces exports â†’ define service-level SLIs
-2. **Add a new metric:** Define metric name and dimensions â†’ instrument code â†’ add to dashboard â†’ set alert threshold
-3. **Investigate an incident:** Check SLO dashboard â†’ open trace view â†’ filter logs by trace_id â†’ identify root cause
-4. **Dashboard creation:** Define the question the dashboard answers â†’ select metrics â†’ add threshold lines â†’ share with team
-5. **Log analysis:** Query structured logs by `service`, `level`, `trace_id` â†’ correlate with metrics â†’ create runbook entry
-6. **Weekly observability review:** Check metric cardinality â†’ review log volume â†’ adjust sampling rates â†’ audit access controls
+1. **Instrument a new service:** Add OpenTelemetry SDK → configure metrics/logs/traces exports → define service-level SLIs
+2. **Add a new metric:** Define metric name and dimensions → instrument code → add to dashboard → set alert threshold
+3. **Investigate an incident:** Check SLO dashboard → open trace view → filter logs by trace_id → identify root cause
+4. **Dashboard creation:** Define the question the dashboard answers → select metrics → add threshold lines → share with team
+5. **Log analysis:** Query structured logs by `service`, `level`, `trace_id` → correlate with metrics → create runbook entry
+6. **Weekly observability review:** Check metric cardinality → review log volume → adjust sampling rates → audit access controls
 
 ---
 
@@ -224,19 +224,19 @@ graph TD
 
 ## Overview
 
-Observability defines Vaeloom's strategy for collecting, storing, and acting on telemetry data across all services. Built on the three pillars of observability â€” metrics, logs, and traces â€” it specifies what to collect at each layer (system, application, business), how long to retain it, and which dashboards serve which audiences.
+Observability defines Vaeloom's strategy for collecting, storing, and acting on telemetry data across all services. Built on the three pillars of observability — metrics, logs, and traces — it specifies what to collect at each layer (system, application, business), how long to retain it, and which dashboards serve which audiences.
 
 This document is written for all engineers building and operating Vaeloom services, as well as the SRE and DevOps teams responsible for the observability infrastructure. It provides standards for instrumentation, alert rule definition, dashboard design, and telemetry data lifecycle management.
 
-For a second-brain AI platform, observability is uniquely challenging because the system spans multiple services (web, API, AI service, database, Redis) and includes asynchronous agent workflows that execute across service boundaries. A single user action â€” like uploading a document â€” triggers ingestion, memory extraction, entity merging, knowledge graph updates, and potentially resume or job-search agent activity. Without distributed tracing across these boundaries, debugging failures becomes guesswork.
+For a second-brain AI platform, observability is uniquely challenging because the system spans multiple services (web, API, AI service, database, Redis) and includes asynchronous agent workflows that execute across service boundaries. A single user action — like uploading a document — triggers ingestion, memory extraction, entity merging, knowledge graph updates, and potentially resume or job-search agent activity. Without distributed tracing across these boundaries, debugging failures becomes guesswork.
 
-The dashboards defined in this document ensure that every team â€” engineering, AI, product, and operations â€” has the telemetry they need to make data-driven decisions about reliability, performance, and feature adoption.
+The dashboards defined in this document ensure that every team — engineering, AI, product, and operations — has the telemetry they need to make data-driven decisions about reliability, performance, and feature adoption.
 
 ## Goals
 
 - Implement the three pillars of observability (metrics, logs, traces) across all Vaeloom services with defined retention policies: 90 days raw metrics, 30 days structured logs, 30 days distributed traces
 - Collect and visualize system metrics (CPU, memory, disk), application metrics (HTTP latency/error rates, agent execution duration, queue depths), and business metrics (DAU, documents uploaded, proposal approval rates)
-- Build five targeted dashboards â€” System Health, AI Agent Performance, Business Metrics, Cost, and SLO Compliance â€” each serving a distinct audience with appropriate refresh cadence
+- Build five targeted dashboards — System Health, AI Agent Performance, Business Metrics, Cost, and SLO Compliance — each serving a distinct audience with appropriate refresh cadence
 - Define alert rules alongside every metric to ensure on-call engineers have clear runbook references when thresholds are breached
 - Establish best practices for metric cardinality management, log level standards, and trace sampling to balance observability fidelity with infrastructure cost
 
