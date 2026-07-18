@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Text, Integer, BigInteger, DateTime, func
+from sqlalchemy import String, Text, Integer, BigInteger, DateTime, Float, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,7 +19,7 @@ class Memory(Base):
     content: Mapped[str | None] = mapped_column(Text)
     content_hash: Mapped[str | None] = mapped_column(String(64))
     size: Mapped[int | None] = mapped_column(Integer)
-    embedding: Mapped[list[float] | None]
+    embedding: Mapped[list[float] | None] = mapped_column(ARRAY(Float), nullable=True)
     metadata: Mapped[dict | None] = mapped_column(JSONB, default=dict)
     tags: Mapped[list[str] | None] = mapped_column(ARRAY(String(100)))
     tenant_id: Mapped[str | None] = mapped_column(String(100), index=True)
