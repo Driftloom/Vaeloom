@@ -132,14 +132,14 @@ def add_anchor_to_heading(content, fragment_id):
             # Check if this heading text matches our fragment's target
             # (We match broadly: any heading that's at the right section)
             if fragment_id.startswith(tuple('123456789')):
-                # Numbered fragment like "1-service-..." â€” match heading with that number
+                # Numbered fragment like "1-service-..." — match heading with that number
                 num = fragment_id.split('-')[0]
                 if stripped.lstrip('# ').startswith(f"{num}."):
                     lines[i] = line.rstrip() + f" {{#{fragment_id}}}"
                     modified = True
                     break
             else:
-                # Text fragment â€” match by key text
+                # Text fragment — match by key text
                 match_words = fragment_id.replace('-', ' ').replace('--', ' ').lower().split()
                 heading_words = stripped.lstrip('# ').lower().split()
                 # Count how many key words match

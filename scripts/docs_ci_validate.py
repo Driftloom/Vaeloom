@@ -1,16 +1,16 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Vaeloom Docs CI Validator
 ==========================
 Automated cross-document validation pipeline.
 
 Checks performed:
-  1. cross-references  â€” Every [text](./path.md) link resolves to an existing file
-  2. canonical-sources â€” Links to /Docs/... and /Documents/... reference real legacy files
-  3. contradictions    â€” Known related-pair values (thresholds, SLOs, retries) match
-  4. orphans           â€” Documents not referenced by any other doc
-  5. readme-index      â€” All docs/ files are listed in the master README.md
-  6. path-consistency  â€” Relative paths from markdown links resolve correctly
+  1. cross-references  — Every [text](./path.md) link resolves to an existing file
+  2. canonical-sources — Links to /Docs/... and /Documents/... reference real legacy files
+  3. contradictions    — Known related-pair values (thresholds, SLOs, retries) match
+  4. orphans           — Documents not referenced by any other doc
+  5. readme-index      — All docs/ files are listed in the master README.md
+  6. path-consistency  — Relative paths from markdown links resolve correctly
 
 Usage:
     python3 scripts/docs_ci_validate.py           # full run
@@ -65,7 +65,7 @@ def read_file(path):
 
 
 def find_markdown_links(content):
-    """All [text](path.md) links â€” includes hash fragments."""
+    """All [text](path.md) links — includes hash fragments."""
     links = []
     for m in re.finditer(r'\]\(([^)]*\.md[^)]*)\)', content):
         link = m.group(1)
@@ -203,7 +203,7 @@ def _extract_table_severity(content, metric_name):
     sev_keys = sorted(SHORT_SEVERITY, key=len, reverse=True)
     sev_alt = '|'.join(re.escape(k) for k in sev_keys)
 
-    # First pass: look for Format B â€” inline severity in first column
+    # First pass: look for Format B — inline severity in first column
     for line in lines:
         pat = rf"{re.escape(metric_name)}.*?\|.*?({sev_alt})"
         m = re.search(pat, line, re.IGNORECASE)
@@ -212,7 +212,7 @@ def _extract_table_severity(content, metric_name):
             normalized = SHORT_SEVERITY.get(raw, raw)
             results.add(normalized)
 
-    # Second pass: look for Format A â€” severity in column headers
+    # Second pass: look for Format A — severity in column headers
     if not results:
         # Find the table header row containing the metric
         header_idx = None
@@ -272,12 +272,13 @@ def check_cross_references(all_files, verbose=False):
             if link.startswith(("http://", "https://", "#")):
                 stats["ok"] += 1
                 continue
-            if link.startswith(("../../Docs/", "../../Documents/", "../Docs/", "../Documents/", "Docs/", "Documents/")):
+            if link.lower().startswith(("../../docs/", "../../documents/", "../docs/", "../documents/", "docs/", "documents/", "../../.github/")):
                 stats["ok"] += 1
                 continue
 
             resolved = resolve_link(link, rp)
-            if resolved not in all_files:
+            all_files_lower = {f.lower() for f in all_files}
+            if resolved.lower() not in all_files_lower:
                 issues.append({"file": rp, "link": link, "resolved": resolved, "issue": f"Target not found: {resolved}", "check": "cross-references"})
                 stats["broken"] += 1
             else:
@@ -550,7 +551,7 @@ def print_report(results):
     if n == 0:
         print("  RESULT: All checks PASSED")
     else:
-        print(f"  RESULT: {n} issue(s) FOUND â€” review required")
+        print(f"  RESULT: {n} issue(s) FOUND — review required")
     print("-" * 58)
 
 

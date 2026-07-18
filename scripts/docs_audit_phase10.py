@@ -1,6 +1,6 @@
 ﻿#!/usr/bin/env python3
 """
-Vaeloom Documentation Audit â€” Phase 10
+Vaeloom Documentation Audit — Phase 10
 =======================================
 Comprehensive enterprise documentation audit engine.
 
@@ -315,7 +315,7 @@ def main():
     if args.json:
         print(json.dumps(result, indent=2))
     else:
-        print(f"Phase 10 Audit â€” {len(audits)} files in {DOCS_DIR}/")
+        print(f"Phase 10 Audit — {len(audits)} files in {DOCS_DIR}/")
         print(f"Enterprise Readiness: {enterprise_readiness}/100")
         print(f"Enterprise Ready: {result['classification_counts']['Enterprise Ready']}")
         print(f"Needs Upgrade: {result['classification_counts']['Needs Upgrade']}")

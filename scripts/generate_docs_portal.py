@@ -1158,7 +1158,7 @@ function renderDoc(doc) {{
 }}
 
 /**
- * Re-render content only â€” used when theme changes.
+ * Re-render content only — used when theme changes.
  * Unlike renderDoc(), this preserves scroll position and doesn't show toasts
  * or update navigation elements.
  */
