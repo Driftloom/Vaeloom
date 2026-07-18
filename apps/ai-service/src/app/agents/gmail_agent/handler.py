@@ -2,6 +2,7 @@
 Gmail Agent — classify email, extract deadlines, draft responses.
 NEVER sends email without user approval. Draft-only policy.
 Supports both scheduled (6 AM daily) and push-triggered paths.
+Integrates with real Gmail API via GmailClient, falls back to mock data.
 """
 import json
 import logging
@@ -36,6 +37,16 @@ class GmailAgent(BaseAgent):
     )
     default_autonomy = "suggest"
 
+    def __init__(self):
+        super().__init__()
+        self._client = None
+
+    async def _get_client(self):
+        if self._client is None:
+            from app.clients.gmail_client import GmailClient
+            self._client = GmailClient()
+        return self._client
+
     async def fallback(self) -> Any:
         return {
             "agent_name": "gmail",
@@ -49,9 +60,23 @@ class GmailAgent(BaseAgent):
             },
         }
 
+    async def fetch_emails(
+        self, query: Optional[str] = None, max_results: int = 20
+    ) -> Optional[List[Dict[str, Any]]]:
+        client = await self._get_client()
+        return await client.fetch_emails(max_results=max_results, query=query)
+
     async def classify_emails(
         self, emails: List[Dict[str, Any]], trigger: str = "scheduled"
     ) -> Dict[str, Any]:
+        if not emails:
+            api_emails = await self.fetch_emails()
+            if api_emails:
+                emails = api_emails
+
+        if not emails:
+            return await self.fallback()
+
         classified: List[ClassifiedEmail] = []
         high_priority: List[ClassifiedEmail] = []
 
@@ -90,6 +115,16 @@ class GmailAgent(BaseAgent):
             },
             "metadata": {"trigger": trigger},
         }
+
+    async def draft_response(
+        self, email: Dict[str, Any], response_body: str
+    ) -> Optional[Dict[str, Any]]:
+        client = await self._get_client()
+        return await client.create_draft(
+            to=email.get("sender", ""),
+            subject=f"Re: {email.get('subject', '')}",
+            body=response_body,
+        )
 
     async def _classify(self, email: Dict[str, Any]) -> ClassifiedEmail:
         if not settings.llm_api_key:

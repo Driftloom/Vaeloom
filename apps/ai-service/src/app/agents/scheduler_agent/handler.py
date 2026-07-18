@@ -1,12 +1,13 @@
 """
 Scheduler Agent — maintain deadlines, detect conflicts, manage schedule.
 Full autonomy for reminders (notify-only); suggest-only for adding/editing events.
+Integrates with real Google Calendar API via CalendarClient, falls back to mock data.
 """
 import json
 import logging
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from app.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from app.services.llm_service import llm_service
@@ -39,6 +40,16 @@ class SchedulerAgent(BaseAgent):
     )
     default_autonomy = "full"
 
+    def __init__(self):
+        super().__init__()
+        self._client = None
+
+    async def _get_client(self):
+        if self._client is None:
+            from app.clients.calendar_client import CalendarClient
+            self._client = CalendarClient()
+        return self._client
+
     async def fallback(self) -> Any:
         return {
             "agent_name": "scheduler",
@@ -52,9 +63,23 @@ class SchedulerAgent(BaseAgent):
             },
         }
 
+    async def fetch_events(
+        self, days_ahead: int = 14
+    ) -> Optional[List[Dict[str, Any]]]:
+        client = await self._get_client()
+        now = datetime.now(timezone.utc)
+        time_min = now.isoformat()
+        time_max = (now + timedelta(days=days_ahead)).isoformat()
+        return await client.list_events(time_min=time_min, time_max=time_max)
+
     async def check_conflicts(
         self, events: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
+        if not events:
+            api_events = await self.fetch_events()
+            if api_events:
+                events = api_events
+
         parsed_events = [
             ScheduleEvent(
                 event_id=e.get("id", f"evt_{i}"),
@@ -104,6 +129,14 @@ class SchedulerAgent(BaseAgent):
                 "questions": [],
             },
         }
+
+    async def create_event(
+        self, title: str, start_time: str, end_time: str, description: str = ""
+    ) -> Optional[Dict[str, Any]]:
+        client = await self._get_client()
+        return await client.create_event(
+            summary=title, start_time=start_time, end_time=end_time, description=description
+        )
 
     async def send_reminder(self, event: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"REMINDER: {event.get('title', 'Event')}")

@@ -1,6 +1,7 @@
 """
 Job Search Agent — search, rank, and shortlist job opportunities.
 Filters out previously rejected roles. Provides fit reason per result.
+Integrates with configurable job board API via JobBoardClient, falls back to mock data.
 """
 import json
 import logging
@@ -37,6 +38,16 @@ class JobSearchAgent(BaseAgent):
     )
     default_autonomy = "suggest"
 
+    def __init__(self):
+        super().__init__()
+        self._client = None
+
+    async def _get_client(self):
+        if self._client is None:
+            from app.clients.job_board_client import JobBoardClient
+            self._client = JobBoardClient()
+        return self._client
+
     async def fallback(self) -> Any:
         return {
             "agent_name": "job_search",
@@ -60,10 +71,19 @@ class JobSearchAgent(BaseAgent):
         rejected_job_ids: List[str],
         location: Optional[str] = None,
     ) -> Dict[str, Any]:
-        if settings.llm_api_key and keywords:
-            raw_jobs = await self._llm_generate_jobs(keywords, user_skills, location)
-        else:
-            raw_jobs = self._mock_jobs()
+        raw_jobs = None
+
+        client = await self._get_client()
+        if client._configured:
+            api_jobs = await client.search_jobs(keywords, location)
+            if api_jobs:
+                raw_jobs = api_jobs
+
+        if raw_jobs is None:
+            if settings.llm_api_key and keywords:
+                raw_jobs = await self._llm_generate_jobs(keywords, user_skills, location)
+            else:
+                raw_jobs = self._mock_jobs()
 
         filtered = [j for j in raw_jobs if j["id"] not in rejected_job_ids]
 
@@ -74,7 +94,7 @@ class JobSearchAgent(BaseAgent):
                 job_id=job["id"],
                 title=job["title"],
                 company=job["company"],
-                location=job["location"],
+                location=job.get("location", ""),
                 fit_score=fit_score,
                 fit_reason=fit_reason,
                 is_remote=job.get("location", "").lower() == "remote",

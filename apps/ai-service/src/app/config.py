@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     llm_model: str = "claude-3-5-sonnet-20241022"
     embedding_model: str = "text-embedding-3-small"
 
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_refresh_token: str = ""
+    google_calendar_id: str = "primary"
+
+    job_board_api_url: str = ""
+    job_board_api_key: str = ""
+
     allowed_origins: list[str] = ["*"]
 
     log_level: str = "INFO"
