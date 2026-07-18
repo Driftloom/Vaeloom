@@ -14,6 +14,12 @@ export function Sidebar({ workspaceId }: { workspaceId: string }) {
     { name: 'Connectors', path: `/workspace/${workspaceId}/connectors`, icon: '🔌' },
     { name: 'History', path: `/workspace/${workspaceId}/history`, icon: '⏳' },
     { name: 'Settings', path: `/workspace/${workspaceId}/settings`, icon: '⚙️' },
+    { name: 'Admin', path: `/workspace/${workspaceId}/admin`, icon: '🛡️' },
+    { name: 'Billing', path: `/workspace/${workspaceId}/billing`, icon: '💰' },
+    { name: 'Organizations', path: `/workspace/${workspaceId}/organizations`, icon: '🏢' },
+    { name: 'Feature Flags', path: `/workspace/${workspaceId}/feature-flags`, icon: '🚩' },
+    { name: 'Marketplace', path: `/workspace/${workspaceId}/marketplace`, icon: '🧩' },
+    { name: 'Developer', path: `/workspace/${workspaceId}/developer`, icon: '🔧' },
   ];
 
   return (
