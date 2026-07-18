@@ -159,6 +159,7 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
         request_id=request.id,
         message=request.message,
         workspace_id=request.workspace_id,
+        agent_name=agent_name,
     )
     loop_response = await run_agent_loop(agent_request)
 
