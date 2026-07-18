@@ -1,0 +1,39 @@
+{
+  "name": "vaeloom",
+  "private": true,
+  "description": "Vaeloom — Memory-first personal intelligence platform",
+  "scripts": {
+    "dev": "nx run-many --target=dev --parallel",
+    "build": "nx run-many --target=build --parallel",
+    "test": "nx run-many --target=test --parallel",
+    "lint": "nx run-many --target=lint --parallel",
+    "typecheck": "nx run-many --target=typecheck --parallel",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
+    "clean": "nx reset && rimraf node_modules packages/*/node_modules apps/*/node_modules",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "nx": "20.0.0",
+    "prettier": "^3.2.0",
+    "rimraf": "^5.0.0",
+    "husky": "^9.0.0",
+    "typescript": "^5.5.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "eslint": "^8.57.0"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "eslint": "8"
+      }
+    }
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.12.0"
+}
