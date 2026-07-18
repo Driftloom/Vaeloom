@@ -1,12 +1,7 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleInit,
-  OnModuleDestroy,
-  type OnApplicationShutdown,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { parseExpression, type CronExpression } from 'cron-parser';
+import { createQueue, type QueueService, type Job } from '@vaeloom/queue';
 import type { Request } from 'express';
 
 import { DatabaseService } from '../database/database.service';
@@ -31,12 +26,12 @@ export interface ScheduledJobRow {
 }
 
 @Injectable()
-export class SchedulerService implements OnModuleInit, OnModuleDestroy, OnApplicationShutdown {
+export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SchedulerService.name);
-  private timer?: NodeJS.Timeout;
   private readonly enabled: boolean;
-  private readonly pollIntervalMs: number;
+  private readonly queue: QueueService;
   private readonly jobs = new Map<string, ScheduledJobRow>();
+  private worker: ReturnType<typeof this.queue.createWorker> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -44,7 +39,9 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy, OnApplic
     private readonly metrics: MetricsService,
   ) {
     this.enabled = this.config.get<boolean>('scheduler.enabled') ?? true;
-    this.pollIntervalMs = this.config.get<number>('scheduler.pollIntervalMs') ?? 30000;
+    this.queue = createQueue('scheduler', undefined, {
+      defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+    });
   }
 
   async onModuleInit(): Promise<void> {
@@ -53,16 +50,13 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy, OnApplic
       return;
     }
     await this.loadJobs();
-    this.timer = setInterval(() => void this.poll(), this.pollIntervalMs);
-    this.logger.log(`Scheduler started (poll every ${this.pollIntervalMs}ms)`);
+    await this.scheduleRepeatableJobs();
+    this.worker = this.queue.createWorker((job) => this.processJob(job));
+    this.logger.log('Scheduler started with BullMQ worker');
   }
 
   onModuleDestroy(): void {
-    if (this.timer) clearInterval(this.timer);
-  }
-
-  onApplicationShutdown(): void {
-    if (this.timer) clearInterval(this.timer);
+    void this.queue.close();
   }
 
   async loadJobs(): Promise<void> {
@@ -78,25 +72,36 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy, OnApplic
 
   async reload(): Promise<void> {
     await this.loadJobs();
+    await this.scheduleRepeatableJobs();
   }
 
-  private computeNextRun(cron: string, from: Date): Date | null {
-    try {
-      const interval: CronExpression = parseExpression(cron, { currentDate: from });
-      return interval.next().toDate();
-    } catch {
-      return null;
-    }
-  }
-
-  private async poll(): Promise<void> {
-    const now = new Date();
+  private async scheduleRepeatableJobs(): Promise<void> {
     for (const job of this.jobs.values()) {
-      const next = job.next_run_at ?? this.computeNextRun(job.cron, now);
-      if (next && next.getTime() <= now.getTime()) {
-        await this.execute(job, now);
+      try {
+        const interval: CronExpression = parseExpression(job.cron);
+        const nextRun = interval.next().toDate();
+        await this.queue.addRepeatable(`job.execute.${job.id}`, { jobId: job.id }, job.cron);
+        await this.db.query(
+          `UPDATE scheduled_jobs SET next_run_at = $1, updated_at = NOW() WHERE id = $2`,
+          [nextRun, job.id],
+        );
+        job.next_run_at = nextRun;
+        this.logger.debug({ jobId: job.id, cron: job.cron }, 'Scheduled repeatable job');
+      } catch (err) {
+        this.logger.warn({ jobId: job.id, cron: job.cron, err }, 'Invalid cron expression');
       }
     }
+  }
+
+  private async processJob(job: Job<{ jobId: string }>): Promise<void> {
+    const { jobId } = job.data;
+    const scheduled = this.jobs.get(jobId);
+    if (!scheduled) {
+      this.logger.warn({ jobId }, 'Job not found in registry');
+      return;
+    }
+    const startedAt = new Date();
+    await this.execute(scheduled, startedAt);
   }
 
   private async execute(job: ScheduledJobRow, startedAt: Date): Promise<void> {
@@ -169,6 +174,15 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy, OnApplic
     }
   }
 
+  private computeNextRun(cron: string, from: Date): Date | null {
+    try {
+      const interval: CronExpression = parseExpression(cron, { currentDate: from });
+      return interval.next().toDate();
+    } catch {
+      return null;
+    }
+  }
+
   async triggerNow(jobId: string): Promise<{ jobId: string; status: string }> {
     const { rows } = await this.db.query<ScheduledJobRow>(
       `SELECT * FROM scheduled_jobs WHERE id = $1`,
@@ -178,7 +192,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy, OnApplic
     if (!job) {
       throw new Error('Job not found');
     }
-    await this.execute(job, new Date());
+    await this.queue.add(`job.execute.now.${jobId}`, { jobId }, { priority: 1 });
     return { jobId, status: 'triggered' };
   }
 
