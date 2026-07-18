@@ -1,17 +1,17 @@
-﻿# 01 â€” Foundation & Infrastructure Scaffolding (MVP)
+﻿# 01 — Foundation & Infrastructure Scaffolding (MVP)
 
-> **Purpose:** Stand up the deployable monorepo skeleton â€” three services that boot, talk to each other, pass CI, and let a user sign up.
+> **Purpose:** Stand up the deployable monorepo skeleton — three services that boot, talk to each other, pass CI, and let a user sign up.
 > **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-This is the first implementation phase and the foundation every later phase builds upon. It establishes the monorepo structure (`apps/web`, `apps/api`, `apps/ai-service`, `packages/shared-types`), the CI pipeline via GitHub Actions, local development via Docker Compose, and the authentication scaffold. No feature logic exists yet â€” the goal is a working, deployable, empty version of Vaeloom.
+This is the first implementation phase and the foundation every later phase builds upon. It establishes the monorepo structure (`apps/web`, `apps/api`, `apps/ai-service`, `packages/shared-types`), the CI pipeline via GitHub Actions, local development via Docker Compose, and the authentication scaffold. No feature logic exists yet — the goal is a working, deployable, empty version of Vaeloom.
 
 The three-service architecture reflects the non-negotiable two-service backend split: NestJS (`apps/api`) handles auth, CRUD, and permissions, while FastAPI (`apps/ai-service`) handles agents, memory, and retrieval. They communicate over an internal RPC boundary established in later phases. The Next.js frontend (`apps/web`) provides a placeholder dashboard that file 14 replaces with the full UI.
 
-All later phases (02â€“16) assume this skeleton is green and running. Every engineer must be able to run `docker-compose up` from a clean checkout and see all three services boot with zero manual steps beyond copying `.env.example` to `.env`.
+All later phases (02–16) assume this skeleton is green and running. Every engineer must be able to run `docker-compose up` from a clean checkout and see all three services boot with zero manual steps beyond copying `.env.example` to `.env`.
 
 ## Goals
 
@@ -61,7 +61,7 @@ graph TD
 
 ## Context
 
-Read `00-master-build-order.md` first. This is the first build phase â€” the deployable skeleton every later phase builds on top of. No feature logic yet.
+Read `00-master-build-order.md` first. This is the first build phase — the deployable skeleton every later phase builds on top of. No feature logic yet.
 
 ## Objective
 
@@ -90,7 +90,7 @@ Vaeloom/
 - Health-check endpoint (`GET /health`) returning service status.
 - Auth module: email/password signup + login to start (bcrypt-hashed passwords), structured so an OAuth/SSO provider can be swapped in later (file 15) without changing the interface.
 - Auth middleware/guard usable by every future endpoint.
-- `POST /workspaces` â€” provisions a new, empty workspace for the authenticated user (see file 02 for the table this writes to).
+- `POST /workspaces` — provisions a new, empty workspace for the authenticated user (see file 02 for the table this writes to).
 
 **apps/ai-service (FastAPI):**
 
@@ -100,7 +100,7 @@ Vaeloom/
 **apps/web (Next.js):**
 
 - Signup and login pages, calling the api service.
-- An empty, authenticated Dashboard route that renders "Workspace ready" once a workspace exists â€” this is the placeholder file 14 replaces.
+- An empty, authenticated Dashboard route that renders "Workspace ready" once a workspace exists — this is the placeholder file 14 replaces.
 
 **CI (`infra/ci/`, GitHub Actions):**
 
@@ -110,11 +110,11 @@ Vaeloom/
 **Local dev:**
 
 - `docker-compose.yml` bringing up Postgres, Redis, and all three apps with hot reload.
-- `.env.example` at the repo root documenting every required variable (DB URL, Redis URL, JWT secret, etc.) â€” no service should require an undocumented env var to boot.
+- `.env.example` at the repo root documenting every required variable (DB URL, Redis URL, JWT secret, etc.) — no service should require an undocumented env var to boot.
 
 ## Out of scope
 
-Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any memory or ingestion logic (files 02â€“04), production deployment (file 16 â€” this phase is local + CI only).
+Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any memory or ingestion logic (files 02–04), production deployment (file 16 — this phase is local + CI only).
 
 ## Acceptance criteria
 
@@ -169,7 +169,7 @@ Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any
 
 - Real OAuth/SSO providers (deferred to Phase 15)
 - Any AI or agent logic (deferred to Phase 05+)
-- Memory or ingestion logic (deferred to Phases 02â€“04)
+- Memory or ingestion logic (deferred to Phases 02–04)
 - Production deployment configuration (Phase 16)
 - Kubernetes or container orchestration (enterprise phase)
 
@@ -201,7 +201,7 @@ curl -X POST http://localhost:4000/auth/login \
 ```text
 
 ```typescript
-// packages/shared-types/src/index.ts â€” types shared between web and api
+// packages/shared-types/src/index.ts — types shared between web and api
 export interface User {
   id: string;
   email: string;
@@ -216,7 +216,7 @@ export interface Workspace {
 ```text
 
 ```yaml
-# .github/workflows/ci.yml â€” CI pipeline entry
+# .github/workflows/ci.yml — CI pipeline entry
 name: CI
 on: [pull_request]
 jobs:
@@ -247,7 +247,7 @@ jobs:
 
 ## Related Documents
 
-- [00 â€” Master Build Order](00-master-build-order.md) â€” Entry point and build sequence
-- [02 â€” Database Schema](02-database-schema.md) â€” Next phase: Postgres schema and migrations
-- [15 â€” Security & Compliance](15-security-compliance.md) â€” Auth upgrade and secrets management
-- [Architecture System Design](../../Architecture/System-Design.md) â€” System architecture context
+- [00 — Master Build Order](00-master-build-order.md) — Entry point and build sequence
+- [02 — Database Schema](02-database-schema.md) — Next phase: Postgres schema and migrations
+- [15 — Security & Compliance](15-security-compliance.md) — Auth upgrade and secrets management
+- [Architecture System Design](../../Architecture/System-Design.md) — System architecture context

@@ -35,7 +35,7 @@ graph TD
     subgraph Deprecation["â³ Deprecation Policy"]
         D1["Announce: Document + set EOL (6mo min)"]
         D2["Warning: Deprecation headers in responses"]
-        D3["Sunset: Remove after EOL â†’ 410 Gone"]
+        D3["Sunset: Remove after EOL --> 410 Gone"]
     end
 
     Scheme --> Artifacts --> APIVersioning --> Deprecation
@@ -46,7 +46,7 @@ graph TD
     class D1,D2,D3 deprecate
 ```
 
-> **Diagram:** Versioning strategy â€” **SemVer scheme** (MAJOR/MINOR/PATCH), **6 versioned artifacts** (app, API, DB, prompts, embeddings, docs), **API versioning** (URL path + Accept header), **deprecation policy** (announce â†’ warn â†’ sunset with 6-month minimum).
+> **Diagram:** Versioning strategy — **SemVer scheme** (MAJOR/MINOR/PATCH), **6 versioned artifacts** (app, API, DB, prompts, embeddings, docs), **API versioning** (URL path + Accept header), **deprecation policy** (announce → warn → sunset with 6-month minimum).
 
 ---
 
@@ -109,37 +109,37 @@ npx conventional-changelog -p angular -i CHANGELOG.md -s
 
 | Mistake | Consequence |
 |---------|-------------|
-| Bumping MAJOR version for every breaking change without migration path | Breaking changes without a deprecation window break clients that haven't updated â€” provide a minimum 6-month overlap where both versions work |
-| PATCH version bumps that include new features | PATCH should only include bug fixes â€” new features in a PATCH release break automated tooling that relies on SemVer for safe upgrades |
-| Forgetting to update the version in all artifacts | Updating `package.json` but not the API version or migration files creates inconsistency â€” all versioned artifacts must be updated together in the release PR |
-| Versioning the entire monorepo as one unit | A single version for all services means a frontend-only change bumps the API version â€” consider independent versioning for loosely coupled services |
+| Bumping MAJOR version for every breaking change without migration path | Breaking changes without a deprecation window break clients that haven't updated — provide a minimum 6-month overlap where both versions work |
+| PATCH version bumps that include new features | PATCH should only include bug fixes — new features in a PATCH release break automated tooling that relies on SemVer for safe upgrades |
+| Forgetting to update the version in all artifacts | Updating `package.json` but not the API version or migration files creates inconsistency — all versioned artifacts must be updated together in the release PR |
+| Versioning the entire monorepo as one unit | A single version for all services means a frontend-only change bumps the API version — consider independent versioning for loosely coupled services |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Follow SemVer strictly for API versioning | MAJOR = breaking, MINOR = additive, PATCH = fixes â€” clients depend on this contract for safe upgrades, and breaking it erodes trust |
-| Announce deprecations with a clear EOL timeline | 6 months minimum notice with deprecation warning headers gives clients time to migrate â€” no-surprise deprecations are a hallmark of platform stability |
-| Version API and application releases independently | The API version (`/v1/`, `/v2/`) represents the public contract â€” the application version (1.2.0) represents the internal release. They should not be coupled |
-| Automate version bumping in CI/CD | Manual version bumps are error-prone â€” use semantic-release or similar tools to determine the next version from commit messages |
+| Follow SemVer strictly for API versioning | MAJOR = breaking, MINOR = additive, PATCH = fixes — clients depend on this contract for safe upgrades, and breaking it erodes trust |
+| Announce deprecations with a clear EOL timeline | 6 months minimum notice with deprecation warning headers gives clients time to migrate — no-surprise deprecations are a hallmark of platform stability |
+| Version API and application releases independently | The API version (`/v1/`, `/v2/`) represents the public contract — the application version (1.2.0) represents the internal release. They should not be coupled |
+| Automate version bumping in CI/CD | Manual version bumps are error-prone — use semantic-release or similar tools to determine the next version from commit messages |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Sunset versions as a security risk | Deprecated API versions that are no longer maintained may have unpatched vulnerabilities â€” sunset old versions proactively, not just when there's a replacement |
-| Version disclosure in error responses | API error responses should not include version information that reveals the application version â€” a 404 response for `/v2/users` shouldn't confirm v2 exists |
+| Sunset versions as a security risk | Deprecated API versions that are no longer maintained may have unpatched vulnerabilities — sunset old versions proactively, not just when there's a replacement |
+| Version disclosure in error responses | API error responses should not include version information that reveals the application version — a 404 response for `/v2/users` shouldn't confirm v2 exists |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Multi-version maintenance overhead | Maintaining multiple API versions (`/v1/` and `/v2/`) doubles the code paths that need testing â€” minimize the overlap window and deprecate aggressively |
-| Version negotiation performance | Content negotiation via Accept headers is slower than URL-path versioning â€” prefer `/v1/` in the URL path for performance-critical APIs |
+| Multi-version maintenance overhead | Maintaining multiple API versions (`/v1/` and `/v2/`) doubles the code paths that need testing — minimize the overlap window and deprecate aggressively |
+| Version negotiation performance | Content negotiation via Accept headers is slower than URL-path versioning — prefer `/v1/` in the URL path for performance-critical APIs |
 
 ## Workflows
 
-1. **Determine version bump:** Review commits since last release â€” `fix:` = PATCH, `feat:` = MINOR, breaking change = MAJOR
+1. **Determine version bump:** Review commits since last release — `fix:` = PATCH, `feat:` = MINOR, breaking change = MAJOR
 2. **Update version files:** Bump `package.json`, API version header, and changelog
 3. **Create release branch:** `git checkout -b release/v1.2.0 develop`
 4. **Run CI:** Full test suite against release branch
@@ -208,7 +208,7 @@ npx conventional-changelog -p angular -i CHANGELOG.md -s
 
 ## Overview
 
-Versioning is the contract between Vaeloom and everything that depends on it â€” frontend clients, API consumers, internal services, and third-party integrations. This document defines the SemVer 2.0.0 scheme used across all versioned artifacts (application releases, API versions, database schemas, AI prompts, embedding models, and documentation), the API versioning strategy (URL path + Accept header), and the deprecation policy for sunsetting old versions.
+Versioning is the contract between Vaeloom and everything that depends on it — frontend clients, API consumers, internal services, and third-party integrations. This document defines the SemVer 2.0.0 scheme used across all versioned artifacts (application releases, API versions, database schemas, AI prompts, embedding models, and documentation), the API versioning strategy (URL path + Accept header), and the deprecation policy for sunsetting old versions.
 
 The Vaeloom monorepo versions six artifact types, each with its own version source and update cadence. API versioning follows a dual approach: primary versioning via URL path (`/v1/workspaces`) with an alternative via Accept header for clients that prefer content negotiation. The deprecation policy provides a minimum 6-month overlap window between announcement and sunset.
 
@@ -229,7 +229,7 @@ All Vaeloom engineers, API consumers, and DevOps engineers use this document as 
 - SemVer 2.0.0 scheme: MAJOR (breaking), MINOR (new features), PATCH (bug fixes)
 - Six versioned artifacts: application release (package.json), API (URL path), database schema (migrations), AI prompts (filename prefix), embedding model (model_version field), documentation (git history)
 - API versioning: URL path (`/v1/`) and Accept header (`application/vnd.Vaeloom.v1+json`)
-- Deprecation policy: 3-phase lifecycle (announce â†’ warn â†’ sunset) with 6-month minimum EOL
+- Deprecation policy: 3-phase lifecycle (announce → warn → sunset) with 6-month minimum EOL
 - Workflow for determining version bump, updating version files, tagging releases, and generating changelogs
 
 ### Out of Scope
@@ -254,9 +254,9 @@ npx conventional-changelog -p angular -i CHANGELOG.md -s
 
 # Determine version bump from commit messages
 # git log --oneline v1.1.0..HEAD
-# feat(api): add document upload â†’ MINOR bump
-# fix(ai): correct merge threshold â†’ PATCH bump
-# feat(api)!: redesign permission engine â†’ MAJOR bump
+# feat(api): add document upload → MINOR bump
+# fix(ai): correct merge threshold → PATCH bump
+# feat(api)!: redesign permission engine → MAJOR bump
 ```
 
 ```http
@@ -279,7 +279,7 @@ Link: </v2/workspaces/{id}/documents>; rel="successor-version"
 // Prompt versioning in filenames
 // apps/ai-service/agents/resume_agent/prompts/
 //   v1_extract_entities.txt
-//   v2_extract_entities.txt   â† Breaking prompt change
+//   v2_extract_entities.txt   ← Breaking prompt change
 
 // Embedding model version tracking
 await db.query(`

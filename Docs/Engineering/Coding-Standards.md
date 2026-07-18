@@ -1,7 +1,7 @@
-﻿# Coding Standards
+# Coding Standards
 
 > **Purpose:** Define comprehensive coding standards for the Vaeloom engineering team, covering TypeScript, Python, and shared conventions
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-12
 
@@ -21,21 +21,21 @@ graph TD
     classDef py fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef shared fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph TypeScript["ðŸŸ¦ TypeScript Standards"]
+    subgraph TypeScript["🟦 TypeScript Standards"]
         direction TB
         T1["Version: 5.0+<br/>Strict: true"]
-        T2["âœ… Named exports, ??, async/await<br/>Branded types for IDs"]
-        T3["âŒ Default exports, any,<br/>callbacks, mutable state"]
+        T2["✅ Named exports, ??, async/await<br/>Branded types for IDs"]
+        T3["❌ Default exports, any,<br/>callbacks, mutable state"]
     end
 
-    subgraph Python["ðŸ Python Standards"]
+    subgraph Python["🐍 Python Standards"]
         direction TB
         P1["Version: 3.11+<br/>mypy --strict"]
-        P2["âœ… Type hints, dataclasses,<br/>custom exceptions, async"]
-        P3["âŒ Bare except, mutable defaults,<br/>missing hints, print() logging"]
+        P2["✅ Type hints, dataclasses,<br/>custom exceptions, async"]
+        P3["❌ Bare except, mutable defaults,<br/>missing hints, print() logging"]
     end
 
-    subgraph Shared["ðŸ“‹ Shared Conventions"]
+    subgraph Shared["📋 Shared Conventions"]
         S1["Line length: 100 chars"]
         S2["Indentation: 2 TS / 4 Python"]
         S3["File naming: kebab / snake"]
@@ -43,7 +43,7 @@ graph TD
         S5["Functions: camel TS / snake Python"]
     end
 
-    subgraph Linting["ðŸ”§ Linting Rules"]
+    subgraph Linting["🔧 Linting Rules"]
         L1["ESLint (TS)<br/>no-console, no-unused-vars,<br/>import ordering"]
         L2["Ruff (Python)<br/>E/F/I/N/W + ANN/ARG/COM"]
     end
@@ -56,7 +56,7 @@ graph TD
     class L1,L2 lint
 ```
 
-> **Diagram:** Coding standards organized by language â€” **TypeScript** (strict mode, good/bad patterns), **Python** (mypy strict, good/bad patterns), **Shared conventions** (line length, indentation, naming). **Linting** enforced via ESLint for TypeScript and Ruff for Python.
+> **Diagram:** Coding standards organized by language — **TypeScript** (strict mode, good/bad patterns), **Python** (mypy strict, good/bad patterns), **Shared conventions** (line length, indentation, naming). **Linting** enforced via ESLint for TypeScript and Ruff for Python.
 
 ---
 
@@ -85,51 +85,51 @@ graph TD
 }
 ```
 
-### âœ… Good Patterns
+### ✅ Good Patterns
 
 ```typescript
-// âœ… Named exports (not default)
+// ✅ Named exports (not default)
 export function getDocument(id: string): Document { /* ... */ }
 
-// âœ… Null handling with ??
+// ✅ Null handling with ??
 const name = user.displayName ?? user.email;
 
-// âœ… Discriminated unions for state
+// ✅ Discriminated unions for state
 type DocumentState = 
   | { status: 'pending'; uploadedAt: Date }
   | { status: 'processing'; progress: number }
   | { status: 'completed'; document: Document }
   | { status: 'error'; message: string };
 
-// âœ… Async/await over .then()
+// ✅ Async/await over .then()
 async function processDocument(id: string): Promise<Document> {
   const doc = await documentRepo.findById(id);
   return doc;
 }
 
-// âœ… Branded types for IDs
+// ✅ Branded types for IDs
 type DocumentId = string & { readonly __brand: 'DocumentId' };
 function createDocumentId(id: string): DocumentId {
   return id as DocumentId;
 }
 ```
 
-### âŒ Anti-patterns
+### ❌ Anti-patterns
 
 ```typescript
-// âŒ Default exports (hard to refactor)
+// ❌ Default exports (hard to refactor)
 export default DocumentService;
 
-// âŒ Null handling with || (catches falsy values)
+// ❌ Null handling with || (catches falsy values)
 const name = user.displayName || user.email; // '' or 0 would be caught
 
-// âŒ any type
+// ❌ any type
 async function process(data: any): Promise<any> { /* ... */ }
 
-// âŒ Callback style
+// ❌ Callback style
 function getDocument(id: string, callback: (doc: Document) => void) { /* ... */ }
 
-// âŒ Mutable shared state
+// ❌ Mutable shared state
 let cache: Map<string, Document> = new Map();
 ```
 
@@ -154,10 +154,10 @@ warn_return_any = true
 warn_unused_configs = true
 ```
 
-### âœ… Good Patterns
+### ✅ Good Patterns
 
 ```python
-# âœ… Type hints everywhere
+# ✅ Type hints everywhere
 from dataclasses import dataclass
 from typing import Optional
 
@@ -168,7 +168,7 @@ class Document:
     doc_type: str
     content: Optional[str] = None
 
-# âœ… Google-style docstrings
+# ✅ Google-style docstrings
 def extract_entities(
     document: Document,
     model: str = "default"
@@ -188,36 +188,36 @@ def extract_entities(
     # Implementation
     pass
 
-# âœ… Custom exceptions
+# ✅ Custom exceptions
 class ExtractionError(Exception):
     """Raised when entity extraction fails."""
     pass
 
-# âœ… Async for I/O operations
+# ✅ Async for I/O operations
 async def process_document(document_id: str) -> Document:
     async with get_db_session() as session:
         return await session.get(Document, document_id)
 ```
 
-### âŒ Anti-patterns
+### ❌ Anti-patterns
 
 ```python
-# âŒ Bare except
+# ❌ Bare except
 try:
     process_document(doc_id)
 except:
     pass
 
-# âŒ Mutable default arguments
+# ❌ Mutable default arguments
 def process(docs: list = []):  # Shared across calls
     pass
 
-# âŒ Missing type hints
+# ❌ Missing type hints
 def process_document(doc):
     # What type is doc? What does it return?
     pass
 
-# âŒ print() for logging
+# ❌ print() for logging
 print(f"Processing document {doc_id}")
 ```
 
@@ -287,7 +287,7 @@ export default [
 | Mistake | Consequence | Fix |
 |---------|-------------|-----|
 | Hiding errors with try/catch + silence | Silent failures, hard to debug | Always log or re-throw |
-| Over-engineering early | Wasted time on unused abstractions | YAGNI â€” build for today, refactor for tomorrow |
+| Over-engineering early | Wasted time on unused abstractions | YAGNI — build for today, refactor for tomorrow |
 | Mixing concerns in one module | Hard to test, hard to reason about | Single Responsibility Principle |
 | Skipping type hints (Python) | Runtime type errors | Add type hints, run mypy in CI |
 | Magic numbers/strings | Unclear intent, hard to change | Use named constants and enums |
@@ -296,19 +296,19 @@ export default [
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Input validation in TypeScript | All user-facing API inputs must use class-validator with explicit schemas â€” never trust raw `any` types or `JSON.parse` without validation |
-| SQL injection in Python | Never use string interpolation for SQL queries â€” always use parameterized queries via SQLAlchemy or raw `execute()` with `$1`, `$2` placeholders |
-| Logging sensitive data | Console.log, print(), and logger.warn calls must never include tokens, passwords, or PII â€” use structured logging with a redaction filter |
-| Dependency supply chain | All third-party dependencies must pass `npm audit` / `pip audit` before merge â€” a vulnerable dependency can compromise the entire application |
+| Input validation in TypeScript | All user-facing API inputs must use class-validator with explicit schemas — never trust raw `any` types or `JSON.parse` without validation |
+| SQL injection in Python | Never use string interpolation for SQL queries — always use parameterized queries via SQLAlchemy or raw `execute()` with `$1`, `$2` placeholders |
+| Logging sensitive data | Console.log, print(), and logger.warn calls must never include tokens, passwords, or PII — use structured logging with a redaction filter |
+| Dependency supply chain | All third-party dependencies must pass `npm audit` / `pip audit` before merge — a vulnerable dependency can compromise the entire application |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| TypeScript strict mode performance | `strict: true` has zero runtime cost â€” it only affects compile time. The TypeScript compiler should be configured with `--noEmit` for CI to avoid unnecessary output files |
-| Python type hints at runtime | Type hints are stripped at runtime by default â€” use `@dataclass` and `TypedDict` for performance-critical structures that need validation |
-| Async patterns for I/O-bound operations | Use `async/await` for all I/O operations (database, API calls, file system) â€” synchronous I/O blocks the event loop and degrades throughput |
-| Avoid runtime type-checking libraries | Libraries like `zod` or `pydantic` add validation overhead â€” use them only at API boundaries (input validation) not in internal service logic |
+| TypeScript strict mode performance | `strict: true` has zero runtime cost — it only affects compile time. The TypeScript compiler should be configured with `--noEmit` for CI to avoid unnecessary output files |
+| Python type hints at runtime | Type hints are stripped at runtime by default — use `@dataclass` and `TypedDict` for performance-critical structures that need validation |
+| Async patterns for I/O-bound operations | Use `async/await` for all I/O operations (database, API calls, file system) — synchronous I/O blocks the event loop and degrades throughput |
+| Avoid runtime type-checking libraries | Libraries like `zod` or `pydantic` add validation overhead — use them only at API boundaries (input validation) not in internal service logic |
 
 ## Workflows
 
@@ -316,7 +316,7 @@ export default [
 2. **Run linter:** `npx eslint . --fix` (TS) or `ruff check . --fix` (Python)
 3. **Run type checker:** `npx tsc --noEmit` (TS) or `mypy .` (Python)
 4. **Write tests:** Unit tests for all functions, integration tests for services
-5. **Run test suite:** `npm test` or `pytest` â€” all tests must pass
+5. **Run test suite:** `npm test` or `pytest` — all tests must pass
 6. **Commit:** Conventional commit with type and scope matching the language
 7. **Open PR:** Code review checks all 9 checklist items including coding standards compliance
 8. **Merge:** After review approval and CI passes
@@ -489,4 +489,4 @@ async def extract_entities(
 - [Folder Structure.md](./Folder-Structure.md)
 - [Naming Convention.md](./Naming-Convention.md)
 - [Code Review.md](./Code-Review.md)
-- [`/Docs/Engineering/Implementation/00-master-build-order.md`](../../Docs/Engineering/Implementation/00-master-build-order.md)
+- [`/docs/Engineering/Implementation/00-master-build-order.md`](../../docs/Engineering/Implementation/00-master-build-order.md)

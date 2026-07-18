@@ -13,22 +13,22 @@ graph TD
     classDef release fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
     subgraph Permanent["â™¾ï¸ Permanent Branches"]
-        MAIN["main<br/>Production-ready<br/>Protected â€” no direct commits"]
-        DEV["develop<br/>Integration branch<br/>Protected â€” no direct commits"]
+        MAIN["main<br/>Production-ready<br/>Protected -- no direct commits"]
+        DEV["develop<br/>Integration branch<br/>Protected -- no direct commits"]
     end
 
     subgraph Feature["âœ¨ Feature Branches"]
-        F1["feature/document-upload<br/>Base: develop â†’ Merges to: develop<br/>Lifetime: < 1 week"]
-        F2["feature/ats-scoring<br/>Base: develop â†’ Merges to: develop"]
+        F1["feature/document-upload<br/>Base: develop --> Merges to: develop<br/>Lifetime: < 1 week"]
+        F2["feature/ats-scoring<br/>Base: develop --> Merges to: develop"]
     end
 
     subgraph Fix["ðŸ”§ Fix Branches"]
-        X1["fix/entity-merge-null<br/>Base: develop â†’ Merges to: develop"]
-        X2["hotfix/auth-expiry<br/>Base: main â†’ Merges to: main + develop"]
+        X1["fix/entity-merge-null<br/>Base: develop --> Merges to: develop"]
+        X2["hotfix/auth-expiry<br/>Base: main --> Merges to: main + develop"]
     end
 
     subgraph Release["ðŸš€ Release Branches"]
-        R1["release/v1.2.0<br/>Base: develop â†’ Merges to: main + develop"]
+        R1["release/v1.2.0<br/>Base: develop --> Merges to: main + develop"]
     end
 
     DEV --> F1 & F2 & X1
@@ -41,7 +41,7 @@ graph TD
     class R1 release
 ```
 
-> **Diagram:** Branch strategy showing **permanent** (main, develop â€” protected), **feature** (short-lived, from develop), **fix** (from develop or main for hotfixes), and **release** (from develop, merges to both main and develop). All branches merge via PR with code review.
+> **Diagram:** Branch strategy showing **permanent** (main, develop — protected), **feature** (short-lived, from develop), **fix** (from develop or main for hotfixes), and **release** (from develop, merges to both main and develop). All branches merge via PR with code review.
 
 ---
 
@@ -63,7 +63,7 @@ fix/câ”€â”€â”€â”€â”€â”€â”€â”€â”€â�
 
 | Branch | Base | Merges Into | Lifetime |
 |--------|------|-------------|----------|
-| `main` | â€” | â€” | Permanent |
+| `main` | — | — | Permanent |
 | `develop` | `main` | `main` | Permanent |
 | `feature/*` | `develop` | `develop` | Short-lived (< 1 week) |
 | `fix/*` | `develop` | `develop` | Short-lived |
@@ -95,9 +95,9 @@ fix/câ”€â”€â”€â”€â”€â”€â”€â”€â”€â�
 
 | Mistake | Consequence |
 |---------|-------------|
-| Long-lived feature branches that grow stale | A branch open for 3+ weeks diverges from develop â€” the merge conflict resolution risks introducing bugs from incorrectly resolved conflicts |
-| Creating branches from the wrong base | A feature branch created from `main` instead of `develop` misses upstream changes â€” creates merge conflicts when the PR targets develop |
-| Forgetting to delete branches after merging | Stale branches accumulate and create clutter â€” developers accidentally start work on old branches instead of creating fresh ones |
+| Long-lived feature branches that grow stale | A branch open for 3+ weeks diverges from develop — the merge conflict resolution risks introducing bugs from incorrectly resolved conflicts |
+| Creating branches from the wrong base | A feature branch created from `main` instead of `develop` misses upstream changes — creates merge conflicts when the PR targets develop |
+| Forgetting to delete branches after merging | Stale branches accumulate and create clutter — developers accidentally start work on old branches instead of creating fresh ones |
 | Using the same branch for multiple unrelated changes | A branch meant for one feature that accumulates scope creep makes the PR hard to review and risky to merge |
 
 ## Best Practices
@@ -105,23 +105,23 @@ fix/câ”€â”€â”€â”€â”€â”€â”€â”€â”€â�
 | Practice | Why |
 |----------|-----|
 | Keep feature branches short-lived (< 1 week) | Short-lived branches minimize divergence from develop, reduce merge conflicts, and keep the team's work visible to each other |
-| Always branch from develop (except hotfixes from main) | Develop is the integration branch â€” branching from it ensures your feature starts with the latest changes. Hotfixes branch from main for emergency patches |
-| Delete branches immediately after merging | A clean branch list makes it obvious what's in progress â€” configure GitHub to auto-delete branches after PR merge |
-| Use branch naming conventions consistently | `feature/add-upload`, `fix/entity-merge`, `hotfix/auth-expiry` â€” consistent naming makes branch purpose clear at a glance and enables automation |
+| Always branch from develop (except hotfixes from main) | Develop is the integration branch — branching from it ensures your feature starts with the latest changes. Hotfixes branch from main for emergency patches |
+| Delete branches immediately after merging | A clean branch list makes it obvious what's in progress — configure GitHub to auto-delete branches after PR merge |
+| Use branch naming conventions consistently | `feature/add-upload`, `fix/entity-merge`, `hotfix/auth-expiry` — consistent naming makes branch purpose clear at a glance and enables automation |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Protected branch enforcement | Main and develop branches must be protected â€” no direct commits, require PR approvals, require CI passing. A missing protection rule is a single point of failure for the deployment pipeline |
-| Branch deletion after security fixes | After merging a security hotfix, the branch should be deleted immediately â€” stale hotfix branches could be used to reconstruct the vulnerability |
+| Protected branch enforcement | Main and develop branches must be protected — no direct commits, require PR approvals, require CI passing. A missing protection rule is a single point of failure for the deployment pipeline |
+| Branch deletion after security fixes | After merging a security hotfix, the branch should be deleted immediately — stale hotfix branches could be used to reconstruct the vulnerability |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| CI run per branch | Every branch push triggers a CI run â€” CI costs scale with branch count. Use CI skip flags (`[skip ci]`) for documentation-only or config-only changes |
-| Branch count and git operations | Thousands of stale branches slow down `git branch -a` and related operations â€” archive or delete branches older than 3 months |
+| CI run per branch | Every branch push triggers a CI run — CI costs scale with branch count. Use CI skip flags (`[skip ci]`) for documentation-only or config-only changes |
+| Branch count and git operations | Thousands of stale branches slow down `git branch -a` and related operations — archive or delete branches older than 3 months |
 
 ## Workflows
 
@@ -130,7 +130,7 @@ fix/câ”€â”€â”€â”€â”€â”€â”€â”€â”€â�
 3. **Push branch** `git push origin feature/add-document-upload`
 4. **Open PR** against develop with filled template
 5. **Pass CI + code review** (1 reviewer for <100 lines, 2 for 500+)
-6. **Squash merge to develop** â€” single clean commit
+6. **Squash merge to develop** — single clean commit
 7. **Delete remote branch** after merge (auto-delete configured)
 
 ---
@@ -172,7 +172,7 @@ fix/câ”€â”€â”€â”€â”€â”€â”€â”€â”€â�
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| PR merge time (open â†’ merged) | > 24 hours | Warning | GitHub Insights |
+| PR merge time (open → merged) | > 24 hours | Warning | GitHub Insights |
 | Branch age (since last commit) | > 14 days | Info | GitHub Branch Overview |
 | CI failure rate per branch | > 20% | Critical | CI Dashboard |
 | Merge conflict rate | > 10% of PRs | Warning | GitHub PR Stats |
@@ -194,7 +194,7 @@ fix/câ”€â”€â”€â”€â”€â”€â”€â”€â”€â�
 
 This document defines the Git branch strategy that every Vaeloom engineer follows when creating, managing, and merging branches. It covers the permanent branch hierarchy (main, develop), short-lived branch types (feature, fix, hotfix, release, chore, docs), naming conventions, protection rules, and the merge strategy for each branch transition. Following this strategy ensures a linear, auditable history and predictable release cadence.
 
-The primary audience is all software engineers contributing code to the Vaeloom monorepo. Infrastructure engineers use branch protection rules defined here to configure GitHub repository settings. The strategy follows a GitHub Flow-inspired model with a permanent `develop` integration branch â€” a pragmatic choice for a team of 5 engineers shipping 2 releases per week.
+The primary audience is all software engineers contributing code to the Vaeloom monorepo. Infrastructure engineers use branch protection rules defined here to configure GitHub repository settings. The strategy follows a GitHub Flow-inspired model with a permanent `develop` integration branch — a pragmatic choice for a team of 5 engineers shipping 2 releases per week.
 
 Within the Vaeloom architecture, branch hygiene directly impacts CI cost (every branch push triggers a pipeline), merge conflict frequency (long-lived branches diverge from develop), and deployment reliability (hotfix branches must be backported to develop). Consistent branch management is a prerequisite for the release process defined in `Release-Process.md`.
 
@@ -204,7 +204,7 @@ Within the Vaeloom architecture, branch hygiene directly impacts CI cost (every 
 - Reduce merge conflicts by enforcing short-lived branches (< 1 week) and daily rebasing on develop
 - Enable parallel feature development without blocking the release pipeline
 - Ensure hotfixes to main are always backported to develop to prevent regression on the next release
-- Automate branch lifecycle â€” protection rules, auto-delete after merge, and stale branch cleanup
+- Automate branch lifecycle — protection rules, auto-delete after merge, and stale branch cleanup
 
 ## Scope
 
@@ -212,7 +212,7 @@ Within the Vaeloom architecture, branch hygiene directly impacts CI cost (every 
 
 - Branch naming conventions for feature, fix, hotfix, release, chore, and docs branches
 - Protection rules for main and develop branches (no direct commits, require PR + CI + review)
-- Merge strategy per branch type (squash for features, merge commit for developâ†’main)
+- Merge strategy per branch type (squash for features, merge commit for develop→main)
 - Rebase workflow and conflict resolution guidance
 - CI cost management through selective pipeline triggers and skip flags
 - Branch cleanup automation (auto-delete on merge, scheduled archive)
@@ -220,7 +220,7 @@ Within the Vaeloom architecture, branch hygiene directly impacts CI cost (every 
 ### Out of Scope
 
 - Trunk-based development with feature flags (planned for Q2 2027 migration)
-- Per-team or per-service branch namespacing (team-a/feature/x â€” needed at 50+ engineers)
+- Per-team or per-service branch namespacing (team-a/feature/x — needed at 50+ engineers)
 - Git-flow multi-team release coordination (manual coordination suffices at current team size)
 - Stacked PRs / stacked-diff workflow (planned for Q4 2026)
 - Monorepo CODEOWNERS enforcement for per-path branching rules

@@ -1,7 +1,7 @@
-﻿# Folder Structure
+# Folder Structure
 
 > **Purpose:** Define the monorepo folder structure for Vaeloom
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure`](../../Docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure`](../../docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure)
 
 ## Monorepo Structure
 
@@ -12,14 +12,14 @@ graph TD
     classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef agent fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Apps["ðŸ“± apps/"]
+    subgraph Apps["📱 apps/"]
         direction TB
         WEB["apps/web<br/>Next.js frontend<br/>11 page routes"]
         API["apps/api<br/>NestJS API<br/>7 modules (auth, docs, ...)"]
         AI["apps/ai-service<br/>FastAPI agent runtime"]
     end
 
-    subgraph Agents["ðŸ¤– ai-service/agents/"]
+    subgraph Agents["🤖 ai-service/agents/"]
         A1["organization_agent"]
         A2["memory_agent"]
         A3["resume_agent"]
@@ -32,19 +32,19 @@ graph TD
         A10["qa_agent"]
     end
 
-    subgraph Pkgs["ðŸ“¦ packages/"]
+    subgraph Pkgs["📦 packages/"]
         P1["shared-types"]
         P2["plugin-sdk"]
         P3["ui-kit"]
     end
 
-    subgraph Infra["âš™ï¸ infra/"]
+    subgraph Infra["⚙️ infra/"]
         I1["docker/"]
         I2["migrations/"]
         I3["ci/"]
     end
 
-    subgraph Docs["ðŸ“š docs/"]
+    subgraph Docs["📚 docs/"]
         D1["AI / Architecture / Backend /<br/>Database / DevOps / Engineering /<br/>Frontend / Operations / Product /<br/>Security / Testing"]
     end
 
@@ -59,7 +59,7 @@ graph TD
     class D1 docs
 ```
 
-> **Diagram:** Monorepo structure showing **4 top-level directories** â€” `apps/` (web, api, ai-service with 10 agents), `packages/` (shared-types, plugin-sdk, ui-kit), `infra/` (docker, migrations, ci), and `docs/` (11 doc categories). All apps depend on shared packages, and ai-service hosts the agent ecosystem.
+> **Diagram:** Monorepo structure showing **4 top-level directories** — `apps/` (web, api, ai-service with 10 agents), `packages/` (shared-types, plugin-sdk, ui-kit), `infra/` (docker, migrations, ci), and `docs/` (11 doc categories). All apps depend on shared packages, and ai-service hosts the agent ecosystem.
 
 ---
 
@@ -67,104 +67,104 @@ graph TD
 
 ```text
 Vaeloom/
-â”œâ”€â”€ apps/
-â”‚   â”œâ”€â”€ web/                      # Next.js frontend
-â”‚   â”‚   â”œâ”€â”€ app/
-â”‚   â”‚   â”‚   â”œâ”€â”€ dashboard/
-â”‚   â”‚   â”‚   â”œâ”€â”€ workspace/
-â”‚   â”‚   â”‚   â”œâ”€â”€ memory-graph/
-â”‚   â”‚   â”‚   â”œâ”€â”€ resume/
-â”‚   â”‚   â”‚   â”œâ”€â”€ jobs/
-â”‚   â”‚   â”‚   â”œâ”€â”€ applications/
-â”‚   â”‚   â”‚   â”œâ”€â”€ chat/
-â”‚   â”‚   â”‚   â”œâ”€â”€ schedule/
-â”‚   â”‚   â”‚   â”œâ”€â”€ connectors/
-â”‚   â”‚   â”‚   â”œâ”€â”€ history/
-â”‚   â”‚   â”‚   â””â”€â”€ settings/
-â”‚   â”‚   â””â”€â”€ components/
-â”‚   â”‚
-â”‚   â”œâ”€â”€ api/                      # NestJS core API service
-â”‚   â”‚   â”œâ”€â”€ auth/
-â”‚   â”‚   â”œâ”€â”€ workspaces/
-â”‚   â”‚   â”œâ”€â”€ documents/
-â”‚   â”‚   â”œâ”€â”€ connectors/
-â”‚   â”‚   â”œâ”€â”€ permissions/
-â”‚   â”‚   â”œâ”€â”€ audit/
-â”‚   â”‚   â””â”€â”€ events/
-â”‚   â”‚
-â”‚   â””â”€â”€ ai-service/               # FastAPI agent runtime
-â”‚       â”œâ”€â”€ orchestrator/
-â”‚       â”œâ”€â”€ agents/
-â”‚       â”‚   â”œâ”€â”€ organization_agent/
-â”‚       â”‚   â”œâ”€â”€ memory_agent/
-â”‚       â”‚   â”œâ”€â”€ resume_agent/
-â”‚       â”‚   â”œâ”€â”€ ats_agent/
-â”‚       â”‚   â”œâ”€â”€ job_search_agent/
-â”‚       â”‚   â”œâ”€â”€ application_agent/
-â”‚       â”‚   â”œâ”€â”€ gmail_agent/
-â”‚       â”‚   â”œâ”€â”€ scheduler_agent/
-â”‚       â”‚   â”œâ”€â”€ reflection_agent/
-â”‚       â”‚   â””â”€â”€ qa_agent/
-â”‚       â”œâ”€â”€ ingestion/
-â”‚       â”‚   â”œâ”€â”€ parsers/
-â”‚       â”‚   â”œâ”€â”€ ocr/
-â”‚       â”‚   â””â”€â”€ code_understanding/
-â”‚       â”œâ”€â”€ retrieval/
-â”‚       â””â”€â”€ tools/
-â”‚
-â”œâ”€â”€ packages/
-â”‚   â”œâ”€â”€ shared-types/
-â”‚   â”œâ”€â”€ plugin-sdk/
-â”‚   â””â”€â”€ ui-kit/
-â”‚
-â”œâ”€â”€ infra/
-â”‚   â”œâ”€â”€ docker/
-â”‚   â”œâ”€â”€ migrations/
-â”‚   â””â”€â”€ ci/
-â”‚
-â””â”€â”€ docs/
+├── apps/
+│   ├── web/                      # Next.js frontend
+│   │   ├── app/
+│   │   │   ├── dashboard/
+│   │   │   ├── workspace/
+│   │   │   ├── memory-graph/
+│   │   │   ├── resume/
+│   │   │   ├── jobs/
+│   │   │   ├── applications/
+│   │   │   ├── chat/
+│   │   │   ├── schedule/
+│   │   │   ├── connectors/
+│   │   │   ├── history/
+│   │   │   └── settings/
+│   │   └── components/
+│   │
+│   ├── api/                      # NestJS core API service
+│   │   ├── auth/
+│   │   ├── workspaces/
+│   │   ├── documents/
+│   │   ├── connectors/
+│   │   ├── permissions/
+│   │   ├── audit/
+│   │   └── events/
+│   │
+│   └── ai-service/               # FastAPI agent runtime
+│       ├── orchestrator/
+│       ├── agents/
+│       │   ├── organization_agent/
+│       │   ├── memory_agent/
+│       │   ├── resume_agent/
+│       │   ├── ats_agent/
+│       │   ├── job_search_agent/
+│       │   ├── application_agent/
+│       │   ├── gmail_agent/
+│       │   ├── scheduler_agent/
+│       │   ├── reflection_agent/
+│       │   └── qa_agent/
+│       ├── ingestion/
+│       │   ├── parsers/
+│       │   ├── ocr/
+│       │   └── code_understanding/
+│       ├── retrieval/
+│       └── tools/
+│
+├── packages/
+│   ├── shared-types/
+│   ├── plugin-sdk/
+│   └── ui-kit/
+│
+├── infra/
+│   ├── docker/
+│   ├── migrations/
+│   └── ci/
+│
+└── docs/
 ```
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
-| Adding files outside the established directory structure | A utility function placed in `apps/api/utils/` instead of `packages/shared-types/` isn't available to other services â€” one-off locations create duplication and integration issues |
-| Nesting folders more than 4 levels deep | `apps/ai-service/agents/memory/tools/parsers/document.py` is hard to navigate and creates excessively long import paths â€” flatten after 4 levels |
-| Empty or ambiguous directory names | A directory called `misc/`, `utils/`, or `helpers/` with unrelated files becomes a dumping ground â€” every directory should have a clear, single purpose |
-| Creating new agent directories without updating this document | A new agent that exists in the filesystem but isn't documented here creates confusion â€” new agents must be added to the Folder Structure doc as part of the PR |
+| Adding files outside the established directory structure | A utility function placed in `apps/api/utils/` instead of `packages/shared-types/` isn't available to other services — one-off locations create duplication and integration issues |
+| Nesting folders more than 4 levels deep | `apps/ai-service/agents/memory/tools/parsers/document.py` is hard to navigate and creates excessively long import paths — flatten after 4 levels |
+| Empty or ambiguous directory names | A directory called `misc/`, `utils/`, or `helpers/` with unrelated files becomes a dumping ground — every directory should have a clear, single purpose |
+| Creating new agent directories without updating this document | A new agent that exists in the filesystem but isn't documented here creates confusion — new agents must be added to the Folder Structure doc as part of the PR |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Keep the directory structure flat â€” no more than 4 levels deep | Deep nesting creates long import paths and makes the structure hard to visualize â€” `apps/ai-service/agents/{agent_name}/` should be the deepest standard pattern |
-| Name directories after the domain concept, not the implementation | Use `agents/memory_agent/` not `agents/nlp/` â€” names should reflect what the code does, not the technology it uses |
-| Update the folder structure doc when adding new directories | A stale `Folder-Structure.md` misleads new developers â€” adding a new directory should include updating this document in the same PR |
-| Use the monorepo tooling to enforce path conventions | Workspace-level ESLint rules should restrict imports to valid paths â€” prevent accidental cross-service dependencies at the lint level |
+| Keep the directory structure flat — no more than 4 levels deep | Deep nesting creates long import paths and makes the structure hard to visualize — `apps/ai-service/agents/{agent_name}/` should be the deepest standard pattern |
+| Name directories after the domain concept, not the implementation | Use `agents/memory_agent/` not `agents/nlp/` — names should reflect what the code does, not the technology it uses |
+| Update the folder structure doc when adding new directories | A stale `Folder-Structure.md` misleads new developers — adding a new directory should include updating this document in the same PR |
+| Use the monorepo tooling to enforce path conventions | Workspace-level ESLint rules should restrict imports to valid paths — prevent accidental cross-service dependencies at the lint level |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Internal-only directories exposed by tooling | The `infra/migrations/` and `infra/ci/` directories contain credentials and configuration â€” ensure build tooling doesn't export these to public artifacts |
-| Agent isolation by directory structure | Each agent lives in its own directory with its own `permissions.py` â€” the directory boundary reinforces the permission boundary. Never share agent code across directories without explicit review |
+| Internal-only directories exposed by tooling | The `infra/migrations/` and `infra/ci/` directories contain credentials and configuration — ensure build tooling doesn't export these to public artifacts |
+| Agent isolation by directory structure | Each agent lives in its own directory with its own `permissions.py` — the directory boundary reinforces the permission boundary. Never share agent code across directories without explicit review |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Monorepo size and CI clone time | A monorepo with 5+ years of history can take minutes to clone â€” use shallow clone (`--depth=1`) in CI and sparse checkout for targeted operations |
-| Directory structure and build caching | A well-organized monorepo enables granular build caching â€” each `apps/` directory should produce a separate build artifact so changes to `apps/web` don't rebuild `apps/ai-service` |
+| Monorepo size and CI clone time | A monorepo with 5+ years of history can take minutes to clone — use shallow clone (`--depth=1`) in CI and sparse checkout for targeted operations |
+| Directory structure and build caching | A well-organized monorepo enables granular build caching — each `apps/` directory should produce a separate build artifact so changes to `apps/web` don't rebuild `apps/ai-service` |
 
 ## Workflows
 
 1. **New agent creation:** Create directory under `apps/ai-service/agents/{agent_name}/` with `__init__.py`, `agent.py`, `tools/`, `prompts/`, `tests/`
 2. **New API module:** Add directory under `apps/api/{module_name}/` with controller, service, DTO, and test files
 3. **New frontend page:** Add route directory under `apps/web/app/{route}/` with `page.tsx` and `components/`
-4. **Shared package update:** Modify `packages/{package}/src/` â€” changes propagate to all consuming apps
+4. **Shared package update:** Modify `packages/{package}/src/` — changes propagate to all consuming apps
 5. **Infrastructure change:** Update `infra/{docker|migrations|ci}/` with corresponding Terraform or config changes
-6. **Documentation update:** Update `docs/{category}/` â€” always verify cross-references to existing docs
+6. **Documentation update:** Update `docs/{category}/` — always verify cross-references to existing docs
 
 ---
 
@@ -227,7 +227,7 @@ Vaeloom/
 
 The Vaeloom monorepo follows a structured layout that separates concerns across three application services (`apps/web`, `apps/api`, `apps/ai-service`), three shared packages (`packages/shared-types`, `packages/plugin-sdk`, `packages/ui-kit`), infrastructure configuration (`infra/`), and documentation (`docs/`). This document defines every directory's purpose, naming conventions, and depth limits so engineers can navigate the codebase without guesswork.
 
-The two-service backend split is a non-negotiable architectural decision: NestJS (`apps/api`) owns auth, CRUD, and permissions; FastAPI (`apps/ai-service`) owns agents, memory, and retrieval. They communicate over an internal RPC boundary. The frontend (`apps/web`) talks exclusively to `apps/api` â€” never directly to `apps/ai-service`. Each of the 10 specialist agents lives in its own directory under `apps/ai-service/agents/`, reinforcing the permission boundary at the filesystem level.
+The two-service backend split is a non-negotiable architectural decision: NestJS (`apps/api`) owns auth, CRUD, and permissions; FastAPI (`apps/ai-service`) owns agents, memory, and retrieval. They communicate over an internal RPC boundary. The frontend (`apps/web`) talks exclusively to `apps/api` — never directly to `apps/ai-service`. Each of the 10 specialist agents lives in its own directory under `apps/ai-service/agents/`, reinforcing the permission boundary at the filesystem level.
 
 All Vaeloom engineers use this document as the canonical reference when creating new directories, modules, or agents. The structure is enforced through import-path lint rules and periodic audits, with a planned CI-enforced validation gate for Q3 2026.
 
@@ -235,7 +235,7 @@ All Vaeloom engineers use this document as the canonical reference when creating
 
 - Define a clear, navigable monorepo structure that scales from 3 apps to 50+ without reorganization
 - Enforce separation between frontend, API, AI service, shared packages, and infrastructure
-- Ensure every directory has a single, unambiguous purpose â€” no `utils/` or `misc/` dumping grounds
+- Ensure every directory has a single, unambiguous purpose — no `utils/` or `misc/` dumping grounds
 - Establish depth limits (max 4 levels) to keep import paths short and navigation predictable
 - Provide explicit workflows for creating new agents, API modules, frontend pages, and packages
 
@@ -310,4 +310,4 @@ import { Orchestrator } from '../../../ai-service/orchestrator'; // BLOCKED BY L
 ## Related Documents
 
 - [Coding Standards.md](./Coding-Standards.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure`](../../Docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure)
+- [`/docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure`](../../docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure)

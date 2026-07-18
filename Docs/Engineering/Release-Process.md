@@ -27,16 +27,16 @@ graph TD
     subgraph Process["ðŸ”„ Release Process (GitHub Flow)"]
         P1["1. Feature/hotfix branch from main"]
         P2["2. Open PR against main"]
-        P3["3. CI: lint â†’ typecheck â†’ test â†’ build"]
+        P3["3. CI: lint --> typecheck --> test --> build"]
         P4["4. Merge to main after review + CI"]
         P5["5. Auto-deploy to staging"]
-        P6["6. Verify staging â†’ manual prod deploy"]
+        P6["6. Verify staging --> manual prod deploy"]
         P7["7. Tag: git tag v1.2.0"]
     end
 
     subgraph Rollback["âš ï¸ Rollback Process"]
         R1["Within 1 hour: Deploy previous image<br/>flyctl deploy --image $PREVIOUS_SHA"]
-        R2["After 1 hour: git revert + hotfix PR<br/>CI/CD deploys staging â†’ manual prod"]
+        R2["After 1 hour: git revert + hotfix PR<br/>CI/CD deploys staging --> manual prod"]
     end
 
     Versioning --> Cadence --> Process --> Rollback
@@ -47,7 +47,7 @@ graph TD
     class R1,R2 rollback
 ```
 
-> **Diagram:** Release process flowing from **SemVer** (major/minor/patch) â†’ **cadence** (quarterly/monthly/as-needed) â†’ **GitHub Flow process** (7 steps: branch â†’ PR â†’ CI â†’ merge â†’ staging â†’ prod â†’ tag) â†’ **rollback strategies** (immediate image rollback or git revert + hotfix).
+> **Diagram:** Release process flowing from **SemVer** (major/minor/patch) → **cadence** (quarterly/monthly/as-needed) → **GitHub Flow process** (7 steps: branch → PR → CI → merge → staging → prod → tag) → **rollback strategies** (immediate image rollback or git revert + hotfix).
 
 ---
 
@@ -71,15 +71,15 @@ Vaeloom follows **Semantic Versioning** (SemVer):
 
 ## Release Process
 
-Vaeloom uses **GitHub Flow** â€” a single `main` branch with short-lived feature branches and release tags:
+Vaeloom uses **GitHub Flow** — a single `main` branch with short-lived feature branches and release tags:
 
 ```text
 1. Create feature/hotfix branch from main
 2. Open PR against main
-3. CI runs lint â†’ typecheck â†’ test â†’ build (every push)
+3. CI runs lint → typecheck → test → build (every push)
 4. Merge to main after review + CI passes
-5. Merge to main â†’ auto-deploy to staging
-6. After staging verification â†’ manually trigger production deploy
+5. Merge to main → auto-deploy to staging
+6. After staging verification → manually trigger production deploy
 7. Tag release: git tag v1.2.0 && git push origin v1.2.0
 ```
 
@@ -88,14 +88,14 @@ Vaeloom uses **GitHub Flow** â€” a single `main` branch with short-lived fe
 ## Rollback Process
 
 ```bash
-# If release has issues within 1 hour â€” redeploy previous image
+# If release has issues within 1 hour — redeploy previous image
 flyctl deploy apps/api --image ghcr.io/Vaeloom/api:$PREVIOUS_SHA
 flyctl deploy apps/web --image ghcr.io/Vaeloom/web:$PREVIOUS_SHA
 
 # Verify rollback
 curl -f https://api.Vaeloom.dev/v1/health && echo "Rollback OK"
 
-# If release has been running for > 1 hour â€” revert + hotfix PR
+# If release has been running for > 1 hour — revert + hotfix PR
 git revert <release-commit>
 git push origin main
 # CI/CD deploys staging; manual approval for production
@@ -107,34 +107,34 @@ git push origin main
 
 | Mistake | Consequence |
 |---------|-------------|
-| Releasing on a Friday afternoon | A Friday release leaves no time for monitoring â€” issues discovered over the weekend require on-call engineers to handle without the full team available |
-| Skipping staging deployment before production | Deploying directly to production without staging validation means integration issues are caught by real users â€” always deploy to staging first and verify |
-| Forgetting to tag the release after deployment | Without a git tag, there's no way to know which commit was deployed â€” rollback requires finding the right commit in the git history manually |
-| Not having a rollback plan before deploying | A release with no tested rollback process turns a minor bug into a prolonged outage â€” the rollback procedure must be verified before every production deployment |
+| Releasing on a Friday afternoon | A Friday release leaves no time for monitoring — issues discovered over the weekend require on-call engineers to handle without the full team available |
+| Skipping staging deployment before production | Deploying directly to production without staging validation means integration issues are caught by real users — always deploy to staging first and verify |
+| Forgetting to tag the release after deployment | Without a git tag, there's no way to know which commit was deployed — rollback requires finding the right commit in the git history manually |
+| Not having a rollback plan before deploying | A release with no tested rollback process turns a minor bug into a prolonged outage — the rollback procedure must be verified before every production deployment |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Deploy early in the week during business hours | Monday-Thursday during working hours gives the team 8+ hours to monitor for issues â€” Friday deployments should be reserved for critical security patches only |
-| Always deploy to staging first and verify | Staging should mirror production configuration â€” a staging verification catches environment-specific issues (DNS, secrets, database migrations) before production |
-| Tag every release immediately after deployment | `git tag v1.2.0 && git push origin v1.2.0` creates an immutable reference â€” rollback means deploying the tagged commit, not guessing which SHA was live |
-| Test the rollback process before every major release | A rollback that has never been tested will fail under pressure â€” include rollback verification in the release checklist as a required step |
+| Deploy early in the week during business hours | Monday-Thursday during working hours gives the team 8+ hours to monitor for issues — Friday deployments should be reserved for critical security patches only |
+| Always deploy to staging first and verify | Staging should mirror production configuration — a staging verification catches environment-specific issues (DNS, secrets, database migrations) before production |
+| Tag every release immediately after deployment | `git tag v1.2.0 && git push origin v1.2.0` creates an immutable reference — rollback means deploying the tagged commit, not guessing which SHA was live |
+| Test the rollback process before every major release | A rollback that has never been tested will fail under pressure — include rollback verification in the release checklist as a required step |
 
 ## Security Considerations
 
 | Consideration | Mitigation |
 |--------------|-----------|
-| Release artifact integrity | Release artifacts must be signed and verified with checksums â€” an unsigned artifact could be replaced by a malicious version in transit to the deployment target |
-| Rollback as a security risk | Rolling back to a previous version may reintroduce fixed vulnerabilities â€” the rollback target must be checked for known vulnerabilities before deployment |
-| Release notes exposure | Release notes that detail security fixes may help attackers identify unpatched versions â€” publish security release notes separately with CVE identifiers |
+| Release artifact integrity | Release artifacts must be signed and verified with checksums — an unsigned artifact could be replaced by a malicious version in transit to the deployment target |
+| Rollback as a security risk | Rolling back to a previous version may reintroduce fixed vulnerabilities — the rollback target must be checked for known vulnerabilities before deployment |
+| Release notes exposure | Release notes that detail security fixes may help attackers identify unpatched versions — publish security release notes separately with CVE identifiers |
 
 ## Performance Considerations
 
 | Consideration | Approach |
 |--------------|----------|
-| Deployment window impact | Deployments consume CI/CD resources and may affect production performance during rolling updates â€” schedule major releases during low-traffic periods |
-| Rollback speed | The 1-hour rollback window requires a fast rollback mechanism â€” pre-build container images with version tags and keep the last 5 images available for instant rollback |
+| Deployment window impact | Deployments consume CI/CD resources and may affect production performance during rolling updates — schedule major releases during low-traffic periods |
+| Rollback speed | The 1-hour rollback window requires a fast rollback mechanism — pre-build container images with version tags and keep the last 5 images available for instant rollback |
 
 ## Workflows
 
@@ -143,7 +143,7 @@ git push origin main
 3. **Version bump:** Update `package.json` version and run `npx conventional-changelog`
 4. **Staging deploy:** Auto-deploy to staging environment for verification
 5. **QA testing:** Run smoke tests, E2E tests, regression tests against staging
-6. **Production deploy:** Manual approval â†’ deploy to production
+6. **Production deploy:** Manual approval → deploy to production
 7. **Tag release:** `git tag -a v1.2.0 -m "Release v1.2.0" && git push origin v1.2.0`
 8. **Post-release monitoring:** Monitor error rates, latency, and business metrics for 1 hour
 9. **Rollback if needed:** `flyctl deploy --image $PREVIOUS_SHA` (within 1 hour window)
@@ -209,9 +209,9 @@ git push origin main
 
 The Vaeloom release process governs how changes move from merged code to production deployment. This document defines the semantic versioning scheme (SemVer 2.0.0), release cadence (major quarterly, minor monthly, patch as-needed), the GitHub Flow release process (7 steps from branch to tag), and rollback strategies for both immediate and delayed issue detection.
 
-Unlike the branching-heavy model in `Branch-Strategy.md`, Vaeloom uses a simplified GitHub Flow for releases: short-lived feature branches merge directly to `main`, and CI/CD handles staging and production deployment automatically. There is no `develop` branch in this model â€” a deliberate simplification for a team shipping 2 releases per week.
+Unlike the branching-heavy model in `Branch-Strategy.md`, Vaeloom uses a simplified GitHub Flow for releases: short-lived feature branches merge directly to `main`, and CI/CD handles staging and production deployment automatically. There is no `develop` branch in this model — a deliberate simplification for a team shipping 2 releases per week.
 
-Every engineer involved in the release process â€” developers, reviewers, QA, and DevOps â€” follows this document. The process prioritizes staging verification before production promotion, automated rollback within 1 hour of deployment, and explicit tagging for every release.
+Every engineer involved in the release process — developers, reviewers, QA, and DevOps — follows this document. The process prioritizes staging verification before production promotion, automated rollback within 1 hour of deployment, and explicit tagging for every release.
 
 ## Goals
 
@@ -252,14 +252,14 @@ git push origin v1.2.0
 # Generate changelog from conventional commits
 npx conventional-changelog -p angular -i CHANGELOG.md -s
 
-# Rollback within 1 hour â€” redeploy previous image
+# Rollback within 1 hour — redeploy previous image
 flyctl deploy apps/api --image ghcr.io/Vaeloom/api:v1.1.0
 flyctl deploy apps/web --image ghcr.io/Vaeloom/web:v1.1.0
 
 # Verify rollback
 curl -f https://api.Vaeloom.dev/v1/health && echo "Rollback OK"
 
-# Rollback after 1 hour â€” revert + hotfix PR
+# Rollback after 1 hour — revert + hotfix PR
 git revert <release-commit>
 git push origin main
 

@@ -1,17 +1,17 @@
-﻿# 04 â€” Memory System (MVP)
+﻿# 04 — Memory System (MVP)
 
 > **Purpose:** Build the Memory Agent that extracts entities and relationships from parsed documents into a structured, queryable knowledge graph and vector store.
 > **Status:** âœ… Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
-## The memory prompt. This is the core of the product â€” take more care here than anywhere else
+## The memory prompt. This is the core of the product — take more care here than anywhere else
 
 ## Overview
 
 The Memory System is the intellectual core of Vaeloom. It transforms parsed documents (from Phase 03) into structured, queryable memory by extracting typed entities (Skill, Project, Organization, Person, etc.) and typed relationships (worked_on, awarded_to, etc.) using JSON schema-constrained LLM generation. Every extracted fact undergoes a merge/dedup process that combines string similarity, embedding similarity, and graph-context similarity before being committed to the knowledge graph and vector store.
 
-The system implements the full write path: candidate facts â†’ merge/dedup check â†’ write to entities/relationships (Postgres) â†’ mirror into AGE graph projection â†’ generate embedding â†’ write to embeddings table â†’ publish `memory.updated` event. On the read side, the agentic RAG retrieval layer provides a single `retrieve()` function supporting four strategies (vector, keyword, graph, hybrid) with re-ranking by relevance, freshness, and confidence.
+The system implements the full write path: candidate facts → merge/dedup check → write to entities/relationships (Postgres) → mirror into AGE graph projection → generate embedding → write to embeddings table → publish `memory.updated` event. On the read side, the agentic RAG retrieval layer provides a single `retrieve()` function supporting four strategies (vector, keyword, graph, hybrid) with re-ranking by relevance, freshness, and confidence.
 
 Six memory types are implemented for MVP (profile, document, career, episodic, preference, working), matching the `memory_records.type` enum from Phase 02. Every fact includes traceable provenance (`source_document_id` or `source_memory_id`), and the consolidation job periodically merges low-confidence duplicates while preserving an audit trail.
 
@@ -89,47 +89,47 @@ Read `03-ingestion-pipeline.md` first. Ingestion produces parsed `documents`; th
 
 ## Objective
 
-Build the Memory Agent: the internal agent that extracts entities and relationships from every parsed document (and, later, every other agent's output), merges them correctly against existing memory, and writes to the knowledge graph and vector store â€” plus the agentic RAG retrieval layer other agents use to read it back.
+Build the Memory Agent: the internal agent that extracts entities and relationships from every parsed document (and, later, every other agent's output), merges them correctly against existing memory, and writes to the knowledge graph and vector store — plus the agentic RAG retrieval layer other agents use to read it back.
 
-## Memory types (MVP â€” six, not the full enterprise taxonomy)
+## Memory types (MVP — six, not the full enterprise taxonomy)
 
-Implement exactly these, matching the `memory_records.type` enum from file 02: `profile` (stable facts â€” education, skills, certifications), `document` (per-file summary + embedding), `career` (applications, outcomes), `episodic` (timestamped events), `preference` (inferred/stated patterns), `working` (current session context â€” the only type cleared per session; everything else is permanent unless explicitly deleted).
+Implement exactly these, matching the `memory_records.type` enum from file 02: `profile` (stable facts — education, skills, certifications), `document` (per-file summary + embedding), `career` (applications, outcomes), `episodic` (timestamped events), `preference` (inferred/stated patterns), `working` (current session context — the only type cleared per session; everything else is permanent unless explicitly deleted).
 
 ## Requirements
 
 **Extraction (`apps/ai-service/agents/memory_agent/extraction.py`):**
 
-- Input: a parsed `documents` row (or any other agent's output â€” this module is called by more than just ingestion, design the interface accordingly: `extract(content: str, source_type: str, source_id: str, workspace_id: str) -> ExtractedFacts`).
+- Input: a parsed `documents` row (or any other agent's output — this module is called by more than just ingestion, design the interface accordingly: `extract(content: str, source_type: str, source_id: str, workspace_id: str) -> ExtractedFacts`).
 - Output: candidate entities (typed: `Skill`, `Project`, `Organization`, `Person`, `Certificate`, `Event`, `Job`, `Course`, `Publication`) and candidate typed relationships (`worked_on`, `awarded_to`, `requires_skill`, `applied_to`, `mentored_by`) between them, each with an initial confidence score based on source clarity.
-- Use structured output (JSON schema-constrained generation), not free-form text parsing â€” precision matters more than fluency here.
+- Use structured output (JSON schema-constrained generation), not free-form text parsing — precision matters more than fluency here.
 
 **Merge & dedup (`apps/ai-service/agents/memory_agent/merge.py`):**
 
 - Before writing a candidate entity, check for an existing match using a combination of: string similarity on `canonical_name`/`aliases`, embedding similarity, and graph-context similarity (shared relationships).
-- **Critical rule:** if match confidence is below a defined threshold (e.g. 0.8), do NOT merge â€” create a new, separate entity instead, and log it to a `needs_reflection` queue for the Reflection Agent (enterprise phase) to revisit later. A wrong merge silently corrupts two records; a missed merge is a correctable annoyance. Never trade the former for the latter.
+- **Critical rule:** if match confidence is below a defined threshold (e.g. 0.8), do NOT merge — create a new, separate entity instead, and log it to a `needs_reflection` queue for the Reflection Agent (enterprise phase) to revisit later. A wrong merge silently corrupts two records; a missed merge is a correctable annoyance. Never trade the former for the latter.
 - Write a test suite specifically for this: seed "React" and "React.js" mentions and assert they merge; seed two genuinely different people with the same first name and assert they do NOT merge.
 
 **Write path:**
 
 ```text
-Candidate facts â†’ merge/dedup check â†’ write to entities/relationships (Postgres)
-   â†’ mirror into AGE graph projection â†’ generate embedding â†’ write to embeddings table
-   â†’ publish memory.updated event
+Candidate facts → merge/dedup check → write to entities/relationships (Postgres)
+   → mirror into AGE graph projection → generate embedding → write to embeddings table
+   → publish memory.updated event
 ```text
 
 **Agentic RAG retrieval (`apps/ai-service/retrieval/`):**
 
-- Expose one function: `retrieve(query: str, workspace_id: str, strategy: Literal["vector","keyword","graph","hybrid"] = "hybrid", limit: int = 10) -> list[RetrievedMemory]`, where each `RetrievedMemory` carries its source provenance (which document/event produced it) â€” never return a fact without a traceable source.
-- `hybrid` (the default) combines vector similarity (pgvector), keyword match (Postgres full-text search is sufficient for MVP â€” no dedicated search engine yet), and graph traversal (AGE) and re-ranks the combined candidates by relevance, freshness (`freshness_at`), and confidence.
+- Expose one function: `retrieve(query: str, workspace_id: str, strategy: Literal["vector","keyword","graph","hybrid"] = "hybrid", limit: int = 10) -> list[RetrievedMemory]`, where each `RetrievedMemory` carries its source provenance (which document/event produced it) — never return a fact without a traceable source.
+- `hybrid` (the default) combines vector similarity (pgvector), keyword match (Postgres full-text search is sufficient for MVP — no dedicated search engine yet), and graph traversal (AGE) and re-ranks the combined candidates by relevance, freshness (`freshness_at`), and confidence.
 - The calling agent chooses the strategy explicitly when it knows better (e.g. an exact course-code lookup should pass `strategy="keyword"`), and falls back to `hybrid` by default.
 
-**Consolidation (basic MVP version â€” full Reflection Agent is enterprise-phase):**
+**Consolidation (basic MVP version — full Reflection Agent is enterprise-phase):**
 
 - A scheduled job that finds `memory_records` of the same type/entity with overlapping content and merges the lowest-confidence, oldest duplicates into the highest-confidence one, preserving the merged-away record's content in an audit trail rather than deleting it.
 
 ## Out of scope
 
-The full 20-type memory taxonomy, the standalone Reflection Agent, memory export/import, a dedicated vector DB or Neo4j migration (all enterprise upgrades â€” see `enterprise/04-memory-system.md`).
+The full 20-type memory taxonomy, the standalone Reflection Agent, memory export/import, a dedicated vector DB or Neo4j migration (all enterprise upgrades — see `enterprise/04-memory-system.md`).
 
 ## Acceptance criteria
 
@@ -152,7 +152,7 @@ The full 20-type memory taxonomy, the standalone Reflection Agent, memory export
 | Practice | Why |
 |----------|-----|
 | Always include `source_document_id` on every extracted fact | Enables provenance tracing and audit without re-extraction |
-| Use JSON schema-constrained structured output for extraction | Precision matters more than fluency â€” free-text parsing introduces ambiguity |
+| Use JSON schema-constrained structured output for extraction | Precision matters more than fluency — free-text parsing introduces ambiguity |
 | Run the merge/dedup test suite before every extraction pipeline change | Wrong merges are the hardest memory-system bug to detect after data is written |
 
 ## Security Considerations
@@ -160,7 +160,7 @@ The full 20-type memory taxonomy, the standalone Reflection Agent, memory export
 | Concern | Mitigation |
 |---------|------------|
 | Memory records contain inferred personal data | Apply workspace-scoped access to all memory reads; never allow cross-workspace retrieval |
-| Embeddings encode semantic information permanently | Treat embedding vectors as PII-equivalent â€” apply same export/delete controls |
+| Embeddings encode semantic information permanently | Treat embedding vectors as PII-equivalent — apply same export/delete controls |
 | Consolidation could accidentally merge cross-entity data | Restrict merge operations to entities within the same workspace only |
 
 ## Performance Considerations
@@ -177,7 +177,7 @@ The full 20-type memory taxonomy, the standalone Reflection Agent, memory export
 
 - Memory Agent extraction pipeline converting parsed content into typed entities (Skill, Project, Organization, Person, Certificate, Event, Job, Course, Publication) and typed relationships (worked_on, awarded_to, requires_skill, applied_to, mentored_by)
 - Multi-signal merge/dedup system using string similarity, embedding similarity, and graph-context similarity with 0.8 confidence threshold
-- Full write path: candidate facts â†’ merge/dedup â†’ entities/relationships (Postgres) â†’ AGE graph projection â†’ embeddings (pgvector) â†’ memory.updated event
+- Full write path: candidate facts → merge/dedup → entities/relationships (Postgres) → AGE graph projection → embeddings (pgvector) → memory.updated event
 - Agentic RAG retrieval: single `retrieve()` function with four strategies (vector, keyword, graph, hybrid) and re-ranking
 - Six MVP memory types: profile, document, career, episodic, preference, working
 - Basic consolidation job for periodic duplicate merging
@@ -267,7 +267,7 @@ async def test_merge_threshold():
 
 ## Related Documents
 
-- [03 â€” Ingestion Pipeline](03-ingestion-pipeline.md) â€” Prerequisite: parsed documents as extraction input
-- [05 â€” Agent Harness & Orchestration](05-agent-harness-orchestration.md) â€” Consumes the retrieval layer in the Plan phase
-- [06 â€” RAG Retrieval](06-rag-retrieval.md) â€” Hardens retrieval with chunking, re-ranking, context assembly
-- [08 â€” Specialist Agents](08-specialist-agents.md) â€” All agents read from and write to this memory system
+- [03 — Ingestion Pipeline](03-ingestion-pipeline.md) — Prerequisite: parsed documents as extraction input
+- [05 — Agent Harness & Orchestration](05-agent-harness-orchestration.md) — Consumes the retrieval layer in the Plan phase
+- [06 — RAG Retrieval](06-rag-retrieval.md) — Hardens retrieval with chunking, re-ranking, context assembly
+- [08 — Specialist Agents](08-specialist-agents.md) — All agents read from and write to this memory system
