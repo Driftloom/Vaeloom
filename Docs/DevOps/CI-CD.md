@@ -250,7 +250,7 @@ git push origin main
 # Verify rollback
 curl -f https://api.Vaeloom.dev/v1/health && \
   echo "Rollback successful" || \
-  echo "Rollback failed â€” escalate"
+  echo "Rollback failed — escalate"
 ```
 
 ## Best Practices
@@ -261,7 +261,7 @@ curl -f https://api.Vaeloom.dev/v1/health && \
 | Cache dependencies between runs | Reduces CI time by 40-60% |
 | Fail fast: lint before test | Fail in 30s instead of 5 min for formatting issues |
 | Use Docker layer caching | Reduces build time by 50-70% |
-| Immutable tags (SHA-based) | Never reuse `:latest` â€” always SHA for traceability |
+| Immutable tags (SHA-based) | Never reuse `:latest` — always SHA for traceability |
 | Smoke tests after deploy | Verify deployment before traffic hits it |
 
 ## Common Mistakes
@@ -355,11 +355,11 @@ curl -f https://api.Vaeloom.dev/v1/health && \
 
 ## Data Flow
 
-1. **PR Trigger** â€” Developer opens/updates pull request; GitHub Actions triggers CI workflow with checkout, Node.js/Python setup, and dependency installation using cached node_modules
-2. **Parallel Stage Execution** â€” Lint (ESLint, Ruff, Prettier) and Type Check run in parallel; if both pass, test stage starts with PostgreSQL and Redis service containers for integration tests
-3. **Build and Push** â€” On merge to main with all tests passing, Docker multi-stage build creates production images; each image is tagged with commit SHA and pushed to ghcr.io with Cosign signature
-4. **Staging Deploy** â€” CD workflow deploys new images to staging using rolling update; health check probes verify each service instance before routing traffic
-5. **Post-Deploy Verification** â€” Smoke tests run against staging endpoints (health, auth, CRUD); if successful, notification sent via Slack with deployment summary and approval button for production
+1. **PR Trigger** — Developer opens/updates pull request; GitHub Actions triggers CI workflow with checkout, Node.js/Python setup, and dependency installation using cached node_modules
+2. **Parallel Stage Execution** — Lint (ESLint, Ruff, Prettier) and Type Check run in parallel; if both pass, test stage starts with PostgreSQL and Redis service containers for integration tests
+3. **Build and Push** — On merge to main with all tests passing, Docker multi-stage build creates production images; each image is tagged with commit SHA and pushed to ghcr.io with Cosign signature
+4. **Staging Deploy** — CD workflow deploys new images to staging using rolling update; health check probes verify each service instance before routing traffic
+5. **Post-Deploy Verification** — Smoke tests run against staging endpoints (health, auth, CRUD); if successful, notification sent via Slack with deployment summary and approval button for production
 
 ## Scalability
 
@@ -404,7 +404,7 @@ curl -f https://api.Vaeloom.dev/v1/health && \
 | TEST_RETRIES | Number of test retries for flaky tests | 2 | No |
 | DEPLOY_TIMEOUT | Deployment timeout in minutes | 15 | No |
 | SMOKE_TEST_ENDPOINTS | Comma-separated health endpoints | /health,/v1/health | No |
-| SLACK_WEBHOOK | Deployment notification channel | â€” | No |
+| SLACK_WEBHOOK | Deployment notification channel | — | No |
 | CACHE_PREFIX | Cache key prefix for dependency caching | v1 | No |
 
 ## Risks

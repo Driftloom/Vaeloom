@@ -1,4 +1,4 @@
-﻿# DevOps
+# DevOps
 
 > **Purpose:** Deployment, CI/CD, infrastructure, and observability
 > **Status:** Active
@@ -17,21 +17,21 @@ The directory provides guidance on CI/CD security scanning, infrastructure-as-co
 
 | Document | Location | Status |
 |----------|----------|--------|
-| Deployment Infrastructure | [`/Docs/Engineering/Implementation/16-deployment-infrastructure.md`](../../Docs/Engineering/Implementation/16-deployment-infrastructure.md) | âœ… Good |
-| Observability & Tracing | [`/Docs/Engineering/Implementation/12-observability-tracing.md`](../../Docs/Engineering/Implementation/12-observability-tracing.md) | âœ… Good |
-| Deployment Architecture | [`/Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture`](../../Docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture) | âœ… Good |
+| Deployment Infrastructure | [`/docs/Engineering/Implementation/16-deployment-infrastructure.md`](../../docs/Engineering/Implementation/16-deployment-infrastructure.md) | ✅ Good |
+| Observability & Tracing | [`/docs/Engineering/Implementation/12-observability-tracing.md`](../../docs/Engineering/Implementation/12-observability-tracing.md) | ✅ Good |
+| Deployment Architecture | [`/docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture`](../../docs/Vaeloom-Complete-Documentation.md#135-deployment-architecture) | ✅ Good |
 
 ## Deployment overview
 
 ```mermaid
 graph TD
-    CDN["ðŸŒ CDN / Load Balancer"]
-    WEB["ðŸ“± Web App<br/>Next.js"]
-    API["ðŸ”— Core API<br/>NestJS"]
-    AI["ðŸ¤– AI Service<br/>FastAPI"]
-    REDIS["ðŸ—„ï¸ Redis<br/>Queue + Cache"]
-    DB["ðŸ—ƒï¸ PostgreSQL<br/>+ AGE Graph + pgvector"]
-    MODEL["ðŸ§  Model Provider<br/>Claude API"]
+    CDN["🌐 CDN / Load Balancer"]
+    WEB["📱 Web App<br/>Next.js"]
+    API["🔗 Core API<br/>NestJS"]
+    AI["🤖 AI Service<br/>FastAPI"]
+    REDIS["🗄️ Redis<br/>Queue + Cache"]
+    DB["🗃️ PostgreSQL<br/>+ AGE Graph + pgvector"]
+    MODEL["🧠 Model Provider<br/>Claude API"]
 
     CDN --> WEB
     WEB <--> API
@@ -67,49 +67,49 @@ graph TD
 
 | Mistake | Consequence |
 |---------|-------------|
-| CI/CD pipelines that don't include security scanning | Deploying code without vulnerability scanning (SAST, dependency check) means known CVEs reach production â€” integrate security scanning into every CI pipeline stage |
-| Infrastructure changes made outside of Terraform | A developer who SSHes into a server and changes a configuration creates drift that Terraform can't detect â€” enforce that all infrastructure changes go through IaC with peer review |
-| Monitoring dashboards without alert thresholds | A dashboard that shows "current CPU" but doesn't indicate what "bad" looks like is decoration â€” every metric should have a static threshold line showing the alert boundary |
+| CI/CD pipelines that don't include security scanning | Deploying code without vulnerability scanning (SAST, dependency check) means known CVEs reach production — integrate security scanning into every CI pipeline stage |
+| Infrastructure changes made outside of Terraform | A developer who SSHes into a server and changes a configuration creates drift that Terraform can't detect — enforce that all infrastructure changes go through IaC with peer review |
+| Monitoring dashboards without alert thresholds | A dashboard that shows "current CPU" but doesn't indicate what "bad" looks like is decoration — every metric should have a static threshold line showing the alert boundary |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Include security scanning (SAST, dependency check, container scan) in every CI stage | Security vulnerabilities caught in CI cost $50 to fix; the same vulnerability in production costs $5K+ â€” shift security left by integrating scanning early |
-| Treat infrastructure as code with mandatory peer review | An undocumented change to a load balancer or database configuration can cause a production incident â€” all IaC changes must go through pull request review, just like application code |
-| Define alert thresholds alongside every dashboard metric | A metric without an alert threshold is just data â€” every dashboard graph should have overlaid threshold lines that answer "is this good or bad?" at a glance |
+| Include security scanning (SAST, dependency check, container scan) in every CI stage | Security vulnerabilities caught in CI cost $50 to fix; the same vulnerability in production costs $5K+ — shift security left by integrating scanning early |
+| Treat infrastructure as code with mandatory peer review | An undocumented change to a load balancer or database configuration can cause a production incident — all IaC changes must go through pull request review, just like application code |
+| Define alert thresholds alongside every dashboard metric | A metric without an alert threshold is just data — every dashboard graph should have overlaid threshold lines that answer "is this good or bad?" at a glance |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| CI/CD pipeline credentials with overly broad permissions | A CI token that can deploy to staging AND production AND modify DNS can be used to compromise any environment â€” scope CI credentials to the minimum environment and resource set needed |
-| Container images with embedded secrets | A Docker image that contains an API key or database URL in a layer is accessible to anyone who can pull the image â€” use build-time secrets with multi-stage builds to keep secrets out of final images |
-| Infrastructure state files exposing secrets | Terraform state files contain plaintext resource configurations, potentially including database passwords and API keys â€” store state files in encrypted backends and restrict access |
+| CI/CD pipeline credentials with overly broad permissions | A CI token that can deploy to staging AND production AND modify DNS can be used to compromise any environment — scope CI credentials to the minimum environment and resource set needed |
+| Container images with embedded secrets | A Docker image that contains an API key or database URL in a layer is accessible to anyone who can pull the image — use build-time secrets with multi-stage builds to keep secrets out of final images |
+| Infrastructure state files exposing secrets | Terraform state files contain plaintext resource configurations, potentially including database passwords and API keys — store state files in encrypted backends and restrict access |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| CI pipeline bottlenecks slowing developer velocity | A CI pipeline that takes 30 minutes for every commit blocks team productivity â€” parallelize test stages, cache dependencies, and use incremental builds for faster feedback |
-| Docker image size impacting deployment speed | Unoptimized Docker images (1GB+) take 2-3 minutes to pull on cold starts â€” use multi-stage builds, Alpine base images, and slim production dependencies to keep images under 500MB |
-| Monitoring infrastructure overhead at scale | Running a full observability stack (OpenTelemetry collector, APM, log store, tracing) alongside production services adds 10-20% compute overhead â€” right-size monitoring infrastructure and separate from production workloads |
+| CI pipeline bottlenecks slowing developer velocity | A CI pipeline that takes 30 minutes for every commit blocks team productivity — parallelize test stages, cache dependencies, and use incremental builds for faster feedback |
+| Docker image size impacting deployment speed | Unoptimized Docker images (1GB+) take 2-3 minutes to pull on cold starts — use multi-stage builds, Alpine base images, and slim production dependencies to keep images under 500MB |
+| Monitoring infrastructure overhead at scale | Running a full observability stack (OpenTelemetry collector, APM, log store, tracing) alongside production services adds 10-20% compute overhead — right-size monitoring infrastructure and separate from production workloads |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| CI/CD pipeline credentials with overly broad permissions | A CI token that can deploy to staging AND production AND modify DNS can be used to compromise any environment â€” scope CI credentials to the minimum environment and resource set needed |
-| Container images with embedded secrets | A Docker image that contains an API key or database URL in a layer is accessible to anyone who can pull the image â€” use build-time secrets with multi-stage builds to keep secrets out of final images |
-| Infrastructure state files exposing secrets | Terraform state files contain plaintext resource configurations, potentially including database passwords and API keys â€” store state files in encrypted backends and restrict access |
+| CI/CD pipeline credentials with overly broad permissions | A CI token that can deploy to staging AND production AND modify DNS can be used to compromise any environment — scope CI credentials to the minimum environment and resource set needed |
+| Container images with embedded secrets | A Docker image that contains an API key or database URL in a layer is accessible to anyone who can pull the image — use build-time secrets with multi-stage builds to keep secrets out of final images |
+| Infrastructure state files exposing secrets | Terraform state files contain plaintext resource configurations, potentially including database passwords and API keys — store state files in encrypted backends and restrict access |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| CI pipeline bottlenecks slowing developer velocity | A CI pipeline that takes 30 minutes for every commit blocks team productivity â€” parallelize test stages, cache dependencies, and use incremental builds for faster feedback |
-| Docker image size impacting deployment speed | Unoptimized Docker images (1GB+) take 2-3 minutes to pull on cold starts â€” use multi-stage builds, Alpine base images, and slim production dependencies to keep images under 500MB |
-| Monitoring infrastructure overhead at scale | Running a full observability stack (OpenTelemetry collector, APM, log store, tracing) alongside production services adds 10-20% compute overhead â€” right-size monitoring infrastructure and separate from production workloads |
+| CI pipeline bottlenecks slowing developer velocity | A CI pipeline that takes 30 minutes for every commit blocks team productivity — parallelize test stages, cache dependencies, and use incremental builds for faster feedback |
+| Docker image size impacting deployment speed | Unoptimized Docker images (1GB+) take 2-3 minutes to pull on cold starts — use multi-stage builds, Alpine base images, and slim production dependencies to keep images under 500MB |
+| Monitoring infrastructure overhead at scale | Running a full observability stack (OpenTelemetry collector, APM, log store, tracing) alongside production services adds 10-20% compute overhead — right-size monitoring infrastructure and separate from production workloads |
 
 ## Components
 
@@ -176,7 +176,7 @@ graph TD
 | `DEPLOY_TIMEOUT` | Max deploy wait time | `300` (s) | No |
 | `HEALTH_CHECK_PATH` | Health check URL path | `/health` | No |
 | `CONTAINER_REGISTRY` | Docker registry URL | `docker.io/Vaeloom` | Yes (prod) |
-| `TERRAFORM_STATE_BUCKET` | Terraform state S3 bucket | â€” | Yes (prod) |
+| `TERRAFORM_STATE_BUCKET` | Terraform state S3 bucket | — | Yes (prod) |
 
 ---
 
@@ -209,7 +209,7 @@ graph TD
 - Container build, signing, and deployment standards (Docker, Cosign)
 - Kubernetes cluster architecture and service deployment manifests
 - Observability: metrics (OpenTelemetry), logs (structured JSON), traces (distributed tracing)
-- Alerting rules and response workflows (P1â€“P4 severity tiers)
+- Alerting rules and response workflows (P1–P4 severity tiers)
 - Infrastructure-as-Code using Terraform for cloud resource provisioning
 - SBOM generation and vulnerability scanning for supply chain security
 - Configuration management: schema registry, env hierarchy, feature flags, secret management
@@ -280,12 +280,12 @@ docker compose -f ops/docker-compose.yml up -d    # Start local environment
 
 ## Related categories
 
-- [`Architecture/`](../Architecture/) â€” Architecture being deployed
-- [`Engineering/`](../Engineering/) â€” Implementation of services
-- [`Operations/`](../Operations/) â€” Runbooks for operating deployed systems
+- [`Architecture/`](../Architecture/) — Architecture being deployed
+- [`Engineering/`](../Engineering/) — Implementation of services
+- [`Operations/`](../Operations/) — Runbooks for operating deployed systems
 
 ## Related Documents
 
-- [Deployment Infrastructure](../Engineering/Implementation/16-deployment-infrastructure.md) â€” Deployment architecture
-- [Observability & Tracing](../Engineering/Implementation/12-observability-tracing.md) â€” Observability strategy
-- [Operations Overview](../Operations/README.md) â€” Production runbooks and incident response
+- [Deployment Infrastructure](../Engineering/Implementation/16-deployment-infrastructure.md) — Deployment architecture
+- [Observability & Tracing](../Engineering/Implementation/12-observability-tracing.md) — Observability strategy
+- [Operations Overview](../Operations/README.md) — Production runbooks and incident response

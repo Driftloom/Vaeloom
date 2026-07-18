@@ -7,7 +7,7 @@
 
 ## Overview
 
-All Vaeloom container images are signed using **Cosign** (part of the Sigstore project) before being admitted to production. Signatures are generated using keys managed through cloud KMS (AWS KMS or GCP Cloud KMS), with automatic key rotation. Verification is enforced at the deployment pipeline level â€” unsigned images are rejected before reaching Kubernetes.
+All Vaeloom container images are signed using **Cosign** (part of the Sigstore project) before being admitted to production. Signatures are generated using keys managed through cloud KMS (AWS KMS or GCP Cloud KMS), with automatic key rotation. Verification is enforced at the deployment pipeline level — unsigned images are rejected before reaching Kubernetes.
 
 This policy covers key generation, signing workflow, verification gates, key rotation, and incident response for compromised keys.
 
@@ -271,8 +271,8 @@ sequenceDiagram
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `COSIGN_KEY_ARN` | KMS key ARN for signing | â€” | Yes |
-| `COSIGN_VERIFICATION_KEY` | Public key for admission verification | â€” | Yes |
+| `COSIGN_KEY_ARN` | KMS key ARN for signing | — | Yes |
+| `COSIGN_VERIFICATION_KEY` | Public key for admission verification | — | Yes |
 | `SIGNING_IMAGE_PATTERN` | Image glob pattern to sign | `Vaeloom/*` | No |
 | `KEY_ROTATION_DAYS` | Key rotation interval | `90` | No |
 | `GRACE_PERIOD_DAYS` | Old key acceptance period | `7` | No |
@@ -313,7 +313,7 @@ sequenceDiagram
 ### Out of Scope
 
 - Keyless signing via Sigstore Fulcio (planned for future)
-- Signing of non-container artifacts (Helm charts, configs â€” planned for future)
+- Signing of non-container artifacts (Helm charts, configs — planned for future)
 - Container image vulnerability scanning (covered in [SBOM-Policy.md](./SBOM-Policy.md))
 - Container registry management (covered in [Docker.md](./Docker.md))
 - Infrastructure key management infrastructure (covered in [Terraform.md](./Terraform.md))

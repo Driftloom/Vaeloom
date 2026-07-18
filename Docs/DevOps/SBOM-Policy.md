@@ -117,10 +117,10 @@ Every SBOM uses **SPDX 2.3** format with the following required fields:
 
 | Severity | CVSS Range | Action | SLA | Exception Required |
 |----------|-----------|--------|-----|-------------------|
-| Critical | 9.0â€“10.0 | Block deployment | Patch within 24h | VP of Engineering |
-| High | 7.0â€“8.9 | Block deployment | Patch within 7d | CTO |
-| Medium | 4.0â€“6.9 | Warn, auto-create ticket | Patch within 30d | Security Team |
-| Low | 0.1â€“3.9 | Log only | Next release | None |
+| Critical | 9.0–10.0 | Block deployment | Patch within 24h | VP of Engineering |
+| High | 7.0–8.9 | Block deployment | Patch within 7d | CTO |
+| Medium | 4.0–6.9 | Warn, auto-create ticket | Patch within 30d | Security Team |
+| Low | 0.1–3.9 | Log only | Next release | None |
 
 ## CI Integration
 
@@ -169,7 +169,7 @@ jobs:
 | SBOM generated outside CI | Manual SBOMs are inconsistent, outdated, or missing dependencies | Automate SBOM generation in CI for every build; never generate manually |
 | Ignoring transitive dependencies | SBOM only lists direct dependencies; known vulnerabilities in nested packages go undetected | Use CycloneDX with `--flatten` flag to include transitive dependencies in SBOM |
 | No SBOM retention policy | Old SBOMs pile up or are deleted prematurely; can't audit past builds | Retain SBOMs for artifact lifetime + 90 days; tag by build SHA and release version |
-| Scanning without fix version context | Critical vuln flagged but no fix available â€” blocking deployment without mitigation plan | Check fix version availability before blocking; create security advisory with workaround |
+| Scanning without fix version context | Critical vuln flagged but no fix available — blocking deployment without mitigation plan | Check fix version availability before blocking; create security advisory with workaround |
 
 ## Security Considerations
 
@@ -254,7 +254,7 @@ jobs:
 | `SBOM_FORMAT` | SBOM output format | `spdx-2.3` | No |
 | `SCAN_DEPTH` | Dependency tree depth | `production` | No |
 | `POLICY_FILE` | Policy rules file path | `sbom-policy.yaml` | Yes |
-| `SBOM_REGISTRY_URL` | SBOM artifact registry endpoint | â€” | Yes (prod) |
+| `SBOM_REGISTRY_URL` | SBOM artifact registry endpoint | — | Yes (prod) |
 | `ALLOWED_LICENSES` | Comma-separated allowed licenses | `MIT,Apache-2.0,BSD-3-Clause` | No |
 | `FAIL_ON_CRITICAL` | Fail build on critical CVE | `true` | No |
 
@@ -366,7 +366,7 @@ sequenceDiagram
     CI->>REG: Store SBOM + scan reports
 ```
 
-> **Diagram:** SBOM pipeline â€” CI generates SPDX SBOM, runs parallel scans (Trivy + Grype), policy engine blocks deploy on critical/high CVEs, and stores results in artifact registry.
+> **Diagram:** SBOM pipeline — CI generates SPDX SBOM, runs parallel scans (Trivy + Grype), policy engine blocks deploy on critical/high CVEs, and stores results in artifact registry.
 
 ---
 

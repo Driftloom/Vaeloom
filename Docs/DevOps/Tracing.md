@@ -1,7 +1,7 @@
-﻿# Distributed Tracing
+# Distributed Tracing
 
 > **Purpose:** Define distributed tracing standards for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** 🆕 New
 
 ## Tracing Architecture
 
@@ -12,9 +12,9 @@ graph TD
     classDef types fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef sampling fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph TraceTree["ðŸ” Example Trace Structure (trace_id: abc123)"]
+    subgraph TraceTree["🔍 Example Trace Structure (trace_id: abc123)"]
         direction TB
-        ROOT["ðŸŒ User Request<br/>trace: abc123"]
+        ROOT["🌐 User Request<br/>trace: abc123"]
 
         subgraph API["apps/api Spans"]
             A1["auth_check<br/>Validate JWT"]
@@ -42,7 +42,7 @@ graph TD
         A3 -.->|triggers| WS1
     end
 
-    subgraph SpanTypes["ðŸ“‹ Span Naming Conventions"]
+    subgraph SpanTypes["📋 Span Naming Conventions"]
         S1["API: {method} {path}"]
         S2["DB: db.query.{table}"]
         S3["AI: ai.inference.{model}"]
@@ -50,7 +50,7 @@ graph TD
         S5["Queue: queue.{name}.process"]
     end
 
-    subgraph Sampling["ðŸŽ¯ Trace Sampling"]
+    subgraph Sampling["🎯 Trace Sampling"]
         SM1["Dev: 100% sampling"]
         SM2["Staging: 100% sampling"]
         SM3["Prod: 10% head-based<br/>100% for error traces"]
@@ -66,7 +66,7 @@ graph TD
 
 ```
 
-> **Diagram:** Distributed tracing using OpenTelemetry. A single user request generates spans across **API Gateway** (auth â†’ permission â†’ handler â†’ DB â†’ event), **Queue Worker** (parse â†’ OCR â†’ extract â†’ inference), and **Real-time WebSocket** push. **Span naming conventions** standardize attribute collection. **Sampling** is 100% in dev/staging and 10% head-based in production, with 100% sampling for error traces.
+> **Diagram:** Distributed tracing using OpenTelemetry. A single user request generates spans across **API Gateway** (auth → permission → handler → DB → event), **Queue Worker** (parse → OCR → extract → inference), and **Real-time WebSocket** push. **Span naming conventions** standardize attribute collection. **Sampling** is 100% in dev/staging and 10% head-based in production, with 100% sampling for error traces.
 
 ---
 
@@ -74,20 +74,20 @@ graph TD
 
 ```text
 User Request (trace_id: abc123)
-â”œâ”€â”€ API Gateway (span: api_gateway)
-â”‚   â”œâ”€â”€ Auth Middleware (span: auth_check)
-â”‚   â”œâ”€â”€ Permission Engine (span: permission_check)
-â”‚   â””â”€â”€ Route Handler (span: document_upload)
-â”‚       â”œâ”€â”€ Database (span: db_insert)
-â”‚       â””â”€â”€ Event Publish (span: event_publish)
-â”‚
-â”œâ”€â”€ Queue Worker (span: ingestion_worker)
-â”‚   â”œâ”€â”€ Document Parser (span: parse_document)
-â”‚   â”œâ”€â”€ OCR Service (span: ocr_process)
-â”‚   â””â”€â”€ Memory Extraction (span: extract_entities)
-â”‚       â””â”€â”€ AI Model (span: model_inference)
-â”‚
-â””â”€â”€ Real-time Update (span: websocket_push)
+├── API Gateway (span: api_gateway)
+│   ├── Auth Middleware (span: auth_check)
+│   ├── Permission Engine (span: permission_check)
+│   └── Route Handler (span: document_upload)
+│       ├── Database (span: db_insert)
+│       └── Event Publish (span: event_publish)
+│
+├── Queue Worker (span: ingestion_worker)
+│   ├── Document Parser (span: parse_document)
+│   ├── OCR Service (span: ocr_process)
+│   └── Memory Extraction (span: extract_entities)
+│       └── AI Model (span: model_inference)
+│
+└── Real-time Update (span: websocket_push)
 ```
 
 ## Spans to Trace
@@ -112,49 +112,49 @@ User Request (trace_id: abc123)
 
 | Mistake | Consequence |
 |---------|-------------|
-| Not propagating trace context across service boundaries | If the frontend doesn't pass the trace_id to the API, and the API doesn't pass it to the worker, the trace is broken â€” every inter-service call must propagate trace context headers to maintain end-to-end visibility |
-| Tracing everything at production sampling rates | Tracing 100% of requests in production generates terabytes of data and adds 5-15% latency overhead â€” use head-based sampling (10% in production) with tail-based sampling that captures all error traces |
-| Spans that don't include meaningful attributes | A span named "api_request" with no attributes (method, path, status code) is almost useless â€” every span should include at least the operation name, status, and duration, plus domain-specific attributes |
+| Not propagating trace context across service boundaries | If the frontend doesn't pass the trace_id to the API, and the API doesn't pass it to the worker, the trace is broken — every inter-service call must propagate trace context headers to maintain end-to-end visibility |
+| Tracing everything at production sampling rates | Tracing 100% of requests in production generates terabytes of data and adds 5-15% latency overhead — use head-based sampling (10% in production) with tail-based sampling that captures all error traces |
+| Spans that don't include meaningful attributes | A span named "api_request" with no attributes (method, path, status code) is almost useless — every span should include at least the operation name, status, and duration, plus domain-specific attributes |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Always propagate trace context via headers across service boundaries | Without context propagation, a user request that spans frontend â†’ API â†’ worker â†’ AI model generates disconnected traces â€” use OpenTelemetry's W3C trace context standard that propagates the trace parent ID header across all services |
-| Use head-based sampling in production with tail-based error capture | Head-based sampling (10%) captures a representative sample without overwhelming storage â€” add tail-based sampling that captures 100% of error traces regardless of the sampling decision |
-| Include standardized attributes (method, path, status, duration) on every span | Consistent attributes across all spans let you filter, group, and aggregate traces by any dimension â€” define a minimum attribute set in the OpenTelemetry configuration shared across all services |
+| Always propagate trace context via headers across service boundaries | Without context propagation, a user request that spans frontend → API → worker → AI model generates disconnected traces — use OpenTelemetry's W3C trace context standard that propagates the trace parent ID header across all services |
+| Use head-based sampling in production with tail-based error capture | Head-based sampling (10%) captures a representative sample without overwhelming storage — add tail-based sampling that captures 100% of error traces regardless of the sampling decision |
+| Include standardized attributes (method, path, status, duration) on every span | Consistent attributes across all spans let you filter, group, and aggregate traces by any dimension — define a minimum attribute set in the OpenTelemetry configuration shared across all services |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Traces containing sensitive request data | A trace span that logs the full HTTP request body could capture passwords, tokens, or PII â€” configure OpenTelemetry to sanitize span attributes and never log request or response bodies |
-| Trace data exposing application internals | Detailed span names like `db.query.users` or `ai.inference.claude-sonnet` reveal database structure and model providers â€” use generic span names in production and map to specific values in a separate metadata system |
-| Trace sampling gaps hiding anomaly patterns | An attacker who exploits a vulnerability on a non-sampled request (90% chance) escapes detection â€” use rule-based sampling that captures all requests to sensitive endpoints (auth, admin, data export) regardless of sampling rate |
+| Traces containing sensitive request data | A trace span that logs the full HTTP request body could capture passwords, tokens, or PII — configure OpenTelemetry to sanitize span attributes and never log request or response bodies |
+| Trace data exposing application internals | Detailed span names like `db.query.users` or `ai.inference.claude-sonnet` reveal database structure and model providers — use generic span names in production and map to specific values in a separate metadata system |
+| Trace sampling gaps hiding anomaly patterns | An attacker who exploits a vulnerability on a non-sampled request (90% chance) escapes detection — use rule-based sampling that captures all requests to sensitive endpoints (auth, admin, data export) regardless of sampling rate |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Trace export overhead at high request rates | Exporting trace data on every request adds latency to the request path â€” use batch span processors that queue spans in memory and export asynchronously to avoid blocking the application thread |
-| Distributed trace storage growing exponentially | Every user request generates spans across multiple services â€” not all traces are equally valuable. Sample at 10% for production, 100% for error traces, and aggregate trace data to reduce storage by 90% while retaining debugging value |
-| Span creation overhead on hot paths | Creating a span for every database query on an endpoint that makes 20 queries adds 20 span allocations per request â€” use span linking for low-level operations and reserve full parent-child spans for service boundaries |
+| Trace export overhead at high request rates | Exporting trace data on every request adds latency to the request path — use batch span processors that queue spans in memory and export asynchronously to avoid blocking the application thread |
+| Distributed trace storage growing exponentially | Every user request generates spans across multiple services — not all traces are equally valuable. Sample at 10% for production, 100% for error traces, and aggregate trace data to reduce storage by 90% while retaining debugging value |
+| Span creation overhead on hot paths | Creating a span for every database query on an endpoint that makes 20 queries adds 20 span allocations per request — use span linking for low-level operations and reserve full parent-child spans for service boundaries |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Traces containing sensitive request data | A trace span that logs the full HTTP request body could capture passwords, tokens, or PII â€” configure OpenTelemetry to sanitize span attributes and never log request or response bodies |
-| Trace data exposing application internals | Detailed span names like `db.query.users` or `ai.inference.claude-sonnet` reveal database structure and model providers â€” use generic span names in production and map to specific values in a separate metadata system |
-| Trace sampling gaps hiding anomaly patterns | An attacker who exploits a vulnerability on a non-sampled request (90% chance) escapes detection â€” use rule-based sampling that captures all requests to sensitive endpoints (auth, admin, data export) regardless of sampling rate |
+| Traces containing sensitive request data | A trace span that logs the full HTTP request body could capture passwords, tokens, or PII — configure OpenTelemetry to sanitize span attributes and never log request or response bodies |
+| Trace data exposing application internals | Detailed span names like `db.query.users` or `ai.inference.claude-sonnet` reveal database structure and model providers — use generic span names in production and map to specific values in a separate metadata system |
+| Trace sampling gaps hiding anomaly patterns | An attacker who exploits a vulnerability on a non-sampled request (90% chance) escapes detection — use rule-based sampling that captures all requests to sensitive endpoints (auth, admin, data export) regardless of sampling rate |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Trace export overhead at high request rates | Exporting trace data on every request adds latency to the request path â€” use batch span processors that queue spans in memory and export asynchronously to avoid blocking the application thread |
-| Distributed trace storage growing exponentially | Every user request generates spans across multiple services â€” not all traces are equally valuable. Sample at 10% for production, 100% for error traces, and aggregate trace data to reduce storage by 90% while retaining debugging value |
-| Span creation overhead on hot paths | Creating a span for every database query on an endpoint that makes 20 queries adds 20 span allocations per request â€” use span linking for low-level operations and reserve full parent-child spans for service boundaries |
+| Trace export overhead at high request rates | Exporting trace data on every request adds latency to the request path — use batch span processors that queue spans in memory and export asynchronously to avoid blocking the application thread |
+| Distributed trace storage growing exponentially | Every user request generates spans across multiple services — not all traces are equally valuable. Sample at 10% for production, 100% for error traces, and aggregate trace data to reduce storage by 90% while retaining debugging value |
+| Span creation overhead on hot paths | Creating a span for every database query on an endpoint that makes 20 queries adds 20 span allocations per request — use span linking for low-level operations and reserve full parent-child spans for service boundaries |
 
 ## Components
 
@@ -237,11 +237,11 @@ User Request (trace_id: abc123)
 
 ## Overview
 
-Vaeloom's distributed tracing system provides end-to-end visibility into request flows across all services â€” web (Next.js), API (NestJS), AI service (FastAPI), and background workers (BullMQ). Using OpenTelemetry, every request is instrumented with a unique trace ID that propagates across service boundaries, enabling engineers to trace a single user request from the browser through API authentication, AI inference, and database queries.
+Vaeloom's distributed tracing system provides end-to-end visibility into request flows across all services — web (Next.js), API (NestJS), AI service (FastAPI), and background workers (BullMQ). Using OpenTelemetry, every request is instrumented with a unique trace ID that propagates across service boundaries, enabling engineers to trace a single user request from the browser through API authentication, AI inference, and database queries.
 
 This document defines the trace structure, span naming conventions, sampling strategy, and best practices for instrumenting Vaeloom services. The primary audience is developers instrumenting services and SRE engineers debugging cross-service performance issues.
 
-Within the Vaeloom observability stack, tracing provides the request-level view that connects metrics (aggregate trends) and logs (individual events) â€” a high-latency metric triggers investigation, tracing identifies which specific service and operation caused the slowdown, and logs provide the detailed context.
+Within the Vaeloom observability stack, tracing provides the request-level view that connects metrics (aggregate trends) and logs (individual events) — a high-latency metric triggers investigation, tracing identifies which specific service and operation caused the slowdown, and logs provide the detailed context.
 
 Enterprise-grade distributed tracing requires careful sampling to balance data completeness with storage cost. Head-based sampling (10% in production) provides a representative sample for trend analysis, while tail-based sampling captures 100% of error traces for debugging. Trace context propagation via W3C traceparent headers is mandatory for all inter-service calls.
 
@@ -345,7 +345,7 @@ sequenceDiagram
     API-->>WEB: Response
 ```
 
-> **Diagram:** Distributed trace flow â€” a single user request generates spans across web, API, database, AI service, and queue worker. The trace ID propagates via W3C traceparent headers, connecting all spans into a single trace.
+> **Diagram:** Distributed trace flow — a single user request generates spans across web, API, database, AI service, and queue worker. The trace ID propagates via W3C traceparent headers, connecting all spans into a single trace.
 
 ---
 
@@ -363,4 +363,4 @@ sequenceDiagram
 
 - [Logging.md](./Logging.md)
 - [Monitoring.md](./Monitoring.md)
-- [`/Docs/Engineering/Implementation/12-observability-tracing.md`](../../Docs/Engineering/Implementation/12-observability-tracing.md)
+- [`/docs/Engineering/Implementation/12-observability-tracing.md`](../../docs/Engineering/Implementation/12-observability-tracing.md)

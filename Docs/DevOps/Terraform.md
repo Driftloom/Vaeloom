@@ -1,7 +1,7 @@
 ﻿# Terraform
 
 > **Purpose:** Define Infrastructure as Code strategy for Vaeloom (Enterprise)
-> **Status:** ðŸ†• New â€” Enterprise-only. MVP uses PaaS + Docker Compose.
+> **Status:** ðŸ†• New — Enterprise-only. MVP uses PaaS + Docker Compose.
 
 ## Terraform Architecture
 
@@ -33,10 +33,10 @@ graph TD
         MOD4["networking/<br/>VPC, subnets,<br/>security groups"]
     end
 
-    subgraph Environments["ðŸ—ï¸ Environment Structure"]
+    subgraph Environments["ðŸ--ï¸ Environment Structure"]
         ENV1["dev/<br/>Terraform config"]
         ENV2["staging/<br/>Terraform config"]
-        ENV3["prod/<br/>main.tf + terraform.tfvars<br/>(gitignored â€” secrets)"]
+        ENV3["prod/<br/>main.tf + terraform.tfvars<br/>(gitignored -- secrets)"]
     end
 
     subgraph Workflow["ðŸ”„ Terraform Workflow"]
@@ -59,7 +59,7 @@ graph TD
 
 ```
 
-> **Diagram:** Terraform infrastructure as code follows a layered architecture â€” **Providers** (AWS + Kubernetes) â†’ **Modules** (database, kubernetes, redis, networking) â†’ **Environments** (dev/staging/prod). The **workflow** runs plan â†’ apply for changes and plan â†’ apply with destroy for teardown. Production terraform.tfvars is gitignored to keep secrets out of version control.
+> **Diagram:** Terraform infrastructure as code follows a layered architecture — **Providers** (AWS + Kubernetes) → **Modules** (database, kubernetes, redis, networking) → **Environments** (dev/staging/prod). The **workflow** runs plan → apply for changes and plan → apply with destroy for teardown. Production terraform.tfvars is gitignored to keep secrets out of version control.
 
 ---
 
@@ -135,49 +135,49 @@ terraform apply tfplan
 
 | Mistake | Consequence |
 |---------|-------------|
-| Storing state files in unencrypted backends | Terraform state contains all resource configurations including database passwords and API keys in plaintext â€” use encrypted remote state backends (S3 with KMS, Terraform Cloud) with strict access controls |
-| Applying Terraform without reviewing the plan | Running `terraform apply` without `plan` means you could accidentally delete production infrastructure â€” enforce a mandatory `plan` review step in CI/CD that requires a human to approve before apply |
-| Hardcoding environment-specific values in modules | A module with hardcoded instance sizes and database tiers can't be reused across dev/staging/prod â€” use variables with sensible defaults and environment-specific `.tfvars` files |
+| Storing state files in unencrypted backends | Terraform state contains all resource configurations including database passwords and API keys in plaintext — use encrypted remote state backends (S3 with KMS, Terraform Cloud) with strict access controls |
+| Applying Terraform without reviewing the plan | Running `terraform apply` without `plan` means you could accidentally delete production infrastructure — enforce a mandatory `plan` review step in CI/CD that requires a human to approve before apply |
+| Hardcoding environment-specific values in modules | A module with hardcoded instance sizes and database tiers can't be reused across dev/staging/prod — use variables with sensible defaults and environment-specific `.tfvars` files |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Always review `terraform plan` output before applying | The plan shows exactly what will be created, modified, or destroyed â€” requiring plan review in CI/CD prevents accidental infrastructure deletions and configuration drifts |
-| Use remote state with encryption and locking | State files contain sensitive resource configurations â€” remote backends (S3 + DynamoDB, Terraform Cloud) provide encryption at rest, state locking to prevent concurrent modifications, and version history |
-| Parameterize modules with variables and use per-environment `.tfvars` files | A reusable module should accept variables for region, instance size, and environment name â€” environment-specific values go in `.tfvars` files that are reviewed in pull requests |
+| Always review `terraform plan` output before applying | The plan shows exactly what will be created, modified, or destroyed — requiring plan review in CI/CD prevents accidental infrastructure deletions and configuration drifts |
+| Use remote state with encryption and locking | State files contain sensitive resource configurations — remote backends (S3 + DynamoDB, Terraform Cloud) provide encryption at rest, state locking to prevent concurrent modifications, and version history |
+| Parameterize modules with variables and use per-environment `.tfvars` files | A reusable module should accept variables for region, instance size, and environment name — environment-specific values go in `.tfvars` files that are reviewed in pull requests |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Terraform state exposing infrastructure secrets | State files contain database passwords, API keys, and other resource attributes in plaintext â€” store state in encrypted backends, enable encryption at rest, and restrict state file access to infrastructure engineers |
-| Terraform credentials with excessive cloud permissions | A CI/CD token with `AdministratorAccess` can create, modify, or delete any resource â€” scope Terraform runner credentials to the minimum IAM permissions needed for the planned resources |
-| Unreviewed infrastructure changes bypassing IaC | A manual change made through the cloud console or CLI is invisible to Terraform â€” implement drift detection that alerts when the actual infrastructure state differs from the Terraform state |
+| Terraform state exposing infrastructure secrets | State files contain database passwords, API keys, and other resource attributes in plaintext — store state in encrypted backends, enable encryption at rest, and restrict state file access to infrastructure engineers |
+| Terraform credentials with excessive cloud permissions | A CI/CD token with `AdministratorAccess` can create, modify, or delete any resource — scope Terraform runner credentials to the minimum IAM permissions needed for the planned resources |
+| Unreviewed infrastructure changes bypassing IaC | A manual change made through the cloud console or CLI is invisible to Terraform — implement drift detection that alerts when the actual infrastructure state differs from the Terraform state |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Terraform plan execution time slowing CI/CD | A large Terraform configuration with many modules and resources can take 5-10 minutes to plan â€” use targeted plans for specific modules (`-target=module.database`) in development and full plans only for production |
-| State file size growing large enough to slow operations | A state file that tracks hundreds of resources takes longer to read, plan, and apply â€” use state workspaces (separate state per environment) and break large infrastructures into manageable modules |
-| Provider API rate limiting during Terraform operations | Running `terraform apply` for large changes can hit API rate limits on cloud providers â€” batch changes into smaller groups and use `-parallelism=N` to control concurrency |
+| Terraform plan execution time slowing CI/CD | A large Terraform configuration with many modules and resources can take 5-10 minutes to plan — use targeted plans for specific modules (`-target=module.database`) in development and full plans only for production |
+| State file size growing large enough to slow operations | A state file that tracks hundreds of resources takes longer to read, plan, and apply — use state workspaces (separate state per environment) and break large infrastructures into manageable modules |
+| Provider API rate limiting during Terraform operations | Running `terraform apply` for large changes can hit API rate limits on cloud providers — batch changes into smaller groups and use `-parallelism=N` to control concurrency |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Terraform state exposing infrastructure secrets | State files contain database passwords, API keys, and other resource attributes in plaintext â€” store state in encrypted backends, enable encryption at rest, and restrict state file access to infrastructure engineers |
-| Terraform credentials with excessive cloud permissions | A CI/CD token with `AdministratorAccess` can create, modify, or delete any resource â€” scope Terraform runner credentials to the minimum IAM permissions needed for the planned resources |
-| Unreviewed infrastructure changes bypassing IaC | A manual change made through the cloud console or CLI is invisible to Terraform â€” implement drift detection that alerts when the actual infrastructure state differs from the Terraform state |
+| Terraform state exposing infrastructure secrets | State files contain database passwords, API keys, and other resource attributes in plaintext — store state in encrypted backends, enable encryption at rest, and restrict state file access to infrastructure engineers |
+| Terraform credentials with excessive cloud permissions | A CI/CD token with `AdministratorAccess` can create, modify, or delete any resource — scope Terraform runner credentials to the minimum IAM permissions needed for the planned resources |
+| Unreviewed infrastructure changes bypassing IaC | A manual change made through the cloud console or CLI is invisible to Terraform — implement drift detection that alerts when the actual infrastructure state differs from the Terraform state |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Terraform plan execution time slowing CI/CD | A large Terraform configuration with many modules and resources can take 5-10 minutes to plan â€” use targeted plans for specific modules (`-target=module.database`) in development and full plans only for production |
-| State file size growing large enough to slow operations | A state file that tracks hundreds of resources takes longer to read, plan, and apply â€” use state workspaces (separate state per environment) and break large infrastructures into manageable modules |
-| Provider API rate limiting during Terraform operations | Running `terraform apply` for large changes can hit API rate limits on cloud providers â€” batch changes into smaller groups and use `-parallelism=N` to control concurrency |
+| Terraform plan execution time slowing CI/CD | A large Terraform configuration with many modules and resources can take 5-10 minutes to plan — use targeted plans for specific modules (`-target=module.database`) in development and full plans only for production |
+| State file size growing large enough to slow operations | A state file that tracks hundreds of resources takes longer to read, plan, and apply — use state workspaces (separate state per environment) and break large infrastructures into manageable modules |
+| Provider API rate limiting during Terraform operations | Running `terraform apply` for large changes can hit API rate limits on cloud providers — batch changes into smaller groups and use `-parallelism=N` to control concurrency |
 
 ## Components
 
@@ -240,10 +240,10 @@ terraform apply tfplan
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
 | `AWS_REGION` | Default AWS region | `us-east-1` | No |
-| `TERRAFORM_BACKEND_BUCKET` | S3 bucket for state files | â€” | Yes |
+| `TERRAFORM_BACKEND_BUCKET` | S3 bucket for state files | — | Yes |
 | `TERRAFORM_BACKEND_KEY` | State file key path | `terraform/{{env}}/terraform.tfstate` | No |
 | `TERRAFORM_WORKSPACE` | Target workspace | `default` | No |
-| `TF_VAR_environment` | Environment variable | â€” | Yes (prod) |
+| `TF_VAR_environment` | Environment variable | — | Yes (prod) |
 | `TF_LOG` | Terraform log level | `WARN` | No |
 
 ---
@@ -267,7 +267,7 @@ This document defines the Terraform provider configuration, reusable resource mo
 
 Within the Vaeloom platform, Terraform provides deterministic, auditable infrastructure provisioning that eliminates manual configuration drift. All infrastructure changes go through pull request review with mandatory `terraform plan` output review, ensuring that every resource modification is traced and approved.
 
-Enterprise-grade IaC requires encrypted remote state backends with locking, version-pinned provider plugins, and modular configuration that separates reusable infrastructure patterns from environment-specific values. The Terraform workflow follows a strict plan â†’ review â†’ apply cycle in CI/CD, with production requiring additional approval gates.
+Enterprise-grade IaC requires encrypted remote state backends with locking, version-pinned provider plugins, and modular configuration that separates reusable infrastructure patterns from environment-specific values. The Terraform workflow follows a strict plan → review → apply cycle in CI/CD, with production requiring additional approval gates.
 
 ---
 
@@ -289,7 +289,7 @@ Enterprise-grade IaC requires encrypted remote state backends with locking, vers
 - Reusable resource modules: database (Aurora PostgreSQL), kubernetes (EKS), redis (ElastiCache), networking (VPC/subnets)
 - Environment structure with per-environment `terraform.tfvars` (dev, staging, production)
 - Remote state backend with S3 + DynamoDB locking
-- Terraform workflow: plan â†’ review â†’ apply in CI/CD (Atlantis or GitHub Actions)
+- Terraform workflow: plan → review → apply in CI/CD (Atlantis or GitHub Actions)
 - Drift detection via scheduled `terraform plan` runs
 
 ### Out of Scope
@@ -379,7 +379,7 @@ sequenceDiagram
     BACKEND-->>CI: Apply complete
 ```
 
-> **Diagram:** Terraform workflow â€” PR triggers plan, plan output posted to PR for review, approved applies execute with state locking, changes written to encrypted remote state.
+> **Diagram:** Terraform workflow — PR triggers plan, plan output posted to PR for review, approved applies execute with state locking, changes written to encrypted remote state.
 
 ---
 
