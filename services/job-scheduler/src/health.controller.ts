@@ -12,7 +12,11 @@ export class HealthController {
   @Get()
   @HealthCheck()
   check() {
-    return this.health.check([() => this.checkDatabase()]);
+    return this.health.check([() => this.checkServiceInfo(), () => this.checkDatabase()]);
+  }
+
+  private async checkServiceInfo(): Promise<HealthIndicatorResult> {
+    return { service: { status: 'up', timestamp: new Date().toISOString(), version: '0.1.0' } };
   }
 
   private async checkDatabase(): Promise<HealthIndicatorResult> {

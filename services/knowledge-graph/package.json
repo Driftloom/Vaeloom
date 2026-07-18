@@ -21,6 +21,7 @@
     "@nestjs/passport": "^10.0.3",
     "@nestjs/jwt": "^10.2.0",
     "@vaeloom/observability": "workspace:*",
+    "@vaeloom/service-auth": "workspace:*",
     "@vaeloom/shared-types": "workspace:*",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
