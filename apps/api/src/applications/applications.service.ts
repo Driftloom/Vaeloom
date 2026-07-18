@@ -7,10 +7,16 @@ export class ApplicationsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(workspaceId: string): Promise<any[]> {
+  async findAll(workspaceId: string, params?: { page?: number; pageSize?: number }): Promise<any[]> {
+    const page = Number(params?.page ?? 1);
+    const pageSize = Number(params?.pageSize ?? 20);
+    const skip = (page - 1) * pageSize;
     return this.prisma.application.findMany({
       where: { workspaceId },
+      skip,
+      take: pageSize,
       orderBy: { createdAt: 'desc' },
+      select: { id: true, workspaceId: true, jobExternalId: true, platform: true, status: true, resumeVersionId: true, coverLetter: true, submittedAt: true, outcome: true, outcomeAt: true, metadata: true, createdAt: true, updatedAt: true },
     });
   }
 

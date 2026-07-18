@@ -20,10 +20,16 @@ export class WorkspacesService {
     return this.toDto(workspace);
   }
 
-  async listForUser(userId: string): Promise<Workspace[]> {
+  async listForUser(userId: string, params?: { page?: number; pageSize?: number }): Promise<Workspace[]> {
+    const page = Number(params?.page ?? 1);
+    const pageSize = Number(params?.pageSize ?? 20);
+    const skip = (page - 1) * pageSize;
     const rows = await this.prisma.workspace.findMany({
       where: { userId },
+      skip,
+      take: pageSize,
       orderBy: { createdAt: 'asc' },
+      select: { id: true, userId: true, name: true, description: true, createdAt: true, updatedAt: true },
     });
     return rows.map((w: PrismaWorkspace) => this.toDto(w));
   }

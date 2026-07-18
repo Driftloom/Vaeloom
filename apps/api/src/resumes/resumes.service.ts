@@ -11,10 +11,16 @@ export class ResumesService {
     private readonly aiService: InternalAiService,
   ) {}
 
-  async findAll(workspaceId: string): Promise<any[]> {
+  async findAll(workspaceId: string, params?: { page?: number; pageSize?: number }): Promise<any[]> {
+    const page = Number(params?.page ?? 1);
+    const pageSize = Number(params?.pageSize ?? 20);
+    const skip = (page - 1) * pageSize;
     return this.prisma.resume.findMany({
       where: { workspaceId },
+      skip,
+      take: pageSize,
       orderBy: { createdAt: 'desc' },
+      select: { id: true, workspaceId: true, variantType: true, version: true, generatedFromSnapshot: true, createdAt: true, updatedAt: true },
     });
   }
 

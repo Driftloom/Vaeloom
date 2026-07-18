@@ -8,11 +8,17 @@ export class DocumentsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(workspaceId: string): Promise<any[]> {
+  async findAll(workspaceId: string, params?: { page?: number; pageSize?: number }): Promise<any[]> {
     this.logger.debug(`Fetching documents for workspace ${workspaceId}`);
+    const page = Number(params?.page ?? 1);
+    const pageSize = Number(params?.pageSize ?? 20);
+    const skip = (page - 1) * pageSize;
     return this.prisma.document.findMany({
       where: { workspaceId },
+      skip,
+      take: pageSize,
       orderBy: { createdAt: 'desc' },
+      select: { id: true, path: true, type: true, summary: true, metadata: true, createdAt: true, updatedAt: true, workspaceId: true, sourceConnectorId: true },
     });
   }
 
