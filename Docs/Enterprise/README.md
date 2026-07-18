@@ -1,7 +1,7 @@
-﻿# Enterprise
+# Enterprise
 
 > **Purpose:** Enterprise features, multi-tenancy, consent model, and the full enterprise product vision
-> **Status:** ✅ Active
+> **Status:** ? Active
 > **Owner:** Product Team
 > **Version:** 1.1
 > **Last Updated:** 2026-07-16
@@ -18,21 +18,21 @@ The consent model is a critical architectural component that enables tenant-prov
 
 | Document | Location | Status |
 |----------|----------|--------|
-| Enterprise Product Vision | [`/Docs/06-Vaeloom-Enterprise-Paper.md`](../../Docs/06-Vaeloom-Enterprise-Paper.md) | ✅ Excellent |
-| Enterprise Architecture | [`./Enterprise-Architecture.md`](./Enterprise-Architecture.md) | ✅ Complete |
-| Multi-Tenancy | [`./Multi-Tenancy.md`](./Multi-Tenancy.md) | 🆕 New |
-| Organizations | [`./Organizations.md`](./Organizations.md) | 🆕 New |
-| Billing | [`./Billing.md`](./Billing.md) | 🆕 New |
-| Licensing | [`./Licensing.md`](./Licensing.md) | 🆕 New |
-| Admin Portal | [`./Admin-Portal.md`](./Admin-Portal.md) | 🆕 New |
-| Feature Flags | [`./Feature-Flags.md`](./Feature-Flags.md) | 🆕 New |
-| Plugin Marketplace | [`./Plugin-Marketplace.md`](./Plugin-Marketplace.md) | 🆕 New |
-| Enterprise APIs | [`./Enterprise-APIs.md`](./Enterprise-APIs.md) | 🆕 New |
-| Enterprise Build Prompts | [`../Engineering/Implementation/`](../Engineering/Implementation/) | ✅ Canonical |
+| Enterprise Product Vision | [`/docs/06-Vaeloom-Enterprise-Paper.md`](../../docs/06-Vaeloom-Enterprise-Paper.md) | ? Excellent |
+| Enterprise Architecture | [`./Enterprise-Architecture.md`](./Enterprise-Architecture.md) | ? Complete |
+| Multi-Tenancy | [`./Multi-Tenancy.md`](./Multi-Tenancy.md) | ?? New |
+| Organizations | [`./Organizations.md`](./Organizations.md) | ?? New |
+| Billing | [`./Billing.md`](./Billing.md) | ?? New |
+| Licensing | [`./Licensing.md`](./Licensing.md) | ?? New |
+| Admin Portal | [`./Admin-Portal.md`](./Admin-Portal.md) | ?? New |
+| Feature Flags | [`./Feature-Flags.md`](./Feature-Flags.md) | ?? New |
+| Plugin Marketplace | [`./Plugin-Marketplace.md`](./Plugin-Marketplace.md) | ?? New |
+| Enterprise APIs | [`./Enterprise-APIs.md`](./Enterprise-APIs.md) | ?? New |
+| Enterprise Build Prompts | [`../Engineering/Implementation/`](../Engineering/Implementation/) | ? Canonical |
 
 ```mermaid
 graph LR
-    subgraph MVP["ðŸ“± MVP"]
+    subgraph MVP["📱 MVP"]
         M1["Individual Accounts"]
         M2["Email/Password Auth"]
         M3["5 Core Connectors"]
@@ -41,14 +41,14 @@ graph LR
         M6["Internal Tools Only"]
     end
 
-    subgraph Scale["â¬†ï¸ Growth Path"]
+    subgraph Scale["⬆️ Growth Path"]
         S1["Schema Forward-Compatible"]
         S2["Agent Roster Grows"]
         S3["MCP-Shaped from Day One"]
         S4["Permission Model Scales"]
     end
 
-    subgraph Enterprise["ðŸ¢ Enterprise"]
+    subgraph Enterprise["🏢 Enterprise"]
         E1["Individual + Org-Provisioned"]
         E2["+ SAML/OIDC SSO"]
         E3["25+ Connectors + Plugin SDK"]
@@ -90,16 +90,16 @@ The consent model makes enterprise (tenant-provisioned) accounts work without co
 
 - Organization can provision accounts and set policy boundaries
 - Organization **cannot** read individual memory contents without explicit, granular, revocable consent
-- Consent revoked â†’ organization access reduced going forward (not retroactive)
+- Consent revoked → organization access reduced going forward (not retroactive)
 
 ## Migration path from MVP
 
 The MVP and Enterprise designs share the same architecture at two points in time:
 
-1. Memory schema is forward-compatible (6 types â†’ 20+ types)
+1. Memory schema is forward-compatible (6 types → 20+ types)
 2. Agent roster grows, never replaces
 3. Connector shape is consistent (MCP-shaped from day one)
-4. Permission model scales (suggest-mode â†’ consent model â†’ RBAC)
+4. Permission model scales (suggest-mode → consent model → RBAC)
 
 ## Goals
 
@@ -165,13 +165,13 @@ Vaeloom enterprise usage report --month 2025-06
 
 ## Related categories
 
-- [`Product/`](../Product/) â€” MVP product spec (foundation)
-- [`Security/`](../Security/) â€” Enterprise security and compliance
-- [`Architecture/`](../Architecture/) â€” Enterprise architecture foundations
-- [`Operations/`](../Operations/) â€” Runbooks for enterprise operations
+- [`Product/`](../Product/) — MVP product spec (foundation)
+- [`Security/`](../Security/) — Enterprise security and compliance
+- [`Architecture/`](../Architecture/) — Enterprise architecture foundations
+- [`Operations/`](../Operations/) — Runbooks for enterprise operations
 
 ## Related Documents
 
-- [Enterprise Product Vision](../06-Vaeloom-Enterprise-Paper.md) â€” Full enterprise paper
-- [Enterprise Architecture](./Enterprise-Architecture.md) â€” Multi-tenant deep dive
-- [Security Overview](../Security/README.md) â€” Enterprise security and compliance
+- [Enterprise Product Vision](../06-Vaeloom-Enterprise-Paper.md) — Full enterprise paper
+- [Enterprise Architecture](./Enterprise-Architecture.md) — Multi-tenant deep dive
+- [Security Overview](../Security/README.md) — Enterprise security and compliance

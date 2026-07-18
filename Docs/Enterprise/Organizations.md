@@ -149,12 +149,12 @@ sequenceDiagram
     SCIM->>SCIM: Verify SCIM Bearer token
     SCIM->>AUTH: Find or create user
     AUTH-->>SCIM: user_id
-    SCIM->>ORG: Map user to organization (from SCIM group → org mapping)
+    SCIM->>ORG: Map user to organization (from SCIM group --> org mapping)
     ORG->>ORG: Create org_members row with role
     ORG-->>SCIM: 201 Created
     SCIM-->>IDP: 201 Created
 
-    Note over SCIM: Delta sync runs every 15 min<br/>Removed IdP users → suspended in Vaeloom
+    Note over SCIM: Delta sync runs every 15 min<br/>Removed IdP users --> suspended in Vaeloom
 ```
 
 ## Workflows

@@ -206,7 +206,7 @@ sequenceDiagram
     participant Q as Quota Service
 
     U->>GW: POST /v1/documents (JWT)
-    GW->>GW: Verify JWT → tenant_id = T1
+    GW->>GW: Verify JWT --> tenant_id = T1
     GW->>TM: req with tenant_id
     TM->>Q: check storage quota for T1
     Q-->>TM: ok (under limit)

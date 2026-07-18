@@ -258,16 +258,16 @@ graph LR
 
 | Requirement | SOC 2 | GDPR | HIPAA (Readiness) | Vaeloom Implementation |
 |-------------|-------|------|-------------------|------------------------|
-| Access Control | CC6.1 | Art. 32 | Â§164.312(a)(1) | RBAC + ABAC + tenant isolation; API gateway enforces all access |
-| Encryption at Rest | CC6.7 | Art. 32 | Â§164.312(a)(2)(iv) | AES-256 for all data stores; KMS-managed keys |
-| Encryption in Transit | CC6.7 | Art. 32 | Â§164.312(e)(1) | TLS 1.3 for all API, database, and inter-service communication |
-| Audit Logging | CC7.2 | Art. 5(2) | Â§164.312(b) | Immutable audit events; 7-year retention; real-time search |
-| Data Retention | CC7.3 | Art. 17 | Â§164.310(d)(1) | Per-data-type retention schedules; automated enforcement |
-| Incident Response | CC7.4 | Art. 33 | Â§164.308(a)(6) | Documented IR plan; 24-hour notification SLA |
-| Business Continuity | CC7.5 | Art. 32 | Â§164.308(a)(7) | RTO 4h, RPO 1h; annual failover test |
-| Vendor Management | CC3.2 | Art. 28 | Â§164.308(b)(1) | Annual vendor assessments; DPAs with all vendors |
-| Data Deletion | CC6.1 | Art. 17 | Â§164.310(d)(2)(iii) | Soft delete + retention cron; legal hold override |
-| Employee Access | CC6.1 | Art. 32 | Â§164.308(a)(3) | JIT access; MFA for all operations; quarterly access review |
+| Access Control | CC6.1 | Art. 32 | §164.312(a)(1) | RBAC + ABAC + tenant isolation; API gateway enforces all access |
+| Encryption at Rest | CC6.7 | Art. 32 | §164.312(a)(2)(iv) | AES-256 for all data stores; KMS-managed keys |
+| Encryption in Transit | CC6.7 | Art. 32 | §164.312(e)(1) | TLS 1.3 for all API, database, and inter-service communication |
+| Audit Logging | CC7.2 | Art. 5(2) | §164.312(b) | Immutable audit events; 7-year retention; real-time search |
+| Data Retention | CC7.3 | Art. 17 | §164.310(d)(1) | Per-data-type retention schedules; automated enforcement |
+| Incident Response | CC7.4 | Art. 33 | §164.308(a)(6) | Documented IR plan; 24-hour notification SLA |
+| Business Continuity | CC7.5 | Art. 32 | §164.308(a)(7) | RTO 4h, RPO 1h; annual failover test |
+| Vendor Management | CC3.2 | Art. 28 | §164.308(b)(1) | Annual vendor assessments; DPAs with all vendors |
+| Data Deletion | CC6.1 | Art. 17 | §164.310(d)(2)(iii) | Soft delete + retention cron; legal hold override |
+| Employee Access | CC6.1 | Art. 32 | §164.308(a)(3) | JIT access; MFA for all operations; quarterly access review |
 
 ## Private Cloud / VPC Deployment
 
@@ -314,7 +314,7 @@ deployment_options:
 |----------|----------|
 | Prefer row-level security for most enterprises | Database-per-tenant doubles operational cost and backup complexity; RLS provides sufficient isolation for all but the most regulated customers |
 | Use Just-in-Time (JIT) provisioning with SCIM | Prevents stale user records; SCIM sync ensures deprovisioned IdP users are suspended in Vaeloom within 15 minutes |
-| Sign all audit events at creation | Append-only log with hash chaining prevents tampering â€” each event includes the hash of the previous event |
+| Sign all audit events at creation | Append-only log with hash chaining prevents tampering — each event includes the hash of the previous event |
 | Map IdP groups to Vaeloom roles | Group-based role assignment scales better than per-user configuration; supports org-chart changes without manual intervention |
 
 ## Common Mistakes
@@ -324,7 +324,7 @@ deployment_options:
 | Applying RLS policies inconsistently | Some tables expose cross-tenant data; hard to detect without cross-tenant testing | Run automated cross-tenant data leak tests in CI; RLS policies must be applied to every table with a `tenant_id` column |
 | Over-scoping SAML attribute mapping | Mapping all IdP groups to roles creates permission sprawl; unused groups create confusion | Only map groups explicitly configured in the admin console; ignore unmapped groups |
 | No tenant-level rate limiting | One noisy tenant can degrade performance for all others | Implement tenant-level rate limits separate from user-level limits; enforce at the enterprise gateway |
-| Ignoring audit log integrity | Audit logs stored in mutable storage (database) â€” if compromised, logs can be altered or deleted | Use append-only storage (S3 + hashing); audit log access is read-only even for admins |
+| Ignoring audit log integrity | Audit logs stored in mutable storage (database) — if compromised, logs can be altered or deleted | Use append-only storage (S3 + hashing); audit log access is read-only even for admins |
 
 ## Security Considerations
 
