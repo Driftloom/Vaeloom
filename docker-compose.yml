@@ -20,8 +20,26 @@ x-nestjs-base: &nestjs-base
     DATABASE_URL: postgresql://vaeloom:vaeloom_dev@postgres:5432/vaeloom
     REDIS_URL: redis://redis:6379/0
     JWT_SECRET: dev-jwt-secret-not-for-production
+    SERVICE_AUTH_SECRET: dev-service-auth-secret-not-for-prod-32chars
     AI_SERVICE_URL: http://ai-service:8000
     EVENT_BUS_URL: http://event-bus:3040
+    AUTH_SERVICE_URL: http://auth-service:3020
+    MEMORY_STORE_URL: http://memory-store:3010
+    KNOWLEDGE_GRAPH_URL: http://knowledge-graph:3030
+    SEARCH_SERVICE_URL: http://search-service:3050
+    AGENT_ENGINE_URL: http://agent-engine:3060
+    ANALYTICS_SERVICE_URL: http://analytics-service:3070
+    AUDIT_SERVICE_URL: http://audit-service:3080
+    BILLING_SERVICE_URL: http://billing-service:3090
+    CONNECTOR_SERVICE_URL: http://connector-service:3100
+    DOCUMENT_INGESTION_URL: http://document-ingestion:3110
+    IAM_SERVICE_URL: http://iam-service:3120
+    INTEGRATION_SERVICE_URL: http://integration-service:3130
+    JOB_SCHEDULER_URL: http://job-scheduler:3140
+    NOTIFICATION_SERVICE_URL: http://notification-service:3150
+    PLUGIN_SERVICE_URL: http://plugin-service:3160
+    RBAC_SERVICE_URL: http://rbac-service:3170
+    RECOMMENDATION_SERVICE_URL: http://recommendation-service:3180
   depends_on:
     postgres:
       condition: service_healthy
@@ -299,6 +317,27 @@ services:
     ports:
       - "3180:3180"
     <<: *nestjs-base
+
+  # ─── Connection Pooler ───
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: vaeloom-pgbouncer
+    environment:
+      DB_USER: vaeloom
+      DB_PASSWORD: vaeloom_dev
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: vaeloom
+      POOL_MODE: transaction
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      MAX_CLIENT_CONN: 200
+      SERVER_IDLE_TIMEOUT: 300
+    ports:
+      - "6432:6432"
+    depends_on:
+      - postgres
+    <<: *service-base
 
   # ─── Tools (opt-in via profiles) ───
   pgadmin:
