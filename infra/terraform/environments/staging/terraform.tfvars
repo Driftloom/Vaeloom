@@ -1,0 +1,11 @@
+environment         = "staging"
+aws_region          = "us-east-1"
+vpc_cidr            = "10.1.0.0/16"
+cluster_version     = "1.29"
+node_instance_types = ["t3.medium"]
+node_group_min_size = 2
+node_group_max_size = 5
+node_group_desired_size = 2
+db_instance_class   = "db.t3.medium"
+db_allocated_storage = 50
+enable_monitoring   = true
