@@ -84,6 +84,10 @@ coverage/
 crash-*.log
 *.stackdump
 
+# Prisma platform-specific query engine binaries
+query_engine-*.dll.node
+query_engine-*.node
+
 # Misc
 *.tsbuildinfo
 .eslintcache
