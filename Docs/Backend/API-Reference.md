@@ -20,7 +20,7 @@ graph TD
     classDef resource fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Gateway["API Gateway â€” api.Vaeloom.dev"]
+    subgraph Gateway["API Gateway -- api.Vaeloom.dev"]
         GW["Gateway<br/>SSL termination, rate limit, routing"]
     end
 
@@ -74,7 +74,7 @@ Authorization: Bearer <token>
 |-------|----------|----------|
 | Access Token | 15 minutes | Standard API requests |
 | Refresh Token | 7 days | Obtain new access tokens |
-| API Key | Configurable (30dâ€“1yr) | Automated / CI integrations |
+| API Key | Configurable (30d–1yr) | Automated / CI integrations |
 | Enterprise JWT (SAML) | Per-session | SAML/OIDC federated login |
 
 ### Token Scopes
@@ -195,7 +195,7 @@ Content-Type: application/json
 **Get run result (poll):**
 
 ```json
-// Response â€” GET /v1/agents/runs/run_xyz789
+// Response — GET /v1/agents/runs/run_xyz789
 {
   "run_id": "run_xyz789",
   "status": "completed",
@@ -293,7 +293,7 @@ POST   /v1/admin/audit-logs/export        # Export audit logs
 
 | Practice | Rationale |
 |----------|----------|
-| Use cursor-based pagination | Cursor pagination remains stable when new items are inserted â€” unlike offset pagination which can skip/duplicate results |
+| Use cursor-based pagination | Cursor pagination remains stable when new items are inserted — unlike offset pagination which can skip/duplicate results |
 | Implement exponential backoff | Retry 429 responses with `Retry-After` header; use jitter to avoid thundering herd |
 | Send `Idempotency-Key` for mutation requests | Prevents duplicate agent runs and document uploads on network retry |
 | Use conditional requests with ETags | Cache document metadata and agent configurations client-side; saves bandwidth and reduces server load |
@@ -331,10 +331,10 @@ POST   /v1/admin/audit-logs/export        # Export audit logs
 
 ## Goals
 
-1. **Standardize API access** â€” Provide a single, consistent RESTful interface for all Vaeloom clients (web app, mobile, AI agents, third-party integrations)
-2. **Enable self-service integration** â€” Document every endpoint with request/response schemas so external developers and AI agents can integrate without source code access
-3. **Define security and rate-limit boundaries** â€” Specify auth requirements, scope permissions, and rate limits so clients know exactly how to interact safely
-4. **Support OpenAPI 3.1 tooling** â€” Expose a machine-readable spec at `/.well-known/openapi.json` for automated SDK generation, Postman collections, and API gateway validation
+1. **Standardize API access** — Provide a single, consistent RESTful interface for all Vaeloom clients (web app, mobile, AI agents, third-party integrations)
+2. **Enable self-service integration** — Document every endpoint with request/response schemas so external developers and AI agents can integrate without source code access
+3. **Define security and rate-limit boundaries** — Specify auth requirements, scope permissions, and rate limits so clients know exactly how to interact safely
+4. **Support OpenAPI 3.1 tooling** — Expose a machine-readable spec at `/.well-known/openapi.json` for automated SDK generation, Postman collections, and API gateway validation
 
 ---
 
@@ -384,9 +384,9 @@ POST   /v1/admin/audit-logs/export        # Export audit logs
 
 ## Workflows
 
-1. **Document Upload Flow:** Client POSTs file â†’ API returns 202 with document ID â†’ Ingestion queue processes OCR/extraction â†’ Webhook notifies on completion â†’ Document status becomes `processed`
-2. **Agent Execution Flow:** Client POSTs agent execution with input â†’ API returns 202 with run ID â†’ Agent queued on dedicated worker â†’ Worker executes agent logic â†’ Result stored â†’ Client polls or receives WebSocket push with result
-3. **Connector Sync Flow:** Client triggers sync â†’ API enqueues sync job â†’ Worker fetches external data â†’ Data is deduplicated and classified â†’ Memory Agent extracts entities â†’ Sync status updated
+1. **Document Upload Flow:** Client POSTs file → API returns 202 with document ID → Ingestion queue processes OCR/extraction → Webhook notifies on completion → Document status becomes `processed`
+2. **Agent Execution Flow:** Client POSTs agent execution with input → API returns 202 with run ID → Agent queued on dedicated worker → Worker executes agent logic → Result stored → Client polls or receives WebSocket push with result
+3. **Connector Sync Flow:** Client triggers sync → API enqueues sync job → Worker fetches external data → Data is deduplicated and classified → Memory Agent extracts entities → Sync status updated
 
 ---
 
@@ -412,7 +412,7 @@ sequenceDiagram
     C-->>C: Poll GET /v1/documents/:id for status
 ```
 
-> **Diagram:** Document upload flow â€” API Gateway validates auth/permissions, controller delegates to service, service persists with `processing` status, enqueues async ingestion, returns 202 immediately.
+> **Diagram:** Document upload flow — API Gateway validates auth/permissions, controller delegates to service, service persists with `processing` status, enqueues async ingestion, returns 202 immediately.
 
 ---
 
@@ -429,7 +429,7 @@ sequenceDiagram
 8. Service layer executes business logic (CRUD, agent execution, etc.)
 9. Response serialized as JSON with standard envelope
 10. Rate limit headers attached (X-RateLimit-Limit, X-RateLimit-Remaining)
-11. All errors caught by global exception filter â†’ structured error response
+11. All errors caught by global exception filter → structured error response
 ```
 
 ---

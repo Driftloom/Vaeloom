@@ -1,6 +1,6 @@
 ﻿# API Versioning
 
-> **Purpose:** Define Vaeloom's API versioning strategy for public REST APIs, internal RPC, and SDKs â€” version lifecycle, breaking-change policy, deprecation process, and migration guidance
+> **Purpose:** Define Vaeloom's API versioning strategy for public REST APIs, internal RPC, and SDKs — version lifecycle, breaking-change policy, deprecation process, and migration guidance
 > **Status:** ðŸ†• New
 > **Owner:** Architecture Team
 > **Version:** 1.0
@@ -59,7 +59,7 @@ GET https://api.vaeloom.dev/v2/documents
 
 | Rule | Detail |
 |------|--------|
-| Only major versions are in the URL | `/v1/`, `/v2/` â€” never `/v1.2/` |
+| Only major versions are in the URL | `/v1/`, `/v2/` — never `/v1.2/` |
 | Minor/patch changes are backward-compatible | No URL change for additive updates |
 | Old versions supported for minimum 12 months after deprecation | Gives consumers time to migrate |
 | Maximum 2 major versions live simultaneously | `/v1/` and `/v2/` can coexist; `/v3/` requires `/v1/` retirement |
@@ -99,8 +99,8 @@ graph TD
 | Change | Example |
 |--------|---------|
 | Remove field | Remove `legacy_id` from response |
-| Rename field | `file_name` â†’ `filename` |
-| Change field type | `size: string` â†’ `size: number` |
+| Rename field | `file_name` → `filename` |
+| Change field type | `size: string` → `size: number` |
 | Change semantics | `status: "active"` now means something different |
 | Tighten validation | Require `email` where it was optional |
 | Remove endpoint | Delete `POST /v1/documents/bulk` |
@@ -173,9 +173,9 @@ SDKs (TypeScript, Python) follow semver:
 
 | Version bump | When | Example |
 |--------------|------|---------|
-| MAJOR | Breaking API change | 1.x.x â†’ 2.0.0 |
-| MINOR | New feature, backward-compatible | 1.1.x â†’ 1.2.0 |
-| PATCH | Bug fix, backward-compatible | 1.1.0 â†’ 1.1.1 |
+| MAJOR | Breaking API change | 1.x.x → 2.0.0 |
+| MINOR | New feature, backward-compatible | 1.1.x → 1.2.0 |
+| PATCH | Bug fix, backward-compatible | 1.1.0 → 1.1.1 |
 
 SDK major versions align with API major versions: `@vaeloom/sdk@2.x` targets `/v2/` API.
 
@@ -206,9 +206,9 @@ SDK major versions align with API major versions: `@vaeloom/sdk@2.x` targets `/v
 
 ## Related Documents
 
-- [`API-Architecture.md`](./API-Architecture.md) â€” API architecture
-- [`API-Reference.md`](./API-Reference.md) â€” endpoint reference
-- [`REST-Standards.md`](./REST-Standards.md) â€” REST conventions
-- [`../Engineering/Versioning.md`](../Engineering/Versioning.md) â€” general versioning policy
-- [`Service-Contracts.md`](./Service-Contracts.md) â€” internal RPC versioning
-- [`../Enterprise/Feature-Flags.md`](../Enterprise/Feature-Flags.md) â€” feature flag strategy
+- [`API-Architecture.md`](./API-Architecture.md) — API architecture
+- [`API-Reference.md`](./API-Reference.md) — endpoint reference
+- [`REST-Standards.md`](./REST-Standards.md) — REST conventions
+- [`../Engineering/Versioning.md`](../Engineering/Versioning.md) — general versioning policy
+- [`Service-Contracts.md`](./Service-Contracts.md) — internal RPC versioning
+- [`../Enterprise/Feature-Flags.md`](../Enterprise/Feature-Flags.md) — feature flag strategy

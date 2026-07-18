@@ -1,46 +1,46 @@
-﻿# API Architecture
+# API Architecture
 
 > **Purpose:** Define the API architecture and design standards for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#132-api-structure`](../../Docs/Vaeloom-Complete-Documentation.md#132-api-structure)
+> **Status:** ✅ Upgraded to enterprise quality
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#132-api-structure`](../../docs/Vaeloom-Complete-Documentation.md#132-api-structure)
 
 ## Request Lifecycle
 
 ```mermaid
 sequenceDiagram
-    participant C as ðŸ“± Client
-    participant GW as ðŸ›¡ï¸ API Gateway
-    participant M as ðŸ”— Middleware Stack
-    participant H as ðŸŽ¯ Route Handler
-    participant AI as ðŸ¤– AI Service
-    participant DB as ðŸ’¾ Database
+    participant C as 📱 Client
+    participant GW as 🛡️ API Gateway
+    participant M as 🔗 Middleware Stack
+    participant H as 🎯 Route Handler
+    participant AI as 🤖 AI Service
+    participant DB as 💾 Database
 
     C->>GW: HTTPS Request<br/>api.Vaeloom.dev/v1/...
     GW->>GW: SSL termination<br/>Rate limiting check
     GW->>M: Forward to middleware
 
-    Note over M: 1. Logger â€” structured request logging
+    Note over M: 1. Logger -- structured request logging
     M->>M: Log: method, path, client_ip, timestamp
 
-    Note over M: 2. Auth â€” JWT validation
+    Note over M: 2. Auth -- JWT validation
     M->>M: Validate Bearer token<br/>Check expiry, signature
     alt Invalid token
         M-->>C: 401 Unauthorized
     end
 
-    Note over M: 3. Permission Engine â€” scope check
+    Note over M: 3. Permission Engine -- scope check
     M->>M: Check required scopes<br/>vs user permissions
     alt Insufficient scope
         M-->>C: 403 Forbidden
     end
 
-    Note over M: 4. Rate Limiter â€” token bucket
+    Note over M: 4. Rate Limiter -- token bucket
     M->>M: Consume token<br/>Check burst allowance
     alt Over limit
         M-->>C: 429 Too Many Requests<br/>+ Retry-After header
     end
 
-    Note over M: 5. Validation â€” input schema
+    Note over M: 5. Validation -- input schema
     M->>M: Validate body/params/query<br/>class-validator decorators
     alt Invalid input
         M-->>C: 400 Validation Error
@@ -80,23 +80,23 @@ https://api.Vaeloom.dev/v1/
 
 ```text
 /workspaces/{workspace_id}/
-â”œâ”€â”€ documents
-â”‚   â”œâ”€â”€ /{id}
-â”‚   â””â”€â”€ /{id}/versions
-â”œâ”€â”€ resume
-â”‚   â””â”€â”€ /variants
-â”œâ”€â”€ applications
-â”‚   â””â”€â”€ /{id}
-â”œâ”€â”€ connectors
-â”‚   â””â”€â”€ /{id}
-â”œâ”€â”€ memory
-â”‚   â”œâ”€â”€ /graph
-â”‚   â”œâ”€â”€ /entities/{id}
-â”‚   â””â”€â”€ /search
-â”œâ”€â”€ schedule
-â”‚   â””â”€â”€ /events
-â””â”€â”€ chat
-    â””â”€â”€ /messages
+├── documents
+│   ├── /{id}
+│   └── /{id}/versions
+├── resume
+│   └── /variants
+├── applications
+│   └── /{id}
+├── connectors
+│   └── /{id}
+├── memory
+│   ├── /graph
+│   ├── /entities/{id}
+│   └── /search
+├── schedule
+│   └── /events
+└── chat
+    └── /messages
 ```
 
 ## Common Patterns
@@ -126,35 +126,35 @@ https://api.Vaeloom.dev/v1/
 
 | Mistake | Consequence |
 |---------|-------------|
-| Middleware ordering errors | Placing auth after rate limiting wastes resources authenticating requests that will be rejected â€” logger must always be first, validation last |
-| Returning stack traces in error responses | Production error responses must never expose internal details â€” use structured error codes and log the full error server-side |
-| Mixing CRUD and agent endpoints at the same path | REST endpoints (resource CRUD) and agent endpoints (AI inference) have different latency profiles and error semantics â€” keep them separate |
-| Skipping event publishing on failures | Events should be published even for failed requests â€” monitoring needs error signals to detect systemic issues |
+| Middleware ordering errors | Placing auth after rate limiting wastes resources authenticating requests that will be rejected — logger must always be first, validation last |
+| Returning stack traces in error responses | Production error responses must never expose internal details — use structured error codes and log the full error server-side |
+| Mixing CRUD and agent endpoints at the same path | REST endpoints (resource CRUD) and agent endpoints (AI inference) have different latency profiles and error semantics — keep them separate |
+| Skipping event publishing on failures | Events should be published even for failed requests — monitoring needs error signals to detect systemic issues |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Keep middleware stack order consistent: Logger â†’ Auth â†’ Permission â†’ Rate Limit â†’ Validation | Each middleware depends on the previous â€” auth must run before permission, rate limiting before validation (reject early, validate cheap work last) |
-| Always include X-Request-Id in responses | Trace IDs are essential for debugging distributed requests â€” include them in every response and every log entry |
+| Keep middleware stack order consistent: Logger → Auth → Permission → Rate Limit → Validation | Each middleware depends on the previous — auth must run before permission, rate limiting before validation (reject early, validate cheap work last) |
+| Always include X-Request-Id in responses | Trace IDs are essential for debugging distributed requests — include them in every response and every log entry |
 | Separate public and internal endpoints | Public API prefixes with /v1/ and internal service endpoints with /internal/ to apply different auth and rate limiting policies |
-| Publish events for all state changes | Every create, update, or delete should publish an event â€” consumers (AI agents, analytics, notifications) depend on this stream |
+| Publish events for all state changes | Every create, update, or delete should publish an event — consumers (AI agents, analytics, notifications) depend on this stream |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Skipping middleware layers | An API gateway or load balancer misconfiguration could route traffic around the middleware stack â€” enforce middleware ordering at the framework level, not by convention |
-| Rate limit bypass via header manipulation | If rate limiting keys off a client-controlled header (like `X-Forwarded-For`), an attacker can bypass limits â€” rate limit by authenticated user_id, never by IP-derived headers alone |
-| Auth middleware failure allowing unauthenticated requests | An unhandled exception in auth middleware should deny the request, not fall through â€” configure NestJS global guards to deny-by-default on errors |
+| Skipping middleware layers | An API gateway or load balancer misconfiguration could route traffic around the middleware stack — enforce middleware ordering at the framework level, not by convention |
+| Rate limit bypass via header manipulation | If rate limiting keys off a client-controlled header (like `X-Forwarded-For`), an attacker can bypass limits — rate limit by authenticated user_id, never by IP-derived headers alone |
+| Auth middleware failure allowing unauthenticated requests | An unhandled exception in auth middleware should deny the request, not fall through — configure NestJS global guards to deny-by-default on errors |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Middleware latency accumulation | Each middleware adds processing time â€” the 5-layer stack adds 10-50ms per request. Monitor per-middleware latency to identify bottlenecks |
-| Serialization overhead for JSON responses | Large nested JSON responses (agent reasoning traces, paginated lists) can take 100ms+ to serialize â€” use streaming or selective field serialization for heavy responses |
-| Connection pool exhaustion under load | If each agent request holds a DB connection while waiting for an LLM response (500ms-5s), pools deplete quickly â€” use async non-blocking patterns and separate read/write pools |
+| Middleware latency accumulation | Each middleware adds processing time — the 5-layer stack adds 10-50ms per request. Monitor per-middleware latency to identify bottlenecks |
+| Serialization overhead for JSON responses | Large nested JSON responses (agent reasoning traces, paginated lists) can take 100ms+ to serialize — use streaming or selective field serialization for heavy responses |
+| Connection pool exhaustion under load | If each agent request holds a DB connection while waiting for an LLM response (500ms-5s), pools deplete quickly — use async non-blocking patterns and separate read/write pools |
 
 ## Goals
 
@@ -220,11 +220,11 @@ https://api.Vaeloom.dev/v1/
 
 ## Data Flow
 
-1. **Request Reception** â€” HTTPS request arrives at API Gateway which terminates SSL, applies WAF rules, and forwards to a healthy NestJS instance
-2. **Middleware Execution** â€” Request passes through 5-layer stack: Logger captures structured data, Auth validates JWT, Permission Engine checks scopes, Rate Limiter consumes token, Validation checks input schema
-3. **Handler Processing** â€” Router dispatches to resource handler; CRUD handlers use TypeORM to query PostgreSQL; agent handlers call ai-service via gRPC
-4. **Event Emission** â€” After successful processing, handler publishes a domain event to Redis event bus with resource type, action, and metadata
-5. **Response Delivery** â€” Handler serializes response as JSON with appropriate HTTP status, includes X-Request-Id and Cache-Control headers, and returns to client
+1. **Request Reception** — HTTPS request arrives at API Gateway which terminates SSL, applies WAF rules, and forwards to a healthy NestJS instance
+2. **Middleware Execution** — Request passes through 5-layer stack: Logger captures structured data, Auth validates JWT, Permission Engine checks scopes, Rate Limiter consumes token, Validation checks input schema
+3. **Handler Processing** — Router dispatches to resource handler; CRUD handlers use TypeORM to query PostgreSQL; agent handlers call ai-service via gRPC
+4. **Event Emission** — After successful processing, handler publishes a domain event to Redis event bus with resource type, action, and metadata
+5. **Response Delivery** — Handler serializes response as JSON with appropriate HTTP status, includes X-Request-Id and Cache-Control headers, and returns to client
 
 ## Scalability
 
@@ -333,4 +333,4 @@ curl -X GET "https://api.Vaeloom.ai/v1/workspaces" \
 
 - [REST Standards.md](./REST-Standards.md)
 - [Backend Architecture.md](./Backend-Architecture.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#132-api-structure`](../../Docs/Vaeloom-Complete-Documentation.md#132-api-structure)
+- [`/docs/Vaeloom-Complete-Documentation.md#132-api-structure`](../../docs/Vaeloom-Complete-Documentation.md#132-api-structure)

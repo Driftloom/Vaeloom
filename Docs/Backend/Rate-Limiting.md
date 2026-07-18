@@ -113,44 +113,44 @@ X-RateLimit-Reset: 1626075600
 
 | Mistake | Consequence |
 |---------|-------------|
-| Using IP-based rate limiting for authenticated endpoints | Users behind a shared NAT (office, campus) all share one IP â€” one user hitting the limit blocks everyone else. Rate limit by user_id, not IP |
-| Not distinguishing read vs. write limits | Writes (create, update, delete) are more expensive and dangerous than reads â€” apply tighter limits to mutation endpoints |
-| Forgetting to rate limit internal service calls | Internal RPC between api and ai-service without rate limits can cascade failures â€” apply internal burst limits for cross-service calls |
-| Using a single rate limit for all endpoints | AI inference endpoints (chat, search) cost more than CRUD â€” a single limit means either CRUD is too restrictive or AI endpoints are too permissive |
+| Using IP-based rate limiting for authenticated endpoints | Users behind a shared NAT (office, campus) all share one IP — one user hitting the limit blocks everyone else. Rate limit by user_id, not IP |
+| Not distinguishing read vs. write limits | Writes (create, update, delete) are more expensive and dangerous than reads — apply tighter limits to mutation endpoints |
+| Forgetting to rate limit internal service calls | Internal RPC between api and ai-service without rate limits can cascade failures — apply internal burst limits for cross-service calls |
+| Using a single rate limit for all endpoints | AI inference endpoints (chat, search) cost more than CRUD — a single limit means either CRUD is too restrictive or AI endpoints are too permissive |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Use token bucket algorithm with per-user keys | Token bucket allows natural bursts while enforcing average rate â€” store tokens in Redis for distributed consistency |
-| Apply tighter limits to expensive endpoints | POST /chat/message (20/min) costs AI inference â€” keep it low. GET /documents (300/min) is cheap â€” keep it high |
-| Return consistent rate limit headers on every response | X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset let clients self-regulate â€” without them, clients retry blindly |
-| Use separate limit tiers for read vs. write operations | Reads can typically handle 10x the rate of writes â€” apply different token buckets per HTTP method |
+| Use token bucket algorithm with per-user keys | Token bucket allows natural bursts while enforcing average rate — store tokens in Redis for distributed consistency |
+| Apply tighter limits to expensive endpoints | POST /chat/message (20/min) costs AI inference — keep it low. GET /documents (300/min) is cheap — keep it high |
+| Return consistent rate limit headers on every response | X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset let clients self-regulate — without them, clients retry blindly |
+| Use separate limit tiers for read vs. write operations | Reads can typically handle 10x the rate of writes — apply different token buckets per HTTP method |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Rate limit bypass through header spoofing | If rate limiting keys on `X-Forwarded-For`, an attacker can rotate IP headers to bypass limits â€” always key rate limits on authenticated user_id for authenticated endpoints, not IP-derived values |
-| Distributed denial of service through multi-account attacks | An attacker with 100 accounts each getting 60 req/min can generate 6K total requests without triggering per-user limits â€” implement aggregate rate limits per workspace and per IP range |
-| Token bucket exhaustion blocking legitimate traffic | A sharp traffic spike from a legitimate batch job can exhaust the token bucket and block the user â€” use separate rate limit tiers for interactive (user-facing) and batch (background job) traffic |
+| Rate limit bypass through header spoofing | If rate limiting keys on `X-Forwarded-For`, an attacker can rotate IP headers to bypass limits — always key rate limits on authenticated user_id for authenticated endpoints, not IP-derived values |
+| Distributed denial of service through multi-account attacks | An attacker with 100 accounts each getting 60 req/min can generate 6K total requests without triggering per-user limits — implement aggregate rate limits per workspace and per IP range |
+| Token bucket exhaustion blocking legitimate traffic | A sharp traffic spike from a legitimate batch job can exhaust the token bucket and block the user — use separate rate limit tiers for interactive (user-facing) and batch (background job) traffic |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Redis round-trip latency on every request | Every API request incurs a Redis call to check and consume a rate limit token â€” batch rate limit checks using Redis pipeline or use local in-memory token buckets with periodic Redis sync |
-| Token refill calculation overhead under high concurrency | Recalculating token refills for thousands of concurrent users adds CPU overhead â€” use Redis sorted sets for sliding window algorithms that amortize the cost across requests |
-| Rate limit header generation on every response | Computing and serializing rate limit headers (limit, remaining, reset) for every response adds 1-2ms â€” skip header generation for internal service calls and generate only on rate-limited responses for efficiency |
+| Redis round-trip latency on every request | Every API request incurs a Redis call to check and consume a rate limit token — batch rate limit checks using Redis pipeline or use local in-memory token buckets with periodic Redis sync |
+| Token refill calculation overhead under high concurrency | Recalculating token refills for thousands of concurrent users adds CPU overhead — use Redis sorted sets for sliding window algorithms that amortize the cost across requests |
+| Rate limit header generation on every response | Computing and serializing rate limit headers (limit, remaining, reset) for every response adds 1-2ms — skip header generation for internal service calls and generate only on rate-limited responses for efficiency |
 
 ---
 
 ## Goals
 
-1. **Protect system resources** â€” Prevent any single user, workspace, or API key from overwhelming the API or exhausting AI inference capacity
-2. **Fair resource allocation** â€” Ensure Free tier users get predictable capacity while Pro and Enterprise users receive proportional allocations
-3. **Self-regulating clients** â€” Return consistent rate limit headers so clients can throttle themselves without hitting 429s
-4. **Defense against abuse** â€” Apply tighter limits to expensive endpoints (chat, document upload) and auth endpoints to prevent brute force and cost exhaustion
+1. **Protect system resources** — Prevent any single user, workspace, or API key from overwhelming the API or exhausting AI inference capacity
+2. **Fair resource allocation** — Ensure Free tier users get predictable capacity while Pro and Enterprise users receive proportional allocations
+3. **Self-regulating clients** — Return consistent rate limit headers so clients can throttle themselves without hitting 429s
+4. **Defense against abuse** — Apply tighter limits to expensive endpoints (chat, document upload) and auth endpoints to prevent brute force and cost exhaustion
 
 ---
 
@@ -166,7 +166,7 @@ X-RateLimit-Reset: 1626075600
 
 ### Out of Scope
 
-- Per-IP rate limiting for unauthenticated endpoints (not needed â€” all endpoints authenticated)
+- Per-IP rate limiting for unauthenticated endpoints (not needed — all endpoints authenticated)
 - Global rate limits across all tenants (use per-tenant buckets)
 - Adaptive rate limiting based on system load (planned future improvement)
 - Rate limiting for internal service-to-service calls (uses separate internal tier)
@@ -211,7 +211,7 @@ sequenceDiagram
     GW->>RL: Check rate limit (user_id + endpoint)
     RL->>R: GET rate_limit:{user_id}:documents
     R-->>RL: {tokens: 42, last_refill: T1}
-    RL->>RL: Calculate refill: tokens += rate Ã— (now - T1) / 60s
+    RL->>RL: Calculate refill: tokens += rate Ã-- (now - T1) / 60s
     RL->>RL: tokens > 0?
     alt Tokens available
         RL->>R: SET rate_limit:{user_id}:documents (tokens-1, now)
@@ -223,7 +223,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Rate limit flow â€” Gateway checks rate limit for each request against Redis-backed token bucket. Token refill calculated based on elapsed time. Under limit: allow with headers; over limit: return 429 with Retry-After.
+> **Diagram:** Rate limit flow — Gateway checks rate limit for each request against Redis-backed token bucket. Token refill calculated based on elapsed time. Under limit: allow with headers; over limit: return 429 with Retry-After.
 
 ---
 
@@ -232,8 +232,8 @@ sequenceDiagram
 ```text
 1. Request arrives at API Gateway
 2. Gateway identifies rate limit key: {user_id}:{endpoint_group}:{method}
-3. Key format: user_id extracted from JWT (not IP â€” prevents header spoofing)
-4. Rate limiter queries Redis: GET rate_limit:{key} â†’ {tokens, last_refill}
+3. Key format: user_id extracted from JWT (not IP — prevents header spoofing)
+4. Rate limiter queries Redis: GET rate_limit:{key} → {tokens, last_refill}
 5. If key doesn't exist: create with full tokens bucket, set TTL to window + 60s
 6. Calculate refill: tokens += rate Ã— (now - last_refill) / window_seconds
 7. Cap tokens at burst limit (never exceed configured maximum)
@@ -281,7 +281,7 @@ sequenceDiagram
 | Scenario | Detection | Mitigation | Recovery |
 |----------|-----------|------------|----------|
 | Redis unavailable | Connection timeout on rate limit check | Allow request (fail open) but log warning | Reconnect with exponential backoff; alert on-call |
-| Rate limit key expired prematurely | Key TTL expires before window ends | Next request recreates key with full bucket | Acceptable â€” user gets one free request |
+| Rate limit key expired prematurely | Key TTL expires before window ends | Next request recreates key with full bucket | Acceptable — user gets one free request |
 | Clock skew between API nodes | Token refill calculation inconsistent | Use Redis server time (TIME command) for refill | Synchronize API node clocks via NTP |
 | Concurrent token consumption | Race condition on token decrement | Use Redis Lua script for atomic GET + SET | Atomic operation prevents race by design |
 
@@ -303,7 +303,7 @@ sequenceDiagram
 
 | Environment | Method | Trigger | Verification |
 |-------------|--------|---------|--------------|
-| Development | In-memory rate limiter (no Redis dependency) | Git push | Unit test: send requests at 1.5x rate limit â†’ expect 429s |
+| Development | In-memory rate limiter (no Redis dependency) | Git push | Unit test: send requests at 1.5x rate limit → expect 429s |
 | Staging | Redis-backed rate limiter (shared Redis) | PR merged to main | Load test: verify rate limit accuracy within 5% |
 | Production | Redis-backed rate limiter (dedicated Redis cluster) | Tagged release via CI/CD | Canary: verify rate limit headers match expected values |
 

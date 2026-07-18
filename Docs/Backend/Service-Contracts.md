@@ -53,8 +53,8 @@ graph TD
 
     subgraph Contract["Service Contract"]
         PROTO["vaeloom_internal.proto<br/>Shared schema definition"]:::contract
-        V1["v1/ — current version"]:::contract
-        V2["v2/ — next version<br/>(additive only)"]:::contract
+        V1["v1/ -- current version"]:::contract
+        V2["v2/ -- next version<br/>(additive only)"]:::contract
     end
 
     subgraph Testing["Contract Testing"]

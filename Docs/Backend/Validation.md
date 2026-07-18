@@ -30,7 +30,7 @@ graph TD
         B3["Domain rule 3:<br/>Workspace storage quota check"]
     end
 
-    subgraph AIAgent["ðŸ¤– AI Agent Input (Pydantic / FastAPI)"]
+    subgraph AIAgent["ðŸ¤- AI Agent Input (Pydantic / FastAPI)"]
         direction TB
         P1["Memory Extract Input:<br/>document_id âˆˆ doc_[a-z0-9]+<br/>content â‰¤ 100K chars<br/>source_type âˆˆ {pdf,docx,email,code}"]
         P2["Agent Action Input:<br/>action âˆˆ allowed list<br/>params match tool schema"]
@@ -145,44 +145,44 @@ class MemoryExtractInput(BaseModel):
 
 | Mistake | Consequence |
 |---------|-------------|
-| Validating only at the API layer | Validation at the controller catches malformed HTTP input but doesn't protect against invalid RPC calls or event bus messages â€” validate at every service boundary |
-| Returning different error formats for different validation failures | Some endpoints return `{errors: [...]}`, others return `{message: "..."}` â€” clients can't handle validation errors consistently |
-| Using only client-side validation | Client-side validation is for UX, not security â€” an attacker can bypass the browser and send any payload. Server-side validation is mandatory |
-| Not validating AI agent inputs | Agent actions produce structured inputs (entity extractions, file moves) that must be validated before execution â€” malformed agent input can corrupt data |
+| Validating only at the API layer | Validation at the controller catches malformed HTTP input but doesn't protect against invalid RPC calls or event bus messages — validate at every service boundary |
+| Returning different error formats for different validation failures | Some endpoints return `{errors: [...]}`, others return `{message: "..."}` — clients can't handle validation errors consistently |
+| Using only client-side validation | Client-side validation is for UX, not security — an attacker can bypass the browser and send any payload. Server-side validation is mandatory |
+| Not validating AI agent inputs | Agent actions produce structured inputs (entity extractions, file moves) that must be validated before execution — malformed agent input can corrupt data |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
 | Validate at every service boundary | API gateway, service-to-service RPC, event bus consumers, and agent tool calls must each validate their input independently |
-| Use a consistent validation error format across all layers | Same structure: `{error: {code, message, details: [{field, code, message}]}}` â€” clients write one error handler for the entire system |
-| Apply validation rules to AI agent inputs with Pydantic | Agent inputs are as dangerous as user inputs â€” validate schema, ranges, and allowed values before executing any agent action |
-| Validate early, fail fast | Catch validation errors in middleware before they reach business logic â€” expensive operations (LLM calls, database writes) should never execute on invalid input |
+| Use a consistent validation error format across all layers | Same structure: `{error: {code, message, details: [{field, code, message}]}}` — clients write one error handler for the entire system |
+| Apply validation rules to AI agent inputs with Pydantic | Agent inputs are as dangerous as user inputs — validate schema, ranges, and allowed values before executing any agent action |
+| Validate early, fail fast | Catch validation errors in middleware before they reach business logic — expensive operations (LLM calls, database writes) should never execute on invalid input |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Validation bypass through alternate content types | Validation that only checks `application/json` bodies misses attacks via other content types (form data, XML) â€” enforce a allow-list of content types at the API gateway and reject everything else |
-| ReDoS attacks via malicious regex validators | A complex regex in a validation rule (`^([a-z]+)+$`) can cause catastrophic backtracking on crafted input â€” use simple regex patterns with bounded quantifiers and set a regex timeout in validators |
-| Injection attacks through insufficient input sanitization | Input that passes type validation but contains SQL or NoSQL injection payloads can still be dangerous â€” string validation must check for injection patterns, not just format and length |
+| Validation bypass through alternate content types | Validation that only checks `application/json` bodies misses attacks via other content types (form data, XML) — enforce a allow-list of content types at the API gateway and reject everything else |
+| ReDoS attacks via malicious regex validators | A complex regex in a validation rule (`^([a-z]+)+$`) can cause catastrophic backtracking on crafted input — use simple regex patterns with bounded quantifiers and set a regex timeout in validators |
+| Injection attacks through insufficient input sanitization | Input that passes type validation but contains SQL or NoSQL injection payloads can still be dangerous — string validation must check for injection patterns, not just format and length |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Validation overhead on large request bodies | Validating a 1MB JSON body with 1000+ fields using class-validator can take 50-100ms â€” use partial validation (validate only the fields the handler needs) and skip full validation for trusted internal requests |
-| Custom validator calling external services | A validator that checks uniqueness by querying the database adds 5-10ms per validation call â€” batch uniqueness checks at the transaction level instead of per-field validators |
-| Regex compilation overhead in hot paths | Creating new RegExp objects for every validation (instead of reusing compiled patterns) wastes CPU â€” pre-compile all validation regex patterns during application startup |
+| Validation overhead on large request bodies | Validating a 1MB JSON body with 1000+ fields using class-validator can take 50-100ms — use partial validation (validate only the fields the handler needs) and skip full validation for trusted internal requests |
+| Custom validator calling external services | A validator that checks uniqueness by querying the database adds 5-10ms per validation call — batch uniqueness checks at the transaction level instead of per-field validators |
+| Regex compilation overhead in hot paths | Creating new RegExp objects for every validation (instead of reusing compiled patterns) wastes CPU — pre-compile all validation regex patterns during application startup |
 
 ---
 
 ## Goals
 
-1. **Defense-in-depth validation** â€” Validate input at every service boundary (API, RPC, event bus, agent tool calls) â€” never trust any input source
-2. **Consistent error responses** â€” Return the same structured validation error format from all layers so clients write one error handler
-3. **Fail-fast validation at API layer** â€” Catch invalid input in middleware before it reaches expensive business logic (LLM calls, database writes)
-4. **Agent input safety** â€” Apply the same validation rigor to AI agent inputs as user inputs â€” agent actions can corrupt data just like malicious API calls
+1. **Defense-in-depth validation** — Validate input at every service boundary (API, RPC, event bus, agent tool calls) — never trust any input source
+2. **Consistent error responses** — Return the same structured validation error format from all layers so clients write one error handler
+3. **Fail-fast validation at API layer** — Catch invalid input in middleware before it reaches expensive business logic (LLM calls, database writes)
+4. **Agent input safety** — Apply the same validation rigor to AI agent inputs as user inputs — agent actions can corrupt data just like malicious API calls
 
 ---
 
@@ -197,7 +197,7 @@ class MemoryExtractInput(BaseModel):
 
 ### Out of Scope
 
-- Client-side validation (UX concern, not security â€” client validation is never sufficient)
+- Client-side validation (UX concern, not security — client validation is never sufficient)
 - SQL injection prevention (handled by ORM parameterized queries)
 - XSS sanitization (handled by output encoding, not input validation)
 - Business logic validation that requires external service calls (handled by service layer)
@@ -258,7 +258,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Validation pipeline â€” API layer validates input shape with class-validator (required, type, length, enum). On pass, Business Logic layer applies domain rules (uniqueness, quotas). Failure at any layer returns the same structured error format with field-level details.
+> **Diagram:** Validation pipeline — API layer validates input shape with class-validator (required, type, length, enum). On pass, Business Logic layer applies domain rules (uniqueness, quotas). Failure at any layer returns the same structured error format with field-level details.
 
 ---
 
@@ -305,9 +305,9 @@ sequenceDiagram
 | Dimension | Current Limit | 10x Strategy | 100x Strategy |
 |-----------|---------------|--------------|---------------|
 | Validation rules per endpoint | 15 decorators | No scaling concern (rules are in-memory) | Dynamic rule registry with hot reload |
-| Custom validator throughput | 500/s | Custom validators are stateless â€” horizontal scale | Distributed uniqueness checks with Redis |
+| Custom validator throughput | 500/s | Custom validators are stateless — horizontal scale | Distributed uniqueness checks with Redis |
 | Regex pattern compilation | 50 patterns | Pre-compile on startup | Pattern cache with LRU eviction |
-| Pydantic model validation | 1000/s | Stateless â€” scales horizontally | Compiled Pydantic v2 models for 10x throughput |
+| Pydantic model validation | 1000/s | Stateless — scales horizontally | Compiled Pydantic v2 models for 10x throughput |
 
 ---
 
@@ -384,6 +384,8 @@ if (errors.length) throw new ValidationError(errors);
 
 ```python
 # Vaeloom input sanitizer
+
+### The AI Operating System for Autonomous Career and Education Management
 from Vaeloom.validation import Sanitizer
 
 sanitizer = Sanitizer()
