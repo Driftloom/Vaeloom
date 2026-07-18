@@ -1,14 +1,14 @@
-﻿# Model Context Protocol (MCP)
+# Model Context Protocol (MCP)
 
 > **Purpose:** Define MCP integration architecture for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/06-Vaeloom-Enterprise-Paper.md#53-mcp-architecture`](../../Docs/06-Vaeloom-Enterprise-Paper.md#53-mcp-architecture)
+> **Canonical source:** [`/docs/06-Vaeloom-Enterprise-Paper.md#53-mcp-architecture`](../../docs/06-Vaeloom-Enterprise-Paper.md#53-mcp-architecture)
 
 ## Overview
 
-The Model Context Protocol (MCP) integration positions Vaeloom in a dual role within the AI ecosystem: as a consumer that connects to external MCP servers (GitHub, Gmail, Slack) through a standardized client layer, and as a provider that exposes Vaeloom's own tools and memory as MCP endpoints for external IDEs and assistants. This architecture ensures that every tool call â€” whether internal or external â€” follows the same MCP-shaped format (name, description, inputSchema, outputSchema, requiredScope) and passes through the same Permission Engine.
+The Model Context Protocol (MCP) integration positions Vaeloom in a dual role within the AI ecosystem: as a consumer that connects to external MCP servers (GitHub, Gmail, Slack) through a standardized client layer, and as a provider that exposes Vaeloom's own tools and memory as MCP endpoints for external IDEs and assistants. This architecture ensures that every tool call — whether internal or external — follows the same MCP-shaped format (name, description, inputSchema, outputSchema, requiredScope) and passes through the same Permission Engine.
 
 This document defines the MCP client layer, server endpoints, permission bridging, tool registry, and health monitoring for Vaeloom's MCP integration. It serves AI engineers integrating third-party tools, platform engineers exposing Vaeloom's capabilities to external consumers, and security engineers auditing the permission model. All internal tools are MCP-shaped from day one, ensuring future-proof interoperability when native MCP transport stabilizes.
 
@@ -31,7 +31,7 @@ graph TD
     classDef external fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px,stroke-dasharray: 5 3
     classDef internal fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
 
-    subgraph Consumer["ðŸ”Œ Vaeloom as Consumer"]
+    subgraph Consumer["🔌 Vaeloom as Consumer"]
         direction TB
         AGENTS["Vaeloom Agents"] --> MCP_CLIENT["MCP Client Layer<br/>Standardized tool calls"]
         MCP_CLIENT --> EXT_MCP1["External MCP Server A<br/>(e.g. GitHub MCP)"]
@@ -39,7 +39,7 @@ graph TD
         MCP_CLIENT --> EXT_MCP3["External MCP Server C<br/>(e.g. Slack MCP)"]
     end
 
-    subgraph Provider["ðŸ”“ Vaeloom as Provider"]
+    subgraph Provider["🔓 Vaeloom as Provider"]
         direction TB
         EXT_CLIENT["External IDE / Assistant"] --> MCP_SERVER["Vaeloom MCP Server<br/>mcp.list_tools<br/>mcp.call_tool<br/>mcp.get_memory"]
         MCP_SERVER --> PERM["Permission Engine<br/>Check scope & auth"]
@@ -47,7 +47,7 @@ graph TD
         PERM --> TOOLS["Agent Tools<br/>Permission-checked"]
     end
 
-    subgraph Internal["ðŸ“¦ Internal Tool Shape"]
+    subgraph Internal["📦 Internal Tool Shape"]
         direction TB
         ALL["All internal tools<br/>follow MCP shape:"]
         SCHEMA["name + description<br/>inputSchema + outputSchema<br/>requiredScope"]
@@ -64,7 +64,7 @@ graph TD
 
 ```
 
-> **Diagram:** Vaeloom plays a **dual role** with MCP. As a **consumer** (ðŸ”Œ), agents call external MCP servers through a standardized client layer â€” adding any MCP-compatible tool without custom integration. As a **provider** (ðŸ”“), Vaeloom exposes its own MCP server (`list_tools`, `call_tool`, `get_memory`) so external environments can query the memory graph under the same permission model. All internal tools are MCP-shaped from day one.
+> **Diagram:** Vaeloom plays a **dual role** with MCP. As a **consumer** (🔌), agents call external MCP servers through a standardized client layer — adding any MCP-compatible tool without custom integration. As a **provider** (🔓), Vaeloom exposes its own MCP server (`list_tools`, `call_tool`, `get_memory`) so external environments can query the memory graph under the same permission model. All internal tools are MCP-shaped from day one.
 
 ### Consumer: Vaeloom uses external MCP servers
 
@@ -110,39 +110,39 @@ interface ToolDefinition {
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Calling external MCP servers without permission checks | An external MCP server could be compromised or return malicious data â€” every tool call must pass through the Permission Engine regardless of transport |
+| Calling external MCP servers without permission checks | An external MCP server could be compromised or return malicious data — every tool call must pass through the Permission Engine regardless of transport |
 | Building connectors as custom integrations instead of MCP tools | A custom Gmail connector that doesn't follow MCP's name/inputSchema/outputSchema/requiredScope format will need to be rewritten when MCP transport is enabled |
-| Exposing the full internal tool list to external MCP consumers | External IDEs querying `mcp.list_tools` should only see tools permitted for external use â€” internal tools like `merge_entities` should be filtered out |
-| Assuming MCP servers are always available | An external MCP server going down should not crash the agent â€” implement timeouts, retries, and graceful degradation when a tool is unavailable |
+| Exposing the full internal tool list to external MCP consumers | External IDEs querying `mcp.list_tools` should only see tools permitted for external use — internal tools like `merge_entities` should be filtered out |
+| Assuming MCP servers are always available | An external MCP server going down should not crash the agent — implement timeouts, retries, and graceful degradation when a tool is unavailable |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Shape every internal tool as MCP from day one | Name, inputSchema, outputSchema, requiredScope â€” this format works for internal calls now and is ready for MCP transport later without rewriting |
-| Scope external MCP server access by agent permissions | Not every agent should have access to every MCP server â€” map MCP tool access to the same agent-level permission model used for internal tools |
-| Version MCP server endpoints to allow gradual migration | An MCP server at `/v1/list_tools` and `/v2/list_tools` can coexist during upgrades â€” clients migrate when ready without breaking running agents |
-| Monitor external MCP server health and latency | An external MCP server that becomes slow or unreliable can bottleneck agent execution â€” add health checks and circuit breakers for third-party MCP dependencies |
+| Shape every internal tool as MCP from day one | Name, inputSchema, outputSchema, requiredScope — this format works for internal calls now and is ready for MCP transport later without rewriting |
+| Scope external MCP server access by agent permissions | Not every agent should have access to every MCP server — map MCP tool access to the same agent-level permission model used for internal tools |
+| Version MCP server endpoints to allow gradual migration | An MCP server at `/v1/list_tools` and `/v2/list_tools` can coexist during upgrades — clients migrate when ready without breaking running agents |
+| Monitor external MCP server health and latency | An external MCP server that becomes slow or unreliable can bottleneck agent execution — add health checks and circuit breakers for third-party MCP dependencies |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Malicious MCP server returning crafted responses | A compromised external MCP server could return data designed to extract user information â€” validate and sanitize all data returned from external MCP tools before processing |
+| Malicious MCP server returning crafted responses | A compromised external MCP server could return data designed to extract user information — validate and sanitize all data returned from external MCP tools before processing |
 | MCP transport channel security | MCP communications between Vaeloom and external servers must use TLS encryption; unencrypted MCP connections expose tool calls and data to network interception |
-| Permission escalation via MCP tool chaining | An agent should not be able to call an MCP tool that the agent's own permissions would not allow internally â€” the Permission Engine's check applies equally to MCP and internal tool calls |
+| Permission escalation via MCP tool chaining | An agent should not be able to call an MCP tool that the agent's own permissions would not allow internally — the Permission Engine's check applies equally to MCP and internal tool calls |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| External MCP server latency variability | Network latency to external MCP servers can be 10-100x slower than internal tool calls â€” set appropriate timeouts per MCP server based on observed p95 latency |
-| MCP connection pooling | Opening a new connection for every MCP tool call adds TLS handshake overhead â€” reuse persistent HTTP/2 connections to MCP servers for lower latency |
-| Caching frequent MCP tool results | Read-only MCP tools (e.g., `list_repos`, `search_gmail`) with identical parameters can be cached for short periods â€” reduces external call volume and latency |
+| External MCP server latency variability | Network latency to external MCP servers can be 10-100x slower than internal tool calls — set appropriate timeouts per MCP server based on observed p95 latency |
+| MCP connection pooling | Opening a new connection for every MCP tool call adds TLS handshake overhead — reuse persistent HTTP/2 connections to MCP servers for lower latency |
+| Caching frequent MCP tool results | Read-only MCP tools (e.g., `list_repos`, `search_gmail`) with identical parameters can be cached for short periods — reduces external call volume and latency |
 
 ## Scope
 
-This document defines the Model Context Protocol (MCP) integration architecture for Vaeloom â€” covering Vaeloom's dual role as both MCP consumer (connecting to external MCP servers) and MCP provider (exposing Vaeloom's internal tools as MCP endpoints). Applies to all agent tool calls and external integrations across MVP and Enterprise. Out of scope: internal tool definition format (see [Tool-Calling.md](./Tool-Calling.md)), permission model specifics (see [Guardrails.md](./Guardrails.md)).
+This document defines the Model Context Protocol (MCP) integration architecture for Vaeloom — covering Vaeloom's dual role as both MCP consumer (connecting to external MCP servers) and MCP provider (exposing Vaeloom's internal tools as MCP endpoints). Applies to all agent tool calls and external integrations across MVP and Enterprise. Out of scope: internal tool definition format (see [Tool-Calling.md](./Tool-Calling.md)), permission model specifics (see [Guardrails.md](./Guardrails.md)).
 
 ---
 
@@ -201,24 +201,24 @@ sequenceDiagram
     MC-->>AG: Formatted result
     MC->>LOG: Log tool call (duration, success)
     
-    Note over MC,EXT: Circuit breaker: 3 failures â†’ 30s cooldown
+    Note over MC,EXT: Circuit breaker: 3 failures --> 30s cooldown
 ```
 
-> **Diagram:** External MCP tool call flow â€” permission check â†’ MCP call â†’ schema validation â†’ result delivery. The circuit breaker protects against failing external servers.
+> **Diagram:** External MCP tool call flow — permission check → MCP call → schema validation → result delivery. The circuit breaker protects against failing external servers.
 
 ---
 
 ## Data Flow
 
 ```text
-Agent â†’ MCP Client Layer â†’ Permission Check
-    â†’ External MCP Server â†’ Response Validation
-    â†’ Result â†’ Agent
-    â†’ Audit Log Entry
+Agent → MCP Client Layer → Permission Check
+    → External MCP Server → Response Validation
+    → Result → Agent
+    → Audit Log Entry
     
-External Client â†’ MCP Server â†’ Permission Check
-    â†’ Tool Execution â†’ Response â†’ Client
-    â†’ Audit Log Entry
+External Client → MCP Server → Permission Check
+    → Tool Execution → Response → Client
+    → Audit Log Entry
 ```
 
 **Data flow description:** Both consumer and provider flows pass through the Permission Engine. All calls are logged for audit regardless of direction.
@@ -243,7 +243,7 @@ External Client â†’ MCP Server â†’ Permission Check
 |-------|---------|-------------|---------|
 | `mcp_servers` | Registered external MCP servers | `id`, `name`, `endpoint_url`, `auth_type`, `health_status`, `circuit_breaker_state` | `(name)` UNIQUE |
 | `mcp_calls` | Log every MCP call (in/out) | `id`, `direction`, `tool_name`, `caller_identity`, `duration_ms`, `success`, `error_message` | `(direction, created_at)`, `(tool_name)` |
-| `mcp_permissions` | MCP tool â†’ agent scope mapping | `tool_name`, `required_scope`, `allowed_agents` | `(tool_name)` UNIQUE |
+| `mcp_permissions` | MCP tool → agent scope mapping | `tool_name`, `required_scope`, `allowed_agents` | `(tool_name)` UNIQUE |
 
 ---
 
@@ -261,7 +261,7 @@ External Client â†’ MCP Server â†’ Permission Check
 
 | Scenario | Detection | Mitigation | Recovery |
 |----------|-----------|------------|----------|
-| External MCP server unavailable | Connection timeout / 503 | Circuit breaker opens (3 failures â†’ 30s cooldown) | Agent falls back to alternate tool or cached result |
+| External MCP server unavailable | Connection timeout / 503 | Circuit breaker opens (3 failures → 30s cooldown) | Agent falls back to alternate tool or cached result |
 | MCP server returns invalid response | Schema validation fails | Drop response; log error with server identity | Retry once (if idempotent) or return error to agent |
 | Permission denied on MCP call | Permission Engine returns deny | Log denial; do NOT retry | Agent handles gracefully; report to user |
 | MCP server returns malicious data | Injection detection on response | Sanitize response; flag server for review | Disconnect server; alert security team |
@@ -355,4 +355,4 @@ const result = await mcpClient.callTool({
 
 - [Tool Calling.md](./Tool-Calling.md)
 - [AI Agents.md](./AI-Agents.md)
-- [`/Docs/06-Vaeloom-Enterprise-Paper.md#53-mcp-architecture`](../../Docs/06-Vaeloom-Enterprise-Paper.md#53-mcp-architecture)
+- [`/docs/06-Vaeloom-Enterprise-Paper.md#53-mcp-architecture`](../../docs/06-Vaeloom-Enterprise-Paper.md#53-mcp-architecture)

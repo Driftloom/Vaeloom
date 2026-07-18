@@ -1,15 +1,15 @@
-﻿# Prompt Engineering
+# Prompt Engineering
 
 > **Purpose:** Define prompt engineering standards for Vaeloom's AI agents
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-Prompt engineering is the craft of defining agent behavior through structured system prompts â€” and at Vaeloom, it follows a rigorous lifecycle from drafting through production deployment. Every prompt must include eight required sections (Role, Context, Tools, Memory, Constraints, Examples, Edge Cases, Output Format), pass peer review, run through golden dataset evaluation, shadow-deploy in staging, and roll out progressively in production with automatic rollback on regression detection. This discipline ensures consistent, debuggable, and safe agent behavior across all 28 agents.
+Prompt engineering is the craft of defining agent behavior through structured system prompts — and at Vaeloom, it follows a rigorous lifecycle from drafting through production deployment. Every prompt must include eight required sections (Role, Context, Tools, Memory, Constraints, Examples, Edge Cases, Output Format), pass peer review, run through golden dataset evaluation, shadow-deploy in staging, and roll out progressively in production with automatic rollback on regression detection. This discipline ensures consistent, debuggable, and safe agent behavior across all 28 agents.
 
-This document defines the prompt lifecycle, design principles, structure template, versioning conventions, and testing standards. It is intended for all prompt authors â€” AI engineers, product engineers, and technical writers â€” who create or modify agent prompts. The lifecycle diagram shows the five-phase pipeline from drafting through production monitoring, with every failure path looping back to revision.
+This document defines the prompt lifecycle, design principles, structure template, versioning conventions, and testing standards. It is intended for all prompt authors — AI engineers, product engineers, and technical writers — who create or modify agent prompts. The lifecycle diagram shows the five-phase pipeline from drafting through production monitoring, with every failure path looping back to revision.
 
 ## Goals
 
@@ -25,15 +25,15 @@ This document defines the prompt lifecycle, design principles, structure templat
 
 ```mermaid
 graph TD
-    %% â”€â”€â”€ Class Definitions â”€â”€â”€
+    %% ─── Class Definitions ───
     classDef draft fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
     classDef test fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef eval fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef stage fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef prod fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
 
-    %% â”€â”€â”€ Phase 1: Draft â”€â”€â”€
-    subgraph Draft["âœï¸ 1. Draft Phase"]
+    %% ─── Phase 1: Draft ───
+    subgraph Draft["✏️ 1. Draft Phase"]
         direction TB
         D1["Write initial prompt<br/>with all 8 required sections"] --> D2["Self-review against<br/>quality checklist"]
         D2 --> D3["Peer review by<br/>AI team member"]
@@ -43,50 +43,50 @@ graph TD
         D6 --> D2
     end
 
-    %% â”€â”€â”€ Phase 2: Test â”€â”€â”€
-    subgraph Test["ðŸ§ª 2. Test Phase"]
+    %% ─── Phase 2: Test ───
+    subgraph Test["🧪 2. Test Phase"]
         direction TB
         D5 --> T1["Run golden dataset<br/>10-20 expected examples"]
         T1 --> T2["Run edge cases<br/>empty, ambiguous, adversarial"]
         T2 --> T3["Measure metrics:<br/>accuracy, schema compliance,\nlatency, token usage"]
     end
 
-    %% â”€â”€â”€ Phase 3: Evaluate â”€â”€â”€
-    subgraph Eval["ðŸ“Š 3. Evaluate Phase"]
+    %% ─── Phase 3: Evaluate ───
+    subgraph Eval["📊 3. Evaluate Phase"]
         direction TB
         T3 --> E1["Compare against<br/>baseline thresholds"]
         E1 --> E2{"All metrics pass?<br/>accuracy > 90%<br/>schema compliance = 100%"}
-        E2 -->|Yes| E3["âœ… Prompt ready<br/>for staging"]
-        E2 -->|No| E4["âŒ Metrics below threshold<br/>identify failing edge cases"]
+        E2 -->|Yes| E3["✅ Prompt ready<br/>for staging"]
+        E2 -->|No| E4["❌ Metrics below threshold<br/>identify failing edge cases"]
         E4 --> E5["Revise prompt<br/>fix identified gaps"]
         E5 --> D2
     end
 
-    %% â”€â”€â”€ Phase 4: Stage â”€â”€â”€
-    subgraph Stage["ðŸ”¬ 4. Staging Phase"]
+    %% ─── Phase 4: Stage ───
+    subgraph Stage["🔬 4. Staging Phase"]
         direction TB
         E3 --> S1["Deploy to staging<br/>environment"]
         S1 --> S2["Shadow mode:<br/>run on real traffic,<br/>compare to production prompt"]
         S2 --> S3["Monitor metrics:<br/>latency, accuracy drift,\nuser feedback score"]
         S3 --> S4{"Shadow metrics<br/>match production?"}
-        S4 -->|Yes| S5["âœ… Ready for<br/>production rollout"]
+        S4 -->|Yes| S5["✅ Ready for<br/>production rollout"]
         S4 -->|No| S6["Investigate divergence<br/>roll back to draft"]
         S6 --> D2
     end
 
-    %% â”€â”€â”€ Phase 5: Production â”€â”€â”€
-    subgraph Production["ðŸš€ 5. Production Phase"]
+    %% ─── Phase 5: Production ───
+    subgraph Production["🚀 5. Production Phase"]
         direction TB
-        S5 --> P1["Deploy to production<br/>gradual rollout (10% â†’ 50% â†’ 100%)"]
+        S5 --> P1["Deploy to production<br/>gradual rollout (10% --> 50% --> 100%)"]
         P1 --> P2["Monitor 24h:<br/>error rate, latency,<br/>user satisfaction"]
         P2 --> P3{"Performance<br/>acceptable?"}
-        P3 -->|Yes| P4["âœ… Prompt live<br/>update version records<br/>notify team"]
+        P3 -->|Yes| P4["✅ Prompt live<br/>update version records<br/>notify team"]
         P3 -->|No| P5["Roll back to<br/>previous version"]
         P5 --> P6["Log incident,<br/>create regression test,<br/>restart lifecycle"]
         P6 --> D2
     end
 
-    %% â”€â”€â”€ Apply styles â”€â”€â”€
+    %% ─── Apply styles ───
     class D1,D2,D3,D4,D5,D6 draft
     class T1,T2,T3 test
     class E1,E2,E3,E4,E5 eval
@@ -94,7 +94,7 @@ graph TD
     class P1,P2,P3,P4,P5,P6 prod
 ```
 
-> **Diagram:** The prompt optimization lifecycle follows five phases. **Draft** (âœï¸) writes and peer-reviews the prompt. **Test** (ðŸ§ª) runs golden datasets + edge cases + measures metrics. **Evaluate** (ðŸ“Š) gates on accuracy and schema compliance â€” failures loop back to revision. **Staging** (ðŸ”¬) shadow-deploys against real traffic. **Production** (ðŸš€) rolls out gradually with 24h monitoring and automatic rollback on degradation.
+> **Diagram:** The prompt optimization lifecycle follows five phases. **Draft** (✏️) writes and peer-reviews the prompt. **Test** (🧪) runs golden datasets + edge cases + measures metrics. **Evaluate** (📊) gates on accuracy and schema compliance — failures loop back to revision. **Staging** (🔬) shadow-deploys against real traffic. **Production** (🚀) rolls out gradually with 24h monitoring and automatic rollback on degradation.
 
 ---
 
@@ -165,14 +165,14 @@ Always respond with valid JSON matching this schema:
 
 ```text
 prompts/
-â”œâ”€â”€ memory_agent/
-â”‚   â”œâ”€â”€ v1_extract_entities.md
-â”‚   â”œâ”€â”€ v2_extract_entities.md
-â”‚   â””â”€â”€ v1_merge_entities.md
-â”œâ”€â”€ organization_agent/
-â”‚   â”œâ”€â”€ v1_propose_name.md
-â”‚   â””â”€â”€ v1_detect_duplicates.md
-â””â”€â”€ ...
+├── memory_agent/
+│   ├── v1_extract_entities.md
+│   ├── v2_extract_entities.md
+│   └── v1_merge_entities.md
+├── organization_agent/
+│   ├── v1_propose_name.md
+│   └── v1_detect_duplicates.md
+└── ...
 ```
 
 ## Testing Prompts
@@ -188,34 +188,34 @@ Every prompt has associated eval tests:
 | Mistake | Why It's a Problem |
 |---------|-------------------|
 | Writing prompts without the required 8-section structure | Prompts missing Role, Context, Tools, Memory, Constraints, Examples, Edge Cases, or Output Format sections produce inconsistent agent behavior that's hard to debug |
-| Including ambiguous or contradictory examples | Examples that describe edge cases not covered by the prompt's constraints confuse the model â€” every example should directly illustrate a specific constraint or output pattern |
+| Including ambiguous or contradictory examples | Examples that describe edge cases not covered by the prompt's constraints confuse the model — every example should directly illustrate a specific constraint or output pattern |
 | Versioning prompts without a changelog | Without a changelog, the team can't tell what changed between v1 and v3 of an agent's prompt, making regression debugging nearly impossible |
-| Skipping edge case definitions for known failure modes | Edge cases like empty input, ambiguous entities, or rate-limited tools will occur in production â€” unprompted handling of these cases produces inconsistent and often incorrect behavior |
+| Skipping edge case definitions for known failure modes | Edge cases like empty input, ambiguous entities, or rate-limited tools will occur in production — unprompted handling of these cases produces inconsistent and often incorrect behavior |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
 | Require all 8 required sections (Role, Context, Tools, Memory, Constraints, Examples, Edge Cases, Output Format) in every prompt | Completeness ensures consistent agent behavior across authors and makes prompts reviewable and testable against a known checklist |
-| Write examples that directly illustrate constraints | Each example should show a specific constraint in action â€” if the constraint is "never guess dates," an example showing ambiguous-date handling is more valuable than a happy-path example |
-| Maintain a versioned changelog per prompt file | Each prompt version records the date, author, change summary, and link to the eval results â€” enables rollback and regression analysis |
-| Define edge cases for all known failure modes before deploying | Empty inputs, ambiguous entities, tool failures, rate limits, and contradictory data â€” each edge case needs a specific handling strategy defined in the prompt |
+| Write examples that directly illustrate constraints | Each example should show a specific constraint in action — if the constraint is "never guess dates," an example showing ambiguous-date handling is more valuable than a happy-path example |
+| Maintain a versioned changelog per prompt file | Each prompt version records the date, author, change summary, and link to the eval results — enables rollback and regression analysis |
+| Define edge cases for all known failure modes before deploying | Empty inputs, ambiguous entities, tool failures, rate limits, and contradictory data — each edge case needs a specific handling strategy defined in the prompt |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Prompt injection via user-provided text | User messages and document content that contain adversarial instructions can hijack agent behavior â€” strip or escape control characters and enforce prompt boundaries at the system level |
-| Prompt leakage through verbose error messages | Error messages that echo the agent's system prompt or tool configuration could expose internal instructions â€” sanitize error output before returning to the user |
-| Prompt version history containing sensitive context | Old versions of prompts stored in the prompt library may contain API keys, workspace references, or other sensitive data â€” review prompt version diffs before archiving to prevent credential leakage |
+| Prompt injection via user-provided text | User messages and document content that contain adversarial instructions can hijack agent behavior — strip or escape control characters and enforce prompt boundaries at the system level |
+| Prompt leakage through verbose error messages | Error messages that echo the agent's system prompt or tool configuration could expose internal instructions — sanitize error output before returning to the user |
+| Prompt version history containing sensitive context | Old versions of prompts stored in the prompt library may contain API keys, workspace references, or other sensitive data — review prompt version diffs before archiving to prevent credential leakage |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Prompt length vs inference cost | Every additional token in the system prompt increases cost and latency for every call â€” keep the prompt concise; move detailed instructions (examples, edge case tables) to a retrievable reference document |
-| Example count impact on context window | Including 10+ examples in the prompt consumes 2-4K tokens â€” keep examples to 2-3 representative cases and test edge cases through the eval framework rather than inline examples |
-| Prompt caching benefits for repeated agent invocations | LLM providers cache prompts that are identical across requests â€” ensure the system prompt is deterministic (no random ordering of examples or tools) to maximize cache hits |
+| Prompt length vs inference cost | Every additional token in the system prompt increases cost and latency for every call — keep the prompt concise; move detailed instructions (examples, edge case tables) to a retrievable reference document |
+| Example count impact on context window | Including 10+ examples in the prompt consumes 2-4K tokens — keep examples to 2-3 representative cases and test edge cases through the eval framework rather than inline examples |
+| Prompt caching benefits for repeated agent invocations | LLM providers cache prompts that are identical across requests — ensure the system prompt is deterministic (no random ordering of examples or tools) to maximize cache hits |
 
 ## Scope
 
@@ -244,18 +244,18 @@ This document defines the prompt engineering lifecycle, design principles, struc
 3. Self-reviews against quality checklist
 4. Peer review by another AI team member
 5. Assigns version tag (v1.0.0) with changelog entry
-6. Runs golden dataset evals â€” passes?
+6. Runs golden dataset evals — passes?
 7. Commits to prompt library
 
 ### 2. Prompt Update Workflow
 
 1. Production edge case or regression identified
 2. Author revises prompt (adds example, updates constraint, fixes edge case)
-3. Version incremented (v1 â†’ v2; major if schema change)
+3. Version incremented (v1 → v2; major if schema change)
 4. Runs golden dataset + edge case + regression evals
 5. Peer review of changes
 6. Shadow deploy to staging (24h observation)
-7. Gradual production rollout (10% â†’ 50% â†’ 100%)
+7. Gradual production rollout (10% → 50% → 100%)
 
 ---
 
@@ -283,7 +283,7 @@ sequenceDiagram
         alt CI Pass
             CI->>PROD: Shadow deploy (24h)
             PROD-->>CI: Metrics OK
-            CI->>PROD: Gradual rollout (10% â†’ 100%)
+            CI->>PROD: Gradual rollout (10% --> 100%)
         else CI Fail
             CI-->>AU: Blocked; revise and resubmit
         end
@@ -292,20 +292,20 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Prompt lifecycle â€” author writes â†’ peer review â†’ eval pass â†’ commit to CI â†’ full gate â†’ staging shadow â†’ production rollout. Failures at any stage loop back to revision.
+> **Diagram:** Prompt lifecycle — author writes → peer review → eval pass → commit to CI → full gate → staging shadow → production rollout. Failures at any stage loop back to revision.
 
 ---
 
 ## Data Flow
 
 ```text
-Author â†’ Write 8-section prompt â†’ Self-review â†’ Peer review
-    â†’ Eval (golden dataset + edge cases + regressions)
-    â†’ Pass? â†’ Commit + version bump + changelog
-    â†’ CI Gate (full eval: 100% dataset)
-    â†’ Staging Shadow (24h observation)
-    â†’ Production Rollout (10% â†’ 50% â†’ 100%)
-    â†’ Monitor (accuracy, latency, user feedback)
+Author → Write 8-section prompt → Self-review → Peer review
+    → Eval (golden dataset + edge cases + regressions)
+    → Pass? → Commit + version bump + changelog
+    → CI Gate (full eval: 100% dataset)
+    → Staging Shadow (24h observation)
+    → Production Rollout (10% → 50% → 100%)
+    → Monitor (accuracy, latency, user feedback)
 ```
 
 ---
@@ -439,4 +439,4 @@ Changelog: Added required 'confidence' field to all output objects"
 
 - [Prompt Standards.md](./Prompt-Standards.md)
 - [Evaluation.md](./Evaluation.md)
-- [`/Docs/Engineering/Implementation/09-ai-gateway-model-routing.md`](../../Docs/Engineering/Implementation/09-ai-gateway-model-routing.md)
+- [`/docs/Engineering/Implementation/09-ai-gateway-model-routing.md`](../../docs/Engineering/Implementation/09-ai-gateway-model-routing.md)

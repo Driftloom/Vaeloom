@@ -1,20 +1,20 @@
-﻿# LLM Architecture
+# LLM Architecture
 
 > **Purpose:** Define the LLM architecture and model strategy for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#44-ai-layer`](../../Docs/Vaeloom-Complete-Documentation.md#44-ai-layer)
+> **Status:** ✅ Upgraded to enterprise quality
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#44-ai-layer`](../../docs/Vaeloom-Complete-Documentation.md#44-ai-layer)
 
 ## Overview
 
-The LLM architecture is the model orchestration layer that sits between Vaeloom's agents and the underlying AI model providers (Anthropic, OpenAI). Rather than hardcoding a single model, the Model Router dynamically assigns each agent request to the optimal model based on task type (classification â†’ Haiku, reasoning â†’ Sonnet, generation â†’ Sonnet/GPT-4o, embedding â†’ text-embedding-3-small), priority, cost budget, and latency requirements. This multi-model approach optimizes the cost-quality tradeoff while maintaining availability through automatic fallback chains.
+The LLM architecture is the model orchestration layer that sits between Vaeloom's agents and the underlying AI model providers (Anthropic, OpenAI). Rather than hardcoding a single model, the Model Router dynamically assigns each agent request to the optimal model based on task type (classification → Haiku, reasoning → Sonnet, generation → Sonnet/GPT-4o, embedding → text-embedding-3-small), priority, cost budget, and latency requirements. This multi-model approach optimizes the cost-quality tradeoff while maintaining availability through automatic fallback chains.
 
-This document defines the model strategy, routing architecture, model assignment per agent, cost management, and caching strategy. It is intended for AI engineers configuring model routing, platform engineers managing API provider integration, and finance teams tracking AI infrastructure costs. The architecture is designed for zero-downtime model swaps â€” routing rules live in a centralized config file, not in agent code, enabling model changes without agent code modifications.
+This document defines the model strategy, routing architecture, model assignment per agent, cost management, and caching strategy. It is intended for AI engineers configuring model routing, platform engineers managing API provider integration, and finance teams tracking AI infrastructure costs. The architecture is designed for zero-downtime model swaps — routing rules live in a centralized config file, not in agent code, enabling model changes without agent code modifications.
 
 ---
 
 ## Model Strategy
 
-Vaeloom uses **multi-model orchestration** â€” different agents route to the model best suited to their task â€” rather than a single hardcoded model.
+Vaeloom uses **multi-model orchestration** — different agents route to the model best suited to their task — rather than a single hardcoded model.
 
 ## Routing Architecture
 
@@ -26,7 +26,7 @@ graph TD
     classDef fallback fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
     classDef router fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
 
-    subgraph AgentsIn["ðŸ¤– Agents"]
+    subgraph AgentsIn["🤖 Agents"]
         GA["Gmail Agent<br/>Classification"]
         MA["Memory Agent<br/>Entity Extraction"]
         RA["Resume Agent<br/>Generation"]
@@ -35,7 +35,7 @@ graph TD
         ORG["Organization Agent<br/>Categorization"]
     end
 
-    subgraph Router["ðŸ”€ Model Router"]
+    subgraph Router["🔀 Model Router"]
         direction TB
         R1["Receive request<br/>+ task_type + priority"]
         R2["Task classification:<br/>Classification / Reasoning / Gen"]
@@ -44,7 +44,7 @@ graph TD
         R5["Monitor & log<br/>latency + cost"]
     end
 
-    subgraph Models["ðŸ§  Model Pool"]
+    subgraph Models["🧠 Model Pool"]
         HAIKU["Claude Haiku<br/>Fast & cheap<br/>$0.00025/K in"]
         SONNET["Claude Sonnet<br/>Balanced reasoning<br/>$0.003/K in"]
         GPT4O["GPT-4o<br/>Fallback capable<br/>$0.005/K in"]
@@ -105,34 +105,34 @@ The Model Router is a centralized service that:
 | Mistake | Why It's a Problem |
 |---------|-------------------|
 | Using the most capable model for every task | Routing classification tasks (which Haiku handles perfectly) through Sonnet wastes 10x cost and adds latency for zero quality gain |
-| No fallback model configured | When the primary model is unavailable (API outage, rate limit), agents fail silently or hang â€” a fallback model prevents complete service interruption |
-| Hardcoding model names in agent code | When a model is deprecated or a better model is released, every agent's prompt file must be updated individually â€” use a centralized routing config |
+| No fallback model configured | When the primary model is unavailable (API outage, rate limit), agents fail silently or hang — a fallback model prevents complete service interruption |
+| Hardcoding model names in agent code | When a model is deprecated or a better model is released, every agent's prompt file must be updated individually — use a centralized routing config |
 | Ignoring cost accumulation across agents | Without per-agent cost tracking, a runaway agent consuming expensive model tokens can silently exhaust the monthly AI budget |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Match model capability to task complexity | Classification/pattern â†’ Haiku (fast/cheap), extraction/reasoning â†’ Sonnet (balanced), complex generation â†’ GPT-4o fallback â€” right tool for right job |
-| Always configure a fallback model per agent | API outages happen â€” each agent should have a fallback model (typically one tier more capable/costly) with automatic failover and logging |
-| Centralize model routing in a config file | A single JSON/YAML config mapping agent_name â†’ {primary, fallback, cost_budget} enables model updates without touching agent code |
-| Track per-agent cost and latency in production | Log every model call with agent_id, model, tokens, and latency â€” enables cost attribution and identifies agents that should be downgraded to a cheaper model |
+| Match model capability to task complexity | Classification/pattern → Haiku (fast/cheap), extraction/reasoning → Sonnet (balanced), complex generation → GPT-4o fallback — right tool for right job |
+| Always configure a fallback model per agent | API outages happen — each agent should have a fallback model (typically one tier more capable/costly) with automatic failover and logging |
+| Centralize model routing in a config file | A single JSON/YAML config mapping agent_name → {primary, fallback, cost_budget} enables model updates without touching agent code |
+| Track per-agent cost and latency in production | Log every model call with agent_id, model, tokens, and latency — enables cost attribution and identifies agents that should be downgraded to a cheaper model |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Model provider API key exposure | AI service credentials in client-side code or public repos expose the account to abuse â€” store API keys in a secrets manager, never in code or environment variables accessible from the frontend |
-| Prompt data sent to third-party model providers | Agent prompts containing user data are transmitted to external LLM providers â€” verify provider data-handling policies and consider data residency requirements |
-| Model output hallucination in high-stakes actions | LLM-generated output for resume content, application answers, or deadline extraction may contain plausible-sounding but incorrect information â€” the QA Agent must verify factual claims against memory |
+| Model provider API key exposure | AI service credentials in client-side code or public repos expose the account to abuse — store API keys in a secrets manager, never in code or environment variables accessible from the frontend |
+| Prompt data sent to third-party model providers | Agent prompts containing user data are transmitted to external LLM providers — verify provider data-handling policies and consider data residency requirements |
+| Model output hallucination in high-stakes actions | LLM-generated output for resume content, application answers, or deadline extraction may contain plausible-sounding but incorrect information — the QA Agent must verify factual claims against memory |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
 | Model cold-start latency | The first model call after a period of inactivity may be slower due to provider cold-start; keep a warm connection pool active for real-time agents (Chat, Scheduler) |
-| Context window management | Long prompts with extensive RAG context consume tokens and increase latency â€” prune context to the most relevant items (top 5-10) rather than filling the entire context window |
-| Response caching for deterministic queries | Identical classification queries (e.g., email priority assessment) with identical context can be cached with a short TTL â€” avoid re-invoking the model for the same input |
+| Context window management | Long prompts with extensive RAG context consume tokens and increase latency — prune context to the most relevant items (top 5-10) rather than filling the entire context window |
+| Response caching for deterministic queries | Identical classification queries (e.g., email priority assessment) with identical context can be cached with a short TTL — avoid re-invoking the model for the same input |
 
 ## Goals
 
@@ -198,11 +198,11 @@ The Model Router is a centralized service that:
 
 ## Data Flow
 
-1. **Agent Request** â€” Agent sends inference request to Model Router with task_type, agent_id, priority, and input payload including context and user query
-2. **Cache Lookup** â€” Router computes cache key from agent_id + input hash; if found in Redis and within TTL, returns cached response immediately without model invocation
-3. **Model Selection** â€” Router classifies task type and selects primary model from config; records selected model, expected cost, and timeout in span context
-4. **Inference Execution** â€” Router sends request to model provider via SDK with retry logic (3 attempts with exponential backoff); streams response for generation tasks where supported
-5. **Monitoring and Cost Recording** â€” Router records tokens consumed, latency, cost, and model used to Redis counters; if primary model fails, retries with fallback model and logs the failure
+1. **Agent Request** — Agent sends inference request to Model Router with task_type, agent_id, priority, and input payload including context and user query
+2. **Cache Lookup** — Router computes cache key from agent_id + input hash; if found in Redis and within TTL, returns cached response immediately without model invocation
+3. **Model Selection** — Router classifies task type and selects primary model from config; records selected model, expected cost, and timeout in span context
+4. **Inference Execution** — Router sends request to model provider via SDK with retry logic (3 attempts with exponential backoff); streams response for generation tasks where supported
+5. **Monitoring and Cost Recording** — Router records tokens consumed, latency, cost, and model used to Redis counters; if primary model fails, retries with fallback model and logs the failure
 
 ## Scalability
 
@@ -239,8 +239,8 @@ The Model Router is a centralized service that:
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| ANTHROPIC_API_KEY | Claude API authentication | â€” | Yes |
-| OPENAI_API_KEY | GPT API authentication | â€” | Yes |
+| ANTHROPIC_API_KEY | Claude API authentication | — | Yes |
+| OPENAI_API_KEY | GPT API authentication | — | Yes |
 | PRIMARY_MODEL | Default model for reasoning tasks | claude-sonnet-4-20250514 | No |
 | FALLBACK_MODEL | Fallback model for reasoning tasks | gpt-4o | No |
 | CACHE_TTL | Response cache TTL in seconds | 300 | No |
@@ -328,7 +328,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Model routing flow â€” agent request triggers config lookup, budget check, primary model call, and automatic fallback to the secondary model on failure. All token usage and cost is recorded for per-agent attribution.
+> **Diagram:** Model routing flow — agent request triggers config lookup, budget check, primary model call, and automatic fallback to the secondary model on failure. All token usage and cost is recorded for per-agent attribution.
 
 ---
 
@@ -355,4 +355,4 @@ sequenceDiagram
 
 - [Model Routing.md](./Model-Routing.md)
 - [Inference Pipeline.md](./Inference-Pipeline.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#44-ai-layer`](../../Docs/Vaeloom-Complete-Documentation.md#44-ai-layer)
+- [`/docs/Vaeloom-Complete-Documentation.md#44-ai-layer`](../../docs/Vaeloom-Complete-Documentation.md#44-ai-layer)

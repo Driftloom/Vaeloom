@@ -1,16 +1,16 @@
-﻿# Knowledge Graph
+# Knowledge Graph
 
 > **Purpose:** Define the knowledge graph architecture for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/04-memory-knowledge-graph.md`](../../Docs/04-memory-knowledge-graph.md)
+> **Canonical source:** [`/docs/04-memory-knowledge-graph.md`](../../docs/04-memory-knowledge-graph.md)
 
 ## Overview
 
-The knowledge graph is Vaeloom's structured representation of entities and the relationships between them â€” connecting people, skills, organizations, projects, certificates, and events into a traversable network that enables relationship-aware retrieval. Unlike flat vector search that finds semantically similar content, the knowledge graph answers relationship questions: "What skills does this person have?", "Which projects required React?", "Who worked with whom on what?"
+The knowledge graph is Vaeloom's structured representation of entities and the relationships between them — connecting people, skills, organizations, projects, certificates, and events into a traversable network that enables relationship-aware retrieval. Unlike flat vector search that finds semantically similar content, the knowledge graph answers relationship questions: "What skills does this person have?", "Which projects required React?", "Who worked with whom on what?"
 
-This document defines the entity types, relationship types, merge strategy, graph traversal patterns, and storage architecture (Apache AGE for MVP, Neo4j for Enterprise). It is intended for AI engineers building entity extraction pipelines, backend engineers implementing graph queries, and data engineers planning the migration to dedicated graph infrastructure. The merge strategy â€” auto-merge above 95% similarity, flag for review above 80%, create new below 80% â€” balances automation with safety.
+This document defines the entity types, relationship types, merge strategy, graph traversal patterns, and storage architecture (Apache AGE for MVP, Neo4j for Enterprise). It is intended for AI engineers building entity extraction pipelines, backend engineers implementing graph queries, and data engineers planning the migration to dedicated graph infrastructure. The merge strategy — auto-merge above 95% similarity, flag for review above 80%, create new below 80% — balances automation with safety.
 
 ## Goals
 
@@ -34,14 +34,14 @@ graph LR
     classDef job fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1.5px
     classDef event fill:#fce4ec,stroke:#880e4f,color:#000,stroke-width:1.5px
 
-    JOHN["ðŸ‘¤ John Doe<br/>Person"]
-    REACT["âš›ï¸ React<br/>Skill"]
-    ML["ðŸ§  Machine Learning<br/>Skill"]
-    HACKX["ðŸš€ HackX Project<br/>Project"]
-    MIT["ðŸ›ï¸ MIT<br/>Organization"]
-    AWS["ðŸ“œ AWS Solutions Architect<br/>Certificate"]
-    GOOGLE["ðŸ’¼ SDE Intern at Google<br/>Job"]
-    HACKATHON["ðŸŽ‰ Hackathon 2026<br/>Event"]
+    JOHN["👤 John Doe<br/>Person"]
+    REACT["⚛️ React<br/>Skill"]
+    ML["🧠 Machine Learning<br/>Skill"]
+    HACKX["🚀 HackX Project<br/>Project"]
+    MIT["🏛️ MIT<br/>Organization"]
+    AWS["📜 AWS Solutions Architect<br/>Certificate"]
+    GOOGLE["💼 SDE Intern at Google<br/>Job"]
+    HACKATHON["🎉 Hackathon 2026<br/>Event"]
 
     JOHN -->|worked_on| HACKX
     JOHN -->|mentored_by| MIT
@@ -84,11 +84,11 @@ graph LR
 
 | Relationship | From | To | Example |
 |-------------|------|----|---------|
-| `worked_on` | Person | Project | John â†’ HackX |
-| `awarded_to` | Certificate | Person | AWS Cert â†’ John |
-| `requires_skill` | Project | Skill | HackX â†’ React |
-| `applied_to` | Person | Job | John â†’ Google Intern |
-| `mentored_by` | Person | Person | John â†’ Prof. Smith |
+| `worked_on` | Person | Project | John → HackX |
+| `awarded_to` | Certificate | Person | AWS Cert → John |
+| `requires_skill` | Project | Skill | HackX → React |
+| `applied_to` | Person | Job | John → Google Intern |
+| `mentored_by` | Person | Person | John → Prof. Smith |
 
 ## Merge Strategy
 
@@ -103,8 +103,8 @@ When the Memory Agent encounters a new entity:
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Creating duplicate entities for the same real-world thing | Five nodes for "React," "React.js," and "ReactJS" fragment the graph â€” relationships attached to one alias don't surface for the others |
-| Over-merging distinct entities with similar names | Merging two different projects with similar names corrupts both records â€” a missed merge is fixable; a wrong merge requires manual graph surgery |
+| Creating duplicate entities for the same real-world thing | Five nodes for "React," "React.js," and "ReactJS" fragment the graph — relationships attached to one alias don't surface for the others |
+| Over-merging distinct entities with similar names | Merging two different projects with similar names corrupts both records — a missed merge is fixable; a wrong merge requires manual graph surgery |
 | Allowing unbounded graph growth without consolidation | Every file and email added creates new nodes; without periodic compression, query performance degrades and the graph becomes noise |
 | Storing only relationships in one direction | A `worked_on` relationship without an inverse (`involves`) makes graph traversal queries one-directional and limits the questions the graph can answer |
 
@@ -112,30 +112,30 @@ When the Memory Agent encounters a new entity:
 
 | Practice | Rationale |
 |----------|-----------|
-| Always store inverse relationships with every edge | If Entity A `worked_on` Entity B, also store that B `involves` A â€” enables bidirectional graph traversal without runtime reverse-lookup |
-| Use similarity thresholds with confidence bands for merges | Auto-merge above 95%, flag for review above 80%, create new below 80% â€” this balances automation with safety |
-| Run graph consolidation on a periodic schedule (weekly) | Dense subgraphs (same entity with minor name variations) should be merged periodically rather than on every write â€” reduces fragmentation over time |
-| Tag every node with `workspace_id` from creation | Tenant-scoped queries are the most common access pattern â€” without workspace tagging, cross-tenant data leakage becomes a structural risk |
+| Always store inverse relationships with every edge | If Entity A `worked_on` Entity B, also store that B `involves` A — enables bidirectional graph traversal without runtime reverse-lookup |
+| Use similarity thresholds with confidence bands for merges | Auto-merge above 95%, flag for review above 80%, create new below 80% — this balances automation with safety |
+| Run graph consolidation on a periodic schedule (weekly) | Dense subgraphs (same entity with minor name variations) should be merged periodically rather than on every write — reduces fragmentation over time |
+| Tag every node with `workspace_id` from creation | Tenant-scoped queries are the most common access pattern — without workspace tagging, cross-tenant data leakage becomes a structural risk |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Relationship inference revealing private information | Graph edges between entities can reveal sensitive connections (e.g., "applied_to Job â†’ rejected") â€” ensure graph traversal queries respect the same permission scope as document-level access |
-| Entity merging accidentally linking unrelated users | Merge logic must never cross `workspace_id` boundaries â€” entities from different workspaces share no `workspace_id` and should never be merge candidates |
+| Relationship inference revealing private information | Graph edges between entities can reveal sensitive connections (e.g., "applied_to Job → rejected") — ensure graph traversal queries respect the same permission scope as document-level access |
+| Entity merging accidentally linking unrelated users | Merge logic must never cross `workspace_id` boundaries — entities from different workspaces share no `workspace_id` and should never be merge candidates |
 | Graph export containing inferred relationships | Exporting the full knowledge graph could reveal relationship patterns the user did not explicitly create; provide a filtered export option that omits inferred edges |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Graph traversal depth limiting | Limit graph traversal to 3-4 hops maximum â€” beyond that, the search space grows exponentially (a node with 10 connections at each depth produces 10,000 nodes at depth 4) |
+| Graph traversal depth limiting | Limit graph traversal to 3-4 hops maximum — beyond that, the search space grows exponentially (a node with 10 connections at each depth produces 10,000 nodes at depth 4) |
 | AGE graph query optimization for MVP | Apache AGE queries over PostgreSQL can be slow for complex Cypher patterns; index entity IDs and relationship types that are most commonly traversed |
-| Periodic index rebuild on the graph store | As the graph grows, query plans for common traversal patterns become suboptimal â€” rebuild indexes monthly or when node count increases by 25%+ |
+| Periodic index rebuild on the graph store | As the graph grows, query plans for common traversal patterns become suboptimal — rebuild indexes monthly or when node count increases by 25%+ |
 
 ## Scope
 
-This document defines the knowledge graph architecture for Vaeloom â€” covering entity types, relationship types, merge strategies, graph traversal patterns, and storage architecture. Applies to all user workspaces across MVP (AGE on PostgreSQL) and Enterprise (Neo4j) deployments. Out of scope: embedding generation (see [Embeddings.md](./Embeddings.md)), memory lifecycle (see [Memory.md](./Memory.md)), retrieval strategy selection (see [Agentic-RAG.md](./Agentic-RAG.md)).
+This document defines the knowledge graph architecture for Vaeloom — covering entity types, relationship types, merge strategies, graph traversal patterns, and storage architecture. Applies to all user workspaces across MVP (AGE on PostgreSQL) and Enterprise (Neo4j) deployments. Out of scope: embedding generation (see [Embeddings.md](./Embeddings.md)), memory lifecycle (see [Memory.md](./Memory.md)), retrieval strategy selection (see [Agentic-RAG.md](./Agentic-RAG.md)).
 
 ---
 
@@ -143,8 +143,8 @@ This document defines the knowledge graph architecture for Vaeloom â€” cove
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| Entity Extractor | Identify entities from documents and memory records | Memory Agent â†’ structured extraction | Parallel extraction per document |
-| Relationship Linker | Create typed edges between entities | Memory Agent â†’ graph write | Batch relationship writes |
+| Entity Extractor | Identify entities from documents and memory records | Memory Agent → structured extraction | Parallel extraction per document |
+| Relationship Linker | Create typed edges between entities | Memory Agent → graph write | Batch relationship writes |
 | Graph Store (MVP) | Store and query entity nodes + relationships | Apache AGE (PostgreSQL extension) | Index entity IDs and relationship types |
 | Graph Store (Enterprise) | Dedicated graph database at scale | Neo4j | Graph partitioning by entity cluster |
 | Graph Traversal Engine | Execute Cypher/pgSQL queries for relationship queries | Python query builder | Limit traversal depth to 3-4 hops |
@@ -211,11 +211,11 @@ sequenceDiagram
 ## Data Flow
 
 ```text
-Document â†’ Entity Extractor â†’ Extract entity types + attributes
-    â†’ Merge Controller â†’ Check similarity against existing graph
-    â†’ Auto-merge (>95%) / Flag for review (>80%) / Create new (<80%)
-    â†’ Graph Store â†’ Write nodes + relationships + inverse edges
-    â†’ Index update â†’ Entity ID index + Relationship type index
+Document → Entity Extractor → Extract entity types + attributes
+    → Merge Controller → Check similarity against existing graph
+    → Auto-merge (>95%) / Flag for review (>80%) / Create new (<80%)
+    → Graph Store → Write nodes + relationships + inverse edges
+    → Index update → Entity ID index + Relationship type index
 ```
 
 **Data flow description:** Entity extraction feeds into merge-or-create decision logic. Nodes and edges are written with both forward and inverse relationships for bidirectional traversal.
@@ -311,14 +311,14 @@ result = merge_controller.check_similarity(
     new_entity={"name": "React.js", "type": "skill"},
     existing_entity={"name": "React", "type": "skill"}
 )
-# similarity = 0.97 â†’ Auto-merge (above 95% threshold)
+# similarity = 0.97 → Auto-merge (above 95% threshold)
 # Result: merged with existing "React" node
 
 result2 = merge_controller.check_similarity(
     new_entity={"name": "Reactive Programming", "type": "skill"},
     existing_entity={"name": "React", "type": "skill"}
 )
-# similarity = 0.45 â†’ Create new entity (below 80% threshold)
+# similarity = 0.45 → Create new entity (below 80% threshold)
 ```
 
 ---
@@ -359,4 +359,4 @@ result2 = merge_controller.check_similarity(
 
 - [Memory.md](./Memory.md)
 - [Embeddings.md](./Embeddings.md)
-- [`/Docs/04-memory-knowledge-graph.md`](../../Docs/04-memory-knowledge-graph.md)
+- [`/docs/04-memory-knowledge-graph.md`](../../docs/04-memory-knowledge-graph.md)

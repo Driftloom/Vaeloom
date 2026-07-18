@@ -1,19 +1,19 @@
-﻿# RAG (Retrieval-Augmented Generation)
+# RAG (Retrieval-Augmented Generation)
 
 > **Purpose:** Define the RAG architecture for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../docs/Vaeloom-Complete-Documentation.md#65-agentic-rag)
 
 ## Overview
 
-Retrieval-Augmented Generation (RAG) is the mechanism by which Vaeloom agents access relevant context from memory stores before generating a response. Rather than relying on model knowledge alone, every agent retrieves up-to-date information from the user's knowledge graph, vector store, and structured records â€” ensuring responses are grounded in the user's actual data. Vaeloom's RAG pipeline is agentic: the requesting agent selects the optimal retrieval strategy (vector, keyword, graph, or hybrid) per query rather than running a fixed pipeline.
+Retrieval-Augmented Generation (RAG) is the mechanism by which Vaeloom agents access relevant context from memory stores before generating a response. Rather than relying on model knowledge alone, every agent retrieves up-to-date information from the user's knowledge graph, vector store, and structured records — ensuring responses are grounded in the user's actual data. Vaeloom's RAG pipeline is agentic: the requesting agent selects the optimal retrieval strategy (vector, keyword, graph, or hybrid) per query rather than running a fixed pipeline.
 
-This document defines the RAG architecture, retrieval methods (vector, keyword, graph, hybrid), multi-factor ranking (Relevance Ã— 0.50 + Freshness Ã— 0.20 + Importance Ã— 0.15 + Confidence Ã— 0.15), context assembly, and permission-scoped retrieval. It complements the deeper Agentic-RAG document by providing the foundational RAG concepts. This is the starting point for engineers new to Vaeloom's retrieval system.
+This document defines the RAG architecture, retrieval methods (vector, keyword, graph, hybrid), multi-factor ranking (Relevance × 0.50 + Freshness × 0.20 + Importance × 0.15 + Confidence × 0.15), context assembly, and permission-scoped retrieval. It complements the deeper Agentic-RAG document by providing the foundational RAG concepts. This is the starting point for engineers new to Vaeloom's retrieval system.
 
 ## Goals
 
@@ -27,7 +27,7 @@ This document defines the RAG architecture, retrieval methods (vector, keyword, 
 
 ## Retrieval Strategy
 
-Vaeloom uses **Agentic RAG** â€” the calling agent selects the retrieval strategy per query, rather than a single fixed pipeline.
+Vaeloom uses **Agentic RAG** — the calling agent selects the retrieval strategy per query, rather than a single fixed pipeline.
 
 ## Retrieval Pipeline
 
@@ -48,7 +48,7 @@ graph TD
     VS & KS & GT & HY --> RANK["Relevance Ranker<br/>Cross-encoder reranker"]
     RANK --> SCORE["Score Calculation"]
 
-    subgraph Scores["ðŸ“Š Multi-Factor Scoring"]
+    subgraph Scores["📊 Multi-Factor Scoring"]
         S1["Relevance 0.50<br/>Cross-encoder score"]
         S2["Freshness 0.20<br/>Recent = higher score"]
         S3["Importance 0.15<br/>Centrality in graph"]
@@ -70,7 +70,7 @@ graph TD
 
 ```
 
-> **Diagram:** Agentic RAG pipeline â€” the **Router** classifies each query to select the optimal search strategy (vector, keyword, graph, or hybrid). Results are scored by four weighted factors, pruned to the token budget with deduplication, and assembled with source provenance for the requesting agent.
+> **Diagram:** Agentic RAG pipeline — the **Router** classifies each query to select the optimal search strategy (vector, keyword, graph, or hybrid). Results are scored by four weighted factors, pruned to the token budget with deduplication, and assembled with source provenance for the requesting agent.
 
 ## Retrieval Methods
 
@@ -85,15 +85,15 @@ graph TD
 
 ```text
 Query from Agent
-    â†“
+    ↓
 Hybrid Search (vector + keyword + graph)
-    â†“
+    ↓
 Re-rank by Relevance + Freshness + Importance + Confidence
-    â†“
+    ↓
 Prune to context budget (most relevant, non-redundant set)
-    â†“
+    ↓
 Assembled Context with source provenance
-    â†“
+    ↓
 Return to Agent
 ```
 
@@ -110,39 +110,39 @@ Return to Agent
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Using a single retrieval strategy for all query types | Vector search fails for exact-term queries (course codes, tool names); keyword search misses conceptually related content; graph traversal misses semantic neighbors â€” no single strategy fits all |
-| No re-ranking after hybrid search | Vector and keyword results each have their own scoring â€” without a cross-encoder re-ranker that normalizes scores across strategies, the final result order is arbitrary |
-| Retrieving more context than the model can process | If the combined retrieved context exceeds the model's context window, the excess is silently truncated â€” important information at the end of the retrieved set is lost |
-| Not filtering retrieved results by permission scope | A retrieval query should never return documents the requesting agent does not have permission to read â€” permission filtering must happen at the retrieval layer, not after |
+| Using a single retrieval strategy for all query types | Vector search fails for exact-term queries (course codes, tool names); keyword search misses conceptually related content; graph traversal misses semantic neighbors — no single strategy fits all |
+| No re-ranking after hybrid search | Vector and keyword results each have their own scoring — without a cross-encoder re-ranker that normalizes scores across strategies, the final result order is arbitrary |
+| Retrieving more context than the model can process | If the combined retrieved context exceeds the model's context window, the excess is silently truncated — important information at the end of the retrieved set is lost |
+| Not filtering retrieved results by permission scope | A retrieval query should never return documents the requesting agent does not have permission to read — permission filtering must happen at the retrieval layer, not after |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Let the calling agent choose the retrieval strategy per query | Agentic RAG means the agent analyzes the query and selects vector, keyword, graph, or hybrid search â€” one size fits none for retrieval |
-| Always run a cross-encoder re-ranker after hybrid search | Cross-encoder scores are more accurate than embedding cosine similarity for ranking relevance â€” re-rank the top 20 results to find the 5 best |
+| Let the calling agent choose the retrieval strategy per query | Agentic RAG means the agent analyzes the query and selects vector, keyword, graph, or hybrid search — one size fits none for retrieval |
+| Always run a cross-encoder re-ranker after hybrid search | Cross-encoder scores are more accurate than embedding cosine similarity for ranking relevance — re-rank the top 20 results to find the 5 best |
 | Prune retrieved results to fit the model's context budget | After re-ranking, select the top-N results whose total token count stays within the model's context window minus the prompt and output tokens |
-| Apply permission filtering at the retrieval query level | Add workspace_id and permission scope filters to every database query at the retrieval layer â€” never retrieve results and then filter afterward (wasteful and potentially leaky) |
+| Apply permission filtering at the retrieval query level | Add workspace_id and permission scope filters to every database query at the retrieval layer — never retrieve results and then filter afterward (wasteful and potentially leaky) |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Cross-workspace data leakage via shared vector stores | Vector stores must be scoped per workspace â€” a query from workspace A should never return results from workspace B, even if the vector similarity matches |
-| Content from deleted documents remaining in retrieval | When a document is deleted by the user, its embeddings and extracted entities must also be removed â€” stale retrieval results from deleted documents violate the user's expectation of privacy |
-| Re-ranking exposing document snippets to unauthorized agents | The re-rancher cross-encoder processes document text snippet by snippet â€” ensure the re-rancher only sees documents the requesting agent has permission to read |
+| Cross-workspace data leakage via shared vector stores | Vector stores must be scoped per workspace — a query from workspace A should never return results from workspace B, even if the vector similarity matches |
+| Content from deleted documents remaining in retrieval | When a document is deleted by the user, its embeddings and extracted entities must also be removed — stale retrieval results from deleted documents violate the user's expectation of privacy |
+| Re-ranking exposing document snippets to unauthorized agents | The re-rancher cross-encoder processes document text snippet by snippet — ensure the re-rancher only sees documents the requesting agent has permission to read |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Hybrid search latency vs sequential execution | Running vector, keyword, and graph searches sequentially adds 3x latency â€” parallelize the three searches and merge results in memory to stay within the 2s context assembly budget |
-| Cross-encoder throughput limitations | Cross-encoder re-rankers are slower than embedding similarity (typically 20-50ms per pair) â€” only re-rank the top 20-30 results, not the entire result set |
-| Token budget management for context assembly | Track token usage during context assembly â€” if the pruned context still exceeds the budget, use a summarization pass rather than silently truncating the tail of the retrieved set |
+| Hybrid search latency vs sequential execution | Running vector, keyword, and graph searches sequentially adds 3x latency — parallelize the three searches and merge results in memory to stay within the 2s context assembly budget |
+| Cross-encoder throughput limitations | Cross-encoder re-rankers are slower than embedding similarity (typically 20-50ms per pair) — only re-rank the top 20-30 results, not the entire result set |
+| Token budget management for context assembly | Track token usage during context assembly — if the pruned context still exceeds the budget, use a summarization pass rather than silently truncating the tail of the retrieved set |
 
 ## Scope
 
-This document defines the Retrieval-Augmented Generation (RAG) architecture for Vaeloom â€” covering retrieval methods, ranking scores, pipeline stages, and permission-scoped retrieval. It applies to all agents that retrieve context from memory stores. Out of scope: agentic strategy selection (see [Agentic-RAG.md](./Agentic-RAG.md)), embedding model details (see [Embeddings.md](./Embeddings.md)), knowledge graph specifics (see [Knowledge-Graph.md](./Knowledge-Graph.md)).
+This document defines the Retrieval-Augmented Generation (RAG) architecture for Vaeloom — covering retrieval methods, ranking scores, pipeline stages, and permission-scoped retrieval. It applies to all agents that retrieve context from memory stores. Out of scope: agentic strategy selection (see [Agentic-RAG.md](./Agentic-RAG.md)), embedding model details (see [Embeddings.md](./Embeddings.md)), knowledge graph specifics (see [Knowledge-Graph.md](./Knowledge-Graph.md)).
 
 ---
 
@@ -150,9 +150,9 @@ This document defines the Retrieval-Augmented Generation (RAG) architecture for 
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| Vector Search | Semantic similarity search | pgvector (MVP) â†’ Qdrant (Enterprise) | IVFFlat indexing; auto-sharding |
+| Vector Search | Semantic similarity search | pgvector (MVP) → Qdrant (Enterprise) | IVFFlat indexing; auto-sharding |
 | Keyword Search | Exact-term full-text search | PostgreSQL FTS (GIN indexes) | Read replicas; GIN index optimization |
-| Graph Traversal | Entity relationship queries | AGE (MVP) â†’ Neo4j (Enterprise) | Depth-limited traversal (3-4 hops) |
+| Graph Traversal | Entity relationship queries | AGE (MVP) → Neo4j (Enterprise) | Depth-limited traversal (3-4 hops) |
 | Cross-Encoder Re-ranker | Score normalization across strategies | SentenceTransformers | GPU-accelerated; re-rank top 30 only |
 | Context Assembler | Dedup, prioritize, prune to budget | Python | Stateless; scales horizontally |
 | Token Budget Tracker | Enforce max_tokens per agent request | In-memory accumulator | Configurable per agent type |
@@ -167,7 +167,7 @@ This document defines the Retrieval-Augmented Generation (RAG) architecture for 
 2. Router analyzes: semantic / exact / relationship signals
 3. Parallel search across vector + keyword + graph stores
 4. Cross-encoder re-ranker normalizes and scores all results
-5. Results sorted by weighted score (Relevance Ã— 0.50 + Freshness Ã— 0.20 + Importance Ã— 0.15 + Confidence Ã— 0.15)
+5. Results sorted by weighted score (Relevance × 0.50 + Freshness × 0.20 + Importance × 0.15 + Confidence × 0.15)
 6. Deduplicate by entity_id (keep highest score)
 7. Prune to token budget (stop when max_tokens reached)
 8. Assemble context string with source provenance
@@ -215,20 +215,20 @@ sequenceDiagram
     CA-->>AG: Assembled context (with provenance)
 ```
 
-> **Diagram:** The RAG pipeline handles full hybrid retrieval â€” parallel search across three stores, cross-encoder normalization, deduplication, and token-budget pruning before delivery to the agent.
+> **Diagram:** The RAG pipeline handles full hybrid retrieval — parallel search across three stores, cross-encoder normalization, deduplication, and token-budget pruning before delivery to the agent.
 
 ---
 
 ## Data Flow
 
 ```text
-Agent Query â†’ Router (analyze: semantic/exact/relationship)
-    â†’ Parallel Search: Vector Store + Keyword Store + Graph Store
-    â†’ Cross-Encoder Re-ranker (normalize scores)
-    â†’ Sort by weighted score (R+F+I+C)
-    â†’ Deduplicate â†’ Prune to token budget
-    â†’ Assemble context with source provenance
-    â†’ Return to Agent
+Agent Query → Router (analyze: semantic/exact/relationship)
+    → Parallel Search: Vector Store + Keyword Store + Graph Store
+    → Cross-Encoder Re-ranker (normalize scores)
+    → Sort by weighted score (R+F+I+C)
+    → Deduplicate → Prune to token budget
+    → Assemble context with source provenance
+    → Return to Agent
 ```
 
 ---
@@ -366,4 +366,4 @@ response = await rag_pipeline.retrieve(
 
 - [Agentic RAG.md](./Agentic-RAG.md)
 - [Embeddings.md](./Embeddings.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../Docs/Vaeloom-Complete-Documentation.md#65-agentic-rag)
+- [`/docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../docs/Vaeloom-Complete-Documentation.md#65-agentic-rag)

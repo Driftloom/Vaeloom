@@ -1,40 +1,40 @@
-﻿# Memory System
+# Memory System
 
 > **Purpose:** Define the memory system architecture for Vaeloom's AI
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/04-memory-knowledge-graph.md`](../../Docs/04-memory-knowledge-graph.md), [`/Docs/Vaeloom-Complete-Documentation.md#6-memory-system-in-depth`](../../Docs/Vaeloom-Complete-Documentation.md#6-memory-system-in-depth)
+> **Canonical source:** [`/docs/04-memory-knowledge-graph.md`](../../docs/04-memory-knowledge-graph.md), [`/docs/Vaeloom-Complete-Documentation.md#6-memory-system-in-depth`](../../docs/Vaeloom-Complete-Documentation.md#6-memory-system-in-depth)
 
 ## Overview
 
-Vaeloom's memory system is the product's core differentiator â€” a continuously evolving, structured knowledge base built automatically from everything the user touches. Unlike a chatbot that resets context every session, Vaeloom's memory compounds over time, making every agent smarter the longer it's used.
+Vaeloom's memory system is the product's core differentiator — a continuously evolving, structured knowledge base built automatically from everything the user touches. Unlike a chatbot that resets context every session, Vaeloom's memory compounds over time, making every agent smarter the longer it's used.
 
 ```mermaid
 graph TB
-    subgraph Sources["ðŸ“¥ Data Sources"]
+    subgraph Sources["📥 Data Sources"]
         Docs[Documents & Files]
         Email[Gmail Messages]
         Code[GitHub Repos]
         Capture[Manual Entry]
     end
 
-    subgraph MemoryTypes["ðŸ—ƒï¸ Memory Types"]
-        Profile["Profile<br/>Education Â· Skills Â· Certs"]
-        Document["Document<br/>Summaries Â· Entities Â· Embeddings"]
-        Career["Career<br/>Applications Â· Outcomes Â· Offers"]
-        Episodic["Episodic<br/>Events Â· Timeline Â· Milestones"]
-        Preference["Preference<br/>Patterns Â· Choices Â· Tastes"]
-        Working["Working<br/>Session Context Â· Chat History"]
+    subgraph MemoryTypes["🗃️ Memory Types"]
+        Profile["Profile<br/>Education · Skills · Certs"]
+        Document["Document<br/>Summaries · Entities · Embeddings"]
+        Career["Career<br/>Applications · Outcomes · Offers"]
+        Episodic["Episodic<br/>Events · Timeline · Milestones"]
+        Preference["Preference<br/>Patterns · Choices · Tastes"]
+        Working["Working<br/>Session Context · Chat History"]
     end
 
-    subgraph Storage["ðŸ’¾ Storage Layers"]
-        KG["Knowledge Graph<br/>(AGE â†’ Neo4j)"]
-        Vector["Vector Store<br/>(pgvector â†’ Qdrant)"]
+    subgraph Storage["💾 Storage Layers"]
+        KG["Knowledge Graph<br/>(AGE --> Neo4j)"]
+        Vector["Vector Store<br/>(pgvector --> Qdrant)"]
         SQL["Structured Records<br/>(PostgreSQL + JSONB)"]
     end
 
-    subgraph Agents["ðŸ¤– Agent Consumers"]
+    subgraph Agents["🤖 Agent Consumers"]
         Resume[Resume Agent]
         Job[Job Search Agent]
         Gmail[Gmail Agent]
@@ -109,7 +109,7 @@ stateDiagram-v2
 | Stage | Duration | Action | Storage State |
 |-------|----------|--------|---------------|
 | **Created** | Instant | Entity extraction, embedding generation, relationship linking | Written to all stores |
-| **Retrieved** | Daysâ€“months | Accessed by agents, freshness score updated on each hit | Active in all stores |
+| **Retrieved** | Days–months | Accessed by agents, freshness score updated on each hit | Active in all stores |
 | **Consolidated** | After 30 days stale | Summarized with related memories, raw detail compressed | Summary in KG, detail in archive |
 | **Archived** | After 90 days stale | Removed from hot stores, kept in cold archive | Archive bucket only |
 
@@ -151,39 +151,39 @@ graph LR
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Treating all memory types with the same persistence and access pattern | Working memory should expire in hours, preferences evolve over weeks, career memories persist forever â€” uniform lifecycle management causes bloat in short-term stores and data loss in long-term ones |
-| No deduplication before writing to the knowledge graph | Five identical entity extraction calls create five duplicate nodes â€” the Memory Agent must merge before write, not leave duplicates for a later consolidation pass |
-| Silent overwrite of existing memory with new conflicting data | An email contradicting a previously extracted fact should not silently replace it â€” both versions should coexist with the older one marked superseded and the conflict surfaced to the user |
-| Storing memory without source provenance | A memory record without a pointer back to its source document cannot be verified, corrected, or audited â€” provenance is what makes memory trustworthy |
+| Treating all memory types with the same persistence and access pattern | Working memory should expire in hours, preferences evolve over weeks, career memories persist forever — uniform lifecycle management causes bloat in short-term stores and data loss in long-term ones |
+| No deduplication before writing to the knowledge graph | Five identical entity extraction calls create five duplicate nodes — the Memory Agent must merge before write, not leave duplicates for a later consolidation pass |
+| Silent overwrite of existing memory with new conflicting data | An email contradicting a previously extracted fact should not silently replace it — both versions should coexist with the older one marked superseded and the conflict surfaced to the user |
+| Storing memory without source provenance | A memory record without a pointer back to its source document cannot be verified, corrected, or audited — provenance is what makes memory trustworthy |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Define distinct lifecycle rules per memory type | Working memory expires at session end; Preference memory consolidates after 30 days of no changes; Career memory is permanent â€” each type gets the retention strategy it needs |
-| Always run merge/dedup logic before writing new entities | Check similarity against existing entities before creating new ones â€” auto-merge above 95% similarity, flag for review above 80%, create new below 80% |
-| Store both the old and new version when contradictory data arrives | When new evidence contradicts existing memory, keep both versions â€” mark the older one as superseded with a pointer to the newer version rather than deleting it |
-| Attach source pointers to every memory record | Every extracted fact includes a link to its source document (document_id, paragraph location, extraction timestamp) â€” enables audit, correction, and confidence scoring |
+| Define distinct lifecycle rules per memory type | Working memory expires at session end; Preference memory consolidates after 30 days of no changes; Career memory is permanent — each type gets the retention strategy it needs |
+| Always run merge/dedup logic before writing new entities | Check similarity against existing entities before creating new ones — auto-merge above 95% similarity, flag for review above 80%, create new below 80% |
+| Store both the old and new version when contradictory data arrives | When new evidence contradicts existing memory, keep both versions — mark the older one as superseded with a pointer to the newer version rather than deleting it |
+| Attach source pointers to every memory record | Every extracted fact includes a link to its source document (document_id, paragraph location, extraction timestamp) — enables audit, correction, and confidence scoring |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Cross-workspace memory contamination during merge | Merge logic must never compare or merge entities across `workspace_id` boundaries â€” different users' memories are strictly isolated at the database level |
-| Memory record containing sensitive PII exposed via retrieval | A memory record extracted from a private document could contain sensitive information â€” retrieval should scope results to the requesting agent's permission level, not return all matching records |
-| Memory deletion without user confirmation | Bulk deletion of memory records triggered by a single action could erase data the user intended to keep â€” every memory deletion should be reversible or require explicit confirmation |
+| Cross-workspace memory contamination during merge | Merge logic must never compare or merge entities across `workspace_id` boundaries — different users' memories are strictly isolated at the database level |
+| Memory record containing sensitive PII exposed via retrieval | A memory record extracted from a private document could contain sensitive information — retrieval should scope results to the requesting agent's permission level, not return all matching records |
+| Memory deletion without user confirmation | Bulk deletion of memory records triggered by a single action could erase data the user intended to keep — every memory deletion should be reversible or require explicit confirmation |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Graph write throughput under heavy ingestion | When a user imports 100+ documents at once, each triggering entity extraction and graph writes, the graph store can become a bottleneck â€” batch memory writes and process them on a background queue |
-| Consolidation job resource usage | Running full graph consolidation (compressing, merging, archiving) during peak hours can degrade interactive query performance â€” schedule consolidation during low-usage windows (e.g., 3 AM) |
-| Retrieval latency as memory store grows | The knowledge graph and vector store grow unbounded over time â€” without periodic archival of low-importance / high-age memories, retrieval latency increases measurably after 6+ months of continuous use |
+| Graph write throughput under heavy ingestion | When a user imports 100+ documents at once, each triggering entity extraction and graph writes, the graph store can become a bottleneck — batch memory writes and process them on a background queue |
+| Consolidation job resource usage | Running full graph consolidation (compressing, merging, archiving) during peak hours can degrade interactive query performance — schedule consolidation during low-usage windows (e.g., 3 AM) |
+| Retrieval latency as memory store grows | The knowledge graph and vector store grow unbounded over time — without periodic archival of low-importance / high-age memories, retrieval latency increases measurably after 6+ months of continuous use |
 
 ## Scope
 
-This document defines the memory system architecture for Vaeloom's AI â€” covering the six memory types, lifecycle stages, storage layers (knowledge graph, vector store, structured records), and agent consumption patterns. Applies to all user workspaces across MVP and Enterprise deployments. Out of scope: graph entity/relationship specifics (see [Knowledge-Graph.md](./Knowledge-Graph.md)), retrieval strategy (see [Agentic-RAG.md](./Agentic-RAG.md)), embedding generation (see [Embeddings.md](./Embeddings.md)).
+This document defines the memory system architecture for Vaeloom's AI — covering the six memory types, lifecycle stages, storage layers (knowledge graph, vector store, structured records), and agent consumption patterns. Applies to all user workspaces across MVP and Enterprise deployments. Out of scope: graph entity/relationship specifics (see [Knowledge-Graph.md](./Knowledge-Graph.md)), retrieval strategy (see [Agentic-RAG.md](./Agentic-RAG.md)), embedding generation (see [Embeddings.md](./Embeddings.md)).
 
 ---
 
@@ -223,7 +223,7 @@ This document defines the memory system architecture for Vaeloom's AI â€” c
 
 ### 3. Memory Retrieval Workflow (via Agentic RAG)
 
-1. Agent query â†’ Retrieval Router classifies intent
+1. Agent query → Retrieval Router classifies intent
 2. Router selects strategy: vector (semantic), keyword (exact), graph (relationships)
 3. Stores queried in parallel with workspace_id scope
 4. Results merged, deduplicated, scored, pruned to token budget
@@ -266,14 +266,14 @@ sequenceDiagram
 ## Data Flow
 
 ```text
-Source (Document/Email/Event) â†’ Agent â†’ Entity Extraction
-    â†’ Memory Type Classification (Profile/Document/Career/Episodic/Preference/Working)
-    â†’ Parallel Write:
-        1. Knowledge Graph â†’ Entity nodes + relationships + inverses
-        2. Vector Store â†’ Embeddings + model_version
-        3. PostgreSQL â†’ Structured record + source provenance
-    â†’ Confirmation â†’ Agent
-    â†’ [After 30d stale] â†’ Consolidation â†’ Archive raw detail
+Source (Document/Email/Event) → Agent → Entity Extraction
+    → Memory Type Classification (Profile/Document/Career/Episodic/Preference/Working)
+    → Parallel Write:
+        1. Knowledge Graph → Entity nodes + relationships + inverses
+        2. Vector Store → Embeddings + model_version
+        3. PostgreSQL → Structured record + source provenance
+    → Confirmation → Agent
+    → [After 30d stale] → Consolidation → Archive raw detail
 ```
 
 ---
@@ -414,4 +414,4 @@ memory_write = await memory_agent.write(
 - [Knowledge Graph.md](./Knowledge-Graph.md)
 - [RAG.md](./RAG.md)
 - [Agentic RAG.md](./Agentic-RAG.md)
-- [`/Docs/04-memory-knowledge-graph.md`](../../Docs/04-memory-knowledge-graph.md)
+- [`/docs/04-memory-knowledge-graph.md`](../../docs/04-memory-knowledge-graph.md)

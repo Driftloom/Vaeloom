@@ -1,20 +1,20 @@
-﻿# Embeddings
+# Embeddings
 
 > **Purpose:** Define the embedding strategy for Vaeloom's AI system
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 
 ## Overview
 
-The embeddings system is the foundation of Vaeloom's semantic search capabilities â€” converting documents, memory records, and conversations into dense vector representations that enable similarity-based retrieval. Every piece of content ingested by Vaeloom flows through a consistent embedding pipeline: chunk at semantic boundaries, embed via text-embedding-3-small, and store with model version metadata for safe upgrades.
+The embeddings system is the foundation of Vaeloom's semantic search capabilities — converting documents, memory records, and conversations into dense vector representations that enable similarity-based retrieval. Every piece of content ingested by Vaeloom flows through a consistent embedding pipeline: chunk at semantic boundaries, embed via text-embedding-3-small, and store with model version metadata for safe upgrades.
 
-This document covers the embedding model selection, chunking strategy, storage architecture (pgvector for MVP, Qdrant for Enterprise), model versioning, and re-embedding lifecycle. It is intended for AI engineers and infrastructure teams responsible for maintaining and scaling Vaeloom's vector search capabilities. Proper embedding hygiene â€” chunking at semantic boundaries, tracking model versions, and debouncing re-embedding â€” is critical to maintaining retrieval quality as the document corpus grows.
+This document covers the embedding model selection, chunking strategy, storage architecture (pgvector for MVP, Qdrant for Enterprise), model versioning, and re-embedding lifecycle. It is intended for AI engineers and infrastructure teams responsible for maintaining and scaling Vaeloom's vector search capabilities. Proper embedding hygiene — chunking at semantic boundaries, tracking model versions, and debouncing re-embedding — is critical to maintaining retrieval quality as the document corpus grows.
 
 ## Goals
 
 - Embed all ingested content (documents, memory records, conversations) consistently using text-embedding-3-small at 1536 dimensions
-- Achieve sub-100ms vector search latency for up to 10M embeddings via appropriate indexing strategies (IVFFlat â†’ HNSW at scale)
+- Achieve sub-100ms vector search latency for up to 10M embeddings via appropriate indexing strategies (IVFFlat → HNSW at scale)
 - Support safe model upgrades by storing model_version with every embedding to prevent mixed-vector-space queries
 - Process >1000 pages per minute through batched API calls with rate-limit awareness
 - Ensure workspace-scoped isolation on all vector queries to prevent cross-tenant data leakage
@@ -30,21 +30,21 @@ graph LR
     classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef query fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
 
-    subgraph Sources["ðŸ“„ Content Sources"]
+    subgraph Sources["📄 Content Sources"]
         D[Documents] --- M[Memory Records] --- C[Conversations]
     end
 
-    subgraph Pipeline["âš™ï¸ Embedding Pipeline"]
+    subgraph Pipeline["⚙️ Embedding Pipeline"]
         CH["Chunk text<br/>max 8191 tokens"] --> EM["Embed via API<br/>text-embedding-3-small\n1536 dimensions"]
         EM --> VV["Store vector + metadata<br/>+ model_version"]
     end
 
-    subgraph Storage["ðŸ’¾ Vector Storage"]
+    subgraph Storage["💾 Vector Storage"]
         PG["( pgvector<br/>MVP: PostgreSQL )"]
         QD["( Qdrant<br/>Enterprise: Dedicated )"]
     end
 
-    subgraph Query["ðŸ” Query Flow"]
+    subgraph Query["🔍 Query Flow"]
         Q["User query"] --> QE["Embed query<br/>same model"]
         QE --> VS["Vector similarity<br/>search"]
         VS --> RES["Return top-k<br/>results"]
@@ -62,7 +62,7 @@ graph LR
     class Q,QE,VS,RES query
 ```
 
-> **Diagram:** Content sources (documents, memories, conversations) flow through the embedding pipeline â€” chunked, embedded via `text-embedding-3-small`, and stored with `model_version`. Queries are embedded with the same model and searched via vector similarity. MVP uses pgvector; Enterprise upgrades to dedicated Qdrant.
+> **Diagram:** Content sources (documents, memories, conversations) flow through the embedding pipeline — chunked, embedded via `text-embedding-3-small`, and stored with `model_version`. Queries are embedded with the same model and searched via vector similarity. MVP uses pgvector; Enterprise upgrades to dedicated Qdrant.
 
 ---
 
@@ -114,18 +114,18 @@ Model upgrade process:
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Mixing embedding models without version tracking | Different models produce incompatible vector spaces â€” querying with a different model than documents were embedded with returns meaningless similarity results |
-| Embedding entire documents without chunking | Long documents exceed the 8191-token limit and dilute semantic signal â€” chunk to paragraph or section level before embedding |
-| No periodic re-embedding for stale content | Documents that change after initial embedding are not re-indexed unless a re-embedding trigger exists â€” old embeddings return stale search results |
-| Embedding every file type uniformly | Binary files, images without OCR, and code snippets produce poor embeddings that pollute the vector store â€” filter or pre-process each type appropriately |
+| Mixing embedding models without version tracking | Different models produce incompatible vector spaces — querying with a different model than documents were embedded with returns meaningless similarity results |
+| Embedding entire documents without chunking | Long documents exceed the 8191-token limit and dilute semantic signal — chunk to paragraph or section level before embedding |
+| No periodic re-embedding for stale content | Documents that change after initial embedding are not re-indexed unless a re-embedding trigger exists — old embeddings return stale search results |
+| Embedding every file type uniformly | Binary files, images without OCR, and code snippets produce poor embeddings that pollute the vector store — filter or pre-process each type appropriately |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Store `model_version` with every embedding | Enables safe model upgrades â€” new embeddings coexist with old until full re-index, preventing mixed vector space queries |
+| Store `model_version` with every embedding | Enables safe model upgrades — new embeddings coexist with old until full re-index, preventing mixed vector space queries |
 | Chunk documents at semantic boundaries (paragraphs, sections) | Semantic chunks produce better search results than fixed-size token windows; preserve section context in chunk metadata |
-| Re-embed only on meaningful content changes | Debounce re-embedding to avoid churn from minor edits â€” use a hash of content to detect real changes vs metadata updates |
+| Re-embed only on meaningful content changes | Debounce re-embedding to avoid churn from minor edits — use a hash of content to detect real changes vs metadata updates |
 | Batch embedding API calls to stay within rate limits | Embedding APIs have per-minute token limits; batch documents and queue large backfills to avoid throttling and data loss |
 
 ## Security
@@ -133,7 +133,7 @@ Model upgrade process:
 | Concern | Mitigation |
 |---------|------------|
 | Sensitive content exposed via embedding reconstruction | Embeddings can theoretically be reversed to approximate original content; avoid embedding documents containing passwords, tokens, or PII |
-| Embedding API data leakage | Embedding model providers may log or cache API inputs â€” use self-hosted or private embedding endpoints for sensitive document corpora |
+| Embedding API data leakage | Embedding model providers may log or cache API inputs — use self-hosted or private embedding endpoints for sensitive document corpora |
 | Vector-store injection via crafted documents | Maliciously crafted documents designed to produce adversarial embeddings could skew search results; sanitize input documents before embedding |
 
 ## Performance
@@ -141,12 +141,12 @@ Model upgrade process:
 | Concern | Guideline |
 |---------|-----------|
 | Embedding throughput at scale | text-embedding-3-small processes ~1,000 pages per minute at standard API limits; pre-batch documents and parallelize across multiple API keys for large initial ingestion |
-| Vector search latency vs index size | pgvector exact search slows linearly with dataset size â€” set an `lists` threshold for IVFFlat indexing above 10,000 vectors to maintain sub-100ms query times |
-| Storage cost of redundant embeddings | Deduplicate embeddings for identical content across versions â€” a document with 10 versions should only keep the latest embedding plus the model_version pointer |
+| Vector search latency vs index size | pgvector exact search slows linearly with dataset size — set an `lists` threshold for IVFFlat indexing above 10,000 vectors to maintain sub-100ms query times |
+| Storage cost of redundant embeddings | Deduplicate embeddings for identical content across versions — a document with 10 versions should only keep the latest embedding plus the model_version pointer |
 
 ## Scope
 
-This document defines the embedding strategy for Vaeloom's AI platform â€” covering the embedding model, chunking strategy, storage architecture, versioning, and re-embedding lifecycle. It applies to all content types embedded by Vaeloom (documents, memory records, conversations) across MVP (pgvector) and Enterprise (Qdrant) deployments. Out of scope: retrieval query logic (see [Agentic-RAG.md](./Agentic-RAG.md)) and graph embeddings (see [Knowledge-Graph.md](./Knowledge-Graph.md)).
+This document defines the embedding strategy for Vaeloom's AI platform — covering the embedding model, chunking strategy, storage architecture, versioning, and re-embedding lifecycle. It applies to all content types embedded by Vaeloom (documents, memory records, conversations) across MVP (pgvector) and Enterprise (Qdrant) deployments. Out of scope: retrieval query logic (see [Agentic-RAG.md](./Agentic-RAG.md)) and graph embeddings (see [Knowledge-Graph.md](./Knowledge-Graph.md)).
 
 ---
 
@@ -191,7 +191,7 @@ This document defines the embedding strategy for Vaeloom's AI platform â€” 
 
 ### 1. Document Embedding Workflow
 
-1. Document uploaded or changed â†’ trigger embedding
+1. Document uploaded or changed → trigger embedding
 2. Chunker splits document at semantic paragraph/section boundaries
 3. Each chunk validated: not empty, under 8191 tokens
 4. Chunks batched (max 20 per API call)
@@ -205,7 +205,7 @@ This document defines the embedding strategy for Vaeloom's AI platform â€” 
 2. New documents embedded with new model; old documents keep old embeddings
 3. Access-based re-embedding: when an old document is retrieved, re-embed with new model
 4. Once all active documents migrated, switch default model
-5. Never mix vector spaces in a single query â€” query with same model as target embeddings
+5. Never mix vector spaces in a single query — query with same model as target embeddings
 
 ---
 
@@ -244,12 +244,12 @@ sequenceDiagram
 ## Data Flow
 
 ```text
-Document Upload â†’ Content Hash (skip if unchanged)
-    â†’ Semantic Chunking â†’ paragraph/section boundaries
-    â†’ Batch API Call â†’ text-embedding-3-small (max 20 chunks)
-    â†’ Store: {vector, model_version, source_type, source_id, chunk_index}
-    â†’ Update Vector Index â†’ IVFFlat / Auto-shard
-    â†’ Mark Document as Indexed
+Document Upload → Content Hash (skip if unchanged)
+    → Semantic Chunking → paragraph/section boundaries
+    → Batch API Call → text-embedding-3-small (max 20 chunks)
+    → Store: {vector, model_version, source_type, source_id, chunk_index}
+    → Update Vector Index → IVFFlat / Auto-shard
+    → Mark Document as Indexed
 ```
 
 **Data flow description:** Content flows through hash-based dedup to avoid redundant re-embedding, then through semantic chunking, batched API embedding, and dual storage to vector index + metadata store.
@@ -393,4 +393,4 @@ result = await embed_document(doc)
 
 - [RAG.md](./RAG.md)
 - [Vector Store](../Database/Database-Design.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#64-embeddings-and-the-vector-database`](../../Docs/Vaeloom-Complete-Documentation.md#64-embeddings-and-the-vector-database)
+- [`/docs/Vaeloom-Complete-Documentation.md#64-embeddings-and-the-vector-database`](../../docs/Vaeloom-Complete-Documentation.md#64-embeddings-and-the-vector-database)

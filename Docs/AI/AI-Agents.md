@@ -1,14 +1,14 @@
-﻿# AI Agents
+# AI Agents
 
 > **Purpose:** Define the AI agent system architecture for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/Vaeloom-Complete-Documentation.md#5-ai-agents`](../../Docs/Vaeloom-Complete-Documentation.md#5-ai-agents)
+> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#5-ai-agents`](../../docs/Vaeloom-Complete-Documentation.md#5-ai-agents)
 
 ## Overview
 
-Vaeloom's AI agent system is a coordinated ecosystem of specialized agents that work together through an Orchestrator to perform complex workflows on behalf of users. Each agent has a fixed mission, a declared set of MCP-shaped tools, explicit memory read/write permissions, a defined autonomy level, and a fallback behavior for low-confidence situations. Agents never call each other directly â€” all inter-agent communication flows through the Orchestrator, ensuring every action is logged, permission-checked, and auditable.
+Vaeloom's AI agent system is a coordinated ecosystem of specialized agents that work together through an Orchestrator to perform complex workflows on behalf of users. Each agent has a fixed mission, a declared set of MCP-shaped tools, explicit memory read/write permissions, a defined autonomy level, and a fallback behavior for low-confidence situations. Agents never call each other directly — all inter-agent communication flows through the Orchestrator, ensuring every action is logged, permission-checked, and auditable.
 
 This document defines the agent architecture, the agent contract (mission, tools, permissions, autonomy, fallback), communication patterns, and the QA Agent validation gate. It serves as the reference for AI engineers building new agents, platform engineers integrating agent workflows, and operations engineers monitoring agent health. The architecture supports 8 agents at MVP scale, scaling to 28 agents at Enterprise scale, with strict isolation boundaries to prevent agent interference.
 
@@ -23,12 +23,12 @@ graph TD
     classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef event fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Orchestration["ðŸŽ¯ Orchestration Layer"]
+    subgraph Orchestration["🎯 Orchestration Layer"]
         ORCH["Orchestrator<br/>Coordinates agent chain<br/>Routes between agents"]
         QA["QA Agent<br/>Validates output<br/>before delivery"]
     end
 
-    subgraph Agents["ðŸ¤– Specialized Agents"]
+    subgraph Agents["🤖 Specialized Agents"]
         direction TB
         A1["Memory Agent<br/>Extract & merge entities"]
         A2["Organization Agent<br/>Name & categorize files"]
@@ -40,12 +40,12 @@ graph TD
         A8["Reflection Agent<br/>Detect patterns over time"]
     end
 
-    subgraph Tools["ðŸ› ï¸ Tool Layer"]
+    subgraph Tools["🛠️ Tool Layer"]
         MCP["MCP Tools<br/>Declared per agent"]
         PERM["Permission Engine<br/>Runtime scope check"]
     end
 
-    subgraph Events["ðŸ“¨ Event Bus"]
+    subgraph Events["📨 Event Bus"]
         EB["Event Bus<br/>Redis / Kafka\nDecoupled communication"]
     end
 
@@ -64,7 +64,7 @@ graph TD
 
 ```
 
-> **Diagram:** Agents never call each other directly â€” all communication flows through the **Orchestrator**. Each agent has declared **MCP-shaped tools** checked at runtime by the **Permission Engine**. Every action publishes an **event** to the bus. The **QA Agent** validates every output before delivery.
+> **Diagram:** Agents never call each other directly — all communication flows through the **Orchestrator**. Each agent has declared **MCP-shaped tools** checked at runtime by the **Permission Engine**. Every action publishes an **event** to the bus. The **QA Agent** validates every output before delivery.
 
 ---
 
@@ -84,20 +84,20 @@ Every agent in Vaeloom shares the same structure:
 
 ```text
 agents/
-â”œâ”€â”€ organization_agent/
-â”‚   â”œâ”€â”€ prompt.py      # Versioned system prompt
-â”‚   â”œâ”€â”€ tools.py       # Declared tool list (MCP-shaped)
-â”‚   â”œâ”€â”€ handler.py     # Core logic: retrieve â†’ reason â†’ output
-â”‚   â””â”€â”€ permissions.py # Runtime-checked read/write scopes
-â”œâ”€â”€ memory_agent/
-â”œâ”€â”€ resume_agent/
-â”œâ”€â”€ ats_agent/
-â”œâ”€â”€ job_search_agent/
-â”œâ”€â”€ application_agent/
-â”œâ”€â”€ gmail_agent/
-â”œâ”€â”€ scheduler_agent/
-â”œâ”€â”€ reflection_agent/
-â””â”€â”€ qa_agent/
+├── organization_agent/
+│   ├── prompt.py      # Versioned system prompt
+│   ├── tools.py       # Declared tool list (MCP-shaped)
+│   ├── handler.py     # Core logic: retrieve → reason → output
+│   └── permissions.py # Runtime-checked read/write scopes
+├── memory_agent/
+├── resume_agent/
+├── ats_agent/
+├── job_search_agent/
+├── application_agent/
+├── gmail_agent/
+├── scheduler_agent/
+├── reflection_agent/
+└── qa_agent/
 ```
 
 ## Agent Communication
@@ -111,17 +111,17 @@ agents/
 
 | Mistake | Why It's a Problem |
 |---------|-------------------|
-| Letting agents call each other directly instead of routing through the Orchestrator | Direct agent-to-agent calls bypass the audit log, permission engine, and QA gate â€” every inter-agent request becomes invisible and ungoverned |
-| Giving an agent tools beyond its declared mission | An agent whose tool list exceeds its mission scope can perform actions its prompt never intended â€” tools must be scoped to the agent's exact responsibilities |
-| Not defining a fallback behavior for low-confidence outputs | An agent that doesn't know what to do should ask the user, not guess â€” guessing produces plausible-looking errors that are harder to detect than a clear "I'm not sure" |
-| Skipping the QA gate on any agent output that reaches the user | The QA Agent is the last line of defense against incorrect, unsafe, or out-of-policy outputs â€” every user-facing output must pass through it |
+| Letting agents call each other directly instead of routing through the Orchestrator | Direct agent-to-agent calls bypass the audit log, permission engine, and QA gate — every inter-agent request becomes invisible and ungoverned |
+| Giving an agent tools beyond its declared mission | An agent whose tool list exceeds its mission scope can perform actions its prompt never intended — tools must be scoped to the agent's exact responsibilities |
+| Not defining a fallback behavior for low-confidence outputs | An agent that doesn't know what to do should ask the user, not guess — guessing produces plausible-looking errors that are harder to detect than a clear "I'm not sure" |
+| Skipping the QA gate on any agent output that reaches the user | The QA Agent is the last line of defense against incorrect, unsafe, or out-of-policy outputs — every user-facing output must pass through it |
 
 ## Best Practices
 
 | Practice | Rationale |
 |----------|-----------|
-| Route all inter-agent communication through the Orchestrator | Every request is logged, permission-checked, and auditable â€” no invisible agent-to-agent calls that bypass governance |
-| Declare each agent's tool list explicitly and scope it to the agent's mission | Tools define the boundary of what an agent can do â€” a Resume Agent should not have access to `search_gmail` or `draft_email` |
+| Route all inter-agent communication through the Orchestrator | Every request is logged, permission-checked, and auditable — no invisible agent-to-agent calls that bypass governance |
+| Declare each agent's tool list explicitly and scope it to the agent's mission | Tools define the boundary of what an agent can do — a Resume Agent should not have access to `search_gmail` or `draft_email` |
 | Define a fallback behavior in every agent's system prompt | When confidence is low (<80%), the agent must ask a specific clarifying question rather than inferring or guessing the answer |
 | Run every consequential output through the QA Agent before delivery | File renames, email drafts, application submissions, and memory writes should all be validated by the QA gate before reaching the user or executing in the world |
 
@@ -129,17 +129,17 @@ agents/
 
 | Concern | Mitigation |
 |---------|------------|
-| Agent tool escalation via crafted prompts | A malicious user could attempt to craft inputs that trick an agent into calling a tool outside its scope â€” the Permission Engine checks every tool call at runtime, not just during prompt design |
-| QA gate bypass through direct Orchestrator manipulation | The Orchestrator itself should not be able to bypass the QA gate â€” any consequential output from any agent (including the Orchestrator) must pass validation |
-| Agent identity spoofing in event bus messages | Events published by agents include `agent_id` â€” this must be authenticated by the event bus; one agent should not be able to publish events under another agent's identity |
+| Agent tool escalation via crafted prompts | A malicious user could attempt to craft inputs that trick an agent into calling a tool outside its scope — the Permission Engine checks every tool call at runtime, not just during prompt design |
+| QA gate bypass through direct Orchestrator manipulation | The Orchestrator itself should not be able to bypass the QA gate — any consequential output from any agent (including the Orchestrator) must pass validation |
+| Agent identity spoofing in event bus messages | Events published by agents include `agent_id` — this must be authenticated by the event bus; one agent should not be able to publish events under another agent's identity |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Orchestrator routing latency | The Orchestrator adds ~50-100ms per request for routing, classification, and permission checking â€” ensure this overhead is accounted for in the total latency budget (<10s per agent request) |
-| QA gate throughput under load | The QA Agent validates every agent output â€” if multiple agents produce output simultaneously, the QA gate must scale or queue to avoid becoming a bottleneck |
-| Agent cold-start initialization | Loading an agent's prompt, tools, and memory scopes takes ~200ms on first invocation â€” pre-warm frequently-used agents (Memory Agent, Gmail Agent) on service start |
+| Orchestrator routing latency | The Orchestrator adds ~50-100ms per request for routing, classification, and permission checking — ensure this overhead is accounted for in the total latency budget (<10s per agent request) |
+| QA gate throughput under load | The QA Agent validates every agent output — if multiple agents produce output simultaneously, the QA gate must scale or queue to avoid becoming a bottleneck |
+| Agent cold-start initialization | Loading an agent's prompt, tools, and memory scopes takes ~200ms on first invocation — pre-warm frequently-used agents (Memory Agent, Gmail Agent) on service start |
 
 ## Goals
 
@@ -205,11 +205,11 @@ agents/
 
 ## Data Flow
 
-1. **Trigger Reception** â€” External event (user action, webhook, schedule) or internal event (another agent's output) triggers a workflow via the Orchestrator
-2. **Agent Selection and Routing** â€” Orchestrator classifies the trigger and selects the target agent; loads agent's prompt, tool list, and memory permissions from configuration
-3. **Agent Execution** â€” Agent receives context and query, retrieves relevant memory from vector store, constructs prompt, calls Model Router for inference, and calls tools via MCP interface with Permission Engine checking each call
-4. **QA Validation** â€” Agent output is sent to QA Agent which validates against mission policy, checks for hallucinations, and confirms scope compliance before delivery
-5. **Event Publication and Audit** â€” Approved action is published to event bus (enabling downstream agents to react) and written to append-only audit log with agent_id, action, workspace_id, and timestamp
+1. **Trigger Reception** — External event (user action, webhook, schedule) or internal event (another agent's output) triggers a workflow via the Orchestrator
+2. **Agent Selection and Routing** — Orchestrator classifies the trigger and selects the target agent; loads agent's prompt, tool list, and memory permissions from configuration
+3. **Agent Execution** — Agent receives context and query, retrieves relevant memory from vector store, constructs prompt, calls Model Router for inference, and calls tools via MCP interface with Permission Engine checking each call
+4. **QA Validation** — Agent output is sent to QA Agent which validates against mission policy, checks for hallucinations, and confirms scope compliance before delivery
+5. **Event Publication and Audit** — Approved action is published to event bus (enabling downstream agents to react) and written to append-only audit log with agent_id, action, workspace_id, and timestamp
 
 ## Scalability
 
@@ -339,7 +339,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** End-to-end agent workflow showing trigger â†’ orchestrator routing â†’ agent execution with permission checks â†’ QA validation â†’ audit logging. The QA gate can request revision up to 3 times before delivering the best-effort result.
+> **Diagram:** End-to-end agent workflow showing trigger → orchestrator routing → agent execution with permission checks → QA validation → audit logging. The QA gate can request revision up to 3 times before delivering the best-effort result.
 
 ---
 
@@ -366,4 +366,4 @@ sequenceDiagram
 
 - [LLM Architecture.md](./LLM-Architecture.md)
 - [Tool Calling.md](./Tool-Calling.md)
-- [`/Docs/Vaeloom-Complete-Documentation.md#5-ai-agents`](../../Docs/Vaeloom-Complete-Documentation.md#5-ai-agents)
+- [`/docs/Vaeloom-Complete-Documentation.md#5-ai-agents`](../../docs/Vaeloom-Complete-Documentation.md#5-ai-agents)

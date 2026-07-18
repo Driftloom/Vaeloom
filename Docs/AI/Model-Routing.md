@@ -1,16 +1,16 @@
-﻿# Model Routing
+# Model Routing
 
-> **Purpose:** Define the model routing architecture for Vaeloom's AI system â€” how agent requests are assigned to the optimal model
-> **Status:** âœ… Upgraded to enterprise quality
+> **Purpose:** Define the model routing architecture for Vaeloom's AI system — how agent requests are assigned to the optimal model
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-12
-> **Canonical source:** [`/Docs/Engineering/Implementation/09-ai-gateway-model-routing.md`](../../Docs/Engineering/Implementation/09-ai-gateway-model-routing.md)
+> **Canonical source:** [`/docs/Engineering/Implementation/09-ai-gateway-model-routing.md`](../../docs/Engineering/Implementation/09-ai-gateway-model-routing.md)
 
 ---
 
 ## Overview
 
-The Model Router is the central service that routes agent requests to the optimal model based on task type, cost budget, latency requirements, and availability. It is the decision layer between Vaeloom's agents and the underlying AI models â€” ensuring each request gets the right model at the right cost.
+The Model Router is the central service that routes agent requests to the optimal model based on task type, cost budget, latency requirements, and availability. It is the decision layer between Vaeloom's agents and the underlying AI models — ensuring each request gets the right model at the right cost.
 
 This document covers the routing architecture, model registry, fallback chains, cost management, and implementation patterns.
 
@@ -83,10 +83,10 @@ graph TD
 
 | Criterion | Values | Example |
 |-----------|--------|---------|
-| Task type | Classification, extraction, generation, reasoning | Gmail classification â†’ Haiku |
-| Priority | Low, normal, high | User-facing chat â†’ high |
-| Cost budget | Per-agent monthly allocation | Memory Agent â†’ mid-range |
-| Latency requirement | Real-time (< 3s), near-real-time (< 10s), batch (> 30s) | Chat â†’ real-time |
+| Task type | Classification, extraction, generation, reasoning | Gmail classification → Haiku |
+| Priority | Low, normal, high | User-facing chat → high |
+| Cost budget | Per-agent monthly allocation | Memory Agent → mid-range |
+| Latency requirement | Real-time (< 3s), near-real-time (< 10s), batch (> 30s) | Chat → real-time |
 
 ## Model Registry
 
@@ -167,7 +167,7 @@ When all models fail:
 1. **Log the failure** with full context (agent, task type, model attempted, error)
 2. **Queue the request** for retry with exponential backoff (30s, 2min, 5min)
 3. **Notify the user** if user-facing ("AI features temporarily degraded")
-4. **Switch agent to degraded mode** â€” disable autonomous actions, manual-only operations
+4. **Switch agent to degraded mode** — disable autonomous actions, manual-only operations
 
 ## Router Implementation
 
@@ -230,7 +230,7 @@ export class ModelRouter {
       }
     }
     
-    // 4. All models failed â€” trigger degraded mode
+    // 4. All models failed — trigger degraded mode
     throw new AllModelsFailedError(request.agentName);
   }
 
@@ -261,7 +261,7 @@ export class ModelRouter {
 
 | Strategy | Savings | Implementation |
 |----------|---------|---------------|
-| Tiered routing | 30-50% | Classify before routing â€” use cheap models for simple tasks |
+| Tiered routing | 30-50% | Classify before routing — use cheap models for simple tasks |
 | Response caching | 20-30% | Cache identical queries per workspace (TTL: 5 min) |
 | Context pruning | 10-20% | Trim irrelevant memories before sending to model |
 | Batch embedding | 5-10% | Batch small embedding requests into larger payloads |
@@ -274,7 +274,7 @@ export class ModelRouter {
 | GPT-4o-mini | $0.00015 | $0.0006 | Cheapest alternative for classification |
 | Sonnet | $0.003 | $0.015 | Core agent reasoning, document generation |
 | GPT-4o | $0.005 | $0.015 | Fallback for complex reasoning tasks |
-| Embedding (3-small) | $0.00002/1K | â€” | All embedding operations |
+| Embedding (3-small) | $0.00002/1K | — | All embedding operations |
 
 ## Best Practices
 
@@ -315,7 +315,7 @@ export class ModelRouter {
 
 ## Scope
 
-This document defines the model routing architecture for Vaeloom â€” covering the Model Router service, model registry, fallback chains, cost management, and routing criteria. It governs how all agent inference requests are assigned to the optimal model across providers (Anthropic, OpenAI). Out of scope: inference pipeline execution (see [Inference-Pipeline.md](./Inference-Pipeline.md)), agent-specific routing rules (see individual agent docs), embedding model selection (see [Embeddings.md](./Embeddings.md)).
+This document defines the model routing architecture for Vaeloom — covering the Model Router service, model registry, fallback chains, cost management, and routing criteria. It governs how all agent inference requests are assigned to the optimal model across providers (Anthropic, OpenAI). Out of scope: inference pipeline execution (see [Inference-Pipeline.md](./Inference-Pipeline.md)), agent-specific routing rules (see individual agent docs), embedding model selection (see [Embeddings.md](./Embeddings.md)).
 
 ---
 
@@ -341,7 +341,7 @@ This document defines the model routing architecture for Vaeloom â€” coveri
 3. Cost Budget Checker verifies agent has daily budget remaining
 4. Latency Checker selects model meeting latency requirements
 5. Model Selector picks primary model from registry
-6. Primary model called; if fails â†’ fallback chain attempted
+6. Primary model called; if fails → fallback chain attempted
 7. Cost tracked for the call; budget decremented
 
 ### 2. Fallback Chain Workflow
@@ -389,20 +389,20 @@ sequenceDiagram
     FC->>AG: Error (queue for retry / degraded mode)
 ```
 
-> **Diagram:** Model routing flow â€” request classified, budget checked, primary model selected. On failure, the fallback chain iterates through alternatives. If all fail, the request is queued for retry or the agent enters degraded mode.
+> **Diagram:** Model routing flow — request classified, budget checked, primary model selected. On failure, the fallback chain iterates through alternatives. If all fail, the request is queued for retry or the agent enters degraded mode.
 
 ---
 
 ## Data Flow
 
 ```text
-Agent Request â†’ Request Classifier (task_type + priority)
-    â†’ Cost Budget Checker (daily budget remaining?)
-    â†’ Latency Checker (meets SLO?)
-    â†’ Model Selector (primary from registry)
-    â†’ Fallback Chain (primary â†’ secondary â†’ tertiary â†’ degraded)
-    â†’ Cost Tracker (decrement budget, record cost)
-    â†’ Response â†’ Agent
+Agent Request → Request Classifier (task_type + priority)
+    → Cost Budget Checker (daily budget remaining?)
+    → Latency Checker (meets SLO?)
+    → Model Selector (primary from registry)
+    → Fallback Chain (primary → secondary → tertiary → degraded)
+    → Cost Tracker (decrement budget, record cost)
+    → Response → Agent
 ```
 
 ---
@@ -544,4 +544,4 @@ response = await router.route(request)
 - [LLM Architecture.md](./LLM-Architecture.md)
 - [Inference Pipeline.md](./Inference-Pipeline.md)
 - [Cost Optimization.md](../Operations/Cost-Optimization.md)
-- [`/Docs/Engineering/Implementation/09-ai-gateway-model-routing.md`](../../Docs/Engineering/Implementation/09-ai-gateway-model-routing.md)
+- [`/docs/Engineering/Implementation/09-ai-gateway-model-routing.md`](../../docs/Engineering/Implementation/09-ai-gateway-model-routing.md)

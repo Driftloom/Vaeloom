@@ -1,7 +1,7 @@
-﻿# Prompt Standards
+# Prompt Standards
 
-> **Purpose:** Define standardized conventions for all agent prompts in Vaeloom â€” ensuring consistency, testability, and safety across all 28 agents
-> **Status:** âœ… Upgraded to enterprise quality
+> **Purpose:** Define standardized conventions for all agent prompts in Vaeloom — ensuring consistency, testability, and safety across all 28 agents
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-12
 
@@ -73,14 +73,14 @@ Every prompt MUST include ALL of the following sections in order:
 
 | # | Section | Required | Description | Validation |
 |---|---------|----------|-------------|------------|
-| 1 | ROLE | âœ… | Agent mission and identity | Must be agent-specific, not generic |
-| 2 | CONTEXT | âœ… | Situation and background | Must include workspace context |
-| 3 | TOOLS | âœ… | Available tools with schemas | Every tool must have a corresponding handler |
-| 4 | MEMORY | âœ… | Read/write permissions | Must match declared agent permissions |
-| 5 | CONSTRAINTS | âœ… | Boundaries and rules | At least 3 specific constraints |
-| 6 | EXAMPLES | âœ… | Few-shot examples (2-5) | Schema-validated in golden dataset |
-| 7 | EDGE CASES | âœ… | Handling of ambiguous inputs | At least 3 edge cases documented |
-| 8 | OUTPUT FORMAT | âœ… | JSON schema requirement | Machine-validated schema |
+| 1 | ROLE | ✅ | Agent mission and identity | Must be agent-specific, not generic |
+| 2 | CONTEXT | ✅ | Situation and background | Must include workspace context |
+| 3 | TOOLS | ✅ | Available tools with schemas | Every tool must have a corresponding handler |
+| 4 | MEMORY | ✅ | Read/write permissions | Must match declared agent permissions |
+| 5 | CONSTRAINTS | ✅ | Boundaries and rules | At least 3 specific constraints |
+| 6 | EXAMPLES | ✅ | Few-shot examples (2-5) | Schema-validated in golden dataset |
+| 7 | EDGE CASES | ✅ | Handling of ambiguous inputs | At least 3 edge cases documented |
+| 8 | OUTPUT FORMAT | ✅ | JSON schema requirement | Machine-validated schema |
 
 ## Quality Checklist
 
@@ -116,31 +116,31 @@ Before deploying a new prompt, the following checklist MUST pass:
 
 | Pattern | Why it's Prohibited | Safe Alternative |
 |---------|---------------------|-----------------|
-| âŒ "You are an AI assistant" | Too generic â€” doesn't constrain behavior | "You are the Memory Extraction Agent for Vaeloom" |
-| âŒ "Be helpful and harmless" | Too vague â€” not measurable | "Never modify user documents without explicit approval" |
-| âŒ "Do your best" | Not measurable | "Extract entities with confidence > 0.8" |
-| âŒ Inline model-specific instructions | Couples prompt to model | Use model router configuration instead |
-| âŒ "Ignore previous instructions" bait | Prompt injection vector | Add injection detection in guardrails layer |
-| âŒ Un-validated output schema | Model may deviate | Enforce JSON schema at application level |
+| ❌ "You are an AI assistant" | Too generic — doesn't constrain behavior | "You are the Memory Extraction Agent for Vaeloom" |
+| ❌ "Be helpful and harmless" | Too vague — not measurable | "Never modify user documents without explicit approval" |
+| ❌ "Do your best" | Not measurable | "Extract entities with confidence > 0.8" |
+| ❌ Inline model-specific instructions | Couples prompt to model | Use model router configuration instead |
+| ❌ "Ignore previous instructions" bait | Prompt injection vector | Add injection detection in guardrails layer |
+| ❌ Un-validated output schema | Model may deviate | Enforce JSON schema at application level |
 
 ## Prompt Versioning
 
 ```text
 prompts/
-â”œâ”€â”€ memory_agent/
-â”‚   â”œâ”€â”€ v1_extract_entities.md
-â”‚   â”œâ”€â”€ v2_extract_entities.md          # Breaking: schema change
-â”‚   â””â”€â”€ v1_merge_entities.md
-â”œâ”€â”€ organization_agent/
-â”‚   â”œâ”€â”€ v1_propose_name.md
-â”‚   â”œâ”€â”€ v2_propose_name.md              # Non-breaking: added examples
-â”‚   â””â”€â”€ v1_detect_duplicates.md
-â”œâ”€â”€ gmail_agent/
-â”‚   â”œâ”€â”€ v1_classify_email.md
-â”‚   â””â”€â”€ v1_extract_deadlines.md
-â””â”€â”€ resume_agent/
-    â”œâ”€â”€ v1_generate_resume.md
-    â””â”€â”€ v1_score_ats.md
+├── memory_agent/
+│   ├── v1_extract_entities.md
+│   ├── v2_extract_entities.md          # Breaking: schema change
+│   └── v1_merge_entities.md
+├── organization_agent/
+│   ├── v1_propose_name.md
+│   ├── v2_propose_name.md              # Non-breaking: added examples
+│   └── v1_detect_duplicates.md
+├── gmail_agent/
+│   ├── v1_classify_email.md
+│   └── v1_extract_deadlines.md
+└── resume_agent/
+    ├── v1_generate_resume.md
+    └── v1_score_ats.md
 ```
 
 ## Best Practices
@@ -251,21 +251,21 @@ sequenceDiagram
     
     AU->>CI: Submit for deployment
     CI->>CI: Quality checklist (9 items)
-    CI-->>AU: âœ… Ready for deployment
+    CI-->>AU: ✅ Ready for deployment
 ```
 
-> **Diagram:** Prompt quality gate flow â€” 6 validation steps must all pass before a prompt can be deployed: section validation, naming convention, prohibited pattern scan, golden dataset, injection test, and quality checklist.
+> **Diagram:** Prompt quality gate flow — 6 validation steps must all pass before a prompt can be deployed: section validation, naming convention, prohibited pattern scan, golden dataset, injection test, and quality checklist.
 
 ---
 
 ## Data Flow
 
 ```text
-Author writes prompt â†’ Section Validator (8 sections) 
-    â†’ Naming Convention Check â†’ Prohibited Pattern Scan
-    â†’ Golden Dataset Eval (100% pass) â†’ Injection Test (pass)
-    â†’ Quality Checklist (9 items) â†’ Version Bump + Changelog
-    â†’ Deploy â†’ Quarterly Review (production prompts)
+Author writes prompt → Section Validator (8 sections) 
+    → Naming Convention Check → Prohibited Pattern Scan
+    → Golden Dataset Eval (100% pass) → Injection Test (pass)
+    → Quality Checklist (9 items) → Version Bump + Changelog
+    → Deploy → Quarterly Review (production prompts)
 ```
 
 ---
@@ -350,25 +350,25 @@ Author writes prompt â†’ Section Validator (8 sections)
 ### Example 1: Valid Prompt Filename
 
 ```text
-# âœ… Valid
+# ✅ Valid
 memory_agent_extract_entities_v2.md
 organization_agent_propose_name_v1.md
 gmail_agent_classify_email_v3.md
 
-# âŒ Invalid
+# ❌ Invalid
 memory_v2.md (missing agent action)
 extract_entities.md (missing version)
 Agent_Extract_V2.md (wrong case)
 ```
 
-### Example 2: Prohibited Pattern â€” Too Generic
+### Example 2: Prohibited Pattern — Too Generic
 
 ```markdown
-# âŒ Prohibited
+# ❌ Prohibited
 ## ROLE
 You are an AI assistant.
 
-# âœ… Safe
+# ✅ Safe
 ## ROLE
 You are the Memory Extraction Agent for Vaeloom.
 Your mission is to extract structured entities from user documents
@@ -412,4 +412,4 @@ with a confidence score for each extraction.
 - [Prompt Engineering.md](./Prompt-Engineering.md)
 - [Guardrails.md](./Guardrails.md)
 - [Evaluation.md](./Evaluation.md)
-- [`/Docs/Engineering/Implementation/09-ai-gateway-model-routing.md`](../../Docs/Engineering/Implementation/09-ai-gateway-model-routing.md)
+- [`/docs/Engineering/Implementation/09-ai-gateway-model-routing.md`](../../docs/Engineering/Implementation/09-ai-gateway-model-routing.md)
