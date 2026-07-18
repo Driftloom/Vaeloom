@@ -58,7 +58,7 @@ graph TD
 | Data Category | Retention Period | Trigger | Cascade Effect |
 |--------------|-----------------|---------|----------------|
 | **Documents** | 90 days | Soft delete by user | Embeddings deleted in same cascade |
-| **Audit Logs** | 7 years | Log generation | No cascade â€” independent retention |
+| **Audit Logs** | 7 years | Log generation | No cascade — independent retention |
 | **User Data** | 30 days | Account deletion request | All user-owned documents, agents, preferences deleted after 30d |
 | **Agent Actions** | 1 year | Action completion | Execution logs, inputs, outputs tied to action |
 | **Embeddings** | Cascaded | Deletion of source document | Immediately deleted when source document is hard-deleted |
@@ -124,7 +124,7 @@ interface LegalHold {
 **Legal hold process:**
 
 1. Legal team submits hold order via admin console
-2. Hold is applied at database level â€” soft-deleted records remain in `deleted_` tables
+2. Hold is applied at database level — soft-deleted records remain in `deleted_` tables
 3. Backup rotation excludes held backups from the 30-day deletion cycle
 4. Weekly compliance report lists all active legal holds
 5. Hold is lifted via admin console with audit trail
@@ -264,20 +264,20 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Deletion workflow â€” soft delete immediately, retention cron processes expired items daily, legal hold check before each hard delete. Held items are preserved with audit logging.
+> **Diagram:** Deletion workflow — soft delete immediately, retention cron processes expired items daily, legal hold check before each hard delete. Held items are preserved with audit logging.
 
 ---
 
 ## Data Flow
 
 ```text
-Delete Request â†’ Soft Delete (is_deleted=true, deleted_at=now)
-    â†’ Audit Log: deletion event
-    â†’ Daily Retention Cron: Query expired soft-deletes
-    â†’ Legal Hold Check (hold_active?)
-    â†’ [No Hold] â†’ Hard Delete + Cascade (embeddings, dependencies)
-    â†’ [Hold Active] â†’ Skip, mark "held", log
-    â†’ Audit Log: hard deletion / hold retention
+Delete Request → Soft Delete (is_deleted=true, deleted_at=now)
+    → Audit Log: deletion event
+    → Daily Retention Cron: Query expired soft-deletes
+    → Legal Hold Check (hold_active?)
+    → [No Hold] → Hard Delete + Cascade (embeddings, dependencies)
+    → [Hold Active] → Skip, mark "held", log
+    → Audit Log: hard deletion / hold retention
 ```
 
 ---
@@ -375,7 +375,7 @@ await retention.soft_delete(
 
 # Retention cron processes after 30 days
 job = await retention.process_expired(batch_size=1000)
-# Checks legal hold â†’ No hold â†’ Hard delete + cascade embeddings
+# Checks legal hold → No hold → Hard delete + cascade embeddings
 # Logs: hard_deletion completed for doc_abc123
 ```
 
@@ -406,7 +406,7 @@ job = await retention.process_expired(batch_size=1000)
 ## Goals
 
 - Define precise retention schedules for every data category with clear trigger events and cascade effects
-- Implement a two-phase deletion workflow (soft delete â†’ verified grace period â†’ hard delete) with legal hold override
+- Implement a two-phase deletion workflow (soft delete → verified grace period → hard delete) with legal hold override
 - Ensure cascading deletion of dependent data (embeddings, agent actions, audit records) when source data is deleted
 - Maintain legal hold capabilities that override all automated deletion with full audit trail
 - Apply consistent retention policies across production, staging, and backup environments

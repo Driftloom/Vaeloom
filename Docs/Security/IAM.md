@@ -17,9 +17,9 @@ graph LR
     subgraph Identities["ðŸ‘¤ Identity Types"]
         direction TB
         I1["ðŸ‘¤ User<br/>Auth Provider"]
-        I2["ðŸ¤– Agent<br/>Agent Registry"]
+        I2["ðŸ¤- Agent<br/>Agent Registry"]
         I3["ðŸ”§ Service<br/>Service Mesh"]
-        I4["ðŸ”— Integration<br/>Plugin Manifest"]
+        I4["ðŸ”-- Integration<br/>Plugin Manifest"]
     end
 
     subgraph AuthN["ðŸ”‘ Authentication<br/>Who are you?"]
@@ -54,7 +54,7 @@ graph LR
     class D1,D2,D3,D4 audit
 ```
 
-> **Diagram:** IAM model flows through 4 stages â€” **Identity Types** (User, Agent, Service, Integration) â†’ **Authentication** (JWT/mTLS/manifest) â†’ **Authorization** (MVP vs Enterprise levels) â†’ **Audit** (quarterly/monthly reviews). Each identity type has its own authentication mechanism, authorization scope, and audit cadence.
+> **Diagram:** IAM model flows through 4 stages — **Identity Types** (User, Agent, Service, Integration) → **Authentication** (JWT/mTLS/manifest) → **Authorization** (MVP vs Enterprise levels) → **Audit** (quarterly/monthly reviews). Each identity type has its own authentication mechanism, authorization scope, and audit cadence.
 
 ## Identity Types
 
@@ -97,53 +97,53 @@ graph LR
 
 | Mistake | Consequence |
 |---------|-------------|
-| Treating service accounts the same as user accounts | Service accounts (agents, integrations) don't have interactive login â€” applying password rotation policies to them creates unnecessary complexity. Use API keys with automatic rotation for service accounts |
-| Not distinguishing between human and machine identities | A revoked human user's JWT is different from a rotated machine token â€” mixing the two identity types in the same access review process causes either too-frequent machine token changes or missed human revocations |
-| IAM documentation that only covers users | Agents, services, and integrations each have different authentication mechanisms and lifecycle requirements â€” an IAM doc that only covers user authentication is incomplete |
+| Treating service accounts the same as user accounts | Service accounts (agents, integrations) don't have interactive login — applying password rotation policies to them creates unnecessary complexity. Use API keys with automatic rotation for service accounts |
+| Not distinguishing between human and machine identities | A revoked human user's JWT is different from a rotated machine token — mixing the two identity types in the same access review process causes either too-frequent machine token changes or missed human revocations |
+| IAM documentation that only covers users | Agents, services, and integrations each have different authentication mechanisms and lifecycle requirements — an IAM doc that only covers user authentication is incomplete |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Separate identity types (User, Agent, Service, Integration) with distinct authentication mechanisms | Each identity type has different security requirements â€” users need MFA, services need mTLS, agents need scoped tokens, integrations need manifest signing |
-| Automate access review reminders | Manual quarterly audits miss deadlines â€” automate access review notifications and track completion in the compliance dashboard |
-| Use short-lived credentials for all identity types | JWTs (15m), mTLS certificates (24h), and session tokens should all have short TTLs â€” long-lived credentials increase the blast radius of a leak |
+| Separate identity types (User, Agent, Service, Integration) with distinct authentication mechanisms | Each identity type has different security requirements — users need MFA, services need mTLS, agents need scoped tokens, integrations need manifest signing |
+| Automate access review reminders | Manual quarterly audits miss deadlines — automate access review notifications and track completion in the compliance dashboard |
+| Use short-lived credentials for all identity types | JWTs (15m), mTLS certificates (24h), and session tokens should all have short TTLs — long-lived credentials increase the blast radius of a leak |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Identity confusion between agents and users | A compromised agent registry could return a user identity â€” always include an identity type claim in tokens and verify it before applying authorization rules |
-| Integration manifest forgery | A malicious plugin could forge a manifest to gain elevated permissions â€” verify manifest signatures against a registry of known publisher keys |
-| Service-to-service identity replay | An mTLS certificate stolen from one service could authenticate as another â€” use per-service certificates with distinct Common Names and verify them at the target service |
+| Identity confusion between agents and users | A compromised agent registry could return a user identity — always include an identity type claim in tokens and verify it before applying authorization rules |
+| Integration manifest forgery | A malicious plugin could forge a manifest to gain elevated permissions — verify manifest signatures against a registry of known publisher keys |
+| Service-to-service identity replay | An mTLS certificate stolen from one service could authenticate as another — use per-service certificates with distinct Common Names and verify them at the target service |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Identity resolution latency for 4 identity types | Each identity type has a different resolution path (auth provider, registry, certificate store, plugin manifest) â€” cache resolved identities with a per-type TTL |
-| Certificate validation overhead for mTLS | Verifying client certificates on every request adds 5-15ms â€” use session resumption and online certificate status protocol stapling to reduce the overhead of repeated certificate validation |
-| Access review queries that scan all identity types | A quarterly audit listing all users, agents, services, and integrations creates a heavy query â€” pre-materialize the identity inventory and diff against the last review snapshot |
+| Identity resolution latency for 4 identity types | Each identity type has a different resolution path (auth provider, registry, certificate store, plugin manifest) — cache resolved identities with a per-type TTL |
+| Certificate validation overhead for mTLS | Verifying client certificates on every request adds 5-15ms — use session resumption and online certificate status protocol stapling to reduce the overhead of repeated certificate validation |
+| Access review queries that scan all identity types | A quarterly audit listing all users, agents, services, and integrations creates a heavy query — pre-materialize the identity inventory and diff against the last review snapshot |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Identity provider compromise affecting all tenants | A breached auth provider could mint valid tokens for any workspace â€” monitor provider status, implement token revocation lists, and support rapid provider failover |
-| Agent identity spoofing | If an agent's identity isn't validated, a compromised agent could impersonate another agent â€” sign agent requests with per-agent keys and verify before processing |
-| Identity resolution caching of stale data | Cached resolved identities may include revoked permissions or deactivated users â€” set cache TTLs based on the volatility of each identity type (user roles: 5 min, service accounts: 30 min) |
+| Identity provider compromise affecting all tenants | A breached auth provider could mint valid tokens for any workspace — monitor provider status, implement token revocation lists, and support rapid provider failover |
+| Agent identity spoofing | If an agent's identity isn't validated, a compromised agent could impersonate another agent — sign agent requests with per-agent keys and verify before processing |
+| Identity resolution caching of stale data | Cached resolved identities may include revoked permissions or deactivated users — set cache TTLs based on the volatility of each identity type (user roles: 5 min, service accounts: 30 min) |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Identity resolution latency for 4 identity types | Each identity type has a different resolution path (auth provider, registry, certificate store, plugin manifest) â€” cache resolved identities with a per-type TTL |
-| Certificate validation overhead for mTLS | Verifying client certificates on every request adds 5-15ms â€” use session resumption and online certificate status protocol stapling to reduce the overhead of repeated certificate validation |
-| Access review queries that scan all identity types | A quarterly audit listing all users, agents, services, and integrations creates a heavy query â€” pre-materialize the identity inventory and diff against the last review snapshot |
+| Identity resolution latency for 4 identity types | Each identity type has a different resolution path (auth provider, registry, certificate store, plugin manifest) — cache resolved identities with a per-type TTL |
+| Certificate validation overhead for mTLS | Verifying client certificates on every request adds 5-15ms — use session resumption and online certificate status protocol stapling to reduce the overhead of repeated certificate validation |
+| Access review queries that scan all identity types | A quarterly audit listing all users, agents, services, and integrations creates a heavy query — pre-materialize the identity inventory and diff against the last review snapshot |
 
 ## Scope
 
-This document defines the Identity and Access Management (IAM) strategy for Vaeloom â€” covering identity types (User, Agent, Service, Integration), authentication mechanisms, authorization levels (MVP and Enterprise), RBAC roles, and access review schedules. Applies to all four identity types across all environments. Out of scope: encryption (see [Encryption.md](./Encryption.md)), secrets management (see [Secrets.md](./Secrets.md)), compliance (see [Compliance.md](./Compliance.md)).
+This document defines the Identity and Access Management (IAM) strategy for Vaeloom — covering identity types (User, Agent, Service, Integration), authentication mechanisms, authorization levels (MVP and Enterprise), RBAC roles, and access review schedules. Applies to all four identity types across all environments. Out of scope: encryption (see [Encryption.md](./Encryption.md)), secrets management (see [Secrets.md](./Secrets.md)), compliance (see [Compliance.md](./Compliance.md)).
 
 ---
 
@@ -223,7 +223,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** User authentication flow â€” Auth provider issues JWT with identity claims. Permission Engine validates and checks RBAC. Workspace_id is extracted from the token (not request body) to prevent tenant spoofing.
+> **Diagram:** User authentication flow — Auth provider issues JWT with identity claims. Permission Engine validates and checks RBAC. Workspace_id is extracted from the token (not request body) to prevent tenant spoofing.
 
 ---
 
@@ -231,17 +231,17 @@ sequenceDiagram
 
 ```text
 Identity Types:
-    User â†’ Auth Provider â†’ JWT (user_id, workspace_id, role)
-    Agent â†’ Agent Registry â†’ Agent Token (agent_id, permissions)
-    Service â†’ Service Mesh â†’ mTLS Certificate (service_name)
-    Integration â†’ Plugin Manifest â†’ Manifest Signature (scopes)
+    User → Auth Provider → JWT (user_id, workspace_id, role)
+    Agent → Agent Registry → Agent Token (agent_id, permissions)
+    Service → Service Mesh → mTLS Certificate (service_name)
+    Integration → Plugin Manifest → Manifest Signature (scopes)
 
 Auth Check:
-    Request â†’ Extract Identity from Token/Cert
-    â†’ Permission Engine: Check RBAC / Scope
-    â†’ [Allow] â†’ Process Request
-    â†’ [Deny] â†’ Log + 403 Forbidden
-    â†’ Audit Log (all decisions)
+    Request → Extract Identity from Token/Cert
+    → Permission Engine: Check RBAC / Scope
+    → [Allow] → Process Request
+    → [Deny] → Log + 403 Forbidden
+    → Audit Log (all decisions)
 ```
 
 ---
@@ -390,7 +390,7 @@ Vaeloom's Identity and Access Management (IAM) system governs user authenticatio
 
 This document defines the authentication flow, role hierarchy, permission model, API authorization patterns, and session management. The primary audience is full-stack engineers implementing auth features and security engineers auditing access control.
 
-Within the Vaeloom platform, IAM ensures that every request â€” whether from a web user, API client, or AI agent â€” is properly authenticated and authorized before accessing any resource. The authorization model is resource-scoped: users can access only their own documents and memories unless granted explicit cross-resource permissions.
+Within the Vaeloom platform, IAM ensures that every request — whether from a web user, API client, or AI agent — is properly authenticated and authorized before accessing any resource. The authorization model is resource-scoped: users can access only their own documents and memories unless granted explicit cross-resource permissions.
 
 Enterprise-grade IAM requires a layered approach: authentication (who you are + MFA), authorization (what you can do), and audit (what you did). Every access decision must be logged with the actor, action, resource, and outcome for forensic analysis during security incidents.
 
@@ -423,7 +423,7 @@ Enterprise-grade IAM requires a layered approach: authentication (who you are + 
 - Fine-grained row-level security in PostgreSQL (covered in [Security-Architecture.md](./Security-Architecture.md))
 - Audit log storage and querying (covered in [Audit-Logs.md](./Audit-Logs.md))
 - API key management for external integrations (covered in [Secrets.md](./Secrets.md))
-- Federation with enterprise IdP (SAML/SCIM â€” planned for enterprise)
+- Federation with enterprise IdP (SAML/SCIM — planned for enterprise)
 
 ---
 
@@ -509,7 +509,7 @@ sequenceDiagram
     API-->>WEB: Response
 ```
 
-> **Diagram:** IAM flow â€” user authenticates via OAuth, receives JWT, every API request is verified (signature + expiry) and authorized (permission check), database queries scoped to authenticated user.
+> **Diagram:** IAM flow — user authenticates via OAuth, receives JWT, every API request is verified (signature + expiry) and authorized (permission check), database queries scoped to authenticated user.
 
 ---
 

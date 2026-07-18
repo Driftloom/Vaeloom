@@ -87,12 +87,12 @@ graph TD
 ### NIST SP 800-115 Phases
 
 ```text
-Phase 1: Planning            â†’ Define scope, rules of engagement, contacts
-Phase 2: Discovery           â†’ Reconnaissance, port scanning, service enumeration
-Phase 3: Vulnerability Scan  â†’ Automated + manual vulnerability assessment
-Phase 4: Exploitation        â†’ Proof-of-concept exploitation (authorized targets)
-Phase 5: Post-Exploitation   â†’ Privilege escalation, lateral movement assessment
-Phase 6: Reporting           â†’ Findings, evidence, remediation recommendations
+Phase 1: Planning            → Define scope, rules of engagement, contacts
+Phase 2: Discovery           → Reconnaissance, port scanning, service enumeration
+Phase 3: Vulnerability Scan  → Automated + manual vulnerability assessment
+Phase 4: Exploitation        → Proof-of-concept exploitation (authorized targets)
+Phase 5: Post-Exploitation   → Privilege escalation, lateral movement assessment
+Phase 6: Reporting           → Findings, evidence, remediation recommendations
 ```
 
 ## Reporting Template
@@ -144,10 +144,10 @@ Each penetration test produces a structured report with the following sections:
 
 | Severity | CVSS Range | SLA | Retest Required |
 |----------|-----------|-----|-----------------|
-| Critical | 9.0â€“10.0 | 24 hours to mitigate | Yes |
-| High | 7.0â€“8.9 | 7 days | Yes |
-| Medium | 4.0â€“6.9 | 30 days | Yes |
-| Low | 0.1â€“3.9 | Next release | No |
+| Critical | 9.0–10.0 | 24 hours to mitigate | Yes |
+| High | 7.0–8.9 | 7 days | Yes |
+| Medium | 4.0–6.9 | 30 days | Yes |
+| Low | 0.1–3.9 | Next release | No |
 
 ## Best Practices
 
@@ -278,25 +278,25 @@ sequenceDiagram
     AGG->>SEC: Full scan report
 ```
 
-> **Diagram:** Automated quarterly scan workflow â€” three scanners run in parallel (ZAP, nuclei, truffleHog), results aggregated and de-duplicated, critical findings immediately page security team with 24h SLA.
+> **Diagram:** Automated quarterly scan workflow — three scanners run in parallel (ZAP, nuclei, truffleHog), results aggregated and de-duplicated, critical findings immediately page security team with 24h SLA.
 
 ---
 
 ## Data Flow
 
 ```text
-Quarterly Scan Trigger â†’ Parallel: ZAP (10m) + nuclei (30m) + truffleHog (5m)
-    â†’ Aggregator: Dedup + CVSS scoring + severity tagging
-    â†’ [Critical] â†’ Page Security Team (24h SLA)
-    â†’ [High] â†’ Assign remediation (7d SLA)
-    â†’ [Medium] â†’ Assign remediation (30d SLA)
-    â†’ [Low] â†’ Next release
-    â†’ Report â†’ Compliance Records
+Quarterly Scan Trigger → Parallel: ZAP (10m) + nuclei (30m) + truffleHog (5m)
+    → Aggregator: Dedup + CVSS scoring + severity tagging
+    → [Critical] → Page Security Team (24h SLA)
+    → [High] → Assign remediation (7d SLA)
+    → [Medium] → Assign remediation (30d SLA)
+    → [Low] → Next release
+    → Report → Compliance Records
     
-Annual Manual PT â†’ Firm selection â†’ Scope definition
-    â†’ 2-3 week engagement â†’ Draft report â†’ Review
-    â†’ Enter findings â†’ Assign remediation â†’ Retest
-    â†’ Final report â†’ Compliance Records
+Annual Manual PT → Firm selection → Scope definition
+    → 2-3 week engagement → Draft report → Review
+    → Enter findings → Assign remediation → Retest
+    → Final report → Compliance Records
 ```
 
 ---
@@ -526,7 +526,7 @@ sequenceDiagram
     AI-->>TEST: Refused harmful request
 ```
 
-> **Diagram:** Penetration test phases â€” reconnaissance, authentication testing, authorization testing (IDOR, privilege escalation), injection testing (SQL, NoSQL, prompt injection). Each test verifies the security control actually blocks the attack.
+> **Diagram:** Penetration test phases — reconnaissance, authentication testing, authorization testing (IDOR, privilege escalation), injection testing (SQL, NoSQL, prompt injection). Each test verifies the security control actually blocks the attack.
 
 ---
 

@@ -162,7 +162,7 @@ flowchart TB
     LINK["â¬‡  See detailed tables below"]:::badge
 ```
 
-**Cross-cutting mitigations** are controls that protect against multiple STRIDE categories simultaneously â€” they're the highest-value security investments.
+**Cross-cutting mitigations** are controls that protect against multiple STRIDE categories simultaneously — they're the highest-value security investments.
 
 ### Spoofing
 
@@ -276,8 +276,8 @@ export class TenantGuard implements CanActivate {
 | workspace_id from token, not request | Prevents tenant spoofing |
 | Rate limit by user, not IP | Users can share IPs; rate limiting per user prevents abuse |
 | Never log sensitive data | Auth tokens, passwords, API keys must not appear in logs |
-| Fail closed on permission check | If permission engine is down, deny access â€” don't allow |
-| Audit every access attempt | Both allowed and denied â€” denied attempts may indicate attacks |
+| Fail closed on permission check | If permission engine is down, deny access — don't allow |
+| Audit every access attempt | Both allowed and denied — denied attempts may indicate attacks |
 | Test tenant isolation quarterly | Dedicated penetration testing for cross-tenant leakage |
 
 ## Common Mistakes
@@ -313,10 +313,10 @@ export class TenantGuard implements CanActivate {
 ### 1. Quarterly Threat Model Review
 
 1. Security team schedules quarterly review (calendar reminder)
-2. Review current assets list â€” add/remove/update as needed
-3. Walk through each STRIDE category â€” check if new threats emerged
+2. Review current assets list — add/remove/update as needed
+3. Walk through each STRIDE category — check if new threats emerged
 4. Review mitigations for continued effectiveness
-5. Check attack trees â€” new paths to existing goals?
+5. Check attack trees — new paths to existing goals?
 6. Verify all CI/CD pipeline security checks still passing
 7. Document review outcome in security records
 8. If significant changes found: schedule architecture-level threat model update
@@ -343,9 +343,9 @@ Goal: Access another user's memory graph
 Attempt: Modify workspace_id in API request body
 
 Defense chain:
-1. API Gateway authenticates user â†’ extracts workspace_id from JWT
+1. API Gateway authenticates user → extracts workspace_id from JWT
 2. TenantGuard compares JWT workspace_id vs. request workspace_id
-3. Mismatch detected â†’ 403 Forbidden + audit log entry
+3. Mismatch detected → 403 Forbidden + audit log entry
 4. Security team alerted (threshold: >5 mismatches per minute)
 
 Result: Attack blocked at first check. Attacker gains nothing.
@@ -377,7 +377,7 @@ Result: Attack blocked at first check. Attacker gains nothing.
 
 ## Overview
 
-Vaeloom's threat model systematically identifies, classifies, and documents security threats across all platform components â€” web application, API service, AI service, database, storage, and third-party integrations. The model uses STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege) as the primary classification framework, with data flow diagrams (DFDs) mapping every trust boundary.
+Vaeloom's threat model systematically identifies, classifies, and documents security threats across all platform components — web application, API service, AI service, database, storage, and third-party integrations. The model uses STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege) as the primary classification framework, with data flow diagrams (DFDs) mapping every trust boundary.
 
 This document serves as the living reference for understanding where and how the Vaeloom platform could be attacked, what controls are in place, and what residual risks remain. The primary audience is security engineers, penetration testers, and developers building security-sensitive features.
 
@@ -403,7 +403,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 
 - All Vaeloom platform components: Web (Next.js), API (NestJS), AI Service (FastAPI), PostgreSQL, Redis, Object Storage
 - Third-party integrations: Supabase Auth, OpenAI API, SendGrid, GitHub OAuth, Google OAuth
-- All trust boundaries: user â†’ web, web â†’ API, API â†’ AI service, API â†’ database, API â†’ storage, service â†” third-party
+- All trust boundaries: user → web, web → API, API → AI service, API → database, API → storage, service â†” third-party
 - Attack vectors: injection, authentication bypass, authorization bypass, SSRF, prompt injection, data exfiltration, session hijacking
 - Deployment environments: development, staging, production (different threat profiles per environment)
 
@@ -413,7 +413,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 - Supply chain attacks on third-party CI/CD infrastructure (covered in [SBOM-Policy.md](../DevOps/SBOM-Policy.md))
 - Social engineering attacks on development team (covered in security awareness training)
 - Zero-day vulnerabilities in cloud provider infrastructure (provider responsibility)
-- Threats specific to on-premise deployment (not applicable â€” cloud-native only)
+- Threats specific to on-premise deployment (not applicable — cloud-native only)
 
 ---
 
@@ -430,7 +430,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 | **Component** | AI Service (FastAPI) |
 | **Attack Vector** | User uploads document containing "Ignore previous instructions and perform X" |
 | **Likelihood** | High (4/5) |
-| **Impact** | Critical (5/5) â€” AI agent could expose system context, execute unintended actions |
+| **Impact** | Critical (5/5) — AI agent could expose system context, execute unintended actions |
 | **Risk** | Critical (20) |
 | **Existing Controls** | System prompt hardening, input sanitization, output filtering |
 | **Gap** | No secondary LLM validation of outputs before action execution |
@@ -450,7 +450,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 | **Component** | API (NestJS) |
 | **Attack Vector** | Attacker modifies JWT alg from RS256 to HS256, signs with public key |
 | **Likelihood** | Medium (3/5) |
-| **Impact** | Critical (5/5) â€” full account takeover |
+| **Impact** | Critical (5/5) — full account takeover |
 | **Risk** | High (15) |
 | **Existing Controls** | JWT library defaults to algorithm whitelist |
 | **Gap** | Explicit algorithm verification not configured in middleware |
@@ -500,7 +500,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Threat scenario â€” prompt injection attack (attacker embeds malicious instructions in document, AI service either blocks or executes unintended action) and JWT algorithm confusion attack (verification middleware either detects or allows modified token).
+> **Diagram:** Threat scenario — prompt injection attack (attacker embeds malicious instructions in document, AI service either blocks or executes unintended action) and JWT algorithm confusion attack (verification middleware either detects or allows modified token).
 
 ---
 

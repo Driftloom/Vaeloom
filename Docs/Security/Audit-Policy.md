@@ -52,7 +52,7 @@ graph TD
         DATA["Data Access<br/>(reads, exports, deletes)"]:::source
     end
 
-    PIPE["Audit Pipeline<br/>CloudEvents → enrich → hash-chain → encrypt"]:::pipeline
+    PIPE["Audit Pipeline<br/>CloudEvents --> enrich --> hash-chain --> encrypt"]:::pipeline
 
     subgraph Storage["Audit Storage (Tiered)"]
         HOT["Hot Tier<br/>Elasticsearch<br/>90 days (searchable)"]:::store

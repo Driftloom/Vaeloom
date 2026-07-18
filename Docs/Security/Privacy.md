@@ -47,10 +47,10 @@ graph TD
         U5["Account deletion<br/>Remove all data"]
     end
 
-    subgraph ThirdParty["ðŸ”— Third-Party Processing"]
-        T1["Anthropic<br/>Document content â†’ AI inference"]
-        T2["Auth Provider<br/>Email + password hash â†’ Auth"]
-        T3["Cloud Provider<br/>Encrypted data â†’ Storage"]
+    subgraph ThirdParty["ðŸ”-- Third-Party Processing"]
+        T1["Anthropic<br/>Document content --> AI inference"]
+        T2["Auth Provider<br/>Email + password hash --> Auth"]
+        T3["Cloud Provider<br/>Encrypted data --> Storage"]
     end
 
     R1 & R2 & R3 & R4 & R5 --> C1 & C2 & C3 & C4
@@ -65,7 +65,7 @@ graph TD
     class T1,T2,T3 third
 ```
 
-> **Diagram:** Privacy architecture showing the flow from **principles** â†’ **data collected vs not collected** â†’ **user controls** â†’ **third-party processing**. Each data type has a defined retention policy, and users have granular controls to connect/export/delete at will.
+> **Diagram:** Privacy architecture showing the flow from **principles** → **data collected vs not collected** → **user controls** → **third-party processing**. Each data type has a defined retention policy, and users have granular controls to connect/export/delete at will.
 
 ---
 
@@ -119,53 +119,53 @@ graph TD
 
 | Mistake | Consequence |
 |---------|-------------|
-| Privacy policies written in dense legalese | Users don't read privacy policies they can't understand â€” write privacy notices in plain language with specific examples of what data is collected and why |
-| Promising data not collected without technical enforcement | A privacy policy that says "we don't collect location data" is violated if the application inadvertently captures IP geolocation â€” enforce data collection promises with technical controls, not just policy language |
-| Consent that isn't granular enough | A single "I accept" for all data processing (documents, email, GitHub, analytics) doesn't meet the GDPR standard â€” implement per-connector, per-purpose consent with independent toggles |
+| Privacy policies written in dense legalese | Users don't read privacy policies they can't understand — write privacy notices in plain language with specific examples of what data is collected and why |
+| Promising data not collected without technical enforcement | A privacy policy that says "we don't collect location data" is violated if the application inadvertently captures IP geolocation — enforce data collection promises with technical controls, not just policy language |
+| Consent that isn't granular enough | A single "I accept" for all data processing (documents, email, GitHub, analytics) doesn't meet the GDPR standard — implement per-connector, per-purpose consent with independent toggles |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Design privacy controls as user-facing features, not backend policies | Users should be able to see what data is collected, export it, and delete it from the UI â€” privacy isn't just compliance, it's a product feature |
-| Default to the most privacy-preserving option | New connectors start read-only, data retention defaults to the shortest reasonable window, analytics are opt-in â€” users can expand access, but privacy is the starting point |
-| Conduct privacy impact assessments for new features | Before launching a feature that processes new data types, assess the privacy impact â€” document what data is collected, why, how long it's kept, and how users control it |
+| Design privacy controls as user-facing features, not backend policies | Users should be able to see what data is collected, export it, and delete it from the UI — privacy isn't just compliance, it's a product feature |
+| Default to the most privacy-preserving option | New connectors start read-only, data retention defaults to the shortest reasonable window, analytics are opt-in — users can expand access, but privacy is the starting point |
+| Conduct privacy impact assessments for new features | Before launching a feature that processes new data types, assess the privacy impact — document what data is collected, why, how long it's kept, and how users control it |
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Third-party processors accessing data beyond their scope | A cloud AI provider shouldn't train on user data â€” ensure all processor agreements prohibit model training on customer data and verify compliance through independent audits |
-| Privacy data leakage through shared infrastructure | Multi-tenant databases could leak data between tenants â€” enforce row-level security and workspace-scoped queries at the database level, not just the application layer |
-| Data retention policy violations at the storage layer | Application code may honor retention policies, but backups and caches may not â€” extend retention enforcement to all storage tiers including backups, snapshots, and warm caches |
+| Third-party processors accessing data beyond their scope | A cloud AI provider shouldn't train on user data — ensure all processor agreements prohibit model training on customer data and verify compliance through independent audits |
+| Privacy data leakage through shared infrastructure | Multi-tenant databases could leak data between tenants — enforce row-level security and workspace-scoped queries at the database level, not just the application layer |
+| Data retention policy violations at the storage layer | Application code may honor retention policies, but backups and caches may not — extend retention enforcement to all storage tiers including backups, snapshots, and warm caches |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Privacy control checks on every data access | Checking consent status, retention policy, and data classification on every read/write adds 10-30ms â€” cache privacy metadata (consent, classification) with request-scoped TTLs |
-| Data export generating large archives | A "export everything" request for a long-time user can produce 1GB+ archives â€” generate exports in background with chunked output and notify the user when ready via email or in-app notification |
-| Data deletion cascading across services | Deleting a user's data across 15 services and storage tiers must be coordinated â€” implement deletion as a distributed saga with retry logic and audit logging of each deletion step |
+| Privacy control checks on every data access | Checking consent status, retention policy, and data classification on every read/write adds 10-30ms — cache privacy metadata (consent, classification) with request-scoped TTLs |
+| Data export generating large archives | A "export everything" request for a long-time user can produce 1GB+ archives — generate exports in background with chunked output and notify the user when ready via email or in-app notification |
+| Data deletion cascading across services | Deleting a user's data across 15 services and storage tiers must be coordinated — implement deletion as a distributed saga with retry logic and audit logging of each deletion step |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Third-party processors accessing data beyond their scope | A cloud AI provider shouldn't train on user data â€” ensure all processor agreements prohibit model training on customer data and verify compliance through independent audits |
-| Privacy data leakage through shared infrastructure | Multi-tenant databases could leak data between tenants â€” enforce row-level security and workspace-scoped queries at the database level, not just the application layer |
-| Data retention policy violations at the storage layer | Application code may honor retention policies, but backups and caches may not â€” extend retention enforcement to all storage tiers including backups, snapshots, and warm caches |
+| Third-party processors accessing data beyond their scope | A cloud AI provider shouldn't train on user data — ensure all processor agreements prohibit model training on customer data and verify compliance through independent audits |
+| Privacy data leakage through shared infrastructure | Multi-tenant databases could leak data between tenants — enforce row-level security and workspace-scoped queries at the database level, not just the application layer |
+| Data retention policy violations at the storage layer | Application code may honor retention policies, but backups and caches may not — extend retention enforcement to all storage tiers including backups, snapshots, and warm caches |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Privacy control checks on every data access | Checking consent status, retention policy, and data classification on every read/write adds 10-30ms â€” cache privacy metadata (consent, classification) with request-scoped TTLs |
-| Data export generating large archives | A "export everything" request for a long-time user can produce 1GB+ archives â€” generate exports in background with chunked output and notify the user when ready via email or in-app notification |
-| Data deletion cascading across services | Deleting a user's data across 15 services and storage tiers must be coordinated â€” implement deletion as a distributed saga with retry logic and audit logging of each deletion step |
+| Privacy control checks on every data access | Checking consent status, retention policy, and data classification on every read/write adds 10-30ms — cache privacy metadata (consent, classification) with request-scoped TTLs |
+| Data export generating large archives | A "export everything" request for a long-time user can produce 1GB+ archives — generate exports in background with chunked output and notify the user when ready via email or in-app notification |
+| Data deletion cascading across services | Deleting a user's data across 15 services and storage tiers must be coordinated — implement deletion as a distributed saga with retry logic and audit logging of each deletion step |
 
 ## Scope
 
-This document defines the privacy principles and practices for Vaeloom â€” covering data minimization, purpose limitation, user controls, third-party processing, and privacy-by-design implementation. Applies to all data collected and processed across all Vaeloom services. Out of scope: GDPR-specific compliance (see [GDPR.md](./GDPR.md)), compliance posture (see [Compliance.md](./Compliance.md)), data retention schedules (see [Data-Retention-Policy.md](./Data-Retention-Policy.md)).
+This document defines the privacy principles and practices for Vaeloom — covering data minimization, purpose limitation, user controls, third-party processing, and privacy-by-design implementation. Applies to all data collected and processed across all Vaeloom services. Out of scope: GDPR-specific compliance (see [GDPR.md](./GDPR.md)), compliance posture (see [Compliance.md](./Compliance.md)), data retention schedules (see [Data-Retention-Policy.md](./Data-Retention-Policy.md)).
 
 ---
 
@@ -243,20 +243,20 @@ sequenceDiagram
     DEL-->>U: Deletion confirmed
 ```
 
-> **Diagram:** Privacy control flows â€” user can view connector permissions, disconnect connectors (future data stop), export all data, and delete all data. Each action is independent and self-service from the Privacy Settings UI.
+> **Diagram:** Privacy control flows — user can view connector permissions, disconnect connectors (future data stop), export all data, and delete all data. Each action is independent and self-service from the Privacy Settings UI.
 
 ---
 
 ## Data Flow
 
 ```text
-User â†’ Privacy Settings
-    â†’ View Connectors and Permissions
-    â†’ [Disconnect] â†’ Future Data Stop (not retroactive)
-    â†’ [Export] â†’ Generate Portable Archive (background job)
-    â†’ [Delete] â†’ Cascading Deletion (DB â†’ caches â†’ backups â†’ analytics)
-    â†’ [Delete Account] â†’ All Data + Account Removed
-    â†’ All actions logged to Audit Log
+User → Privacy Settings
+    → View Connectors and Permissions
+    → [Disconnect] → Future Data Stop (not retroactive)
+    → [Export] → Generate Portable Archive (background job)
+    → [Delete] → Cascading Deletion (DB → caches → backups → analytics)
+    → [Delete Account] → All Data + Account Removed
+    → All actions logged to Audit Log
 ```
 
 ---
@@ -380,13 +380,13 @@ assert status.expires_at > datetime.utcnow()
 
 ## Overview
 
-Vaeloom collects, processes, and stores user-generated content â€” documents, memories, and AI agent interactions â€” to provide personal knowledge management and AI-assisted recall. Privacy by design is a core principle: the system is built to minimize data collection, maximize user control, and enable data portability and deletion on demand.
+Vaeloom collects, processes, and stores user-generated content — documents, memories, and AI agent interactions — to provide personal knowledge management and AI-assisted recall. Privacy by design is a core principle: the system is built to minimize data collection, maximize user control, and enable data portability and deletion on demand.
 
 This document defines the data classification categories, data flow boundaries, user data rights, retention and deletion mechanisms, and the privacy review process for new features. The primary audience is product managers, engineers, and compliance officers responsible for privacy-conscious feature design.
 
 Within the Vaeloom platform, user data is classified into three categories: user profile (name, email, avatar), user content (documents, memories, tags, annotations), and system metadata (logs, usage stats, performance metrics). Each category has distinct retention, access, and deletion policies.
 
-Enterprise-grade privacy requires more than regulatory compliance â€” it requires transparent data practices, minimal data collection, and user-empowering controls. Users should be able to export all their data, delete their account permanently, and understand exactly what data Vaeloom stores and why.
+Enterprise-grade privacy requires more than regulatory compliance — it requires transparent data practices, minimal data collection, and user-empowering controls. Users should be able to export all their data, delete their account permanently, and understand exactly what data Vaeloom stores and why.
 
 ---
 
@@ -405,7 +405,7 @@ Enterprise-grade privacy requires more than regulatory compliance â€” it re
 ### In Scope
 
 - Data classification: user profile, user content, system metadata with distinct policies
-- Data flow boundaries: what data crosses service boundaries (API â†’ AI service, API â†’ storage)
+- Data flow boundaries: what data crosses service boundaries (API → AI service, API → storage)
 - User data rights: access, export (JSON/CSV), correction, deletion
 - Data retention: profile (account lifetime), content (until deletion), metadata (90 days)
 - Deletion mechanisms: soft delete (30-day grace), hard delete (after grace), propagation to integrations
@@ -417,7 +417,7 @@ Enterprise-grade privacy requires more than regulatory compliance â€” it re
 - Data Retention Schedule with specific timelines (covered in [Data-Retention-Policy.md](./Data-Retention-Policy.md))
 - Third-party data processing agreements (covered in vendor onboarding process)
 - Cross-border data transfer mechanisms (SCCs, adequacy decisions)
-- Marketing and analytics data collection (not applicable â€” no marketing analytics)
+- Marketing and analytics data collection (not applicable — no marketing analytics)
 
 ---
 
@@ -430,12 +430,12 @@ Enterprise-grade privacy requires more than regulatory compliance â€” it re
 
 - [ ] What user data does this feature collect? Shared document IDs, access timestamps
 - [ ] Where is this data stored? PostgreSQL `shared_links` table
-- [ ] How long is it retained? Until link expires (configurable: 1â€“30 days)
-- [ ] Can users delete this data? Yes â€” revoke link via UI
-- [ ] Does this data cross a service boundary? Yes â€” link access goes through API
-- [ ] Is the data encrypted at rest? Yes â€” AES-256
-- [ ] Is the data encrypted in transit? Yes â€” TLS 1.3
-- [ ] Privacy impact assessment: Low â€” users explicitly share content
+- [ ] How long is it retained? Until link expires (configurable: 1–30 days)
+- [ ] Can users delete this data? Yes — revoke link via UI
+- [ ] Does this data cross a service boundary? Yes — link access goes through API
+- [ ] Is the data encrypted at rest? Yes — AES-256
+- [ ] Is the data encrypted in transit? Yes — TLS 1.3
+- [ ] Privacy impact assessment: Low — users explicitly share content
 ```
 
 ### Example 2: Data Export API Response Structure
@@ -502,7 +502,7 @@ sequenceDiagram
     QUEUE->>QUEUE: Log anonymized deletion record
 ```
 
-> **Diagram:** Privacy flow â€” user requests account deletion, system soft-deletes with 30-day grace period, queues hard deletion, after grace period all user data is permanently removed from storage and databases.
+> **Diagram:** Privacy flow — user requests account deletion, system soft-deletes with 30-day grace period, queues hard deletion, after grace period all user data is permanently removed from storage and databases.
 
 ---
 

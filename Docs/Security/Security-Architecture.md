@@ -1,10 +1,10 @@
-﻿# Security Architecture
+# Security Architecture
 
 > **Purpose:** Define the security architecture for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
-> **Canonical source:** [`/Docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance`](../../Docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance)
+> **Canonical source:** [`/docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance`](../../docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance)
 
 ## Security Architecture Overview
 
@@ -15,21 +15,21 @@ graph TD
     classDef principle fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef audit fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Perimeter["ðŸ”’ Perimeter Security"]
+    subgraph Perimeter["🔒 Perimeter Security"]
         direction TB
         P1["TLS 1.3<br/>Encryption in transit"]
         P2["WAF / Rate Limiting<br/>DDoS protection"]
         P3["CORS + CSP headers<br/>Web security"]
     end
 
-    subgraph AuthN["ðŸ”‘ Authentication Layer"]
+    subgraph AuthN["🔑 Authentication Layer"]
         direction TB
         A1["Auth Provider<br/>(Clerk / Auth0)"]
         A2["JWT + Session Mgmt<br/>Short-lived tokens (15m)"]
         A3["MFA<br/>Enterprise only"]
     end
 
-    subgraph AuthZ["ðŸ›¡ï¸ Authorization Layer â€” Permission Engine"]
+    subgraph AuthZ["🛡️ Authorization Layer -- Permission Engine"]
         direction TB
         Z1["Connector<br/>Which external system"]
         Z2["Action Type<br/>read / write / act"]
@@ -37,20 +37,20 @@ graph TD
         Z4["Workspace<br/>Tenant isolation"]
     end
 
-    subgraph Controls["ðŸ” Security Controls"]
+    subgraph Controls["🔐 Security Controls"]
         C1["Encryption at rest<br/>AES-256 (DB + S3)"]
         C2["Secrets Manager<br/>Tokens never in DB"]
         C3["Zero Trust<br/>Internal mTLS"]
         C4["Plugin Sandbox<br/>Manifest enforcement"]
     end
 
-    subgraph Audit["ðŸ“ Audit & Compliance"]
+    subgraph Audit["📝 Audit & Compliance"]
         D1["Append-only Audit Trail<br/>Every action logged"]
         D2["Compliance Reporting<br/>GDPR / SOC 2 ready"]
         D3["Threat Detection<br/>Anomaly alerts"]
     end
 
-    subgraph Principles["ðŸŽ¯ Security Principles"]
+    subgraph Principles["🎯 Security Principles"]
         R1["Least Privilege<br/>Read-only by default"]
         R2["Defense in Depth<br/>No single point of failure"]
         R3["Secure by Default<br/>Conservative defaults"]
@@ -69,57 +69,57 @@ graph TD
 
 ```
 
-> **Diagram:** Security architecture layered from perimeter defense â†’ authentication â†’ authorization (Permission Engine with 4 axes) â†’ security controls â†’ audit/compliance. **Security principles** (least privilege, defense in depth, secure by default) are enforced at every layer.
+> **Diagram:** Security architecture layered from perimeter defense → authentication → authorization (Permission Engine with 4 axes) → security controls → audit/compliance. **Security principles** (least privilege, defense in depth, secure by default) are enforced at every layer.
 
 ## Security Principles
 
 | Principle | Implementation |
 |-----------|---------------|
 | Least privilege | Every connector starts read-only; write requires separate grant |
-| Defense in depth | Multiple security layers â€” no single point of failure |
+| Defense in depth | Multiple security layers — no single point of failure |
 | Zero trust | Every internal call authenticated and scoped |
-| Secure by default | Conservative defaults â€” suggest-mode, read-only connectors |
+| Secure by default | Conservative defaults — suggest-mode, read-only connectors |
 | Auditability | Every action logged, queryable, reversible |
 
 ## Common Mistakes
 
 | Mistake | Consequence |
 |---------|-------------|
-| Security controls that are implemented but not tested | A WAF rule or encryption policy that isn't tested in CI creates a false sense of security â€” every control should have an automated test that verifies it's active and effective |
-| Defense-in-depth layers that share the same vulnerability | If all security layers depend on the same auth provider being available, a single outage disables all controls â€” ensure that each layer of defense has independent failure modes |
-| Security architecture that scales poorly with user growth | A permission engine that checks every attribute for every request works at 100 users but may not at 100K â€” validate the architecture with load testing that simulates peak tenant count |
+| Security controls that are implemented but not tested | A WAF rule or encryption policy that isn't tested in CI creates a false sense of security — every control should have an automated test that verifies it's active and effective |
+| Defense-in-depth layers that share the same vulnerability | If all security layers depend on the same auth provider being available, a single outage disables all controls — ensure that each layer of defense has independent failure modes |
+| Security architecture that scales poorly with user growth | A permission engine that checks every attribute for every request works at 100 users but may not at 100K — validate the architecture with load testing that simulates peak tenant count |
 
 ## Best Practices
 
 | Practice | Why |
 |----------|-----|
-| Layer security controls with independent failure modes | Each layer (perimeter, auth, authorization, encryption, audit) should fail independently â€” if the permission engine is down, encryption and audit logging still protect data |
-| Test security controls in CI with automated assertions | Write integration tests that verify WAF rules are enforced, TLS is active, rate limits are applied, and permissions are checked â€” don't rely on manual verification |
-| Document the blast radius of each security control failure | For every control, document what happens if it fails â€” a rate limiter failure means degraded performance, but an auth failure means a data breach. Prioritize accordingly |
+| Layer security controls with independent failure modes | Each layer (perimeter, auth, authorization, encryption, audit) should fail independently — if the permission engine is down, encryption and audit logging still protect data |
+| Test security controls in CI with automated assertions | Write integration tests that verify WAF rules are enforced, TLS is active, rate limits are applied, and permissions are checked — don't rely on manual verification |
+| Document the blast radius of each security control failure | For every control, document what happens if it fails — a rate limiter failure means degraded performance, but an auth failure means a data breach. Prioritize accordingly |
 
 ## Performance
 
 | Concern | Mitigation |
 |---------|------------|
-| Multi-layer security check latency | Each request passes through perimeter, auth, permission, encryption, and audit layers â€” cumulative latency can exceed 100ms. Profile and optimize the slowest layers first |
-| Encryption overhead on database queries | TDE adds 5-15% CPU overhead on database operations â€” monitor encryption CPU usage and consider hardware-accelerated encryption (Intel AES-NI, cloud HSM) for production clusters |
-| Permission Engine becoming a bottleneck at scale | Checking every request against multiple attribute sources (auth provider, resource service, context) creates network waterfalls â€” cache resolved permissions per (user, resource type) for 5-15 minutes |
+| Multi-layer security check latency | Each request passes through perimeter, auth, permission, encryption, and audit layers — cumulative latency can exceed 100ms. Profile and optimize the slowest layers first |
+| Encryption overhead on database queries | TDE adds 5-15% CPU overhead on database operations — monitor encryption CPU usage and consider hardware-accelerated encryption (Intel AES-NI, cloud HSM) for production clusters |
+| Permission Engine becoming a bottleneck at scale | Checking every request against multiple attribute sources (auth provider, resource service, context) creates network waterfalls — cache resolved permissions per (user, resource type) for 5-15 minutes |
 
 ## Security Considerations
 
 | Concern | Mitigation |
 |---------|------------|
-| Single layer of security failing catastrophically | If the permission engine goes down and there's no fallback, all requests succeed or fail â€” layer independent controls so no single failure compromises the entire system |
-| Security testing gaps in CI | Security controls that aren't tested in CI will regress â€” add automated tests that verify WAF rules, auth, permissions, encryption, and audit on every PR |
-| Undocumented blast radius of control failures | If a rate limiter fails, what happens? Without documented blast radius, engineers make wrong assumptions during incidents â€” document what each control protects and what fails open vs. closed |
+| Single layer of security failing catastrophically | If the permission engine goes down and there's no fallback, all requests succeed or fail — layer independent controls so no single failure compromises the entire system |
+| Security testing gaps in CI | Security controls that aren't tested in CI will regress — add automated tests that verify WAF rules, auth, permissions, encryption, and audit on every PR |
+| Undocumented blast radius of control failures | If a rate limiter fails, what happens? Without documented blast radius, engineers make wrong assumptions during incidents — document what each control protects and what fails open vs. closed |
 
 ## Performance Considerations
 
 | Concern | Approach |
 |---------|----------|
-| Multi-layer security check latency | Each request passes through perimeter, auth, permission, encryption, and audit layers â€” cumulative latency can exceed 100ms. Profile and optimize the slowest layers first |
-| Encryption overhead on database queries | TDE adds 5-15% CPU overhead on database operations â€” monitor encryption CPU usage and consider hardware-accelerated encryption (Intel AES-NI, cloud HSM) for production clusters |
-| Permission Engine becoming a bottleneck at scale | Checking every request against multiple attribute sources (auth provider, resource service, context) creates network waterfalls â€” cache resolved permissions per (user, resource type) for 5-15 minutes |
+| Multi-layer security check latency | Each request passes through perimeter, auth, permission, encryption, and audit layers — cumulative latency can exceed 100ms. Profile and optimize the slowest layers first |
+| Encryption overhead on database queries | TDE adds 5-15% CPU overhead on database operations — monitor encryption CPU usage and consider hardware-accelerated encryption (Intel AES-NI, cloud HSM) for production clusters |
+| Permission Engine becoming a bottleneck at scale | Checking every request against multiple attribute sources (auth provider, resource service, context) creates network waterfalls — cache resolved permissions per (user, resource type) for 5-15 minutes |
 
 ## Goals
 
@@ -144,7 +144,7 @@ graph TD
 **Out of Scope:**
 
 - On-premise hardware security modules (HSM)
-- Network-level segmentation (VPC peering, private subnets â€” managed by cloud provider)
+- Network-level segmentation (VPC peering, private subnets — managed by cloud provider)
 - Physical security of data centers (managed by cloud provider)
 - Third-party vendor security assessments
 - Bug bounty program management
@@ -186,11 +186,11 @@ graph TD
 
 ## Data Flow
 
-1. **Request Arrival** â€” External request hits edge layer; WAF inspects for common attack patterns, TLS 1.3 terminates at the load balancer, CORS and CSP headers are validated
-2. **Authentication** â€” Request reaches auth layer; Clerk/Auth0 validates JWT (signature, expiry, issuer), checks MFA status for enterprise users, and extracts user_id and workspace_id claims
-3. **Authorization** â€” Permission Engine evaluates the 4-axis check: which connector is targeted, what action type (read/write/act), which agent is requesting, and which workspace is accessed; resolves against stored permission grants
-4. **Encryption and Storage** â€” Data at rest is AES-256 encrypted; database uses TDE with automatic key rotation; object storage uses server-side encryption (S3 SSE-S3 or R2)
-5. **Audit Logging** â€” Every permission decision and action is written to the append-only audit log with timestamp, actor_id, action_type, resource_id, workspace_id, and outcome; log is tamper-evident through hash chaining
+1. **Request Arrival** — External request hits edge layer; WAF inspects for common attack patterns, TLS 1.3 terminates at the load balancer, CORS and CSP headers are validated
+2. **Authentication** — Request reaches auth layer; Clerk/Auth0 validates JWT (signature, expiry, issuer), checks MFA status for enterprise users, and extracts user_id and workspace_id claims
+3. **Authorization** — Permission Engine evaluates the 4-axis check: which connector is targeted, what action type (read/write/act), which agent is requesting, and which workspace is accessed; resolves against stored permission grants
+4. **Encryption and Storage** — Data at rest is AES-256 encrypted; database uses TDE with automatic key rotation; object storage uses server-side encryption (S3 SSE-S3 or R2)
+5. **Audit Logging** — Every permission decision and action is written to the append-only audit log with timestamp, actor_id, action_type, resource_id, workspace_id, and outcome; log is tamper-evident through hash chaining
 
 ## Scalability
 
@@ -327,7 +327,7 @@ Layers:
 ### Example 2: Security Group Rules
 
 ```hcl
-# TLS termination â†’ service communication only
+# TLS termination → service communication only
 resource "aws_security_group" "api_service" {
   name        = "Vaeloom-api-${var.environment}"
   description = "Security group for Vaeloom API service"
@@ -391,7 +391,7 @@ sequenceDiagram
     WAF-->>USER: Encrypted response
 ```
 
-> **Diagram:** Defense in depth â€” every request passes through WAF (rate limiting + threat detection), ALB (TLS termination), API (JWT verification + ABAC + parameterized queries), database (row-level security). Each layer provides overlapping protection.
+> **Diagram:** Defense in depth — every request passes through WAF (rate limiting + threat detection), ALB (TLS termination), API (JWT verification + ABAC + parameterized queries), database (row-level security). Each layer provides overlapping protection.
 
 ---
 
@@ -410,4 +410,4 @@ sequenceDiagram
 - [Encryption.md](./Encryption.md)
 - [Secrets.md](./Secrets.md)
 - [IAM.md](./IAM.md)
-- [`/Docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance`](../../Docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance)
+- [`/docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance`](../../docs/06-Vaeloom-Enterprise-Paper.md#19-security--compliance)
