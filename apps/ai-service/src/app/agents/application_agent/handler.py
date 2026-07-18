@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from app.orchestrator.base import BaseAgent, MemoryScopes, Tool
+from app.services.llm_service import llm_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +17,8 @@ class ApplicationPackage(BaseModel):
     job_id: str
     tailored_resume_id: Optional[str] = None
     cover_letter: str
-    deep_link: Optional[str] = None  # When no API exists
-    status: str = "drafted"  # drafted -> approved -> submitted -> tracking
+    deep_link: Optional[str] = None
+    status: str = "drafted"
 
 
 class ApplicationAgent(BaseAgent):
@@ -51,11 +53,7 @@ class ApplicationAgent(BaseAgent):
         user_profile: Dict[str, Any],
         has_approval: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Prepare an application package. NEVER submits without approval.
-        """
-        # Generate tailored cover letter from profile + job
-        cover_letter = self._generate_cover_letter(job, user_profile)
+        cover_letter = await self._generate_cover_letter(job, user_profile)
         deep_link = job.get("apply_url", f"https://example.com/apply/{job.get('id', '')}")
 
         package = ApplicationPackage(
@@ -66,9 +64,8 @@ class ApplicationAgent(BaseAgent):
         )
 
         if has_approval:
-            # User has explicitly approved — mark as submitted
             package.status = "submitted"
-            logger.info(f"Application SUBMITTED for job {package.job_id} (user approved)")
+            logger.info(f"Application SUBMITTED for job {package.job_id}")
             return {
                 "agent_name": "application",
                 "action": "execute",
@@ -81,8 +78,6 @@ class ApplicationAgent(BaseAgent):
                 },
             }
 
-        # No approval — request it (never auto-submit)
-        logger.info(f"Application DRAFTED for job {package.job_id} — awaiting approval")
         return {
             "agent_name": "application",
             "action": "request_approval",
@@ -95,15 +90,31 @@ class ApplicationAgent(BaseAgent):
             },
         }
 
-    def _generate_cover_letter(
+    async def _generate_cover_letter(
         self, job: Dict[str, Any], profile: Dict[str, Any]
     ) -> str:
-        """Generate a tailored cover letter. Real impl uses LLM."""
         name = profile.get("name", "the applicant")
         title = job.get("title", "the role")
         company = job.get("company", "the company")
         skills = profile.get("skills", [])
 
+        if not settings.llm_api_key:
+            return self._template_cover_letter(name, title, company, skills)
+
+        try:
+            response = await llm_service.generate_completion([
+                {"role": "system", "content": "You are a professional cover letter writer. Write a concise, tailored cover letter (2-3 paragraphs) for a job application. Be specific and professional. Sign with the applicant's name."},
+                {"role": "user", "content": f"Applicant: {name}\nJob Title: {title}\nCompany: {company}\nKey Skills: {', '.join(skills)}\n\nWrite a tailored cover letter:"},
+            ], temperature=0.7, max_tokens=500)
+            text = response["content"].strip()
+            if text:
+                return text
+        except Exception as e:
+            logger.warning(f"LLM cover letter generation failed: {e}")
+
+        return self._template_cover_letter(name, title, company, skills)
+
+    def _template_cover_letter(self, name: str, title: str, company: str, skills: List[str]) -> str:
         skill_text = ", ".join(skills[:3]) if skills else "relevant skills"
         return (
             f"Dear Hiring Manager,\n\n"

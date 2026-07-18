@@ -3,11 +3,14 @@ Gmail Agent — classify email, extract deadlines, draft responses.
 NEVER sends email without user approval. Draft-only policy.
 Supports both scheduled (6 AM daily) and push-triggered paths.
 """
+import json
 import logging
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from app.orchestrator.base import BaseAgent, MemoryScopes, Tool
+from app.services.llm_service import llm_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +19,9 @@ class ClassifiedEmail(BaseModel):
     email_id: str
     subject: str
     sender: str
-    classification: str  # urgent | important | informational | low_priority
+    classification: str
     extracted_deadline: Optional[str] = None
-    is_high_priority: bool = False  # interview, deadline-today
+    is_high_priority: bool = False
 
 
 class GmailAgent(BaseAgent):
@@ -49,23 +52,17 @@ class GmailAgent(BaseAgent):
     async def classify_emails(
         self, emails: List[Dict[str, Any]], trigger: str = "scheduled"
     ) -> Dict[str, Any]:
-        """
-        Classify a batch of emails. Supports both 'scheduled' and 'push' triggers.
-        Push-triggered path fires immediately on high-priority items.
-        """
         classified: List[ClassifiedEmail] = []
         high_priority: List[ClassifiedEmail] = []
 
         for email in emails:
-            classification = self._classify(email)
-            deadline = self._extract_deadline(email)
+            classification = await self._classify(email)
             is_hp = classification.classification in ("urgent",) or classification.is_high_priority
 
             classified.append(classification)
             if is_hp:
                 high_priority.append(classification)
 
-        # If push-triggered and we found high-priority items, flag them immediately
         if trigger == "push" and high_priority:
             logger.info(f"PUSH TRIGGER: {len(high_priority)} high-priority emails detected")
             return {
@@ -73,7 +70,7 @@ class GmailAgent(BaseAgent):
                 "action": "suggest",
                 "confidence": 0.95,
                 "result": {
-                    "summary": f"🚨 {len(high_priority)} high-priority email(s) detected!",
+                    "summary": f"{len(high_priority)} high-priority email(s) detected!",
                     "details": [e.model_dump() for e in high_priority],
                     "proposals": [],
                     "questions": [],
@@ -94,8 +91,30 @@ class GmailAgent(BaseAgent):
             "metadata": {"trigger": trigger},
         }
 
-    def _classify(self, email: Dict[str, Any]) -> ClassifiedEmail:
-        """Classify a single email."""
+    async def _classify(self, email: Dict[str, Any]) -> ClassifiedEmail:
+        if not settings.llm_api_key:
+            return self._keyword_classify(email)
+        try:
+            response = await llm_service.generate_completion([
+                {"role": "system", "content": "You are an email classification assistant. Classify the email and extract any deadlines. Return ONLY valid JSON: {\"classification\": \"urgent\"|\"important\"|\"informational\"|\"low_priority\", \"is_high_priority\": bool, \"deadline\": \"description or null\"}"},
+                {"role": "user", "content": f"Subject: {email.get('subject', '')}\nFrom: {email.get('sender', '')}\nBody: {email.get('body', '')}"},
+            ], temperature=0.3, max_tokens=200)
+            text = response["content"].strip()
+            text = text.replace("```json", "").replace("```", "").strip()
+            data = json.loads(text)
+            return ClassifiedEmail(
+                email_id=email.get("id", "unknown"),
+                subject=email.get("subject", ""),
+                sender=email.get("sender", ""),
+                classification=data.get("classification", "informational"),
+                extracted_deadline=data.get("deadline"),
+                is_high_priority=data.get("is_high_priority", False),
+            )
+        except Exception as e:
+            logger.warning(f"LLM classification failed, falling back to keyword: {e}")
+            return self._keyword_classify(email)
+
+    def _keyword_classify(self, email: Dict[str, Any]) -> ClassifiedEmail:
         subject = email.get("subject", "").lower()
         body = email.get("body", "").lower()
         combined = f"{subject} {body}"
@@ -111,7 +130,7 @@ class GmailAgent(BaseAgent):
         else:
             classification = "informational"
 
-        deadline = self._extract_deadline(email)
+        deadline = self._extract_deadline_keyword(email)
 
         return ClassifiedEmail(
             email_id=email.get("id", "unknown"),
@@ -122,8 +141,7 @@ class GmailAgent(BaseAgent):
             is_high_priority=is_high_priority,
         )
 
-    def _extract_deadline(self, email: Dict[str, Any]) -> Optional[str]:
-        """Extract deadline from email content. Real impl uses NLP/LLM."""
+    def _extract_deadline_keyword(self, email: Dict[str, Any]) -> Optional[str]:
         body = email.get("body", "").lower()
         if "tomorrow" in body:
             return "tomorrow"

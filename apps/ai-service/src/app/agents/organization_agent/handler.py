@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from app.orchestrator.base import BaseAgent, MemoryScopes, Tool
+from app.services.llm_service import llm_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ class RenameProposal(BaseModel):
     suggested_name: str
     suggested_folder: str
     confidence: float
-    is_version_of: Optional[str] = None  # document_id of the parent version
+    is_version_of: Optional[str] = None
 
 
 class OrganizationAgent(BaseAgent):
@@ -49,15 +51,10 @@ class OrganizationAgent(BaseAgent):
         }
 
     async def execute(self, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        Process a list of documents and generate rename/categorize proposals.
-        Never auto-applies — all proposals require user approval.
-        """
         proposals = []
         for doc in documents:
-            category = self._classify_document(doc.get("filename", ""))
+            category, confidence = await self._classify_document(doc.get("filename", ""))
             new_name = self._suggest_filename(doc.get("filename", ""), category)
-            confidence = 0.9 if category != "uncategorized" else 0.5
 
             version_parent = self._detect_version_chain(
                 doc.get("filename", ""), documents
@@ -73,7 +70,6 @@ class OrganizationAgent(BaseAgent):
             )
             proposals.append(proposal)
 
-        # If any proposal has low confidence, ask instead of guessing
         low_confidence = [p for p in proposals if p.confidence < 0.8]
         if low_confidence:
             return {
@@ -103,8 +99,33 @@ class OrganizationAgent(BaseAgent):
             },
         }
 
-    def _classify_document(self, filename: str) -> str:
-        """Simple rule-based classification. Real impl uses LLM."""
+    async def _classify_document(self, filename: str) -> tuple[str, float]:
+        category = self._regex_classify(filename)
+        if category != "uncategorized":
+            return category, 0.9
+
+        if not settings.llm_api_key:
+            return "uncategorized", 0.5
+
+        try:
+            response = await llm_service.generate_completion([
+                {"role": "system", "content": "Categorize this document filename into exactly one of: Resumes, Transcripts, Certificates, Cover Letters, Projects, uncategorized. Return ONLY valid JSON: {\"category\": \"...\", \"confidence\": 0.0-1.0}. Be conservative — use 'uncategorized' if unsure."},
+                {"role": "user", "content": filename},
+            ], temperature=0.3, max_tokens=100)
+            text = response["content"].strip()
+            text = text.replace("```json", "").replace("```", "").strip()
+            import json
+            data = json.loads(text)
+            cat = data.get("category", "uncategorized")
+            conf = data.get("confidence", 0.5)
+            if cat in ("Resumes", "Transcripts", "Certificates", "Cover Letters", "Projects"):
+                return cat, conf
+            return "uncategorized", conf * 0.8
+        except Exception as e:
+            logger.warning(f"LLM document classification failed: {e}")
+            return "uncategorized", 0.5
+
+    def _regex_classify(self, filename: str) -> str:
         lower = filename.lower()
         if "resume" in lower or "cv" in lower:
             return "Resumes"
@@ -119,8 +140,6 @@ class OrganizationAgent(BaseAgent):
         return "uncategorized"
 
     def _suggest_filename(self, filename: str, category: str) -> str:
-        """Suggest a clean filename."""
-        # Strip version suffixes like _v2, _final, _FINAL
         cleaned = re.sub(r"[_-]?(v\d+|final|draft|copy|new)(?=[_\-\.]|$)", "", filename, flags=re.IGNORECASE)
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
         return cleaned or filename
@@ -128,10 +147,6 @@ class OrganizationAgent(BaseAgent):
     def _detect_version_chain(
         self, filename: str, all_docs: List[Dict[str, Any]]
     ) -> Optional[str]:
-        """
-        Detect if this file is a version of another file.
-        e.g., Resume_v2_final_FINAL.pdf -> version of Resume.pdf
-        """
         base = re.sub(
             r"[_-]?(v\d+|final|draft|copy|new|FINAL)(?=[_\-\.]|$)", "", filename, flags=re.IGNORECASE
         )

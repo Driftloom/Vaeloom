@@ -2,12 +2,15 @@
 Scheduler Agent — maintain deadlines, detect conflicts, manage schedule.
 Full autonomy for reminders (notify-only); suggest-only for adding/editing events.
 """
+import json
 import logging
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
 from app.orchestrator.base import BaseAgent, MemoryScopes, Tool
+from app.services.llm_service import llm_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,7 @@ class ScheduleEvent(BaseModel):
     title: str
     start_time: str
     end_time: Optional[str] = None
-    source: str  # gmail | manual | application
+    source: str
     has_conflict: bool = False
     conflict_with: Optional[str] = None
 
@@ -34,7 +37,7 @@ class SchedulerAgent(BaseAgent):
         read_types=["schedule_events", "timeline", "deadlines"],
         write_types=["timeline"],
     )
-    default_autonomy = "full"  # For reminders only; suggest for edits
+    default_autonomy = "full"
 
     async def fallback(self) -> Any:
         return {
@@ -52,7 +55,6 @@ class SchedulerAgent(BaseAgent):
     async def check_conflicts(
         self, events: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Check for scheduling conflicts across all event sources."""
         parsed_events = [
             ScheduleEvent(
                 event_id=e.get("id", f"evt_{i}"),
@@ -64,11 +66,10 @@ class SchedulerAgent(BaseAgent):
             for i, e in enumerate(events)
         ]
 
-        # Detect conflicts (simplified: check for same-time events)
         conflicts_found = []
         for i, evt_a in enumerate(parsed_events):
             for evt_b in parsed_events[i + 1:]:
-                if self._times_overlap(evt_a, evt_b):
+                if await self._times_overlap(evt_a, evt_b):
                     evt_a.has_conflict = True
                     evt_a.conflict_with = evt_b.event_id
                     evt_b.has_conflict = True
@@ -76,18 +77,19 @@ class SchedulerAgent(BaseAgent):
                     conflicts_found.append((evt_a.title, evt_b.title))
 
         if conflicts_found:
+            conflict_details = []
+            for a_title, b_title in conflicts_found:
+                conflict_details.append(f"'{a_title}' conflicts with '{b_title}' — which takes priority?")
+
             return {
                 "agent_name": "scheduler",
                 "action": "suggest",
                 "confidence": 0.9,
                 "result": {
-                    "summary": f"⚠️ {len(conflicts_found)} scheduling conflict(s) detected!",
+                    "summary": f"{len(conflicts_found)} scheduling conflict(s) detected!",
                     "details": [e.model_dump() for e in parsed_events],
                     "proposals": [],
-                    "questions": [
-                        f"'{a}' conflicts with '{b}' — which takes priority?"
-                        for a, b in conflicts_found
-                    ],
+                    "questions": conflict_details,
                 },
             }
 
@@ -104,14 +106,10 @@ class SchedulerAgent(BaseAgent):
         }
 
     async def send_reminder(self, event: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Send a reminder notification. This is the ONLY action with full autonomy.
-        Notify-only actions are safe to automate.
-        """
-        logger.info(f"REMINDER (full autonomy): {event.get('title', 'Event')}")
+        logger.info(f"REMINDER: {event.get('title', 'Event')}")
         return {
             "agent_name": "scheduler",
-            "action": "execute",  # Full autonomy for reminders
+            "action": "execute",
             "confidence": 1.0,
             "result": {
                 "summary": f"Reminder sent for: {event.get('title', 'Event')}",
@@ -121,7 +119,21 @@ class SchedulerAgent(BaseAgent):
             },
         }
 
-    def _times_overlap(self, a: ScheduleEvent, b: ScheduleEvent) -> bool:
-        """Check if two events overlap. Simplified comparison."""
-        # In a real impl, parse ISO timestamps and compare ranges
+    async def _times_overlap(self, a: ScheduleEvent, b: ScheduleEvent) -> bool:
+        if not a.start_time or not b.start_time:
+            return False
+
+        if settings.llm_api_key:
+            try:
+                response = await llm_service.generate_completion([
+                    {"role": "system", "content": "Determine if two scheduled events overlap in time. Return ONLY valid JSON: {\"overlap\": bool, \"reason\": \"...\"}. Consider that events with no end_time are 1 hour long."},
+                    {"role": "user", "content": f"Event A: '{a.title}' starts at {a.start_time}, ends at {a.end_time or 'not specified'}\nEvent B: '{b.title}' starts at {b.start_time}, ends at {b.end_time or 'not specified'}."},
+                ], temperature=0.1, max_tokens=150)
+                text = response["content"].strip()
+                text = text.replace("```json", "").replace("```", "").strip()
+                data = json.loads(text)
+                return data.get("overlap", False)
+            except Exception as e:
+                logger.warning(f"LLM conflict check failed, using simple check: {e}")
+
         return a.start_time == b.start_time and a.start_time != ""

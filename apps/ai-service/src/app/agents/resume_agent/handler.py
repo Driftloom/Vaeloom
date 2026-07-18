@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from app.orchestrator.base import BaseAgent, MemoryScopes, Tool
+from app.services.llm_service import llm_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +17,11 @@ class ResumeBullet(BaseModel):
     text: str
     source_document_id: Optional[str] = None
     is_inferred: bool = False
-    format: str = "xyz"  # XYZ format: Accomplished X, measured by Y, by doing Z
+    format: str = "xyz"
 
 
 class ResumeVariant(BaseModel):
-    variant_type: str  # master | ats | role_specific
+    variant_type: str
     sections: Dict[str, List[ResumeBullet]]
 
 
@@ -54,13 +56,9 @@ class ResumeAgent(BaseAgent):
         variant_type: str = "master",
         target_jd: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Generate or update a resume variant from the user's profile memory.
-        """
         missing_fields = self._check_missing_fields(profile)
 
         if missing_fields:
-            # Ask rather than guess — this is the key safety property
             return {
                 "agent_name": "resume",
                 "action": "ask_clarification",
@@ -75,8 +73,7 @@ class ResumeAgent(BaseAgent):
                 },
             }
 
-        # Generate resume sections from profile
-        sections = self._build_sections(profile, variant_type, target_jd)
+        sections = await self._build_sections(profile, variant_type, target_jd)
 
         return {
             "agent_name": "resume",
@@ -96,20 +93,17 @@ class ResumeAgent(BaseAgent):
         }
 
     def _check_missing_fields(self, profile: Dict[str, Any]) -> List[str]:
-        """Check for expected fields and return those that are missing."""
         expected = ["name", "email", "education", "experience"]
         return [f for f in expected if f not in profile]
 
-    def _build_sections(
+    async def _build_sections(
         self,
         profile: Dict[str, Any],
         variant_type: str,
         target_jd: Optional[str],
     ) -> Dict[str, List[ResumeBullet]]:
-        """Build resume sections from profile data."""
         sections: Dict[str, List[ResumeBullet]] = {}
 
-        # Education section
         education = profile.get("education", [])
         if isinstance(education, list):
             sections["education"] = [
@@ -121,7 +115,6 @@ class ResumeAgent(BaseAgent):
                 for e in education
             ]
 
-        # Experience section with XYZ format
         experience = profile.get("experience", [])
         if isinstance(experience, list):
             bullets = []
@@ -130,15 +123,15 @@ class ResumeAgent(BaseAgent):
                 company = exp.get("company", "Company")
                 achievements = exp.get("achievements", [])
                 for ach in achievements:
+                    text = await self._llm_generate_bullet(ach, role, company)
                     bullet = ResumeBullet(
-                        text=f"{ach} at {company} as {role}",
+                        text=text,
                         source_document_id=exp.get("source_doc_id"),
                         is_inferred="[inferred]" in str(ach),
                     )
                     bullets.append(bullet)
             sections["experience"] = bullets
 
-        # Skills section
         skills = profile.get("skills", [])
         if isinstance(skills, list):
             sections["skills"] = [
@@ -146,3 +139,16 @@ class ResumeAgent(BaseAgent):
             ]
 
         return sections
+
+    async def _llm_generate_bullet(self, achievement: str, role: str, company: str) -> str:
+        if not settings.llm_api_key:
+            return f"{achievement} at {company} as {role}"
+        try:
+            response = await llm_service.generate_completion([
+                {"role": "system", "content": "You are a resume writing expert. Generate a concise, professional XYZ-format resume bullet point (Accomplished X by doing Y, resulting in Z). Return ONLY the bullet text, no explanations or labels."},
+                {"role": "user", "content": f"Achievement: {achievement}\nRole: {role}\nCompany: {company}"},
+            ], temperature=0.7, max_tokens=150)
+            return response["content"].strip()
+        except Exception as e:
+            logger.warning(f"LLM bullet generation failed: {e}")
+            return f"{achievement} at {company} as {role}"

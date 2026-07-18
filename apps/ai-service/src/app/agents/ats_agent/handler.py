@@ -7,12 +7,14 @@ from typing import Any, Dict, List
 from pydantic import BaseModel
 
 from app.orchestrator.base import BaseAgent, MemoryScopes, Tool
+from app.services.llm_service import llm_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class ATSResult(BaseModel):
-    overall_score: float  # 0.0 - 1.0
+    overall_score: float
     keyword_match_pct: float
     format_compliance_pct: float
     matched_keywords: List[str]
@@ -27,7 +29,7 @@ class ATSAgent(BaseAgent):
     ]
     memory_scopes = MemoryScopes(
         read_types=["career", "skills"],
-        write_types=[],  # Read-only agent — no writes
+        write_types=[],
     )
     default_autonomy = "read_only"
 
@@ -47,13 +49,52 @@ class ATSAgent(BaseAgent):
     async def score(
         self, resume_text: str, job_description: str
     ) -> Dict[str, Any]:
-        """Score a resume against a job description."""
         if not resume_text or not job_description:
             return await self.fallback()
 
-        # Extract keywords from JD
-        jd_keywords = self._extract_keywords(job_description)
-        resume_keywords = self._extract_keywords(resume_text)
+        if settings.llm_api_key:
+            return await self._llm_score(resume_text, job_description)
+
+        return self._keyword_score(resume_text, job_description)
+
+    async def _llm_score(self, resume_text: str, job_description: str) -> Dict[str, Any]:
+        try:
+            response = await llm_service.generate_completion([
+                {"role": "system", "content": "You are an ATS (Applicant Tracking System) scoring expert. Analyze the resume against the job description. Return ONLY valid JSON with these exact keys: overall_score (0.0-1.0), keyword_match_pct (0-100), format_compliance_pct (0-100), matched_keywords (list), missing_keywords (list), recommendations (list of strings). Be thorough and accurate."},
+                {"role": "user", "content": f"RESUME:\n{resume_text}\n\nJOB DESCRIPTION:\n{job_description}"},
+            ], temperature=0.3, max_tokens=500)
+            text = response["content"].strip()
+            text = text.replace("```json", "").replace("```", "").strip()
+            import json
+            data = json.loads(text)
+
+            result = ATSResult(
+                overall_score=round(data.get("overall_score", 0.5), 2),
+                keyword_match_pct=round(data.get("keyword_match_pct", 50.0), 1),
+                format_compliance_pct=round(data.get("format_compliance_pct", 50.0), 1),
+                matched_keywords=data.get("matched_keywords", []),
+                missing_keywords=data.get("missing_keywords", []),
+                recommendations=data.get("recommendations", []),
+            )
+
+            return {
+                "agent_name": "ats",
+                "action": "suggest",
+                "confidence": 0.9,
+                "result": {
+                    "summary": f"ATS Score: {result.overall_score * 100:.0f}% — {len(result.matched_keywords)}/{len(result.matched_keywords) + len(result.missing_keywords)} keywords matched." if result.matched_keywords or result.missing_keywords else f"ATS Score: {result.overall_score * 100:.0f}%",
+                    "details": result.model_dump(),
+                    "proposals": [],
+                    "questions": [],
+                },
+            }
+        except Exception as e:
+            logger.warning(f"LLM scoring failed, falling back to keyword scoring: {e}")
+            return self._keyword_score(resume_text, job_description)
+
+    def _keyword_score(self, resume_text: str, job_description: str) -> Dict[str, Any]:
+        jd_keywords = self._extract_keywords_keyword(job_description)
+        resume_keywords = self._extract_keywords_keyword(resume_text)
 
         matched = [k for k in jd_keywords if k in resume_keywords]
         missing = [k for k in jd_keywords if k not in resume_keywords]
@@ -89,8 +130,7 @@ class ATSAgent(BaseAgent):
             },
         }
 
-    def _extract_keywords(self, text: str) -> List[str]:
-        """Simple keyword extraction. Real impl uses NLP/LLM."""
+    def _extract_keywords_keyword(self, text: str) -> List[str]:
         common_skills = [
             "python", "javascript", "typescript", "react", "node",
             "sql", "aws", "docker", "kubernetes", "git",
@@ -101,10 +141,8 @@ class ATSAgent(BaseAgent):
         return [k for k in common_skills if k in text_lower]
 
     def _check_format_compliance(self, resume_text: str) -> float:
-        """Check if resume uses ATS-friendly formatting."""
         score = 1.0
         text_lower = resume_text.lower()
-        # Check for standard section headers
         standard_headers = ["experience", "education", "skills"]
         found = sum(1 for h in standard_headers if h in text_lower)
         score = found / len(standard_headers)
