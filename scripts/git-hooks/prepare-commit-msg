@@ -1,0 +1,6 @@
+#!/bin/bash
+# Add branch name to commit messages
+BRANCH_NAME=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ -n "$BRANCH_NAME" ]; then
+  sed -i "1s/^/[$BRANCH_NAME] /" "$1"
+fi
