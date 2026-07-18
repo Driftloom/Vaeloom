@@ -13,12 +13,77 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+.next/
+build/
+.out/
+.turbo/
+
+# Nx
+.nx/
+
+# IDE
+.vscode/
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
 # OS
 .DS_Store
 Thumbs.db
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
+# Environment and Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+infra/kubernetes/secrets/*.yaml
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+
+# Husky internal auto-managed hooks
+.husky/_
+
+# AI session artifacts
+.qoder/
+.zcode/
+
+# Python build artifacts
+*.egg-info/
+*.whl
+*.egg
+
+# Coverage
+.nyc_output/
+
+# Build artifacts
+*.tar.gz
+*.tgz
+*.nupkg
+*.gem
+
+# Crash logs
+crash-*.log
+*.stackdump
+
+# Misc
+*.tsbuildinfo
+.eslintcache
