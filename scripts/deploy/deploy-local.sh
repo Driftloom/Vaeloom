@@ -27,5 +27,5 @@ pnpm dev &
 
 echo "✅ Local deployment complete"
 echo "   Web: http://localhost:3000"
-echo "   API: http://localhost:4000"
+echo "   API: http://localhost:8000"
 echo "   AI:  http://localhost:8000"
