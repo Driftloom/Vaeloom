@@ -70,9 +70,13 @@ function OrgTreeNode({ node, depth = 0 }: { node: OrgNode; depth?: number }) {
   return (
     <div>
       <div
-        className="flex items-center gap-2 py-2 px-2 rounded hover:bg-surface-hover cursor-pointer transition-colors"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        className="flex items-center gap-2 py-2 px-2 rounded hover:bg-surface-hover cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
         onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded); } }}
       >
         {hasChildren && (
           <svg className={`w-4 h-4 text-text-muted transition-transform ${expanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">

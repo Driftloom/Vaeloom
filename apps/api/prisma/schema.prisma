@@ -656,3 +656,24 @@ model Integration {
   @@unique([userId, provider])
   @@map("integrations")
 }
+
+// ─── Notifications ───
+
+model Notification {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid @map("workspace_id")
+  type        String
+  title       String
+  message     String?  @db.Text
+  priority    String   @default("medium")
+  read        Boolean  @default(false)
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, read])
+  @@index([workspaceId, type])
+  @@map("notifications")
+}

@@ -40,17 +40,17 @@ export default function ApplicationsPage() {
       <div className="flex gap-4 overflow-x-auto pb-4 flex-1">
         {columns.map(col => (
           <div key={col.id} className="flex-shrink-0 w-80 flex flex-col bg-surface-hover/50 rounded-lg p-4 border border-border">
-            <h3 className="font-display font-medium text-text mb-4 flex justify-between">
+            <h2 className="font-display font-medium text-text mb-4 flex justify-between text-lg">
               {col.title}
               <span className="text-text-muted font-mono text-sm bg-surface px-2 py-0.5 rounded">
                 {applications.filter(a => a.status === col.id).length}
               </span>
-            </h3>
+            </h2>
             
             <div className="flex-1 space-y-3 overflow-y-auto">
               {applications.filter(a => a.status === col.id).map(app => (
                 <div key={app.id} className="card hover:border-primary/50 transition-colors cursor-pointer">
-                  <h4 className="font-medium text-text">{app.title}</h4>
+                  <h3 className="font-medium text-text">{app.title}</h3>
                   <p className="text-sm text-text-muted mt-1">{app.company}</p>
                 </div>
               ))}

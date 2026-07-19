@@ -43,10 +43,13 @@ export class ApplicationsService {
   }
 
   async updateOutcome(workspaceId: string, applicationId: string, status: any): Promise<any> {
-    const app = await this.findOne(workspaceId, applicationId);
-    return this.prisma.application.update({
-      where: { id: app.id },
+    const app = await this.prisma.application.update({
+      where: { id: applicationId, workspaceId },
       data: { status },
     });
+    if (!app) {
+      throw new NotFoundException(`Application ${applicationId} not found`);
+    }
+    return app;
   }
 }

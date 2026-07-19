@@ -92,6 +92,7 @@ export default function FeatureFlagsPage() {
                       <span className="text-xs text-text-muted w-32">Rollout: {flag.rolloutPercentage}%</span>
                       <input
                         type="range"
+                        aria-label={`Rollout percentage for ${flag.name}`}
                         min="0"
                         max="100"
                         value={flag.rolloutPercentage}
@@ -116,14 +117,14 @@ export default function FeatureFlagsPage() {
             <div className="space-y-1">
               <label className="block text-sm font-medium text-text">Variants</label>
               <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <Input placeholder="Variant A label" className="flex-1" />
-                  <input type="number" min={0} max={100} className="w-20 bg-background border border-border rounded-md px-3 py-2 text-sm text-text" placeholder="50%" />
-                </div>
-                <div className="flex items-center gap-3">
-                  <Input placeholder="Variant B label" className="flex-1" />
-                  <input type="number" min={0} max={100} className="w-20 bg-background border border-border rounded-md px-3 py-2 text-sm text-text" placeholder="50%" />
-                </div>
+                  <div className="flex items-center gap-3">
+                    <Input placeholder="Variant A label" aria-label="Variant A label" className="flex-1" />
+                    <input type="number" aria-label="Variant A percentage" min={0} max={100} className="w-20 bg-background border border-border rounded-md px-3 py-2 text-sm text-text" placeholder="50%" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Input placeholder="Variant B label" aria-label="Variant B label" className="flex-1" />
+                    <input type="number" aria-label="Variant B percentage" min={0} max={100} className="w-20 bg-background border border-border rounded-md px-3 py-2 text-sm text-text" placeholder="50%" />
+                  </div>
               </div>
             </div>
             <Button>Create Test</Button>

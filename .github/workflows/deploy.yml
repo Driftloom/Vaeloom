@@ -136,7 +136,7 @@ jobs:
       - name: Run k6 smoke test
         uses: grafana/k6-action@v0.3.1
         with:
-          filename: testing/k6/smoke-test.js
+          filename: testing/performance/k6-script.js
           flags: --vus 10 --duration 30s
       - name: Check thresholds
         run: |

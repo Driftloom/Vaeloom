@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Workspace } from '@vaeloom/shared-types';
 
 import type { Workspace as PrismaWorkspace } from '../generated/prisma';
@@ -39,6 +39,26 @@ export class WorkspacesService {
       where: { id, userId },
     });
     return row ? this.toDto(row) : null;
+  }
+
+  async update(id: string, userId: string, data: { name?: string; description?: string }): Promise<Workspace> {
+    const row = await this.prisma.workspace.findFirst({
+      where: { id, userId },
+    });
+    if (!row) throw new NotFoundException('Workspace not found');
+    const updated = await this.prisma.workspace.update({
+      where: { id },
+      data: { name: data.name, description: data.description },
+    });
+    return this.toDto(updated);
+  }
+
+  async delete(id: string, userId: string): Promise<void> {
+    const row = await this.prisma.workspace.findFirst({
+      where: { id, userId },
+    });
+    if (!row) throw new NotFoundException('Workspace not found');
+    await this.prisma.workspace.delete({ where: { id } });
   }
 
   private toDto(w: PrismaWorkspace): Workspace {

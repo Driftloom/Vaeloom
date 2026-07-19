@@ -45,6 +45,15 @@ export const logConfig = registerAs('log', () => ({
   format: process.env.LOG_FORMAT ?? 'json',
 }));
 
+export const storageConfig = registerAs('storage', () => ({
+  endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:9000',
+  region: process.env.S3_REGION ?? 'us-east-1',
+  accessKey: process.env.S3_ACCESS_KEY ?? 'vaeloom',
+  secretKey: process.env.S3_SECRET_KEY ?? 'vaeloom_dev_minio',
+  bucket: process.env.S3_BUCKET ?? 'vaeloom-storage',
+  forcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true') === 'true',
+}));
+
 export const gatewayConfig = registerAs('gateway', () => ({
   timeout: Number(process.env.GATEWAY_TIMEOUT ?? 10000),
   retryCount: Number(process.env.GATEWAY_RETRY_COUNT ?? 2),

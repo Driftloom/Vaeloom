@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UseGuards, NotFoundException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, UseGuards, NotFoundException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiParam } from '@nestjs/swagger';
 import type { Workspace } from '@vaeloom/shared-types';
 
@@ -8,6 +8,7 @@ import type { AuthedUser } from '../auth/jwt.strategy';
 import { PermissionGuard } from '../common/guards/permission.guard';
 
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
+import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { WorkspacesService } from './workspaces.service';
 
 @ApiTags('workspaces')
@@ -39,6 +40,23 @@ export class WorkspacesController {
       throw new NotFoundException(`Workspace with id ${id} not found`);
     }
     return workspace;
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update workspace name or description' })
+  async updateWorkspace(
+    @CurrentUser() user: AuthedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateWorkspaceDto,
+  ): Promise<Workspace> {
+    return this.workspaces.update(id, user.id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a workspace' })
+  async deleteWorkspace(@CurrentUser() user: AuthedUser, @Param('id') id: string): Promise<void> {
+    return this.workspaces.delete(id, user.id);
   }
 
   @Get(':id/agents')

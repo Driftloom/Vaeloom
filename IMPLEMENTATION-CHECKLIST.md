@@ -55,37 +55,42 @@ Source: `Docs/Engineering/Implementation/01-foundation-infra.md`, `Docs/DevOps/*
 - [x] Add SQL triggers for immutable audit logging (`agent_actions`).
 - [x] pgvector `vector(1536)` in Prisma schema + IVFFlat index in `database/schemas/extensions.sql`
 - [x] AGE conditional enablement + graph creation (`vaeloom_knowledge`) in extensions SQL
-- [ ] Partitioning + replication config (enterprise)
+- [x] Partitioning + replication config — partitioning DONE (RANGE monthly + LIST + maintenance function), replication DONE (logical replication SQL with WAL config, publication, subscription template)
+- [x] Alembic initialized for ai-service — `alembic/` dir, `env.py` with async engine, `alembic upgrade head` in Dockerfile startup
+- [x] Notification model added to Prisma schema + SQLAlchemy (was raw SQL only)
+- [x] WorkspaceUser model added to SQLAlchemy (junction between User + Workspace)
 
 ## Phase 3 — Backend core
 
 Source: `Docs/Backend/*`, `Docs/Security/*`, `Docs/Engineering/Implementation/13-api-backend.md`
 
 - [x] Modules / services / repositories / controllers
-- [ ] Events + queues (BullMQ/Redis) — BullMQ dep declared but NOT wired in any service
-- [~] Caching (in-memory only, no Redis), search (HTTP proxy to memory+KG)
+- [x] Events + queues (BullMQ/Redis) — @vaeloom/queue package, events.service uses BullMQ, job-scheduler uses BullMQ Worker, ai-service queue_worker.py consumes Redis
+- [x] Caching — both memory and Redis wired via @keyv/redis; search — PASS (HTTP fan-out to memory+KG)
 - [x] Validation — `class-validator ^0.14.1` + `zod ^3.23.0` in all DTOs
 - [x] Rate limiting — `@nestjs/throttler` global guard (100 req/60s)
 - [x] RBAC + ABAC permission engine
 - [x] Audit logging + observability — Pino structured logs, OpenTelemetry tracing, Prometheus metrics, immutable `agent_actions` table
-- [x] Internal RPC boundary to ai-service
+- [x] Internal RPC boundary to ai-service — client calls `/api/v1/agents/chat`, route exists in agents.py router
+- [x] Workspaces module — GET (list + single), POST (create), PATCH (update), DELETE (remove), all ownership-verified
 
 ## Phase 4: AI Foundation (ai-service) [COMPLETED]
 
 ### Ingestion Pipeline
-- [x] Queue Worker (BullMQ integration)
-- [x] Content Parsers (PDF, MD, Docx, Image OCR)
-- [x] Deduplication Logic (`document_versions` creation)
+- [x] Queue Worker (BullMQ integration) — REAL BullMQ-compatible Python worker
+- [x] Content Parsers — PDF via PyMuPDF/pdfplumber/PyPDF2 cascade, DOCX via python-docx, Image via pytesseract, Markdown via UTF-8 decode
+- [x] Deduplication Logic — SHA-256 content hash + DocumentVersion checksum lookup via SQLAlchemy
 
 ### Memory System
-- [x] Graph Construction (Nodes/Edges mapping)
-- [x] Vector Embedding Generation
-- [x] Entity Resolution (Merging duplicates)
+- [x] Graph Construction (Entities + Relationships models exist)
+- [x] Vector Embedding Generation (Embedding model with vector(1536))
+- [x] Entity Resolution (Merging duplicates) — merge.py uses fuzzy string matching via difflib + DB entity lookup (bug fixed: no longer compares entity against itself); retrieval.py uses vector (pgvector <=>), keyword (ILIKE), and graph (Entity+Relationship JOINs) queries
+- [x] MCP Tool Executor — all 14 tools have real DB-backed implementations (search_documents, query_graph, get_entity, create_entity, merge_entities, categorize_document, notify_user, search_gmail, search_jobs, list_calendar_events, rename_file, move_file, draft_email, create_calendar_event)
 
 ### Agent Harness
 - [x] `BaseAgent` abstract class (mission, tools, memory scopes)
-- [x] Orchestrator loop (Plan -> Act -> Observe -> Reflect)
-- [x] Fallback handlers
+- [x] Orchestrator loop (Plan -> Act -> Observe -> Reflect) — REAL 5-phase loop
+- [x] Fallback handlers — ALL 20 agents have per-method fallbacks
 - [x] Redis state checkpointing
 
 ## Phase 5 — Agents
@@ -123,7 +128,7 @@ Source: `Docs/Frontend/*`, `Implementation/14-frontend-workspace.md`, `Enterpris
 - [x] Dashboard, Workspace, Memory Graph, Resume & Career, Jobs & Internships
 - [x] Chat, Schedule, Connectors, History, Settings
 - [x] Enterprise: Admin (user mgmt, system health, audit log), Billing (subscription, usage, invoices), Organizations (tree, members, roles), Feature Flags (toggles, rollout, A/B), Marketplace (plugins, search, install), Developer Mode (API keys, webhook console, rate limits)
-- [~] Responsive + WCAG 2.2 AA — a11y audit infra added (`axe-core` CI workflow, config, reporter, 20-route scan), manual remediation pass pending
+- [x] Responsive + WCAG 2.2 AA — a11y audit infra added (`axe-core` CI workflow, config, reporter, 20-route scan), manual remediation pass completed (11 pages fixed: heading hierarchy, form labels, keyboard nav, table semantics, ARIA landmarks)
 
 ## Phase 7 — Integration
 
@@ -140,6 +145,7 @@ Source: `Docs/Testing/*`
 - [x] k6 load test with 3-stage ramp, granular thresholds (p95<2000ms, error<1%), env-based URLs
 - [x] Coverage thresholds enforced (branches 70%, functions 75%, lines 80%, statements 80%)
 - [x] Memory agent extraction + handler edge case tests (15 new pytest tests)
+- [x] Pytest configuration — `pyproject.toml` has `[tool.pytest.ini_options]` with `asyncio_mode=auto`, testpaths, markers; `pytest-asyncio` added to dev dependencies
 - [x] Testcontainers integration with configurable Postgres + Redis setup
 
 ## Phase 9 — Optimization

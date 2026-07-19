@@ -29,6 +29,7 @@ export default function SettingsPage() {
                   <h3 className="font-medium text-text">{agent.name}</h3>
                 </div>
                 <select 
+                  aria-label={`Autonomy level for ${agent.name}`}
                   className="bg-background border border-border text-text rounded px-3 py-1.5 text-sm font-mono"
                   value={agent.autonomy}
                   onChange={(e) => {

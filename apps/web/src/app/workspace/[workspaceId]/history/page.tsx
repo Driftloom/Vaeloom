@@ -26,10 +26,10 @@ export default function HistoryPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-border text-text-muted font-mono text-sm uppercase">
-                <th className="pb-3 font-normal">Timestamp</th>
-                <th className="pb-3 font-normal">Agent</th>
-                <th className="pb-3 font-normal">Action</th>
-                <th className="pb-3 font-normal">Status</th>
+                <th scope="col" className="pb-3 font-normal">Timestamp</th>
+                <th scope="col" className="pb-3 font-normal">Agent</th>
+                <th scope="col" className="pb-3 font-normal">Action</th>
+                <th scope="col" className="pb-3 font-normal">Status</th>
               </tr>
             </thead>
             <tbody>

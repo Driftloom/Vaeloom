@@ -60,7 +60,7 @@ class MemoryAgentHandler(BaseAgent):
         merge_results: List[Dict[str, Any]] = []
         for entity in facts.entities:
             result: MergeResult = await merge_check(
-                entity.name, entity.aliases, workspace_id
+                entity.name, entity.aliases, workspace_id, entity.entity_type
             )
             merge_results.append({
                 "entity": entity.name,

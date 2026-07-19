@@ -6,7 +6,7 @@ import { MetricsModule, MetricsInterceptor } from '@vaeloom/observability';
 
 import { AuthModule } from './auth/auth.module';
 import { GatewayModule } from './gateway/gateway.module';
-import { appConfig, authConfig, gatewayConfig, logConfig, serviceAuthConfig } from './config/configuration';
+import { appConfig, authConfig, gatewayConfig, logConfig, serviceAuthConfig, storageConfig } from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { HealthController } from './health.controller';
 import { ObservabilityModule } from './observability/observability.module';
@@ -31,6 +31,7 @@ import { SecretsService } from './common/services/secrets.service';
 import { InternalAiService } from './common/services/internal-ai.service';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
 import { PermissionsModule } from './permissions/permissions.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -38,7 +39,7 @@ import { PermissionsModule } from './permissions/permissions.module';
       isGlobal: true,
       cache: true,
       validate: validateEnv,
-      load: [appConfig, authConfig, logConfig, gatewayConfig, serviceAuthConfig],
+      load: [appConfig, authConfig, logConfig, gatewayConfig, serviceAuthConfig, storageConfig],
     }),
     ObservabilityModule,
     MetricsModule,
@@ -60,6 +61,7 @@ import { PermissionsModule } from './permissions/permissions.module';
     RateLimitingModule,
     CacheModule,
     PermissionsModule,
+    StorageModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -1,14 +1,38 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..schemas.agent import AgentResponse, AgentExecute, ExecutionResponse, ExecutionStatus
 from ..services.agent_service import agent_service
 from ..dependencies import get_current_user, get_tenant_id
+from ..orchestrator.router import handle, UserRequest
 
 router = APIRouter()
+
+
+class ChatMessage(BaseModel):
+    workspaceId: str
+    message: str
+    agentName: str | None = None
+
+
+@router.post("/chat", status_code=200)
+async def chat(dto: ChatMessage, request: Request):
+    """
+    High-level chat endpoint: auto-classifies intent, routes to the right agent,
+    runs the agentic loop, and returns the result.
+    Used by the NestJS API's InternalAiService.sendChatMessage().
+    """
+    req = UserRequest(
+        request_id=str(uuid.uuid4()),
+        message=dto.message,
+        workspace_id=dto.workspaceId,
+    )
+    result = await handle(req)
+    return result
 
 
 @router.get("", response_model=dict)

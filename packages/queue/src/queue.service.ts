@@ -28,10 +28,10 @@ const DEFAULT_JOB_OPTS: JobsOptions = {
 
 function resolveConnection(config?: QueueConfig): ConnectionOptions {
   if (config) {
-    return { host: config.host, port: config.port, password: config.password, db: config.db ?? 0 };
+    return { host: config.host, port: config.port, password: config.password, db: config.db ?? 0 } as ConnectionOptions;
   }
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379/0';
-  return { url: redisUrl };
+  return { url: redisUrl } as ConnectionOptions;
 }
 
 export class QueueService {
@@ -111,8 +111,8 @@ export class QueueService {
 }
 
 export function createConnection(config?: QueueConfig): Redis {
-  const opts = resolveConnection(config);
-  if (opts.url) return new Redis(opts.url);
+  const opts = resolveConnection(config) as Record<string, unknown>;
+  if (opts.url) return new Redis(opts.url as string);
   return new Redis({ host: opts.host, port: opts.port, password: opts.password, db: opts.db ?? 0 } as any);
 }
 

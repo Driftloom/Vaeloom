@@ -4,6 +4,8 @@ from .execution import AgentExecution
 from .schema import (
     User,
     Workspace,
+    WorkspaceUser,
+    Notification,
     Document,
     DocumentVersion,
     MemoryRecord,
@@ -16,6 +18,15 @@ from .schema import (
     ScheduleEvent,
     AgentAction,
     Permission,
+    Tenant,
+    AuthSession,
+    ApiKey,
+    Event,
+    EventSubscription,
+    DeadLetterEvent,
+    Subscription,
+    UsageRecord,
+    Integration,
 )
 
 __all__ = [
@@ -26,6 +37,8 @@ __all__ = [
     # MVP schema models
     "User",
     "Workspace",
+    "WorkspaceUser",
+    "Notification",
     "Document",
     "DocumentVersion",
     "MemoryRecord",
@@ -38,4 +51,14 @@ __all__ = [
     "ScheduleEvent",
     "AgentAction",
     "Permission",
+    # Enterprise models
+    "Tenant",
+    "AuthSession",
+    "ApiKey",
+    "Event",
+    "EventSubscription",
+    "DeadLetterEvent",
+    "Subscription",
+    "UsageRecord",
+    "Integration",
 ]

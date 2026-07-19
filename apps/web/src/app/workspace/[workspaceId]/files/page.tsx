@@ -77,9 +77,9 @@ export default function WorkspaceFilesPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-border text-text-muted font-mono text-sm uppercase">
-                  <th className="pb-3 font-normal">Name</th>
-                  <th className="pb-3 font-normal">Category</th>
-                  <th className="pb-3 font-normal">Type</th>
+                  <th scope="col" className="pb-3 font-normal">Name</th>
+                  <th scope="col" className="pb-3 font-normal">Category</th>
+                  <th scope="col" className="pb-3 font-normal">Type</th>
                 </tr>
               </thead>
               <tbody>

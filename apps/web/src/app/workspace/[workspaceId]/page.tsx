@@ -36,22 +36,22 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
-          <h3 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Active Agents</h3>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Active Agents</h2>
           <div className="text-4xl font-display text-primary">{(agentsRes?.data ?? []).length}</div>
         </div>
         <div className="card">
-          <h3 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Memory Nodes</h3>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Memory Nodes</h2>
           <div className="text-4xl font-display text-accent">{(memoriesRes?.data ?? []).length}</div>
         </div>
         <div className="card">
-          <h3 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Tasks Pending</h3>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Tasks Pending</h2>
           <div className="text-4xl font-display text-text">0</div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card h-96 flex flex-col">
-          <h3 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Recent Activity</h3>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Recent Activity</h2>
           <div className="flex-1 overflow-y-auto space-y-4">
             <div className="flex gap-4 items-start">
               <span className="text-2xl">💡</span>
@@ -71,7 +71,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="card h-96 flex flex-col">
-          <h3 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Upcoming Deadlines</h3>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Upcoming Deadlines</h2>
           <div className="flex-1 overflow-y-auto space-y-4">
             <div className="flex justify-between items-center p-3 bg-background rounded border border-border">
               <div>

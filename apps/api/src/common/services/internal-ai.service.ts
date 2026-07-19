@@ -16,7 +16,7 @@ export class InternalAiService {
    * Proxies a chat message to the AI orchestrator.
    */
   async sendChatMessage(workspaceId: string, message: string, agentName?: string): Promise<any> {
-    const url = `${this.aiServiceUrl}/api/v1/orchestrator/chat`;
+    const url = `${this.aiServiceUrl}/api/v1/agents/chat`;
     const payload = {
       workspaceId,
       message,

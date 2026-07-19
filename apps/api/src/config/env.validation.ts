@@ -82,6 +82,13 @@ export const envSchema = z.object({
   SERVICE_AUTH_SECRET: z.string().min(32, 'SERVICE_AUTH_SECRET must be at least 32 characters in production'),
   SERVICE_AUTH_TOKEN_TTL: z.coerce.number().int().positive().default(60),
 
+  S3_ENDPOINT: z.string().url().default('http://localhost:9000'),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_ACCESS_KEY: z.string().min(3, 'S3_ACCESS_KEY must be at least 3 characters'),
+  S3_SECRET_KEY: z.string().min(8, 'S3_SECRET_KEY must be at least 8 characters'),
+  S3_BUCKET: z.string().min(1, 'S3_BUCKET is required'),
+  S3_FORCE_PATH_STYLE: z.enum(['true', 'false']).default('true'),
+
   DB_POOL_MIN: z.coerce.number().int().min(0).default(2),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
   DB_POOL_IDLE_TIMEOUT: z.coerce.number().int().positive().default(30000),

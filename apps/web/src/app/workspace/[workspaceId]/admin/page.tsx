@@ -100,7 +100,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-8">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-xl text-text text-sm animate-in">
+        <div role="alert" className="fixed top-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-xl text-text text-sm animate-in">
           {toast}
         </div>
       )}

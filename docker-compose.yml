@@ -40,6 +40,12 @@ x-nestjs-base: &nestjs-base
     PLUGIN_SERVICE_URL: http://plugin-service:3160
     RBAC_SERVICE_URL: http://rbac-service:3170
     RECOMMENDATION_SERVICE_URL: http://recommendation-service:3180
+    S3_ENDPOINT: http://minio:9000
+    S3_REGION: us-east-1
+    S3_ACCESS_KEY: vaeloom
+    S3_SECRET_KEY: vaeloom_dev_minio
+    S3_BUCKET: vaeloom-storage
+    S3_FORCE_PATH_STYLE: "true"
   depends_on:
     postgres:
       condition: service_healthy
@@ -55,11 +61,14 @@ volumes:
   postgres-data:
   redis-data:
   pgadmin-data:
+  minio-data:
 
 services:
   # ─── Infrastructure ───
   postgres:
-    image: postgres:16-alpine
+    build:
+      context: ./infra/docker/postgres
+      dockerfile: Dockerfile
     container_name: vaeloom-postgres
     environment:
       POSTGRES_DB: vaeloom
@@ -102,12 +111,20 @@ services:
       JWT_SECRET: dev-jwt-secret-not-for-production
       AI_SERVICE_URL: http://ai-service:8000
       EVENT_BUS_URL: http://event-bus:3040
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: vaeloom
+      S3_SECRET_KEY: vaeloom_dev_minio
+      S3_BUCKET: vaeloom-storage
+      S3_FORCE_PATH_STYLE: "true"
     ports:
       - "4000:4000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     <<: *service-base
 
@@ -317,6 +334,27 @@ services:
     ports:
       - "3180:3180"
     <<: *nestjs-base
+
+  # ─── MinIO (S3-compatible object storage) ───
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: vaeloom-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: vaeloom
+      MINIO_ROOT_PASSWORD: vaeloom_dev_minio
+      MINIO_DOMAIN: minio
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    <<: *service-base
 
   # ─── Connection Pooler ───
   pgbouncer:

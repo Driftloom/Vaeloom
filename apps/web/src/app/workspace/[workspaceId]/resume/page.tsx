@@ -34,6 +34,7 @@ export default function ResumePage() {
         </div>
         <div className="flex gap-2">
           <select 
+            aria-label="Resume variant"
             value={variant} 
             onChange={(e) => setVariant(e.target.value)}
             className="bg-surface border border-border text-text rounded px-3 py-2"
@@ -57,12 +58,13 @@ export default function ResumePage() {
       ) : (
         <div className="flex gap-6 flex-1">
           <div className="flex-1 card flex flex-col p-0 overflow-hidden">
-            <div className="bg-surface-hover border-b border-border p-3 flex gap-2">
-              <button className="text-sm font-medium text-text-muted hover:text-text px-2">B</button>
-              <button className="text-sm font-medium text-text-muted hover:text-text px-2">I</button>
-              <button className="text-sm font-medium text-text-muted hover:text-text px-2">U</button>
+            <div className="bg-surface-hover border-b border-border p-3 flex gap-2" role="toolbar" aria-label="Text formatting">
+              <button aria-label="Bold" className="text-sm font-medium text-text-muted hover:text-text px-2">B</button>
+              <button aria-label="Italic" className="text-sm font-medium text-text-muted hover:text-text px-2">I</button>
+              <button aria-label="Underline" className="text-sm font-medium text-text-muted hover:text-text px-2">U</button>
             </div>
             <textarea 
+              aria-label="Resume content"
               className="flex-1 bg-transparent text-text p-6 resize-none focus:outline-none"
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
@@ -78,6 +80,7 @@ export default function ResumePage() {
                 Your experience section is missing measurable metrics. Could you quantify &quot;Built scalable web apps&quot;? (e.g. users served, load reduced)
               </p>
               <textarea 
+                aria-label="Suggestion response"
                 className="w-full bg-background border border-border rounded p-2 text-sm text-text mb-2"
                 placeholder="e.g. Scaled to 10k users..."
                 rows={3}

@@ -56,7 +56,7 @@ export default function ConnectorsPage() {
                 <div className="flex items-center gap-4 mb-4">
                   <div className="text-3xl">{provider.icon}</div>
                   <div>
-                    <h3 className="font-display font-medium text-text">{provider.name}</h3>
+                    <h2 className="font-display font-medium text-text text-lg">{provider.name}</h2>
                     <p className="text-xs font-mono text-text-muted mt-1">
                       {connected 
                         ? (connected.status === 'syncing' ? 'Syncing...' : `Synced ${connected.lastSyncAt ? new Date(connected.lastSyncAt).toLocaleDateString() : 'recently'}`) 

@@ -31,8 +31,23 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.45b0",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "asyncio: mark test as async",
+    "unit: unit test",
+    "integration: integration test",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
 
 [project.scripts]
 vaeloom-queue-worker = "app.workers.queue_worker:run_worker"
