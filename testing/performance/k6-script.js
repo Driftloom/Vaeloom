@@ -24,7 +24,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:4000';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
 const AUTH_CREDENTIALS = {
   email: __ENV.TEST_EMAIL || 'test@vaeloom.ai',
   password: __ENV.TEST_PASSWORD || 'password123',
