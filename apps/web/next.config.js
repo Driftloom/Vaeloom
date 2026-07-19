@@ -4,11 +4,14 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig = {
-  output: 'standalone',
+  output: process.env.CI === 'true' ? 'standalone' : process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
   transpilePackages: ['@vaeloom/shared-types', '@vaeloom/ui-kit'],
   reactStrictMode: true,
   images: {
-    domains: ['localhost', 'vaeloom.app'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: 'vaeloom.app' },
+    ],
   },
   async headers() {
     return [

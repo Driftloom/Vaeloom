@@ -8,7 +8,10 @@ WORKDIR /app
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json apps/web/next.config.js apps/web/tsconfig.json ./apps/web/
-COPY packages/ packages/
+COPY packages/shared-types packages/shared-types/
+COPY packages/ui-kit packages/ui-kit/
+COPY packages/tsconfig packages/tsconfig/
+COPY packages/eslint-config packages/eslint-config/
 
 RUN pnpm install --frozen-lockfile --filter @vaeloom/web
 
@@ -28,16 +31,16 @@ RUN adduser --system --uid 1001 nextjs
 
 WORKDIR /app
 
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./public
+COPY --from=builder /app/apps/web/public ./public
+COPY --from=builder /app/apps/web/.next/standalone ./
+COPY --from=builder /app/apps/web/.next/static ./.next/static
 
 USER nextjs
-
-EXPOSE 3000
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+
+EXPOSE 3000
 
 CMD ["node", "server.js"]
