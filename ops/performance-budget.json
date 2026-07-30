@@ -1,0 +1,101 @@
+{
+  "$schema": "https://raw.githubusercontent.com/GoogleChrome/lighthouse/master/types/externs/options.js",
+  "version": "1.0.0",
+  "project": "Vaeloom",
+  "description": "Performance budgets for Vaeloom frontend and API",
+  "budgets": [
+    {
+      "name": "Application Bundle",
+      "mode": "totalKb",
+      "resourceType": "total",
+      "max": 200
+    },
+    {
+      "name": "Page-Level Bundle",
+      "mode": "perRoute",
+      "resourceType": "total",
+      "routes": [
+        { "name": "Dashboard", "pattern": "/dashboard", "max": 50 },
+        { "name": "Memories",  "pattern": "/memories",  "max": 50 },
+        { "name": "Agents",    "pattern": "/agents",    "max": 50 },
+        { "name": "Search",    "pattern": "/search",    "max": 50 },
+        { "name": "Settings",  "pattern": "/settings",  "max": 50 },
+        { "name": "Login",     "pattern": "/login",     "max": 30 },
+        { "name": "Signup",    "pattern": "/signup",    "max": 30 }
+      ]
+    },
+    {
+      "name": "JavaScript Bundle",
+      "mode": "totalKb",
+      "resourceType": "script",
+      "max": 120
+    },
+    {
+      "name": "CSS Bundle",
+      "mode": "totalKb",
+      "resourceType": "stylesheet",
+      "max": 30
+    },
+    {
+      "name": "Font Bundle",
+      "mode": "totalKb",
+      "resourceType": "font",
+      "max": 20
+    },
+    {
+      "name": "Image Budget",
+      "mode": "totalKb",
+      "resourceType": "image",
+      "max": 30
+    }
+  ],
+  "api": {
+    "latency": {
+      "description": "API latency percentiles in milliseconds",
+      "p95_read_ms": 200,
+      "p95_write_ms": 500
+    }
+  },
+  "lighthouse": {
+    "categories": {
+      "performance": {
+        "minScore": 0.9,
+        "description": "Lighthouse Performance score must be >= 90"
+      },
+      "accessibility": {
+        "minScore": 0.9,
+        "description": "Lighthouse Accessibility score must be >= 90"
+      },
+      "best-practices": {
+        "minScore": 0.85,
+        "description": "Lighthouse Best Practices score must be >= 85"
+      },
+      "seo": {
+        "minScore": 0.85,
+        "description": "Lighthouse SEO score must be >= 85"
+      }
+    },
+    "audits": {
+      "max-server-response-time": {
+        "maxNumericValue": 500,
+        "description": "Server response time must be under 500ms"
+      },
+      "total-blocking-time": {
+        "maxNumericValue": 200,
+        "description": "Total blocking time must be under 200ms"
+      },
+      "largest-contentful-paint": {
+        "maxNumericValue": 2500,
+        "description": "LCP must be under 2.5s"
+      },
+      "cumulative-layout-shift": {
+        "maxNumericValue": 0.1,
+        "description": "CLS must be under 0.1"
+      },
+      "interaction-to-next-paint": {
+        "maxNumericValue": 200,
+        "description": "INP must be under 200ms"
+      }
+    }
+  }
+}

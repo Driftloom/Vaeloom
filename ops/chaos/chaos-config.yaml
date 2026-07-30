@@ -1,0 +1,103 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: vaeloom-chaos-schedule
+  namespace: vaeloom
+spec:
+  schedule: "0 6 * * 1"
+  historyLimit: 5
+  concurrencyPolicy: Allow
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: backend-pod-kill
+  namespace: vaeloom
+spec:
+  action: pod-kill
+  mode: one
+  duration: "30s"
+  selector:
+    namespaces:
+      - vaeloom
+    labelSelectors:
+      app: vaeloom-backend
+  scheduler:
+    cron: "@every 6h"
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: HTTPChaos
+metadata:
+  name: backend-network-delay
+  namespace: vaeloom
+spec:
+  action: delay
+  mode: all
+  duration: "60s"
+  selector:
+    namespaces:
+      - vaeloom
+    labelSelectors:
+      app: vaeloom-backend
+  delay: "2s"
+  correlation: "100"
+  jitter: "500ms"
+  percentage: 100
+  scheduler:
+    cron: "@every 4h"
+  target: Request
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: backend-cpu-stress
+  namespace: vaeloom
+spec:
+  mode: one
+  duration: "120s"
+  selector:
+    namespaces:
+      - vaeloom
+    labelSelectors:
+      app: vaeloom-backend
+  stressors:
+    cpu:
+      workers: 1
+      load: 100
+  scheduler:
+    cron: "@every 8h"
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: backend-self-heal-verify
+  namespace: vaeloom
+spec:
+  action: pod-kill
+  mode: one
+  duration: "10s"
+  selector:
+    namespaces:
+      - vaeloom
+    labelSelectors:
+      app: vaeloom-backend
+  gracePeriod: 0
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: HTTPChaos
+metadata:
+  name: backend-timeout-test
+  namespace: vaeloom
+spec:
+  action: abort
+  mode: all
+  duration: "30s"
+  selector:
+    namespaces:
+      - vaeloom
+    labelSelectors:
+      app: vaeloom-backend
+  percentage: 50
+  scheduler:
+    cron: "@every 12h"
+  target: Request

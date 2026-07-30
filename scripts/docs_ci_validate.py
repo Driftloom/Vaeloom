@@ -28,7 +28,7 @@ from pathlib import Path
 
 DOCS_DIR = Path("Docs") if Path("Docs").exists() else Path("docs")
 README_PATH = DOCS_DIR / "README.md"
-LEGACY_DOCS_DIRS = [Path("Docs"), Path("Documents")]
+LEGACY_DOCS_DIRS = [Path("Docs")]
 
 SKIP_ORPHAN_PATTERNS = [
     "/README.md",
@@ -272,7 +272,7 @@ def check_cross_references(all_files, verbose=False):
             if link.startswith(("http://", "https://", "#")):
                 stats["ok"] += 1
                 continue
-            if link.lower().startswith(("../../docs/", "../../documents/", "../docs/", "../documents/", "docs/", "documents/", "../../.github/")):
+            if link.lower().startswith(("../../docs/", "../docs/", "docs/", "../../.github/")):
                 stats["ok"] += 1
                 continue
 
@@ -308,7 +308,7 @@ def check_canonical_sources(all_files, verbose=False):
             continue
 
         # Match Docs/ or Documents/ paths followed by valid path characters
-        refs = re.findall(r'(?:\.\./\.\./|\.\./)?((?:Docs|Documents)/[a-zA-Z0-9_/\-\.#]+\.md)', content)
+        refs = re.findall(r'(?:\.\./\.\./|\.\./)?(Docs/[a-zA-Z0-9_/\-\.#]+\.md)', content)
         # Clean matches: strip hash fragments and trailing punctuation
         cleaned = []
         for ref in refs:

@@ -1,0 +1,245 @@
+# ─── Vaeloom Production Docker Compose ──────────────────────────────────────
+# Usage: docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-service-base: &service-base
+  networks:
+    - vaeloom-net
+  logging: *default-logging
+  restart: unless-stopped
+
+networks:
+  vaeloom-net:
+    name: vaeloom-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  minio-data:
+    driver: local
+
+services:
+  # ─── Reverse Proxy ────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: vaeloom-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ops/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/ssl/vaeloom:/etc/ssl/vaeloom:ro
+      - ./public:/var/www/public:ro
+    depends_on:
+      web:
+        condition: service_started
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "128M"
+        reservations:
+          cpus: "0.25"
+          memory: "64M"
+    <<: *service-base
+
+  # ─── Web Frontend (Next.js 15) ───────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=https://api.vaeloom.app
+    container_name: vaeloom-web
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+        reservations:
+          cpus: "0.5"
+          memory: "256M"
+    <<: *service-base
+
+  # ─── Backend (FastAPI) ───────────────────────────────────────────────
+  backend:
+    build:
+      context: apps/backend
+      dockerfile: Dockerfile
+    container_name: vaeloom-backend
+    env_file:
+      - .env.production
+    environment:
+      SERVICE_NAME: vaeloom-backend
+      SERVICE_ENVIRONMENT: production
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:8000/api/v1/health"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: "1G"
+        reservations:
+          cpus: "1.0"
+          memory: "512M"
+    <<: *service-base
+
+  # ─── PostgreSQL ──────────────────────────────────────────────────────
+  postgres:
+    build:
+      context: ./infra/docker/postgres
+      dockerfile: Dockerfile
+    container_name: vaeloom-postgres
+    environment:
+      POSTGRES_DB: vaeloom
+      POSTGRES_USER: vaeloom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?err}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vaeloom"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: "2G"
+        reservations:
+          cpus: "1.0"
+          memory: "1G"
+    <<: *service-base
+
+  # ─── Redis ───────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: vaeloom-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?err}
+    volumes:
+      - redis-data:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+        reservations:
+          cpus: "0.5"
+          memory: "256M"
+    <<: *service-base
+
+  # ─── PgBouncer (Connection Pooler) ───────────────────────────────────
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: vaeloom-pgbouncer
+    environment:
+      DB_USER: vaeloom
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?err}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: vaeloom
+      POOL_MODE: transaction
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      MAX_CLIENT_CONN: 200
+      SERVER_IDLE_TIMEOUT: 300
+    expose:
+      - "6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "128M"
+        reservations:
+          cpus: "0.25"
+          memory: "64M"
+    <<: *service-base
+
+  # ─── MinIO (S3-compatible Object Storage) ────────────────────────────
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: vaeloom-minio
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:?err}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:?err}
+      MINIO_DOMAIN: minio
+    command: server /data --console-address ":9001"
+    expose:
+      - "9000"
+      - "9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+        reservations:
+          cpus: "0.5"
+          memory: "256M"
+    <<: *service-base

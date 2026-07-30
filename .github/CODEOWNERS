@@ -1,0 +1,20 @@
+# Default owners
+* @vaeloom/core
+
+# Backend
+/apps/backend/ @vaeloom/backend
+/apps/backend/tests/ @vaeloom/backend
+
+# Frontend
+/apps/web/ @vaeloom/frontend
+/packages/ui-kit/ @vaeloom/frontend
+
+# Infrastructure
+/.github/ @vaeloom/devops
+/Dockerfile* @vaeloom/devops
+/docker-compose* @vaeloom/devops
+/terraform/ @vaeloom/devops
+
+# Documentation
+/Docs/ @vaeloom/docs
+/*.md @vaeloom/docs

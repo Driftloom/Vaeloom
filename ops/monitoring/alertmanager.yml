@@ -1,0 +1,58 @@
+route:
+  receiver: "default"
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  group_by: ["alertname", "severity"]
+  routes:
+    - receiver: "slack-critical"
+      match:
+        severity: "critical"
+      continue: true
+    - receiver: "pagerduty"
+      match:
+        severity: "critical"
+      continue: false
+    - receiver: "slack-warnings"
+      match:
+        severity: "warning"
+
+receivers:
+  - name: "default"
+    email_configs:
+      - to: "${ALERT_EMAIL_TO:-ops@vaeloom.app}"
+        from: "${ALERT_EMAIL_FROM:-alerts@vaeloom.app}"
+        smarthost: "${SMTP_HOST:-smtp.sendgrid.net}:587"
+        auth_username: "${SMTP_USER}"
+        auth_password: "${SMTP_PASSWORD}"
+        require_tls: true
+
+  - name: "slack-critical"
+    slack_configs:
+      - api_url: "${SLACK_WEBHOOK_URL}"
+        channel: "#vaeloom-alerts"
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: "danger"
+        send_resolved: true
+
+  - name: "slack-warnings"
+    slack_configs:
+      - api_url: "${SLACK_WEBHOOK_URL}"
+        channel: "#vaeloom-alerts"
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: "warning"
+        send_resolved: true
+
+  - name: "pagerduty"
+    pagerduty_configs:
+      - routing_key: "${PAGERDUTY_ROUTING_KEY}"
+        severity: "{{ .CommonLabels.severity }}"
+        description: '{{ template "pagerduty.description" . }}'
+        client: "Vaeloom"
+        client_url: "https://vaeloom.app"
+        send_resolved: true
+
+templates:
+  - "/etc/alertmanager/*.tmpl"

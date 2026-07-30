@@ -1,0 +1,13 @@
+name: Deploy Staging
+on:
+  workflow_run:
+    workflows: [Docker Build]
+    types: [completed]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v3
+      - run: kubectl set image deployment/web web=${{ secrets.ECR_REGISTRY }}/vaeloom-web:${{ github.sha }}

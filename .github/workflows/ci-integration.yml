@@ -1,0 +1,31 @@
+name: Integration Tests
+on:
+  schedule:
+    - cron: '0 6 * * 1-5'
+  workflow_dispatch:
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: vaeloom_test
+          POSTGRES_USER: vaeloom
+          POSTGRES_PASSWORD: vaeloom
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest tests/integration/ -v --tb=long

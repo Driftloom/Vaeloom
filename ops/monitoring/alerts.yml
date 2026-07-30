@@ -1,0 +1,118 @@
+groups:
+  - name: vaeloom-backend
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          rate(http_requests_total{status=~"5.."}[5m])
+          /
+          rate(http_requests_total[5m])
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "High error rate on backend"
+          description: "Error rate {{ $value | humanizePercentage }} over the last 5 minutes (threshold 5%)"
+          runbook: "ops/runbooks/high-error-rate.md"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1.0
+        for: 5m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "High API latency (p95 > 1s)"
+          description: "p95 latency is {{ $value | humanizeDuration }} over the last 5 minutes"
+          runbook: "ops/runbooks/high-latency.md"
+
+      - alert: ServiceDown
+        expr: |
+          probe_success{job="vaeloom-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "Backend service is down"
+          description: "Health check probe has failed for {{ $value }} consecutive checks"
+          runbook: "ops/runbooks/service-down.md"
+
+  - name: vaeloom-infrastructure
+    interval: 60s
+    rules:
+      - alert: LowDiskSpace
+        expr: |
+          node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.10
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value | humanizePercentage }} free (threshold 10%)"
+
+      - alert: HighCPUUsage
+        expr: |
+          rate(node_cpu_seconds_total{mode="idle"}[5m]) < 0.2
+        for: 10m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU is less than 20% idle for 10 minutes"
+
+      - alert: DatabaseConnectionPoolExhaustion
+        expr: |
+          pg_stat_database_numbackends > 80
+        for: 5m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database connection pool near exhaustion"
+          description: "Active backend connections: {{ $value }} (threshold 80)"
+          runbook: "ops/runbooks/database-connection-pool-exhaustion.md"
+
+      - alert: RedisMemoryHigh
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis memory usage at {{ $value | humanizePercentage }} (threshold 85%)"
+
+  - name: vaeloom-agents
+    interval: 30s
+    rules:
+      - alert: AgentFailureRate
+        expr: |
+          rate(agent_executions_total{status="failure"}[5m])
+          /
+          rate(agent_executions_total[5m])
+          > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          service: agents
+        annotations:
+          summary: "Agent execution failure rate high"
+          description: "Agent failure rate {{ $value | humanizePercentage }} over the last 5 minutes (threshold 10%)"
+
+      - alert: HighAgentLatency
+        expr: |
+          histogram_quantile(0.95, rate(agent_execution_duration_seconds_bucket[5m])) > 30.0
+        for: 5m
+        labels:
+          severity: warning
+          service: agents
+        annotations:
+          summary: "Agent execution latency high"
+          description: "p95 agent execution time is {{ $value | humanizeDuration }}"

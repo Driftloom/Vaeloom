@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  health-checker:
+    image: alpine:3.20
+    container_name: vaeloom-health-checker
+    restart: unless-stopped
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+    volumes:
+      - ./check-health.sh:/usr/local/bin/check-health.sh:ro
+      - ./alert-on-failure.sh:/usr/local/bin/alert-on-failure.sh:ro
+      - health-logs:/var/log
+    command: >
+      sh -c "apk add --no-cache curl && chmod +x /usr/local/bin/check-health.sh /usr/local/bin/alert-on-failure.sh && /usr/local/bin/check-health.sh ${HEALTH_CHECK_URL:-http://host.docker.internal:8000} ${HEALTH_CHECK_INTERVAL:-30}"
+    networks:
+      - vaeloom-synthetic
+
+networks:
+  vaeloom-synthetic:
+    driver: bridge
+
+volumes:
+  health-logs:

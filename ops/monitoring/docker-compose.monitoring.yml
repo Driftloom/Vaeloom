@@ -1,0 +1,94 @@
+version: "3.8"
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: vaeloom-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    networks:
+      - vaeloom-monitoring
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: vaeloom-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana-data:/var/lib/grafana
+    networks:
+      - vaeloom-monitoring
+    depends_on:
+      - prometheus
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: vaeloom-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alerts.yml:/etc/alertmanager/alerts.yml
+    command:
+      - "--config.file=/etc/alertmanager/alerts.yml"
+    networks:
+      - vaeloom-monitoring
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.65.0
+    container_name: vaeloom-redis-exporter
+    restart: unless-stopped
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=redis://host.docker.internal:6379
+    networks:
+      - vaeloom-monitoring
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: vaeloom-postgres-exporter
+    restart: unless-stopped
+    ports:
+      - "9187:9187"
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:postgres@host.docker.internal:5432/vaeloom?sslmode=disable
+    networks:
+      - vaeloom-monitoring
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.0
+    container_name: vaeloom-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    command:
+      - "--path.rootfs=/host"
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - vaeloom-monitoring
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  vaeloom-monitoring:
+    driver: bridge
