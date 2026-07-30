@@ -40,6 +40,6 @@ async def generate_resume(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    user_id = current_user["id"]
+    user_id = current_user.get("sub") or current_user.get("user_id")
     resume = await resume_service.generate_variant(resume_id=resume_id, dto=dto, user_id=user_id, db=db)
     return ResumeResponse.model_validate(resume)

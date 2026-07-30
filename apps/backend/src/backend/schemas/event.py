@@ -24,9 +24,9 @@ class EventResponse(BaseModel):
     correlation_id: uuid.UUID
     causation_id: uuid.UUID | None = None
     payload: dict[str, Any]
-    metadata: dict[str, Any]
-    tenant_id: str | None = None
-    user_id: str | None = None
+    metadata: dict[str, Any] = Field(validation_alias="metadata_")
+    tenant_id: uuid.UUID | None = None
+    user_id: uuid.UUID | None = None
     retry_count: int = 0
     max_retries: int = 3
     created_at: datetime

@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -7,13 +6,61 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from .config import settings
+import uuid
+import sqlite3
+
+if "sqlite" in __import__("os").environ.get("DATABASE__URL", ""):
+    import sqlalchemy.types as sa_types
+    from sqlalchemy.dialects.sqlite import TEXT, JSON as SQLiteJSON
+
+    class MockVector(sa_types.TypeDecorator):
+        impl = sa_types.Text
+        cache_ok = True
+        def __init__(self, dim=None): super().__init__()
+
+    import pgvector.sqlalchemy
+    pgvector.sqlalchemy.Vector = MockVector
+
+    class MockArray(sa_types.JSON):
+        def __init__(self, item_type=None, *args, **kwargs): super().__init__(*args, **kwargs)
+
+    class MockUUID(sa_types.TypeDecorator):
+        impl = sa_types.String
+        cache_ok = True
+        def __init__(self, as_uuid=True, *args, **kwargs): super().__init__(*args, **kwargs)
+        def process_bind_param(self, value, dialect):
+            if value is None: return None
+            return str(value) if isinstance(value, uuid.UUID) else str(value) if isinstance(value, str) else str(value)
+        def process_result_value(self, value, dialect):
+            if value is None: return None
+            return value if isinstance(value, uuid.UUID) else uuid.UUID(value) if value else None
+
+    import sqlalchemy.dialects.postgresql
+    sqlalchemy.dialects.postgresql.JSONB = SQLiteJSON
+    sqlalchemy.dialects.postgresql.ARRAY = MockArray
+    sqlalchemy.dialects.postgresql.UUID = MockUUID
+
+    sqlite3.register_adapter(uuid.UUID, lambda u: str(u))
+    sqlite3.register_adapter(dict, lambda d: __import__("json").dumps(d))
+    sqlite3.register_adapter(list, lambda l: __import__("json").dumps(l))
+
+from .config import settings, validate_settings
 from .database import engine, Base
-from .logging import setup_logging, get_logger, correlation_id_var, tenant_id_var, user_id_var
+from .infrastructure.logging import CorrelationIDMiddleware, RequestLoggingMiddleware, setup_logging, get_logger
+from .infrastructure.metrics import MetricsMiddleware
+from .infrastructure.opentelemetry import setup_opentelemetry, instrumement_fastapi
 from .middleware.auth import AuthMiddleware
+from .middleware.csrf import CSRFMiddleware, create_csrf_token
 from .middleware.rate_limit import RateLimitMiddleware
+from .middleware.security_headers import SecurityHeadersMiddleware
+from .middleware.api_version import APIVersionMiddleware
+from .middleware.prompt_injection import PromptInjectionMiddleware
 from .middleware.exception_handler import unified_exception_handler, generic_exception_handler
-from .routers import health, auth, workspaces, memory, agents, events, search, integrations, billing, documents, resumes, applications, plugins, chat, gateway, notifications, connectors, scheduler, analytics, audit, iam, knowledge_graph, recommendations
+from .routers import health, auth, workspaces, memory, agents, events, search, integrations, billing, documents, resumes, applications, plugins, chat, notifications, connectors, scheduler, analytics, audit, iam, knowledge_graph, recommendations, webhooks, admin_console
+from .services.encryption import router as encryption_router
+from .services.gdpr import router as gdpr_router
+from .services.consent import router as consent_router
+from .services.agent_costs import router as agent_costs_router
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = get_logger(__name__)
@@ -21,7 +68,9 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validate_settings()
     setup_logging()
+    setup_opentelemetry()
     logger.info("Starting Vaeloom Backend v%s (env=%s)", settings.service_version, settings.service_environment)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -41,50 +90,48 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Correlation-ID", "X-Requested-With"],
 )
 app.add_middleware(AuthMiddleware)
-app.add_middleware(RateLimitMiddleware)
+app.add_middleware(CSRFMiddleware)
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=settings.rate_limit_requests,
+    window_seconds=settings.rate_limit_window,
+    api_key_rate_limit=settings.api_key_rate_limit,
+)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(CorrelationIDMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(APIVersionMiddleware)
+app.add_middleware(PromptInjectionMiddleware)
+app.add_middleware(MetricsMiddleware)
 
 app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-
-try:
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-    FastAPIInstrumentor.instrument_app(app)
-except Exception:
-    pass
-
-
-@app.middleware("http")
-async def request_context_middleware(request: Request, call_next):
-    inbound_id = request.headers.get("x-request-id", "")
-    request_id = inbound_id.strip() or str(uuid.uuid4())
-    tenant_id = request.headers.get("x-tenant-id", "")
-    user_id = request.headers.get("x-user-id", "")
-
-    cid_token = correlation_id_var.set(request_id)
-    tid_token = tenant_id_var.set(tenant_id)
-    uid_token = user_id_var.set(user_id)
-
-    try:
-        logger.debug("→ %s %s", request.method, request.url.path)
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request_id
-        logger.debug("<-- %s %s %d", request.method, request.url.path, response.status_code)
-        return response
-    except Exception:
-        logger.exception("Unhandled exception in %s %s", request.method, request.url.path)
-        raise
-    finally:
-        correlation_id_var.reset(cid_token)
-        tenant_id_var.reset(tid_token)
-        user_id_var.reset(uid_token)
+@app.get("/csrf-token", tags=["security"])
+async def get_csrf_token():
+    from fastapi.responses import JSONResponse
+    token, cookie_value = create_csrf_token()
+    response = JSONResponse({"csrf_token": token})
+    response.set_cookie(
+        key="csrf_token",
+        value=cookie_value,
+        max_age=3600,
+        secure=False,
+        httponly=False,
+        samesite="lax",
+    )
+    return response
 
 
+# Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+# instrumement_fastapi(app)
+
+
+app.include_router(encryption_router, prefix="/api/v1", tags=["security"])
 app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["workspaces"])
@@ -105,6 +152,10 @@ app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
 app.include_router(iam.router, prefix="/api/v1/iam", tags=["iam"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
-app.include_router(gateway.router, tags=["gateway"])
 app.include_router(knowledge_graph.router, prefix="/api/v1/knowledge-graph", tags=["knowledge-graph"])
 app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["recommendations"])
+app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
+app.include_router(gdpr_router, prefix="/api/v1", tags=["gdpr"])
+app.include_router(consent_router, prefix="/api/v1", tags=["consent"])
+app.include_router(agent_costs_router, prefix="/api/v1", tags=["agents"])
+app.include_router(admin_console.router, prefix="", tags=["admin"])

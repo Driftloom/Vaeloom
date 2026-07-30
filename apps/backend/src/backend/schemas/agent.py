@@ -29,9 +29,9 @@ class AgentResponse(BaseModel):
     config: dict[str, Any]
     capabilities: list[str] | None = None
     permissions: dict[str, Any] | None = None
-    workspace_id: str | None = None
-    user_id: str | None = None
-    tenant_id: str | None = None
+    workspace_id: uuid.UUID | None = None
+    user_id: uuid.UUID | None = None
+    tenant_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -71,7 +71,7 @@ class PluginResponse(BaseModel):
     hooks: list[str]
     tags: list[str]
     entry_point: str
-    tenant_id: str
+    tenant_id: str | None
     homepage: str | None
     repository: str | None
     icon: str | None

@@ -18,7 +18,7 @@ async def upload_document(
 ):
     if not workspace_id:
         raise HTTPException(status_code=400, detail="workspace_id is required")
-    user_id = current_user["id"]
+    user_id = current_user.get("sub") or current_user.get("user_id")
     doc = await document_service.upload(file=file, workspace_id=workspace_id, user_id=user_id, db=db)
     return DocumentResponse.model_validate(doc)
 

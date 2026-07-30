@@ -155,6 +155,16 @@ class NotificationService:
         except Exception:
             pass
 
+    async def webhook_receipt(self, notification_id: uuid.UUID | str, dto, db: AsyncSession = None):
+        notification = await self.get_notification(notification_id, db)
+        if not notification:
+            raise HTTPException(404, "Notification not found")
+        notification.status = dto.status or notification.status
+        notification.updated_at = datetime.now(timezone.utc)
+        await db.flush()
+        await db.refresh(notification)
+        return notification
+
     async def update_status(self, notification_id: str, status: str, db: AsyncSession = None):
         result = await db.execute(
             text("UPDATE notifications SET status = :status, updated_at = :updated_at WHERE id = :id"),

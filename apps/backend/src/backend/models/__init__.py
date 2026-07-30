@@ -4,7 +4,7 @@ from .schema import (
     Embedding, Entity, Event, EventSubscription, Integration, Memory,
     MemoryRecord, Notification, Permission, Plugin, PluginExecution,
     Relationship, Resume, ScheduleEvent, Subscription, Tenant,
-    UsageRecord, User, Workspace, WorkspaceUser,
+    UsageRecord, User, Webhook, WebhookDelivery, Workspace, WorkspaceUser,
 )
 
 __all__ = [
@@ -14,5 +14,5 @@ __all__ = [
     "EventSubscription", "Integration", "Memory", "MemoryRecord",
     "Notification", "Permission", "Plugin", "PluginExecution",
     "Relationship", "Resume", "ScheduleEvent", "Subscription", "Tenant",
-    "UsageRecord", "User", "Workspace", "WorkspaceUser",
+    "UsageRecord", "User", "Webhook", "WebhookDelivery", "Workspace", "WorkspaceUser",
 ]

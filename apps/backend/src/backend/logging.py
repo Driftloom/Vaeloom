@@ -38,6 +38,8 @@ class StructuredJsonFormatter(logging.Formatter):
             "level": record.levelname.lower(),
             "time": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "service": settings.service_name,
+            "environment": settings.service_environment,
+            "version": settings.service_version,
             "message": record.getMessage(),
         }
         cid = correlation_id_var.get("")
@@ -92,13 +94,16 @@ class PrettyFormatter(logging.Formatter):
 
 def setup_logging() -> None:
     level = getattr(logging, settings.log_level.upper(), logging.INFO)
-    is_dev = settings.service_environment in ("local", "development", "test")
+
+    fmt = settings.log_format or (
+        "pretty" if settings.service_environment in ("local", "development", "test") else "json"
+    )
 
     formatter: logging.Formatter
-    if is_dev:
-        formatter = PrettyFormatter()
-    else:
+    if fmt == "json":
         formatter = StructuredJsonFormatter()
+    else:
+        formatter = PrettyFormatter()
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)

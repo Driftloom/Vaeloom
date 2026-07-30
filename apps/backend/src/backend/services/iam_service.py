@@ -157,9 +157,10 @@ class IamService:
     async def get_permissions(self, user_id: str, db=None) -> list[str]:
         result = await db.execute(
             text("""
-                SELECT DISTINCT unnest(r.permissions) AS permission
+                SELECT DISTINCT j.value AS permission
                 FROM iam_user_roles ur
                 JOIN rbac_roles r ON r.id = ur.role_id
+                CROSS JOIN json_each(r.permissions) j
                 WHERE ur.user_id = :user_id
             """),
             {"user_id": user_id},

@@ -85,10 +85,6 @@ class ConnectorExtService:
         connector = await self.get(connector_id, tenant_id, db)
         now = datetime.now(timezone.utc)
         try:
-            # Sync happens inline now (all services are unified in the backend)
-            connector.last_synced_at = now
-            connector.status = "synced"
-            return True
             connector.last_synced_at = now
             connector.status = "synced"
         except Exception:
@@ -98,7 +94,7 @@ class ConnectorExtService:
         return {
             "connector_id": str(connector.id),
             "status": connector.status,
-            "error": None,
+            "error": None if connector.status == "synced" else "sync_failed",
             "synced_at": connector.last_synced_at,
         }
 

@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+import secrets
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import settings
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..schemas.auth import (
@@ -8,6 +11,7 @@ from ..schemas.auth import (
 )
 from ..schemas.workspace import WorkspaceResponse
 from ..services.auth_service import auth_service
+from ..services.sso import SSOConfig, get_sso_provider
 from ..services.workspace_service import workspace_service
 
 router = APIRouter()
@@ -58,4 +62,140 @@ async def refresh(dto: RefreshRequest, db: AsyncSession = Depends(get_db)):
     return await auth_service.refresh_token(
         refresh_token=dto.refresh_token,
         db=db,
+    )
+
+
+from pydantic import BaseModel
+
+
+class SSOTokenRequest(BaseModel):
+    token: str
+
+
+@router.post("/sso/{provider}", response_model=AuthResponse)
+async def sso_token_login(
+    provider: str,
+    dto: SSOTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import select
+
+    from ..models.schema import User
+    from ..schemas.auth import AuthResponse as AuthResp, PublicUser
+
+    provider_config = settings.sso_providers.get(provider)
+    if not provider_config:
+        raise HTTPException(status_code=400, detail=f"Unsupported SSO provider: {provider}")
+
+    sso = get_sso_provider(provider, SSOConfig(**provider_config))
+    payload = await sso.validate_token(dto.token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid SSO token")
+
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(status_code=401, detail="Email not provided by SSO provider")
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        display_name = payload.get("name") or email.split("@")[0]
+        user = User(
+            email=email,
+            display_name=display_name,
+            auth_provider=provider,
+        )
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
+
+    if user.status != "ACTIVE":
+        raise HTTPException(status_code=403, detail="Account is not active")
+
+    access_token, refresh_token = await auth_service.issue_token(
+        str(user.id), user.email, db=db,
+    )
+
+    return AuthResp(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=PublicUser.model_validate(user),
+    )
+
+
+@router.get("/sso/{provider}")
+async def sso_login(provider: str, redirect_uri: str = Query(...), request: Request = None):
+    provider_config = settings.sso_providers.get(provider)
+    if not provider_config:
+        raise HTTPException(status_code=400, detail=f"Unsupported SSO provider: {provider}")
+
+    sso = get_sso_provider(provider, SSOConfig(**provider_config))
+    state = secrets.token_urlsafe(32)
+    request.app.state._sso_state = state
+    auth_url = await sso.get_auth_url(redirect_uri, state)
+    return {"auth_url": auth_url, "state": state}
+
+
+@router.get("/sso/{provider}/callback")
+async def sso_callback(
+    provider: str,
+    code: str = Query(...),
+    state: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    request: Request = None,
+):
+    from sqlalchemy import select
+
+    from ..models.schema import User
+    from ..schemas.auth import AuthResponse as AuthResp, PublicUser
+
+    expected_state = getattr(request.app.state, "_sso_state", None)
+    if expected_state is not None and state != expected_state:
+        raise HTTPException(status_code=400, detail="State mismatch")
+
+    provider_config = settings.sso_providers.get(provider)
+    if not provider_config:
+        raise HTTPException(status_code=400, detail=f"Unsupported SSO provider: {provider}")
+
+    redirect_uri = str(request.url_for("sso_callback", provider=provider))
+    sso = get_sso_provider(provider, SSOConfig(**provider_config))
+    id_token = await sso.exchange_code(code, redirect_uri)
+    if not id_token:
+        raise HTTPException(status_code=401, detail="Failed to exchange authorization code")
+
+    payload = await sso.validate_token(id_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid ID token")
+
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(status_code=401, detail="Email not provided by SSO provider")
+
+    sub = payload.get("sub")
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        display_name = payload.get("name") or email.split("@")[0]
+        user = User(
+            email=email,
+            display_name=display_name,
+            auth_provider=provider,
+        )
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
+
+    if user.status != "ACTIVE":
+        raise HTTPException(status_code=403, detail="Account is not active")
+
+    access_token, refresh_token = await auth_service.issue_token(
+        str(user.id), user.email, db=db,
+    )
+
+    return AuthResp(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=PublicUser.model_validate(user),
     )

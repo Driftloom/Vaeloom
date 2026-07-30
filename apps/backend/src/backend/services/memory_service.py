@@ -31,7 +31,7 @@ class MemoryService:
             content_hash=llm_service.compute_content_hash(content_for_embedding) if content_for_embedding else None,
             size=len(content_for_embedding) if content_for_embedding else 0,
             embedding=embedding,
-            metadata=dto.metadata or {},
+            metadata_=dto.metadata or {},
             tags=dto.tags,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -43,6 +43,7 @@ class MemoryService:
         )
         db.add(memory)
         await db.flush()
+        await db.refresh(memory)
         return memory
 
     async def list_memories(self, db: AsyncSession, query: MemoryQuery, tenant_id: str | None) -> tuple[list[Memory], int]:
@@ -99,6 +100,7 @@ class MemoryService:
             setattr(memory, key, value)
 
         await db.flush()
+        await db.refresh(memory)
         return memory
 
     async def delete_memory(self, db: AsyncSession, memory_id: uuid.UUID, tenant_id: str | None) -> bool:

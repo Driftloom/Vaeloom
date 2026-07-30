@@ -1,4 +1,7 @@
+import json
 import uuid
+from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any
 
 from sqlalchemy import text
@@ -7,12 +10,57 @@ from ..services.llm_service import llm_service, LLMProviderError
 
 
 class KnowledgeGraphService:
+    @staticmethod
+    def _fix_row(row):
+        """Convert raw DB row types for Pydantic (SQLite returns JSON strings)."""
+        if row is None:
+            return None
+        d = dict(row._mapping)
+        for col in ("properties", "embedding"):
+            if col in d and isinstance(d[col], str):
+                try:
+                    d[col] = json.loads(d[col])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        if hasattr(row, "edge_count") and row.edge_count is not None:
+            d["edge_count"] = int(row.edge_count)
+        now = datetime.now(timezone.utc)
+        for col in ("created_at", "updated_at"):
+            if col in d and d[col] is None:
+                d[col] = now
+        ns = SimpleNamespace(**d)
+        ns._mapping = d
+        return ns
+
+    @staticmethod
+    def _fix_rows(rows):
+        return [KnowledgeGraphService._fix_row(r) for r in rows]
     async def _compute_embedding(self, text_content: str) -> list[float]:
         try:
             return await llm_service.generate_embedding(text_content)
         except (LLMProviderError, ValueError, KeyError, IndexError):
             pass
         return [0.0] * 1536
+
+    async def _edge_rows_with_source_target(self, query_text, params, db):
+        """Fetch edge rows and attach source/target dicts (PG/SQLite compatible)."""
+        result = await db.execute(text(query_text), params)
+        rows = result.fetchall()
+        enriched = []
+        for r in rows:
+            d = dict(r._mapping)
+            d["source"] = {"id": d.pop("src_id"), "label": d.pop("src_label"), "type": d.pop("src_type")}
+            d["target"] = {"id": d.pop("tgt_id"), "label": d.pop("tgt_label"), "type": d.pop("tgt_type")}
+            for col in ("properties",):
+                if col in d and isinstance(d[col], str):
+                    try:
+                        d[col] = json.loads(d[col])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            ns = SimpleNamespace(**d)
+            ns._mapping = d
+            enriched.append(ns)
+        return enriched
 
     async def create_node(self, dto, tenant_id: str | None, db):
         node_id = uuid.uuid4()
@@ -30,7 +78,7 @@ class KnowledgeGraphService:
         result = await db.execute(
             text("""
                 INSERT INTO knowledge_nodes (id, label, type, description, importance, embedding, properties, tenant_id)
-                VALUES (:id, :label, :type, :description, :importance, :embedding::vector, :properties, :tenant_id)
+                VALUES (:id, :label, :type, :description, :importance, :embedding, :properties, :tenant_id)
                 RETURNING id, label, type, description, importance, properties, tenant_id, created_at, updated_at
             """),
             {
@@ -45,7 +93,7 @@ class KnowledgeGraphService:
             },
         )
         row = result.fetchone()
-        return row
+        return self._fix_row(row)
 
     async def list_nodes(
         self,
@@ -72,7 +120,7 @@ class KnowledgeGraphService:
             params["type_filter"] = type_filter
 
         if search:
-            conditions.append("(n.label ILIKE :search OR n.description ILIKE :search)")
+            conditions.append("(n.label LIKE :search OR n.description LIKE :search)")
             params["search"] = f"%{search}%"
 
         if min_importance is not None:
@@ -112,21 +160,21 @@ class KnowledgeGraphService:
             params,
         )
         rows = result.fetchall()
-        return rows, total
+        return self._fix_rows(rows), total
 
     async def get_node(self, node_id: uuid.UUID, db):
         result = await db.execute(
             text("""
                 SELECT n.id, n.label, n.type, n.description, n.importance,
                        n.properties, n.tenant_id, n.created_at, n.updated_at,
-                       (SELECT COUNT(*)::int FROM knowledge_edges
+                       (SELECT COUNT(*) FROM knowledge_edges
                         WHERE source_id = n.id OR target_id = n.id) AS edge_count
                 FROM knowledge_nodes n
                 WHERE n.id = :node_id
             """),
             {"node_id": node_id},
         )
-        return result.fetchone()
+        return self._fix_row(result.fetchone())
 
     async def update_node(self, node_id: uuid.UUID, dto, db):
         update_data = dto.model_dump(exclude_unset=True)
@@ -161,20 +209,20 @@ class KnowledgeGraphService:
             content_for_embedding = f"{label} {description or ''}".strip()
             embedding = await self._compute_embedding(content_for_embedding)
             embedding_str = "[" + ",".join(f"{v}" for v in embedding) + "]"
-            set_parts.append("embedding = :embedding::vector")
+            set_parts.append("embedding = :embedding")
             params["embedding"] = embedding_str
 
         set_clause = ", ".join(set_parts)
         result = await db.execute(
             text(f"""
                 UPDATE knowledge_nodes
-                SET {set_clause}, updated_at = NOW()
+                SET {set_clause}, updated_at = CURRENT_TIMESTAMP
                 WHERE id = :node_id
                 RETURNING id, label, type, description, importance, properties, tenant_id, created_at, updated_at
             """),
             params,
         )
-        return result.fetchone()
+        return self._fix_row(result.fetchone())
 
     async def delete_node(self, node_id: uuid.UUID, db):
         await db.execute(
@@ -226,7 +274,7 @@ class KnowledgeGraphService:
                 "properties": properties,
             },
         )
-        return result.fetchone()
+        return self._fix_row(result.fetchone())
 
     async def list_edges(self, node_id: uuid.UUID, page: int, page_size: int, db):
         offset = (page - 1) * page_size
@@ -240,22 +288,22 @@ class KnowledgeGraphService:
         )
         total = count_result.scalar()
 
-        result = await db.execute(
-            text("""
+        enriched = await self._edge_rows_with_source_target("""
                 SELECT e.id, e.source_id, e.target_id, e.relationship, e.weight,
                        e.properties, e.created_at,
-                       jsonb_build_object('id', src.id, 'label', src.label, 'type', src.type) AS source,
-                       jsonb_build_object('id', tgt.id, 'label', tgt.label, 'type', tgt.type) AS target
+                       src.id AS src_id, src.label AS src_label, src.type AS src_type,
+                       tgt.id AS tgt_id, tgt.label AS tgt_label, tgt.type AS tgt_type
                 FROM knowledge_edges e
                 JOIN knowledge_nodes src ON src.id = e.source_id
                 JOIN knowledge_nodes tgt ON tgt.id = e.target_id
                 WHERE e.source_id = :node_id OR e.target_id = :node_id
                 ORDER BY e.created_at DESC
                 LIMIT :limit OFFSET :offset_val
-            """),
+            """,
             {"node_id": node_id, "limit": page_size, "offset_val": offset},
+            db,
         )
-        return result.fetchall(), total
+        return enriched, total
 
     async def list_all_edges(self, page: int, page_size: int, relationship: str | None, db):
         offset = (page - 1) * page_size
@@ -272,22 +320,22 @@ class KnowledgeGraphService:
         )
         total = count_result.scalar()
 
-        result = await db.execute(
-            text(f"""
+        enriched = await self._edge_rows_with_source_target(f"""
                 SELECT e.id, e.source_id, e.target_id, e.relationship, e.weight,
                        e.properties, e.created_at,
-                       jsonb_build_object('id', src.id, 'label', src.label, 'type', src.type) AS source,
-                       jsonb_build_object('id', tgt.id, 'label', tgt.label, 'type', tgt.type) AS target
+                       src.id AS src_id, src.label AS src_label, src.type AS src_type,
+                       tgt.id AS tgt_id, tgt.label AS tgt_label, tgt.type AS tgt_type
                 FROM knowledge_edges e
                 JOIN knowledge_nodes src ON src.id = e.source_id
                 JOIN knowledge_nodes tgt ON tgt.id = e.target_id
                 {where_clause}
                 ORDER BY e.created_at DESC
                 LIMIT :limit OFFSET :offset_val
-            """),
+            """,
             params,
+            db,
         )
-        return result.fetchall(), total
+        return enriched, total
 
     async def delete_edge(self, edge_id: uuid.UUID, db):
         result = await db.execute(
@@ -297,79 +345,90 @@ class KnowledgeGraphService:
         return result.fetchone()
 
     async def traverse(self, start_id: uuid.UUID, depth: int, mode: str, db):
-        order_dir = "ASC" if mode == "bfs" else "DESC"
-        result = await db.execute(
-            text(f"""
-                WITH RECURSIVE path_cte AS (
-                    SELECT n.id, n.label, n.type, n.description, n.importance,
-                           n.properties, n.tenant_id, n.created_at, n.updated_at,
-                           ARRAY[n.id]::uuid[] AS path_ids, 0 AS lvl
-                    FROM knowledge_nodes n
-                    WHERE n.id = :start_id
+        from collections import deque
 
-                    UNION
+        visited = {start_id}
+        if mode == "bfs":
+            queue = deque([(start_id, 0)])
+        else:
+            queue = [(start_id, 0)]
 
-                    SELECT DISTINCT ON (t.id)
-                           t.id, t.label, t.type, t.description, t.importance,
-                           t.properties, t.tenant_id, t.created_at, t.updated_at,
-                           array_append(pc.path_ids, t.id) AS path_ids,
-                           pc.lvl + 1 AS lvl
-                    FROM path_cte pc
-                    JOIN knowledge_edges e ON e.source_id = pc.id
-                    JOIN knowledge_nodes t ON t.id = e.target_id
-                    WHERE pc.lvl < :depth AND NOT t.id = ANY(pc.path_ids)
+        result = []
+
+        while queue:
+            if mode == "bfs":
+                current_id, lvl = queue.popleft()
+            else:
+                current_id, lvl = queue.pop()
+
+            row = await self.get_node(current_id, db)
+            if row:
+                result.append(row)
+
+            if lvl < depth:
+                edge_result = await db.execute(
+                    text("SELECT target_id FROM knowledge_edges WHERE source_id = :id"),
+                    {"id": current_id},
                 )
-                SELECT id, label, type, description, importance,
-                       properties, tenant_id, created_at, updated_at,
-                       lvl, path_ids
-                FROM path_cte
-                ORDER BY lvl {order_dir}
-            """),
-            {"start_id": start_id, "depth": depth},
-        )
-        return result.fetchall()
+                for edge_row in edge_result.fetchall():
+                    neighbor_id = uuid.UUID(edge_row[0]) if isinstance(edge_row[0], str) else edge_row[0]
+                    if neighbor_id not in visited:
+                        visited.add(neighbor_id)
+                        if mode == "bfs":
+                            queue.append((neighbor_id, lvl + 1))
+                        else:
+                            queue.append((neighbor_id, lvl + 1))
+
+        return result
 
     async def find_shortest_path(self, from_id: uuid.UUID, to_id: uuid.UUID, max_depth: int, db):
-        result = await db.execute(
-            text("""
-                WITH RECURSIVE search_path AS (
-                    SELECT n.id, ARRAY[n.id]::uuid[] AS path_ids, 0 AS depth
-                    FROM knowledge_nodes n
-                    WHERE n.id = :from_id
+        from collections import deque
 
-                    UNION ALL
+        if from_id == to_id:
+            node = await self.get_node(from_id, db)
+            return [node] if node else [], 0
 
-                    SELECT t.id, array_append(sp.path_ids, t.id), sp.depth + 1
-                    FROM search_path sp
-                    JOIN knowledge_edges e ON e.source_id = sp.id
-                    JOIN knowledge_nodes t ON t.id = e.target_id
-                    WHERE sp.depth < :max_depth AND NOT t.id = ANY(sp.path_ids)
-                ),
-                found AS (
-                    SELECT path_ids, depth FROM search_path WHERE id = :to_id
+        visited = {from_id}
+        parent = {from_id: None}
+        queue = deque([(from_id, 0)])
+        found_depth = None
+
+        while queue:
+            current_id, lvl = queue.popleft()
+
+            if current_id == to_id:
+                found_depth = lvl
+                break
+
+            if lvl < max_depth:
+                edge_result = await db.execute(
+                    text("SELECT target_id FROM knowledge_edges WHERE source_id = :id"),
+                    {"id": current_id},
                 )
-                SELECT path_ids, depth FROM found ORDER BY depth LIMIT 1
-            """),
-            {"from_id": from_id, "to_id": to_id, "max_depth": max_depth},
-        )
-        found = result.fetchone()
-        if not found:
+                for edge_row in edge_result.fetchall():
+                    neighbor_id = uuid.UUID(edge_row[0]) if isinstance(edge_row[0], str) else edge_row[0]
+                    if neighbor_id not in visited:
+                        visited.add(neighbor_id)
+                        parent[neighbor_id] = current_id
+                        queue.append((neighbor_id, lvl + 1))
+
+        if found_depth is None:
             return None, None
 
-        path_ids = found[0]
-        depth = found[1]
+        path_ids = []
+        current = to_id
+        while current is not None:
+            path_ids.append(current)
+            current = parent[current]
+        path_ids.reverse()
 
-        nodes_result = await db.execute(
-            text("""
-                SELECT id, label, type, description, importance,
-                       properties, tenant_id, created_at, updated_at
-                FROM knowledge_nodes
-                WHERE id = ANY(:path_ids)
-                ORDER BY array_position(:path_ids, id)
-            """),
-            {"path_ids": path_ids},
-        )
-        return nodes_result.fetchall(), depth
+        nodes = []
+        for pid in path_ids:
+            node = await self.get_node(pid, db)
+            if node:
+                nodes.append(node)
+
+        return nodes, found_depth
 
 
 kg_service = KnowledgeGraphService()

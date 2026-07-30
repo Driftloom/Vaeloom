@@ -18,7 +18,7 @@ from ..services.notification_service import notification_service
 router = APIRouter()
 
 
-@router.post("/send", response_model=NotificationResponse)
+@router.post("/send", response_model=NotificationResponse, status_code=201)
 async def send_notification(
     dto: SendNotificationRequest,
     db: AsyncSession = Depends(get_db),
@@ -44,18 +44,6 @@ async def list_notifications(
     return [NotificationResponse.model_validate(n) for n in rows]
 
 
-@router.get("/{notification_id}", response_model=NotificationResponse)
-async def get_notification(
-    notification_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    if not current_user:
-        raise HTTPException(401, "Not authenticated")
-    notification = await notification_service.get_notification(notification_id, db)
-    return NotificationResponse.model_validate(notification)
-
-
 @router.post("/templates", response_model=TemplateResponse, status_code=201)
 async def create_template(
     dto: CreateTemplateRequest,
@@ -77,6 +65,18 @@ async def list_templates(
         raise HTTPException(401, "Not authenticated")
     templates = await notification_service.list_templates(db)
     return [TemplateResponse.model_validate(t) for t in templates]
+
+
+@router.get("/{notification_id}", response_model=NotificationResponse)
+async def get_notification(
+    notification_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+    notification = await notification_service.get_notification(notification_id, db)
+    return NotificationResponse.model_validate(notification)
 
 
 @router.post("/subscribe", status_code=201)

@@ -36,7 +36,7 @@ class NotificationResponse(BaseModel):
     channel: str
     recipient: str
     subject: str | None
-    body: str
+    body: str = Field(validation_alias="message")
     status: str
     created_at: datetime
     updated_at: datetime

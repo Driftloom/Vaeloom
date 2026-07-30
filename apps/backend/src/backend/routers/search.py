@@ -22,5 +22,6 @@ async def search_all(
         limit=dto.limit,
         offset=dto.offset,
         db=db,
+        filters=dto.filters,
     )
     return SearchResponse(**result)

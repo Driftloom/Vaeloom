@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -8,13 +9,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class SchedulerService:
+    @staticmethod
+    def _fix_json_fields(row):
+        if row is None:
+            return None
+        row = dict(row)
+        for key in ('payload', 'headers'):
+            val = row.get(key)
+            if isinstance(val, str):
+                try:
+                    row[key] = json.loads(val)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        return row
+
     async def create_job(self, dto, tenant_id: str | None, db: AsyncSession = None):
         job_id = uuid.uuid4()
         now = datetime.now(timezone.utc)
         await db.execute(
             text("""
                 INSERT INTO scheduled_jobs (id, name, type, cron, method, url, event, payload, headers, status, tenant_id, created_at, updated_at)
-                VALUES (:id, :name, :type, :cron, :method, :url, :event, :payload::jsonb, :headers::jsonb, :status, :tenant_id, :created_at, :updated_at)
+                VALUES (:id, :name, :type, :cron, :method, :url, :event, :payload, :headers, :status, :tenant_id, :created_at, :updated_at)
             """),
             {
                 "id": job_id,
@@ -37,7 +52,7 @@ class SchedulerService:
             text("SELECT * FROM scheduled_jobs WHERE id = :id"),
             {"id": job_id},
         )
-        return result.mappings().first()
+        return SchedulerService._fix_json_fields(result.mappings().first())
 
     async def list_jobs(
         self,
@@ -73,7 +88,7 @@ class SchedulerService:
             text(f"SELECT * FROM scheduled_jobs WHERE {where_clause} ORDER BY created_at DESC LIMIT :limit OFFSET :offset"),
             params,
         )
-        return result.mappings().all()
+        return [SchedulerService._fix_json_fields(r) for r in result.mappings().all()]
 
     async def get_job(self, job_id: uuid.UUID, db: AsyncSession = None):
         result = await db.execute(
@@ -83,7 +98,7 @@ class SchedulerService:
         row = result.mappings().first()
         if not row:
             raise HTTPException(404, "Job not found")
-        return row
+        return SchedulerService._fix_json_fields(row)
 
     async def update_job(self, job_id: uuid.UUID, dto, db: AsyncSession = None):
         await self.get_job(job_id, db)
@@ -95,10 +110,10 @@ class SchedulerService:
                 sets.append(f"{field} = :{field}")
                 params[field] = val
         if dto.payload is not None:
-            sets.append("payload = :payload::jsonb")
+            sets.append("payload = :payload")
             params["payload"] = dto.payload
         if dto.headers is not None:
-            sets.append("headers = :headers::jsonb")
+            sets.append("headers = :headers")
             params["headers"] = dto.headers
 
         if not sets:

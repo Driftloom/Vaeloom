@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DocumentResponse(BaseModel):
@@ -11,7 +11,7 @@ class DocumentResponse(BaseModel):
     path: str
     type: str
     summary: str | None = None
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = Field(None, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
 

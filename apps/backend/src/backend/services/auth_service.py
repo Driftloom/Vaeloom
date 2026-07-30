@@ -32,6 +32,7 @@ class AuthService:
         )
         db.add(workspace)
         await db.flush()
+        await db.refresh(user)
 
         access_token, refresh_token = await self.issue_token(str(user.id), email, db=db)
 

@@ -21,12 +21,12 @@ class ApplicationResponse(BaseModel):
     job_external_id: str | None = None
     platform: str | None = None
     status: str
-    resume_version_id: str | None = None
+    resume_version_id: uuid.UUID | None = None
     cover_letter: str | None = None
     submitted_at: datetime | None = None
     outcome: str | None = None
     outcome_at: datetime | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}

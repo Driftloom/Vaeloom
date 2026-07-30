@@ -38,11 +38,11 @@ class MemoryResponse(BaseModel):
     content: str | None = None
     content_hash: str | None = None
     size: int | None = None
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = Field(None, validation_alias="metadata_")
     tags: list[str] | None = None
-    tenant_id: str | None = None
-    user_id: str | None = None
-    workspace_id: str | None = None
+    tenant_id: uuid.UUID | None = None
+    user_id: uuid.UUID | None = None
+    workspace_id: uuid.UUID | None = None
     source_type: str | None = None
     source_uri: str | None = None
     source_label: str | None = None

@@ -16,8 +16,8 @@ class UsageRecordResponse(BaseModel):
     metric: str
     value: float
     timestamp: datetime
-    tenant_id: str | None = None
-    user_id: str | None = None
+    tenant_id: uuid.UUID | None = None
+    user_id: uuid.UUID | None = None
 
     model_config = {"from_attributes": True}
 

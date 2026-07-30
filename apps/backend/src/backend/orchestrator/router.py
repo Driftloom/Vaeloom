@@ -16,7 +16,7 @@ from backend.agents.job_search_agent.handler import JobSearchAgent
 from backend.agents.application_agent.handler import ApplicationAgent
 from backend.agents.gmail_agent.handler import GmailAgent
 from backend.agents.scheduler_agent.handler import SchedulerAgent
-from backend.agents.qa_agent.handler import QAAgent, QAValidationResult
+from backend.agents.qa_validator import QAAgent, QAResult
 from backend.agents.career_agent.handler import CareerAgent  # G1
 from backend.agents.learning_agent.handler import LearningAgent  # G2
 from backend.agents.research_agent.handler import ResearchAgent  # G3
@@ -227,9 +227,9 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
     )
     loop_response = await run_agent_loop(agent_request)
 
-    # ── 4. QA Gate ─────────────────────────────────────────────────
+    # ── 4. QA Gate (mandatory) ─────────────────────────────────────
     qa = QAAgent()
-    agent_output = {
+    agent_output: dict[str, Any] = {
         "agent_name": agent_name,
         "action": "suggest",
         "confidence": confidence,
@@ -238,14 +238,16 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
 
     max_qa_retries = 3
     for attempt in range(max_qa_retries):
-        qa_result: QAValidationResult = await qa.validate(agent_output)
-        if qa_result.decision == "approved":
-            logger.info(f"QA APPROVED (attempt {attempt + 1})")
+        qa_result: QAResult = await qa.validate_output(
+            agent_name=agent_name,
+            input_data={"message": request.message},
+            output_data=agent_output,
+        )
+        if qa_result.passed:
+            logger.info("QA APPROVED (attempt %d)  score=%.2f", attempt + 1, qa_result.score)
             return agent_output
-        logger.warning(f"QA REJECTED (attempt {attempt + 1}): {qa_result.issues}")
-        # In real impl, send back to agent for revision here
+        logger.warning("QA REJECTED (attempt %d): %s", attempt + 1, qa_result.issues)
 
-    # All QA retries exhausted — deliver best-effort with flag
     logger.warning("QA retries exhausted — delivering best-effort with flag")
     agent_output["qa_flag"] = "best_effort_after_retries"
     return agent_output

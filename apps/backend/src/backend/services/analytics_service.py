@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
 
@@ -16,44 +16,46 @@ class AnalyticsService:
         interval: str,
         db=None,
     ) -> list[UsageTimePoint]:
-        params: dict = {}
         date_from = date_from or (datetime.now(timezone.utc).isoformat()[:10])
         date_to = date_to or (datetime.now(timezone.utc).isoformat()[:10])
 
-        sql = """
-            WITH date_series AS (
-                SELECT generate_series(
-                    :date_from::date,
-                    :date_to::date,
-                    :interval::interval
-                ) AS bucket
-            )
-            SELECT
-                to_char(ds.bucket, 'YYYY-MM-DD') AS date,
-                COALESCE(SUM(ur.memories_created), 0) AS memories_created,
-                COALESCE(SUM(ur.agents_run), 0) AS agents_run,
-                COALESCE(SUM(ur.tokens_used), 0) AS tokens_used
-            FROM date_series ds
-            LEFT JOIN usage_records ur
-                ON DATE_TRUNC(:trunc, ur.recorded_at) = ds.bucket
-                AND ur.tenant_id = :tenant_id
-            GROUP BY ds.bucket
-            ORDER BY ds.bucket
-        """
+        start = datetime.strptime(date_from[:10], "%Y-%m-%d")
+        end = datetime.strptime(date_to[:10], "%Y-%m-%d")
 
-        trunc_map = {"day": "day", "hour": "hour", "week": "week", "month": "month"}
-        trunc = trunc_map.get(interval, "day")
+        buckets = []
+        current = start
+        one_day = timedelta(days=1)
+        while current <= end:
+            buckets.append(current.strftime("%Y-%m-%d"))
+            current += one_day
 
-        params["date_from"] = date_from
-        params["date_to"] = date_to
-        params["interval"] = f"1 {interval}" if interval in ("day", "month") else "1 day"
-        params["trunc"] = trunc
-        params["tenant_id"] = tenant_id
-
-        result = await db.execute(text(sql), params)
+        result = await db.execute(
+            text("""
+                SELECT DATE(recorded_at) AS date,
+                       COALESCE(SUM(memories_created), 0) AS memories_created,
+                       COALESCE(SUM(agents_run), 0) AS agents_run,
+                       COALESCE(SUM(tokens_used), 0) AS tokens_used
+                FROM usage_records
+                WHERE tenant_id = :tenant_id
+                  AND DATE(recorded_at) >= :date_from
+                  AND DATE(recorded_at) <= :date_to
+                GROUP BY DATE(recorded_at)
+                ORDER BY DATE(recorded_at)
+            """),
+            {"tenant_id": tenant_id, "date_from": date_from[:10], "date_to": date_to[:10]},
+        )
         rows = result.fetchall()
+        data_by_date = {str(r[0]): r for r in rows}
 
-        return [UsageTimePoint(date=str(r[0]), memories_created=r[1], agents_run=r[2], tokens_used=r[3]) for r in rows]
+        return [
+            UsageTimePoint(
+                date=bucket,
+                memories_created=data_by_date[bucket][1] if bucket in data_by_date else 0,
+                agents_run=data_by_date[bucket][2] if bucket in data_by_date else 0,
+                tokens_used=data_by_date[bucket][3] if bucket in data_by_date else 0,
+            )
+            for bucket in buckets
+        ]
 
     async def get_metrics(self, tenant_id: str, db=None) -> KpiSummary:
         import asyncio
@@ -168,7 +170,7 @@ class AnalyticsService:
                 text("""
                     INSERT INTO usage_records (id, tenant_id, recorded_at, memories_created, agents_run, tokens_used)
                     SELECT :id, tenant_id, :recorded_at,
-                           COUNT(*) FILTER (WHERE DATE(created_at) = :recorded_at),
+                           SUM(CASE WHEN DATE(created_at) = :recorded_at THEN 1 ELSE 0 END),
                            0, 0
                     FROM memories GROUP BY tenant_id
                 """),

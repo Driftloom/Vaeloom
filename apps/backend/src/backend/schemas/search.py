@@ -8,6 +8,7 @@ class SearchRequest(BaseModel):
     sources: list[str] | None = None
     limit: int = Field(default=20, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
+    filters: dict[str, Any] | None = None
 
 
 class SearchResult(BaseModel):
@@ -21,3 +22,4 @@ class SearchResult(BaseModel):
 class SearchResponse(BaseModel):
     results: list[SearchResult]
     total: int
+    facet_counts: dict[str, dict[str, int]] = Field(default_factory=dict)

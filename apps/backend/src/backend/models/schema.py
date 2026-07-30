@@ -6,7 +6,8 @@ from sqlalchemy import (
     Boolean, Column, DateTime, Float, ForeignKey, Index, Integer,
     String, Text, UniqueConstraint, func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy import JSON
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -22,7 +23,7 @@ class User(Base):
     avatar_url: Mapped[str | None] = mapped_column(String(1000))
     auth_provider: Mapped[str] = mapped_column(String(50), default="email")
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
-    preferences: Mapped[dict] = mapped_column(JSONB, default=dict)
+    preferences: Mapped[dict] = mapped_column(JSON, default=dict)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -45,8 +46,8 @@ class Tenant(Base):
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
     isolation: Mapped[str] = mapped_column(String(50), default="pooled")
     plan: Mapped[str] = mapped_column(String(50), default="free")
-    settings: Mapped[dict] = mapped_column(JSONB, default=dict)
-    limits: Mapped[dict] = mapped_column(JSONB, default=dict)
+    settings: Mapped[dict] = mapped_column(JSON, default=dict)
+    limits: Mapped[dict] = mapped_column(JSON, default=dict)
     features: Mapped[list[str]] = mapped_column(ARRAY(String(255)), default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -65,7 +66,7 @@ class AuthSession(Base):
     refresh_token: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_activity: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    device_info: Mapped[dict | None] = mapped_column(JSONB)
+    device_info: Mapped[dict | None] = mapped_column(JSON)
     ip_address: Mapped[str | None] = mapped_column(String(45))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -79,12 +80,15 @@ class ApiKey(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     key_prefix: Mapped[str] = mapped_column(String(20), nullable=False)
     key_hash: Mapped[str] = mapped_column(String(512), unique=True, nullable=False)
-    permissions: Mapped[list] = mapped_column(JSONB, default=list)
+    permissions: Mapped[list] = mapped_column(JSON, default=list)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_used: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rotated_from: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -142,7 +146,7 @@ class Connector(Base):
     status: Mapped[str] = mapped_column(String(20), default="DISCONNECTED")
     token_ref: Mapped[str | None] = mapped_column(String(1000))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    config: Mapped[dict] = mapped_column(JSONB, default=dict)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -165,7 +169,7 @@ class Document(Base):
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     raw_storage_key: Mapped[str | None] = mapped_column(String(1000))
     summary: Mapped[str | None] = mapped_column(Text)
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -209,7 +213,7 @@ class Memory(Base):
     content_hash: Mapped[str] = mapped_column(String(256), nullable=False)
     size: Mapped[int] = mapped_column(Integer, default=0)
     embedding = Column(Vector(1536))
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     tags: Mapped[list[str]] = mapped_column(ARRAY(String(255)), default=list)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
@@ -239,7 +243,7 @@ class MemoryRecord(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
-    content: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    content: Mapped[dict] = mapped_column(JSON, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
     importance: Mapped[float] = mapped_column(Float, default=0.5)
     freshness_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -265,7 +269,7 @@ class Entity(Base):
     canonical_name: Mapped[str] = mapped_column(String(500), nullable=False)
     aliases: Mapped[list[str] | None] = mapped_column(ARRAY(String(255)))
     embedding_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -289,7 +293,7 @@ class Relationship(Base):
     relation_type: Mapped[str] = mapped_column(String(100), nullable=False)
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
     source_memory_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     from_entity: Mapped["Entity"] = relationship("Entity", foreign_keys=[from_entity_id], back_populates="out_relations")
@@ -324,7 +328,7 @@ class Resume(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
     variant_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    content: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    content: Mapped[dict] = mapped_column(JSON, nullable=False)
     version: Mapped[int] = mapped_column(Integer, default=1)
     generated_from_snapshot: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -348,7 +352,7 @@ class Application(Base):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     outcome: Mapped[str | None] = mapped_column(String(50))
     outcome_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -372,7 +376,7 @@ class ScheduleEvent(Base):
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     conflict_flag: Mapped[bool] = mapped_column(Boolean, default=False)
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -393,9 +397,9 @@ class Agent(Base):
     category: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="IDLE")
     version: Mapped[str] = mapped_column(String(50), default="0.1.0")
-    config: Mapped[dict] = mapped_column(JSONB, default=dict)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
     capabilities: Mapped[list[str]] = mapped_column(ARRAY(String(255)), default=list)
-    permissions: Mapped[dict] = mapped_column(JSONB, default=dict)
+    permissions: Mapped[dict] = mapped_column(JSON, default=dict)
     workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id"))
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
@@ -414,14 +418,18 @@ class AgentExecution(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     agent_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False)
+    tenant_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="PENDING")
-    input: Mapped[dict] = mapped_column(JSONB, default=dict)
-    output: Mapped[dict | None] = mapped_column(JSONB)
+    input: Mapped[dict] = mapped_column(JSON, default=dict)
+    output: Mapped[dict | None] = mapped_column(JSON)
     error: Mapped[str | None] = mapped_column(Text)
     tokens_used: Mapped[int | None] = mapped_column(Integer)
     cost: Mapped[float | None] = mapped_column(Float)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    response_time_ms: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     agent: Mapped["Agent"] = relationship("Agent", back_populates="executions")
@@ -484,8 +492,8 @@ class Event(Base):
     priority: Mapped[str] = mapped_column(String(20), default="NORMAL")
     correlation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     causation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    payload: Mapped[dict] = mapped_column(JSONB, default=dict)
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -507,8 +515,8 @@ class EventSubscription(Base):
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)
     handler_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     handler_type: Mapped[str] = mapped_column(String(50), default="service")
-    config: Mapped[dict] = mapped_column(JSONB, default=dict)
-    filters: Mapped[dict | None] = mapped_column(JSONB)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    filters: Mapped[dict | None] = mapped_column(JSON)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -521,7 +529,7 @@ class DeadLetterEvent(Base):
     error: Mapped[str] = mapped_column(Text, nullable=False)
     error_count: Mapped[int] = mapped_column(Integer, default=1)
     last_error_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -540,6 +548,39 @@ class Subscription(Base):
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class Webhook(Base):
+    __tablename__ = "webhooks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    secret: Mapped[str] = mapped_column(String(512), nullable=False)
+    events: Mapped[list] = mapped_column(JSON, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    retry_count: Mapped[int] = mapped_column(Integer, default=3)
+    timeout_ms: Mapped[int] = mapped_column(Integer, default=5000)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class WebhookDelivery(Base):
+    __tablename__ = "webhook_deliveries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    webhook_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("webhooks.id", ondelete="CASCADE"), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")
+    status_code: Mapped[int | None] = mapped_column(Integer)
+    response_body: Mapped[str | None] = mapped_column(Text)
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class UsageRecord(Base):
@@ -570,7 +611,7 @@ class Notification(Base):
     priority: Mapped[str] = mapped_column(String(20), default="medium")
     status: Mapped[str] = mapped_column(String(20), default="pending")
     read: Mapped[bool] = mapped_column(Boolean, default=False)
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -589,7 +630,7 @@ class Integration(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(100), nullable=False)
-    config: Mapped[dict] = mapped_column(JSONB, default=dict)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(20), default="disconnected")
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -610,7 +651,7 @@ class Plugin(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     license: Mapped[str] = mapped_column(String(100), default="")
     status: Mapped[str] = mapped_column(String(20), default="REGISTERED")
-    permissions: Mapped[dict] = mapped_column(JSONB, default=dict)
+    permissions: Mapped[dict] = mapped_column(JSON, default=dict)
     capabilities: Mapped[list[str]] = mapped_column(ARRAY(String(255)), default=list)
     hooks: Mapped[list[str]] = mapped_column(ARRAY(String(255)), default=list)
     tags: Mapped[list[str]] = mapped_column(ARRAY(String(255)), default=list)
@@ -619,7 +660,7 @@ class Plugin(Base):
     homepage: Mapped[str | None] = mapped_column(String(1000))
     repository: Mapped[str | None] = mapped_column(String(1000))
     icon: Mapped[str | None] = mapped_column(String(1000))
-    config_schema: Mapped[dict | None] = mapped_column(JSONB)
+    config_schema: Mapped[dict | None] = mapped_column(JSON)
     code: Mapped[str | None] = mapped_column(Text)
     min_app_version: Mapped[str | None] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -635,7 +676,7 @@ class PluginExecution(Base):
     plugin_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("plugins.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="PENDING")
     duration_ms: Mapped[int | None] = mapped_column(Integer)
-    output: Mapped[dict | None] = mapped_column(JSONB)
+    output: Mapped[dict | None] = mapped_column(JSON)
     error_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -648,7 +689,7 @@ class AgentSchedule(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     agent_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False)
     cron: Mapped[str] = mapped_column(String(100), nullable=False)
-    input: Mapped[dict] = mapped_column(JSONB, default=dict)
+    input: Mapped[dict] = mapped_column(JSON, default=dict)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

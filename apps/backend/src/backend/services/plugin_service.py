@@ -1,7 +1,11 @@
+import asyncio
 import json
+import os
+import sys
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -9,6 +13,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class PluginService:
+    @staticmethod
+    def _fix_json_fields(row_dict):
+        if row_dict is None:
+            return None
+        for key in ('permissions', 'config_schema', 'output', 'capabilities', 'hooks', 'tags'):
+            val = row_dict.get(key)
+            if isinstance(val, str):
+                try:
+                    row_dict[key] = json.loads(val)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        return row_dict
+
     async def register(self, dto, tenant_id: str | None, db: AsyncSession):
         plugin_id = uuid.uuid4()
         now = datetime.now(timezone.utc)
@@ -19,7 +36,7 @@ class PluginService:
 
         stmt = text("""
             INSERT INTO plugins (id, name, version, author, description, license, status, permissions, capabilities, hooks, tags, entry_point, tenant_id, homepage, repository, icon, config_schema, code, min_app_version, created_at, updated_at)
-            VALUES (:id, :name, :version, :author, :description, :license, 'REGISTERED', :permissions::jsonb, :capabilities::text[], :hooks::text[], :tags::text[], :entry_point, :tenant_id, :homepage, :repository, :icon, :config_schema::jsonb, :code, :min_app_version, :created_at, :updated_at)
+            VALUES (:id, :name, :version, :author, :description, :license, 'REGISTERED', :permissions, :capabilities, :hooks, :tags, :entry_point, :tenant_id, :homepage, :repository, :icon, :config_schema, :code, :min_app_version, :created_at, :updated_at)
             RETURNING id, name, version, author, description, license, status, permissions, capabilities, hooks, tags, entry_point, tenant_id, homepage, repository, icon, config_schema, code, min_app_version, created_at, updated_at
         """)
         result = await db.execute(stmt, {
@@ -45,7 +62,7 @@ class PluginService:
             "updated_at": now,
         })
         row = result.mappings().first()
-        return dict(row) if row else None
+        return PluginService._fix_json_fields(dict(row)) if row else None
 
     async def list_plugins(self, page: int, page_size: int, status: str | None, tags: list[str] | None, search: str | None, tenant_id: str | None, db: AsyncSession):
         conditions = ["1=1"]
@@ -85,7 +102,7 @@ class PluginService:
         params["offset"] = offset
         data_result = await db.execute(data_sql, params)
         rows = data_result.mappings().all()
-        return [dict(r) for r in rows], total
+        return [PluginService._fix_json_fields(dict(r)) for r in rows], total
 
     async def get_plugin(self, plugin_id: uuid.UUID, db: AsyncSession):
         stmt = text("""
@@ -97,7 +114,7 @@ class PluginService:
         """)
         result = await db.execute(stmt, {"id": plugin_id})
         row = result.mappings().first()
-        return dict(row) if row else None
+        return PluginService._fix_json_fields(dict(row)) if row else None
 
     async def update_plugin(self, plugin_id: uuid.UUID, dto, db: AsyncSession):
         sets = []
@@ -113,17 +130,17 @@ class PluginService:
             sets.append("entry_point = :entry_point")
             params["entry_point"] = dto.entry_point
         if dto.permissions is not None:
-            sets.append("permissions = :permissions::jsonb")
+            sets.append("permissions = :permissions")
             perms = dto.permissions.model_dump() if hasattr(dto.permissions, "model_dump") else dto.permissions
             params["permissions"] = json.dumps(perms)
         if dto.capabilities is not None:
-            sets.append("capabilities = :capabilities::text[]")
+            sets.append("capabilities = :capabilities")
             params["capabilities"] = dto.capabilities
         if dto.hooks is not None:
-            sets.append("hooks = :hooks::text[]")
+            sets.append("hooks = :hooks")
             params["hooks"] = dto.hooks
         if dto.tags is not None:
-            sets.append("tags = :tags::text[]")
+            sets.append("tags = :tags")
             params["tags"] = dto.tags
         if dto.status is not None:
             sets.append("status = :status")
@@ -145,7 +162,7 @@ class PluginService:
         """)
         result = await db.execute(stmt, params)
         row = result.mappings().first()
-        return dict(row) if row else None
+        return PluginService._fix_json_fields(dict(row)) if row else None
 
     async def delete_plugin(self, plugin_id: uuid.UUID, db: AsyncSession):
         stmt = text("DELETE FROM plugins WHERE id = :id")
@@ -156,7 +173,15 @@ class PluginService:
         stmt = text("SELECT permissions FROM plugins WHERE id = :id")
         result = await db.execute(stmt, {"id": plugin_id})
         row = result.mappings().first()
-        return row["permissions"] if row else None
+        if row is None:
+            return None
+        val = row["permissions"]
+        if isinstance(val, str):
+            try:
+                return json.loads(val)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return val
 
     async def execute(self, plugin_id: uuid.UUID, dto, db: AsyncSession):
         plugin = await self.get_plugin(plugin_id, db)
@@ -185,28 +210,45 @@ class PluginService:
         timeout_ms = dto.timeout_ms or 5000
 
         try:
-            restricted_globals = {
-                "__builtins__": {
-                    "abs": abs, "all": all, "any": any, "bool": bool,
-                    "dict": dict, "enumerate": enumerate, "filter": filter,
-                    "float": float, "int": int, "isinstance": isinstance,
-                    "len": len, "list": list, "map": map, "max": max,
-                    "min": min, "range": range, "round": round, "set": set,
-                    "slice": slice, "sorted": sorted, "str": str, "sum": sum,
-                    "tuple": tuple, "type": type, "zip": zip, "reversed": reversed,
-                    "True": True, "False": False, "None": None,
-                    "Exception": Exception, "ValueError": ValueError,
-                    "TypeError": TypeError, "KeyError": KeyError,
-                    "IndexError": IndexError, "AttributeError": AttributeError,
-                    "RuntimeError": RuntimeError, "StopIteration": StopIteration,
-                },
-                "input": sandbox_context["input"],
-                "context": sandbox_context,
-            }
-            local_scope = {}
-            exec(code, restricted_globals, local_scope)
-            result = local_scope.get("result", local_scope.get("run", lambda: None)())
-            output = {"result": result} if result is not None else None
+            sandbox_script = Path(__file__).resolve().parent / "plugin_sandbox.py"
+
+            env = os.environ.copy()
+            env["PLUGIN_CONTEXT"] = json.dumps(sandbox_context)
+            env["PYTHONSAFEPATH"] = "1"
+            for key in list(env):
+                if key.upper() in ("HTTP_PROXY", "HTTPS_PROXY", "PYTHONPATH", "PYTHONHOME"):
+                    del env[key]
+
+            proc = await asyncio.create_subprocess_exec(
+                sys.executable, str(sandbox_script),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+            )
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(code.encode("utf-8")),
+                    timeout=timeout_ms / 1000,
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+                status = "failed"
+                error_message = f"Execution timed out after {timeout_ms}ms"
+            else:
+                if proc.returncode != 0:
+                    status = "failed"
+                    error_message = (stderr.decode("utf-8").strip()
+                                     or f"Process exited with code {proc.returncode}")
+                else:
+                    result_data = json.loads(stdout.decode("utf-8"))
+                    if result_data.get("success"):
+                        output = result_data.get("output")
+                    else:
+                        status = "failed"
+                        error_message = result_data.get("error", "Unknown error")
         except Exception as e:
             status = "failed"
             error_message = f"{type(e).__name__}: {str(e)}"
@@ -215,7 +257,7 @@ class PluginService:
 
         exec_stmt = text("""
             INSERT INTO plugin_executions (id, plugin_id, status, duration_ms, output, error_message, created_at)
-            VALUES (:id, :plugin_id, :status, :duration_ms, :output::jsonb, :error_message, :created_at)
+            VALUES (:id, :plugin_id, :status, :duration_ms, :output, :error_message, :created_at)
             RETURNING id, plugin_id, status, duration_ms, output, error_message, created_at
         """)
         exec_result = await db.execute(exec_stmt, {
@@ -228,7 +270,7 @@ class PluginService:
             "created_at": datetime.now(timezone.utc),
         })
         row = exec_result.mappings().first()
-        return dict(row) if row else None
+        return PluginService._fix_json_fields(dict(row)) if row else None
 
     async def list_executions(self, plugin_id: uuid.UUID, page: int, page_size: int, db: AsyncSession):
         offset = (page - 1) * page_size
@@ -245,7 +287,7 @@ class PluginService:
         """)
         result = await db.execute(stmt, {"plugin_id": plugin_id, "limit": page_size, "offset": offset})
         rows = result.mappings().all()
-        return [dict(r) for r in rows], total
+        return [PluginService._fix_json_fields(dict(r)) for r in rows], total
 
 
 plugin_service = PluginService()

@@ -1,0 +1,142 @@
+import json
+import uuid
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..database import get_db
+from ..dependencies import get_current_user, require_role
+from ..services.audit_service import audit_service
+
+router = APIRouter()
+
+
+class DataExportResponse(BaseModel):
+    user_id: str
+    exported_at: datetime
+    data: dict
+    total_records: int
+
+
+class GDPRService:
+    USER_TABLES = [
+        ("users", "id"),
+        ("auth_sessions", "user_id"),
+        ("workspaces", "user_id"),
+        ("workspace_users", "user_id"),
+        ("memories", "user_id"),
+        ("agents", "user_id"),
+        ("integrations", "user_id"),
+        ("notifications", "user_id"),
+        ("events", "user_id"),
+        ("usage_records", "user_id"),
+        ("api_keys", "user_id"),
+        ("connectors", "workspace_id"),
+    ]
+
+    ANONYMIZE_COLUMNS = {
+        "users": ["email", "display_name", "avatar_url", "password_hash"],
+    }
+
+    async def export_user_data(self, user_id: str, db: AsyncSession) -> DataExportResponse:
+        data = {}
+        total_records = 0
+
+        for table, fk_col in self.USER_TABLES:
+            if fk_col == "workspace_id":
+                result = await db.execute(
+                    text(f"SELECT * FROM {table} WHERE {fk_col} IN (SELECT id FROM workspaces WHERE user_id = :uid)"),
+                    {"uid": user_id},
+                )
+            else:
+                result = await db.execute(
+                    text(f"SELECT * FROM {table} WHERE {fk_col} = :uid"),
+                    {"uid": user_id},
+                )
+            rows = [dict(row._mapping) for row in result.fetchall()]
+            if rows:
+                serializable = []
+                for r in rows:
+                    serializable.append({k: str(v) if not isinstance(v, (str, int, float, bool, type(None), list, dict)) else v for k, v in r.items()})
+                data[table] = serializable
+                total_records += len(serializable)
+
+        return DataExportResponse(
+            user_id=user_id,
+            exported_at=datetime.now(timezone.utc),
+            data=data,
+            total_records=total_records,
+        )
+
+    async def delete_user_data(self, user_id: str, db: AsyncSession) -> dict:
+        summary = {}
+
+        for table, fk_col in self.USER_TABLES:
+            if table == "users":
+                result = await db.execute(
+                    text("UPDATE users SET email = :anon_email, display_name = :anon_name, password_hash = NULL, avatar_url = NULL, status = 'ANONYMIZED' WHERE id = :uid"),
+                    {"uid": user_id, "anon_email": f"deleted-{uuid.uuid4()}@vaeloom.local", "anon_name": "Deleted User"},
+                )
+                summary[table] = result.rowcount
+                continue
+
+            if fk_col == "workspace_id":
+                result = await db.execute(
+                    text(f"DELETE FROM {table} WHERE {fk_col} IN (SELECT id FROM workspaces WHERE user_id = :uid)"),
+                    {"uid": user_id},
+                )
+            else:
+                result = await db.execute(
+                    text(f"DELETE FROM {table} WHERE {fk_col} = :uid"),
+                    {"uid": user_id},
+                )
+            summary[table] = result.rowcount
+
+        return {"user_id": user_id, "action": "anonymized", "tables": summary}
+
+
+gdpr_service = GDPRService()
+
+
+@router.get("/gdpr/export")
+async def gdpr_export(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role("admin")),
+):
+    user_id = str(current_user.get("sub"))
+    result = await gdpr_service.export_user_data(user_id, db)
+    await audit_service.record_event(
+        actor_id=user_id,
+        action="gdpr.export",
+        resource="gdpr",
+        resource_id=user_id,
+        tenant_id=current_user.get("tenant_id"),
+        metadata={"total_records": result.total_records},
+        db=db,
+    )
+    await db.commit()
+    return result
+
+
+@router.post("/gdpr/delete")
+async def gdpr_delete(
+    user_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role("admin")),
+):
+    target_id = user_id or str(current_user.get("sub"))
+    result = await gdpr_service.delete_user_data(target_id, db)
+    await audit_service.record_event(
+        actor_id=str(current_user.get("sub")),
+        action="gdpr.delete",
+        resource="gdpr",
+        resource_id=target_id,
+        tenant_id=current_user.get("tenant_id"),
+        metadata=result,
+        db=db,
+    )
+    await db.commit()
+    return result

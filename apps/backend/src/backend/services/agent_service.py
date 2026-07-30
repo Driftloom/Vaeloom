@@ -177,6 +177,7 @@ class AgentService:
             execution.completed_at = datetime.now(timezone.utc)
 
         await db.flush()
+        await db.refresh(execution)
         return execution
 
     async def execute_agent_stream(

@@ -57,7 +57,7 @@ async def track_event(
     current_user: dict = Depends(get_current_user),
 ):
     tenant_id = current_user.get("tenant_id")
-    user_id = current_user.get("id")
+    user_id = current_user.get("sub") or current_user.get("user_id")
     event_id = await analytics_service.track_event(
         name=dto.name, properties=dto.properties, tenant_id=tenant_id, user_id=user_id, db=db,
     )
