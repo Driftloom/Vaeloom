@@ -4,7 +4,10 @@
   "description": "Vaeloom — Memory-first personal intelligence platform",
   "scripts": {
     "dev": "nx run-many --target=dev --parallel",
+    "dev:web": "nx run @vaeloom/web:dev",
+    "dev:be": "cd apps/backend && uvicorn backend.main:app --reload --port 8000",
     "build": "nx run-many --target=build --parallel",
+    "build:web": "nx run @vaeloom/web:build",
     "test": "nx run-many --target=test --parallel",
     "lint": "nx run-many --target=lint --parallel",
     "typecheck": "nx run-many --target=typecheck --parallel",

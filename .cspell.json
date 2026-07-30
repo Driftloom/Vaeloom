@@ -158,7 +158,6 @@
     "*.png",
     "*.jpg",
     "*.jpeg",
-    "*.gif",
-    "Documents/"
+    "*.gif"
   ]
 }

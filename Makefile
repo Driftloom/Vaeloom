@@ -10,6 +10,15 @@ help: ## Show this help
 dev: ## Start all apps in dev mode
 	pnpm dev
 
+dev-web: ## Start frontend only (fast, no Nx orchestration)
+	cd apps/web && pnpm next dev -p 3000
+
+dev-be: ## Start backend only (hot reload)
+	cd apps/backend && uvicorn backend.main:app --reload --port 8000
+
+install-fast: ## Install deps without hoisting (faster)
+	pnpm install --no-frozen-lockfile
+
 build: ## Build all packages
 	pnpm build
 

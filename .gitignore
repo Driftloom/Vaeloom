@@ -67,6 +67,9 @@ coverage/
 .zcode/
 .opencode/
 
+# Graphify knowledge graph — ALL outputs (build artifacts, cache, exports, temp files)
+graphify-out/
+
 # Python build artifacts
 *.egg-info/
 *.whl
@@ -88,6 +91,21 @@ crash-*.log
 # Prisma platform-specific query engine binaries
 query_engine-*.dll.node
 query_engine-*.node
+
+# Database — dev SQLite files
+*.db
+*.sqlite
+*.sqlite3
+
+# Coverage artifacts
+.coverage
+.coverage.*
+cov_*.txt
+htmlcov/
+
+# Generated OpenAPI specs (regenerated from code)
+Docs/openapi.json
+Docs/openapi.yaml
 
 # Misc
 *.tsbuildinfo

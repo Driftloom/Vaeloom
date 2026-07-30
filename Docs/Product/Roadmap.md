@@ -66,7 +66,7 @@ gantt
 
 ## Current Phase
 
-**MVP (Phases 0-6)** — Implementation not yet started. Full build order defined in [`build-prompts/mvp/`](../../Documents/build-prompts/mvp/).
+**MVP (Phases 0-6)** — Implementation not yet started. Full build order defined in [`build-prompts/mvp/`](../../Docs/Build_Prompts/mvp/).
 
 ## Common Mistakes
 
