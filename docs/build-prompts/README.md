@@ -11,7 +11,7 @@ The Build Prompts directory indexes agentic coding build prompts for Claude Code
 
 Sixteen MVP build prompts cover the complete implementation sequence: foundation infra, database schema, ingestion pipeline, memory system, agent harness, RAG retrieval, MCP tools, specialist agents, AI gateway, evaluation framework, guardrails, observability, API backend, frontend, security, and deployment. An additional 17 enterprise build prompts provide enterprise upgrade deltas.
 
-Each build prompt corresponds to a numbered implementation step with documented dependencies, ensuring the system is built in the correct order. The prompts themselves live in their canonical locations under `Docs/Build_Prompts/`.
+Each build prompt corresponds to a numbered implementation step with documented dependencies, ensuring the system is built in the correct order. The prompts themselves live in their canonical locations under `docs/engineering/implementation/`.
 
 ## What's here
 
@@ -19,9 +19,7 @@ This folder does not contain the build prompts themselves — they live in their
 
 | Prompt Set | Location | Count | For |
 |------------|----------|-------|-----|
-| MVP Build Prompts | [`Docs/Build_Prompts/mvp/`](../../Docs/Build_Prompts/mvp/) | 16 files | Implementation steps 01–16 |
-| Enterprise Build Prompts | [`Docs/Build_Prompts/enterprise/`](../../Docs/Build_Prompts/enterprise/) | 17 files | Enterprise upgrade deltas |
-| Implementation Files | [`/docs/Engineering/Implementation/`](../../docs/Engineering/Implementation/) | 16 files | Same content, different structure |
+| MVP + Enterprise Build Prompts | [`../engineering/Implementation/`](../engineering/Implementation/) | 33 files | Steps 01–16 MVP + 17 enterprise deltas |
 
 ```mermaid
 graph LR

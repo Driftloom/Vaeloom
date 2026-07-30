@@ -6,7 +6,7 @@
 /Documents/Archived/
 /Documents/*.html
 *.zip
-Docs/Documentation-Dashboard.html
+docs/Documentation-Dashboard.html
 
 # Python
 __pycache__/
@@ -104,8 +104,8 @@ cov_*.txt
 htmlcov/
 
 # Generated OpenAPI specs (regenerated from code)
-Docs/openapi.json
-Docs/openapi.yaml
+docs/openapi.json
+docs/openapi.yaml
 
 # Misc
 *.tsbuildinfo

@@ -50,6 +50,44 @@ vaeloom/
     translator/
   sdk/
     typescript/   # Public TypeScript SDK
+  infra/
+    ci/           # CI/CD configuration
+    database/     # Database migrations & schema
+    docker/       # Docker compose & Dockerfiles
+    events/       # Event bus configuration
+    logging/      # Centralized logging config
+    migrations/   # Alembic/DB migration scripts
+    monitoring/   # Prometheus/Grafana config
+    ops/          # Operations runbooks
+    security/     # Security policies & IAM
+    telemetry/    # OpenTelemetry config
+  scripts/        # Shell scripts & tooling
+  testing/
+    accessibility/# aXe-based audit scripts
+    e2e/          # Playwright E2E tests
+    integration/  # Integration test containers
+    performance/  # k6 load test scripts
+    unit/         # Unit test setup & config
+  docs/
+    adr/          # Architecture Decision Records (20 ADRs)
+    ai/           # AI/LLM architecture docs
+    api/          # API reference
+    architecture/ # System design docs
+    backend/      # Backend module specs
+    build-prompts/# Build prompt templates
+    contributing/ # Contributing guidelines
+    database/     # DB schema & design
+    developer-experience/ # DX guides
+    devops/       # CI/CD & deployment
+    engineering/  # Coding standards & conventions
+    enterprise/   # Enterprise features
+    frontend/     # Frontend architecture
+    guides/       # General guides
+    operations/   # Operations runbooks
+    product/      # Product specs & PRD
+    project/      # Project management
+    security/     # Security & compliance
+    testing/      # Testing strategy
 ```
 
 ## Consequences

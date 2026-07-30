@@ -7,6 +7,6 @@ It is intentionally empty at the foundation phase (file 01). No agent logic exis
 
 See:
 
-- `Docs/Engineering/Implementation/05-agent-harness.md` — harness contract
-- `Docs/Engineering/Implementation/08-specialist-agents.md` — specialist agents
-- `Docs/AI/AI-Agents/*` — agent specifications
+- `../../../../../docs/engineering/Implementation/05-agent-harness-orchestration.md` — harness contract
+- `../../../../../docs/engineering/Implementation/08-specialist-agents.md` — specialist agents
+- `../../../../../docs/ai/AI-Agents.md` — agent specifications

@@ -351,5 +351,5 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/files/organization/appro
 - [Features.md](../Features.md)
 - [Master-Resume.md](./Master-Resume.md)
 - [Dashboard.md](./Dashboard.md)
-- `/Docs/Vaeloom-Complete-Documentation.md#7-features`
-- `/Docs/AI/AI-Agents.md#agent-roster`
+- `/docs/vaeloom-complete-documentation.md#7-features`
+- `/docs/ai/AI-Agents.md#agent-roster`

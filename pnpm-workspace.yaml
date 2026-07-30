@@ -5,3 +5,6 @@ packages:
   - "integrations/*"
   - "connectors/*"
   - "plugins/*"
+  - "infra/*"
+  - "scripts/*"
+  - "testing/*"

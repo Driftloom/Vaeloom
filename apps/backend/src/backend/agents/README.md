@@ -8,5 +8,5 @@ It is intentionally empty at the foundation phase (file 01). No agent logic exis
 
 See:
 
-- `Docs/Engineering/Implementation/08-specialist-agents.md`
-- `Docs/AI/Agent-Prompt-Specs/*`
+- `../../../../../docs/engineering/Implementation/08-specialist-agents.md`
+- `../../../../../docs/ai/Agent-Prompt-Specs.md`

@@ -356,4 +356,4 @@ curl -X GET https://api.Vaeloom.dev/v1/workspaces/{id}/ats/export/scan_xyz \
 - [Tailored-Applications.md](./Tailored-Applications.md)
 - [Job-Search.md](./Job-Search.md)
 - [Learning-Roadmap.md](./Learning-Roadmap.md)
-- `/Docs/Vaeloom-Complete-Documentation.md#7-features`
+- `/docs/vaeloom-complete-documentation.md#7-features`

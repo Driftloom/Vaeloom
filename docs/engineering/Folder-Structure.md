@@ -1,7 +1,7 @@
 # Folder Structure
 
 > **Purpose:** Define the monorepo folder structure for Vaeloom
-> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure`](../../docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure)
+> **Canonical source:** [`/docs/vaeloom-complete-documentation.md#131-monorepo-folder-structure`](../../docs/vaeloom-complete-documentation.md#131-monorepo-folder-structure)
 
 ## Monorepo Structure
 
@@ -42,10 +42,19 @@ graph TD
         I1["docker/"]
         I2["migrations/"]
         I3["ci/"]
+        I4["database/ / events/ / logging/ /<br/>monitoring/ / ops/ / security/ /<br/>telemetry/"]
+    end
+
+    subgraph Testing["🧪 testing/"]
+        T1["accessibility/ / e2e/ / integration/ /<br/>performance/ / unit/"]
+    end
+
+    subgraph Scripts["📜 scripts/"]
+        S1["shell scripts & tooling"]
     end
 
     subgraph Docs["📚 docs/"]
-        D1["AI / Architecture / Backend /<br/>Database / DevOps / Engineering /<br/>Frontend / Operations / Product /<br/>Security / Testing"]
+        D1["ai / api / architecture / backend /<br/>build-prompts / contributing / database /<br/>developer-experience / devops / engineering /<br/>enterprise / frontend / guides / operations /<br/>product / project / security / testing"]
     end
 
     AI --> Agents
@@ -55,11 +64,12 @@ graph TD
     class WEB,API,AI apps
     class A1,A2,A3,A4,A5,A6,A7,A8,A9,A10 agent
     class P1,P2,P3 pkg
-    class I1,I2,I3 infra
+    class I1,I2,I3,I4 infra
     class D1 docs
+    class T1 testing
 ```
 
-> **Diagram:** Monorepo structure showing **4 top-level directories** — `apps/` (web, api, ai-service with 10 agents), `packages/` (shared-types, plugin-sdk, ui-kit), `infra/` (docker, migrations, ci), and `docs/` (11 doc categories). All apps depend on shared packages, and ai-service hosts the agent ecosystem.
+> **Diagram:** Monorepo structure showing **6 top-level directories** — `apps/` (web, api, ai-service with 10 agents), `packages/` (shared-types, plugin-sdk, ui-kit), `infra/` (8 subdirectories), `testing/` (5 lanes), `scripts/` (shell tooling), and `docs/` (18 doc categories). All apps depend on shared packages, and ai-service hosts the agent ecosystem.
 
 ---
 
@@ -118,11 +128,48 @@ Vaeloom/
 │   └── ui-kit/
 │
 ├── infra/
+│   ├── ci/
+│   ├── database/
 │   ├── docker/
+│   ├── events/
+│   ├── logging/
 │   ├── migrations/
-│   └── ci/
+│   ├── monitoring/
+│   ├── ops/
+│   ├── security/
+│   └── telemetry/
+│
+├── scripts/
+│   └── <shell scripts, tooling>
+│
+├── testing/
+│   ├── accessibility/
+│   ├── e2e/
+│   ├── integration/
+│   ├── performance/
+│   └── unit/
 │
 └── docs/
+    ├── adr/
+    ├── ai/
+    ├── api/
+    ├── architecture/
+    ├── backend/
+    ├── build-prompts/
+    ├── contributing/
+    ├── database/
+    ├── developer-experience/
+    ├── devops/
+    ├── engineering/
+    ├── enterprise/
+    ├── frontend/
+    ├── guides/
+    ├── operations/
+    ├── product/
+    ├── project/
+    ├── security/
+    ├── testing/
+    └── + root-level .md files
 ```
 
 ## Common Mistakes
@@ -243,12 +290,15 @@ All Vaeloom engineers use this document as the canonical reference when creating
 
 ### In Scope
 
-- Top-level directory layout: apps/, packages/, infra/, docs/
+- Top-level directory layout: apps/, packages/, infra/, docs/, scripts/, testing/
 - apps/web structure: Next.js App Router pages, components
 - apps/api structure: NestJS modules (auth, workspaces, documents, connectors, permissions, audit, events)
 - apps/ai-service structure: orchestrator, agents (10 specialist agents), ingestion, retrieval, tools
 - packages structure: shared-types, plugin-sdk, ui-kit
-- infra structure: docker, migrations, ci
+- infra structure: ci, database, docker, events, logging, migrations, monitoring, ops, security, telemetry
+- scripts/ structure: shell scripts, build tooling
+- testing/ structure: accessibility, e2e, integration, performance, unit
+- docs/ structure: adr, ai, api, architecture, backend, build-prompts, contributing, database, developer-experience, devops, engineering, enterprise, frontend, guides, operations, product, project, security, testing
 - Directory depth limits and naming conventions
 - Workflows for adding new directories at each level
 
@@ -310,4 +360,4 @@ import { Orchestrator } from '../../../ai-service/orchestrator'; // BLOCKED BY L
 ## Related Documents
 
 - [Coding Standards.md](./Coding-Standards.md)
-- [`/docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure`](../../docs/Vaeloom-Complete-Documentation.md#131-monorepo-folder-structure)
+- [`/docs/vaeloom-complete-documentation.md#131-monorepo-folder-structure`](../../docs/vaeloom-complete-documentation.md#131-monorepo-folder-structure)
