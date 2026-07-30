@@ -1,0 +1,126 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Try Again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "search": "Search",
+    "noResults": "No results found",
+    "viewAll": "View all",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "close": "Close",
+    "confirm": "Confirm"
+  },
+  "auth": {
+    "login": "Log in",
+    "signup": "Sign up",
+    "logout": "Log out",
+    "email": "Email",
+    "password": "Password",
+    "displayName": "Display Name",
+    "welcomeBack": "Welcome back",
+    "createAccount": "Create your account",
+    "sessionExpired": "Session expired. Please log in again."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "chat": "Agent Chat",
+    "memory": "Memory Graph",
+    "resume": "Resume",
+    "connectors": "Connectors",
+    "applications": "Applications",
+    "jobs": "Jobs",
+    "files": "Files",
+    "history": "History",
+    "settings": "Settings",
+    "billing": "Billing",
+    "admin": "Admin",
+    "developer": "Developer",
+    "marketplace": "Marketplace",
+    "organizations": "Organizations",
+    "featureFlags": "Feature Flags",
+    "schedule": "Schedule"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back. Here&apos;s what your {count} agents have been up to.",
+    "activeAgents": "Active Agents",
+    "memoryNodes": "Memory Nodes",
+    "tasksPending": "Tasks Pending",
+    "recentActivity": "Recent Activity",
+    "noActivity": "No recent activity.",
+    "upcomingDeadlines": "Upcoming Deadlines",
+    "noDeadlines": "No deadlines set.",
+    "couldNotLoadActivity": "Could not load activity feed.",
+    "couldNotLoadDeadlines": "Could not load deadlines."
+  },
+  "chat": {
+    "title": "Agent Chat",
+    "description": "Communicate directly with your Vaeloom agents.",
+    "placeholder": "Ask your agents to do something...",
+    "send": "Send",
+    "startMessage": "Send a message to start chatting with your agents.",
+    "agentTyping": "Agent is typing",
+    "failedToSend": "Failed to send message",
+    "retry": "Retry",
+    "noResponse": "No response"
+  },
+  "memory": {
+    "title": "Memory Graph",
+    "description": "Explore the knowledge extracted from your documents.",
+    "nodes": "Nodes",
+    "edges": "Edges",
+    "noRelationships": "No relationships extracted yet.",
+    "emptyTitle": "No memories extracted yet",
+    "emptyDescription": "Upload documents to allow the Memory Agent to build your knowledge graph.",
+    "failedToLoad": "Failed to load memory graph"
+  },
+  "resume": {
+    "title": "Resume",
+    "description": "Edit your master resume and view tailored variants.",
+    "buildDescription": "Build your master resume and generate tailored variants.",
+    "masterResume": "Master Resume",
+    "variants": "Variants",
+    "noMaster": "No master resume found. Variants are shown below.",
+    "noResumes": "No resumes yet",
+    "noResumesDescription": "Upload documents so the Resume Agent can build your master resume from extracted experience.",
+    "targetRole": "Target Role",
+    "generateVariant": "Generate Variant",
+    "generating": "Generating…",
+    "failedToLoad": "Failed to load resumes",
+    "failedToGenerate": "Failed to generate variant",
+    "noContent": "No content",
+    "rolePlaceholder": "e.g. Senior Frontend Engineer"
+  },
+  "workspace": {
+    "loading": "Loading workspace…",
+    "myWorkspace": "My Workspace",
+    "loadingVaeloom": "Loading Vaeloom…"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "defaultMessage": "An unexpected error occurred.",
+    "notFound": "Page not found",
+    "notFoundDescription": "The page you&apos;re looking for doesn&apos;t exist."
+  },
+  "connectors": {
+    "title": "Connectors",
+    "description": "Manage integrations with external services."
+  },
+  "applications": {
+    "title": "Applications",
+    "description": "Track your job applications and their status."
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your workspace settings."
+  },
+  "billing": {
+    "title": "Billing",
+    "description": "Manage your subscription and usage."
+  }
+}

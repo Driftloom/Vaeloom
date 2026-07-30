@@ -38,7 +38,7 @@ export function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://vaeloom.app",
-      "connect-src 'self' https://vaeloom.app",
+      `connect-src 'self'${process.env.NODE_ENV === 'development' ? ' http://localhost:8000 ws://localhost:8000' : ' https://vaeloom.app'}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

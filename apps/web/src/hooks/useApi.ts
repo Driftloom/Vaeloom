@@ -81,6 +81,7 @@ export function useApi<T>(
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   useEffect(() => {

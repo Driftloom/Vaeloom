@@ -1,0 +1,7 @@
+# Vaeloom Security Vulnerability Disclosure
+Contact: mailto:security@vaeloom.com
+Expires: 2027-07-23T23:59:59.000Z
+Encryption: https://vaeloom.com/.well-known/pgp-key.txt
+Preferred-Languages: en, es, fr, de, ja
+Policy: https://vaeloom.com/security/vulnerability-disclosure-policy
+Canonical: https://vaeloom.com/.well-known/security.txt

@@ -3,11 +3,22 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 });
 
+const cspConnectSrc =
+  process.env.NODE_ENV === 'development'
+    ? "'self' http://localhost:8000 ws://localhost:8000"
+    : "'self' https://vaeloom.app";
+
 const nextConfig = {
-  output: process.env.CI === 'true' ? 'standalone' : process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
+  output: process.env.CI === 'true' && process.platform !== 'win32' ? 'standalone' : undefined,
   transpilePackages: ['@vaeloom/shared-types', '@vaeloom/ui-kit'],
   reactStrictMode: true,
+  poweredByHeader: false,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
   images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 1080, 1920],
     remotePatterns: [
       { protocol: 'http', hostname: 'localhost' },
       { protocol: 'https', hostname: 'vaeloom.app' },
@@ -30,7 +41,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://vaeloom.app",
-              "connect-src 'self' https://vaeloom.app",
+              `connect-src ${cspConnectSrc}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

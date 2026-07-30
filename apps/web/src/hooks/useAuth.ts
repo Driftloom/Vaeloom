@@ -45,9 +45,8 @@ export function useAuth() {
       setToken(res.accessToken);
       if (res.refreshToken) setRefreshToken(res.refreshToken);
       setState({ user: res.user, loading: false, error: null, isAuthenticated: true });
-      await router.push('/dashboard');
     },
-    [router],
+    [],
   );
 
   const signup = useCallback(
@@ -56,9 +55,8 @@ export function useAuth() {
       setToken(res.accessToken);
       if (res.refreshToken) setRefreshToken(res.refreshToken);
       setState({ user: res.user, loading: false, error: null, isAuthenticated: true });
-      await router.push('/dashboard');
     },
-    [router],
+    [],
   );
 
   const logout = useCallback(() => {

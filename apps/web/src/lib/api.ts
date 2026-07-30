@@ -18,6 +18,24 @@ const API_PREFIX = '/api/v1';
 
 const TOKEN_KEY = 'vaeloom.accessToken';
 
+function toCamelCase(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+function transformKeys<T>(obj: unknown): T {
+  if (obj === null || obj === undefined) return obj as T;
+  if (Array.isArray(obj)) return obj.map(transformKeys) as T;
+  if (typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+        toCamelCase(k),
+        transformKeys(v),
+      ]),
+    ) as T;
+  }
+  return obj as T;
+}
+
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem(TOKEN_KEY);
@@ -76,12 +94,12 @@ async function refreshToken(): Promise<string> {
   const res = await fetch(`${API_BASE}${API_PREFIX}/auth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken: refresh }),
+    body: JSON.stringify({ refresh_token: refresh }),
   });
   if (!res.ok) {
     throw new ApiError(res.status, 'Failed to refresh token');
   }
-  const data = (await res.json()) as { accessToken: string; refreshToken?: string };
+  const data = transformKeys<{ accessToken: string; refreshToken?: string }>(await res.json());
   setToken(data.accessToken);
   if (data.refreshToken) setRefreshToken(data.refreshToken);
   return data.accessToken;
@@ -91,6 +109,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
     ...(init.headers as Record<string, string> | undefined),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -144,7 +163,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     throw new ApiError(res.status, message, code);
   }
 
-  return (res.status === 204 ? undefined : await res.json()) as T;
+  return (res.status === 204 ? undefined : transformKeys(await res.json())) as T;
 }
 
 export const api = {

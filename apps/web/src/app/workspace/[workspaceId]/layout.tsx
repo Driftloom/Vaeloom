@@ -7,6 +7,7 @@ import { TopNav } from '@/components/layout/TopNav';
 import { useAuth } from '../../../hooks/useAuth';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
 import { ErrorBoundary } from '../../../components/common/ErrorBoundary';
+import { PrefetchProvider } from '../../../lib/prefetch';
 
 export default function WorkspaceLayout({
   children,
@@ -38,14 +39,16 @@ export default function WorkspaceLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar workspaceId={workspaceId} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <TopNav />
-        <main className="flex-1 overflow-y-auto p-6">
-          <ErrorBoundary>{children}</ErrorBoundary>
-        </main>
+    <PrefetchProvider>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <Sidebar workspaceId={workspaceId} />
+        <div className="flex-1 flex flex-col min-w-0">
+          <TopNav />
+          <main className="flex-1 overflow-y-auto p-6">
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </main>
+        </div>
       </div>
-    </div>
+    </PrefetchProvider>
   );
 }

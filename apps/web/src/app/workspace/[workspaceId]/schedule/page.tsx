@@ -1,65 +1,110 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { api } from '../../../../lib/api';
+import { eventApi } from '@/lib/api-client';
+import type { Event } from '@vaeloom/shared-types';
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function getEventTitle(event: Event): string {
+  if (event.payload?.['title']) return event.payload['title'] as string;
+  return event.type;
+}
+
+const typeColors: Record<string, string> = {
+  interview: 'bg-primary',
+  deadline: 'bg-accent',
+  meeting: 'bg-yellow-500',
+};
 
 export default function SchedulePage() {
   const params = useParams();
   const workspaceId = params?.['workspaceId'] as string | undefined;
 
-  const [syncing, setSyncing] = useState(false);
-  const events = [
-    { id: '1', title: 'Google Technical Screen', date: 'Tomorrow, 10:00 AM - 11:00 AM', type: 'Interview' },
-    { id: '2', title: 'Stripe Application Deadline', date: 'Friday, 11:59 PM', type: 'Deadline' },
-  ];
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSync = async () => {
+  const fetchEvents = useCallback(async () => {
     if (!workspaceId) return;
-    setSyncing(true);
+    setLoading(true);
+    setError(null);
     try {
-      const connectors = await api.request<Array<{ id: string; provider: string }>>(`/workspaces/${workspaceId}/connectors`);
-      const calendar = connectors.find((c) => c.provider === 'calendar');
-      if (calendar) {
-        await api.integrations.sync(calendar.id);
-      }
+      const data = await eventApi.list();
+      setEvents(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load events');
     } finally {
-      setSyncing(false);
+      setLoading(false);
     }
-  };
+  }, [workspaceId]);
+
+  useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full">
+        <header className="mb-6">
+          <h1 className="text-3xl font-display font-medium text-text mb-2">Schedule</h1>
+          <p className="text-text-muted">Manage your interviews and deadlines.</p>
+        </header>
+        <LoadingSpinner text="Loading schedule..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-full">
+        <header className="mb-6">
+          <h1 className="text-3xl font-display font-medium text-text mb-2">Schedule</h1>
+          <p className="text-text-muted">Manage your interviews and deadlines.</p>
+        </header>
+        <ErrorState title="Failed to load schedule" message={error} onRetry={fetchEvents} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
-      <header className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Schedule</h1>
-          <p className="text-text-muted">Manage your interviews and deadlines.</p>
-        </div>
-        <button className="btn-primary" onClick={handleSync} disabled={syncing}>
-          {syncing ? 'Syncing…' : 'Sync Calendar'}
-        </button>
+      <header className="mb-6">
+        <h1 className="text-3xl font-display font-medium text-text mb-2">Schedule</h1>
+        <p className="text-text-muted">Manage your interviews and deadlines.</p>
       </header>
 
       {events.length === 0 ? (
-        <EmptyState 
-          title="No upcoming events" 
-          description="Sync your calendar or let the Gmail Agent extract deadlines for you."
-          action={{ label: 'Connect Calendar', onClick: () => {} }}
-        />
+        <EmptyState title="No upcoming events" description="Sync your calendar or let the Gmail Agent extract deadlines for you." />
       ) : (
         <div className="card">
           <div className="space-y-4">
-            {events.map(event => (
+            {events.map((event) => (
               <div key={event.id} className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
                 <div className="flex items-center gap-4">
-                  <div className={`w-2 h-12 rounded-full ${event.type === 'Interview' ? 'bg-primary' : 'bg-accent'}`}></div>
+                  <div className={`w-2 h-12 rounded-full ${typeColors[event.category] || 'bg-primary'}`}></div>
                   <div>
-                    <h3 className="text-lg font-medium text-text">{event.title}</h3>
-                    <p className="text-sm text-text-muted">{event.date}</p>
+                    <h3 className="text-lg font-medium text-text">{getEventTitle(event)}</h3>
+                    <p className="text-sm text-text-muted">{formatDate(event.createdAt)}</p>
                   </div>
                 </div>
-                <div className="bg-surface px-3 py-1 rounded border border-border">
-                  <span className="text-xs font-mono text-text-muted uppercase tracking-wider">{event.type}</span>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-mono px-2 py-1 rounded border ${event.status === 'completed' ? 'border-green-500/50 text-green-400 bg-green-950/20' : event.status === 'failed' ? 'border-red-500/50 text-red-400 bg-red-950/20' : 'border-border text-text-muted bg-surface'}`}>
+                    {event.status.toUpperCase()}
+                  </span>
+                  <div className="bg-surface px-3 py-1 rounded border border-border">
+                    <span className="text-xs font-mono text-text-muted uppercase tracking-wider">{event.category}</span>
+                  </div>
                 </div>
               </div>
             ))}
