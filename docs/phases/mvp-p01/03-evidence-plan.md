@@ -19,11 +19,24 @@
   seekers (students + early-career professionals), single-user workspace
   experience.
 - **Cohort for validation:** closed invite-only cohort (BQ-05, approved) — small
-  N, workspace-scoped, no cross-user data. Design-partner evidence plan prevents
-  anecdote over measurement (prompt future-readiness overlay).
+  N (≈10–20), **zero-budget volunteer cohort via founder's network, no
+  incentives** (DEC-P01-06/07), workspace-scoped, no cross-user data.
+  Design-partner evidence plan prevents anecdote over measurement (prompt
+  future-readiness overlay).
 - **Segmentation for research (not personas-in-one):** by age band (18–24,
   25–30), employment state (student, fresher, 1–3 y), data sensitivity
   (education records vs. general work history), device/connectivity.
+
+### Personas (WS-01.1 — hypotheses grounded in R-1 data, pending R-2 interview validation)
+
+| Persona                      | Segments                                                               | Pain (R-1 grounded)                                                                 | Vaeloom wedge                                                                              | Validation  |
+| ---------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ----------- |
+| P1 "The Fresher"             | 18–24, student/just graduated, 1st job search                          | 45% don't know what ATS is; 61% of freshers omit JD keywords; 250+ apps/opening     | Memory re-use (profile→resume), ATS-aware suggestions, application tracking                | VB-02/04/06 |
+| P2 "The Urban Switcher"      | 25–30, employed 1–3 y, urban (13.6% urban youth unemployment pressure) | Resume tailoring per role; deadline/follow-up overload across Naukri/LinkedIn/email | Gmail deadline extraction + scheduler reminders (draft-only), resume versioning via memory | VB-01/03/05 |
+| P3 "The Overloaded Finalist" | final-semester, multiple applications + exams                          | deadline misses, fragmented status tracking                                         | ATS tracking + reminders; suggest-mode trust                                               | VB-01/04    |
+
+> P1–P3 are **hypotheses** — validated only via R-2 interviews with the free
+> volunteer cohort. No prevalence claims without interview data.
 
 ## 3. Jobs-to-be-done (JTBD — to be validated, not asserted)
 
@@ -36,14 +49,14 @@
 
 ## 4. Research plan (WS-01.2)
 
-| Step | Method                                                                                | Sources                                                                                        | Owner            | Output                             |
-| ---- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------- |
-| R-1  | Desk research: domain statistics + competitor capabilities (official/observable only) | MoSPI/AISHE (India employment/education), official job-platform partner programs, product docs | Business Analyst | Research brief w/ citations        |
-| R-2  | Problem interviews (closed cohort, consent-first)                                     | Design-partner cohort                                                                          | UX Researcher    | Interview synthesis (privacy-safe) |
-| R-3  | Journey mapping (current state) from R-1/R-2 evidence                                 | Synthesis                                                                                      | BA/UX            | Journey map                        |
-| R-4  | Trust/safety constraint elicitation                                                   | OWASP agentic/LLM, NIST AI RMF, INT-02 §3                                                      | Privacy Engineer | Constraint register (WS-01.3)      |
-| R-5  | Metrics definition (formulas + owners)                                                | This plan §6 + P00 register 04                                                                 | PM               | Metrics sheet (WS-01.4)            |
-| R-6  | Validation backlog (experiments, triggers)                                            | Synthesis                                                                                      | PM               | `05-validation-backlog.md`         |
+| Step | Method                                                                                | Sources                                                                                        | Owner            | Output                                                                            |
+| ---- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------- |
+| R-1  | Desk research: domain statistics + competitor capabilities (official/observable only) | MoSPI/AISHE (India employment/education), official job-platform partner programs, product docs | Business Analyst | Research brief w/ citations — **DONE 2026-08-07 → `07-research-brief.md`**        |
+| R-2  | Problem interviews (closed cohort, consent-first)                                     | Design-partner cohort                                                                          | UX Researcher    | Interview synthesis (privacy-safe)                                                |
+| R-3  | Journey mapping (current state) from R-1/R-2 evidence                                 | Synthesis                                                                                      | BA/UX            | Journey map                                                                       |
+| R-4  | Trust/safety constraint elicitation                                                   | OWASP agentic/LLM, NIST AI RMF, INT-02 §3                                                      | Privacy Engineer | Constraint register (WS-01.3) — **DONE 2026-08-07, §7 below + research brief §4** |
+| R-5  | Metrics definition (formulas + owners)                                                | This plan §6 + P00 register 04                                                                 | PM               | Metrics sheet (WS-01.4)                                                           |
+| R-6  | Validation backlog (experiments, triggers)                                            | Synthesis                                                                                      | PM               | `05-validation-backlog.md`                                                        |
 
 ## 5. Outcome metrics (WS-01.4 — formulas, owners)
 
@@ -70,12 +83,19 @@
 
 - Consequential actions require immutable payload-bound expiring approval +
   idempotency (INT-02 §fixed decisions).
+- **R-1 market evidence for trust wedge:** auto-apply tools carry a measurable
+  trust deficit (LazyApply ~52% 1-star reviews; "recruiters reject sloppy AI
+  auto-filled applications" — Scale.jobs 2026). Vaeloom's suggest-mode-first +
+  draft-only + approved-integration-only submission is a deliberate
+  differentiator (PS-03).
 - Under-13 excluded; age verification approach TBD in P13 (COPPA revised rule
   trigger).
 - India DPDP notice/consent, rights, breach duties — design into data flows from
   P03 onward; professional legal review before any compliance claim.
 - Deletion lifecycle must cover system of record + vector/graph/search/cache
   projections (authoritative relational data rule).
+- EU AI Act: resume screening = high-risk in EU from ~Aug 2026 — NOT_APPLICABLE
+  to India launch; re-verify on EU expansion (research brief §4).
 
 ## 8. Open decisions needing stakeholder input
 

@@ -1,38 +1,56 @@
-# MVP-P01 — 06. Gate Report (TEMPLATE — fill at end of phase)
+# MVP-P01 — 06. Gate Report
 
-> **Phase:** MVP-P01 — Discovery and Problem Definition **Date of scoring:** TBD
-> (at phase end) **Baseline:** repo `master` @ TBD **Scorer:** Phase owner
-> (evidence-driven) · **Gate authority:** USER (sole approver, BQ-01)
+> **Phase:** MVP-P01 — Discovery and Problem Definition **Date of scoring:**
+> 2026-08-07 **Baseline:** repo `master` @ `8b143d5` (P00 remediation) +
+> `75fc6aa` (P01 scaffold) **Scorer:** Phase owner (evidence-driven) · **Gate
+> authority:** USER (sole approver, BQ-01)
 
 ## Scoring
 
-| Category                 | Weight  | Score (0–100) | Weighted | Evidence basis                                               |
-| ------------------------ | ------- | ------------- | -------- | ------------------------------------------------------------ |
-| Scope and acceptance     | 12      | TBD           | TBD      | Evidence plan approved; cohort agreed; non-goals explicit    |
-| Technical correctness    | 12      | TBD           | TBD      | Repo state verified (pytest 2264/0 as of P00)                |
-| Architecture/integration | 8       | TBD           | TBD      | Wedge mapped to 8-agent/6-memory loop                        |
-| Security/privacy/data    | 15      | TBD           | TBD      | Constraint register (WS-01.3) complete; DPDP mapping started |
-| Testing/QA               | 12      | TBD           | TBD      | Research reproducible; cohort evidence plan                  |
-| Performance/reliability  | 8       | TBD           | TBD      | Not applicable to discovery (record N/A basis)               |
-| Operations/DevOps        | 8       | TBD           | TBD      | No runtime change in P01 (record)                            |
-| Documentation            | 8       | TBD           | TBD      | All P01 deliverables versioned/owned/reviewed                |
-| Evidence/traceability    | 8       | TBD           | TBD      | Every claim sourced; registers linked                        |
-| Compliance               | 5       | TBD           | TBD      | DPDP/EU AI mapping w/o legal claim                           |
-| UX/accessibility         | 4       | TBD           | TBD      | Research protocol accessible; personas segmented             |
-| Handoff                  | 4       | TBD           | TBD      | Handoff-to-P02 complete                                      |
-| **TOTAL**                | **100** |               | **TBD**  |                                                              |
+| Category                 |  Weight | Score (0–100) |       Weighted | Evidence basis                                                                                                  |
+| ------------------------ | ------: | ------------: | -------------: | --------------------------------------------------------------------------------------------------------------- |
+| Scope and acceptance     |      12 |            90 |          10.80 | Evidence plan approved (DEC-P01-05/06/07); BQ-01..06 all resolved; non-goals explicit                           |
+| Technical correctness    |      12 |            90 |          10.80 | Repo verified: pytest 2264/0, jest 20/20, tsc clean (2026-08-07 rerun)                                          |
+| Architecture/integration |       8 |            85 |           6.80 | Wedge mapped to 8-agent/6-memory loop; personas mapped to VB experiments                                        |
+| Security/privacy/data    |      15 |            80 |          12.00 | WS-01.3 constraint register + R-1 trust evidence; DPDP mapping started; no legal review (flagged, not claimed)  |
+| Testing/QA               |      12 |            90 |          10.80 | Research reproducible with citations (07-research-brief); evidence plan defined; no runtime code changed in P01 |
+| Performance/reliability  |       8 |            75 |           6.00 | Metrics defined (evidence plan §5); nothing executed (BQ-02 deferred P19)                                       |
+| Operations/DevOps        |       8 |            65 |           5.20 | No runtime change in P01; BQ-02 env deferred to P19 (ASP-04); deployment path tracked                           |
+| Documentation            |       8 |            95 |           7.60 | Full register suite (01–07) versioned/owned/reviewed; P00 handoff complete                                      |
+| Evidence/traceability    |       8 |            90 |           7.20 | Every P01 claim sourced (MoSPI/AISHE/Naukri/ResumeGyani/competitor docs); registers linked                      |
+| Compliance               |       5 |            75 |           3.75 | DPDP/EU-AI mapping done without compliance claim (research brief §4); FERPA/COPPA NOT_APPLICABLE recorded       |
+| UX/accessibility         |       4 |            85 |           3.40 | Personas segmented (P1–P3); research protocol consent-first; WCAG 2.2 target carried                            |
+| Handoff                  |       4 |            90 |           3.60 | Handoff-to-P02 generated; validation backlog governs VB-01..06                                                  |
+| **TOTAL**                | **100** |               | **88.0 / 100** |                                                                                                                 |
 
 ## Mandatory blockers
 
-| Blocker                    | Status                               |
-| -------------------------- | ------------------------------------ |
-| BQ-06 stop/pivot criteria  | ⏳ OPEN — user decision required     |
-| INT-01 template (original) | ✅ substitute governing (2026-08-07) |
-| BQ-02 environments         | 🔶 deferred P19 (ASP-04)             |
+| Blocker                    | Status                                                      |
+| -------------------------- | ----------------------------------------------------------- |
+| BQ-01..06                  | ✅ ALL RESOLVED 2026-08-07 (DEC-P01-05/06/07)               |
+| INT-01 template (original) | ✅ substitute governing (2026-08-07)                        |
+| BQ-02 environments         | 🔶 deferred P19 (ASP-04) — non-blocking for research phases |
 
-## Gate decision (fill at end)
+## Gate decision
 
-- [ ] GO (≥95, zero blockers)
-- [ ] CONDITIONAL GO (88–94, non-dependent only, approver lists
-      permitted/prohibited work + expiry)
-- [ ] NO-GO (remediation)
+**✅ CONDITIONAL GO (88/100, 88–94 band, zero mandatory blockers) —
+NON-DEPENDENT WORK ONLY.**
+
+Permitted work (per gate policy §4 + user directive "complete the remaining
+things"):
+
+- P02 (Research, Domain Analysis & Data Discovery): desk research, data
+  discovery, eval-set design, analysis — docs/research only.
+- Continued free-tooling (DEC-P01-07); volunteer cohort interviews may begin
+  (DEC-P01-06).
+
+Prohibited work:
+
+- No production/dependent authorization, no implementation/release/migration.
+- No enterprise capabilities; no scope expansion; no auto-apply / unsupported
+  automation.
+- No compliance claims without professional legal review.
+- No product-market-fit claims from P01 evidence.
+
+Expiry: this conditional GO expires at the P02 gate — P02 must re-gate ≥88 with
+zero mandatory blockers before any P03+ dependent work.
