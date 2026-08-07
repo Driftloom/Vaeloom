@@ -53,8 +53,8 @@
 - [x] Baseline pushed / pinned (`ahead 4` resolved)
 - [x] INT-01 substitute recorded as governing (gatekeeper compendiums); INT-02
       canonical
-- [ ] Evidence plan for P01 defined (problem statement, user cohort, research
-      sources)
+- [x] Evidence plan for P01 defined — `docs/phases/mvp-p01/03-evidence-plan.md`
+      (PS-01..03, cohort, JTBD, research plan R-1..R-6, metrics, non-goals)
 
 ## 5. Prohibited work in P01
 
