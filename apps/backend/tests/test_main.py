@@ -25,20 +25,24 @@ EXPECTED_ROUTER_PREFIXES = [
     "/api/v1/events",
     "/api/v1/search",
     "/api/v1/integrations",
-    "/api/v1/billing",
     "/api/v1/documents",
     "/api/v1/resumes",
     "/api/v1/workspaces/{workspace_id}/applications",
     "/api/v1/notifications",
     "/api/v1/connectors",
     "/api/v1/scheduler",
+    "/api/v1/chat",
+    "/api/v1/knowledge-graph",
+]
+
+ENTERPRISE_ROUTER_PREFIXES = [
+    "/api/v1/billing",
+    "/api/v1/plugins",
     "/api/v1/analytics",
     "/api/v1/audit",
     "/api/v1/iam",
-    "/api/v1/plugins",
-    "/api/v1/chat",
-    "/api/v1/knowledge-graph",
     "/api/v1/recommendations",
+    "/api/v1/webhooks",
 ]
 
 
@@ -47,6 +51,14 @@ def _patch_prometheus():
     with patch("prometheus_fastapi_instrumentator.Instrumentator") as m:
         m.return_value.instrument.return_value.expose.return_value = None
         yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_enterprise_routes():
+    """Restore MVP default (enterprise routes off) after each test."""
+    settings.enterprise_routes_enabled = False
+    yield
+    settings.enterprise_routes_enabled = False
 
 
 def _reimport_main():
@@ -106,6 +118,13 @@ class TestRouterRegistration:
         route_paths = [r.path for r in mod.app.routes]
         for prefix in EXPECTED_ROUTER_PREFIXES:
             assert any(p.startswith(prefix) for p in route_paths), f"Missing prefix: {prefix}"
+        # Enterprise routes (CF-06 / R6) are gated behind the MVP flag.
+        should_present = settings.enterprise_routes_enabled
+        for prefix in ENTERPRISE_ROUTER_PREFIXES:
+            present = any(p.startswith(prefix) for p in route_paths)
+            assert present is should_present, (
+                f"Prefix {prefix}: present={present}, expected={should_present}"
+            )
 
     def test_router_count(self):
         mod = _reimport_main()
@@ -116,6 +135,20 @@ class TestRouterRegistration:
                 if path.startswith(prefix):
                     prefixes_found.add(prefix)
         assert len(prefixes_found) == len(EXPECTED_ROUTER_PREFIXES)
+
+    def test_enterprise_routes_enabled_adds_prefixes(self):
+        settings.enterprise_routes_enabled = True
+        mod = _reimport_main()
+        route_paths = [r.path for r in mod.app.routes]
+        for prefix in ENTERPRISE_ROUTER_PREFIXES:
+            assert any(p.startswith(prefix) for p in route_paths), f"Missing prefix: {prefix}"
+
+    def test_enterprise_routes_gated_in_mvp_default(self):
+        settings.enterprise_routes_enabled = False
+        mod = _reimport_main()
+        route_paths = [r.path for r in mod.app.routes]
+        for prefix in ENTERPRISE_ROUTER_PREFIXES:
+            assert not any(p.startswith(prefix) for p in route_paths), f"Leaked prefix: {prefix}"
 
 
 class TestRequestContextMiddleware:

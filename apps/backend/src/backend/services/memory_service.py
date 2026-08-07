@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from ..models.schema import Memory
 from ..schemas.memory import MemoryCreate, MemoryUpdate, MemoryQuery, MemorySearch
+from ..utils.sanitize import sanitize_text
 from .llm_service import llm_service, LLMProviderError
 
 
@@ -25,9 +26,9 @@ class MemoryService:
         memory = Memory(
             id=uuid.uuid4(),
             type=dto.type,
-            title=dto.title,
-            summary=dto.summary,
-            content=dto.content,
+            title=sanitize_text(dto.title),
+            summary=sanitize_text(dto.summary),
+            content=sanitize_text(dto.content),
             content_hash=llm_service.compute_content_hash(content_for_embedding) if content_for_embedding else None,
             size=len(content_for_embedding) if content_for_embedding else 0,
             embedding=embedding,
@@ -87,6 +88,7 @@ class MemoryService:
         update_data = dto.model_dump(exclude_unset=True)
 
         if "content" in update_data and update_data["content"] is not None:
+            update_data["content"] = sanitize_text(update_data["content"])
             content_for_embedding = update_data.get("content") or memory.content or ""
             if content_for_embedding.strip():
                 try:

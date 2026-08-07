@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from fastapi import Request, HTTPException
+from fastapi import Request
 from starlette.responses import Response
 
 from backend.middleware.rate_limit import APIKeyRateLimiter, MemoryBackend, RateLimitMiddleware
@@ -91,10 +91,9 @@ class TestRateLimitMiddlewareAPIKey:
         call_next = AsyncMock(return_value=Response())
         await middleware.dispatch(request, call_next)
         await middleware.dispatch(request, call_next)
-        with pytest.raises(HTTPException) as exc:
-            await middleware.dispatch(request, call_next)
-        assert exc.value.status_code == 429
-        assert "API key rate limit exceeded" in exc.value.detail
+        result = await middleware.dispatch(request, call_next)
+        assert result.status_code == 429
+        assert "API key rate limit exceeded" in result.body.decode()
 
     @pytest.mark.asyncio
     async def test_configurable_api_key_limit(self, monkeypatch):

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import Request, HTTPException
+from fastapi import Request
 from starlette.responses import Response
 
 from backend.middleware.rate_limit import RateLimitMiddleware
@@ -54,10 +54,9 @@ class TestRateLimitMiddleware:
         call_next = AsyncMock(return_value=Response())
         await middleware.dispatch(request, call_next)
         await middleware.dispatch(request, call_next)
-        with pytest.raises(HTTPException) as exc:
-            await middleware.dispatch(request, call_next)
-        assert exc.value.status_code == 429
-        assert "Rate limit exceeded" in exc.value.detail
+        result = await middleware.dispatch(request, call_next)
+        assert result.status_code == 429
+        assert "Rate limit exceeded" in result.body.decode()
 
     @pytest.mark.asyncio
     async def test_uses_client_host_when_no_user_id(self):

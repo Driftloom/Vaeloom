@@ -4,13 +4,14 @@ from sqlalchemy import select
 
 from ..models.schema import Workspace
 from ..schemas.workspace import WorkspaceResponse
+from ..utils.sanitize import sanitize_text
 
 
 class WorkspaceService:
     async def create(self, user_id: str, name: str | None = None, db=None):
         workspace = Workspace(
             user_id=uuid.UUID(user_id),
-            name=name or "New Workspace",
+            name=sanitize_text(name) or "New Workspace",
         )
         db.add(workspace)
         await db.flush()
@@ -47,9 +48,9 @@ class WorkspaceService:
             return None
 
         if "name" in data and data["name"] is not None:
-            workspace.name = data["name"]
+            workspace.name = sanitize_text(data["name"])
         if "description" in data:
-            workspace.description = data.get("description")
+            workspace.description = sanitize_text(data.get("description"))
 
         await db.flush()
         await db.refresh(workspace)

@@ -67,6 +67,7 @@ from httpx import AsyncClient, ASGITransport
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest, REGISTRY
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from backend.config import settings
 from sqlalchemy.pool import NullPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -194,6 +195,12 @@ async def client(db_session):
 async def mock_llm(monkeypatch):
     """Return fake LLM responses — no real API calls."""
     from backend.services.llm_service import LLMService
+
+    # Deterministic env: agents must see no LLM key unless a test sets one
+    monkeypatch.setattr(settings, "llm_api_key", "")
+    # MVP scope lock is off by default for existing suites; the dedicated
+    # test_mvp_scope.py module re-enables it and verifies the gate.
+    monkeypatch.setattr(settings, "mvp_scope_enforced", False)
 
     fake_embedding = [0.1] * 1536
 

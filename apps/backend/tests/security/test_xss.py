@@ -52,7 +52,7 @@ class TestXSS:
     ):
         res = await client.post(
             "/api/v1/memories",
-            json={"content": payload, "memory_type": "note"},
+            json={"content": payload, "type": "note"},
             headers=auth_headers,
         )
         if res.status_code == 201:
@@ -106,7 +106,7 @@ class TestXSS:
     ):
         res = await client.post(
             "/api/v1/agents",
-            json={"name": payload, "description": "test agent", "type": "chat"},
+            json={"name": payload, "description": "test agent", "category": "chat"},
             headers=auth_headers,
         )
         if res.status_code == 201:

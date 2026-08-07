@@ -66,6 +66,8 @@ class Settings(BaseSettings):
     agent_timeout_seconds: int = 120
     prompt_injection_check: bool = True
     prompt_dir: str = ""
+    mvp_scope_enforced: bool = True
+    enterprise_routes_enabled: bool = False
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 

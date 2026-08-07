@@ -79,7 +79,6 @@ def _build_test_app(db_session, enable_rate_limit=False):
     test_app = FastAPI()
 
     test_app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-    test_app.add_middleware(AuthMiddleware)
     test_app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
     test_app.add_exception_handler(Exception, generic_exception_handler)
 
@@ -88,6 +87,8 @@ def _build_test_app(db_session, enable_rate_limit=False):
 
     if enable_rate_limit:
         test_app.add_middleware(RateLimitMiddleware, requests_per_minute=5, window_seconds=60)
+
+    test_app.add_middleware(AuthMiddleware)
 
     test_app.include_router(health.router, prefix="/health")
     test_app.include_router(auth.router, prefix="/api/v1/auth")

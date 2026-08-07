@@ -5,9 +5,9 @@ from collections.abc import Sequence
 from functools import wraps
 from typing import Optional
 
-from fastapi import Request, HTTPException
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 logger = logging.getLogger("vaeloom-backend.middleware.rate_limit")
 
@@ -149,9 +149,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "API key rate limit exceeded  key_prefix=%s  path=%s",
                     api_key[:8], request.url.path,
                 )
-                raise HTTPException(
+                return JSONResponse(
                     status_code=429,
-                    detail="API key rate limit exceeded",
+                    content={"detail": "API key rate limit exceeded"},
                     headers={"Retry-After": str(retry_after)},
                 )
 
@@ -169,9 +169,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 "Rate limit exceeded  client=%s  path=%s  limit=%d  window=%ds",
                 client_key, request.url.path, max_req, window_sec,
             )
-            raise HTTPException(
+            return JSONResponse(
                 status_code=429,
-                detail="Rate limit exceeded",
+                content={"detail": "Rate limit exceeded"},
                 headers={"Retry-After": str(retry_after)},
             )
 

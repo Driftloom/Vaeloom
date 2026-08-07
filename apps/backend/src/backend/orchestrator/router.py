@@ -16,7 +16,7 @@ from backend.agents.job_search_agent.handler import JobSearchAgent
 from backend.agents.application_agent.handler import ApplicationAgent
 from backend.agents.gmail_agent.handler import GmailAgent
 from backend.agents.scheduler_agent.handler import SchedulerAgent
-from backend.agents.qa_validator import QAAgent, QAResult
+from backend.agents.qa_agent.handler import QAAgent, QAValidationResult
 from backend.agents.career_agent.handler import CareerAgent  # G1
 from backend.agents.learning_agent.handler import LearningAgent  # G2
 from backend.agents.research_agent.handler import ResearchAgent  # G3
@@ -168,6 +168,48 @@ async def classify_intent(message: str) -> tuple[str, float]:
     return agents_in_category[0], confidence
 
 
+# ── MVP scope lock (INT-02 §2.2): 8 canonical agents ────────────────
+# Orchestrator + Organization, Memory, Resume, ATS, Job Search &
+# Application, Gmail, Scheduler. All other repo agents (career, learning,
+# research, github, coding, reminder, analytics, recommendation,
+# reflection, security, connector, plugin, drive, qa) are enterprise
+# extras that must not run in MVP builds (CF-05, R5/R6).
+
+MVP_CANONICAL_AGENTS = frozenset({
+    "organization", "memory", "resume", "ats", "job_search",
+    "application", "gmail", "scheduler",
+})
+
+# Categories that map only to canonical agents
+MVP_CATEGORY_AGENT_MAP = {
+    "document_organization": ["organization"],
+    "career_resume": ["resume", "ats"],
+    "job_search": ["job_search", "application"],
+    "communication": ["gmail"],
+    "schedule_time": ["scheduler"],
+    "memory_extraction": ["memory"],
+}
+
+
+def _handle_out_of_scope(agent_name: str, confidence: float) -> Dict[str, Any]:
+    logger.info("Out-of-MVP-scope agent requested: %s", agent_name)
+    return {
+        "agent_name": "orchestrator",
+        "action": "out_of_scope",
+        "confidence": confidence,
+        "result": {
+            "summary": (
+                f"'{agent_name}' is outside the MVP scope. "
+                "Only organization, memory, resume, ATS, job search & application, "
+                "gmail, and scheduler agents are available."
+            ),
+            "details": None,
+            "proposals": [],
+            "questions": [],
+        },
+    }
+
+
 async def handle(request: UserRequest) -> Dict[str, Any]:
     """
     Orchestrator entry point.
@@ -177,11 +219,17 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
     4. Pass output through QA gate
     5. Return approved result
     """
+    from ..config import settings
+
     logger.info(f"Handling request {request.id}: {request.message}")
 
     # ── 1. Intent Classification ───────────────────────────────────
     agent_name, confidence = await classify_intent(request.message)
     logger.info(f"Classified: agent={agent_name}, confidence={confidence}")
+
+    # ── 1b. MVP scope lock ─────────────────────────────────────────
+    if settings.mvp_scope_enforced and agent_name not in MVP_CANONICAL_AGENTS:
+        return _handle_out_of_scope(agent_name, confidence)
 
     # ── 2. Low confidence → ask clarification ──────────────────────
     if confidence < 0.7:
@@ -238,13 +286,9 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
 
     max_qa_retries = 3
     for attempt in range(max_qa_retries):
-        qa_result: QAResult = await qa.validate_output(
-            agent_name=agent_name,
-            input_data={"message": request.message},
-            output_data=agent_output,
-        )
-        if qa_result.passed:
-            logger.info("QA APPROVED (attempt %d)  score=%.2f", attempt + 1, qa_result.score)
+        qa_result: QAValidationResult = await qa.validate(agent_output)
+        if qa_result.decision == "approved":
+            logger.info("QA APPROVED (attempt %d)", attempt + 1)
             return agent_output
         logger.warning("QA REJECTED (attempt %d): %s", attempt + 1, qa_result.issues)
 

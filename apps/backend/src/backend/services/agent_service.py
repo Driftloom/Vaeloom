@@ -8,15 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import Agent, AgentExecution, AgentSchedule
 from ..schemas.agent import AgentCreate, AgentExecute, AgentUpdate
+from ..utils.sanitize import sanitize_text
 from .llm_service import llm_service, LLMProviderError
 
 
 class AgentService:
     async def register_agent(self, dto: AgentCreate, tenant_id: str | None, user_id: str | None, db: AsyncSession) -> Agent:
         agent = Agent(
-            name=dto.name,
-            description=dto.description,
-            category=dto.category,
+            name=sanitize_text(dto.name),
+            description=sanitize_text(dto.description),
+            category=sanitize_text(dto.category),
             config=dto.config or {},
             user_id=uuid.UUID(user_id) if user_id else None,
             tenant_id=uuid.UUID(tenant_id) if tenant_id else None,
@@ -70,9 +71,9 @@ class AgentService:
         if not agent:
             return None
         if dto.name is not None:
-            agent.name = dto.name
+            agent.name = sanitize_text(dto.name)
         if dto.description is not None:
-            agent.description = dto.description
+            agent.description = sanitize_text(dto.description)
         if dto.config is not None:
             agent.config = dto.config
         if dto.status is not None:

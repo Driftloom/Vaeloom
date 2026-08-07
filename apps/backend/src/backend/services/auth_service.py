@@ -8,6 +8,7 @@ from sqlalchemy import select
 from ..config import settings
 from ..models.schema import AuthSession, User, Workspace
 from ..schemas.auth import AuthResponse, PublicUser
+from ..utils.sanitize import sanitize_text
 
 
 class AuthService:
@@ -17,6 +18,7 @@ class AuthService:
             from fastapi import HTTPException
             raise HTTPException(status_code=409, detail="Email already registered")
 
+        display_name = sanitize_text(display_name)
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         user = User(
             email=email,

@@ -93,14 +93,14 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Correlation-ID", "X-Requested-With"],
 )
-app.add_middleware(AuthMiddleware)
-app.add_middleware(CSRFMiddleware)
 app.add_middleware(
     RateLimitMiddleware,
     requests_per_minute=settings.rate_limit_requests,
     window_seconds=settings.rate_limit_window,
     api_key_rate_limit=settings.api_key_rate_limit,
 )
+app.add_middleware(AuthMiddleware)
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CorrelationIDMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
@@ -140,22 +140,27 @@ app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
 app.include_router(events.router, prefix="/api/v1/events", tags=["events"])
 app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
 app.include_router(integrations.router, prefix="/api/v1/integrations", tags=["integrations"])
-app.include_router(billing.router, prefix="/api/v1/billing", tags=["billing"])
 app.include_router(documents.router, prefix="/api/v1/documents", tags=["documents"])
 app.include_router(resumes.router, prefix="/api/v1/resumes", tags=["resumes"])
 app.include_router(applications.router, prefix="/api/v1/workspaces/{workspace_id}/applications", tags=["applications"])
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
 app.include_router(connectors.router, prefix="/api/v1/connectors", tags=["connectors"])
 app.include_router(scheduler.router, prefix="/api/v1/scheduler", tags=["scheduler"])
-app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
-app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
-app.include_router(iam.router, prefix="/api/v1/iam", tags=["iam"])
-app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
 app.include_router(knowledge_graph.router, prefix="/api/v1/knowledge-graph", tags=["knowledge-graph"])
-app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["recommendations"])
-app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
 app.include_router(gdpr_router, prefix="/api/v1", tags=["gdpr"])
 app.include_router(consent_router, prefix="/api/v1", tags=["consent"])
 app.include_router(agent_costs_router, prefix="/api/v1", tags=["agents"])
-app.include_router(admin_console.router, prefix="", tags=["admin"])
+
+# ── Enterprise routes (CF-06 / R6) ──────────────────────────────────
+# Out of MVP scope. Mounted only when explicitly enabled via
+# `enterprise_routes_enabled=true` (default off in MVP builds).
+if settings.enterprise_routes_enabled:
+    app.include_router(billing.router, prefix="/api/v1/billing", tags=["billing"])
+    app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
+    app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
+    app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
+    app.include_router(iam.router, prefix="/api/v1/iam", tags=["iam"])
+    app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["recommendations"])
+    app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
+    app.include_router(admin_console.router, prefix="", tags=["admin"])
