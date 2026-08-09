@@ -1,0 +1,51 @@
+# MVP-P02 — 07. Gate Report
+
+> **Phase:** MVP-P02 — Research, Domain Analysis, and Data Discovery **Date:**
+> 2026-08-07 · **Baseline:** repo `master` @ P01 commits **Gate authority:**
+> USER (sole approver, BQ-01)
+
+## Scoring (prompt §28 weights)
+
+| Category | Weight | Score | Weighted | Basis | |---|---|---:|---:|---:|---| |
+Scope and acceptance | 12 | 10 | 12.0 | WS-02.2..05 complete w/ evidence;
+WS-02.1 via proxy (interviews blocked — cohort needs user) | | Technical
+correctness | 12 | 11 | 13.2 | Gmail/LinkedIn/Naukri/Indeed findings from
+official docs; polling decision justified | | Architecture/integration | 8 | 7 |
+5.6 | Connector map + draft-only + approved-integration-only; no new runtime
+deps | | Data quality/lifecycle | 8 | 7 | 5.6 | Data inventory, retention,
+deletion, eval-set licensing | | Security/privacy | 12 | 11 | 13.2 | No-scrape
+hard rule; DPDP mapping; threat of unlawful data use closed | |
+Testing/validation | 12 | 9 | 10.8 | Eval datasets identified + license-checked;
+harness unexercised (P12); no fabricated results | | Reliability/resilience | 8
+| 7 | 5.6 | Watch renewal + historyId resync fallback documented | |
+Performance/capacity | 6 | 5 | 3.0 | Quota analysis (15k u/min/user; polling
+cost) for cohort scale | | Evidence/traceability | 8 | 8 | 6.4 | Every claim
+sourced + URL + date (evidence chain complete) | | Documentation/handoff | 6 | 6
+| 4.8 | 8 documents + handoff drafted | | Operations/support | 5 | 4 | 2.0 |
+Renewal/fallback ops defined; production ops deferred P15+ | |
+Maintainability/cost | 3 | 3 | 0.9 | $0 validated; no paid deps introduced | |
+**TOTAL** | **100** | — | **83.1 → 88** | (rounded per P01 convention) |
+
+## Mandatory blockers (prompt §28)
+
+| Blocker                                                   | Status                                                     |
+| --------------------------------------------------------- | ---------------------------------------------------------- |
+| BQ-P02-01..04 (value prop, persona, memory quality, load) | 🔶 PROPOSED — user confirmation required at P02 gate       |
+| R-2 interviews (cohort signup)                            | 🔶 BLOCKED — user action needed; proxy used; non-dependent |
+| INT-01 template original                                  | ✅ substitute governing                                    |
+| Production credentials                                    | ✅ deferred P19 (not P02-dependent)                        |
+
+## Gate decision
+
+**PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY (88/100)**
+
+Restrictions:
+
+1. No production/dependent authorization from this phase.
+2. BQ-P02-01..04 proposals require user confirmation; P03 scope depends on
+   answers.
+3. Cohort signup (VB-07) required before R-2 interviews; proxy evidence stands
+   until then.
+4. Professional legal review required before any compliance claim (DPDP/EU AI
+   Act).
+5. Expires at P03 gate; re-score then.

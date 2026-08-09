@@ -1,0 +1,41 @@
+# MVP-P02 — 05. Build-Buy Evidence (WS-02.5)
+
+> Research date: 2026-08-07 · Constraint: **$0 budget** (DEC-P01-07) — OSS +
+> official free tiers only. Recommendation per component with evidence.
+
+## 1. Component-by-component ($0 stack)
+
+| Component                    | Build (OSS/free)                                                                                                           | Buy (paid)                                                              | Evidence                                    | Recommendation                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------- |
+| Gmail integration            | Official Google API, OAuth + polling (`messages.list`/`history.list`); free for consumer apps                              | Unified email APIs (Unipile/Nylas) — paid tiers, remove 7-day-watch ops | Official Google docs; $0 mandate            | **Build** on official API; push = later upgrade |
+| LLM / orchestration          | Existing mock-LLM + model-access via official provider APIs (free/dev tier verified at P12); local OSS evals               | —                                                                       | Repo state (mock_llm fixtures), prompt §15  | **Build** (already in repo)                     |
+| Resume parsing eval          | `datasetmaster/resumes` (MIT), CareerCorpus (CC-BY-4.0), Faker-generated synthetic                                         | Kaggle CC BY-NC dataset (excluded — non-commercial)                     | WS-02.3                                     | **Build** harness on MIT/CC-BY data             |
+| ATS scoring (candidate-side) | OSS references: `ats-resume-scorer` (MIT, PyPI), Resume-Matcher (MIT) — **reference only, license-check before vendoring** | —                                                                       | https://github.com/topics/ats-resume ; PyPI | Reference-only; own implementation per INT-02   |
+| Retrieval/memory             | Postgres + in-repo vector/search projections (already in repo)                                                             | —                                                                       | Repo state (P00/01)                         | **Build**                                       |
+| Job search                   | None lawful for consumer (Naukri/LinkedIn/Indeed = partner-gated)                                                          | Scraper APIs (Apify/Parse) — **excluded**: ToS breach, legal risk       | WS-02.2; Proxycurl case                     | **User-performed** + tracking                   |
+| Observability                | OpenTelemetry (already in repo)                                                                                            | —                                                                       | Repo state                                  | **Build**                                       |
+| Test infra                   | pytest, Playwright, k6 (already in repo)                                                                                   | —                                                                       | Repo state                                  | **Build**                                       |
+
+## 2. Build-buy decision rules applied
+
+1. Buy only where $0 AND lawful AND materially de-risks; otherwise build.
+2. Never buy unlawful access (scraping) — prompt §16 blocks; Proxycurl precedent
+   proves real legal risk.
+3. Reference OSS as evidence of feasibility; vendor into repo only with
+   license-compatible check (prompt §18).
+4. Re-evaluate at each phase gate (build-buy is not a one-time decision).
+
+## 3. Residual cost risk (registered)
+
+- Free-tier API quotas may bind at cohort scale (>100 users) — ASSUMPTION
+  ASP-07, measured at P13; upgrade path = push-watch + GCP free-tier Pub/Sub,
+  then paid only if cohort grows beyond $0 posture (user decision required,
+  BQ-02 environment constraint).
+
+## 4. Evidence links
+
+| Claim                                  | Source                                                                       | Verified   |
+| -------------------------------------- | ---------------------------------------------------------------------------- | ---------- |
+| ats-resume-scorer MIT (PyPI)           | https://pypi.org/project/ats-resume-scorer/                                  | 2026-08-07 |
+| OSS ATS tools exist (MIT)              | https://github.com/topics/ats-resume                                         | 2026-08-07 |
+| Gmail API free for consumer OAuth apps | https://developers.google.com/workspace/gmail/api/guides/push (usage/quotas) | 2026-08-07 |
