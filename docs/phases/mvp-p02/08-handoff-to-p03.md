@@ -45,3 +45,23 @@
 
 - No production/dependent authorization; no paid research; no compliance claims
   without legal review; no cohort PII in CI/eval.
+
+## 5. Automation requirements for P03 (DEC-P02-05 � user ""all above"", 2026-08-07)
+
+Requirements engineering must cover the tiered automation surface:
+
+1. **Tier 1 (MVP core):** Gmail polling watcher (deadline extraction),
+   application auto-track, auto-draft generation, reminder/follow-up scheduler,
+   URL job ingest, interview prep assembler. Official Gmail API only (readonly +
+   compose); no send scope by default.
+2. **Tier 2 (flag AUTO-02, default OFF, opt-in):** read-only discovery scraping
+   of public job listings (Apify-style); normalized job records; pacing + kill
+   switch
+   - no anti-bot evasion; legal review before default-ON at P13.
+3. **Tier 3 (approval contract, default OFF):** auto-apply engine � review-first
+   mode (draft -> user edits -> send) is the default; autopilot mode requires
+   per-plan consent, pacing caps, audit, AUTO-03 kill switch, and legal/platform
+   review. gmail.send only with per-user Tier-3 enablement.
+4. **Cross-cutting:** kill-switch matrix (AUTO-01/02/03), per-user
+   opt-in/consent (DPDP s5/s6), immutable audit log, stop/pivot hooks.
+5. Full blueprint: 09-automation-blueprint.md. Risks RISK-P02-07..09 carried.

@@ -28,13 +28,15 @@
 
 ## 3. Evidence register (template)
 
-| EVD             | Claim                        | Requirement | Type                   | Location                    | Result | Date       | Verified by        |
-| --------------- | ---------------------------- | ----------- | ---------------------- | --------------------------- | ------ | ---------- | ------------------ |
-| EVD-MVP-P02-001 | Gmail push watch rules       | MVP-P02-R01 | official docs          | `02-platform-research.md`   | TBD    | 2026-08-07 | Security Architect |
-| EVD-MVP-P02-002 | Job-platform API status      | MVP-P02-R01 | official docs          | `02-platform-research.md`   | TBD    | 2026-08-07 | Security Architect |
-| EVD-MVP-P02-003 | Eval datasets free/consented | MVP-P02-R03 | official sources       | `03-data-feasibility.md`    | TBD    | 2026-08-07 | Data Architect     |
-| EVD-MVP-P02-004 | DPDP/EU-AI applicability     | MVP-P02-R04 | official text + review | `04-regulatory-analysis.md` | TBD    | 2026-08-07 | Compliance         |
-| EVD-MVP-P02-005 | $0 stack limits verified     | MVP-P02-R05 | vendor docs            | `05-build-buy.md`           | TBD    | 2026-08-07 | AI/ML Engineer     |
+| EVD             | Claim                                              | Requirement | Type                   | Location                     | Result | Date       | Verified by        |
+| --------------- | -------------------------------------------------- | ----------- | ---------------------- | ---------------------------- | ------ | ---------- | ------------------ |
+| EVD-MVP-P02-001 | Gmail push watch rules                             | MVP-P02-R01 | official docs          | `02-platform-research.md`    | TBD    | 2026-08-07 | Security Architect |
+| EVD-MVP-P02-002 | Job-platform API status                            | MVP-P02-R01 | official docs          | `02-platform-research.md`    | TBD    | 2026-08-07 | Security Architect |
+| EVD-MVP-P02-003 | Eval datasets free/consented                       | MVP-P02-R03 | official sources       | `03-data-feasibility.md`     | TBD    | 2026-08-07 | Data Architect     |
+| EVD-MVP-P02-004 | DPDP/EU-AI applicability                           | MVP-P02-R04 | official text + review | `04-regulatory-analysis.md`  | TBD    | 2026-08-07 | Compliance         |
+| EVD-MVP-P02-005 | $0 stack limits verified                           | MVP-P02-R05 | vendor docs            | `05-build-buy.md`            | TBD    | 2026-08-07 | AI/ML Engineer     |
+| EVD-MVP-P02-006 | Automation tier decision (DEC-P02-05, "all above") | MVP-P02-R06 | user decision          | `09-automation-blueprint.md` | DONE   | 2026-08-07 | User (approver)    |
+| EVD-MVP-P02-007 | Scraping legal precedent (Proxycurl)               | MVP-P02-R06 | documented case        | `02-platform-research.md` §2 | DONE   | 2026-08-07 | Security Architect |
 
 ## 4. Validation backlog for P02 (cohort-dependent)
 
