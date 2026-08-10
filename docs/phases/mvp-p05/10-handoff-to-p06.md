@@ -1,0 +1,43 @@
+# MVP-P05 — 10. Handoff to MVP-P06 (Technology Stack & Engineering Standards)
+
+> **Phase:** MVP-P05 → MVP-P06 · **Date:** 2026-08-07 · **Gate:** ✅ CONDITIONAL
+> GO (88/100) — pending user ratification. P06 must validate, not assume.
+
+## 1. What P06 receives
+
+| Item                                                           | Where                       |
+| -------------------------------------------------------------- | --------------------------- |
+| Architecture baseline (C4, trust boundaries, flows)            | `03-c4-trust-dataflow.md`   |
+| Service contracts (API/events/approval/projections/connectors) | `04-service-contracts.md`   |
+| ADR-021..026 (design decisions binding P06–P08)                | `05-adrs.md`                |
+| Threat-informed architecture (existing → gap)                  | `06-threat-architecture.md` |
+| Failure/evolution model + SLOs (99% best-effort)               | `07-failure-evolution.md`   |
+| Registers + deferred backlog                                   | `08-registers.md`           |
+| Requirements + traceability (P03)                              | `../mvp-p03/03/04/05`       |
+
+## 2. P06 focus (Tech Stack & Engineering Standards)
+
+1. **Pin the stack from repo reality** (CF-P05-01): Next.js 15 + FastAPI (Python
+   3.14) + SQLAlchemy 2 + PostgreSQL/pgvector + Redis (BullMQ-compatible)
+   - MinIO/S3 + Meilisearch — declare versions, lint/format/typecheck/test
+     standards (nx targets exist).
+2. Standards: OpenAPI 3.1 (static contract P08), RFC 9700 OAuth, WCAG 2.2 AA,
+   NIST SSDF 800-218 practices, commit/tag conventions, package governance (pnpm
+   workspace), dependency pinning + audit.
+3. Engineering standards for the ADR-021/022/023 implementations (migrations,
+   idempotency, approval API shapes, RLS patterns, projection rebuild jobs).
+4. Define environment matrix (dev docker-compose → staging → prod PaaS) +
+   secrets flow (SecretManager protocol) + CI gate rules (11 workflows exist).
+
+## 3. Constraints carried
+
+- $0 budget (DEC-P01-07); nearest-region PaaS (BQ-P05-02, flagged P13); 99%
+  best-effort, no SLA (BQ-P05-01).
+- Repo truth outranks prose (CF-P03-02/04-01/05-01); single FastAPI service +
+  worker; no NestJS app.
+- Approval persistence (ADR-021) = release-blocking; draft-only Gmail until
+  per-user T3 enablement; T2/T3 gated (AUTO-02/03 OFF).
+- 6-memory taxonomy via typed rows + supersession (ADR-022); RLS hardening
+  (ADR-023); rebuildable projections (ADR-024); workload identity (ADR-025).
+- No compliance claims without legal review (P13); no production authority
+  (P19).
