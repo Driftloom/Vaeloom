@@ -1,0 +1,42 @@
+# MVP-P10 — 04. Code & Configuration Changes
+
+> Exact diff summary (see commit for full diff). All paths repo-relative.
+
+## New files
+
+| File                                                       | Purpose                                                                        |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `apps/web/src/components/shared/SkipLink.tsx`              | WCAG 2.4.1 skip link (class in globals.css)                                    |
+| `apps/web/src/components/shared/Toast.tsx`                 | ToastProvider + useToast; `aria-live=polite` region, 6s auto-dismiss           |
+| `apps/web/src/components/shared/DiffViewer.tsx`            | LCS word-level diff; summary line + colored spans; `role=group` + aria-details |
+| `apps/web/src/components/shared/ProvenanceBadge.tsx`       | source + confidence chip                                                       |
+| `apps/web/src/components/shared/ConfidenceMeter.tsx`       | 0..1 bar, tone by threshold (≥0.8 success, ≥0.5 warning, else danger)          |
+| `apps/web/src/components/shared/ExpiryTimer.tsx`           | countdown, `aria-live=polite`, onExpire callback, 30s tick                     |
+| `apps/web/src/components/shared/ApprovalCard.tsx`          | evolved ProposalCard per P09 §04.2.1                                           |
+| `apps/web/src/components/memory/MemoryCorrectionPanel.tsx` | memory list + edit modal + supersession copy                                   |
+| `apps/web/src/components/shared/ApprovalCard.spec.tsx`     | 7 tests                                                                        |
+| `apps/web/src/components/shared/Modal.spec.tsx`            | 4 tests                                                                        |
+| `apps/web/src/components/shared/Toast.spec.tsx`            | 2 tests                                                                        |
+| `apps/web/src/components/layout/Sidebar.spec.tsx`          | 3 tests                                                                        |
+
+## Modified files
+
+| File                                                         | Change                                                                                                         |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `apps/web/tailwind.config.ts`                                | + success/warning/info (+ l-* light variants) tokens                                                           |
+| `apps/web/src/styles/globals.css`                            | + `.skip-link`, global `:focus-visible`, reduced-motion block, `@keyframes toast-in`                           |
+| `packages/ui-kit/src/components/Modal.tsx`                   | focus trap (Tab/Shift+Tab), focus restore on close, useId title id, dialog `tabIndex=-1`, aria-hidden backdrop |
+| `apps/web/src/components/layout/Sidebar.tsx`                 | 6-space IA groups; enterprise `gated` label; aria-current; emoji `aria-hidden`; `usePathname`                  |
+| `apps/web/src/app/layout.tsx`                                | ToastProvider + skip link; imports                                                                             |
+| `apps/web/src/app/workspace/[workspaceId]/layout.tsx`        | `<main id="main-content" tabIndex={-1}>`                                                                       |
+| `apps/web/src/app/(auth)/login/page.tsx`, `signup/page.tsx`  | same main landmark                                                                                             |
+| `apps/web/src/components/chat/ChatWindow.tsx`                | AI disclosure line on agent messages; `role="log" aria-live="polite"`                                          |
+| `apps/web/src/app/workspace/[workspaceId]/settings/page.tsx` | Consent Scopes section (T3 gated), typed-confirm delete + receipt, reworked handler (no window.confirm)        |
+| `apps/web/src/app/workspace/[workspaceId]/memory/page.tsx`   | + MemoryCorrectionPanel below graph                                                                            |
+| `apps/web/src/lib/api-client.ts`                             | + `consentApi`, `gdprApi` + interfaces                                                                         |
+
+## Deleted files
+
+| File                                              | Reason                                                      |
+| ------------------------------------------------- | ----------------------------------------------------------- |
+| `apps/web/src/components/shared/ProposalCard.tsx` | superseded by ApprovalCard (unused — verified zero imports) |

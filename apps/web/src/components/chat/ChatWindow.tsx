@@ -52,14 +52,22 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       </header>
 
       <div className="flex-1 card flex flex-col p-0 overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div
+          className="flex-1 overflow-y-auto p-6 space-y-6"
+          role="log"
+          aria-live="polite"
+          aria-label="Chat messages"
+        >
           {messages.length === 0 && !loading && (
             <div className="flex items-center justify-center h-full text-text-muted">
               Send a message to start chatting with your agents.
             </div>
           )}
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              key={msg.id}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
               <div
                 className={`max-w-[80%] p-4 rounded-lg ${
                   msg.role === 'user'
@@ -70,6 +78,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 }`}
               >
                 <p>{msg.text}</p>
+                {!msg.error && msg.role === 'agent' && (
+                  <p className="mt-2 text-[10px] text-text-muted border-t border-border pt-2">
+                    AI-generated suggestion — verify facts before acting. Agents only propose;
+                    nothing is sent or applied without your approval.
+                  </p>
+                )}
                 {msg.error && (
                   <button
                     className="mt-2 text-xs text-primary hover:underline"
@@ -109,7 +123,11 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             disabled={loading}
           />
-          <button className="btn-primary disabled:opacity-50" onClick={handleSend} disabled={loading || !input.trim()}>
+          <button
+            className="btn-primary disabled:opacity-50"
+            onClick={handleSend}
+            disabled={loading || !input.trim()}
+          >
             Send
           </button>
         </div>

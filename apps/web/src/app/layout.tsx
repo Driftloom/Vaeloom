@@ -2,10 +2,16 @@ import type { Metadata } from 'next';
 import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google';
 import '../styles/globals.css';
 import { ThemeProvider } from '../hooks/useTheme';
-import { KeyboardShortcutProvider, KeyboardShortcutsModal, KeyboardShortcutListener, ShortcutsInitializer } from '../hooks/useKeyboardShortcuts';
+import {
+  KeyboardShortcutProvider,
+  KeyboardShortcutsModal,
+  KeyboardShortcutListener,
+  ShortcutsInitializer,
+} from '../hooks/useKeyboardShortcuts';
 import { I18nProvider } from '../i18n';
 import { ErrorTrackingBoundary } from '../lib/error-tracking-boundary';
 import { WebVitals } from '../lib/web-vitals-client';
+import { ToastProvider } from '../components/shared/Toast';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -28,8 +34,17 @@ export const metadata: Metadata = {
     default: 'Vaeloom | Enterprise AI operating system',
     template: '%s | Vaeloom',
   },
-  description: 'Memory-first enterprise intelligence platform. Connect your data, deploy AI agents, and automate workflows securely.',
-  keywords: ['AI', 'enterprise', 'knowledge graph', 'AI agents', 'workflow automation', 'memory platform', 'Vaeloom'],
+  description:
+    'Memory-first enterprise intelligence platform. Connect your data, deploy AI agents, and automate workflows securely.',
+  keywords: [
+    'AI',
+    'enterprise',
+    'knowledge graph',
+    'AI agents',
+    'workflow automation',
+    'memory platform',
+    'Vaeloom',
+  ],
   authors: [{ name: 'Vaeloom' }],
   creator: 'Vaeloom',
   publisher: 'Vaeloom',
@@ -44,7 +59,8 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: 'Vaeloom',
     title: 'Vaeloom | Enterprise AI operating system',
-    description: 'Memory-first enterprise intelligence platform. Connect your data, deploy AI agents, and automate workflows.',
+    description:
+      'Memory-first enterprise intelligence platform. Connect your data, deploy AI agents, and automate workflows.',
     images: [
       {
         url: `${siteUrl}/og-image.png`,
@@ -57,7 +73,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Vaeloom | Enterprise AI operating system',
-    description: 'Memory-first enterprise intelligence platform. Connect your data, deploy AI agents, and automate workflows.',
+    description:
+      'Memory-first enterprise intelligence platform. Connect your data, deploy AI agents, and automate workflows.',
     images: [`${siteUrl}/og-image.png`],
     creator: '@vaeloom',
   },
@@ -75,11 +92,7 @@ export const metadata: Metadata = {
   category: 'technology',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
       <head>
@@ -95,13 +108,18 @@ export default function RootLayout({
         <ErrorTrackingBoundary>
           <ThemeProvider>
             <I18nProvider>
-              <KeyboardShortcutProvider>
-                <ShortcutsInitializer />
-                <KeyboardShortcutListener />
-                <KeyboardShortcutsModal />
-                <WebVitals />
-                {children}
-              </KeyboardShortcutProvider>
+              <ToastProvider>
+                <KeyboardShortcutProvider>
+                  <ShortcutsInitializer />
+                  <KeyboardShortcutListener />
+                  <KeyboardShortcutsModal />
+                  <WebVitals />
+                  <a href="#main-content" className="skip-link">
+                    Skip to main content
+                  </a>
+                  {children}
+                </KeyboardShortcutProvider>
+              </ToastProvider>
             </I18nProvider>
           </ThemeProvider>
         </ErrorTrackingBoundary>

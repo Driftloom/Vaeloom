@@ -47,7 +47,11 @@ function LoginForm() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-background p-4">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="min-h-screen flex items-center justify-center bg-background p-4 focus:outline-none"
+    >
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
@@ -77,7 +81,9 @@ function LoginForm() {
               autoComplete="current-password"
             />
             {errors.form && (
-              <p role="alert" className="text-sm text-accent bg-accent/10 rounded-lg px-3 py-2">{errors.form}</p>
+              <p role="alert" className="text-sm text-accent bg-accent/10 rounded-lg px-3 py-2">
+                {errors.form}
+              </p>
             )}
             <Button type="submit" loading={submitting} fullWidth>
               Log in
@@ -86,7 +92,9 @@ function LoginForm() {
         </div>
         <p className="mt-4 text-center text-sm text-text-muted">
           Need an account?{' '}
-          <Link href="/signup" className="text-primary hover:text-primary-hover font-medium">Sign up</Link>
+          <Link href="/signup" className="text-primary hover:text-primary-hover font-medium">
+            Sign up
+          </Link>
         </p>
       </div>
     </main>
@@ -95,7 +103,13 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background text-text-muted">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background text-text-muted">
+          Loading…
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

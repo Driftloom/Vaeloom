@@ -34,6 +34,18 @@ const config: Config = {
           muted: '#94a3b8',
         },
         border: '#2e3347',
+        success: {
+          DEFAULT: '#4ade80',
+          muted: '#86efac',
+        },
+        warning: {
+          DEFAULT: '#fbbf24',
+          muted: '#fcd34d',
+        },
+        info: {
+          DEFAULT: '#38bdf8',
+          muted: '#7dd3fc',
+        },
         // Light mode colors
         'l-bg': '#f8f9fc',
         'l-surface': {
@@ -46,6 +58,9 @@ const config: Config = {
           muted: '#64748b',
         },
         'l-border': '#e2e8f0',
+        'l-success': '#16a34a',
+        'l-warning': '#b45309',
+        'l-info': '#0369a1',
       },
       boxShadow: {
         'l-subtle': '0 1px 3px rgba(0,0,0,0.06)',

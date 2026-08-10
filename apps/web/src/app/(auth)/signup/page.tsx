@@ -18,7 +18,12 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string; form?: string }>({});
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    form?: string;
+  }>({});
   const [submitting, setSubmitting] = useState(false);
 
   function validate(): boolean {
@@ -26,7 +31,8 @@ export default function SignupPage() {
     if (!email) e.email = 'Email is required';
     else if (!EMAIL_RE.test(email)) e.email = 'Invalid email format';
     if (!password) e.password = 'Password is required';
-    else if (!PASSWORD_RE.test(password)) e.password = 'At least 8 characters with a letter and a number';
+    else if (!PASSWORD_RE.test(password))
+      e.password = 'At least 8 characters with a letter and a number';
     if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -49,7 +55,11 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-background p-4">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="min-h-screen flex items-center justify-center bg-background p-4 focus:outline-none"
+    >
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
@@ -96,7 +106,9 @@ export default function SignupPage() {
               autoComplete="new-password"
             />
             {errors.form && (
-              <p role="alert" className="text-sm text-accent bg-accent/10 rounded-lg px-3 py-2">{errors.form}</p>
+              <p role="alert" className="text-sm text-accent bg-accent/10 rounded-lg px-3 py-2">
+                {errors.form}
+              </p>
             )}
             <Button type="submit" loading={submitting} fullWidth>
               Create account
@@ -105,7 +117,9 @@ export default function SignupPage() {
         </div>
         <p className="mt-4 text-center text-sm text-text-muted">
           Already have an account?{' '}
-          <Link href="/login" className="text-primary hover:text-primary-hover font-medium">Log in</Link>
+          <Link href="/login" className="text-primary hover:text-primary-hover font-medium">
+            Log in
+          </Link>
         </p>
       </div>
     </main>

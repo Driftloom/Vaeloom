@@ -44,7 +44,11 @@ export default function WorkspaceLayout({
         <Sidebar workspaceId={workspaceId} />
         <div className="flex-1 flex flex-col min-w-0">
           <TopNav />
-          <main className="flex-1 overflow-y-auto p-6">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex-1 overflow-y-auto p-6 focus:outline-none"
+          >
             <ErrorBoundary>{children}</ErrorBoundary>
           </main>
         </div>

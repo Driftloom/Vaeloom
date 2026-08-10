@@ -17,7 +17,14 @@ import type {
 } from '@vaeloom/shared-types';
 
 export { ApiError } from './api';
-export { getToken, setToken, clearToken, getRefreshToken, setRefreshToken, clearRefreshToken } from './api';
+export {
+  getToken,
+  setToken,
+  clearToken,
+  getRefreshToken,
+  setRefreshToken,
+  clearRefreshToken,
+} from './api';
 
 const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000';
 const API_PREFIX = '/api/v1';
@@ -52,28 +59,42 @@ export class ApiClient {
     return this.baseUrl;
   }
 
-  async get<T>(path: string, params?: Record<string, string | number | boolean | undefined | null>): Promise<T> {
+  async get<T>(
+    path: string,
+    params?: Record<string, string | number | boolean | undefined | null>,
+  ): Promise<T> {
     const qs = params ? '?' + this.encodeParams(params) : '';
     return this.request<T>(`${path}${qs}`, { method: 'GET' });
   }
 
   async post<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>(path, { method: 'POST', body: body != null ? JSON.stringify(body) : undefined });
+    return this.request<T>(path, {
+      method: 'POST',
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
   }
 
   async put<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>(path, { method: 'PUT', body: body != null ? JSON.stringify(body) : undefined });
+    return this.request<T>(path, {
+      method: 'PUT',
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
   }
 
   async patch<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>(path, { method: 'PATCH', body: body != null ? JSON.stringify(body) : undefined });
+    return this.request<T>(path, {
+      method: 'PATCH',
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
   }
 
   async delete<T = void>(path: string): Promise<T> {
     return this.request<T>(path, { method: 'DELETE' });
   }
 
-  private encodeParams(params: Record<string, string | number | boolean | undefined | null>): string {
+  private encodeParams(
+    params: Record<string, string | number | boolean | undefined | null>,
+  ): string {
     const parts: string[] = [];
     for (const [k, v] of Object.entries(params)) {
       if (v != null) {
@@ -106,14 +127,17 @@ export class ApiClient {
       let message = `Request failed (${res.status})`;
       let code: string | undefined;
       try {
-        const body = (await res.json()) as { error?: { message?: string; code?: string }; detail?: string };
+        const body = (await res.json()) as {
+          error?: { message?: string; code?: string };
+          detail?: string;
+        };
         if (body.error) {
           message = body.error.message ?? message;
           code = body.error.code;
         } else if ((body as { detail?: string }).detail) {
           message = (body as { detail: string }).detail;
         }
-      } catch { }
+      } catch {}
       throw new ApiClientError(res.status, message, code);
     }
 
@@ -121,7 +145,8 @@ export class ApiClient {
   }
 
   private async tryRefresh(): Promise<string | null> {
-    const refresh = typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.refreshToken') : null;
+    const refresh =
+      typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.refreshToken') : null;
     if (!refresh) return null;
     try {
       const res = await fetch(`${this.baseUrl}/auth/refresh`, {
@@ -136,7 +161,8 @@ export class ApiClient {
       const data = this.transformKeys<AuthResponse>(await res.json());
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('vaeloom.accessToken', data.accessToken);
-        if (data.refreshToken) window.localStorage.setItem('vaeloom.refreshToken', data.refreshToken);
+        if (data.refreshToken)
+          window.localStorage.setItem('vaeloom.refreshToken', data.refreshToken);
       }
       return data.accessToken;
     } catch {
@@ -278,8 +304,17 @@ export const memoryApi = {
   create(body: MemoryCreateRequest): Promise<Memory> {
     return apiClient.post<Memory>('/memories', body);
   },
-  list(params?: { type?: string; status?: string; tags?: string; page?: number; page_size?: number }): Promise<MemoryListResponse> {
-    return apiClient.get<MemoryListResponse>('/memories', params as Record<string, string | number | boolean | undefined | null>);
+  list(params?: {
+    type?: string;
+    status?: string;
+    tags?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<MemoryListResponse> {
+    return apiClient.get<MemoryListResponse>(
+      '/memories',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   get(id: string): Promise<Memory> {
     return apiClient.get<Memory>(`/memories/${id}`);
@@ -356,8 +391,16 @@ export const agentApi = {
   register(body: AgentCreateRequest): Promise<Agent> {
     return apiClient.post<Agent>('/agents', body);
   },
-  list(params?: { page?: number; page_size?: number; category?: string; search?: string }): Promise<AgentListResponse> {
-    return apiClient.get<AgentListResponse>('/agents', params as Record<string, string | number | boolean | undefined | null>);
+  list(params?: {
+    page?: number;
+    page_size?: number;
+    category?: string;
+    search?: string;
+  }): Promise<AgentListResponse> {
+    return apiClient.get<AgentListResponse>(
+      '/agents',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   get(id: string): Promise<Agent> {
     return apiClient.get<Agent>(`/agents/${id}`);
@@ -374,8 +417,14 @@ export const agentApi = {
   run(id: string, body: AgentExecuteRequest): Promise<AgentExecution> {
     return apiClient.post<AgentExecution>(`/agents/${id}/run`, body);
   },
-  executions(agentId: string, params?: { page?: number; page_size?: number; status?: string }): Promise<ExecutionListResponse> {
-    return apiClient.get<ExecutionListResponse>(`/agents/${agentId}/executions`, params as Record<string, string | number | boolean | undefined | null>);
+  executions(
+    agentId: string,
+    params?: { page?: number; page_size?: number; status?: string },
+  ): Promise<ExecutionListResponse> {
+    return apiClient.get<ExecutionListResponse>(
+      `/agents/${agentId}/executions`,
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   schedule(agentId: string, body: ScheduleRequest): Promise<ScheduleResponse> {
     return apiClient.post<ScheduleResponse>(`/agents/${agentId}/schedule`, body);
@@ -458,7 +507,10 @@ export const knowledgeGraphApi = {
     sort_by?: string;
     sort_order?: string;
   }): Promise<KGNodeListResponse> {
-    return apiClient.get<KGNodeListResponse>('/knowledge-graph/nodes', params as Record<string, string | number | boolean | undefined | null>);
+    return apiClient.get<KGNodeListResponse>(
+      '/knowledge-graph/nodes',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   getNode(id: string): Promise<KnowledgeGraphNode> {
     return apiClient.get<KnowledgeGraphNode>(`/knowledge-graph/nodes/${id}`);
@@ -473,11 +525,24 @@ export const knowledgeGraphApi = {
   createEdge(nodeId: string, body: KGCreateEdgeRequest): Promise<KnowledgeGraphEdge> {
     return apiClient.post<KnowledgeGraphEdge>(`/knowledge-graph/nodes/${nodeId}/edges`, body);
   },
-  listNodeEdges(nodeId: string, params?: { page?: number; page_size?: number }): Promise<KGEdgeListResponse> {
-    return apiClient.get<KGEdgeListResponse>(`/knowledge-graph/nodes/${nodeId}/edges`, params as Record<string, string | number | boolean | undefined | null>);
+  listNodeEdges(
+    nodeId: string,
+    params?: { page?: number; page_size?: number },
+  ): Promise<KGEdgeListResponse> {
+    return apiClient.get<KGEdgeListResponse>(
+      `/knowledge-graph/nodes/${nodeId}/edges`,
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
-  listAllEdges(params?: { page?: number; page_size?: number; relationship?: string }): Promise<KGEdgeListResponse> {
-    return apiClient.get<KGEdgeListResponse>('/knowledge-graph/edges', params as Record<string, string | number | boolean | undefined | null>);
+  listAllEdges(params?: {
+    page?: number;
+    page_size?: number;
+    relationship?: string;
+  }): Promise<KGEdgeListResponse> {
+    return apiClient.get<KGEdgeListResponse>(
+      '/knowledge-graph/edges',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   deleteEdge(id: string): Promise<void> {
     return apiClient.delete(`/knowledge-graph/edges/${id}`);
@@ -486,8 +551,15 @@ export const knowledgeGraphApi = {
   traverse(body: KGTraverseRequest): Promise<KnowledgeGraphNode[]> {
     return apiClient.post<KnowledgeGraphNode[]>('/knowledge-graph/traverse', body);
   },
-  findPath(params: { from_id: string; to_id: string; max_depth?: number }): Promise<KGPathResponse> {
-    return apiClient.get<KGPathResponse>('/knowledge-graph/path', params as Record<string, string | number | boolean | undefined | null>);
+  findPath(params: {
+    from_id: string;
+    to_id: string;
+    max_depth?: number;
+  }): Promise<KGPathResponse> {
+    return apiClient.get<KGPathResponse>(
+      '/knowledge-graph/path',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
 };
 
@@ -515,18 +587,29 @@ export const documentApi = {
   upload(file: File, workspaceId: string): Promise<DocumentResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    const token = typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
-    return fetch(`${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    }).then(async (res) => {
+    const token =
+      typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
+    return fetch(
+      `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`,
+      {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      },
+    ).then(async (res) => {
       if (!res.ok) throw new ApiClientError(res.status, 'Upload failed');
       return res.json() as Promise<DocumentResponse>;
     });
   },
-  list(params?: { workspace_id?: string; page?: number; page_size?: number }): Promise<DocumentListResponse> {
-    return apiClient.get<DocumentListResponse>('/documents', params as Record<string, string | number | boolean | undefined | null>);
+  list(params?: {
+    workspace_id?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<DocumentListResponse> {
+    return apiClient.get<DocumentListResponse>(
+      '/documents',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
 };
 
@@ -591,17 +674,32 @@ export interface ApplicationResponse {
 }
 
 export const applicationApi = {
-  list(workspaceId: string, params?: { page?: number; page_size?: number }): Promise<ApplicationResponse[]> {
-    return apiClient.get<ApplicationResponse[]>(`/workspaces/${workspaceId}/applications`, params as Record<string, string | number | boolean | undefined | null>);
+  list(
+    workspaceId: string,
+    params?: { page?: number; page_size?: number },
+  ): Promise<ApplicationResponse[]> {
+    return apiClient.get<ApplicationResponse[]>(
+      `/workspaces/${workspaceId}/applications`,
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   create(workspaceId: string, body: ApplicationCreateRequest): Promise<ApplicationResponse> {
     return apiClient.post<ApplicationResponse>(`/workspaces/${workspaceId}/applications`, body);
   },
   get(workspaceId: string, applicationId: string): Promise<ApplicationResponse> {
-    return apiClient.get<ApplicationResponse>(`/workspaces/${workspaceId}/applications/${applicationId}`);
+    return apiClient.get<ApplicationResponse>(
+      `/workspaces/${workspaceId}/applications/${applicationId}`,
+    );
   },
-  updateOutcome(workspaceId: string, applicationId: string, body: ApplicationUpdateOutcomeRequest): Promise<ApplicationResponse> {
-    return apiClient.patch<ApplicationResponse>(`/workspaces/${workspaceId}/applications/${applicationId}/outcome`, body);
+  updateOutcome(
+    workspaceId: string,
+    applicationId: string,
+    body: ApplicationUpdateOutcomeRequest,
+  ): Promise<ApplicationResponse> {
+    return apiClient.patch<ApplicationResponse>(
+      `/workspaces/${workspaceId}/applications/${applicationId}/outcome`,
+      body,
+    );
   },
 };
 
@@ -643,8 +741,15 @@ export const connectorApi = {
   create(body: ConnectorCreateRequest): Promise<ConnectorResponseExt> {
     return apiClient.post<ConnectorResponseExt>('/connectors', body);
   },
-  list(params?: { page?: number; page_size?: number; type?: string }): Promise<ConnectorResponseExt[]> {
-    return apiClient.get<ConnectorResponseExt[]>('/connectors', params as Record<string, string | number | boolean | undefined | null>);
+  list(params?: {
+    page?: number;
+    page_size?: number;
+    type?: string;
+  }): Promise<ConnectorResponseExt[]> {
+    return apiClient.get<ConnectorResponseExt[]>(
+      '/connectors',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   get(id: string): Promise<ConnectorResponseExt> {
     return apiClient.get<ConnectorResponseExt>(`/connectors/${id}`);
@@ -663,6 +768,63 @@ export const connectorApi = {
   },
   testConnection(id: string): Promise<Record<string, unknown>> {
     return apiClient.post<Record<string, unknown>>(`/connectors/${id}/test`);
+  },
+};
+
+// ─── Consent / Data rights (DPDP) ───────────────────────────────────────────
+
+export interface ConsentScope {
+  scope: string;
+  granted: boolean;
+  granted_at?: string;
+  description?: string;
+}
+
+export interface ConsentGrantRequest {
+  scope: string;
+  consent_version: string;
+}
+
+export interface ConsentState {
+  scopes: ConsentScope[];
+  consent_version: string;
+}
+
+export interface GdprExportResponse {
+  job_id?: string;
+  status?: string;
+  download_url?: string;
+  expires_at?: string;
+}
+
+export interface GdprDeleteResponse {
+  request_id: string;
+  status: string;
+  primary_deletion: string;
+  backup_expiry: string;
+}
+
+export const consentApi = {
+  grant(body: ConsentGrantRequest): Promise<Record<string, unknown>> {
+    return apiClient.post<Record<string, unknown>>('/consent/grant', body);
+  },
+  revoke(scope: string): Promise<Record<string, unknown>> {
+    return apiClient.post<Record<string, unknown>>(`/consent/revoke/${encodeURIComponent(scope)}`);
+  },
+  me(): Promise<ConsentState> {
+    return apiClient.get<ConsentState>('/consent/me');
+  },
+  scopes(): Promise<ConsentScope[]> {
+    return apiClient.get<ConsentScope[]>('/consent/scopes');
+  },
+};
+
+export const gdprApi = {
+  export(): Promise<GdprExportResponse> {
+    return apiClient.post<GdprExportResponse>('/gdpr/export');
+  },
+  delete(): Promise<GdprDeleteResponse> {
+    return apiClient.post<GdprDeleteResponse>('/gdpr/delete');
   },
 };
 
@@ -705,8 +867,15 @@ export interface TemplateResponse {
 }
 
 export const notificationApi = {
-  list(params?: { page?: number; page_size?: number; channel?: string }): Promise<NotificationResponse[]> {
-    return apiClient.get<NotificationResponse[]>('/notifications', params as Record<string, string | number | boolean | undefined | null>);
+  list(params?: {
+    page?: number;
+    page_size?: number;
+    channel?: string;
+  }): Promise<NotificationResponse[]> {
+    return apiClient.get<NotificationResponse[]>(
+      '/notifications',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   send(body: SendNotificationRequest): Promise<NotificationResponse> {
     return apiClient.post<NotificationResponse>('/notifications/send', body);
@@ -723,8 +892,14 @@ export const notificationApi = {
   subscribe(body: { url: string; tenant_id?: string }): Promise<Record<string, unknown>> {
     return apiClient.post<Record<string, unknown>>('/notifications/subscribe', body);
   },
-  webhookReceipt(notificationId: string, body: { status?: string; details?: Record<string, unknown> }): Promise<Record<string, unknown>> {
-    return apiClient.post<Record<string, unknown>>(`/notifications/webhooks/${notificationId}`, body);
+  webhookReceipt(
+    notificationId: string,
+    body: { status?: string; details?: Record<string, unknown> },
+  ): Promise<Record<string, unknown>> {
+    return apiClient.post<Record<string, unknown>>(
+      `/notifications/webhooks/${notificationId}`,
+      body,
+    );
   },
 };
 
@@ -785,8 +960,17 @@ export const schedulerApi = {
   createJob(body: CreateJobRequest): Promise<JobResponse> {
     return apiClient.post<JobResponse>('/scheduler/jobs', body);
   },
-  listJobs(params?: { page?: number; page_size?: number; type?: string; status?: string; name?: string }): Promise<JobResponse[]> {
-    return apiClient.get<JobResponse[]>('/scheduler/jobs', params as Record<string, string | number | boolean | undefined | null>);
+  listJobs(params?: {
+    page?: number;
+    page_size?: number;
+    type?: string;
+    status?: string;
+    name?: string;
+  }): Promise<JobResponse[]> {
+    return apiClient.get<JobResponse[]>(
+      '/scheduler/jobs',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   getJob(id: string): Promise<JobResponse> {
     return apiClient.get<JobResponse>(`/scheduler/jobs/${id}`);
@@ -944,11 +1128,25 @@ export interface TrackEventRequest {
 }
 
 export const analyticsApi = {
-  dashboard(params?: { date_from?: string; date_to?: string; interval?: string }): Promise<DashboardPayload> {
-    return apiClient.get<DashboardPayload>('/analytics', params as Record<string, string | number | boolean | undefined | null>);
+  dashboard(params?: {
+    date_from?: string;
+    date_to?: string;
+    interval?: string;
+  }): Promise<DashboardPayload> {
+    return apiClient.get<DashboardPayload>(
+      '/analytics',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
-  usage(params?: { date_from?: string; date_to?: string; interval?: string }): Promise<UsageTimePoint[]> {
-    return apiClient.get<UsageTimePoint[]>('/analytics/usage', params as Record<string, string | number | boolean | undefined | null>);
+  usage(params?: {
+    date_from?: string;
+    date_to?: string;
+    interval?: string;
+  }): Promise<UsageTimePoint[]> {
+    return apiClient.get<UsageTimePoint[]>(
+      '/analytics/usage',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   metrics(): Promise<KpiSummary> {
     return apiClient.get<KpiSummary>('/analytics/metrics');
@@ -1002,7 +1200,10 @@ export const auditApi = {
     date_from?: string;
     date_to?: string;
   }): Promise<{ items: AuditEventResponse[]; total: number; page: number; page_size: number }> {
-    return apiClient.get('/audit/events', params as Record<string, string | number | boolean | undefined | null>);
+    return apiClient.get(
+      '/audit/events',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   getEvent(eventId: string): Promise<AuditEventResponse> {
     return apiClient.get<AuditEventResponse>(`/audit/events/${eventId}`);
@@ -1011,7 +1212,10 @@ export const auditApi = {
     return apiClient.post<string>('/audit/export', params);
   },
   complianceReport(params?: { date_from?: string; date_to?: string }): Promise<ComplianceReport> {
-    return apiClient.get<ComplianceReport>('/audit/compliance/report', params as Record<string, string | number | boolean | undefined | null>);
+    return apiClient.get<ComplianceReport>(
+      '/audit/compliance/report',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
 };
 
@@ -1049,8 +1253,14 @@ export const iamApi = {
   createUser(body: IAMCreateUserRequest): Promise<IAMUserResponse> {
     return apiClient.post<IAMUserResponse>('/iam/users', body);
   },
-  listUsers(params?: { page?: number; page_size?: number }): Promise<{ items: IAMUserResponse[]; total: number; page: number; page_size: number }> {
-    return apiClient.get('/iam/users', params as Record<string, string | number | boolean | undefined | null>);
+  listUsers(params?: {
+    page?: number;
+    page_size?: number;
+  }): Promise<{ items: IAMUserResponse[]; total: number; page: number; page_size: number }> {
+    return apiClient.get(
+      '/iam/users',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   getUser(userId: string): Promise<IAMUserResponse> {
     return apiClient.get<IAMUserResponse>(`/iam/users/${userId}`);
@@ -1138,33 +1348,62 @@ export const pluginApi = {
   register(body: RegisterPluginRequest): Promise<PluginResponse> {
     return apiClient.post<PluginResponse>('/plugins', body);
   },
-  list(params?: { page?: number; page_size?: number; status?: string; tags?: string; search?: string }): Promise<{ plugins: PluginResponse[]; total: number; page: number; page_size: number }> {
-    return apiClient.get('/plugins', params as Record<string, string | number | boolean | undefined | null>);
+  list(params?: {
+    page?: number;
+    page_size?: number;
+    status?: string;
+    tags?: string;
+    search?: string;
+  }): Promise<{ plugins: PluginResponse[]; total: number; page: number; page_size: number }> {
+    return apiClient.get(
+      '/plugins',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   get(id: string): Promise<PluginResponse> {
     return apiClient.get<PluginResponse>(`/plugins/${id}`);
   },
-  update(id: string, body: Partial<RegisterPluginRequest> & { status?: string }): Promise<PluginResponse> {
+  update(
+    id: string,
+    body: Partial<RegisterPluginRequest> & { status?: string },
+  ): Promise<PluginResponse> {
     return apiClient.put<PluginResponse>(`/plugins/${id}`, body);
   },
   delete(id: string): Promise<void> {
     return apiClient.delete(`/plugins/${id}`);
   },
-  execute(id: string, body: { input?: Record<string, unknown>; code?: string; timeout_ms?: number }): Promise<PluginExecutionResponse> {
+  execute(
+    id: string,
+    body: { input?: Record<string, unknown>; code?: string; timeout_ms?: number },
+  ): Promise<PluginExecutionResponse> {
     return apiClient.post<PluginExecutionResponse>(`/plugins/${id}/execute`, body);
   },
   getPermissions(id: string): Promise<{ permissions: Record<string, unknown> }> {
     return apiClient.get<{ permissions: Record<string, unknown> }>(`/plugins/${id}/permissions`);
   },
-  executions(pluginId: string, params?: { page?: number; page_size?: number }): Promise<{ executions: PluginExecutionResponse[]; total: number; page: number; page_size: number }> {
-    return apiClient.get(`/plugins/${pluginId}/executions`, params as Record<string, string | number | boolean | undefined | null>);
+  executions(
+    pluginId: string,
+    params?: { page?: number; page_size?: number },
+  ): Promise<{
+    executions: PluginExecutionResponse[];
+    total: number;
+    page: number;
+    page_size: number;
+  }> {
+    return apiClient.get(
+      `/plugins/${pluginId}/executions`,
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
 };
 
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
 export const chatApi = {
-  send(workspaceId: string, body: { message: string; agent_name?: string }): Promise<{ reply: string }> {
+  send(
+    workspaceId: string,
+    body: { message: string; agent_name?: string },
+  ): Promise<{ reply: string }> {
     return apiClient.post<{ reply: string }>(`/chat/workspaces/${workspaceId}/chat`, body);
   },
 };
@@ -1191,8 +1430,15 @@ export interface SubscriptionResponse {
 }
 
 export const billingApi = {
-  usage(params?: { metric?: string; from_date?: string; to_date?: string }): Promise<UsageRecordResponse[]> {
-    return apiClient.get<UsageRecordResponse[]>('/billing/usage', params as Record<string, string | number | boolean | undefined | null>);
+  usage(params?: {
+    metric?: string;
+    from_date?: string;
+    to_date?: string;
+  }): Promise<UsageRecordResponse[]> {
+    return apiClient.get<UsageRecordResponse[]>(
+      '/billing/usage',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   subscription(): Promise<SubscriptionResponse> {
     return apiClient.get<SubscriptionResponse>('/billing/subscription');
