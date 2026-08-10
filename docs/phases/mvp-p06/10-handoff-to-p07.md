@@ -1,0 +1,46 @@
+# MVP-P06 — 10. Handoff to MVP-P07 (Data Architecture & Database Design)
+
+> **Phase:** MVP-P06 → MVP-P07 · **Date:** 2026-08-07 · **Gate:** ✅ CONDITIONAL
+> GO (88/100) — pending user ratification. P07 must validate, not assume.
+
+## 1. What P07 receives
+
+| Item                                                              | Where                                   |
+| ----------------------------------------------------------------- | --------------------------------------- |
+| Pinned stack + version policy                                     | `04-version-policy.md`                  |
+| Tech decision matrix (incl. embedding-dimension flag)             | `03-technology-decision-matrix.md`      |
+| Dependency governance (license/vuln/secrets)                      | `06-dependency-governance.md`           |
+| Cost/exit strategy                                                | `07-cost-exit-strategy.md`              |
+| ADR-022 (6-memory taxonomy), ADR-023 (RLS), ADR-024 (projections) | `../mvp-p05/05-adrs.md`                 |
+| Approval contract (ADR-021) — schema shapes                       | `../mvp-p05/04-service-contracts.md` §3 |
+| Failure/behavior specs (timeouts, retries, backpressure)          | `../mvp-p05/07-failure-evolution.md`    |
+| Requirements FR/NFR + traceability                                | `../mvp-p03/03/04/05`                   |
+
+## 2. P07 focus (Data Architecture & Database Design)
+
+1. **Schema work (migrations, not rewrites — ASP-P05-01):**
+   - ADR-021: `approval_request` + `approval_decision` tables + idempotency keys
+     on consequential tables (release-blocking — P05 restriction 2).
+   - ADR-022: 6-memory taxonomy (Profile/Document/Career/Episodic/Preference/
+     Working) as domain-typed `Memory` rows + supersession (FR-68).
+   - ADR-023: Postgres RLS policies + composite (tenant, workspace) constraints
+     — keep app-level scoping, add defense-in-depth.
+   - ADR-024: provenance columns on projections; rebuild jobs.
+2. **Embedding dimension decision** (RISK-P06-02): reconcile local/free
+   embedding model (BQ-P06-02) with `Vector(1536)` before schema freezes.
+3. Data dictionary per prompt §17 (owner/source/purpose/classification/scope/
+   residency/schema-version/quality/retention/deletion/consumers).
+4. Gmail connector data model: polling watcher state (FR-40) + deadline facts
+   (FR-41) with provenance; minimize raw body storage.
+5. Erasure semantics (FR-61/62): primary deletion vs backup expiry vs legal
+   hold; export contract (NFR-23).
+
+## 3. Constraints carried
+
+- $0 (DEC-P01-07); nearest-region PaaS (BQ-P05-02, flagged P13); 99% best-effort
+  (BQ-P05-01).
+- Relational = authoritative; projections rebuildable (INT-02 §5).
+- Approval persistence = release-blocking; draft-only Gmail (DEC-P01-03).
+- Local/free LLM + embeddings preferred (BQ-P06-02); mock-first tests.
+- No compliance claims without legal review (P13); no production authority
+  (P19).
