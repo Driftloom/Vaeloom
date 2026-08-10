@@ -1,0 +1,40 @@
+# MVP-P03 — 09. Gate Report
+
+> **Phase:** MVP-P03 — Requirements Engineering · **Date:** 2026-08-07
+> **Baseline:** `master` @ `81dc1e4` · **Gate authority:** USER
+
+## Scoring (prompt §28)
+
+| Category                 |  Weight | Score |      Weighted | Basis                                                                  |
+| ------------------------ | ------: | ----: | ------------: | ---------------------------------------------------------------------- |
+| Scope and acceptance     |      12 |    11 |          13.2 | Atomic FR/NFR with acceptance; BQ-P02-01..04 user-confirmed            |
+| Technical correctness    |      12 |    10 |          12.0 | Hardened FR-52..70 + NFR-15..22 included; repo-truth conflict resolved |
+| Architecture/integration |       8 |     8 |           6.4 | Traceability to P07/P08/P12/P13 design+test phases                     |
+| Data quality/lifecycle   |       8 |     8 |           6.4 | Projections, provenance, erasure semantics per INT-02 §6               |
+| Security/privacy         |      12 |    11 |          13.2 | Approval/provenance/erasure acceptance; DPDP; injection; isolation     |
+| Testing/validation       |      12 |    10 |          12.0 | Stories carry acceptance; acceptance → test phases mapped              |
+| Reliability/resilience   |       8 |     8 |           6.4 | SLOs, idempotency, connector-outage isolation, kill switches           |
+| Performance/capacity     |       6 |     6 |           3.6 | Load 100/1,000 baked into NFR-02/03                                    |
+| Evidence/traceability    |       8 |     8 |           6.4 | Matrix + evidence plan; no invented values                             |
+| Documentation/handoff    |       6 |     6 |           4.8 | 10 documents; handoff drafted                                          |
+| Operations/support       |       5 |     4 |           2.0 | SLO alert→runbook requirement; ops detail at P10                       |
+| Maintainability/cost     |       3 |     3 |           0.9 | $0 preserved; no new deps                                              |
+| **TOTAL**                | **100** |     — | **87.3 → 88** |                                                                        |
+
+## Mandatory blockers
+
+| Blocker            | Status                                                    |
+| ------------------ | --------------------------------------------------------- |
+| BQ-01..06          | ✅ resolved (P00/P01/P02/P03)                             |
+| BQ-P02-01..04      | ✅ user-confirmed 2026-08-07                              |
+| Cohort (VB-07)     | 🔶 blocked on user signup — non-blocking for requirements |
+| Legal review T2/T3 | 🔶 pending P13 — gated, not release-blocking              |
+
+## Gate decision
+
+**PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY (88/100)**
+
+Restrictions: (1) requirements baseline binds P04+; changes via change control;
+(2) T2/T3 remain gated (legal review before default-ON); (3) cohort signup
+needed before R-2 interviews; (4) no compliance claims without legal review; (5)
+expires at P04 gate.
