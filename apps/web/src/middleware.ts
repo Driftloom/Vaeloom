@@ -29,7 +29,10 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  );
   response.headers.set(
     'Content-Security-Policy',
     [
@@ -38,7 +41,7 @@ export function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://vaeloom.app",
-      `connect-src 'self'${process.env.NODE_ENV === 'development' ? ' http://localhost:8000 ws://localhost:8000' : ' https://vaeloom.app'}`,
+      `connect-src 'self'${process.env.NODE_ENV === 'development' || process.env['ALLOW_LOCAL_API'] === 'true' ? ' http://localhost:8000 ws://localhost:8000' : ' https://vaeloom.app'}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -50,5 +53,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|robots.txt|icon-192.png|icon-512.png).*)'],
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|robots.txt|icon-192.png|icon-512.png).*)',
+  ],
 };

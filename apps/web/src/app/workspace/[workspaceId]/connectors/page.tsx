@@ -123,7 +123,7 @@ export default function ConnectorsPage() {
     connector.status === 'connected' || connector.status === 'syncing';
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-testid="connectors-page">
       <header className="mb-6">
         <h1 className="text-3xl font-display font-medium text-text mb-2">Connectors</h1>
         <p className="text-text-muted">Link external accounts for your agents to access.</p>
@@ -136,13 +136,20 @@ export default function ConnectorsPage() {
           {merged.map((conn) => {
             const isBusy = busy === `sync-${conn.id}` || busy === `connect-${conn.provider}`;
             return (
-              <div key={conn.id} className="card border border-primary/50 bg-primary/5">
+              <div
+                key={conn.id}
+                className="card border border-primary/50 bg-primary/5"
+                data-testid="connector-card"
+              >
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center text-lg font-bold text-primary uppercase">
                     {conn.name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="font-display font-medium text-text text-lg truncate">
+                    <h2
+                      className="font-display font-medium text-text text-lg truncate"
+                      data-testid="connector-name"
+                    >
                       {conn.name}
                     </h2>
                     <p className="text-xs font-mono text-text-muted mt-1">{conn.provider}</p>
@@ -151,6 +158,7 @@ export default function ConnectorsPage() {
 
                 <div className="flex items-center justify-between mb-3">
                   <span
+                    data-testid="connector-status"
                     className={`text-xs font-mono px-2 py-1 rounded border ${statusStyles[conn.status] || 'border-border text-text-muted bg-surface'}`}
                   >
                     {conn.status.toUpperCase()}
@@ -162,6 +170,7 @@ export default function ConnectorsPage() {
 
                 {connected(conn) ? (
                   <button
+                    data-testid="sync-button"
                     className="btn-secondary w-full text-sm"
                     disabled={isBusy}
                     onClick={() => handleSync(conn)}
@@ -170,6 +179,7 @@ export default function ConnectorsPage() {
                   </button>
                 ) : (
                   <button
+                    data-testid="connect-button"
                     className="btn-primary w-full text-sm"
                     disabled={isBusy}
                     onClick={() => handleConnect(conn.provider, conn.provider)}

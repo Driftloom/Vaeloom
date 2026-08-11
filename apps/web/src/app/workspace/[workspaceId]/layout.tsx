@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopNav } from '@/components/layout/TopNav';
 import { useAuth } from '../../../hooks/useAuth';
@@ -17,12 +17,18 @@ export default function WorkspaceLayout({
   params: Promise<{ workspaceId: string }>;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, loading } = useAuth();
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     void params.then((p) => setWorkspaceId(p.workspaceId));
   }, [params]);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -41,9 +47,20 @@ export default function WorkspaceLayout({
   return (
     <PrefetchProvider>
       <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar workspaceId={workspaceId} />
+        <Sidebar
+          workspaceId={workspaceId}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+        {sidebarOpen && (
+          <div
+            className="md:hidden fixed inset-0 z-30 bg-black/40"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
         <div className="flex-1 flex flex-col min-w-0">
-          <TopNav />
+          <TopNav onMenuClick={() => setSidebarOpen(true)} />
           <main
             id="main-content"
             tabIndex={-1}

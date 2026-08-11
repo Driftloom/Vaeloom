@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, getToken, setToken, clearToken, setRefreshToken, clearRefreshToken, ApiError } from '../lib/api';
+import {
+  api,
+  getToken,
+  setToken,
+  clearToken,
+  setRefreshToken,
+  clearRefreshToken,
+  ApiError,
+} from '../lib/api';
 import type { AuthResponse, MeResponse, PublicUser } from '@vaeloom/shared-types';
 
 interface AuthState {
@@ -25,39 +33,59 @@ export function useAuth() {
       setState((s) => ({ ...s, loading: false, isAuthenticated: false }));
       return;
     }
-    api
-      .me()
-      .then((res: MeResponse) => {
-        setState({ user: res.user, loading: false, error: null, isAuthenticated: true });
-      })
-      .catch((err: unknown) => {
-        if (err instanceof ApiError && err.status === 401) {
-          clearToken();
-          clearRefreshToken();
-        }
-        setState({ user: null, loading: false, error: 'Session expired', isAuthenticated: false });
-      });
+    let cancelled = false;
+    const check = (attempt: number) => {
+      api
+        .me()
+        .then((res: MeResponse) => {
+          if (!cancelled)
+            setState({ user: res.user, loading: false, error: null, isAuthenticated: true });
+        })
+        .catch((err: unknown) => {
+          if (err instanceof ApiError && err.status === 401) {
+            clearToken();
+            clearRefreshToken();
+            if (!cancelled) {
+              setState({
+                user: null,
+                loading: false,
+                error: 'Session expired',
+                isAuthenticated: false,
+              });
+            }
+            return;
+          }
+          if (attempt < 3 && !cancelled) {
+            setTimeout(() => check(attempt + 1), 1000 * attempt);
+          } else if (!cancelled) {
+            setState({
+              user: null,
+              loading: false,
+              error: 'Session expired',
+              isAuthenticated: false,
+            });
+          }
+        });
+    };
+    check(1);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-    const login = useCallback(
-    async (email: string, password: string) => {
-      const res = await api.login({ email, password });
-      setToken(res.accessToken);
-      if (res.refreshToken) setRefreshToken(res.refreshToken);
-      setState({ user: res.user, loading: false, error: null, isAuthenticated: true });
-    },
-    [],
-  );
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await api.login({ email, password });
+    setToken(res.accessToken);
+    if (res.refreshToken) setRefreshToken(res.refreshToken);
+    setState({ user: res.user, loading: false, error: null, isAuthenticated: true });
+  }, []);
 
-  const signup = useCallback(
-    async (email: string, password: string, displayName?: string) => {
-      const res = await api.signup({ email, password, displayName });
-      setToken(res.accessToken);
-      if (res.refreshToken) setRefreshToken(res.refreshToken);
-      setState({ user: res.user, loading: false, error: null, isAuthenticated: true });
-    },
-    [],
-  );
+  const signup = useCallback(async (email: string, password: string, displayName?: string) => {
+    const res = await api.signup({ email, password, displayName });
+    setToken(res.accessToken);
+    if (res.refreshToken) setRefreshToken(res.refreshToken);
+    setState({ user: res.user, loading: false, error: null, isAuthenticated: true });
+  }, []);
 
   const logout = useCallback(() => {
     clearToken();

@@ -1,8 +1,14 @@
 import { test, expect } from '@playwright/test';
+import { loginAsUser, openSidebar } from './helpers';
 
 test.describe('Connectors Page', () => {
   test('navigates to connectors and verifies list', async ({ page }) => {
-    await page.goto('/workspace/connectors');
+    await loginAsUser(page);
+    await openSidebar(page);
+    await page
+      .locator('[data-testid="sidebar"]')
+      .getByText(/connectors/i)
+      .click();
     await expect(page.locator('[data-testid="connectors-page"]')).toBeVisible();
     const connectorCards = page.locator('[data-testid="connector-card"]');
     await expect(connectorCards.first()).toBeVisible();
@@ -11,33 +17,44 @@ test.describe('Connectors Page', () => {
   });
 
   test('connector cards display name and status', async ({ page }) => {
-    await page.goto('/workspace/connectors');
+    await loginAsUser(page);
+    await openSidebar(page);
+    await page
+      .locator('[data-testid="sidebar"]')
+      .getByText(/connectors/i)
+      .click();
     const firstCard = page.locator('[data-testid="connector-card"]').first();
     await expect(firstCard.locator('[data-testid="connector-name"]')).toBeVisible();
     await expect(firstCard.locator('[data-testid="connector-status"]')).toBeVisible();
   });
 
-  test('connect button opens modal', async ({ page }) => {
-    await page.goto('/workspace/connectors');
-    const connectBtn = page.locator('[data-testid="connector-card"] [data-testid="connect-button"]').first();
+  test('disconnected connector shows connect button', async ({ page }) => {
+    await loginAsUser(page);
+    await openSidebar(page);
+    await page
+      .locator('[data-testid="sidebar"]')
+      .getByText(/connectors/i)
+      .click();
+    const firstCard = page.locator('[data-testid="connector-card"]').first();
+    await expect(firstCard.locator('[data-testid="connect-button"]')).toBeVisible();
+  });
+
+  test('connect button triggers a connection attempt', async ({ page }) => {
+    await loginAsUser(page);
+    await openSidebar(page);
+    await page
+      .locator('[data-testid="sidebar"]')
+      .getByText(/connectors/i)
+      .click();
+    const firstCard = page.locator('[data-testid="connector-card"]').first();
+    const connectBtn = firstCard.locator('[data-testid="connect-button"]');
+    await expect(connectBtn).toBeVisible();
+
+    const requestPromise = page.waitForRequest(
+      (req) => req.method() === 'POST' && /\/api\/v1\/integrations$/.test(req.url()),
+    );
     await connectBtn.click();
-    await expect(page.locator('[data-testid="connector-modal"], [role="dialog"]')).toBeVisible();
-  });
-
-  test('connect modal has form fields', async ({ page }) => {
-    await page.goto('/workspace/connectors');
-    await page.locator('[data-testid="connector-card"] [data-testid="connect-button"]').first().click();
-    const modal = page.locator('[data-testid="connector-modal"], [role="dialog"]');
-    await expect(modal.locator('input, select, textarea').first()).toBeVisible();
-    await expect(modal.getByRole('button', { name: /connect|confirm|save/i })).toBeVisible();
-  });
-
-  test('cancel closes connect modal', async ({ page }) => {
-    await page.goto('/workspace/connectors');
-    await page.locator('[data-testid="connector-card"] [data-testid="connect-button"]').first().click();
-    const modal = page.locator('[data-testid="connector-modal"], [role="dialog"]');
-    await expect(modal).toBeVisible();
-    await modal.getByRole('button', { name: /cancel|close/i }).click();
-    await expect(modal).not.toBeVisible();
+    const request = await requestPromise;
+    expect(request.postDataJSON()).toHaveProperty('name');
   });
 });

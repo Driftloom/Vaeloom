@@ -59,6 +59,11 @@ pnpm-debug.log*
 # Testing
 coverage/
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
 # Husky internal auto-managed hooks
 .husky/_
 

@@ -81,7 +81,11 @@ function LoginForm() {
               autoComplete="current-password"
             />
             {errors.form && (
-              <p role="alert" className="text-sm text-accent bg-accent/10 rounded-lg px-3 py-2">
+              <p
+                role="alert"
+                data-testid="login-error"
+                className="text-sm text-accent bg-accent/10 rounded-lg px-3 py-2"
+              >
                 {errors.form}
               </p>
             )}

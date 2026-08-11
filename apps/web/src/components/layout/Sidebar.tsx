@@ -86,14 +86,34 @@ function SidebarNavLink({ link, current }: { link: NavLink; current: boolean }) 
   );
 }
 
-export function Sidebar({ workspaceId }: { workspaceId: string }) {
+export function Sidebar({
+  workspaceId,
+  open,
+  onClose,
+}: {
+  workspaceId: string;
+  open: boolean;
+  onClose: () => void;
+}) {
   const pathname = usePathname();
   const groups = groupLinks(workspaceId);
 
   return (
-    <aside className="w-64 bg-surface border-r border-border flex flex-col h-screen shrink-0">
-      <div className="p-4 border-b border-border">
+    <aside
+      data-testid="sidebar"
+      className={`fixed inset-y-0 left-0 z-40 w-64 bg-surface border-r border-border flex flex-col h-screen shrink-0 transition-transform duration-200 md:static ${
+        open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}
+    >
+      <div className="p-4 border-b border-border flex items-center justify-between">
         <h1 className="text-xl font-display font-semibold text-primary">Vaeloom</h1>
+        <button
+          onClick={onClose}
+          aria-label="Close navigation"
+          className="md:hidden text-text-muted hover:text-text transition-colors text-lg leading-none"
+        >
+          ×
+        </button>
       </div>
       <nav className="flex-1 overflow-y-auto p-2" aria-label="Workspace navigation">
         {groups.map((group) => (

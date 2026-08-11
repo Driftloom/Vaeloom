@@ -32,7 +32,9 @@ function formatDeadlineDate(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-type DeadlineEvent = Event & { payload: { deadline?: string; title?: string; description?: string } };
+type DeadlineEvent = Event & {
+  payload: { deadline?: string; title?: string; description?: string };
+};
 
 function isDeadlineEvent(e: Event): e is DeadlineEvent {
   const deadline = (e.payload as Record<string, unknown>)?.['deadline'];
@@ -56,10 +58,7 @@ export default function DashboardPage() {
     data: eventsRes,
     loading: eventsLoading,
     error: eventsError,
-  } = useApi<PaginatedResponse<Event>>(
-    () => api.events.list(),
-    { enabled: !!workspaceId },
-  );
+  } = useApi<PaginatedResponse<Event>>(() => api.events.list(), { enabled: !!workspaceId });
 
   const events = eventsRes?.data ?? [];
   const activityEvents = events.slice(0, 10);
@@ -87,34 +86,45 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="workspace-dashboard">
       <header>
         <h1 className="text-3xl font-display font-medium text-text mb-2">
           {workspace?.name ?? 'Dashboard'}
         </h1>
         <p className="text-text-muted">
-          Welcome back. Here&apos;s what your {(agentsRes?.data ?? []).length} agents have been up to.
+          Welcome back. Here&apos;s what your {(agentsRes?.data ?? []).length} agents have been up
+          to.
         </p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
-          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Active Agents</h2>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">
+            Active Agents
+          </h2>
           <div className="text-4xl font-display text-primary">{(agentsRes?.data ?? []).length}</div>
         </div>
         <div className="card">
-          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Memory Nodes</h2>
-          <div className="text-4xl font-display text-accent">{(memoriesRes?.data ?? []).length}</div>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">
+            Memory Nodes
+          </h2>
+          <div className="text-4xl font-display text-accent">
+            {(memoriesRes?.data ?? []).length}
+          </div>
         </div>
         <div className="card">
-          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Tasks Pending</h2>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">
+            Tasks Pending
+          </h2>
           <div className="text-4xl font-display text-text">{deadlineEvents.length || 0}</div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card h-96 flex flex-col">
-          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Recent Activity</h2>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">
+            Recent Activity
+          </h2>
           <div className="flex-1 overflow-y-auto space-y-4">
             {eventsLoading && (
               <div className="space-y-4">
@@ -149,7 +159,9 @@ export default function DashboardPage() {
               !eventsError &&
               activityEvents.map((evt) => (
                 <div key={evt.id} className="flex gap-4 items-start">
-                  <span className="text-lg mt-0.5">{evt.category === 'agent' ? 'A' : evt.category === 'memory' ? 'M' : 'E'}</span>
+                  <span className="text-lg mt-0.5">
+                    {evt.category === 'agent' ? 'A' : evt.category === 'memory' ? 'M' : 'E'}
+                  </span>
                   <div>
                     <p className="text-text">{evt.type.replace(/_/g, ' ')}</p>
                     <p className="text-xs text-text-muted font-mono mt-1">
@@ -162,12 +174,17 @@ export default function DashboardPage() {
         </div>
 
         <div className="card h-96 flex flex-col">
-          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">Upcoming Deadlines</h2>
+          <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">
+            Upcoming Deadlines
+          </h2>
           <div className="flex-1 overflow-y-auto space-y-4">
             {eventsLoading && (
               <div className="space-y-4">
                 {[1, 2].map((i) => (
-                  <div key={i} className="animate-pulse p-3 bg-background rounded border border-border">
+                  <div
+                    key={i}
+                    className="animate-pulse p-3 bg-background rounded border border-border"
+                  >
                     <div className="h-4 w-32 bg-surface-hover rounded mb-2" />
                     <div className="h-3 w-24 bg-surface-hover rounded" />
                   </div>
@@ -204,16 +221,17 @@ export default function DashboardPage() {
                   >
                     <div>
                       <p className="text-text font-medium">{title}</p>
-                      {description && (
-                        <p className="text-xs text-text-muted mt-1">{description}</p>
-                      )}
+                      {description && <p className="text-xs text-text-muted mt-1">{description}</p>}
                     </div>
                     <div className="text-right">
                       <p className="text-accent font-mono text-sm">
                         {formatDeadlineDate(deadline)}
                       </p>
                       <p className="text-xs text-text-muted mt-1">
-                        {new Date(deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(deadline).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </p>
                     </div>
                   </div>
