@@ -1,8 +1,6 @@
 # Vaeloom MVP-to-Enterprise Continuation — 22 Independent Phase Prompts
 
-Evolve a proven MVP into the enterprise platform through evidence-gated
-expand–contract migration, compatibility, dual-run reconciliation,
-design-partner pilots, reversible cutover and retirement of legacy paths.
+Evolve a proven MVP into the enterprise platform through evidence-gated expand–contract migration, compatibility, dual-run reconciliation, design-partner pilots, reversible cutover and retirement of legacy paths.
 
 - [Phase 00 — MVP Handoff Validation and Migration Baseline](CONT-P00-mvp-handoff-validation-and-migration-baseline.md)
 - [Phase 01 — Enterprise-Readiness Evidence and Problem Definition](CONT-P01-enterprise-readiness-evidence-and-problem-definition.md)

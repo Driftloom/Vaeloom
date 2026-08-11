@@ -1,8 +1,6 @@
 # Vaeloom MVP — 22 Independent Phase Prompts
 
-Prove the memory-first ingest → organize → remember → assist loop with a tightly
-bounded eight-agent, six-memory, suggest-mode-first product before enterprise
-expansion.
+Prove the memory-first ingest → organize → remember → assist loop with a tightly bounded eight-agent, six-memory, suggest-mode-first product before enterprise expansion.
 
 - [Phase 00 — Intake and Existing-State Assessment](MVP-P00-intake-and-existing-state-assessment.md)
 - [Phase 01 — Discovery and Problem Definition](MVP-P01-discovery-and-problem-definition.md)

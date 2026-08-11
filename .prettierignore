@@ -10,3 +10,5 @@ package-lock.json
 *.svg
 *.png
 *.jpg
+# integrity-pinned prompt pack: SHA256SUMS manifest must stay valid
+docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/

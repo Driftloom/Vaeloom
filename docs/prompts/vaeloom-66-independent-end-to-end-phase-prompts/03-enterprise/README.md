@@ -1,9 +1,6 @@
 # Vaeloom Enterprise — 22 Independent Phase Prompts
 
-Deliver the multi-tenant institutional platform with individual memory
-ownership, 28 governed agents, 22 memory types, SSO/SCIM, admin control plane,
-billing/entitlements, plugin/MCP ecosystem, regional cells and enterprise
-operations.
+Deliver the multi-tenant institutional platform with individual memory ownership, 28 governed agents, 22 memory types, SSO/SCIM, admin control plane, billing/entitlements, plugin/MCP ecosystem, regional cells and enterprise operations.
 
 - [Phase 00 — Intake and Existing-State Assessment](ENT-P00-intake-and-existing-state-assessment.md)
 - [Phase 01 — Discovery and Problem Definition](ENT-P01-discovery-and-problem-definition.md)
