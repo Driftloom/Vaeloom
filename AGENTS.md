@@ -45,8 +45,8 @@
 
 ## Backend — Test State
 
-- **2299 tests pass**, 2 xfailed, 0 failures (suite grew with P11: approval API,
-  idempotency, migrations, openapi-sync tests)
+- **2353 tests pass**, 2 xfailed, 0 failures (suite grew with P11: approval API,
+  idempotency, migrations, openapi-sync, gmail watch/drafts)
 - **All source files 100% coverage** (verified individually)
 - Python 3.14 (note: `__athrow__` removed from async generators, use `athrow()`)
 - Tests use SQLite with mock backend; `mock_llm` + `mock_connector_test` autouse

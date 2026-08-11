@@ -144,6 +144,48 @@ class GmailClient:
             logger.warning(f"Failed to create draft: {e}")
             return None
 
+    async def list_drafts(self, max_results: int = 20) -> Optional[List[Dict[str, Any]]]:
+        if not self._configured:
+            logger.info("Gmail API not configured — cannot list drafts")
+            return None
+        try:
+            list_data = await self._request(
+                "GET", "/drafts", params={"maxResults": min(max_results, 100), "userId": "me"}
+            )
+            return list_data.get("drafts", [])
+        except Exception as e:
+            logger.warning(f"Failed to list drafts: {e}")
+            return None
+
+    async def start_watch(self, topic_name: str) -> Optional[Dict[str, Any]]:
+        if not self._configured:
+            logger.info("Gmail API not configured — cannot start watch")
+            return None
+        try:
+            watch_data = await self._request(
+                "POST", "/watch", json={"topic": topic_name, "labelIds": ["INBOX"]}
+            )
+            logger.info(f"Gmail watch started: {watch_data.get('id', '?')}")
+            return watch_data
+        except Exception as e:
+            logger.warning(f"Failed to start watch: {e}")
+            return None
+
+    async def stop_watch(self, channel_id: str, resource_id: Optional[str] = None) -> bool:
+        if not self._configured:
+            logger.info("Gmail API not configured — cannot stop watch")
+            return False
+        try:
+            body: Dict[str, Any] = {"id": channel_id}
+            if resource_id:
+                body["resourceId"] = resource_id
+            await self._request("POST", "/stop", json=body)
+            logger.info(f"Gmail watch stopped: {channel_id}")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to stop watch: {e}")
+            return False
+
     async def check_health(self) -> bool:
         if not self._configured:
             return False

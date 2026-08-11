@@ -734,10 +734,8 @@ paths:
       tags:
         - agents
       summary: Chat
-      description: 'High-level chat endpoint: auto-classifies intent, routes to the
-        right agent,
-
-        runs the agentic loop, and returns the result.'
+      description: "High-level chat endpoint: auto-classifies intent, routes to the
+        right agent,\nruns the agentic loop, and returns the result."
       operationId: chat_api_v1_agents_chat_post
       requestBody:
         content:
@@ -917,8 +915,8 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
-                title: Response List Executions Api V1 Agents  Agent Id  Executions
-                  Get
+                title: Response List Executions Api V1 Agents  Agent Id
+                  Executions Get
         '422':
           description: Validation Error
           content:
@@ -1046,7 +1044,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/SubscriptionResponse'
                 type: array
-                title: Response List Subscriptions Api V1 Events Subscriptions Get
+                title: Response List Subscriptions Api V1 Events Subscriptions
+                  Get
     post:
       tags:
         - events
@@ -1420,8 +1419,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ApplicationResponse'
-                title: Response List Applications Api V1 Workspaces  Workspace Id  Applications
-                  Get
+                title: Response List Applications Api V1 Workspaces  Workspace
+                  Id  Applications Get
         '422':
           description: Validation Error
           content:
@@ -1617,7 +1616,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/TemplateResponse'
                 type: array
-                title: Response List Templates Api V1 Notifications Templates Get
+                title: Response List Templates Api V1 Notifications Templates
+                  Get
     post:
       tags:
         - notifications
@@ -2230,8 +2230,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/JobExecutionResponse'
-                title: Response List Executions Api V1 Scheduler Jobs  Job Id  Executions
-                  Get
+                title: Response List Executions Api V1 Scheduler Jobs  Job Id
+                  Executions Get
         '422':
           description: Validation Error
           content:
@@ -2536,8 +2536,8 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
-                title: Response List Node Edges Api V1 Knowledge Graph Nodes  Node
-                  Id  Edges Get
+                title: Response List Node Edges Api V1 Knowledge Graph Nodes
+                  Node Id  Edges Get
         '422':
           description: Validation Error
           content:
@@ -2678,7 +2678,8 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
-                title: Response Find Shortest Path Api V1 Knowledge Graph Path Get
+                title: Response Find Shortest Path Api V1 Knowledge Graph Path
+                  Get
         '422':
           description: Validation Error
           content:
@@ -3032,6 +3033,149 @@ paths:
             description: Workspace ID
             title: Workspace Id
           description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/gmail/watch:
+    get:
+      tags:
+        - gmail
+      summary: Get Gmail Watch
+      operationId: get_gmail_watch_api_v1_gmail_watch_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchStatusResponse'
+    post:
+      tags:
+        - gmail
+      summary: Start Gmail Watch
+      operationId: start_gmail_watch_api_v1_gmail_watch_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchStartRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchStatusResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - gmail
+      summary: Stop Gmail Watch
+      operationId: stop_gmail_watch_api_v1_gmail_watch_delete
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchStatusResponse'
+  /api/v1/gmail/drafts:
+    post:
+      tags:
+        - gmail
+      summary: Create Gmail Draft
+      operationId: create_gmail_draft_api_v1_gmail_drafts_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - gmail
+      summary: List Gmail Drafts
+      operationId: list_gmail_drafts_api_v1_gmail_drafts_get
+      parameters:
+        - name: max_results
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Max Results
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/gmail/webhook:
+    post:
+      tags:
+        - gmail
+      summary: Gmail Push Webhook
+      operationId: gmail_push_webhook_api_v1_gmail_webhook_post
+      parameters:
+        - name: x-goog-channel-id
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: X-Goog-Channel-Id
+        - name: x-goog-resource-state
+          in: header
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: X-Goog-Resource-State
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushNotificationRequest'
       responses:
         '200':
           description: Successful Response
@@ -3810,6 +3954,59 @@ components:
         - created_at
         - updated_at
       title: DocumentResponse
+    DraftCreateRequest:
+      properties:
+        to:
+          type: string
+          maxLength: 320
+          minLength: 3
+          title: To
+        subject:
+          type: string
+          maxLength: 998
+          minLength: 1
+          title: Subject
+        body:
+          type: string
+          maxLength: 100000
+          minLength: 1
+          title: Body
+      type: object
+      required:
+        - to
+        - subject
+        - body
+      title: DraftCreateRequest
+    DraftListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/DraftResponse'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+        - items
+        - total
+      title: DraftListResponse
+    DraftResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        message:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Message
+      type: object
+      required:
+        - id
+      title: DraftResponse
     EdgeResponse:
       properties:
         id:
@@ -4778,6 +4975,21 @@ components:
         - display_name
         - created_at
       title: PublicUser
+    PushNotificationRequest:
+      properties:
+        historyId:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Historyid
+        message:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Message
+      type: object
+      title: PushNotificationRequest
     RefreshRequest:
       properties:
         refresh_token:
@@ -5311,6 +5523,62 @@ components:
         - msg
         - type
       title: ValidationError
+    WatchStartRequest:
+      properties:
+        topic:
+          type: string
+          maxLength: 512
+          minLength: 1
+          title: Topic
+      type: object
+      required:
+        - topic
+      title: WatchStartRequest
+    WatchStatusResponse:
+      properties:
+        active:
+          type: boolean
+          title: Active
+        workspace_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Workspace Id
+        channel_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Channel Id
+        resource_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Resource Id
+        history_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: History Id
+        expiration:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Expiration
+        status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Status
+        message:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Message
+      type: object
+      required:
+        - active
+      title: WatchStatusResponse
     WebhookReceiptRequest:
       properties:
         status:

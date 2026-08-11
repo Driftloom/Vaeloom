@@ -85,7 +85,7 @@ def _build_test_app(db_session):
         integrations, billing, documents, resumes, applications,
         plugins, chat, notifications, connectors, scheduler,
         analytics, audit, iam, knowledge_graph, recommendations,
-        webhooks,
+        webhooks, gmail,
     )
     from backend.services.gdpr import router as gdpr_router
     from backend.services.consent import router as consent_router
@@ -135,6 +135,7 @@ def _build_test_app(db_session):
     test_app.include_router(gdpr_router, prefix="/api/v1")
     test_app.include_router(consent_router, prefix="/api/v1")
     test_app.include_router(approval_router, prefix="/api/v1")
+    test_app.include_router(gmail.router, prefix="/api/v1")
     test_app.include_router(admin_console.router, prefix="")
 
     @test_app.get("/metrics")

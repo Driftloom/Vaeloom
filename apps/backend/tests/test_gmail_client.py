@@ -258,6 +258,80 @@ class TestGmailClientCreateDraft:
         assert result is None
 
 
+class TestGmailClientListDrafts:
+    async def test_configured_returns_drafts(self, mock_httpx):
+        from backend.clients.gmail_client import GmailClient
+        client = GmailClient(client_id="cid", client_secret="cs", refresh_token="rt")
+        drafts_resp = MockResponse(json_data={"drafts": [{"id": "d1"}]})
+        mock_httpx.request = AsyncMock(return_value=drafts_resp)
+        result = await client.list_drafts(max_results=5)
+        assert result == [{"id": "d1"}]
+
+    async def test_not_configured_returns_none(self):
+        from backend.clients.gmail_client import GmailClient
+        client = GmailClient()
+        result = await client.list_drafts()
+        assert result is None
+
+    async def test_exception_returns_none(self, mock_httpx):
+        from backend.clients.gmail_client import GmailClient
+        client = GmailClient(client_id="cid", client_secret="cs", refresh_token="rt")
+        mock_httpx.request = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+        result = await client.list_drafts()
+        assert result is None
+
+
+class TestGmailClientStartWatch:
+    async def test_configured_returns_watch_data(self, mock_httpx):
+        from backend.clients.gmail_client import GmailClient
+        client = GmailClient(client_id="cid", client_secret="cs", refresh_token="rt")
+        watch_resp = MockResponse(json_data={"id": "chan-1", "resourceId": "res-1", "historyId": "42"})
+        mock_httpx.request = AsyncMock(return_value=watch_resp)
+        result = await client.start_watch("projects/p/topics/t")
+        assert result == {"id": "chan-1", "resourceId": "res-1", "historyId": "42"}
+        call_kwargs = mock_httpx.request.call_args[1]
+        assert call_kwargs["json"]["topic"] == "projects/p/topics/t"
+        assert call_kwargs["json"]["labelIds"] == ["INBOX"]
+
+    async def test_not_configured_returns_none(self):
+        from backend.clients.gmail_client import GmailClient
+        client = GmailClient()
+        result = await client.start_watch("t")
+        assert result is None
+
+    async def test_exception_returns_none(self, mock_httpx):
+        from backend.clients.gmail_client import GmailClient
+        client = GmailClient(client_id="cid", client_secret="cs", refresh_token="rt")
+        mock_httpx.request = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+        result = await client.start_watch("t")
+        assert result is None
+
+
+class TestGmailClientStopWatch:
+    async def test_configured_returns_true(self, mock_httpx):
+        from backend.clients.gmail_client import GmailClient
+        client = GmailClient(client_id="cid", client_secret="cs", refresh_token="rt")
+        mock_httpx.request = AsyncMock(return_value=MockResponse(json_data={}))
+        result = await client.stop_watch("chan-1", "res-1")
+        assert result is True
+        call_kwargs = mock_httpx.request.call_args[1]
+        assert call_kwargs["json"]["id"] == "chan-1"
+        assert call_kwargs["json"]["resourceId"] == "res-1"
+
+    async def test_not_configured_returns_false(self):
+        from backend.clients.gmail_client import GmailClient
+        client = GmailClient()
+        result = await client.stop_watch("chan-1")
+        assert result is False
+
+    async def test_exception_returns_false(self, mock_httpx):
+        from backend.clients.gmail_client import GmailClient
+        client = GmailClient(client_id="cid", client_secret="cs", refresh_token="rt")
+        mock_httpx.request = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+        result = await client.stop_watch("chan-1")
+        assert result is False
+
+
 class TestGmailClientCheckHealth:
     async def test_configured_200_returns_true(self, mock_httpx):
         from backend.clients.gmail_client import GmailClient
