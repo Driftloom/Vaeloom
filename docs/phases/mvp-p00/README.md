@@ -6,15 +6,16 @@
 > **Evidence run:** 2026-08-06 **Executing mode:** GENERATE_AND_EXECUTE_PHASE
 > (docs + runtime evidence executed locally)
 
-| #   | Deliverable                                        | File                                      | Map                                           |
-| --- | -------------------------------------------------- | ----------------------------------------- | --------------------------------------------- |
-| 1   | Canonical source register (DEL-MVP-P00-01)         | `01-source-register.md`                   | INT-01…17, conflicts CF-01…06, blockers       |
-| 2   | Asset/access inventory (DEL-MVP-P00-02)            | `02-asset-inventory.md`                   | apps/packages/infra/connectors/CI/testing/env |
-| 3   | Maturity & evidence matrix (DEL-MVP-P00-03)        | `03-maturity-and-evidence-matrix.md`      | docs ≠ runtime; measured pytest/jest/tsc/lint |
-| 4   | Risk/decision/assumption register (DEL-MVP-P00-04) | `04-risk-decision-assumption-register.md` | RISK/ASP/UNK/BQ status                        |
-| 5   | Phase map & governance (DEL-MVP-P00-05)            | `05-phase-map-and-governance.md`          | P00→P21 mapping, roles, prohibited work       |
-| 6   | Gate report                                        | `06-gate-report.md`                       | weighted score, verdict, remediation R1–R8    |
-| 7   | Handoff to P01                                     | `07-handoff-to-p01.md`                    | evidence, blockers, entry criteria            |
+| #   | Deliverable                                        | File                                      | Map                                              |
+| --- | -------------------------------------------------- | ----------------------------------------- | ------------------------------------------------ |
+| 1   | Canonical source register (DEL-MVP-P00-01)         | `01-source-register.md`                   | INT-01…17, conflicts CF-01…06, blockers          |
+| 2   | Asset/access inventory (DEL-MVP-P00-02)            | `02-asset-inventory.md`                   | apps/packages/infra/connectors/CI/testing/env    |
+| 3   | Maturity & evidence matrix (DEL-MVP-P00-03)        | `03-maturity-and-evidence-matrix.md`      | docs ≠ runtime; measured pytest/jest/tsc/lint    |
+| 4   | Risk/decision/assumption register (DEL-MVP-P00-04) | `04-risk-decision-assumption-register.md` | RISK/ASP/UNK/BQ status                           |
+| 5   | Phase map & governance (DEL-MVP-P00-05)            | `05-phase-map-and-governance.md`          | P00→P21 mapping, roles, prohibited work          |
+| 6   | Gate report                                        | `06-gate-report.md`                       | weighted score, verdict, remediation R1–R8       |
+| 7   | Handoff to P01                                     | `07-handoff-to-p01.md`                    | evidence, blockers, entry criteria               |
+| 8   | Re-baseline gate (2026-08-11)                      | `08-rebaseline-gate-2026-08-11.md`        | re-score @ `d09fa07` after prompt-pack placement |
 
 ## Core truths this phase established
 
