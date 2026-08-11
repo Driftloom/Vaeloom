@@ -89,6 +89,7 @@ def _build_test_app(db_session):
     )
     from backend.services.gdpr import router as gdpr_router
     from backend.services.consent import router as consent_router
+    from backend.services.approval import router as approval_router
     from backend.routers import admin_console
 
     test_app = FastAPI()
@@ -100,6 +101,13 @@ def _build_test_app(db_session):
 
     from backend.infrastructure.metrics import MetricsMiddleware
     test_app.add_middleware(MetricsMiddleware)
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    from backend.middleware.idempotency import IdempotencyMiddleware
+    test_app.add_middleware(
+        IdempotencyMiddleware,
+        session_factory=async_sessionmaker(db_session.bind, expire_on_commit=False),
+    )
 
     test_app.include_router(health.router, prefix="/health")
     test_app.include_router(auth.router, prefix="/api/v1/auth")
@@ -126,6 +134,7 @@ def _build_test_app(db_session):
     test_app.include_router(webhooks.router, prefix="/api/v1/webhooks")
     test_app.include_router(gdpr_router, prefix="/api/v1")
     test_app.include_router(consent_router, prefix="/api/v1")
+    test_app.include_router(approval_router, prefix="/api/v1")
     test_app.include_router(admin_console.router, prefix="")
 
     @test_app.get("/metrics")
@@ -134,6 +143,11 @@ def _build_test_app(db_session):
 
     async def override_get_db():
         yield db_session
+        try:
+            await db_session.commit()
+        except Exception:
+            await db_session.rollback()
+            raise
     test_app.dependency_overrides[get_db] = override_get_db
 
     return test_app

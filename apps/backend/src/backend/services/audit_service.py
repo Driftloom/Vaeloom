@@ -209,8 +209,6 @@ class AuditService:
         date_to: str | None,
         db=None,
     ) -> dict:
-        import asyncio
-
         params: dict = {}
         conditions = []
         if tenant_id:
@@ -225,40 +223,35 @@ class AuditService:
 
         where_clause = " AND ".join(conditions) if conditions else "TRUE"
 
-        async def by_action():
-            r = await db.execute(
-                text(f"""
-                    SELECT action, COUNT(*) AS cnt
-                    FROM audit_events
-                    WHERE {where_clause}
-                    GROUP BY action
-                    ORDER BY cnt DESC
-                """),
-                params,
-            )
-            return [{"action": row[0], "count": row[1]} for row in r.fetchall()]
+        action_result = await db.execute(
+            text(f"""
+                SELECT action, COUNT(*) AS cnt
+                FROM audit_events
+                WHERE {where_clause}
+                GROUP BY action
+                ORDER BY cnt DESC
+            """),
+            params,
+        )
+        action_counts = [{"action": row[0], "count": row[1]} for row in action_result.fetchall()]
 
-        async def by_resource():
-            r = await db.execute(
-                text(f"""
-                    SELECT resource, COUNT(*) AS cnt
-                    FROM audit_events
-                    WHERE {where_clause}
-                    GROUP BY resource
-                    ORDER BY cnt DESC
-                """),
-                params,
-            )
-            return [{"resource": row[0], "count": row[1]} for row in r.fetchall()]
+        resource_result = await db.execute(
+            text(f"""
+                SELECT resource, COUNT(*) AS cnt
+                FROM audit_events
+                WHERE {where_clause}
+                GROUP BY resource
+                ORDER BY cnt DESC
+            """),
+            params,
+        )
+        resource_counts = [{"resource": row[0], "count": row[1]} for row in resource_result.fetchall()]
 
-        async def total_count():
-            r = await db.execute(
-                text(f"SELECT COUNT(*) FROM audit_events WHERE {where_clause}"),
-                params,
-            )
-            return r.scalar_one() or 0
-
-        action_counts, resource_counts, total = await asyncio.gather(by_action(), by_resource(), total_count())
+        total_result = await db.execute(
+            text(f"SELECT COUNT(*) FROM audit_events WHERE {where_clause}"),
+            params,
+        )
+        total = total_result.scalar_one() or 0
 
         return {
             "by_action": action_counts,

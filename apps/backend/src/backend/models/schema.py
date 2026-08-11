@@ -206,6 +206,7 @@ class Memory(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
+    domain: Mapped[str | None] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(20), default="PROCESSING")
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     summary: Mapped[str | None] = mapped_column(Text)
@@ -224,15 +225,29 @@ class Memory(Base):
     connector_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     vector_id: Mapped[str | None] = mapped_column(String(255))
     graph_node_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("memories.id"))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user: Mapped["User | None"] = relationship("User", back_populates="memories")
     workspace: Mapped["Workspace | None"] = relationship("Workspace", back_populates="memories")
+    supersedes: Mapped["Memory | None"] = relationship(
+        "Memory",
+        foreign_keys=[supersedes_id],
+        remote_side="Memory.id",
+        back_populates="superseded_by",
+    )
+    superseded_by: Mapped["Memory | None"] = relationship(
+        "Memory",
+        foreign_keys=[supersedes_id],
+        back_populates="supersedes",
+    )
 
     __table_args__ = (
         Index("idx_memories_tenant_type", "tenant_id", "type"),
         Index("idx_memories_tenant_status", "tenant_id", "status"),
+        Index("idx_memories_tenant_domain", "tenant_id", "domain"),
         Index("idx_memories_workspace_id", "workspace_id"),
     )
 
@@ -458,6 +473,48 @@ class AgentAction(Base):
     __table_args__ = (
         Index("idx_agent_actions_workspace_created", "workspace_id", "created_at"),
         Index("idx_agent_actions_workspace_agent", "workspace_id", "agent_name"),
+    )
+
+
+class IdempotencyRecord(Base):
+    __tablename__ = "idempotency_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_path: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    response_body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", "request_path", name="uq_idempotency_key_path"),
+        Index("idx_idempotency_expires", "expires_at"),
+    )
+
+
+class AgentApproval(Base):
+    __tablename__ = "agent_approvals"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"))
+    agent_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    action_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    reason: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")
+    requested_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("idx_agent_approvals_workspace_status", "workspace_id", "status"),
+        Index("idx_agent_approvals_workspace_created", "workspace_id", "created_at"),
     )
 
 

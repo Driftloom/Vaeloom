@@ -49,17 +49,20 @@ from .database import engine, Base
 from .infrastructure.logging import CorrelationIDMiddleware, RequestLoggingMiddleware, setup_logging, get_logger
 from .infrastructure.metrics import MetricsMiddleware
 from .infrastructure.opentelemetry import setup_opentelemetry, instrumement_fastapi
+from .migrations import run_migrations
 from .middleware.auth import AuthMiddleware
 from .middleware.csrf import CSRFMiddleware, create_csrf_token
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.security_headers import SecurityHeadersMiddleware
 from .middleware.api_version import APIVersionMiddleware
 from .middleware.prompt_injection import PromptInjectionMiddleware
+from .middleware.idempotency import IdempotencyMiddleware
 from .middleware.exception_handler import unified_exception_handler, generic_exception_handler
 from .routers import health, auth, workspaces, memory, agents, events, search, integrations, billing, documents, resumes, applications, plugins, chat, notifications, connectors, scheduler, analytics, audit, iam, knowledge_graph, recommendations, webhooks, admin_console
 from .services.encryption import router as encryption_router
 from .services.gdpr import router as gdpr_router
 from .services.consent import router as consent_router
+from .services.approval import router as approval_router
 from .services.agent_costs import router as agent_costs_router
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -74,7 +77,8 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Vaeloom Backend v%s (env=%s)", settings.service_version, settings.service_environment)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables verified")
+    await run_migrations(engine)
+    logger.info("Database tables verified and migrations applied")
     yield
     await engine.dispose()
     logger.info("Backend shutdown complete")
@@ -106,6 +110,7 @@ app.add_middleware(CorrelationIDMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(APIVersionMiddleware)
 app.add_middleware(PromptInjectionMiddleware)
+app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(MetricsMiddleware)
 
 app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
@@ -150,6 +155,7 @@ app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
 app.include_router(knowledge_graph.router, prefix="/api/v1/knowledge-graph", tags=["knowledge-graph"])
 app.include_router(gdpr_router, prefix="/api/v1", tags=["gdpr"])
 app.include_router(consent_router, prefix="/api/v1", tags=["consent"])
+app.include_router(approval_router, prefix="/api/v1", tags=["approvals"])
 app.include_router(agent_costs_router, prefix="/api/v1", tags=["agents"])
 
 # ── Enterprise routes (CF-06 / R6) ──────────────────────────────────

@@ -339,3 +339,159 @@ class TestSearchMemories:
         dto = MemorySearch(query="test", threshold=None)
         results = await svc.search_memories(db, dto, tenant_id=None)
         assert len(results) == 1
+
+
+class TestMemoryTaxonomy:
+    async def test_create_with_domain(self, svc):
+        db = MagicMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        dto = MemoryCreate(type="fact", domain="hr", title="Domain Memory", content="x")
+        memory = await svc.create_memory(db, dto, tenant_id="t-1", user_id="u-1")
+        assert memory.domain == "hr"
+        assert memory.supersedes_id is None
+
+    async def test_update_with_domain(self, svc):
+        mem_id = uuid.uuid4()
+        mock_mem = build_mock_memory(id=mem_id, domain=None)
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = mock_mem
+        db = MagicMock()
+
+        async def execute(stmt):
+            return result
+
+        db.execute = execute
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        dto = MemoryUpdate(domain="engineering")
+        updated = await svc.update_memory(db, mem_id, dto, tenant_id=None)
+        assert updated.domain == "engineering"
+
+    async def test_delete_sets_deleted_at(self, svc):
+        mem_id = uuid.uuid4()
+        mock_mem = build_mock_memory(id=mem_id, status="active")
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = mock_mem
+        db = MagicMock()
+
+        async def execute(stmt):
+            return result
+
+        db.execute = execute
+        db.flush = AsyncMock()
+        ok = await svc.delete_memory(db, mem_id, tenant_id=None)
+        assert ok is True
+        assert mock_mem.status == "deleted"
+        assert mock_mem.deleted_at is not None
+
+    async def test_list_filters_by_domain(self, svc):
+        count_result = MagicMock()
+        count_result.scalar_one.return_value = 1
+        mem = build_mock_memory(domain="hr")
+        rows_result = MagicMock()
+        rows_result.scalars.return_value.all.return_value = [mem]
+        results = [count_result, rows_result]
+        db = MagicMock()
+
+        async def execute(stmt):
+            return results.pop(0)
+
+        db.execute = execute
+        query = MemoryQuery(domain="hr")
+        memories, total = await svc.list_memories(db, query, tenant_id="t-1")
+        assert total == 1
+        assert memories[0].domain == "hr"
+
+    async def test_search_filters_by_domain(self, svc):
+        result = MagicMock()
+        mem = build_mock_memory(domain="sales")
+        result.all.return_value = [(mem, 0.1)]
+        db = MagicMock()
+
+        async def execute(stmt):
+            return result
+
+        db.execute = execute
+        dto = MemorySearch(query="deal", domain="sales")
+        results = await svc.search_memories(db, dto, tenant_id="t-1")
+        assert len(results) == 1
+
+
+class TestMemorySupersession:
+    async def test_create_supersedes_marks_previous(self, svc):
+        old = build_mock_memory(id=uuid.uuid4(), status="active")
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = old
+        db = MagicMock()
+
+        async def execute(stmt):
+            return result
+
+        db.execute = execute
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        dto = MemoryCreate(type="fact", title="New", content="v2", supersedes_id=old.id)
+        memory = await svc.create_memory(db, dto, tenant_id="t-1", user_id="u-1")
+        assert memory.supersedes_id == old.id
+        assert old.status == "superseded"
+
+    async def test_create_supersedes_skips_deleted_previous(self, svc):
+        old = build_mock_memory(id=uuid.uuid4(), status="deleted")
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = old
+        db = MagicMock()
+
+        async def execute(stmt):
+            return result
+
+        db.execute = execute
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        dto = MemoryCreate(type="fact", title="New", content="v2", supersedes_id=old.id)
+        memory = await svc.create_memory(db, dto, tenant_id="t-1", user_id="u-1")
+        assert memory.supersedes_id == old.id
+        assert old.status == "deleted"
+
+    async def test_update_supersedes_marks_previous(self, svc):
+        old_id = uuid.uuid4()
+        mem_id = uuid.uuid4()
+        mock_mem = build_mock_memory(id=mem_id, status="active")
+        old = build_mock_memory(id=old_id, status="active")
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = mock_mem
+        previous_result = MagicMock()
+        previous_result.scalar_one_or_none.return_value = old
+        results = [result, previous_result]
+        db = MagicMock()
+
+        async def execute(stmt):
+            return results.pop(0)
+
+        db.execute = execute
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        dto = MemoryUpdate(title="Updated", supersedes_id=old_id)
+        updated = await svc.update_memory(db, mem_id, dto, tenant_id=None)
+        assert updated.supersedes_id == old_id
+        assert old.status == "superseded"
+
+    async def test_update_ignores_self_supersession(self, svc):
+        mem_id = uuid.uuid4()
+        mock_mem = build_mock_memory(id=mem_id, status="active")
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = mock_mem
+        db = MagicMock()
+
+        async def execute(stmt):
+            return result
+
+        db.execute = execute
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        dto = MemoryUpdate(title="Self", supersedes_id=mem_id)
+        updated = await svc.update_memory(db, mem_id, dto, tenant_id=None)
+        assert updated.status == "active"

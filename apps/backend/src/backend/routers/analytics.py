@@ -20,11 +20,9 @@ async def dashboard(
     current_user: dict = Depends(get_current_user),
 ):
     tenant_id = current_user.get("tenant_id")
-    import asyncio
-
-    kpis, usage = await asyncio.gather(
-        analytics_service.get_metrics(tenant_id=tenant_id, db=db),
-        analytics_service.get_usage(tenant_id=tenant_id, date_from=date_from, date_to=date_to, interval=interval, db=db),
+    kpis = await analytics_service.get_metrics(tenant_id=tenant_id, db=db)
+    usage = await analytics_service.get_usage(
+        tenant_id=tenant_id, date_from=date_from, date_to=date_to, interval=interval, db=db,
     )
     return DashboardPayload(kpis=kpis, usage=usage, generated_at=datetime.now(timezone.utc))
 

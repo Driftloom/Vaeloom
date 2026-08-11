@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class MemoryCreate(BaseModel):
     type: str = Field(..., min_length=1, max_length=100)
+    domain: str | None = Field(None, max_length=100)
     title: str | None = None
     summary: str | None = None
     content: str | None = None
@@ -17,21 +18,25 @@ class MemoryCreate(BaseModel):
     source_uri: str | None = None
     source_label: str | None = None
     connector_id: str | None = None
+    supersedes_id: uuid.UUID | None = None
 
 
 class MemoryUpdate(BaseModel):
     type: str | None = Field(None, min_length=1, max_length=100)
+    domain: str | None = Field(None, max_length=100)
     title: str | None = None
     summary: str | None = None
     content: str | None = None
     metadata: dict[str, Any] | None = None
     tags: list[str] | None = None
     status: str | None = None
+    supersedes_id: uuid.UUID | None = None
 
 
 class MemoryResponse(BaseModel):
     id: uuid.UUID
     type: str
+    domain: str | None = None
     status: str
     title: str | None = None
     summary: str | None = None
@@ -46,6 +51,8 @@ class MemoryResponse(BaseModel):
     source_type: str | None = None
     source_uri: str | None = None
     source_label: str | None = None
+    supersedes_id: uuid.UUID | None = None
+    deleted_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -54,6 +61,7 @@ class MemoryResponse(BaseModel):
 
 class MemoryQuery(BaseModel):
     type: str | None = None
+    domain: str | None = None
     status: str | None = "active"
     tags: list[str] | None = None
     page: int = Field(default=1, ge=1)
@@ -63,6 +71,7 @@ class MemoryQuery(BaseModel):
 class MemorySearch(BaseModel):
     query: str = Field(..., min_length=1)
     type: str | None = None
+    domain: str | None = None
     tags: list[str] | None = None
     top_k: int = Field(default=10, ge=1, le=100)
     threshold: float | None = Field(default=0.7, ge=0.0, le=1.0)

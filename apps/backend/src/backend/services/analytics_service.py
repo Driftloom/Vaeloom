@@ -58,45 +58,28 @@ class AnalyticsService:
         ]
 
     async def get_metrics(self, tenant_id: str, db=None) -> KpiSummary:
-        import asyncio
-
-        async def count_memories():
-            r = await db.execute(
-                text("SELECT COUNT(*) FROM memories WHERE tenant_id = :tenant_id"),
-                {"tenant_id": tenant_id},
-            )
-            return r.scalar_one() or 0
-
-        async def count_agents():
-            r = await db.execute(
-                text("SELECT COUNT(*) FROM agents WHERE tenant_id = :tenant_id"),
-                {"tenant_id": tenant_id},
-            )
-            return r.scalar_one() or 0
-
-        async def count_active_users():
-            r = await db.execute(
-                text("SELECT COUNT(DISTINCT user_id) FROM agent_executions WHERE tenant_id = :tenant_id"),
-                {"tenant_id": tenant_id},
-            )
-            return r.scalar_one() or 0
-
-        async def avg_response_time():
-            r = await db.execute(
-                text("SELECT COALESCE(AVG(response_time_ms), 0) FROM agent_executions WHERE tenant_id = :tenant_id"),
-                {"tenant_id": tenant_id},
-            )
-            return float(r.scalar_one() or 0)
-
-        total_memories, total_agents, active_users, avg_response_time_ms = await asyncio.gather(
-            count_memories(), count_agents(), count_active_users(), avg_response_time(),
+        count_memories = await db.execute(
+            text("SELECT COUNT(*) FROM memories WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        count_agents = await db.execute(
+            text("SELECT COUNT(*) FROM agents WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        count_active_users = await db.execute(
+            text("SELECT COUNT(DISTINCT user_id) FROM agent_executions WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        avg_response_time = await db.execute(
+            text("SELECT COALESCE(AVG(response_time_ms), 0) FROM agent_executions WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
         )
 
         return KpiSummary(
-            total_memories=total_memories,
-            total_agents=total_agents,
-            active_users=active_users,
-            avg_response_time_ms=avg_response_time_ms,
+            total_memories=count_memories.scalar_one() or 0,
+            total_agents=count_agents.scalar_one() or 0,
+            active_users=count_active_users.scalar_one() or 0,
+            avg_response_time_ms=float(avg_response_time.scalar_one() or 0),
         )
 
     async def track_event(

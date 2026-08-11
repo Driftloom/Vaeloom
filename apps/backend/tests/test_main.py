@@ -229,10 +229,12 @@ class TestLifespan:
 
         with patch.object(mod, "engine", mock_engine), \
              patch.object(mod, "Base") as mock_base, \
-             patch.object(mod, "validate_settings"):
+             patch.object(mod, "validate_settings"), \
+             patch.object(mod, "run_migrations", AsyncMock()) as mock_run_migrations:
             async with mod.lifespan(mod.app):
                 pass
         mock_conn.run_sync.assert_awaited_once_with(mock_base.metadata.create_all)
+        mock_run_migrations.assert_awaited_once_with(mock_engine)
         mock_engine.dispose.assert_awaited_once()
 
     async def test_lifespan_startup_logs(self):
@@ -241,7 +243,8 @@ class TestLifespan:
 
         with patch.object(mod, "engine", mock_engine), \
              patch.object(mod, "Base"), \
-             patch.object(mod, "validate_settings"):
+             patch.object(mod, "validate_settings"), \
+             patch.object(mod, "run_migrations", AsyncMock()):
             async with mod.lifespan(mod.app):
                 pass
 

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select, func, or_, delete
@@ -26,6 +27,7 @@ class MemoryService:
         memory = Memory(
             id=uuid.uuid4(),
             type=dto.type,
+            domain=dto.domain,
             title=sanitize_text(dto.title),
             summary=sanitize_text(dto.summary),
             content=sanitize_text(dto.content),
@@ -41,7 +43,10 @@ class MemoryService:
             source_uri=dto.source_uri,
             source_label=dto.source_label,
             connector_id=dto.connector_id,
+            supersedes_id=dto.supersedes_id,
         )
+        if dto.supersedes_id:
+            await self._mark_superseded(db, dto.supersedes_id, tenant_id)
         db.add(memory)
         await db.flush()
         await db.refresh(memory)
@@ -54,6 +59,8 @@ class MemoryService:
         conditions = [Memory.status == (query.status or "active")]
         if query.type:
             conditions.append(Memory.type == query.type)
+        if query.domain:
+            conditions.append(Memory.domain == query.domain)
         if tenant_id:
             conditions.append(Memory.tenant_id == tenant_id)
         if query.tags:
@@ -80,6 +87,16 @@ class MemoryService:
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def _mark_superseded(self, db: AsyncSession, superseded_id: uuid.UUID, tenant_id: str | None) -> None:
+        stmt = select(Memory).where(Memory.id == superseded_id)
+        if tenant_id:
+            stmt = stmt.where(Memory.tenant_id == tenant_id)
+        result = await db.execute(stmt)
+        previous = result.scalar_one_or_none()
+        if previous and previous.status not in ("superseded", "deleted"):
+            previous.status = "superseded"
+            await db.flush()
+
     async def update_memory(self, db: AsyncSession, memory_id: uuid.UUID, dto: MemoryUpdate, tenant_id: str | None) -> Memory | None:
         memory = await self.get_memory(db, memory_id, tenant_id)
         if not memory:
@@ -98,6 +115,9 @@ class MemoryService:
                 update_data["content_hash"] = llm_service.compute_content_hash(content_for_embedding)
                 update_data["size"] = len(content_for_embedding)
 
+        if update_data.get("supersedes_id") and str(update_data["supersedes_id"]) != str(memory.id):
+            await self._mark_superseded(db, update_data["supersedes_id"], tenant_id)
+
         for key, value in update_data.items():
             setattr(memory, key, value)
 
@@ -110,6 +130,7 @@ class MemoryService:
         if not memory:
             return False
         memory.status = "deleted"
+        memory.deleted_at = datetime.now(timezone.utc)
         await db.flush()
         return True
 
@@ -125,6 +146,8 @@ class MemoryService:
             conditions.append(Memory.tenant_id == tenant_id)
         if dto.type:
             conditions.append(Memory.type == dto.type)
+        if dto.domain:
+            conditions.append(Memory.domain == dto.domain)
         if dto.tags:
             conditions.append(Memory.tags.overlap(dto.tags))
 

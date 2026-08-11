@@ -1,0 +1,305 @@
+import json
+import uuid
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..database import get_db
+from ..dependencies import get_current_user
+from ..schemas.approval import (
+    ApprovalDecision,
+    ApprovalListResponse,
+    ApprovalRequest,
+    ApprovalResponse,
+)
+from ..services.audit_service import audit_service
+
+
+class ApprovalManager:
+    async def request_approval(
+        self,
+        agent_name: str,
+        action_type: str,
+        payload: dict,
+        reason: str | None,
+        workspace_id: str | None,
+        requested_by: str,
+        expires_in_minutes: int | None,
+        db: AsyncSession,
+    ) -> ApprovalResponse:
+        approval_id = uuid.uuid4()
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(minutes=expires_in_minutes or 60)
+        await db.execute(
+            text("""
+                INSERT INTO agent_approvals
+                    (id, workspace_id, agent_name, action_type, payload, reason, status,
+                     requested_by, expires_at, created_at, updated_at)
+                VALUES
+                    (:id, :workspace_id, :agent_name, :action_type, :payload, :reason, 'PENDING',
+                     :requested_by, :expires_at, :created_at, :created_at)
+            """),
+            {
+                "id": str(approval_id),
+                "workspace_id": workspace_id,
+                "agent_name": agent_name,
+                "action_type": action_type,
+                "payload": payload if payload is not None else {},
+                "reason": reason,
+                "requested_by": requested_by,
+                "expires_at": expires_at,
+                "created_at": now,
+            },
+        )
+        return await self.get_approval(str(approval_id), db)
+
+    async def _row_to_response(self, row) -> ApprovalResponse:
+        def _dt(value):
+            if value is None or isinstance(value, datetime):
+                return value
+            try:
+                return datetime.fromisoformat(str(value))
+            except (ValueError, TypeError):
+                return None
+
+        def _payload(value):
+            if isinstance(value, str):
+                try:
+                    return json.loads(value)
+                except (ValueError, TypeError):
+                    return {}
+            return value or {}
+
+        return ApprovalResponse(
+            id=row[0],
+            workspace_id=row[1],
+            agent_name=row[2],
+            action_type=row[3],
+            payload=_payload(row[4]),
+            reason=row[5],
+            status=row[6],
+            requested_by=row[7],
+            decided_by=row[8],
+            decision_note=row[9],
+            expires_at=_dt(row[10]),
+            created_at=_dt(row[11]),
+            updated_at=_dt(row[12]),
+            decided_at=_dt(row[13]),
+        )
+
+    async def get_approval(self, approval_id: str, db: AsyncSession) -> ApprovalResponse:
+        await self._expire_stale(db)
+        result = await db.execute(
+            text("""
+                SELECT id, workspace_id, agent_name, action_type, payload, reason, status,
+                       requested_by, decided_by, decision_note, expires_at, created_at, updated_at, decided_at
+                FROM agent_approvals WHERE id = :id
+            """),
+            {"id": approval_id},
+        )
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Approval not found")
+        return await self._row_to_response(row)
+
+    async def list_approvals(
+        self,
+        db: AsyncSession,
+        status: str | None = None,
+        workspace_id: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> ApprovalListResponse:
+        await self._expire_stale(db)
+        conditions = ["1=1"]
+        params: dict = {}
+        if status:
+            conditions.append("status = :status")
+            params["status"] = status
+        if workspace_id:
+            conditions.append("workspace_id = :workspace_id")
+            params["workspace_id"] = workspace_id
+        where = " AND ".join(conditions)
+
+        total_result = await db.execute(
+            text(f"SELECT COUNT(*) FROM agent_approvals WHERE {where}"),
+            params,
+        )
+        total = total_result.scalar_one()
+
+        result = await db.execute(
+            text(f"""
+                SELECT id, workspace_id, agent_name, action_type, payload, reason, status,
+                       requested_by, decided_by, decision_note, expires_at, created_at, updated_at, decided_at
+                FROM agent_approvals WHERE {where}
+                ORDER BY created_at DESC
+                LIMIT :limit OFFSET :offset
+            """),
+            {**params, "limit": page_size, "offset": (page - 1) * page_size},
+        )
+        rows = result.fetchall()
+        return ApprovalListResponse(
+            items=[await self._row_to_response(r) for r in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    async def decide(
+        self,
+        approval_id: str,
+        decision: str,
+        decided_by: str,
+        note: str | None,
+        db: AsyncSession,
+    ) -> ApprovalResponse:
+        current = await self.get_approval(approval_id, db)
+        if current.status != "PENDING":
+            raise HTTPException(status_code=409, detail=f"Approval already {current.status.lower()}")
+        now = datetime.now(timezone.utc)
+        await db.execute(
+            text("""
+                UPDATE agent_approvals
+                SET status = :decision, decided_by = :decided_by, decision_note = :note,
+                    decided_at = :decided_at, updated_at = :updated_at
+                WHERE id = :id
+            """),
+            {
+                "id": approval_id,
+                "decision": decision,
+                "decided_by": decided_by,
+                "note": note,
+                "decided_at": now,
+                "updated_at": now,
+            },
+        )
+        return await self.get_approval(approval_id, db)
+
+    async def _expire_stale(self, db: AsyncSession) -> None:
+        now = datetime.now(timezone.utc)
+        await db.execute(
+            text("""
+                UPDATE agent_approvals
+                SET status = 'EXPIRED', updated_at = :now
+                WHERE status = 'PENDING' AND expires_at IS NOT NULL AND expires_at < :now
+            """),
+            {"now": now},
+        )
+
+
+approval_manager = ApprovalManager()
+
+router = APIRouter()
+
+
+@router.post("/approvals", response_model=ApprovalResponse, status_code=201)
+async def request_approval(
+    dto: ApprovalRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    actor = str(current_user.get("sub"))
+    approval = await approval_manager.request_approval(
+        agent_name=dto.agent_name,
+        action_type=dto.action_type,
+        payload=dto.payload,
+        reason=dto.reason,
+        workspace_id=str(dto.workspace_id) if dto.workspace_id else None,
+        requested_by=actor,
+        expires_in_minutes=dto.expires_in_minutes,
+        db=db,
+    )
+    await audit_service.record_event(
+        actor_id=actor,
+        action="approval.request",
+        resource="approval",
+        resource_id=str(approval.id),
+        tenant_id=current_user.get("tenant_id"),
+        metadata={"agent_name": dto.agent_name, "action_type": dto.action_type},
+        db=db,
+    )
+    await db.commit()
+    return approval
+
+
+@router.get("/approvals", response_model=ApprovalListResponse)
+async def list_approvals(
+    status: str | None = Query(default=None, pattern="^(PENDING|APPROVED|REJECTED|EXPIRED)$"),
+    workspace_id: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await approval_manager.list_approvals(
+        db=db,
+        status=status,
+        workspace_id=workspace_id,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/approvals/{approval_id}", response_model=ApprovalResponse)
+async def get_approval(
+    approval_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await approval_manager.get_approval(approval_id, db)
+
+
+@router.post("/approvals/{approval_id}/approve", response_model=ApprovalResponse)
+async def approve_approval(
+    approval_id: str,
+    dto: ApprovalDecision | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    actor = str(current_user.get("sub"))
+    approval = await approval_manager.decide(approval_id, "APPROVED", actor, dto.note if dto else None, db)
+    await audit_service.record_event(
+        actor_id=actor,
+        action="approval.approve",
+        resource="approval",
+        resource_id=str(approval.id),
+        tenant_id=current_user.get("tenant_id"),
+        metadata={"agent_name": approval.agent_name, "action_type": approval.action_type},
+        db=db,
+    )
+    await db.commit()
+    return approval
+
+
+@router.post("/approvals/{approval_id}/reject", response_model=ApprovalResponse)
+async def reject_approval(
+    approval_id: str,
+    dto: ApprovalDecision | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    actor = str(current_user.get("sub"))
+    approval = await approval_manager.decide(approval_id, "REJECTED", actor, dto.note if dto else None, db)
+    await audit_service.record_event(
+        actor_id=actor,
+        action="approval.reject",
+        resource="approval",
+        resource_id=str(approval.id),
+        tenant_id=current_user.get("tenant_id"),
+        metadata={"agent_name": approval.agent_name, "action_type": approval.action_type},
+        db=db,
+    )
+    await db.commit()
+    return approval

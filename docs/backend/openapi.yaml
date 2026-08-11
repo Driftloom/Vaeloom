@@ -1,0 +1,5362 @@
+openapi: 3.1.0
+info:
+  title: Vaeloom Backend
+  version: 0.2.0
+paths:
+  /csrf-token:
+    get:
+      tags:
+        - security
+      summary: Get Csrf Token
+      operationId: get_csrf_token_csrf_token_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/security/encryption-status:
+    get:
+      tags:
+        - security
+      summary: Get Encryption Status
+      operationId: get_encryption_status_api_v1_security_encryption_status_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /health:
+    get:
+      tags:
+        - health
+      summary: Liveness
+      operationId: liveness_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /health/ready:
+    get:
+      tags:
+        - health
+      summary: Readiness
+      operationId: readiness_health_ready_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /health/startup:
+    get:
+      tags:
+        - health
+      summary: Startup
+      operationId: startup_health_startup_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/auth/signup:
+    post:
+      tags:
+        - auth
+      summary: Signup
+      operationId: signup_api_v1_auth_signup_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/login:
+    post:
+      tags:
+        - auth
+      summary: Login
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/me:
+    get:
+      tags:
+        - auth
+      summary: Me
+      operationId: me_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - auth
+      summary: Refresh
+      operationId: refresh_api_v1_auth_refresh_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/sso/{provider}:
+    post:
+      tags:
+        - auth
+      summary: Sso Token Login
+      operationId: sso_token_login_api_v1_auth_sso__provider__post
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SSOTokenRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - auth
+      summary: Sso Login
+      operationId: sso_login_api_v1_auth_sso__provider__get
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Provider
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Redirect Uri
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/sso/{provider}/callback:
+    get:
+      tags:
+        - auth
+      summary: Sso Callback
+      operationId: sso_callback_api_v1_auth_sso__provider__callback_get
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Provider
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Code
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+            title: State
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces:
+    get:
+      tags:
+        - workspaces
+      summary: List Workspaces
+      operationId: list_workspaces_api_v1_workspaces_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/WorkspaceResponse'
+                type: array
+                title: Response List Workspaces Api V1 Workspaces Get
+    post:
+      tags:
+        - workspaces
+      summary: Create Workspace
+      operationId: create_workspace_api_v1_workspaces_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkspaceRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_id}:
+    get:
+      tags:
+        - workspaces
+      summary: Get Workspace
+      operationId: get_workspace_api_v1_workspaces__workspace_id__get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+        - workspaces
+      summary: Update Workspace
+      operationId: update_workspace_api_v1_workspaces__workspace_id__patch
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkspaceRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - workspaces
+      summary: Delete Workspace
+      operationId: delete_workspace_api_v1_workspaces__workspace_id__delete
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_id}/agents:
+    get:
+      tags:
+        - workspaces
+      summary: List Workspace Agents
+      operationId: list_workspace_agents_api_v1_workspaces__workspace_id__agents_get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_id}/memories:
+    get:
+      tags:
+        - workspaces
+      summary: List Workspace Memories
+      operationId: list_workspace_memories_api_v1_workspaces__workspace_id__memories_get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_id}/connectors:
+    get:
+      tags:
+        - workspaces
+      summary: List Workspace Connectors
+      operationId: list_workspace_connectors_api_v1_workspaces__workspace_id__connectors_get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/memories:
+    get:
+      tags:
+        - memory
+      summary: List Memories
+      operationId: list_memories_api_v1_memories_get
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Type
+        - name: domain
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Domain
+        - name: status
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            default: active
+            title: Status
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - type: array
+                  items:
+                    type: string
+                - type: 'null'
+              title: Tags
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Memories Api V1 Memories Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - memory
+      summary: Create Memory
+      operationId: create_memory_api_v1_memories_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/memories/{memory_id}:
+    get:
+      tags:
+        - memory
+      summary: Get Memory
+      operationId: get_memory_api_v1_memories__memory_id__get
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Memory Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - memory
+      summary: Update Memory
+      operationId: update_memory_api_v1_memories__memory_id__put
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Memory Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - memory
+      summary: Delete Memory
+      operationId: delete_memory_api_v1_memories__memory_id__delete
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Memory Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/memories/search:
+    post:
+      tags:
+        - memory
+      summary: Search Memories
+      operationId: search_memories_api_v1_memories_search_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemorySearch'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/MemorySearchResult'
+                type: array
+                title: Response Search Memories Api V1 Memories Search Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents:
+    post:
+      tags:
+        - agents
+      summary: Create Agent
+      operationId: create_agent_api_v1_agents_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - agents
+      summary: List Agents
+      operationId: list_agents_api_v1_agents_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+        - name: category
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Category
+        - name: search
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Search
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Agents Api V1 Agents Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents/chat:
+    post:
+      tags:
+        - agents
+      summary: Chat
+      description: 'High-level chat endpoint: auto-classifies intent, routes to the
+        right agent,
+
+        runs the agentic loop, and returns the result.'
+      operationId: chat_api_v1_agents_chat_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatMessage'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents/{agent_id}:
+    get:
+      tags:
+        - agents
+      summary: Get Agent
+      operationId: get_agent_api_v1_agents__agent_id__get
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Agent Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - agents
+      summary: Update Agent
+      operationId: update_agent_api_v1_agents__agent_id__put
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Agent Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - agents
+      summary: Deactivate Agent
+      operationId: deactivate_agent_api_v1_agents__agent_id__delete
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Agent Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents/{agent_id}/execute:
+    post:
+      tags:
+        - agents
+      summary: Execute Agent
+      operationId: execute_agent_api_v1_agents__agent_id__execute_post
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Agent Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentExecute'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents/{agent_id}/executions:
+    get:
+      tags:
+        - agents
+      summary: List Executions
+      operationId: list_executions_api_v1_agents__agent_id__executions_get
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Agent Id
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+        - name: status
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Status
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Executions Api V1 Agents  Agent Id  Executions
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents/{agent_id}/run:
+    post:
+      tags:
+        - agents
+      summary: Run Agent
+      operationId: run_agent_api_v1_agents__agent_id__run_post
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Agent Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentExecute'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents/{agent_id}/schedule:
+    post:
+      tags:
+        - agents
+      summary: Schedule Agent
+      operationId: schedule_agent_api_v1_agents__agent_id__schedule_post
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Agent Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/events:
+    get:
+      tags:
+        - events
+      summary: List Events
+      operationId: list_events_api_v1_events_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/EventResponse'
+                type: array
+                title: Response List Events Api V1 Events Get
+    post:
+      tags:
+        - events
+      summary: Publish Event
+      operationId: publish_event_api_v1_events_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventPublish'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/events/subscriptions:
+    get:
+      tags:
+        - events
+      summary: List Subscriptions
+      operationId: list_subscriptions_api_v1_events_subscriptions_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/SubscriptionResponse'
+                type: array
+                title: Response List Subscriptions Api V1 Events Subscriptions Get
+    post:
+      tags:
+        - events
+      summary: Create Subscription
+      operationId: create_subscription_api_v1_events_subscriptions_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/search:
+    post:
+      tags:
+        - search
+      summary: Search All
+      operationId: search_all_api_v1_search_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/integrations:
+    get:
+      tags:
+        - integrations
+      summary: List Integrations
+      operationId: list_integrations_api_v1_integrations_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/IntegrationResponse'
+                type: array
+                title: Response List Integrations Api V1 Integrations Get
+    post:
+      tags:
+        - integrations
+      summary: Create Integration
+      operationId: create_integration_api_v1_integrations_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/integrations/{integration_id}:
+    put:
+      tags:
+        - integrations
+      summary: Update Integration
+      operationId: update_integration_api_v1_integrations__integration_id__put
+      parameters:
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Integration Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - integrations
+      summary: Delete Integration
+      operationId: delete_integration_api_v1_integrations__integration_id__delete
+      parameters:
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Integration Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/integrations/{integration_id}/sync:
+    post:
+      tags:
+        - integrations
+      summary: Sync Integration
+      operationId: sync_integration_api_v1_integrations__integration_id__sync_post
+      parameters:
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Integration Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/documents:
+    post:
+      tags:
+        - documents
+      summary: Upload Document
+      operationId: upload_document_api_v1_documents_post
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_upload_document_api_v1_documents_post'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - documents
+      summary: List Documents
+      operationId: list_documents_api_v1_documents_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Workspace Id
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes:
+    get:
+      tags:
+        - resumes
+      summary: List Resumes
+      operationId: list_resumes_api_v1_resumes_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResumeResponse'
+                title: Response List Resumes Api V1 Resumes Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/master:
+    get:
+      tags:
+        - resumes
+      summary: Get Master Resume
+      operationId: get_master_resume_api_v1_resumes_master_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/{resume_id}/generate:
+    post:
+      tags:
+        - resumes
+      summary: Generate Resume
+      operationId: generate_resume_api_v1_resumes__resume_id__generate_post
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateResumeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_id}/applications:
+    get:
+      tags:
+        - applications
+      summary: List Applications
+      operationId: list_applications_api_v1_workspaces__workspace_id__applications_get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApplicationResponse'
+                title: Response List Applications Api V1 Workspaces  Workspace Id  Applications
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - applications
+      summary: Create Application
+      operationId: create_application_api_v1_workspaces__workspace_id__applications_post
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_id}/applications/{application_id}:
+    get:
+      tags:
+        - applications
+      summary: Get Application
+      operationId: get_application_api_v1_workspaces__workspace_id__applications__application_id__get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Application Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_id}/applications/{application_id}/outcome:
+    patch:
+      tags:
+        - applications
+      summary: Update Application Outcome
+      operationId: update_application_outcome_api_v1_workspaces__workspace_id__applications__application_id__outcome_patch
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Application Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationUpdateOutcome'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications/send:
+    post:
+      tags:
+        - notifications
+      summary: Send Notification
+      operationId: send_notification_api_v1_notifications_send_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendNotificationRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications:
+    get:
+      tags:
+        - notifications
+      summary: List Notifications
+      operationId: list_notifications_api_v1_notifications_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+        - name: channel
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Channel
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationResponse'
+                title: Response List Notifications Api V1 Notifications Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications/templates:
+    get:
+      tags:
+        - notifications
+      summary: List Templates
+      operationId: list_templates_api_v1_notifications_templates_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/TemplateResponse'
+                type: array
+                title: Response List Templates Api V1 Notifications Templates Get
+    post:
+      tags:
+        - notifications
+      summary: Create Template
+      operationId: create_template_api_v1_notifications_templates_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications/{notification_id}:
+    get:
+      tags:
+        - notifications
+      summary: Get Notification
+      operationId: get_notification_api_v1_notifications__notification_id__get
+      parameters:
+        - name: notification_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Notification Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications/subscribe:
+    post:
+      tags:
+        - notifications
+      summary: Subscribe
+      operationId: subscribe_api_v1_notifications_subscribe_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications/webhooks/{notification_id}:
+    post:
+      tags:
+        - notifications
+      summary: Webhook Receipt
+      operationId: webhook_receipt_api_v1_notifications_webhooks__notification_id__post
+      parameters:
+        - name: notification_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Notification Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookReceiptRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors:
+    post:
+      tags:
+        - connectors
+      summary: Create Connector
+      operationId: create_connector_api_v1_connectors_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConnectorRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - connectors
+      summary: List Connectors
+      operationId: list_connectors_api_v1_connectors_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+        - name: type
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Type
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConnectorResponse'
+                title: Response List Connectors Api V1 Connectors Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/{connector_id}:
+    get:
+      tags:
+        - connectors
+      summary: Get Connector
+      operationId: get_connector_api_v1_connectors__connector_id__get
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - connectors
+      summary: Update Connector
+      operationId: update_connector_api_v1_connectors__connector_id__put
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateConnectorRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - connectors
+      summary: Delete Connector
+      operationId: delete_connector_api_v1_connectors__connector_id__delete
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/{connector_id}/sync:
+    post:
+      tags:
+        - connectors
+      summary: Trigger Sync
+      operationId: trigger_sync_api_v1_connectors__connector_id__sync_post
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatusResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/{connector_id}/sync/status:
+    get:
+      tags:
+        - connectors
+      summary: Get Sync Status
+      operationId: get_sync_status_api_v1_connectors__connector_id__sync_status_get
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatusResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/{connector_id}/test:
+    post:
+      tags:
+        - connectors
+      summary: Test Connection
+      operationId: test_connection_api_v1_connectors__connector_id__test_post
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/scheduler/jobs:
+    post:
+      tags:
+        - scheduler
+      summary: Create Job
+      operationId: create_job_api_v1_scheduler_jobs_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJobRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - scheduler
+      summary: List Jobs
+      operationId: list_jobs_api_v1_scheduler_jobs_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+        - name: type
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Type
+        - name: status
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Status
+        - name: name
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Name
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobResponse'
+                title: Response List Jobs Api V1 Scheduler Jobs Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/scheduler/jobs/{job_id}:
+    get:
+      tags:
+        - scheduler
+      summary: Get Job
+      operationId: get_job_api_v1_scheduler_jobs__job_id__get
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+        - scheduler
+      summary: Update Job
+      operationId: update_job_api_v1_scheduler_jobs__job_id__patch
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Job Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateJobRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - scheduler
+      summary: Delete Job
+      operationId: delete_job_api_v1_scheduler_jobs__job_id__delete
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Job Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/scheduler/jobs/{job_id}/pause:
+    post:
+      tags:
+        - scheduler
+      summary: Pause Job
+      operationId: pause_job_api_v1_scheduler_jobs__job_id__pause_post
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/scheduler/jobs/{job_id}/resume:
+    post:
+      tags:
+        - scheduler
+      summary: Resume Job
+      operationId: resume_job_api_v1_scheduler_jobs__job_id__resume_post
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/scheduler/jobs/{job_id}/trigger:
+    post:
+      tags:
+        - scheduler
+      summary: Trigger Job
+      operationId: trigger_job_api_v1_scheduler_jobs__job_id__trigger_post
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/scheduler/jobs/{job_id}/executions:
+    get:
+      tags:
+        - scheduler
+      summary: List Executions
+      operationId: list_executions_api_v1_scheduler_jobs__job_id__executions_get
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobExecutionResponse'
+                title: Response List Executions Api V1 Scheduler Jobs  Job Id  Executions
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/chat/workspaces/{workspace_id}/chat:
+    post:
+      tags:
+        - chat
+      summary: Send Chat Message
+      operationId: send_chat_message_api_v1_chat_workspaces__workspace_id__chat_post
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/knowledge-graph/nodes:
+    post:
+      tags:
+        - knowledge-graph
+      summary: Create Node
+      operationId: create_node_api_v1_knowledge_graph_nodes_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNodeRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - knowledge-graph
+      summary: List Nodes
+      operationId: list_nodes_api_v1_knowledge_graph_nodes_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+        - name: type
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Type
+        - name: search
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Search
+        - name: min_importance
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: number
+                maximum: 1
+                minimum: 0
+              - type: 'null'
+            title: Min Importance
+        - name: max_importance
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: number
+                maximum: 1
+                minimum: 0
+              - type: 'null'
+            title: Max Importance
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Sort By
+        - name: sort_order
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Sort Order
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Nodes Api V1 Knowledge Graph Nodes Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/knowledge-graph/nodes/{node_id}:
+    get:
+      tags:
+        - knowledge-graph
+      summary: Get Node
+      operationId: get_node_api_v1_knowledge_graph_nodes__node_id__get
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Node Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - knowledge-graph
+      summary: Update Node
+      operationId: update_node_api_v1_knowledge_graph_nodes__node_id__put
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Node Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNodeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - knowledge-graph
+      summary: Delete Node
+      operationId: delete_node_api_v1_knowledge_graph_nodes__node_id__delete
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Node Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/knowledge-graph/nodes/{node_id}/edges:
+    post:
+      tags:
+        - knowledge-graph
+      summary: Create Edge
+      operationId: create_edge_api_v1_knowledge_graph_nodes__node_id__edges_post
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Node Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEdgeRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EdgeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - knowledge-graph
+      summary: List Node Edges
+      operationId: list_node_edges_api_v1_knowledge_graph_nodes__node_id__edges_get
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Node Id
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Node Edges Api V1 Knowledge Graph Nodes  Node
+                  Id  Edges Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/knowledge-graph/edges:
+    get:
+      tags:
+        - knowledge-graph
+      summary: List All Edges
+      operationId: list_all_edges_api_v1_knowledge_graph_edges_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+        - name: relationship
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Relationship
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List All Edges Api V1 Knowledge Graph Edges Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/knowledge-graph/edges/{edge_id}:
+    delete:
+      tags:
+        - knowledge-graph
+      summary: Delete Edge
+      operationId: delete_edge_api_v1_knowledge_graph_edges__edge_id__delete
+      parameters:
+        - name: edge_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Edge Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/knowledge-graph/traverse:
+    post:
+      tags:
+        - knowledge-graph
+      summary: Traverse
+      operationId: traverse_api_v1_knowledge_graph_traverse_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TraverseRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/NodeResponse'
+                type: array
+                title: Response Traverse Api V1 Knowledge Graph Traverse Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/knowledge-graph/path:
+    get:
+      tags:
+        - knowledge-graph
+      summary: Find Shortest Path
+      operationId: find_shortest_path_api_v1_knowledge_graph_path_get
+      parameters:
+        - name: from_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: From Id
+        - name: to_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: To Id
+        - name: max_depth
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 20
+            minimum: 1
+            default: 5
+            title: Max Depth
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Find Shortest Path Api V1 Knowledge Graph Path Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/gdpr/export:
+    get:
+      tags:
+        - gdpr
+      summary: Gdpr Export
+      operationId: gdpr_export_api_v1_gdpr_export_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/gdpr/delete:
+    post:
+      tags:
+        - gdpr
+      summary: Gdpr Delete
+      operationId: gdpr_delete_api_v1_gdpr_delete_post
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/consent/scopes:
+    get:
+      tags:
+        - consent
+      summary: List Scopes
+      operationId: list_scopes_api_v1_consent_scopes_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/consent/grant:
+    post:
+      tags:
+        - consent
+      summary: Grant Consent
+      operationId: grant_consent_api_v1_consent_grant_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantConsentRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/consent/revoke/{scope}:
+    post:
+      tags:
+        - consent
+      summary: Revoke Consent
+      operationId: revoke_consent_api_v1_consent_revoke__scope__post
+      parameters:
+        - name: scope
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ConsentScope'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/consent/me:
+    get:
+      tags:
+        - consent
+      summary: My Consents
+      operationId: my_consents_api_v1_consent_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/approvals:
+    post:
+      tags:
+        - approvals
+      summary: Request Approval
+      operationId: request_approval_api_v1_approvals_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - approvals
+      summary: List Approvals
+      operationId: list_approvals_api_v1_approvals_get
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                pattern: ^(PENDING|APPROVED|REJECTED|EXPIRED)$
+              - type: 'null'
+            title: Status
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Workspace Id
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/approvals/{approval_id}:
+    get:
+      tags:
+        - approvals
+      summary: Get Approval
+      operationId: get_approval_api_v1_approvals__approval_id__get
+      parameters:
+        - name: approval_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Approval Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/approvals/{approval_id}/approve:
+    post:
+      tags:
+        - approvals
+      summary: Approve Approval
+      operationId: approve_approval_api_v1_approvals__approval_id__approve_post
+      parameters:
+        - name: approval_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Approval Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/ApprovalDecision'
+                - type: 'null'
+              title: Dto
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/approvals/{approval_id}/reject:
+    post:
+      tags:
+        - approvals
+      summary: Reject Approval
+      operationId: reject_approval_api_v1_approvals__approval_id__reject_post
+      parameters:
+        - name: approval_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Approval Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/ApprovalDecision'
+                - type: 'null'
+              title: Dto
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/agents/usage:
+    get:
+      tags:
+        - agents
+      summary: Get Agent Usage
+      operationId: get_agent_usage_api_v1_admin_agents_usage_get
+      parameters:
+        - name: agent_name
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Filter by agent name
+            title: Agent Name
+          description: Filter by agent name
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Filter by workspace ID
+            title: Workspace Id
+          description: Filter by workspace ID
+        - name: period_hours
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            description: Time period in hours
+            title: Period Hours
+          description: Time period in hours
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/agents/usage/costs:
+    get:
+      tags:
+        - agents
+      summary: Get Agent Costs
+      operationId: get_agent_costs_api_v1_admin_agents_usage_costs_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    AgentCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Name
+        category:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Category
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+      type: object
+      required:
+        - name
+        - category
+      title: AgentCreate
+    AgentExecute:
+      properties:
+        input:
+          additionalProperties: true
+          type: object
+          title: Input
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      title: AgentExecute
+    AgentResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        name:
+          type: string
+          title: Name
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        category:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Category
+        status:
+          type: string
+          title: Status
+        version:
+          type: string
+          title: Version
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+        capabilities:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Capabilities
+        permissions:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Permissions
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        user_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: User Id
+        tenant_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Tenant Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - name
+        - status
+        - version
+        - config
+        - created_at
+        - updated_at
+      title: AgentResponse
+    AgentUpdate:
+      properties:
+        name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Name
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        config:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Config
+        status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Status
+      type: object
+      title: AgentUpdate
+    ApplicationCreate:
+      properties:
+        job_external_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Job External Id
+        platform:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Platform
+        status:
+          type: string
+          title: Status
+          default: DRAFT
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+      type: object
+      title: ApplicationCreate
+    ApplicationResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        job_external_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Job External Id
+        platform:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Platform
+        status:
+          type: string
+          title: Status
+        resume_version_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Resume Version Id
+        cover_letter:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Cover Letter
+        submitted_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Submitted At
+        outcome:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Outcome
+        outcome_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Outcome At
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - workspace_id
+        - status
+        - created_at
+        - updated_at
+      title: ApplicationResponse
+    ApplicationUpdateOutcome:
+      properties:
+        status:
+          type: string
+          minLength: 1
+          title: Status
+      type: object
+      required:
+        - status
+      title: ApplicationUpdateOutcome
+    ApprovalDecision:
+      properties:
+        note:
+          anyOf:
+            - type: string
+              maxLength: 2000
+            - type: 'null'
+          title: Note
+      type: object
+      title: ApprovalDecision
+    ApprovalListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ApprovalResponse'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+      type: object
+      required:
+        - items
+        - total
+        - page
+        - page_size
+      title: ApprovalListResponse
+    ApprovalRequest:
+      properties:
+        agent_name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Agent Name
+        action_type:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Action Type
+        payload:
+          additionalProperties: true
+          type: object
+          title: Payload
+        reason:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Reason
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        expires_in_minutes:
+          anyOf:
+            - type: integer
+              maximum: 10080.0
+              minimum: 1.0
+            - type: 'null'
+          title: Expires In Minutes
+          default: 60
+      type: object
+      required:
+        - agent_name
+        - action_type
+      title: ApprovalRequest
+    ApprovalResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        agent_name:
+          type: string
+          title: Agent Name
+        action_type:
+          type: string
+          title: Action Type
+        payload:
+          additionalProperties: true
+          type: object
+          title: Payload
+        reason:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Reason
+        status:
+          type: string
+          title: Status
+        requested_by:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Requested By
+        decided_by:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Decided By
+        decision_note:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Decision Note
+        expires_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Expires At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        decided_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Decided At
+      type: object
+      required:
+        - id
+        - agent_name
+        - action_type
+        - payload
+        - status
+        - created_at
+        - updated_at
+      title: ApprovalResponse
+    AuthResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        refresh_token:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Refresh Token
+        token_type:
+          type: string
+          title: Token Type
+          default: Bearer
+        expires_in:
+          type: integer
+          title: Expires In
+          default: 3600
+        user:
+          $ref: '#/components/schemas/PublicUser'
+      type: object
+      required:
+        - access_token
+        - user
+      title: AuthResponse
+    Body_upload_document_api_v1_documents_post:
+      properties:
+        file:
+          type: string
+          format: binary
+          title: File
+      type: object
+      required:
+        - file
+      title: Body_upload_document_api_v1_documents_post
+    ChatMessage:
+      properties:
+        workspaceId:
+          type: string
+          title: Workspaceid
+        message:
+          type: string
+          title: Message
+        agentName:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Agentname
+      type: object
+      required:
+        - workspaceId
+        - message
+      title: ChatMessage
+    ChatRequest:
+      properties:
+        message:
+          type: string
+          title: Message
+        agent_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Agent Name
+      type: object
+      required:
+        - message
+      title: ChatRequest
+    ConnectorResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        name:
+          type: string
+          title: Name
+        type:
+          type: string
+          title: Type
+        status:
+          type: string
+          title: Status
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+        scopes:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Scopes
+        last_synced_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Last Synced At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - workspace_id
+        - name
+        - type
+        - status
+        - config
+        - created_at
+        - updated_at
+      title: ConnectorResponse
+    ConnectorType:
+      type: string
+      enum:
+        - rest
+        - graphql
+        - database
+        - file
+      title: ConnectorType
+    ConsentScope:
+      type: string
+      enum:
+        - data_processing
+        - agent_access
+        - email_marketing
+      title: ConsentScope
+    CreateConnectorRequest:
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Name
+        type:
+          $ref: '#/components/schemas/ConnectorType'
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+        tenant_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tenant Id
+      type: object
+      required:
+        - name
+        - type
+        - config
+      title: CreateConnectorRequest
+    CreateEdgeRequest:
+      properties:
+        target_id:
+          type: string
+          title: Target Id
+        relationship:
+          type: string
+          title: Relationship
+        weight:
+          anyOf:
+            - type: number
+              maximum: 1.0
+              minimum: 0.0
+            - type: 'null'
+          title: Weight
+        properties:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Properties
+      type: object
+      required:
+        - target_id
+        - relationship
+      title: CreateEdgeRequest
+    CreateJobRequest:
+      properties:
+        name:
+          type: string
+          title: Name
+        type:
+          $ref: '#/components/schemas/JobType'
+        cron:
+          type: string
+          title: Cron
+        method:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Method
+        url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Url
+        event:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Event
+        payload:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Payload
+        headers:
+          anyOf:
+            - additionalProperties:
+                type: string
+              type: object
+            - type: 'null'
+          title: Headers
+        tenant_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tenant Id
+      type: object
+      required:
+        - name
+        - type
+        - cron
+      title: CreateJobRequest
+    CreateNodeRequest:
+      properties:
+        label:
+          type: string
+          title: Label
+        type:
+          $ref: '#/components/schemas/NodeType'
+          default: concept
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        importance:
+          anyOf:
+            - type: number
+              maximum: 1.0
+              minimum: 0.0
+            - type: 'null'
+          title: Importance
+        properties:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Properties
+        tenant_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tenant Id
+      type: object
+      required:
+        - label
+      title: CreateNodeRequest
+    CreateTemplateRequest:
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Name
+        subject:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Subject
+        body:
+          type: string
+          minLength: 1
+          title: Body
+        channel:
+          $ref: '#/components/schemas/NotificationChannel'
+      type: object
+      required:
+        - name
+        - body
+        - channel
+      title: CreateTemplateRequest
+    CreateWorkspaceRequest:
+      properties:
+        name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Name
+      type: object
+      title: CreateWorkspaceRequest
+    DocumentListResponse:
+      properties:
+        documents:
+          items:
+            $ref: '#/components/schemas/DocumentResponse'
+          type: array
+          title: Documents
+        total:
+          type: integer
+          title: Total
+        page:
+          type: integer
+          title: Page
+          default: 1
+        page_size:
+          type: integer
+          title: Page Size
+          default: 20
+      type: object
+      required:
+        - documents
+        - total
+      title: DocumentListResponse
+    DocumentResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        path:
+          type: string
+          title: Path
+        type:
+          type: string
+          title: Type
+        summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Summary
+        metadata:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Metadata
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - workspace_id
+        - path
+        - type
+        - created_at
+        - updated_at
+      title: DocumentResponse
+    EdgeResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        source_id:
+          type: string
+          format: uuid
+          title: Source Id
+        target_id:
+          type: string
+          format: uuid
+          title: Target Id
+        relationship:
+          type: string
+          title: Relationship
+        weight:
+          type: number
+          title: Weight
+        properties:
+          additionalProperties: true
+          type: object
+          title: Properties
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        source:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Source
+        target:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Target
+      type: object
+      required:
+        - id
+        - source_id
+        - target_id
+        - relationship
+        - weight
+        - properties
+        - created_at
+      title: EdgeResponse
+    EventPublish:
+      properties:
+        type:
+          type: string
+          minLength: 1
+          title: Type
+        source:
+          type: string
+          minLength: 1
+          title: Source
+        category:
+          type: string
+          minLength: 1
+          title: Category
+        payload:
+          additionalProperties: true
+          type: object
+          title: Payload
+        priority:
+          type: string
+          title: Priority
+          default: NORMAL
+        correlation_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Correlation Id
+      type: object
+      required:
+        - type
+        - source
+        - category
+      title: EventPublish
+    EventResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        type:
+          type: string
+          title: Type
+        source:
+          type: string
+          title: Source
+        category:
+          type: string
+          title: Category
+        status:
+          type: string
+          title: Status
+        priority:
+          type: string
+          title: Priority
+        correlation_id:
+          type: string
+          format: uuid
+          title: Correlation Id
+        causation_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Causation Id
+        payload:
+          additionalProperties: true
+          type: object
+          title: Payload
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        tenant_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Tenant Id
+        user_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: User Id
+        retry_count:
+          type: integer
+          title: Retry Count
+          default: 0
+        max_retries:
+          type: integer
+          title: Max Retries
+          default: 3
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        published_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Published At
+      type: object
+      required:
+        - id
+        - type
+        - source
+        - category
+        - status
+        - priority
+        - correlation_id
+        - payload
+        - metadata
+        - created_at
+      title: EventResponse
+    ExecutionResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        agent_id:
+          type: string
+          format: uuid
+          title: Agent Id
+        status:
+          type: string
+          title: Status
+        input:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Input
+        output:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Output
+        error:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Error
+        tokens_used:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Tokens Used
+        cost:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Cost
+        duration_ms:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Duration Ms
+        started_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Started At
+        completed_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Completed At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - agent_id
+        - status
+        - created_at
+      title: ExecutionResponse
+    GenerateResumeRequest:
+      properties:
+        variant_type:
+          type: string
+          minLength: 1
+          title: Variant Type
+          default: tailored
+        job_description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Job Description
+        target_role:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Target Role
+        company:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Company
+      type: object
+      title: GenerateResumeRequest
+    GrantConsentRequest:
+      properties:
+        scope:
+          $ref: '#/components/schemas/ConsentScope'
+      type: object
+      required:
+        - scope
+      title: GrantConsentRequest
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    IntegrationCreate:
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Name
+        provider:
+          type: string
+          minLength: 1
+          title: Provider
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+      type: object
+      required:
+        - name
+        - provider
+      title: IntegrationCreate
+    IntegrationResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        name:
+          type: string
+          title: Name
+        provider:
+          type: string
+          title: Provider
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+        status:
+          type: string
+          title: Status
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        last_sync_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Last Sync At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - name
+        - provider
+        - config
+        - status
+        - user_id
+        - created_at
+        - updated_at
+      title: IntegrationResponse
+    IntegrationUpdate:
+      properties:
+        name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Name
+        config:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Config
+      type: object
+      title: IntegrationUpdate
+    JobExecutionResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        job_id:
+          type: string
+          format: uuid
+          title: Job Id
+        status:
+          type: string
+          title: Status
+        started_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Started At
+        finished_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Finished At
+        status_code:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Status Code
+        error:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Error
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - job_id
+        - status
+        - started_at
+        - finished_at
+        - status_code
+        - error
+        - created_at
+      title: JobExecutionResponse
+    JobResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        name:
+          type: string
+          title: Name
+        type:
+          type: string
+          title: Type
+        cron:
+          type: string
+          title: Cron
+        method:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Method
+        url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Url
+        event:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Event
+        payload:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Payload
+        headers:
+          anyOf:
+            - additionalProperties:
+                type: string
+              type: object
+            - type: 'null'
+          title: Headers
+        status:
+          type: string
+          title: Status
+        last_run_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Last Run At
+        next_run_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Next Run At
+        tenant_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tenant Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - cron
+        - method
+        - url
+        - event
+        - payload
+        - headers
+        - status
+        - last_run_at
+        - next_run_at
+        - tenant_id
+        - created_at
+        - updated_at
+      title: JobResponse
+    JobType:
+      type: string
+      enum:
+        - http
+        - event
+      title: JobType
+    LoginRequest:
+      properties:
+        email:
+          type: string
+          title: Email
+        password:
+          type: string
+          title: Password
+      type: object
+      required:
+        - email
+        - password
+      title: LoginRequest
+    MeResponse:
+      properties:
+        user:
+          $ref: '#/components/schemas/PublicUser'
+        workspaces:
+          items: {}
+          type: array
+          title: Workspaces
+          default: []
+      type: object
+      required:
+        - user
+      title: MeResponse
+    MemoryCreate:
+      properties:
+        type:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Type
+        domain:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: 'null'
+          title: Domain
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Summary
+        content:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Content
+        metadata:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Metadata
+        tags:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Tags
+        workspace_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Workspace Id
+        source_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Source Type
+        source_uri:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Source Uri
+        source_label:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Source Label
+        connector_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Connector Id
+        supersedes_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Supersedes Id
+      type: object
+      required:
+        - type
+      title: MemoryCreate
+    MemoryResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        type:
+          type: string
+          title: Type
+        domain:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Domain
+        status:
+          type: string
+          title: Status
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Summary
+        content:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Content
+        content_hash:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Content Hash
+        size:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Size
+        metadata:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Metadata
+        tags:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Tags
+        tenant_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Tenant Id
+        user_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: User Id
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        source_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Source Type
+        source_uri:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Source Uri
+        source_label:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Source Label
+        supersedes_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Supersedes Id
+        deleted_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Deleted At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - type
+        - status
+        - created_at
+        - updated_at
+      title: MemoryResponse
+    MemorySearch:
+      properties:
+        query:
+          type: string
+          minLength: 1
+          title: Query
+        type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Type
+        domain:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Domain
+        tags:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Tags
+        top_k:
+          type: integer
+          maximum: 100.0
+          minimum: 1.0
+          title: Top K
+          default: 10
+        threshold:
+          anyOf:
+            - type: number
+              maximum: 1.0
+              minimum: 0.0
+            - type: 'null'
+          title: Threshold
+          default: 0.7
+      type: object
+      required:
+        - query
+      title: MemorySearch
+    MemorySearchResult:
+      properties:
+        memory:
+          $ref: '#/components/schemas/MemoryResponse'
+        score:
+          type: number
+          title: Score
+      type: object
+      required:
+        - memory
+        - score
+      title: MemorySearchResult
+    MemoryUpdate:
+      properties:
+        type:
+          anyOf:
+            - type: string
+              maxLength: 100
+              minLength: 1
+            - type: 'null'
+          title: Type
+        domain:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: 'null'
+          title: Domain
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Summary
+        content:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Content
+        metadata:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Metadata
+        tags:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Tags
+        status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Status
+        supersedes_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Supersedes Id
+      type: object
+      title: MemoryUpdate
+    NodeResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        label:
+          type: string
+          title: Label
+        type:
+          type: string
+          title: Type
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        importance:
+          type: number
+          title: Importance
+        properties:
+          additionalProperties: true
+          type: object
+          title: Properties
+        tenant_id:
+          type: string
+          title: Tenant Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        edge_count:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Edge Count
+      type: object
+      required:
+        - id
+        - label
+        - type
+        - description
+        - importance
+        - properties
+        - tenant_id
+        - created_at
+        - updated_at
+      title: NodeResponse
+    NodeType:
+      type: string
+      enum:
+        - concept
+        - entity
+        - document
+        - topic
+        - person
+        - organization
+        - event
+        - project
+      title: NodeType
+    NotificationChannel:
+      type: string
+      enum:
+        - email
+        - slack
+        - push
+      title: NotificationChannel
+    NotificationResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        channel:
+          type: string
+          title: Channel
+        recipient:
+          type: string
+          title: Recipient
+        subject:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Subject
+        body:
+          type: string
+          title: Body
+        status:
+          type: string
+          title: Status
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - channel
+        - recipient
+        - subject
+        - body
+        - status
+        - created_at
+        - updated_at
+      title: NotificationResponse
+    PublicUser:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        email:
+          type: string
+          title: Email
+        display_name:
+          type: string
+          title: Display Name
+        auth_provider:
+          type: string
+          title: Auth Provider
+          default: email
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - email
+        - display_name
+        - created_at
+      title: PublicUser
+    RefreshRequest:
+      properties:
+        refresh_token:
+          type: string
+          title: Refresh Token
+      type: object
+      required:
+        - refresh_token
+      title: RefreshRequest
+    ResumeResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        variant_type:
+          type: string
+          title: Variant Type
+        content:
+          additionalProperties: true
+          type: object
+          title: Content
+        version:
+          type: integer
+          title: Version
+          default: 1
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - workspace_id
+        - variant_type
+        - content
+        - created_at
+        - updated_at
+      title: ResumeResponse
+    SSOTokenRequest:
+      properties:
+        token:
+          type: string
+          title: Token
+      type: object
+      required:
+        - token
+      title: SSOTokenRequest
+    ScheduleRequest:
+      properties:
+        cron:
+          type: string
+          minLength: 1
+          title: Cron
+        input:
+          additionalProperties: true
+          type: object
+          title: Input
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+      type: object
+      required:
+        - cron
+      title: ScheduleRequest
+    ScheduleResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        agent_id:
+          type: string
+          format: uuid
+          title: Agent Id
+        cron:
+          type: string
+          title: Cron
+        input:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Input
+        enabled:
+          type: boolean
+          title: Enabled
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - agent_id
+        - cron
+        - enabled
+        - created_at
+        - updated_at
+      title: ScheduleResponse
+    SearchRequest:
+      properties:
+        query:
+          type: string
+          minLength: 1
+          title: Query
+        sources:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Sources
+        limit:
+          type: integer
+          maximum: 100.0
+          minimum: 1.0
+          title: Limit
+          default: 20
+        offset:
+          type: integer
+          minimum: 0.0
+          title: Offset
+          default: 0
+        filters:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Filters
+      type: object
+      required:
+        - query
+      title: SearchRequest
+    SearchResponse:
+      properties:
+        results:
+          items:
+            $ref: '#/components/schemas/SearchResult'
+          type: array
+          title: Results
+        total:
+          type: integer
+          title: Total
+        facet_counts:
+          additionalProperties:
+            additionalProperties:
+              type: integer
+            type: object
+          type: object
+          title: Facet Counts
+      type: object
+      required:
+        - results
+        - total
+      title: SearchResponse
+    SearchResult:
+      properties:
+        id:
+          type: string
+          title: Id
+        text:
+          type: string
+          title: Text
+        score:
+          type: number
+          title: Score
+        source:
+          type: string
+          title: Source
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+      type: object
+      required:
+        - id
+        - text
+        - score
+        - source
+      title: SearchResult
+    SendNotificationRequest:
+      properties:
+        channel:
+          $ref: '#/components/schemas/NotificationChannel'
+        recipient:
+          type: string
+          title: Recipient
+        template:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Template
+        data:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Data
+        subject:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Subject
+        body:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Body
+      type: object
+      required:
+        - channel
+        - recipient
+      title: SendNotificationRequest
+    SignupRequest:
+      properties:
+        email:
+          type: string
+          title: Email
+        password:
+          type: string
+          title: Password
+        display_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Display Name
+      type: object
+      required:
+        - email
+        - password
+      title: SignupRequest
+    SubscribeRequest:
+      properties:
+        url:
+          type: string
+          minLength: 1
+          title: Url
+        tenant_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tenant Id
+      type: object
+      required:
+        - url
+      title: SubscribeRequest
+    SubscriptionCreate:
+      properties:
+        event_type:
+          type: string
+          minLength: 1
+          title: Event Type
+        handler_id:
+          type: string
+          minLength: 1
+          title: Handler Id
+        handler_type:
+          type: string
+          title: Handler Type
+          default: service
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+        filters:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Filters
+      type: object
+      required:
+        - event_type
+        - handler_id
+      title: SubscriptionCreate
+    SubscriptionResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        event_type:
+          type: string
+          title: Event Type
+        handler_id:
+          type: string
+          format: uuid
+          title: Handler Id
+        handler_type:
+          type: string
+          title: Handler Type
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+        filters:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Filters
+        enabled:
+          type: boolean
+          title: Enabled
+          default: true
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - event_type
+        - handler_id
+        - handler_type
+        - config
+        - created_at
+      title: SubscriptionResponse
+    SyncStatusResponse:
+      properties:
+        connector_id:
+          type: string
+          title: Connector Id
+        status:
+          type: string
+          title: Status
+        error:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Error
+        synced_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Synced At
+      type: object
+      required:
+        - connector_id
+        - status
+      title: SyncStatusResponse
+    TemplateResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        name:
+          type: string
+          title: Name
+        subject:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Subject
+        body:
+          type: string
+          title: Body
+        channel:
+          type: string
+          title: Channel
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - name
+        - subject
+        - body
+        - channel
+        - created_at
+      title: TemplateResponse
+    TraverseRequest:
+      properties:
+        start_id:
+          type: string
+          title: Start Id
+        depth:
+          type: integer
+          maximum: 10.0
+          minimum: 1.0
+          title: Depth
+          default: 3
+        mode:
+          type: string
+          title: Mode
+          default: bfs
+      type: object
+      required:
+        - start_id
+      title: TraverseRequest
+    UpdateConnectorRequest:
+      properties:
+        name:
+          anyOf:
+            - type: string
+              maxLength: 200
+              minLength: 1
+            - type: 'null'
+          title: Name
+        config:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Config
+      type: object
+      title: UpdateConnectorRequest
+    UpdateJobRequest:
+      properties:
+        name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Name
+        cron:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Cron
+        method:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Method
+        url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Url
+        event:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Event
+        payload:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Payload
+        headers:
+          anyOf:
+            - additionalProperties:
+                type: string
+              type: object
+            - type: 'null'
+          title: Headers
+      type: object
+      title: UpdateJobRequest
+    UpdateNodeRequest:
+      properties:
+        label:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Label
+        type:
+          anyOf:
+            - $ref: '#/components/schemas/NodeType'
+            - type: 'null'
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        importance:
+          anyOf:
+            - type: number
+              maximum: 1.0
+              minimum: 0.0
+            - type: 'null'
+          title: Importance
+        properties:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Properties
+      type: object
+      title: UpdateNodeRequest
+    UpdateWorkspaceRequest:
+      properties:
+        name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Name
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+      type: object
+      title: UpdateWorkspaceRequest
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      title: ValidationError
+    WebhookReceiptRequest:
+      properties:
+        status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Status
+        details:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Details
+      type: object
+      title: WebhookReceiptRequest
+    WorkspaceResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        name:
+          type: string
+          title: Name
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - user_id
+        - name
+        - created_at
+        - updated_at
+      title: WorkspaceResponse
