@@ -1,0 +1,28 @@
+# Vaeloom MVP — 22 Independent Phase Prompts
+
+Prove the memory-first ingest → organize → remember → assist loop with a tightly
+bounded eight-agent, six-memory, suggest-mode-first product before enterprise
+expansion.
+
+- [Phase 00 — Intake and Existing-State Assessment](MVP-P00-intake-and-existing-state-assessment.md)
+- [Phase 01 — Discovery and Problem Definition](MVP-P01-discovery-and-problem-definition.md)
+- [Phase 02 — Research, Domain Analysis, and Data Discovery](MVP-P02-research-domain-analysis-and-data-discovery.md)
+- [Phase 03 — Requirements Engineering](MVP-P03-requirements-engineering.md)
+- [Phase 04 — Project Planning and Delivery Governance](MVP-P04-project-planning-and-delivery-governance.md)
+- [Phase 05 — Solution Architecture](MVP-P05-solution-architecture.md)
+- [Phase 06 — Technology Stack and Engineering Standards](MVP-P06-technology-stack-and-engineering-standards.md)
+- [Phase 07 — Data Architecture and Database Design](MVP-P07-data-architecture-and-database-design.md)
+- [Phase 08 — API, Integration, and Contract Design](MVP-P08-api-integration-and-contract-design.md)
+- [Phase 09 — UI/UX and Design System](MVP-P09-ui-ux-and-design-system.md)
+- [Phase 10 — Frontend Implementation](MVP-P10-frontend-implementation.md)
+- [Phase 11 — Backend Implementation](MVP-P11-backend-implementation.md)
+- [Phase 12 — AI, Agent, Memory, and Data-Pipeline Implementation](MVP-P12-ai-agent-memory-and-data-pipeline-implementation.md)
+- [Phase 13 — Security, Privacy, and Compliance](MVP-P13-security-privacy-and-compliance.md)
+- [Phase 14 — Testing and Quality Engineering](MVP-P14-testing-and-quality-engineering.md)
+- [Phase 15 — Performance, Reliability, and Scalability](MVP-P15-performance-reliability-and-scalability.md)
+- [Phase 16 — DevOps, Infrastructure, and CI/CD](MVP-P16-devops-infrastructure-and-ci-cd.md)
+- [Phase 17 — Observability and Operations](MVP-P17-observability-and-operations.md)
+- [Phase 18 — Documentation and Knowledge Transfer](MVP-P18-documentation-and-knowledge-transfer.md)
+- [Phase 19 — Release Readiness and Production Deployment](MVP-P19-release-readiness-and-production-deployment.md)
+- [Phase 20 — Post-Deployment Validation](MVP-P20-post-deployment-validation.md)
+- [Phase 21 — Maintenance and Continuous Improvement](MVP-P21-maintenance-and-continuous-improvement.md)

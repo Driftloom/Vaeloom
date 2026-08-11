@@ -1,0 +1,29 @@
+# Vaeloom Enterprise — 22 Independent Phase Prompts
+
+Deliver the multi-tenant institutional platform with individual memory
+ownership, 28 governed agents, 22 memory types, SSO/SCIM, admin control plane,
+billing/entitlements, plugin/MCP ecosystem, regional cells and enterprise
+operations.
+
+- [Phase 00 — Intake and Existing-State Assessment](ENT-P00-intake-and-existing-state-assessment.md)
+- [Phase 01 — Discovery and Problem Definition](ENT-P01-discovery-and-problem-definition.md)
+- [Phase 02 — Research, Domain Analysis, and Data Discovery](ENT-P02-research-domain-analysis-and-data-discovery.md)
+- [Phase 03 — Requirements Engineering](ENT-P03-requirements-engineering.md)
+- [Phase 04 — Project Planning and Delivery Governance](ENT-P04-project-planning-and-delivery-governance.md)
+- [Phase 05 — Solution Architecture](ENT-P05-solution-architecture.md)
+- [Phase 06 — Technology Stack and Engineering Standards](ENT-P06-technology-stack-and-engineering-standards.md)
+- [Phase 07 — Data Architecture and Database Design](ENT-P07-data-architecture-and-database-design.md)
+- [Phase 08 — API, Integration, and Contract Design](ENT-P08-api-integration-and-contract-design.md)
+- [Phase 09 — UI/UX and Design System](ENT-P09-ui-ux-and-design-system.md)
+- [Phase 10 — Frontend Implementation](ENT-P10-frontend-implementation.md)
+- [Phase 11 — Backend Implementation](ENT-P11-backend-implementation.md)
+- [Phase 12 — AI, Agent, Memory, and Data-Pipeline Implementation](ENT-P12-ai-agent-memory-and-data-pipeline-implementation.md)
+- [Phase 13 — Security, Privacy, and Compliance](ENT-P13-security-privacy-and-compliance.md)
+- [Phase 14 — Testing and Quality Engineering](ENT-P14-testing-and-quality-engineering.md)
+- [Phase 15 — Performance, Reliability, and Scalability](ENT-P15-performance-reliability-and-scalability.md)
+- [Phase 16 — DevOps, Infrastructure, and CI/CD](ENT-P16-devops-infrastructure-and-ci-cd.md)
+- [Phase 17 — Observability and Operations](ENT-P17-observability-and-operations.md)
+- [Phase 18 — Documentation and Knowledge Transfer](ENT-P18-documentation-and-knowledge-transfer.md)
+- [Phase 19 — Release Readiness and Production Deployment](ENT-P19-release-readiness-and-production-deployment.md)
+- [Phase 20 — Post-Deployment Validation](ENT-P20-post-deployment-validation.md)
+- [Phase 21 — Maintenance and Continuous Improvement](ENT-P21-maintenance-and-continuous-improvement.md)

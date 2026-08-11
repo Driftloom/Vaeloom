@@ -1,0 +1,600 @@
+{
+  "generated": "2026-08-04",
+  "prompt_count": 66,
+  "files": [
+    {
+      "track": "MVP",
+      "phase": "00",
+      "name": "Intake and Existing-State Assessment",
+      "file": "01-mvp/MVP-P00-intake-and-existing-state-assessment.md",
+      "bytes": 34944,
+      "lines": 455,
+      "sha256": "165aec9191f4b533fbe449983d3ebad418a268066e7f0b6445152dac9a5b1a52"
+    },
+    {
+      "track": "MVP",
+      "phase": "01",
+      "name": "Discovery and Problem Definition",
+      "file": "01-mvp/MVP-P01-discovery-and-problem-definition.md",
+      "bytes": 37578,
+      "lines": 495,
+      "sha256": "9993f3be453bb3d24cc46f3f904e5942f4e887fa1d0a7dbe129338b208f4764c"
+    },
+    {
+      "track": "MVP",
+      "phase": "02",
+      "name": "Research, Domain Analysis, and Data Discovery",
+      "file": "01-mvp/MVP-P02-research-domain-analysis-and-data-discovery.md",
+      "bytes": 37655,
+      "lines": 495,
+      "sha256": "98487274a0b61ac2b8299c1c34e289dede46f9809d59e138b1221aeec9984a65"
+    },
+    {
+      "track": "MVP",
+      "phase": "03",
+      "name": "Requirements Engineering",
+      "file": "01-mvp/MVP-P03-requirements-engineering.md",
+      "bytes": 37744,
+      "lines": 495,
+      "sha256": "fed9248fa4ade7aa7b477ae1d45384d810c67fab56de85c5123f632ae664ca9f"
+    },
+    {
+      "track": "MVP",
+      "phase": "04",
+      "name": "Project Planning and Delivery Governance",
+      "file": "01-mvp/MVP-P04-project-planning-and-delivery-governance.md",
+      "bytes": 37466,
+      "lines": 495,
+      "sha256": "fcbd237d35e30e6486a91f602475cebacea67d57b50cd23ad3d2e8003f4ba353"
+    },
+    {
+      "track": "MVP",
+      "phase": "05",
+      "name": "Solution Architecture",
+      "file": "01-mvp/MVP-P05-solution-architecture.md",
+      "bytes": 37549,
+      "lines": 495,
+      "sha256": "6ae3e03526b4fca02b0bb36f8fd16e468bb1b698148a853aeb375e57aceeb352"
+    },
+    {
+      "track": "MVP",
+      "phase": "06",
+      "name": "Technology Stack and Engineering Standards",
+      "file": "01-mvp/MVP-P06-technology-stack-and-engineering-standards.md",
+      "bytes": 37538,
+      "lines": 495,
+      "sha256": "089087e721fed98a88b8b23489ae65204e1e4c2edd6fdcfd1632f8e6aada6986"
+    },
+    {
+      "track": "MVP",
+      "phase": "07",
+      "name": "Data Architecture and Database Design",
+      "file": "01-mvp/MVP-P07-data-architecture-and-database-design.md",
+      "bytes": 37664,
+      "lines": 496,
+      "sha256": "51ae7921435eaa5a49db045a2a796dddb04eccbfee9f68f852d8359e9cedb227"
+    },
+    {
+      "track": "MVP",
+      "phase": "08",
+      "name": "API, Integration, and Contract Design",
+      "file": "01-mvp/MVP-P08-api-integration-and-contract-design.md",
+      "bytes": 37639,
+      "lines": 496,
+      "sha256": "7ef79f20784acca2eb97d4eea2d297137708d69cd19ad63b10b785e79ab9df7d"
+    },
+    {
+      "track": "MVP",
+      "phase": "09",
+      "name": "UI/UX and Design System",
+      "file": "01-mvp/MVP-P09-ui-ux-and-design-system.md",
+      "bytes": 37600,
+      "lines": 495,
+      "sha256": "9ca8667c2eb1d027864fe6313bc99f23b2e1bdfd0701c19c578a19a1aecee6b5"
+    },
+    {
+      "track": "MVP",
+      "phase": "10",
+      "name": "Frontend Implementation",
+      "file": "01-mvp/MVP-P10-frontend-implementation.md",
+      "bytes": 37439,
+      "lines": 495,
+      "sha256": "50d0964a1bf058e531514063b5a3ddf33d35ca7fae0212a79529a9d1aabc253e"
+    },
+    {
+      "track": "MVP",
+      "phase": "11",
+      "name": "Backend Implementation",
+      "file": "01-mvp/MVP-P11-backend-implementation.md",
+      "bytes": 37504,
+      "lines": 495,
+      "sha256": "d18129393a58568f5e4f251d82b0b26ab8b21ee309f9418149f5ae96a60dfea6"
+    },
+    {
+      "track": "MVP",
+      "phase": "12",
+      "name": "AI, Agent, Memory, and Data-Pipeline Implementation",
+      "file": "01-mvp/MVP-P12-ai-agent-memory-and-data-pipeline-implementation.md",
+      "bytes": 37889,
+      "lines": 496,
+      "sha256": "91e8011a54f6557a7243c6ddca3b44f7a449c7322f56c89ef3e85adde5786e12"
+    },
+    {
+      "track": "MVP",
+      "phase": "13",
+      "name": "Security, Privacy, and Compliance",
+      "file": "01-mvp/MVP-P13-security-privacy-and-compliance.md",
+      "bytes": 37737,
+      "lines": 495,
+      "sha256": "11e9ebf64dc840fc2473ec0e8e6d29d2c246d3b2aa758a72f4a0f4aba8c60a74"
+    },
+    {
+      "track": "MVP",
+      "phase": "14",
+      "name": "Testing and Quality Engineering",
+      "file": "01-mvp/MVP-P14-testing-and-quality-engineering.md",
+      "bytes": 37701,
+      "lines": 495,
+      "sha256": "0374d5586478923d07102b3e86ca44446dd3221697df2219d7481d296938c483"
+    },
+    {
+      "track": "MVP",
+      "phase": "15",
+      "name": "Performance, Reliability, and Scalability",
+      "file": "01-mvp/MVP-P15-performance-reliability-and-scalability.md",
+      "bytes": 37386,
+      "lines": 495,
+      "sha256": "0fa5048969d665460cc0d3fc1d5616b6c7c4279b62b31dfeb41eeb43ac6e6caa"
+    },
+    {
+      "track": "MVP",
+      "phase": "16",
+      "name": "DevOps, Infrastructure, and CI/CD",
+      "file": "01-mvp/MVP-P16-devops-infrastructure-and-ci-cd.md",
+      "bytes": 37551,
+      "lines": 495,
+      "sha256": "98fbfcc586040c9ab68fd503642dd75ed1423f9cbc629e430b244d9819a95f0e"
+    },
+    {
+      "track": "MVP",
+      "phase": "17",
+      "name": "Observability and Operations",
+      "file": "01-mvp/MVP-P17-observability-and-operations.md",
+      "bytes": 37491,
+      "lines": 495,
+      "sha256": "eb5c77f43ba31db3a1908cb9c1f7129cb377faa7bc176cf486ffaed5a98896f1"
+    },
+    {
+      "track": "MVP",
+      "phase": "18",
+      "name": "Documentation and Knowledge Transfer",
+      "file": "01-mvp/MVP-P18-documentation-and-knowledge-transfer.md",
+      "bytes": 37531,
+      "lines": 495,
+      "sha256": "edae10f7ec658d130f39b050bb5b3fde2ea6c741d539a6c4038f811b99e93dc7"
+    },
+    {
+      "track": "MVP",
+      "phase": "19",
+      "name": "Release Readiness and Production Deployment",
+      "file": "01-mvp/MVP-P19-release-readiness-and-production-deployment.md",
+      "bytes": 37764,
+      "lines": 495,
+      "sha256": "139ebe5517f809a2f321220bfc045a1129b5c6390c8538d0bcfe8eacec6e536f"
+    },
+    {
+      "track": "MVP",
+      "phase": "20",
+      "name": "Post-Deployment Validation",
+      "file": "01-mvp/MVP-P20-post-deployment-validation.md",
+      "bytes": 37594,
+      "lines": 495,
+      "sha256": "0b75c2d77aff4d3c4bba5221f613152ecaa1ad2556b5ac6a54e3695c36787cf9"
+    },
+    {
+      "track": "MVP",
+      "phase": "21",
+      "name": "Maintenance and Continuous Improvement",
+      "file": "01-mvp/MVP-P21-maintenance-and-continuous-improvement.md",
+      "bytes": 37579,
+      "lines": 495,
+      "sha256": "3cdaab9172d2f3dc11956ae3e6cd81fa2c22cb3fd547d0323bcad85672350a97"
+    },
+    {
+      "track": "CONT",
+      "phase": "00",
+      "name": "MVP Handoff Validation and Migration Baseline",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P00-mvp-handoff-validation-and-migration-baseline.md",
+      "bytes": 35487,
+      "lines": 456,
+      "sha256": "357afbfaa48ab67efdbc4bf0cff24858a1cc1ee8766b393c3a9cd22be1b009c9"
+    },
+    {
+      "track": "CONT",
+      "phase": "01",
+      "name": "Enterprise-Readiness Evidence and Problem Definition",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P01-enterprise-readiness-evidence-and-problem-definition.md",
+      "bytes": 38150,
+      "lines": 496,
+      "sha256": "9e2de54aad0e3544bc95de89bf512c9ddaefd15680e65357542113cc20316773"
+    },
+    {
+      "track": "CONT",
+      "phase": "02",
+      "name": "Enterprise Capability Research and Design-Partner Discovery",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P02-enterprise-capability-research-and-design-partner-discovery.md",
+      "bytes": 38270,
+      "lines": 496,
+      "sha256": "421cda3f9080f810dcb8aab5ccec66ad63f37ad796cb7e1d55187f5c5d93c991"
+    },
+    {
+      "track": "CONT",
+      "phase": "03",
+      "name": "Delta Requirements, Compatibility, and Migration Contracts",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P03-delta-requirements-compatibility-and-migration-contracts.md",
+      "bytes": 38377,
+      "lines": 496,
+      "sha256": "3d255a19e82d41ac940b6594081c280b6e2df1f065361b9450ae97c03083ee92"
+    },
+    {
+      "track": "CONT",
+      "phase": "04",
+      "name": "Migration Program Planning, Waves, and Governance",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P04-migration-program-planning-waves-and-governance.md",
+      "bytes": 38068,
+      "lines": 496,
+      "sha256": "3cc506bed2041812f3f6e5bd6542387dd3f5ecbdc5e80cc68a98231e41ac3199"
+    },
+    {
+      "track": "CONT",
+      "phase": "05",
+      "name": "Target Architecture and Evolution ADRs",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P05-target-architecture-and-evolution-adrs.md",
+      "bytes": 38084,
+      "lines": 496,
+      "sha256": "087da593f9523e2996b939f77786112fddd0f06396a799093893a1fd365096dc"
+    },
+    {
+      "track": "CONT",
+      "phase": "06",
+      "name": "Platform, Toolchain, and Engineering-Standard Evolution",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P06-platform-toolchain-and-engineering-standard-evolution.md",
+      "bytes": 38095,
+      "lines": 496,
+      "sha256": "12712b287f1a9e213faa63f90d8cfca7345e54fceef08fdd82c754ac8e205f0a"
+    },
+    {
+      "track": "CONT",
+      "phase": "07",
+      "name": "Tenant, Data, Memory, and Knowledge Migration",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P07-tenant-data-memory-and-knowledge-migration.md",
+      "bytes": 38253,
+      "lines": 497,
+      "sha256": "950132eb22dd0281222487fa75c05e136f0ff300ba07a0b4dcbae27c58e22794"
+    },
+    {
+      "track": "CONT",
+      "phase": "08",
+      "name": "API, Event, Connector, and Contract Compatibility",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P08-api-event-connector-and-contract-compatibility.md",
+      "bytes": 38247,
+      "lines": 497,
+      "sha256": "09de849fd614c21bedf570c55fe561de6442a510bb972135434062fe919e0df2"
+    },
+    {
+      "track": "CONT",
+      "phase": "09",
+      "name": "UX, Consent, Admin, and Change-Experience Migration",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P09-ux-consent-admin-and-change-experience-migration.md",
+      "bytes": 38230,
+      "lines": 496,
+      "sha256": "a65944563a508159428bd79fb05c677f261a8eb397f1cb523f4a28a6ed45d09e"
+    },
+    {
+      "track": "CONT",
+      "phase": "10",
+      "name": "Frontend Coexistence and Progressive Migration",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P10-frontend-coexistence-and-progressive-migration.md",
+      "bytes": 38043,
+      "lines": 496,
+      "sha256": "75f1c43280ba1bb46f24304ebf44d733c50f84b9c5af5d59b43fd6f72a9b631d"
+    },
+    {
+      "track": "CONT",
+      "phase": "11",
+      "name": "Backend Service Evolution and Extraction",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P11-backend-service-evolution-and-extraction.md",
+      "bytes": 38057,
+      "lines": 496,
+      "sha256": "39a68af084c4c746f0100c9d67caea88fa404f0ebf082f51b7ee804ffd8fe13c"
+    },
+    {
+      "track": "CONT",
+      "phase": "12",
+      "name": "Agent, Model, Retrieval, and Memory-Taxonomy Migration",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P12-agent-model-retrieval-and-memory-taxonomy-migration.md",
+      "bytes": 38394,
+      "lines": 497,
+      "sha256": "39bd745c53df746e268c40b012d24bb8954def5ac5c9563131aee8670a8ba491"
+    },
+    {
+      "track": "CONT",
+      "phase": "13",
+      "name": "Security, Privacy, Compliance, and Identity Uplift",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P13-security-privacy-compliance-and-identity-uplift.md",
+      "bytes": 38286,
+      "lines": 496,
+      "sha256": "6f0f5d9dad3d696d41175c8a2da23e1c3ddcb4dcef292aba8fb702beb8e84799"
+    },
+    {
+      "track": "CONT",
+      "phase": "14",
+      "name": "Migration Testing, Reconciliation, and Certification",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P14-migration-testing-reconciliation-and-certification.md",
+      "bytes": 38264,
+      "lines": 496,
+      "sha256": "848759cbc6844c1c23095ac3ad78bac63426dad94cddd800b1df88cad124af25"
+    },
+    {
+      "track": "CONT",
+      "phase": "15",
+      "name": "Capacity, Cell, Resilience, and Disaster-Recovery Validation",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P15-capacity-cell-resilience-and-disaster-recovery-validation.md",
+      "bytes": 38046,
+      "lines": 496,
+      "sha256": "bc51e365de1fefc4e3165ed50a15c2e93c9e0e5b1525c8b31fc286102316f00d"
+    },
+    {
+      "track": "CONT",
+      "phase": "16",
+      "name": "Platform Migration, Infrastructure, and Delivery Automation",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P16-platform-migration-infrastructure-and-delivery-automation.md",
+      "bytes": 38147,
+      "lines": 496,
+      "sha256": "b08c8cc412f86252d4733dc39f33a5d1144712f5a120e16cc67d5d439576f5c9"
+    },
+    {
+      "track": "CONT",
+      "phase": "17",
+      "name": "Dual-Run Observability and Migration Operations",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P17-dual-run-observability-and-migration-operations.md",
+      "bytes": 38108,
+      "lines": 496,
+      "sha256": "61319797f65eddc1f4d6bc1bfde6e670b793af7f268fb82637eae1f74e3c7c38"
+    },
+    {
+      "track": "CONT",
+      "phase": "18",
+      "name": "Documentation, Training, and Organizational Change",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P18-documentation-training-and-organizational-change.md",
+      "bytes": 38090,
+      "lines": 496,
+      "sha256": "aa987808828e7b2c97ee50f64e933844edaff441b674b25da751d985846b47c9"
+    },
+    {
+      "track": "CONT",
+      "phase": "19",
+      "name": "Design-Partner Pilot, Cutover Readiness, and Release",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P19-design-partner-pilot-cutover-readiness-and-release.md",
+      "bytes": 38246,
+      "lines": 496,
+      "sha256": "b8baafd76268d8d993a1cf1bcc6efd2e07879d4a305af545a01e05e449ed3e9e"
+    },
+    {
+      "track": "CONT",
+      "phase": "20",
+      "name": "Pilot Validation, Rollback Decision, and Stabilization",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P20-pilot-validation-rollback-decision-and-stabilization.md",
+      "bytes": 38085,
+      "lines": 496,
+      "sha256": "9eab1d0d4ccc06af1a38440a97fa6f76fb33a9a66fb714bfdc77f1bd8506a488"
+    },
+    {
+      "track": "CONT",
+      "phase": "21",
+      "name": "Scale-Out, Legacy Retirement, and Continuous Optimization",
+      "file": "02-mvp-to-enterprise-continuation/CONT-P21-scale-out-legacy-retirement-and-continuous-optimization.md",
+      "bytes": 38172,
+      "lines": 496,
+      "sha256": "4d574fab374e5e2699873b6bc863ca305e70b9dae1cda6124c90d7934990551e"
+    },
+    {
+      "track": "ENT",
+      "phase": "00",
+      "name": "Intake and Existing-State Assessment",
+      "file": "03-enterprise/ENT-P00-intake-and-existing-state-assessment.md",
+      "bytes": 35480,
+      "lines": 455,
+      "sha256": "9a2f4b9afe1a7c8eb84b94e1f73bea2b92d500ebc2c016134b2b491fc39b3f08"
+    },
+    {
+      "track": "ENT",
+      "phase": "01",
+      "name": "Discovery and Problem Definition",
+      "file": "03-enterprise/ENT-P01-discovery-and-problem-definition.md",
+      "bytes": 38147,
+      "lines": 495,
+      "sha256": "4ab4c45587252f81a473c26d9e54c3101ab2d4f2a49de5ce2291c48a4e82eeb6"
+    },
+    {
+      "track": "ENT",
+      "phase": "02",
+      "name": "Research, Domain Analysis, and Data Discovery",
+      "file": "03-enterprise/ENT-P02-research-domain-analysis-and-data-discovery.md",
+      "bytes": 38212,
+      "lines": 495,
+      "sha256": "5831b986ecf585d50e5b1e2a4b22cfdf8b2314f84e297d9e85a5dfc2e9946c18"
+    },
+    {
+      "track": "ENT",
+      "phase": "03",
+      "name": "Requirements Engineering",
+      "file": "03-enterprise/ENT-P03-requirements-engineering.md",
+      "bytes": 38280,
+      "lines": 495,
+      "sha256": "e2262b036811794dc8f738ba917a0e20e868ebb4548b9401b9c7d3ffdb97bb34"
+    },
+    {
+      "track": "ENT",
+      "phase": "04",
+      "name": "Project Planning and Delivery Governance",
+      "file": "03-enterprise/ENT-P04-project-planning-and-delivery-governance.md",
+      "bytes": 38041,
+      "lines": 495,
+      "sha256": "9ba7052c5014fcd6b9529a0891cf3b8c42192ffa830ef96be1fc0a2c6deabcf7"
+    },
+    {
+      "track": "ENT",
+      "phase": "05",
+      "name": "Solution Architecture",
+      "file": "03-enterprise/ENT-P05-solution-architecture.md",
+      "bytes": 38040,
+      "lines": 495,
+      "sha256": "fc2efb8885cce7bf0174befa380b13648964dafad12bae104bbfee3f471c33a7"
+    },
+    {
+      "track": "ENT",
+      "phase": "06",
+      "name": "Technology Stack and Engineering Standards",
+      "file": "03-enterprise/ENT-P06-technology-stack-and-engineering-standards.md",
+      "bytes": 38074,
+      "lines": 495,
+      "sha256": "539b6c0afdebb5077beb714b683d3f57804beaa038895c90c9568b48555b68d5"
+    },
+    {
+      "track": "ENT",
+      "phase": "07",
+      "name": "Data Architecture and Database Design",
+      "file": "03-enterprise/ENT-P07-data-architecture-and-database-design.md",
+      "bytes": 38233,
+      "lines": 496,
+      "sha256": "63976e66853ae5b837a66753e26e9fc3a244fe5ee7f03cc4b2762f3f4f308971"
+    },
+    {
+      "track": "ENT",
+      "phase": "08",
+      "name": "API, Integration, and Contract Design",
+      "file": "03-enterprise/ENT-P08-api-integration-and-contract-design.md",
+      "bytes": 38193,
+      "lines": 496,
+      "sha256": "d1c4ea86f0e23dc684d28fd4449a14f3811e367cdf897bf96bf68a6e3d38d61c"
+    },
+    {
+      "track": "ENT",
+      "phase": "09",
+      "name": "UI/UX and Design System",
+      "file": "03-enterprise/ENT-P09-ui-ux-and-design-system.md",
+      "bytes": 38109,
+      "lines": 495,
+      "sha256": "bb19439d75f3579ede4de4b9b4aeefcd6ff3d314a4b0c181395bf5b0e863df2e"
+    },
+    {
+      "track": "ENT",
+      "phase": "10",
+      "name": "Frontend Implementation",
+      "file": "03-enterprise/ENT-P10-frontend-implementation.md",
+      "bytes": 37969,
+      "lines": 495,
+      "sha256": "2f762eef57eda138b038a2f2eeca006e0b2453f761105e543905bd799cd4575e"
+    },
+    {
+      "track": "ENT",
+      "phase": "11",
+      "name": "Backend Implementation",
+      "file": "03-enterprise/ENT-P11-backend-implementation.md",
+      "bytes": 38073,
+      "lines": 495,
+      "sha256": "f02a865a25a665bbc00690784c73a535a2ed93358ba73279e88c466b41cba662"
+    },
+    {
+      "track": "ENT",
+      "phase": "12",
+      "name": "AI, Agent, Memory, and Data-Pipeline Implementation",
+      "file": "03-enterprise/ENT-P12-ai-agent-memory-and-data-pipeline-implementation.md",
+      "bytes": 38449,
+      "lines": 496,
+      "sha256": "25cce45abcde8499fa1cc390e0cb577193f355e2238cae104b37022a10ee3c1b"
+    },
+    {
+      "track": "ENT",
+      "phase": "13",
+      "name": "Security, Privacy, and Compliance",
+      "file": "03-enterprise/ENT-P13-security-privacy-and-compliance.md",
+      "bytes": 38261,
+      "lines": 495,
+      "sha256": "98bfbee07ca3b1f303c15d05c07b03169bb629a611986a0c51a9c670321ea865"
+    },
+    {
+      "track": "ENT",
+      "phase": "14",
+      "name": "Testing and Quality Engineering",
+      "file": "03-enterprise/ENT-P14-testing-and-quality-engineering.md",
+      "bytes": 38231,
+      "lines": 495,
+      "sha256": "dcd8087e69d39d9016105fdd44a9690253e4408929a29dc81fe2951967ba19e5"
+    },
+    {
+      "track": "ENT",
+      "phase": "15",
+      "name": "Performance, Reliability, and Scalability",
+      "file": "03-enterprise/ENT-P15-performance-reliability-and-scalability.md",
+      "bytes": 37964,
+      "lines": 495,
+      "sha256": "87a56420f578499dfaf70dd75ee042ef4a85dac95d42e68d0763118f151e588a"
+    },
+    {
+      "track": "ENT",
+      "phase": "16",
+      "name": "DevOps, Infrastructure, and CI/CD",
+      "file": "03-enterprise/ENT-P16-devops-infrastructure-and-ci-cd.md",
+      "bytes": 38105,
+      "lines": 495,
+      "sha256": "57367884f807a2305deb801b85ec109f74f2d3ec14e962410ca35df11254ee19"
+    },
+    {
+      "track": "ENT",
+      "phase": "17",
+      "name": "Observability and Operations",
+      "file": "03-enterprise/ENT-P17-observability-and-operations.md",
+      "bytes": 38051,
+      "lines": 495,
+      "sha256": "e595b1c62ac982e4084983b589b135c5816f6346403214ed81f15506399e6ae6"
+    },
+    {
+      "track": "ENT",
+      "phase": "18",
+      "name": "Documentation and Knowledge Transfer",
+      "file": "03-enterprise/ENT-P18-documentation-and-knowledge-transfer.md",
+      "bytes": 38064,
+      "lines": 495,
+      "sha256": "5b169602d79679af90b430334fe2178bd2e1ec595d096d267b2051475d99da4c"
+    },
+    {
+      "track": "ENT",
+      "phase": "19",
+      "name": "Release Readiness and Production Deployment",
+      "file": "03-enterprise/ENT-P19-release-readiness-and-production-deployment.md",
+      "bytes": 38255,
+      "lines": 495,
+      "sha256": "6fe56c73de5de40905c5e1da8e1af0677ed124beb6d482a234cafcd5a097ecc2"
+    },
+    {
+      "track": "ENT",
+      "phase": "20",
+      "name": "Post-Deployment Validation",
+      "file": "03-enterprise/ENT-P20-post-deployment-validation.md",
+      "bytes": 38079,
+      "lines": 495,
+      "sha256": "dfc73cf5988f0b505757eb19081162f52597e87d387227c758594ba7d39f9d90"
+    },
+    {
+      "track": "ENT",
+      "phase": "21",
+      "name": "Maintenance and Continuous Improvement",
+      "file": "03-enterprise/ENT-P21-maintenance-and-continuous-improvement.md",
+      "bytes": 38121,
+      "lines": 495,
+      "sha256": "0e1817090f96fb627cb508eb5d4f07b4817fd4a504a652d2fcce6416f45912ea"
+    }
+  ]
+}
