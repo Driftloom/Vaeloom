@@ -45,9 +45,10 @@
 
 ## Backend — Test State
 
-- **2353 tests pass**, 2 xfailed, 0 failures (suite grew with P11: approval API,
-  idempotency, migrations, openapi-sync, gmail watch/drafts)
-- **All source files 100% coverage** (verified individually)
+- **2333 tests pass, 2 xfailed, 0 failures** (measured 2026-08-12 @ `3ad6bca` —
+  full suite green: `python -m pytest tests/ -q`; security suite 172/172;
+  coverage 94% total — see
+  `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`)
 - Python 3.14 (note: `__athrow__` removed from async generators, use `athrow()`)
 - Tests use SQLite with mock backend; `mock_llm` + `mock_connector_test` autouse
   fixtures in conftest.py

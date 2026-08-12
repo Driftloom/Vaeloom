@@ -2,7 +2,7 @@
 
 > **Role:** Live status overlay for the source-of-truth prompt package. This
 > file tracks which of the 66 prompts have been executed, where the evidence
-> lives, and what is next. **Last updated:** 2026-08-11 Evidence location
+> lives, and what is next. **Last updated:** 2026-08-12 Evidence location
 > convention: `docs/phases/<track>-pXX/` (e.g.
 > `docs/phases/mvp-p01/06-gate-report.md`).
 
@@ -18,28 +18,28 @@
 
 | Prompt                                                  | Status         | Evidence / Notes                                                                                                                                                                                                                              |
 | ------------------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MVP-P00 Intake and Existing-State Assessment            | ✅ GO          | `docs/phases/mvp-p00/` — gate report, registers, handoff                                                                                                                                                                                      |
-| MVP-P01 Discovery and Problem Definition                | ✅ GO          | `docs/phases/mvp-p01/`                                                                                                                                                                                                                        |
-| MVP-P02 Research, Domain Analysis, Data Discovery       | ✅ GO          | `docs/phases/mvp-p02/`                                                                                                                                                                                                                        |
-| MVP-P03 Requirements Engineering                        | ✅ GO          | `docs/phases/mvp-p03/`                                                                                                                                                                                                                        |
-| MVP-P04 Project Planning and Delivery Governance        | ✅ GO          | `docs/phases/mvp-p04/`                                                                                                                                                                                                                        |
-| MVP-P05 Solution Architecture                           | ✅ GO          | `docs/phases/mvp-p05/`                                                                                                                                                                                                                        |
-| MVP-P06 Technology Stack and Engineering Standards      | ✅ GO          | `docs/phases/mvp-p06/`                                                                                                                                                                                                                        |
-| MVP-P07 Data Architecture and Database Design           | ✅ GO          | `docs/phases/mvp-p07/`                                                                                                                                                                                                                        |
-| MVP-P08 API, Integration, and Contract Design           | ✅ GO          | `docs/phases/mvp-p08/`                                                                                                                                                                                                                        |
-| MVP-P09 UI/UX and Design System                         | ✅ GO          | `docs/phases/mvp-p09/`                                                                                                                                                                                                                        |
-| MVP-P10 Frontend Implementation                         | ✅ GO          | `docs/phases/mvp-p10/` + handoff `10-handoff-to-p11.md`                                                                                                                                                                                       |
-| MVP-P11 Backend Implementation | 🔄 IN PROGRESS | Batch 1 (`bfae40f`): approval API, idempotency middleware, migration runner 0003–0006, memory taxonomy/supersession, static OpenAPI (76 paths). Batch 2 (`pending commit`): Gmail watch lifecycle + draft-only API (`/gmail/watch` start/status/stop, `/gmail/drafts` create/list, `/gmail/webhook` push verification), migration 0007, OpenAPI 79 paths. Remaining: consent/GDPR verification wiring (routers + tests + spec already present — verified), phase gate report + handoff |
-| MVP-P12 AI, Agent, Memory, Data-Pipeline Implementation | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
-| MVP-P13 Security, Privacy, Compliance                   | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
-| MVP-P14 Testing and Quality Engineering                 | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
-| MVP-P15 Performance, Reliability, Scalability           | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
-| MVP-P16 DevOps, Infrastructure, CI/CD                   | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
-| MVP-P17 Observability and Operations                    | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
-| MVP-P18 Documentation and Knowledge Transfer            | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
-| MVP-P19 Release Readiness and Production Deployment     | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
-| MVP-P20 Post-Deployment Validation                      | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
-| MVP-P21 Maintenance and Continuous Improvement          | ⬜ NOT STARTED |                                                                                                                                                                                                                                               |
+| MVP-P00 Intake and Existing-State Assessment            | 🔄 IN PROGRESS | `docs/phases/mvp-p00/` — deliverables + re-run gate `09-gate-2026-08-12.md` (73.79 → completion-pass re-score **75.69/100** §8; prompt paperwork closed via files 10–14); **user verdict pending — no downstream phase starts until user command** |
+| MVP-P01 Discovery and Problem Definition                | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P02 Research, Domain Analysis, Data Discovery       | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P03 Requirements Engineering                        | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P04 Project Planning and Delivery Governance        | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P05 Solution Architecture                           | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P06 Technology Stack and Engineering Standards      | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P07 Data Architecture and Database Design           | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P08 API, Integration, and Contract Design           | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P09 UI/UX and Design System                         | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P10 Frontend Implementation                         | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P11 Backend Implementation | ⬜ NOT STARTED | (code committed `bfae40f`+`929e659`+`3ad6bca`; phase gate re-run only on user command)                                                                                     |
+| MVP-P12 AI, Agent, Memory, Data-Pipeline Implementation | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P13 Security, Privacy, Compliance                   | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P14 Testing and Quality Engineering                 | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P15 Performance, Reliability, Scalability           | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P16 DevOps, Infrastructure, CI/CD                   | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P17 Observability and Operations                    | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P18 Documentation and Knowledge Transfer            | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P19 Release Readiness and Production Deployment     | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P20 Post-Deployment Validation                      | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P21 Maintenance and Continuous Improvement          | ⬜ NOT STARTED |                                                                                                                                                                               |
 
 ## Track 2 — MVP-to-Enterprise Continuation (`02-mvp-to-enterprise-continuation/`)
 
@@ -55,8 +55,10 @@
 
 ## Next Actions
 
-1. Complete MVP-P11 batch 2: consent/GDPR verification wiring + Gmail watcher
-   draft endpoints.
-2. Produce the MVP-P11 gate report + handoff to P12 per the prompt contract
-   (`01-mvp/MVP-P11-backend-implementation.md`).
-3. Continue MVP-P12 (AI, agent, memory, data pipeline).
+1. **MVP-P00 is the ONLY active phase (🔄 IN PROGRESS).** Gate verdict
+   (`09-gate-2026-08-12.md`, re-scored **75.69/100** on completion pass, suite
+   fully green) is on file — **USER must give the verdict** ("GO" to close P00).
+2. After P00 closes, **MVP-P01 starts only on user command** — then each
+   following phase likewise starts only on user command, one at a time.
+3. All other phases (P01–P21, CONT-P00…21, ENT-P00…21): **⬜ NOT STARTED —
+   DO NOT GO** until their predecessor gate passes and the user commands start.

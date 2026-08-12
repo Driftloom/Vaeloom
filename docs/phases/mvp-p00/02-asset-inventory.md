@@ -1,28 +1,29 @@
 # MVP-P00 — 02. Asset and Access Inventory
 
 > **Phase:** MVP-P00 — Intake and Existing-State Assessment **Baseline:** repo
-> `master` @ `bea5fe8c381d435f89352a51c61c0e9fc87b232a` (ahead 4) **Status:**
-> INVENTORY COMPLETE (on-disk evidence 2026-08-06); access/owners partially
-> `TO_BE_VERIFIED` **Register root:** `docs/phases/mvp-p00/`
+> `master` @ `3ad6bca68ca827050cb0e1c4c323f2ba4fee88ac` (in sync with origin,
+> re-verified 2026-08-12) **Status:** INVENTORY COMPLETE (on-disk evidence
+> re-verified 2026-08-12); access/owners partially `TO_BE_VERIFIED` **Register
+> root:** `docs/phases/mvp-p00/`
 
 ## 1. Repository snapshot
 
-| Item                     | Value                                                                                                                                                                                         |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Branch                   | `master` (tracks `origin/master`, **ahead 4** — 4 unpushed commits)                                                                                                                           |
-| HEAD                     | `bea5fe8c381d435f89352a51c61c0e9fc87b232a`                                                                                                                                                    |
-| Recent history           | S12–S15 docs restructure; S11 Docs→docs; S3–S10 dir consolidation; CI/CD + ops + compliance; web e2e/components; backend middleware/services/agents + 150+ tests                              |
-| Workspace                | pnpm 9.x monorepo; Nx 20 (nx.json); `pnpm-workspace.yaml` covers apps/_, packages/_, sdk/_, integrations/_, connectors/_, plugins/_, infra/_, scripts/_, testing/*                            |
-| Stack (verified in code) | Next.js 15 (web), FastAPI (backend, Python ≥3.12, tested on 3.14.6), SQLAlchemy async, PostgreSQL/pgvector (mocked to SQLite in tests), Redis, Alembic, OpenTelemetry (import-broken locally) |
+| Item                     | Value                                                                                                                                                                                          |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Branch                   | `master` (tracks `origin/master`, **0 ahead / 0 behind** — pushed)                                                                                                                             |
+| HEAD                     | `3ad6bca68ca827050cb0e1c4c323f2ba4fee88ac` (`fix(web,e2e): harden login/sidebar flows + stabilize e2e suite (39/39)`)                                                                          |
+| Recent history           | P11 batch 2 (`929e659` gmail watch + draft-only API, migration 0007); e2e hardening (`3ad6bca` — 39/39); 66-prompt pack placement + pristine restore (`f7b03fc`, `d09fa07`)                    |
+| Workspace                | pnpm 9.x monorepo; Nx 20 (nx.json); `pnpm-workspace.yaml` covers apps/_, packages/_, sdk/_, integrations/_, connectors/_, plugins/_, infra/_, scripts/_, testing/*                             |
+| Stack (verified in code) | Next.js 15 (web), FastAPI (backend, Python ≥3.12, tested on 3.14.6), SQLAlchemy async, PostgreSQL/pgvector (mocked to SQLite in tests), Redis, Alembic, OpenTelemetry (OTEL disabled in tests) |
 
 ## 2. Asset inventory (on-disk, excluding node_modules/build artifacts)
 
 ### 2.1 apps
 
-| Asset          | Files                                                        | Purpose                                                                                                                                                                                                                                                                     | Status                                                        |
-| -------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `apps/web`     | ~489 (app, components, hooks, i18n, lib, store, styles, e2e) | Next.js 15 frontend; 23 route dirs under `src/app/workspace/[workspaceId]/` (chat, memory, resume, jobs, schedule, files, connectors, applications, settings, admin, billing, marketplace, organizations, developer, history, notifications, feature-flags, status, (auth)) | IMPLEMENTED_UNVERIFIED (unit tests failing; e2e not runnable) |
-| `apps/backend` | 202 `.py` source (src/backend), 124 test files               | FastAPI: agents (23 dirs), orchestrator (base/loop/router/state), memory (agent + services + versioning), ingestion, models, schemas, routers (24), services (42), middleware (10), tools, workers, prompts, infrastructure, alembic (2 migrations)                         | IMPLEMENTED (2193 tests pass; 47 env-caused fails)            |
+| Asset          | Files                                                                     | Purpose                                                                                                                                                                                                                                                                          | Status                                                                                 |
+| -------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `apps/web`     | ~489 (src/app 23 pages, components, hooks, i18n, lib, store, styles, e2e) | Next.js 15 frontend; 23 page routes under `src/app/workspace/[workspaceId]/` (chat, memory, resume, jobs, schedule, files, connectors, applications, settings, admin, billing, marketplace, organizations, developer, history, notifications, feature-flags, status, (auth))     | IMPLEMENTED_WITH_EVIDENCE (jest 37/37, e2e 39/39, typecheck + lint clean — 2026-08-12) |
+| `apps/backend` | 217 `.py` source (src/backend), 130 test files                            | FastAPI: agents (23 dirs + memory pkg under `agents/`), orchestrator (base/loop/router/state), memory (agent + services + versioning), ingestion, models, schemas, routers (26), services (46), middleware (12), tools, workers, prompts, infrastructure, alembic (7 migrations) | IMPLEMENTED_WITH_EVIDENCE (2333 passed / 0 failed / 2 xfailed — 2026-08-12)            |
 
 ### 2.2 packages (9)
 
@@ -70,7 +71,7 @@ tests, audit scripts.
 
 | Corpus                               | Count                                                                                                                                                                            |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/` tree                         | 295 `.md` files; 20 ADRs (`docs/adr/`); canonical 01–06 at root; gap/completion reports at root                                                                                  |
+| `docs/` tree                         | 492 `.md` files; 20 ADRs (`docs/adr/`); canonical 01–06 at root; gap/completion reports at root                                                                                  |
 | `docs/agents/mvp/agent-inventory.md` | Agent inventory (unverified vs repo)                                                                                                                                             |
 | Downloads corpus (outside repo)      | `vaeloom-mvp-e2e.md`, `vaeloom-mvp-e2e-enterprise-hardened.md`, `vaeloom-enterprise-e2e.md`, `vaeloom-mvp-phase-prompts.md`, 66-prompt pack, 3-track gatekeeper deliverables zip |
 
@@ -103,17 +104,20 @@ tests, audit scripts.
 2. **Enterprise features present in repo** (CF-05/06): billing, marketplace,
    admin, webhooks, SSO/SAML/SCIM services, enterprise agents — all outside MVP
    scope. MVP build must keep them disabled/unshipable.
-3. **Ahead-4 unpushed commits** — baseline must be pushed or documented before
-   P01 to make evidence reproducible.
-4. **No prior phase-gate artifacts exist** in repo (no
-   registers/scorecards/handoffs) — P00 is first gate artifact set.
-5. **Docs corpus is mature (256+ docs, 20 ADRs) but documentation ≠ runtime** —
+3. **Baseline in sync** — `master` @ `3ad6bca` pushed to origin (0/0,
+   2026-08-12); evidence reproducible.
+4. **No prior phase-gate artifacts existed** before P00; the P00 set is the
+   first gate artifact set (01–09).
+5. **Docs corpus is mature (492 docs, 20 ADRs) but documentation ≠ runtime** —
    maturity matrix in 03 separates the two.
+6. **Coverage honesty** — fresh `--cov` run measures **94%** total (641 missing
+   lines); lowest: `webhook_service` 64%, `middleware/tenant` 68%,
+   `admin_console` 72%, `sso` 74%, `retention` 79% (see 03 §2.3; RISK-P00-13).
 
 ## 5. Evidence commands
 
 ```text
 git status --short --branch ; git rev-parse HEAD ; git log -n 10 --oneline
 # inventory: Get-ChildItem apps, packages, infra, testing, connectors, integrations, plugins, sdk, docs
-# counts: 202 backend .py, 124 test files, 489 web files, 295 docs, 11 workflows, 20 ADRs
+# counts: 217 backend .py, 130 test files, 489 web files, 492 docs, 11 workflows, 20 ADRs
 ```
