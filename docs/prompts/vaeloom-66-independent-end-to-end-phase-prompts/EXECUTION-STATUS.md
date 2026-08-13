@@ -18,7 +18,7 @@
 
 | Prompt                                                  | Status         | Evidence / Notes                                                                                                                                                                                                                              |
 | ------------------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MVP-P00 Intake and Existing-State Assessment            | 🔄 IN PROGRESS | `docs/phases/mvp-p00/` — deliverables + re-run gate `09-gate-2026-08-12.md` (73.79 → completion-pass re-score **75.69/100** §8; prompt paperwork closed via files 10–14); **user verdict pending — no downstream phase starts until user command** |
+| MVP-P00 Intake and Existing-State Assessment            | COMPLETE (conditionally approved 2026-08-13) | `docs/phases/mvp-p00/` - deliverables + re-run gate `09-gate-2026-08-12.md` (**75.69/100**, re-score block; prompt paperwork closed via files 10-14); **user verdict 2026-08-13: ACCEPTED** -> PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY (13-readiness-and-done.md); plans moved progress/ -> completed/ |
 | MVP-P01 Discovery and Problem Definition                | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
 | MVP-P02 Research, Domain Analysis, Data Discovery       | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
 | MVP-P03 Requirements Engineering                        | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
@@ -55,10 +55,11 @@
 
 ## Next Actions
 
-1. **MVP-P00 is the ONLY active phase (🔄 IN PROGRESS).** Gate verdict
-   (`09-gate-2026-08-12.md`, re-scored **75.69/100** on completion pass, suite
-   fully green) is on file — **USER must give the verdict** ("GO" to close P00).
-2. After P00 closes, **MVP-P01 starts only on user command** — then each
+1. **MVP-P00 CLOSED 2026-08-13** — USER accepted the completion-pass verdict:
+   `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY` (restrictions in
+   `13-readiness-and-done.md`; gate `09-gate-2026-08-12.md` re-score
+   **75.69/100**). Plans executed and moved to `.agents/plans/completed/`.
+2. **MVP-P01 starts only on user command** — then each
    following phase likewise starts only on user command, one at a time.
 3. All other phases (P01–P21, CONT-P00…21, ENT-P00…21): **⬜ NOT STARTED —
    DO NOT GO** until their predecessor gate passes and the user commands start.

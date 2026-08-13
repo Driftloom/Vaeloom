@@ -1,9 +1,11 @@
 # MVP-P00 — Completion Plan: Finish All P00-Owned Prompt Items (2026-08-12)
 
-> **Status:** ✅ APPROVED BY USER — EXECUTED 2026-08-12 (user: "proceed broh
-> complete all the things end to end"). Execution recorded as DEC-P00-08
-> (register 04). Superseded post-execution by the zero-trust audit pass. **Scope
-> (user-approved model):** Only P00-owned items from
+> **Status:** [MOVED TO completed/ 2026-08-13 - USER ACCEPTED verdict: PHASE
+> CONDITIONALLY APPROVED - RESTRICTIONS APPLY] ✅ APPROVED BY USER — EXECUTED
+> 2026-08-12 (user: "proceed broh complete all the things end to end").
+> Execution recorded as DEC-P00-08 (register 04). Superseded post-execution by
+> the zero-trust audit pass. **Scope (user-approved model):** Only P00-owned
+> items from
 > `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P00-intake-and-existing-state-assessment.md`.
 > Nothing from later phases is pulled in. One phase at a time; every phase
 > starts only on user command. **Baseline:**
