@@ -13,7 +13,7 @@
 
 | Item                                                                             | Where                                     |
 | -------------------------------------------------------------------------------- | ----------------------------------------- |
-| Evidence plan (EVD-MVP-P01-001..022, cohort, JTBD, metrics, non-goals)           | `03-evidence-plan.md`                     |
+| Evidence plan (EVD-MVP-P01-001..025, cohort, JTBD, metrics, non-goals)           | `03-evidence-plan.md`                     |
 | Personas PA-01..03 (spec-derived; live validation REQUIRES_STAKEHOLDER_DECISION) | `10-persona-jtbd-evidence.md`             |
 | Problem statements + constraints                                                 | `09-problem-statement.md`                 |
 | Hypotheses H-01..08 (falsifiable)                                                | `11-value-risk-hypotheses.md`             |

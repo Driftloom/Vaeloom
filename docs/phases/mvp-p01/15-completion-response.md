@@ -38,7 +38,7 @@ execution agent; gate authority = USER (sole approver, BQ-01). Prior run
 | Req | Domain           | Status                       | Evidence                                                                                             |
 | --- | ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
 | R01 | Scope            | VERIFIED                     | BQ-01..06 statused; DEL-01..05; wedge validated without PMF claim                                    |
-| R02 | Evidence         | VERIFIED                     | EVD-MVP-P01-001..022; every claim labeled; UNKNOWN kept                                              |
+| R02 | Evidence         | VERIFIED                     | EVD-MVP-P01-001..025; every claim labeled; UNKNOWN kept                                              |
 | R03 | Security/Privacy | VERIFIED (design)            | 8 risks owned; 9 constraints; no unresolved critical finding; live research consent protocol defined |
 | R04 | Quality          | PARTIAL (runs owned by P02+) | 8 hypotheses with falsification tests; no runtime runs in discovery                                  |
 | R05 | Operations       | PARTIAL                      | Ops metrics defined (M-01..18); runbook/telemetry evidence = P15/P17                                 |
@@ -62,15 +62,16 @@ No source code, configuration, migration or environment changes. Docs-only phase
 
 ## G. Deliverables
 
-| ID             | File                               | Status       |
-| -------------- | ---------------------------------- | ------------ |
-| DEL-MVP-P01-01 | `09-problem-statement.md`          | done, linked |
-| DEL-MVP-P01-02 | `10-persona-jtbd-evidence.md`      | done, linked |
-| DEL-MVP-P01-03 | `11-value-risk-hypotheses.md`      | done, linked |
-| DEL-MVP-P01-04 | `12-success-metrics.md`            | done, linked |
-| DEL-MVP-P01-05 | `13-non-goals-research-backlog.md` | done, linked |
-| Registers      | 01-05 refreshed; 06/07 historical  | done, linked |
-| Gate + handoff | 14-gate, 08-handoff, README        | done, linked |
+| ID               | File                                                  | Status       |
+| ---------------- | ----------------------------------------------------- | ------------ |
+| DEL-MVP-P01-01   | `09-problem-statement.md`                             | done, linked |
+| DEL-MVP-P01-02   | `10-persona-jtbd-evidence.md`                         | done, linked |
+| DEL-MVP-P01-03   | `11-value-risk-hypotheses.md`                         | done, linked |
+| DEL-MVP-P01-04   | `12-success-metrics.md`                               | done, linked |
+| DEL-MVP-P01-05   | `13-non-goals-research-backlog.md`                    | done, linked |
+| Registers        | 01-05 refreshed; 06/07 historical                     | done, linked |
+| §7/§10 artifacts | 17-input-readiness-matrix, 18-enterprise-completeness | done, linked |
+| Gate + handoff   | 14-gate, 08-handoff, README                           | done, linked |
 
 ## H. Test Results
 
@@ -95,7 +96,7 @@ reminder on-time rate, queue lag, availability, unit cost). No runtime evidence
 
 ## K. Traceability
 
-EVD-MVP-P01-001..022 with claim -> requirement -> type -> location -> result ->
+EVD-MVP-P01-001..025 with claim -> requirement -> type -> location -> result ->
 date -> verified-by. Registers 01-05 + README + 08-handoff interlink; P00 chain
 intact.
 

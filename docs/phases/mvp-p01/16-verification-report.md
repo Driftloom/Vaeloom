@@ -11,8 +11,9 @@
 
 ## 1. Audit method (no trust)
 
-1. Enumerate every file in `docs/phases/mvp-p01/` (16 present; git clean at
-   `8e932de` before this audit, re-committed after fixes).
+1. Enumerate every file in `docs/phases/mvp-p01/` (18 present at closure:
+   01-18 + README; git clean at `89c1e8d` before this completion pass,
+   re-committed after).
 2. Read all files in full (01–15 + README) and the plan file
    (`.agents/plans/progress/mvp-p01-rerun-2026-08-13.md`).
 3. Count every ID class (evidence, audit, risk, decision, question, unknown,
@@ -31,7 +32,7 @@
 
 | ID class (file)                | Counted | Stated (14/15/README/08) | Verdict |
 | ------------------------------ | ------: | -----------------------: | ------- |
-| EVD-MVP-P01-001…022 (03)       |      22 |                       22 | ✅      |
+| EVD-MVP-P01-001…025 (03)       |      25 |                       25 | ✅      |
 | PA-MVP-P01-001…012 (02)        |      12 |                       12 | ✅      |
 | RISK-MVP-P01-01…08 (04)        |       8 |                        8 | ✅      |
 | DEC-P01-01…08 (04)             |       8 |                        8 | ✅      |
