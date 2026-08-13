@@ -4,11 +4,12 @@
 > execution contract **Governing sources:** INT-02 (canonical for MVP,
 > DEC-P00-06) · INT-05 (MVP scope) · gatekeeper compendiums (INT-01 substitute,
 > user decision 2026-08-07) **Phase type:** DISCOVERY (docs/research/planning
-> only — no production/dependent authorization) **Status:** ⚠️ RE-RUN GATED
-> 2026-08-13 — **74.89/100** (`14-gate-2026-08-13.md`) — recommendation
-> `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY`; **final verdict = USER**
-> (sole gate authority, BQ-01). Prior run (2026-08-07, CONDITIONAL GO 88/100)
-> superseded by DEC-P01-06; history preserved (`06-gate-2026-08-07.md`,
+> only — no production/dependent authorization) **Status:** ✅ **CLOSED
+> 2026-08-13** — re-run gate **74.89/100** (`14-gate-2026-08-13.md`) accepted by
+> USER: `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY` (DEC-P01-09);
+> zero-trust audit `16-verification-report.md`; P02 starts only on user command.
+> Prior run (2026-08-07, CONDITIONAL GO 88/100) superseded by DEC-P01-06;
+> history preserved (`06-gate-2026-08-07.md`,
 > `07-research-brief-2026-08-07.md`).
 
 ## Entry criteria (P00 handoff §4)
@@ -38,8 +39,9 @@
 | 11  | `11-value-risk-hypotheses.md`             | DEL-MVP-P01-03 — H-01..08 falsifiable hypotheses                          |
 | 12  | `12-success-metrics.md`                   | DEL-MVP-P01-04 — M-01..18 metrics + 9 non-goals                           |
 | 13  | `13-non-goals-research-backlog.md`        | DEL-MVP-P01-05 — RB-01..05 research/remediation backlog                   |
-| 14  | `14-gate-2026-08-13.md`                   | RE-RUN gate 74.89/100 (verdict = USER)                                    |
+| 14  | `14-gate-2026-08-13.md`                   | Re-run gate 74.89/100 — ACCEPTED by USER 2026-08-13 (DEC-P01-09)          |
 | 15  | `15-completion-response.md`               | Completion response (prompt §30, A-P)                                     |
+| 16  | `16-verification-report.md`               | Zero-trust end-to-end audit (2026-08-13)                                  |
 
 ## Workstreams (prompt §11)
 

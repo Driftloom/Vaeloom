@@ -132,5 +132,9 @@ entry criteria. P02 must re-gate >=88; starts only on USER command.
 
 ## P. Final Statement
 
-**`PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY`** (recommended; final
-decision = USER, sole gate authority BQ-01).
+**`PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY`** — **ACCEPTED BY USER
+2026-08-13** (sole gate authority, BQ-01; DEC-P01-09). P01 is CLOSED; the
+zero-trust audit (`16-verification-report.md`) confirmed the gate with no score
+change. No downstream phase starts without a user command; no
+production/dependent authorization; discovery outputs remain plans/hypotheses,
+not runtime proof.

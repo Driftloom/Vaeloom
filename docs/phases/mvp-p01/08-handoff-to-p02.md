@@ -1,12 +1,13 @@
 # MVP-P01 — 08. Handoff to MVP-P02 (Research, Domain Analysis & Data Discovery)
 
 > **Phase:** MVP-P01 → MVP-P02 **Date:** 2026-08-13 (re-run) **Baseline:** repo
-> `master` @ `1def16d` (pushed 0/0) **Gate state:** ⚠️ re-run gated
-> **74.89/100** (`14-gate-2026-08-13.md`) — recommendation
-> `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY`; **final verdict = USER
-> (sole gate authority, BQ-01)**. P02 starts ONLY on user command. Prior run
-> (2026-08-07, CONDITIONAL GO 88/100) superseded by DEC-P01-06; history
-> preserved (`06-gate-2026-08-07.md`, `07-research-brief-2026-08-07.md`).
+> `master` @ `1def16d` (pushed 0/0) **Gate state:** ✅ **ACCEPTED BY USER
+> 2026-08-13** — `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY` (74.89/100,
+> `14-gate-2026-08-13.md`; DEC-P01-09; zero-trust audit confirmed
+> `16-verification-report.md`). **P01 CLOSED. P02 starts ONLY on user command.**
+> Prior run (2026-08-07, CONDITIONAL GO 88/100) superseded by DEC-P01-06;
+> history preserved (`06-gate-2026-08-07.md`,
+> `07-research-brief-2026-08-07.md`).
 
 ## 1. What P02 receives (validated)
 
