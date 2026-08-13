@@ -8,7 +8,9 @@
 > P01. Score 71.05/100 (GO threshold ≥95, conditional ≥88; remediation R1–R8
 > complete, blockers cleared). Re-run 2026-08-12: 73.79/100 — verdict unchanged,
 > evidence refreshed. Completion-pass re-score 2026-08-12: **75.69/100** (09 §8
-> — prompt paperwork closed via files 10–14; verdict still pending user).
+> — prompt paperwork closed via files 10–14; verdict still pending user;
+> EXECUTION-STATUS: P00 IN PROGRESS - no downstream phase starts until user
+> command).
 
 ## 1. What P01 receives (validated, do not re-invent)
 

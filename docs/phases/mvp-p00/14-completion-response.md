@@ -32,7 +32,7 @@
 
 ## C. Sources
 
-- 19 internal INT-01…11 + 17 external EXT-01…17 — `01-source-register.md`
+- 12 internal INT-01…12 + 19 external EXT-01…19 — `01-source-register.md`
   (hashes pinned, conflicts CF-01…06 owned).
 - Authority order: INT-02 §0.2 governs MVP execution (DEC-P00-06); repo reality
   outranks prompt skeleton dirs (DEC-P00-02); measured evidence outranks stale
@@ -126,10 +126,11 @@
 
 ## L. Risks / Decisions
 
-- 13 risks (5 OPEN incl. RISK-P00-08 legal, 3 RESOLVED, CI-red ×2 + coverage
-  honesty new) — `04-risk-decision-assumption-register.md`.
-- 7 decisions incl. user-approved DEC-P00-06 (INT-02 governs) and DEC-P00-07
-  (2026-08-12 re-run supersedes).
+- 13 risks (10 OPEN incl. RISK-P00-08 legal and new CI-red RISK-P00-11/12 +
+  coverage-honesty RISK-P00-13, 3 RESOLVED) —
+  `04-risk-decision-assumption-register.md`.
+- 8 decisions incl. user-approved DEC-P00-06 (INT-02 governs) and DEC-P00-07
+  (2026-08-12 re-run supersedes) and DEC-P00-08 (completion pass).
 
 ## M. Gaps
 

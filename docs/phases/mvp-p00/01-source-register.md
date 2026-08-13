@@ -135,7 +135,7 @@ changes):
 
 | Prompt item                              | Deliverable                                                                |
 | ---------------------------------------- | -------------------------------------------------------------------------- |
-| §10 Enterprise completeness (19 domains) | `10-enterprise-completeness.md` (registry of BLOCKED rows + owning phases) |
+| §10 Enterprise completeness (18 domains) | `10-enterprise-completeness.md` (registry of BLOCKED rows + owning phases) |
 | §23 Evidence & traceability              | `11-evidence-traceability.md` (EVD-MVP-P00-001…021)                        |
 | Future-readiness overlay (5 ideas)       | `12-future-readiness-backlog.md` (FB-01…05, adoption triggers)             |
 | §26/§27 DoR/DoD                          | `13-readiness-and-done.md`                                                 |

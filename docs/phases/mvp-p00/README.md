@@ -11,7 +11,7 @@
 
 | #   | Deliverable                                        | File                                      | Map                                                              |
 | --- | -------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
-| 1   | Canonical source register (DEL-MVP-P00-01)         | `01-source-register.md`                   | INT-01…19, conflicts CF-01…06, blockers                          |
+| 1   | Canonical source register (DEL-MVP-P00-01)         | `01-source-register.md`                   | INT-01…12 + EXT-01…19, conflicts CF-01…06, blockers              |
 | 2   | Asset/access inventory (DEL-MVP-P00-02)            | `02-asset-inventory.md`                   | apps/packages/infra/connectors/CI/testing/env                    |
 | 3   | Maturity & evidence matrix (DEL-MVP-P00-03)        | `03-maturity-and-evidence-matrix.md`      | docs ≠ runtime; measured pytest/jest/tsc/lint                    |
 | 4   | Risk/decision/assumption register (DEL-MVP-P00-04) | `04-risk-decision-assumption-register.md` | RISK/ASP/UNK/BQ status                                           |
@@ -20,7 +20,7 @@
 | 7   | Handoff to P01                                     | `07-handoff-to-p01.md`                    | evidence, blockers, entry criteria                               |
 | 8   | Re-baseline gate (2026-08-11)                      | `08-rebaseline-gate-2026-08-11.md`        | re-score @ `d09fa07` after prompt-pack placement                 |
 | 9   | Re-run gate (2026-08-12)                           | `09-gate-2026-08-12.md`                   | fresh score @ `3ad6bca` — **pending user verdict**               |
-| 10  | Enterprise completeness (prompt §10)               | `10-enterprise-completeness.md`           | 19 domains: APPLICABLE / NOT_APPLICABLE / BLOCKED + owning phase |
+| 10  | Enterprise completeness (prompt §10)               | `10-enterprise-completeness.md`           | 18 domains: APPLICABLE / NOT_APPLICABLE / BLOCKED + owning phase |
 | 11  | Evidence & traceability (prompt §23)               | `11-evidence-traceability.md`             | EVD-MVP-P00-001…021, full chain                                  |
 | 12  | Future-readiness backlog (overlay)                 | `12-future-readiness-backlog.md`          | FB-01…05 with adoption triggers + owners                         |
 | 13  | DoR/DoD checklists (prompt §26/§27)                | `13-readiness-and-done.md`                | honest checkboxes; gate sign-off = USER                          |
