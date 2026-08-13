@@ -55,7 +55,7 @@ standalone register with rationale/owner is `13-non-goals-research-backlog.md`.
 - `docs/phases/mvp-p01/09-problem-statement.md` (PS-01..04, constraints
   S-01..09)
 - `docs/phases/mvp-p01/11-value-risk-hypotheses.md` (H-01..H-08)
-- `docs/phases/mvp-p01/05-validation-backlog.md` (VB-01..06)
+- `docs/phases/mvp-p01/05-validation-backlog.md` (VB-01..08)
 - `docs/phases/mvp-p01/13-non-goals-research-backlog.md` (non-goals rationale +
   RB)
 - `docs/phases/mvp-p00/12-future-readiness-backlog.md` (FB-01..05)

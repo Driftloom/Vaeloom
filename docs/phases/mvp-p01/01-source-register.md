@@ -1,10 +1,12 @@
 # MVP-P01 - 01. Source Register (phase-level)
 
-> **Phase:** MVP-P01 - Discovery and Problem Definition **Status:** RE-RUN in
-> progress **Date:** 2026-08-13 (re-run; prior run 2026-08-07 superseded)
-> **Owner:** Phase owner (MVP-P01) - **Approver:** USER (sole gate authority per
-> BQ-01) **Baseline:** repo `master` @ `1def16d` (pushed to origin, 0 ahead / 0
-> behind, verified 2026-08-13) **Register root:** `docs/phases/mvp-p01/`
+> **Phase:** MVP-P01 - Discovery and Problem Definition **Status:** RE-RUN
+> COMPLETE 2026-08-13 - gated 74.89/100 (`14-gate-2026-08-13.md`); final verdict
+> = USER (pending) **Date:** 2026-08-13 (re-run; prior run 2026-08-07
+> superseded) **Owner:** Phase owner (MVP-P01) - **Approver:** USER (sole gate
+> authority per BQ-01) **Baseline:** repo `master` @ `1def16d` (pushed to
+> origin, 0 ahead / 0 behind, verified 2026-08-13) **Register root:**
+> `docs/phases/mvp-p01/`
 >
 > Sources carried from P00 (verified hashes in
 > `docs/phases/mvp-p00/01-source-register.md`) are authoritative unless

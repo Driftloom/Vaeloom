@@ -122,7 +122,7 @@ revisiting requires an approved scope change, not silent expansion.
 ## 4. References
 
 - `docs/phases/mvp-p01/12-success-metrics.md` (metrics + non-goals summary)
-- `docs/phases/mvp-p01/05-validation-backlog.md` (VB-01..06, leading-indicator
+- `docs/phases/mvp-p01/05-validation-backlog.md` (VB-01..08, leading-indicator
   candidates)
 - `docs/phases/mvp-p01/04-risk-decision-assumption-register.md`
   (RISK-MVP-P01-06..08, DEC-P01-05/07/08, UNK-04/05/06)

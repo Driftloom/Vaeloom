@@ -209,7 +209,7 @@ fixed decisions (STAKEHOLDER_DECISION / prompt §3), not aspirational:
 - `docs/01-vaeloom-mvp-spec.md`, `docs/02-system-architecture.md`,
   `docs/03-agent-workflow.md`, `docs/04-memory-knowledge-graph.md`
 - `docs/phases/mvp-p01/07-research-brief-2026-08-07.md`
-- `docs/phases/mvp-p01/05-validation-backlog.md` (VB-01..06)
+- `docs/phases/mvp-p01/05-validation-backlog.md` (VB-01..08)
 - `docs/phases/mvp-p01/10-persona-jtbd-evidence.md` (JTBD detail)
 - `docs/phases/mvp-p01/11-value-risk-hypotheses.md` (H-01..H-08)
 - `docs/phases/mvp-p01/12-success-metrics.md` (metrics + non-goals)

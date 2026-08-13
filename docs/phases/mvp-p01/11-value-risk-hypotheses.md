@@ -5,7 +5,7 @@
 > baseline `1def16d`. **Owner:** Product Manager / AI Product Lead / UX
 > Researcher. **Prompt reference:** §1/§2/§3/§12/§18. **Rule:** hypotheses are
 > falsifiable and tied to a validation-backlog experiment
-> (`05-validation-backlog.md`, VB-01..06). No hypothesis has been executed - all
+> (`05-validation-backlog.md`, VB-01..08). No hypothesis has been executed - all
 > experiments require the design-partner cohort (DEC-P01-07, RB-04) or runtime
 > phases (P05+). Status is `NOT_EXECUTED` unless a threshold or cohort decision
 > is needed, in which case it is `REQUIRES_STAKEHOLDER_DECISION` with owner.
@@ -36,8 +36,9 @@
   merged duplicate) is presented to the user without correction affordance, THEN
   the user corrects memory >1x/week and trust drops, BECAUSE wrong memory
   presented as fact is visible harm (PS-04).
-- **Why it matters:** the trust failure scenario overlay (prompt overlay item
-  1. is the most expensive failure mode; unknown unknowns in extraction.
+- **Why it matters:** wrong memory is the most expensive trust failure scenario
+  (prompt overlay item 1); extraction errors are unknown unknowns until they
+  cause visible harm.
 - **Falsification test (of the mitigation):** recall precision >= agreed
   threshold (eval set, P12) AND user correction events <= threshold; OR any
   wrong-memory incident causing a user-visible harm (missed deadline, wrong
@@ -165,7 +166,7 @@ Negative/risk hypotheses explicitly covered: wrong memory (H-02), overreach
 
 ## References
 
-- `docs/phases/mvp-p01/05-validation-backlog.md` (VB-01..06)
+- `docs/phases/mvp-p01/05-validation-backlog.md` (VB-01..08)
 - `docs/phases/mvp-p01/09-problem-statement.md` (PS-01..04)
 - `docs/phases/mvp-p01/12-success-metrics.md` (measurement methods)
 - `docs/phases/mvp-p01/13-non-goals-research-backlog.md` (RB-01..05)
