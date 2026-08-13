@@ -1,4 +1,5 @@
 import type { AxiosRequestConfig } from 'axios';
+
 import type { RestAuth } from './types';
 
 export interface AuthStrategy {

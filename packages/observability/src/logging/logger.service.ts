@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PinoLogger } from 'nestjs-pino';
+import type { PinoLogger } from 'nestjs-pino';
 
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
@@ -32,11 +32,7 @@ export class LoggerService {
     }
   }
 
-  logStructured(
-    level: LogLevel,
-    message: string,
-    fields: Record<string, unknown> = {},
-  ): void {
+  logStructured(level: LogLevel, message: string, fields: Record<string, unknown> = {}): void {
     this.toPino(level)(fields, message);
   }
 

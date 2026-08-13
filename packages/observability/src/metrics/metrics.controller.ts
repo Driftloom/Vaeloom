@@ -1,6 +1,6 @@
 import { Controller, Get, Header, HttpCode, HttpStatus } from '@nestjs/common';
 
-import { MetricsService } from './metrics.service';
+import type { MetricsService } from './metrics.service';
 
 /**
  * Exposes the Prometheus scrape endpoint at `GET /metrics`.

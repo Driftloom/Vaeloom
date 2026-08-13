@@ -1,5 +1,20 @@
 import type { GraphQLSchema, GraphQLType, GraphQLField, GraphQLTypeRef } from './types';
 
+/** Loose structural type for raw introspection JSON (GraphQL over HTTP responses). */
+type IntrospectionRaw = Record<string, unknown> & {
+  name?: string;
+  kind?: string;
+  description?: string | undefined;
+  fields?: IntrospectionRaw[];
+  type?: IntrospectionRaw | null | undefined;
+  args?: IntrospectionRaw[];
+  defaultValue?: string;
+  enumValues?: IntrospectionRaw[];
+  inputFields?: IntrospectionRaw[];
+  interfaces?: IntrospectionRaw[];
+  ofType?: IntrospectionRaw | null | undefined;
+};
+
 const INTROSPECTION_QUERY = `
   query IntrospectionQuery {
     __schema {
@@ -75,9 +90,7 @@ export function parseIntrospectionResult(raw: { __schema: unknown }): GraphQLSch
   };
 
   return {
-    queryType: schema.queryType
-      ? { name: schema.queryType.name, kind: 'OBJECT' }
-      : undefined,
+    queryType: schema.queryType ? { name: schema.queryType.name, kind: 'OBJECT' } : undefined,
     mutationType: schema.mutationType
       ? { name: schema.mutationType.name, kind: 'OBJECT' }
       : undefined,
@@ -86,52 +99,50 @@ export function parseIntrospectionResult(raw: { __schema: unknown }): GraphQLSch
         const type = t as { name?: string };
         return type.name && !type.name.startsWith('__');
       })
-      .map((t) => parseType(t as Record<string, unknown>)),
+      .map((t) => parseType(t as unknown as IntrospectionRaw)),
   };
 }
 
-function parseType(raw: Record<string, unknown>): GraphQLType {
+function parseType(raw: IntrospectionRaw): GraphQLType {
   return {
     name: raw.name as string,
     kind: raw.kind as string,
     description: raw.description as string | undefined,
     fields: raw.fields
-      ? (raw.fields as Record<string, unknown>[]).map((f) => ({
+      ? raw.fields.map((f) => ({
           name: f.name as string,
           description: f.description as string | undefined,
-          type: parseTypeRef(f.type as Record<string, unknown> | null | undefined),
+          type: parseTypeRef(f.type),
           args: f.args
-            ? (f.args as Record<string, unknown>[]).map((a) => ({
+            ? f.args.map((a) => ({
                 name: a.name as string,
-                type: parseTypeRef(a.type as Record<string, unknown> | null | undefined),
+                type: parseTypeRef(a.type),
                 defaultValue: a.defaultValue as string | undefined,
               }))
             : undefined,
         }))
       : undefined,
     enumValues: raw.enumValues
-      ? (raw.enumValues as Record<string, unknown>[]).map((e) => ({
+      ? raw.enumValues.map((e) => ({
           name: e.name as string,
           description: e.description as string | undefined,
         }))
       : undefined,
     inputFields: raw.inputFields
-      ? (raw.inputFields as Record<string, unknown>[]).map((f) => ({
+      ? raw.inputFields.map((f) => ({
           name: f.name as string,
-          type: parseTypeRef(f.type as Record<string, unknown> | null | undefined),
+          type: parseTypeRef(f.type),
         }))
       : undefined,
     interfaces: raw.interfaces
-      ? (raw.interfaces as Record<string, unknown>[]).map((i) => ({
+      ? raw.interfaces.map((i) => ({
           name: i.name as string,
         }))
       : undefined,
   };
 }
 
-function parseTypeRef(
-  ref: Record<string, unknown> | null | undefined,
-): GraphQLTypeRef {
+function parseTypeRef(ref: IntrospectionRaw | null | undefined): GraphQLTypeRef {
   if (!ref) {
     return { kind: 'SCALAR' };
   }
@@ -139,7 +150,7 @@ function parseTypeRef(
     return {
       kind: ref.kind as string,
       name: ref.name as string | undefined,
-      ofType: parseTypeRef(ref.ofType as Record<string, unknown> | null | undefined),
+      ofType: parseTypeRef(ref.ofType),
     };
   }
   return {

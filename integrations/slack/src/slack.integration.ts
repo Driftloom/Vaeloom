@@ -1,4 +1,10 @@
 import { WebClient } from '@slack/web-api';
+
+import { decryptSecret, encryptSecret, verifySlackSignature } from './auth';
+import { SlackAuthClient } from './auth-client';
+import type { SlackConfig } from './config';
+import { parseSlackConfig } from './config';
+import { SlackApiError, SlackAuthError, SlackWebhookVerificationError } from './errors';
 import type {
   ConnectionResult,
   IngestedMemory,
@@ -6,10 +12,6 @@ import type {
   IntegrationConfig,
   SyncResult,
 } from './types';
-import { SlackConfig, parseSlackConfig } from './config';
-import { SlackAuthClient } from './auth-client';
-import { decryptSecret, encryptSecret, verifySlackSignature } from './auth';
-import { SlackApiError, SlackAuthError, SlackWebhookVerificationError } from './errors';
 
 const DEFAULT_MASTER_KEY = 'vaeloom-dev-secret';
 
@@ -88,7 +90,7 @@ export class SlackIntegration implements Integration {
     blocks?: unknown[],
   ): Promise<{ ts: string; channel: string }> {
     const client = this.clientFor(connectionId);
-    const res = await client.chat.postMessage({ channel, text, blocks });
+    const res = await client.chat.postMessage({ channel, text, blocks: (blocks ?? []) as never[] });
     if (!res.ok) {
       throw new SlackApiError(`Failed to send message: ${res.error}`, undefined);
     }
@@ -149,7 +151,9 @@ export class SlackIntegration implements Integration {
     if (!data.signingSecret) {
       throw new SlackWebhookVerificationError('Missing signing secret');
     }
-    if (!verifySlackSignature(data.signingSecret, data.signature, data.timestamp, data.rawBody ?? '')) {
+    if (
+      !verifySlackSignature(data.signingSecret, data.signature, data.timestamp, data.rawBody ?? '')
+    ) {
       throw new SlackWebhookVerificationError();
     }
     // URL verification challenge handling would be acknowledged by the caller.

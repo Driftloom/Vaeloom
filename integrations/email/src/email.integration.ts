@@ -1,6 +1,11 @@
 import { ImapFlow } from 'imapflow';
+import type { FetchMessageObject } from 'imapflow';
 import nodemailer from 'nodemailer';
-import type { Message } from 'imapflow';
+
+import { decryptSecret, encryptSecret } from './auth';
+import type { EmailConfig } from './config';
+import { parseEmailConfig } from './config';
+import { EmailAuthError, EmailTransportError } from './errors';
 import type {
   ConnectionResult,
   IngestedMemory,
@@ -8,9 +13,6 @@ import type {
   IntegrationConfig,
   SyncResult,
 } from './types';
-import { EmailConfig, parseEmailConfig } from './config';
-import { decryptSecret, encryptSecret } from './auth';
-import { EmailAuthError, EmailTransportError } from './errors';
 
 const DEFAULT_MASTER_KEY = 'vaeloom-dev-secret';
 
@@ -38,7 +40,7 @@ export class EmailIntegration implements Integration {
   private readonly masterKey: string;
 
   constructor(opts?: { masterKey?: string }) {
-    this.masterKey = opts?.masterKey ?? process.env.VAELOOM_MASTER_KEY ?? DEFAULT_MASTER_KEY;
+    this.masterKey = opts?.masterKey ?? process.env['VAELOOM_MASTER_KEY'] ?? DEFAULT_MASTER_KEY;
   }
 
   async connect(config: IntegrationConfig): Promise<ConnectionResult> {
@@ -97,9 +99,14 @@ export class EmailIntegration implements Integration {
     try {
       const lock = await client.getMailboxLock(folder);
       try {
-        const query: Record<string, unknown> = { }
-        if (since) query.since = since;
-        const messages = await client.fetch(query, { uid: true, envelope: true, bodyStructure: true, source: true });
+        const query: Record<string, unknown> = {};
+        if (since) query['since'] = since;
+        const messages = await client.fetch(query, {
+          uid: true,
+          envelope: true,
+          bodyStructure: true,
+          source: true,
+        });
         const results: EmailSummary[] = [];
         for await (const msg of messages) {
           results.push(summarize(msg));
@@ -114,17 +121,30 @@ export class EmailIntegration implements Integration {
     }
   }
 
-  async searchEmails(connectionId: string, query: string, folder = 'INBOX', limit = 50): Promise<EmailSummary[]> {
+  async searchEmails(
+    connectionId: string,
+    query: string,
+    folder = 'INBOX',
+    limit = 50,
+  ): Promise<EmailSummary[]> {
     const conn = this.getConnection(connectionId);
     const client = this.newImap(conn);
     await client.connect();
     try {
       const lock = await client.getMailboxLock(folder);
       try {
-        const messages = await client.search({ or: [{ subject: query }, { body: query }] }, { uid: true, envelope: true });
+        const uids = await client.search(
+          { or: [{ subject: query }, { body: query }] },
+          { uid: true },
+        );
+        if (!uids) return [];
+        const messages = await client.fetch(
+          { uid: uids.join(',') },
+          { uid: true, envelope: true, source: true },
+        );
         const results: EmailSummary[] = [];
         for await (const msg of messages) {
-          results.push(summarize(msg as Message));
+          results.push(summarize(msg));
           if (results.length >= limit) break;
         }
         return results;
@@ -147,7 +167,10 @@ export class EmailIntegration implements Integration {
     await client.connect();
     const lock = await client.getMailboxLock(folder);
     client.on('exists', async () => {
-      const messages = await client.fetch({ seen: false }, { uid: true, envelope: true, source: true });
+      const messages = await client.fetch(
+        { seen: false },
+        { uid: true, envelope: true, source: true },
+      );
       for await (const msg of messages) onMail(summarize(msg));
     });
     // keep idle alive; caller owns lifecycle
@@ -217,13 +240,13 @@ export class EmailIntegration implements Integration {
   }
 }
 
-function summarize(msg: Message): EmailSummary {
+function summarize(msg: FetchMessageObject): EmailSummary {
   const env = msg.envelope ?? {};
   const subject = typeof env.subject === 'string' ? env.subject : '';
-  const from = Array.isArray(env.from) && env.from[0] ? env.from[0].address ?? '' : '';
-  const to = Array.isArray(env.to) && env.to[0] ? env.to[0].address ?? '' : '';
+  const from = Array.isArray(env.from) && env.from[0] ? (env.from[0].address ?? '') : '';
+  const to = Array.isArray(env.to) && env.to[0] ? (env.to[0].address ?? '') : '';
   const date = env.date ? new Date(env.date).toISOString() : new Date().toISOString();
-  const text = typeof msg.body === 'string' ? msg.body : '';
+  const text = msg.source ? msg.source.toString() : '';
   return {
     uid: String(msg.uid ?? ''),
     subject,

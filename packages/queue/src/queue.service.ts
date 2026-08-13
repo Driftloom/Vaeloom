@@ -1,4 +1,12 @@
-import { Queue, Worker, type QueueOptions, type WorkerOptions, type JobsOptions, type ConnectionOptions, type Job } from 'bullmq';
+import {
+  Queue,
+  Worker,
+  type QueueOptions,
+  type WorkerOptions,
+  type JobsOptions,
+  type ConnectionOptions,
+  type Job,
+} from 'bullmq';
 import { Redis } from 'ioredis';
 
 export interface QueueConfig {
@@ -28,9 +36,14 @@ const DEFAULT_JOB_OPTS: JobsOptions = {
 
 function resolveConnection(config?: QueueConfig): ConnectionOptions {
   if (config) {
-    return { host: config.host, port: config.port, password: config.password, db: config.db ?? 0 } as ConnectionOptions;
+    return {
+      host: config.host,
+      port: config.port,
+      password: config.password,
+      db: config.db ?? 0,
+    } as ConnectionOptions;
   }
-  const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379/0';
+  const redisUrl = process.env['REDIS_URL'] ?? 'redis://localhost:6379/0';
   return { url: redisUrl } as ConnectionOptions;
 }
 
@@ -39,11 +52,7 @@ export class QueueService {
   private readonly worker?: Worker;
   private readonly connection: ConnectionOptions;
 
-  constructor(
-    queueName: string,
-    config?: QueueConfig,
-    opts?: QueueServiceOptions,
-  ) {
+  constructor(queueName: string, config?: QueueConfig, opts?: QueueServiceOptions) {
     this.connection = resolveConnection(config);
     this.queue = new Queue(queueName, {
       connection: this.connection,
@@ -64,7 +73,12 @@ export class QueueService {
     return this.queue.addBulk(jobs.map((j) => ({ name: j.name, data: j.data, opts: j.opts })));
   }
 
-  async addRepeatable<T>(jobName: string, data: T, pattern: string, opts?: JobsOptions): Promise<Job<T>> {
+  async addRepeatable<T>(
+    jobName: string,
+    data: T,
+    pattern: string,
+    opts?: JobsOptions,
+  ): Promise<Job<T>> {
     return this.queue.add(jobName, data, { ...opts, repeat: { pattern } });
   }
 
@@ -112,10 +126,19 @@ export class QueueService {
 
 export function createConnection(config?: QueueConfig): Redis {
   const opts = resolveConnection(config) as Record<string, unknown>;
-  if (opts.url) return new Redis(opts.url as string);
-  return new Redis({ host: opts.host, port: opts.port, password: opts.password, db: opts.db ?? 0 } as any);
+  if (opts['url']) return new Redis(opts['url'] as string);
+  return new Redis({
+    host: opts['host'],
+    port: opts['port'],
+    password: opts['password'],
+    db: opts['db'] ?? 0,
+  } as any);
 }
 
-export function createQueue(queueName: string, config?: QueueConfig, opts?: QueueServiceOptions): QueueService {
+export function createQueue(
+  queueName: string,
+  config?: QueueConfig,
+  opts?: QueueServiceOptions,
+): QueueService {
   return new QueueService(queueName, config, opts);
 }

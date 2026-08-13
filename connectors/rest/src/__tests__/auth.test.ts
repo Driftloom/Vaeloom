@@ -1,5 +1,6 @@
-import { createAuthStrategy } from '../auth';
 import type { AxiosRequestConfig } from 'axios';
+
+import { createAuthStrategy } from '../auth';
 
 describe('AuthStrategy', () => {
   describe('none', () => {

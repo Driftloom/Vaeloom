@@ -1,5 +1,7 @@
 import { spawn, type ChildProcess } from 'child_process';
+
 import axios from 'axios';
+
 import type { McpConfig, JSONRPCRequest, JSONRPCResponse } from './types';
 
 export interface Transport {
@@ -32,9 +34,10 @@ class StdioTransport implements Transport {
 
   async send(request: JSONRPCRequest): Promise<JSONRPCResponse> {
     if (!this.process) {
-      const [cmd, ...restArgs] = process.platform === 'win32'
-        ? [process.env.COMSPEC ?? 'cmd.exe', '/c', this.command, ...(this.args ?? [])]
-        : [this.command, ...(this.args ?? [])];
+      const [cmd, ...restArgs] =
+        process.platform === 'win32'
+          ? [process.env['COMSPEC'] ?? 'cmd.exe', '/c', this.command, ...(this.args ?? [])]
+          : [this.command, ...(this.args ?? [])];
 
       this.process = spawn(cmd, restArgs, {
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -124,9 +127,7 @@ class SSETransport implements Transport {
     });
 
     if (response.data.error) {
-      throw new Error(
-        `MCP error ${response.data.error.code}: ${response.data.error.message}`,
-      );
+      throw new Error(`MCP error ${response.data.error.code}: ${response.data.error.message}`);
     }
 
     return response.data;

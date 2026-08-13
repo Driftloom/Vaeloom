@@ -1,5 +1,9 @@
 export class GoogleDriveIntegrationError extends Error {
-  constructor(message: string, public readonly code: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public override readonly cause?: unknown,
+  ) {
     super(message);
     this.name = 'GoogleDriveIntegrationError';
   }
@@ -20,7 +24,11 @@ export class GoogleDriveWebhookVerificationError extends GoogleDriveIntegrationE
 }
 
 export class GoogleDriveApiError extends GoogleDriveIntegrationError {
-  constructor(message: string, public readonly status?: number, cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    cause?: unknown,
+  ) {
     super(message, 'GDRIVE_API_ERROR', cause);
     this.name = 'GoogleDriveApiError';
   }

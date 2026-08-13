@@ -1,3 +1,4 @@
+import { createTransport, type Transport } from './transport';
 import type {
   McpConfig,
   MCPTool,
@@ -8,7 +9,6 @@ import type {
   MCPCallResult,
   JSONRPCResponse,
 } from './types';
-import { createTransport, type Transport } from './transport';
 
 export class McpConnector {
   private transport: Transport | null = null;
@@ -77,9 +77,7 @@ export class McpConnector {
         await delay(backoff);
         return this.sendRequest(method, params, retryCount + 1);
       }
-      throw new Error(
-        `MCP error ${response.error.code}: ${response.error.message}`,
-      );
+      throw new Error(`MCP error ${response.error.code}: ${response.error.message}`);
     }
 
     return response;

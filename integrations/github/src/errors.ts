@@ -1,5 +1,9 @@
 export class GithubIntegrationError extends Error {
-  constructor(message: string, public readonly code: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public override readonly cause?: unknown,
+  ) {
     super(message);
     this.name = 'GithubIntegrationError';
   }
@@ -20,7 +24,11 @@ export class GithubWebhookVerificationError extends GithubIntegrationError {
 }
 
 export class GithubApiError extends GithubIntegrationError {
-  constructor(message: string, public readonly status?: number, cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    cause?: unknown,
+  ) {
     super(message, 'GITHUB_API_ERROR', cause);
     this.name = 'GithubApiError';
   }

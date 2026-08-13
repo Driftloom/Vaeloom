@@ -5,6 +5,7 @@ const config: Config = {
   rootDir: 'src',
   testRegex: '.*\\.test\\.ts$',
   transform: { '^.+\\.(t|j)s$': 'ts-jest' },
+  transformIgnorePatterns: ['node_modules/(?!\\.pnpm|@octokit)'],
   collectCoverageFrom: ['**/*.(t|j)s'],
   coverageDirectory: '../coverage',
   testEnvironment: 'node',

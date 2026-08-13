@@ -1,4 +1,10 @@
 import { Octokit } from '@octokit/rest';
+
+import { decryptSecret, encryptSecret, verifyGithubSignature } from './auth';
+import { GithubAuthClient } from './auth-client';
+import type { GithubConfig } from './config';
+import { parseGithubConfig } from './config';
+import { GithubApiError, GithubAuthError, GithubWebhookVerificationError } from './errors';
 import type {
   ConnectionResult,
   IngestedMemory,
@@ -6,10 +12,6 @@ import type {
   IntegrationConfig,
   SyncResult,
 } from './types';
-import { GithubConfig, parseGithubConfig } from './config';
-import { GithubAuthClient } from './auth-client';
-import { decryptSecret, encryptSecret, verifyGithubSignature } from './auth';
-import { GithubApiError, GithubAuthError, GithubWebhookVerificationError } from './errors';
 
 const DEFAULT_MASTER_KEY = 'vaeloom-dev-secret';
 
@@ -28,7 +30,7 @@ export class GithubIntegration implements Integration {
   private readonly tokenFetch: typeof fetch;
 
   constructor(opts?: { masterKey?: string; tokenFetch?: typeof fetch }) {
-    this.masterKey = opts?.masterKey ?? process.env.VAELOOM_MASTER_KEY ?? DEFAULT_MASTER_KEY;
+    this.masterKey = opts?.masterKey ?? process.env['VAELOOM_MASTER_KEY'] ?? DEFAULT_MASTER_KEY;
     this.tokenFetch = opts?.tokenFetch ?? fetch;
   }
 
@@ -40,7 +42,9 @@ export class GithubIntegration implements Integration {
     const ghConfig = parseGithubConfig({ ...config.settings, provider: config.provider });
     const token = ghConfig.accessToken;
     if (!token) {
-      throw new GithubAuthError('GitHub config requires an accessToken (PAT) or GitHub App credentials.');
+      throw new GithubAuthError(
+        'GitHub config requires an accessToken (PAT) or GitHub App credentials.',
+      );
     }
     const client = this.octokit(token);
     const { data } = await client.users.getAuthenticated();
@@ -151,7 +155,11 @@ export class GithubIntegration implements Integration {
     const { data } = await client.repos.createWebhook({
       owner,
       repo: name,
-      config: { url: callbackUrl, content_type: 'json', secret: this.getConnection(connectionId).config.webhookSecret },
+      config: {
+        url: callbackUrl,
+        content_type: 'json',
+        secret: this.getConnection(connectionId).config.webhookSecret,
+      },
       events: ['push', 'issues', 'pull_request'],
     });
     return { id: data.id, url: data.config?.url };
@@ -160,7 +168,9 @@ export class GithubIntegration implements Integration {
   // ---- OAuth helpers ----
 
   buildAuthClient(config: IntegrationConfig): GithubAuthClient {
-    return new GithubAuthClient(parseGithubConfig({ ...config.settings, provider: config.provider }));
+    return new GithubAuthClient(
+      parseGithubConfig({ ...config.settings, provider: config.provider }),
+    );
   }
 
   // ---- Webhook ----
@@ -181,6 +191,7 @@ export class GithubIntegration implements Integration {
       }
     }
     // Parsed event is available via data.body; downstream consumers act on it.
+    return data.body ?? null;
   }
 
   // ---- Sync ----

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
+
 import { GraphQLConnector } from '../graphql.connector';
 
 let mock: MockAdapter;
@@ -22,9 +23,7 @@ describe('GraphQLConnector', () => {
     });
 
     await connector.connect({ endpoint: 'http://test.com/graphql' });
-    const result = await connector.query<{ user: { name: string } }>(
-      'query { user { name } }',
-    );
+    const result = await connector.query<{ user: { name: string } }>('query { user { name } }');
 
     expect(result.user.name).toBe('Alice');
   });

@@ -41,3 +41,17 @@ export interface IngestedMemory {
   updatedAt?: string;
   metadata?: Record<string, unknown>;
 }
+
+export interface NotionDatabase {
+  id: string;
+  title: string;
+  url: string;
+}
+
+export interface NotionPage {
+  id: string;
+  url: string;
+  properties: Record<string, unknown>;
+  createdAt?: string;
+  updatedAt?: string;
+}

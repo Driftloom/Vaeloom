@@ -1,8 +1,14 @@
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
-import type { RestConfig, SyncResult } from './types';
+import axios, {
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
+
 import { createAuthStrategy, type AuthStrategy } from './auth';
 import { createPaginationHandler, type PaginationHandler } from './pagination';
 import { TokenBucket } from './rate-limiter';
+import type { RestConfig, SyncResult } from './types';
 
 export class RestConnector {
   private client: AxiosInstance | null = null;
@@ -37,7 +43,7 @@ export class RestConnector {
       await this.rateLimiter!.consume(1);
 
       if (this.authStrategy) {
-        return this.authStrategy.apply(reqConfig);
+        return this.authStrategy.apply(reqConfig) as unknown as InternalAxiosRequestConfig;
       }
       return reqConfig;
     });
@@ -59,9 +65,10 @@ export class RestConnector {
         }
 
         if (status >= 500) {
-          const retryCount = error.config._retryCount ?? 0;
+          const cfg = error.config as InternalAxiosRequestConfig & { _retryCount?: number };
+          const retryCount = cfg._retryCount ?? 0;
           if (retryCount < 3) {
-            error.config._retryCount = retryCount + 1;
+            cfg._retryCount = retryCount + 1;
             const backoff = Math.pow(2, retryCount) * 1000;
             await delay(backoff);
             return this.client!.request(error.config);
@@ -148,7 +155,10 @@ export class RestConnector {
     this.rateLimiter = null;
   }
 
-  private async fetchAllPages<T>(resource: string, initialParams: Record<string, unknown>): Promise<T> {
+  private async fetchAllPages<T>(
+    resource: string,
+    initialParams: Record<string, unknown>,
+  ): Promise<T> {
     if (!this.client || !this.paginationHandler) throw new Error('Not connected.');
 
     let params = { ...initialParams };
@@ -167,7 +177,6 @@ export class RestConnector {
 
     return allItems as T;
   }
-
 }
 
 function delay(ms: number): Promise<void> {

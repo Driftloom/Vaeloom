@@ -1,11 +1,9 @@
-import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { Resource } from '@opentelemetry/resources';
-import {
-  SemanticResourceAttributes,
-} from '@opentelemetry/semantic-conventions';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
+import { Resource } from '@opentelemetry/resources';
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 
 let sdk: NodeSDK | undefined;
 
@@ -25,9 +23,7 @@ export function startTracing(options: TracingOptions): NodeSDK | undefined {
   }
 
   const endpoint =
-    options.endpoint ??
-    process.env.OTEL_EXPORTER_OTLP_ENDPOINT ??
-    'http://localhost:4318';
+    options.endpoint ?? process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';
 
   const exporter = new OTLPTraceExporter({
     url: `${endpoint.replace(/\/$/, '')}/v1/traces`,
@@ -35,8 +31,7 @@ export function startTracing(options: TracingOptions): NodeSDK | undefined {
 
   const resource = new Resource({
     [SemanticResourceAttributes.SERVICE_NAME]: options.serviceName,
-    [SemanticResourceAttributes.SERVICE_VERSION]:
-      process.env.SERVICE_VERSION ?? '0.1.0',
+    [SemanticResourceAttributes.SERVICE_VERSION]: process.env.SERVICE_VERSION ?? '0.1.0',
   });
 
   sdk = new NodeSDK({

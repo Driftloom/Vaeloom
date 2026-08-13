@@ -20,8 +20,9 @@ export default defineConfig({
     { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
   ],
   webServer: {
-    command: 'pnpm dev',
+    command: 'pnpm --dir ../.. dev:web',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
+    timeout: 180000,
   },
 });

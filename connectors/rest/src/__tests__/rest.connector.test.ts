@@ -1,5 +1,6 @@
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
+
 import { RestConnector } from '../rest.connector';
 
 let mock: MockAdapter;
@@ -20,7 +21,7 @@ describe('RestConnector', () => {
     mock.onGet('/users').reply(200, [{ id: 1, name: 'Alice' }]);
 
     await connector.connect({ baseURL: 'http://test.com' });
-    const result = await connector.fetch<{ id: number }[]>('/users');
+    const result = await connector.fetch<{ id: number; name: string }[]>('/users');
 
     expect(result).toHaveLength(1);
     expect(result[0]!.name).toBe('Alice');

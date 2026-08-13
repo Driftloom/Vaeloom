@@ -4,10 +4,10 @@ import {
   Injectable,
   type NestInterceptor,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
-import { MetricsService } from '../metrics/metrics.service';
+import type { MetricsService } from '../metrics/metrics.service';
 
 /**
  * Records HTTP request metrics for every handled request:

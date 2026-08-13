@@ -1,4 +1,4 @@
-import { GithubConfig } from './config';
+import type { GithubConfig } from './config';
 
 export const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize';
 export const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
@@ -22,7 +22,10 @@ export class GithubAuthClient {
     return `${GITHUB_AUTHORIZE_URL}?${params.toString()}`;
   }
 
-  async exchangeCodeForToken(code: string, fetchImpl: typeof fetch = fetch): Promise<GithubOAuthToken> {
+  async exchangeCodeForToken(
+    code: string,
+    fetchImpl: typeof fetch = fetch,
+  ): Promise<GithubOAuthToken> {
     const res = await fetchImpl(GITHUB_TOKEN_URL, {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -36,7 +39,9 @@ export class GithubAuthClient {
     if (!res.ok) throw new Error(`GitHub token exchange failed: ${res.status}`);
     const data = (await res.json()) as Record<string, unknown>;
     if (!data['access_token']) {
-      throw new Error(`GitHub token exchange error: ${String(data['error_description'] ?? data['error'])}`);
+      throw new Error(
+        `GitHub token exchange error: ${String(data['error_description'] ?? data['error'])}`,
+      );
     }
     return {
       accessToken: String(data['access_token']),

@@ -3,9 +3,7 @@
     "argv": [
       "C:\\Program Files\\nodejs\\node.exe",
       "C:\\PROJECTS\\PIOS\\ClonU\\Driftloom\\Vaeloom\\node_modules\\@playwright\\test\\cli.js",
-      "test",
-      "-c",
-      "testing/e2e/playwright.config.ts"
+      "test"
     ],
     "configFile": "C:\\PROJECTS\\PIOS\\ClonU\\Driftloom\\Vaeloom\\testing\\e2e\\playwright.config.ts",
     "rootDir": "C:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/testing/e2e/tests",
@@ -18,14 +16,18 @@
     "grep": {},
     "grepInvert": null,
     "maxFailures": 0,
-    "metadata": {},
+    "metadata": {
+      "actualWorkers": 3
+    },
     "preserveOutput": "always",
     "projects": [
       {
         "outputDir": "C:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/test-results",
         "repeatEach": 1,
         "retries": 1,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 3
+        },
         "id": "chromium",
         "name": "chromium",
         "testDir": "C:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/testing/e2e/tests",
@@ -37,7 +39,9 @@
         "outputDir": "C:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/test-results",
         "repeatEach": 1,
         "retries": 1,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 3
+        },
         "id": "firefox",
         "name": "firefox",
         "testDir": "C:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/testing/e2e/tests",
@@ -49,7 +53,9 @@
         "outputDir": "C:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/test-results",
         "repeatEach": 1,
         "retries": 1,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 3
+        },
         "id": "mobile-chrome",
         "name": "mobile-chrome",
         "testDir": "C:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/testing/e2e/tests",
@@ -79,22 +85,1396 @@
     "version": "1.62.1",
     "workers": 3,
     "webServer": {
-      "command": "pnpm dev",
+      "command": "pnpm --dir ../.. dev:web",
       "url": "http://localhost:3000",
-      "reuseExistingServer": true
+      "reuseExistingServer": true,
+      "timeout": 180000
     }
   },
-  "suites": [],
-  "errors": [
+  "suites": [
     {
-      "message": "Error: Process from config.webServer exited early.",
-      "stack": "Error: Process from config.webServer exited early."
+      "title": "flows\\connector.spec.ts",
+      "file": "flows/connector.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Connectors Page",
+          "file": "flows/connector.spec.ts",
+          "line": 4,
+          "column": 6,
+          "specs": [
+            {
+              "title": "navigates to connectors and verifies list",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6296,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:28.902Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-19cd935d6ae05f541a51",
+              "file": "flows/connector.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "connector cards display name and status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 7284,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:28.902Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-735968f9fdadd2cda5e3",
+              "file": "flows/connector.spec.ts",
+              "line": 19,
+              "column": 7
+            },
+            {
+              "title": "disconnected connector shows connect button",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 7380,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:28.910Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-392f38153b93082cd925",
+              "file": "flows/connector.spec.ts",
+              "line": 31,
+              "column": 7
+            },
+            {
+              "title": "connect button triggers a connection attempt",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4725,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:35.362Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-459d48381148264d359b",
+              "file": "flows/connector.spec.ts",
+              "line": 42,
+              "column": 7
+            },
+            {
+              "title": "navigates to connectors and verifies list",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 22237,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:15.893Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-ec117c79628aaaba9c8e",
+              "file": "flows/connector.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "connector cards display name and status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 23169,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:15.560Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-8a1a4505da0d42bc7de2",
+              "file": "flows/connector.spec.ts",
+              "line": 19,
+              "column": 7
+            },
+            {
+              "title": "disconnected connector shows connect button",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 9689,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:58.763Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-28ec8094bdb7a8f08dec",
+              "file": "flows/connector.spec.ts",
+              "line": 31,
+              "column": 7
+            },
+            {
+              "title": "connect button triggers a connection attempt",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 7238,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:39.169Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-97bcbcfa55ab304379ac",
+              "file": "flows/connector.spec.ts",
+              "line": 42,
+              "column": 7
+            },
+            {
+              "title": "navigates to connectors and verifies list",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 6733,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:19.293Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-68d251e826e480da7bed",
+              "file": "flows/connector.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "connector cards display name and status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 8,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 8941,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:34.747Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-f4cabb59fcbb6413faca",
+              "file": "flows/connector.spec.ts",
+              "line": 19,
+              "column": 7
+            },
+            {
+              "title": "disconnected connector shows connect button",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 7,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11906,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:30.954Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-03417570dc55348e8512",
+              "file": "flows/connector.spec.ts",
+              "line": 31,
+              "column": 7
+            },
+            {
+              "title": "connect button triggers a connection attempt",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 5512,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:26.243Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7d0bc9fcf5e230b22f20-82e635b493a57752ce74",
+              "file": "flows/connector.spec.ts",
+              "line": 42,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "flows\\login.spec.ts",
+      "file": "flows/login.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Login Flow",
+          "file": "flows/login.spec.ts",
+          "line": 4,
+          "column": 6,
+          "specs": [
+            {
+              "title": "navigates to login page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 986,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:36.345Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d0f64fc4793fe36eb23-3644eac9698c6a1ba346",
+              "file": "flows/login.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "successful login redirects to workspace",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 3507,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:36.441Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d0f64fc4793fe36eb23-6583ec9bfa4cf95186bd",
+              "file": "flows/login.spec.ts",
+              "line": 12,
+              "column": 7
+            },
+            {
+              "title": "invalid credentials show error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1783,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:37.348Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d0f64fc4793fe36eb23-c548d4d743d5d05cf20d",
+              "file": "flows/login.spec.ts",
+              "line": 17,
+              "column": 7
+            },
+            {
+              "title": "navigates to login page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 2768,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:39.407Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d0f64fc4793fe36eb23-d4608bb8b8161c084248",
+              "file": "flows/login.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "successful login redirects to workspace",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 6040,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:42.207Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d0f64fc4793fe36eb23-2cfc3cfbbc798da475bc",
+              "file": "flows/login.spec.ts",
+              "line": 12,
+              "column": 7
+            },
+            {
+              "title": "invalid credentials show error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 3559,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:46.454Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d0f64fc4793fe36eb23-805c57169e6754a1f27f",
+              "file": "flows/login.spec.ts",
+              "line": 17,
+              "column": 7
+            },
+            {
+              "title": "navigates to login page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 1919,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:31.789Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d0f64fc4793fe36eb23-5913b7afc26df5561a81",
+              "file": "flows/login.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "successful login redirects to workspace",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 7830,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:33.748Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d0f64fc4793fe36eb23-ff4baf75a451cb516cd5",
+              "file": "flows/login.spec.ts",
+              "line": 12,
+              "column": 7
+            },
+            {
+              "title": "invalid credentials show error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 3846,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:41.611Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2d0f64fc4793fe36eb23-3d656bcfe226422c0831",
+              "file": "flows/login.spec.ts",
+              "line": 17,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "flows\\workspace.spec.ts",
+      "file": "flows/workspace.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Workspace Dashboard",
+          "file": "flows/workspace.spec.ts",
+          "line": 4,
+          "column": 6,
+          "specs": [
+            {
+              "title": "navigates to workspace and verifies sidebar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 3490,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:39.148Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-51bde87655656ff90fbb",
+              "file": "flows/workspace.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "sidebar navigation items render",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 3709,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:39.972Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-952cf5e058e529a22aef",
+              "file": "flows/workspace.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "clicking connectors nav loads connectors page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4114,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:40.114Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-3196172cc0af24a30639",
+              "file": "flows/workspace.spec.ts",
+              "line": 25,
+              "column": 7
+            },
+            {
+              "title": "clicking memory graph nav loads memory page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 7822,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:42.653Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-f265c9b85339e6a65930",
+              "file": "flows/workspace.spec.ts",
+              "line": 36,
+              "column": 7
+            },
+            {
+              "title": "clicking resume nav loads resume page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 8077,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:43.699Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-7df4d95b20c3a9f0b46d",
+              "file": "flows/workspace.spec.ts",
+              "line": 46,
+              "column": 7
+            },
+            {
+              "title": "clicking settings nav loads settings page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 8240,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:35:44.246Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-ec611fa37a81f3d61d95",
+              "file": "flows/workspace.spec.ts",
+              "line": 56,
+              "column": 7
+            },
+            {
+              "title": "navigates to workspace and verifies sidebar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 4531,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:48.283Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-357d1d0dea461d50c476",
+              "file": "flows/workspace.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "sidebar navigation items render",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 4886,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:50.053Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-c268dbe461819a562cd5",
+              "file": "flows/workspace.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "clicking connectors nav loads connectors page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 5315,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:52.841Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-20d132b67b4811ce9c3c",
+              "file": "flows/workspace.spec.ts",
+              "line": 25,
+              "column": 7
+            },
+            {
+              "title": "clicking memory graph nav loads memory page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 6166,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:54.965Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-f2302fd04d21b0a23872",
+              "file": "flows/workspace.spec.ts",
+              "line": 36,
+              "column": 7
+            },
+            {
+              "title": "clicking resume nav loads resume page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 6416,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:36:58.182Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-bc0c0b80e6300beef2ee",
+              "file": "flows/workspace.spec.ts",
+              "line": 46,
+              "column": 7
+            },
+            {
+              "title": "clicking settings nav loads settings page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 5960,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:01.157Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-06c8413396d4656b2071",
+              "file": "flows/workspace.spec.ts",
+              "line": 56,
+              "column": 7
+            },
+            {
+              "title": "navigates to workspace and verifies sidebar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 7,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6541,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:43.235Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-90df3e4d8de31ff572c4",
+              "file": "flows/workspace.spec.ts",
+              "line": 5,
+              "column": 7
+            },
+            {
+              "title": "sidebar navigation items render",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 8,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 5583,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:44.293Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-d181e5ac403c24deb9dd",
+              "file": "flows/workspace.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "clicking connectors nav loads connectors page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 5470,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:45.503Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-1ad4d071632ac7e201e9",
+              "file": "flows/workspace.spec.ts",
+              "line": 25,
+              "column": 7
+            },
+            {
+              "title": "clicking memory graph nav loads memory page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 7,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5702,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:49.802Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-6e9cc92565ca8bb40175",
+              "file": "flows/workspace.spec.ts",
+              "line": 36,
+              "column": 7
+            },
+            {
+              "title": "clicking resume nav loads resume page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 8,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 5497,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:49.900Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-0cc0a67060adff4cb043",
+              "file": "flows/workspace.spec.ts",
+              "line": 46,
+              "column": 7
+            },
+            {
+              "title": "clicking settings nav loads settings page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mobile-chrome",
+                  "projectName": "mobile-chrome",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 4871,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-13T06:37:50.998Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1a28c214bc6a36f92d90-8e51c0a28ac7cbcf6473",
+              "file": "flows/workspace.spec.ts",
+              "line": 56,
+              "column": 7
+            }
+          ]
+        }
+      ]
     }
   ],
+  "errors": [],
   "stats": {
-    "startTime": "2026-08-12T17:32:21.197Z",
-    "duration": 34728.978,
-    "expected": 0,
+    "startTime": "2026-08-13T06:35:27.676Z",
+    "duration": 181328.86,
+    "expected": 39,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

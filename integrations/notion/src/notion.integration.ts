@@ -1,15 +1,19 @@
 import { Client } from '@notionhq/client';
+
+import { decryptSecret, encryptSecret } from './auth';
+import { NotionAuthClient } from './auth-client';
+import type { NotionConfig } from './config';
+import { parseNotionConfig } from './config';
+import { NotionApiError, NotionAuthError } from './errors';
 import type {
   ConnectionResult,
   IngestedMemory,
   Integration,
   IntegrationConfig,
+  NotionDatabase,
+  NotionPage,
   SyncResult,
 } from './types';
-import { NotionConfig, parseNotionConfig } from './config';
-import { NotionAuthClient } from './auth-client';
-import { decryptSecret, encryptSecret } from './auth';
-import { NotionApiError, NotionAuthError } from './errors';
 
 const DEFAULT_MASTER_KEY = 'vaeloom-dev-secret';
 
@@ -28,7 +32,7 @@ export class NotionIntegration implements Integration {
   private readonly tokenFetch: typeof fetch;
 
   constructor(opts?: { masterKey?: string; tokenFetch?: typeof fetch }) {
-    this.masterKey = opts?.masterKey ?? process.env.VAELOOM_MASTER_KEY ?? DEFAULT_MASTER_KEY;
+    this.masterKey = opts?.masterKey ?? process.env['VAELOOM_MASTER_KEY'] ?? DEFAULT_MASTER_KEY;
     this.tokenFetch = opts?.tokenFetch ?? fetch;
   }
 
@@ -43,10 +47,9 @@ export class NotionIntegration implements Integration {
       throw new NotionAuthError('Notion config requires accessToken or botToken.');
     }
     const client = this.client(token);
-    const { data } = await client.users.me({});
-    const workspaceId = (data as { bot?: { workspace_name?: string; owner?: { workspace_id?: string } } }).bot
-      ? (data as { bot: { owner: { workspace_id: string } } }).bot.owner.workspace_id
-      : undefined;
+    const data = await client.users.me({});
+    const bot = (data as unknown as { bot?: { owner?: { workspace_id?: string } } }).bot;
+    const workspaceId = bot?.owner?.workspace_id;
     const connectionId = `notion-${workspaceId ?? crypto.randomUUID()}`;
     this.connections.set(connectionId, {
       connectionId,
@@ -81,18 +84,21 @@ export class NotionIntegration implements Integration {
 
   async listDatabases(connectionId: string): Promise<NotionDatabase[]> {
     const client = this.client(this.tokenFor(connectionId));
-    const res = await client.search({ filter: { property: 'object', value: 'database' }, page_size: 100 });
+    const res = await client.search({
+      filter: { property: 'object', value: 'database' },
+      page_size: 100,
+    });
     return (res.results as Array<Record<string, any>>).map((d) => ({
-      id: d.id,
+      id: d['id'],
       title: extractTitle(d),
-      url: d.url,
+      url: d['url'],
     }));
   }
 
   async getDatabase(connectionId: string, databaseId: string): Promise<NotionDatabase> {
     const client = this.client(this.tokenFor(connectionId));
     const d = (await client.databases.retrieve({ database_id: databaseId })) as Record<string, any>;
-    return { id: d.id, title: extractTitle(d), url: d.url };
+    return { id: d['id'], title: extractTitle(d), url: d['url'] };
   }
 
   async queryDatabase(
@@ -125,7 +131,7 @@ export class NotionIntegration implements Integration {
       parent: { database_id: parentId },
       properties: properties as any,
     })) as Record<string, any>;
-    return { id: res.id, url: res.url };
+    return { id: res['id'], url: res['url'] };
   }
 
   async updatePage(
@@ -134,8 +140,11 @@ export class NotionIntegration implements Integration {
     properties: Record<string, unknown>,
   ): Promise<{ id: string }> {
     const client = this.client(this.tokenFor(connectionId));
-    const res = (await client.pages.update({ page_id: pageId, properties: properties as any })) as Record<string, any>;
-    return { id: res.id };
+    const res = (await client.pages.update({
+      page_id: pageId,
+      properties: properties as any,
+    })) as Record<string, any>;
+    return { id: res['id'] };
   }
 
   async search(connectionId: string, query: string): Promise<NotionPage[]> {
@@ -147,7 +156,9 @@ export class NotionIntegration implements Integration {
   // ---- OAuth helpers ----
 
   buildAuthClient(config: IntegrationConfig): NotionAuthClient {
-    return new NotionAuthClient(parseNotionConfig({ ...config.settings, provider: config.provider }));
+    return new NotionAuthClient(
+      parseNotionConfig({ ...config.settings, provider: config.provider }),
+    );
   }
 
   // ---- Webhook ----
@@ -191,17 +202,17 @@ export class NotionIntegration implements Integration {
 }
 
 function extractTitle(obj: Record<string, any>): string {
-  const title = obj?.title;
+  const title = obj['title'];
   if (Array.isArray(title)) return title.map((t) => t.plain_text ?? '').join('');
-  return obj?.title ?? 'Untitled';
+  return obj['title'] ?? 'Untitled';
 }
 
 function toPage(p: Record<string, any>): NotionPage {
   return {
-    id: p.id,
-    url: p.url,
-    properties: p.properties ?? {},
-    createdAt: p.created_time,
-    updatedAt: p.last_edited_time,
+    id: p['id'],
+    url: p['url'],
+    properties: p['properties'] ?? {},
+    createdAt: p['created_time'],
+    updatedAt: p['last_edited_time'],
   };
 }

@@ -37,21 +37,7 @@ jobs:
         run: pnpm audit --audit-level=high
         continue-on-error: true
       - name: Check allowed packages
-        run: node -e "
-          const config = require('./security-audit.config.js');
-          const { execSync } = require('child_process');
-          const audit = JSON.parse(execSync('pnpm audit --json').toString());
-          const advisories = audit.advisories || {};
-          const allowed = config.allowedAdvisories || [];
-          const violations = Object.entries(advisories)
-            .filter(([id]) => !allowed.includes(id))
-            .map(([id, adv]) => \`- \${adv.module_name}@\${adv.vulnerable_versions}: \${adv.overview}\`);
-          if (violations.length > 0) {
-            console.log('SECURITY VIOLATIONS:', JSON.stringify(violations, null, 2));
-            process.exit(1);
-          }
-          console.log('No unapproved vulnerabilities found.');
-        "
+        run: node .github/scripts/security-audit-check.js
 
   pip-audit:
     name: pip-audit (ai-service)
@@ -96,15 +82,7 @@ jobs:
         run: |
           echo "## Dependency Status" > $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          pnpm outdated --format json 2>/dev/null | node -e "
-            const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-            const table = ['| Package | Current | Latest | Type |'];
-            table.push('|---------|---------|--------|------|');
-            for (const [pkg, info] of Object.entries(data)) {
-              table.push(\`| \${pkg} | \${info.current} | \${info.latest} | \${info.type} |\`);
-            }
-            require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, table.join('\\n'));
-          " || echo "All packages up to date."
+          pnpm outdated --format json 2>/dev/null | node .github/scripts/dependency-diff.js || echo "All packages up to date."
 
   summary:
     name: Generate Security Summary

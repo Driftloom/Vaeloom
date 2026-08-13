@@ -1,5 +1,14 @@
-import { google } from 'googleapis';
 import type { OAuth2Client } from 'google-auth-library';
+import { google } from 'googleapis';
+
+import { decryptSecret, encryptSecret, verifyGoogleChannel } from './auth';
+import type { GoogleDriveConfig } from './config';
+import { parseGoogleDriveConfig } from './config';
+import {
+  GoogleDriveApiError,
+  GoogleDriveAuthError,
+  GoogleDriveWebhookVerificationError,
+} from './errors';
 import type {
   ConnectionResult,
   IngestedMemory,
@@ -7,13 +16,6 @@ import type {
   IntegrationConfig,
   SyncResult,
 } from './types';
-import { GoogleDriveConfig, parseGoogleDriveConfig } from './config';
-import { decryptSecret, encryptSecret, verifyGoogleChannel } from './auth';
-import {
-  GoogleDriveApiError,
-  GoogleDriveAuthError,
-  GoogleDriveWebhookVerificationError,
-} from './errors';
 
 const DEFAULT_MASTER_KEY = 'vaeloom-dev-secret';
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
@@ -32,7 +34,7 @@ export class GoogleDriveIntegration implements Integration {
   private readonly masterKey: string;
 
   constructor(opts?: { masterKey?: string }) {
-    this.masterKey = opts?.masterKey ?? process.env.VAELOOM_MASTER_KEY ?? DEFAULT_MASTER_KEY;
+    this.masterKey = opts?.masterKey ?? process.env['VAELOOM_MASTER_KEY'] ?? DEFAULT_MASTER_KEY;
   }
 
   private oauthClient(conn?: StoredConnection): OAuth2Client {
@@ -40,22 +42,28 @@ export class GoogleDriveIntegration implements Integration {
     if (conn) {
       client.setCredentials({
         access_token: decryptSecret(conn.accessToken, this.masterKey),
-        refresh_token: conn.refreshToken ? decryptSecret(conn.refreshToken, this.masterKey) : undefined,
+        refresh_token: conn.refreshToken
+          ? decryptSecret(conn.refreshToken, this.masterKey)
+          : undefined,
       });
     }
     return client;
   }
 
   getAuthorizeUrl(config: GoogleDriveConfig, state: string): string {
-    const client = new google.auth.OAuth2(
-      config.clientId,
-      config.clientSecret,
-      config.redirectUri,
-    );
-    return client.generateAuthUrl({ access_type: 'offline', scope: SCOPES, state, prompt: 'consent' });
+    const client = new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri);
+    return client.generateAuthUrl({
+      access_type: 'offline',
+      scope: SCOPES,
+      state,
+      prompt: 'consent',
+    });
   }
 
-  async exchangeCodeForToken(config: GoogleDriveConfig, code: string): Promise<{ accessToken: string; refreshToken?: string }> {
+  async exchangeCodeForToken(
+    config: GoogleDriveConfig,
+    code: string,
+  ): Promise<{ accessToken: string; refreshToken?: string }> {
     const client = new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri);
     const { tokens } = await client.getToken(code);
     return {
@@ -67,14 +75,18 @@ export class GoogleDriveIntegration implements Integration {
   async connect(config: IntegrationConfig): Promise<ConnectionResult> {
     const gdConfig = parseGoogleDriveConfig({ ...config.settings, provider: config.provider });
     if (!gdConfig.accessToken) {
-      throw new GoogleDriveAuthError('Google Drive config requires accessToken (and optional refreshToken).');
+      throw new GoogleDriveAuthError(
+        'Google Drive config requires accessToken (and optional refreshToken).',
+      );
     }
     const connectionId = `gdrive-${crypto.randomUUID()}`;
     this.connections.set(connectionId, {
       connectionId,
       config: gdConfig,
       accessToken: encryptSecret(gdConfig.accessToken, this.masterKey),
-      refreshToken: gdConfig.refreshToken ? encryptSecret(gdConfig.refreshToken, this.masterKey) : undefined,
+      refreshToken: gdConfig.refreshToken
+        ? encryptSecret(gdConfig.refreshToken, this.masterKey)
+        : undefined,
     });
     return {
       connectionId,
@@ -147,7 +159,13 @@ export class GoogleDriveIntegration implements Integration {
   }
 
   /** Register a Drive push notification channel for a file. */
-  async watchFile(connectionId: string, fileId: string, webhookUrl: string, channelId: string, resourceToken: string) {
+  async watchFile(
+    connectionId: string,
+    fileId: string,
+    webhookUrl: string,
+    channelId: string,
+    resourceToken: string,
+  ) {
     const conn = this.getConnection(connectionId);
     const drive = this.drive(conn);
     const res = await drive.files.watch({
@@ -172,10 +190,18 @@ export class GoogleDriveIntegration implements Integration {
       expectedResourceToken?: string;
     };
     if (data.expectedChannelId && data.expectedResourceToken) {
-      if (!verifyGoogleChannel(data.expectedChannelId, data.expectedResourceToken, data.channelId, data.resourceToken)) {
+      if (
+        !verifyGoogleChannel(
+          data.expectedChannelId,
+          data.expectedResourceToken,
+          data.channelId,
+          data.resourceToken,
+        )
+      ) {
         throw new GoogleDriveWebhookVerificationError();
       }
     }
+    return null;
   }
 
   // ---- Sync (document ingestion) ----
@@ -183,7 +209,10 @@ export class GoogleDriveIntegration implements Integration {
   async sync(connectionId: string): Promise<SyncResult> {
     const conn = this.getConnection(connectionId);
     const drive = this.drive(conn);
-    const res = await drive.files.list({ pageSize: 100, fields: 'files(id, name, webViewLink, modifiedTime)' });
+    const res = await drive.files.list({
+      pageSize: 100,
+      fields: 'files(id, name, webViewLink, modifiedTime)',
+    });
     let ingested = 0;
     for (const f of res.data.files ?? []) {
       const memory: IngestedMemory = {
@@ -192,8 +221,8 @@ export class GoogleDriveIntegration implements Integration {
         entityType: 'gdrive_file',
         title: f.name ?? 'Untitled',
         content: f.webViewLink ?? '',
-        url: f.webViewLink,
-        updatedAt: f.modifiedTime,
+        url: f.webViewLink ?? undefined,
+        updatedAt: f.modifiedTime ?? undefined,
         metadata: { mimeType: f.mimeType },
       };
       void memory;

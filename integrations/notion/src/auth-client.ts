@@ -1,4 +1,4 @@
-import { NotionConfig } from './config';
+import type { NotionConfig } from './config';
 
 export const NOTION_AUTHORIZE_URL = 'https://api.notion.com/v1/oauth/authorize';
 export const NOTION_TOKEN_URL = 'https://api.notion.com/v1/oauth/token';
@@ -25,14 +25,21 @@ export class NotionAuthClient {
     return `${NOTION_AUTHORIZE_URL}?${params.toString()}`;
   }
 
-  async exchangeCodeForToken(code: string, fetchImpl: typeof fetch = fetch): Promise<NotionOAuthToken> {
+  async exchangeCodeForToken(
+    code: string,
+    fetchImpl: typeof fetch = fetch,
+  ): Promise<NotionOAuthToken> {
     const res = await fetchImpl(NOTION_TOKEN_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Basic ${Buffer.from(`${this.config.clientId}:${this.config.clientSecret}`).toString('base64')}`,
       },
-      body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: this.config.redirectUri }),
+      body: JSON.stringify({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: this.config.redirectUri,
+      }),
     });
     if (!res.ok) throw new Error(`Notion token exchange failed: ${res.status}`);
     const data = (await res.json()) as Record<string, unknown>;

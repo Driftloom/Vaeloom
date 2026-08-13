@@ -1,11 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import {
-  Counter,
-  Gauge,
-  Histogram,
-  Registry,
-  collectDefaultMetrics,
-} from 'prom-client';
+import type { Registry } from 'prom-client';
+import { Counter, Gauge, Histogram, collectDefaultMetrics } from 'prom-client';
 
 import { getRegistry } from './registry';
 

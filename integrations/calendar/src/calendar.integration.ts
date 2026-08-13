@@ -1,5 +1,11 @@
-import { google } from 'googleapis';
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
+import { google } from 'googleapis';
+
+import { decryptSecret, encryptSecret, verifyCalendarChannel } from './auth';
+import type { CalendarEvent, CalendarWebhookPayload, NewCalendarEvent } from './calendar.types';
+import type { CalendarConfig } from './config';
+import { parseCalendarConfig } from './config';
+import { CalendarApiError, CalendarAuthError, CalendarWebhookVerificationError } from './errors';
 import type {
   ConnectionResult,
   IngestedMemory,
@@ -7,14 +13,6 @@ import type {
   IntegrationConfig,
   SyncResult,
 } from './types';
-import { CalendarConfig, parseCalendarConfig } from './config';
-import { decryptSecret, encryptSecret, verifyCalendarChannel } from './auth';
-import {
-  CalendarApiError,
-  CalendarAuthError,
-  CalendarWebhookVerificationError,
-} from './errors';
-import type { CalendarEvent, CalendarWebhookPayload, NewCalendarEvent } from './calendar.types';
 
 const DEFAULT_MASTER_KEY = 'vaeloom-dev-secret';
 const GOOGLE_SCOPES = ['https://www.googleapis.com/auth/calendar'];
@@ -34,15 +32,24 @@ export class CalendarIntegration implements Integration {
   private readonly masterKey: string;
 
   constructor(opts?: { masterKey?: string }) {
-    this.masterKey = opts?.masterKey ?? process.env.VAELOOM_MASTER_KEY ?? DEFAULT_MASTER_KEY;
+    this.masterKey = opts?.masterKey ?? process.env['VAELOOM_MASTER_KEY'] ?? DEFAULT_MASTER_KEY;
   }
 
   // ---- OAuth helpers ----
 
   getAuthorizeUrl(config: CalendarConfig, state: string): string {
     if (config.backend === 'google') {
-      const client = new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri);
-      return client.generateAuthUrl({ access_type: 'offline', scope: GOOGLE_SCOPES, state, prompt: 'consent' });
+      const client = new google.auth.OAuth2(
+        config.clientId,
+        config.clientSecret,
+        config.redirectUri,
+      );
+      return client.generateAuthUrl({
+        access_type: 'offline',
+        scope: GOOGLE_SCOPES,
+        state,
+        prompt: 'consent',
+      });
     }
     const params = new URLSearchParams({
       client_id: config.clientId,
@@ -60,25 +67,38 @@ export class CalendarIntegration implements Integration {
     code: string,
   ): Promise<{ accessToken: string; refreshToken?: string }> {
     if (config.backend === 'google') {
-      const client = new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri);
+      const client = new google.auth.OAuth2(
+        config.clientId,
+        config.clientSecret,
+        config.redirectUri,
+      );
       const { tokens } = await client.getToken(code);
-      return { accessToken: tokens.access_token ?? '', refreshToken: tokens.refresh_token ?? undefined };
+      return {
+        accessToken: tokens.access_token ?? '',
+        refreshToken: tokens.refresh_token ?? undefined,
+      };
     }
-    const res = await fetch(`https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: config.clientId,
-        client_secret: config.clientSecret,
-        code,
-        redirect_uri: config.redirectUri,
-        grant_type: 'authorization_code',
-        scope: OUTLOOK_SCOPES.join(' '),
-      }).toString(),
-    });
+    const res = await fetch(
+      `https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/token`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: config.clientId,
+          client_secret: config.clientSecret,
+          code,
+          redirect_uri: config.redirectUri,
+          grant_type: 'authorization_code',
+          scope: OUTLOOK_SCOPES.join(' '),
+        }).toString(),
+      },
+    );
     if (!res.ok) throw new CalendarAuthError(`Outlook token exchange failed: ${res.status}`);
     const data = (await res.json()) as Record<string, unknown>;
-    return { accessToken: String(data['access_token']), refreshToken: data['refresh_token'] ? String(data['refresh_token']) : undefined };
+    return {
+      accessToken: String(data['access_token']),
+      refreshToken: data['refresh_token'] ? String(data['refresh_token']) : undefined,
+    };
   }
 
   // ---- Connection ----
@@ -93,7 +113,9 @@ export class CalendarIntegration implements Integration {
       connectionId,
       config: calConfig,
       accessToken: encryptSecret(calConfig.accessToken, this.masterKey),
-      refreshToken: calConfig.refreshToken ? encryptSecret(calConfig.refreshToken, this.masterKey) : undefined,
+      refreshToken: calConfig.refreshToken
+        ? encryptSecret(calConfig.refreshToken, this.masterKey)
+        : undefined,
     });
     return {
       connectionId,
@@ -120,7 +142,11 @@ export class CalendarIntegration implements Integration {
 
   /** Internal Google calendar client bound to a stored connection. */
   private googleCalendar(conn: StoredConnection) {
-    const client = new google.auth.OAuth2(conn.config.backend === 'google' ? conn.config.clientId : '', conn.config.backend === 'google' ? conn.config.clientSecret : '', conn.config.backend === 'google' ? conn.config.redirectUri : '');
+    const client = new google.auth.OAuth2(
+      conn.config.backend === 'google' ? conn.config.clientId : '',
+      conn.config.backend === 'google' ? conn.config.clientSecret : '',
+      conn.config.backend === 'google' ? conn.config.redirectUri : '',
+    );
     client.setCredentials({ access_token: this.accessToken(conn) });
     return google.calendar({ version: 'v3', auth: client });
   }
@@ -130,8 +156,8 @@ export class CalendarIntegration implements Integration {
     const token = this.accessToken(conn);
     const authProvider = {
       getAccessToken: async () => token,
-    } as unknown as ConstructorParameters<typeof GraphClient.initWithMiddleware>[0]['authProvider'];
-    return GraphClient.initWithMiddleware({ authProvider });
+    } as unknown as Parameters<typeof GraphClient.initWithMiddleware>[0];
+    return GraphClient.initWithMiddleware(authProvider);
   }
 
   // ---- Events API ----
@@ -145,7 +171,14 @@ export class CalendarIntegration implements Integration {
     const conn = this.getConnection(connectionId);
     if (conn.config.backend === 'google') {
       const cal = this.googleCalendar(conn);
-      const res = await cal.events.list({ calendarId, timeMin, timeMax, maxResults: 100, singleEvents: true, orderBy: 'startTime' });
+      const res = await cal.events.list({
+        calendarId,
+        timeMin,
+        timeMax,
+        maxResults: 100,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
       return (res.data.items ?? []).map(toGoogleEvent);
     }
     const graph = this.graphClient(conn);
@@ -153,7 +186,11 @@ export class CalendarIntegration implements Integration {
     return (res.value ?? []).map(toOutlookEvent);
   }
 
-  async getEvent(connectionId: string, calendarId: string, eventId: string): Promise<CalendarEvent> {
+  async getEvent(
+    connectionId: string,
+    calendarId: string,
+    eventId: string,
+  ): Promise<CalendarEvent> {
     const conn = this.getConnection(connectionId);
     if (conn.config.backend === 'google') {
       const cal = this.googleCalendar(conn);
@@ -165,7 +202,11 @@ export class CalendarIntegration implements Integration {
     return toOutlookEvent(res);
   }
 
-  async createEvent(connectionId: string, calendarId: string, event: NewCalendarEvent): Promise<{ id: string }> {
+  async createEvent(
+    connectionId: string,
+    calendarId: string,
+    event: NewCalendarEvent,
+  ): Promise<{ id: string }> {
     const conn = this.getConnection(connectionId);
     if (conn.config.backend === 'google') {
       const cal = this.googleCalendar(conn);
@@ -177,15 +218,26 @@ export class CalendarIntegration implements Integration {
     return { id: res.id };
   }
 
-  async updateEvent(connectionId: string, calendarId: string, eventId: string, event: NewCalendarEvent): Promise<{ id: string }> {
+  async updateEvent(
+    connectionId: string,
+    calendarId: string,
+    eventId: string,
+    event: NewCalendarEvent,
+  ): Promise<{ id: string }> {
     const conn = this.getConnection(connectionId);
     if (conn.config.backend === 'google') {
       const cal = this.googleCalendar(conn);
-      const res = await cal.events.update({ calendarId, eventId, requestBody: fromGoogleEvent(event) });
+      const res = await cal.events.update({
+        calendarId,
+        eventId,
+        requestBody: fromGoogleEvent(event),
+      });
       return { id: res.data.id ?? '' };
     }
     const graph = this.graphClient(conn);
-    const res = await graph.api(`/me/calendars/${calendarId}/events/${eventId}`).patch(fromOutlookEvent(event));
+    const res = await graph
+      .api(`/me/calendars/${calendarId}/events/${eventId}`)
+      .patch(fromOutlookEvent(event));
     return { id: res.id };
   }
 
@@ -233,13 +285,21 @@ export class CalendarIntegration implements Integration {
   async handleWebhook(payload: unknown, _headers?: Record<string, string>): Promise<unknown> {
     const data = payload as CalendarWebhookPayload;
     if (data.expectedChannelId && data.expectedResourceToken) {
-      if (!verifyCalendarChannel(data.expectedChannelId, data.expectedResourceToken, data.channelId, data.resourceToken)) {
+      if (
+        !verifyCalendarChannel(
+          data.expectedChannelId,
+          data.expectedResourceToken,
+          data.channelId,
+          data.resourceToken,
+        )
+      ) {
         throw new CalendarWebhookVerificationError();
       }
     }
     // Outlook sends a validationToken during subscription creation; the caller
     // should respond with it directly. Resource change notifications arrive as
     // `value[]` with subscriptionId.
+    return (data as { validationToken?: string }).validationToken ?? null;
   }
 
   // ---- Sync ----
@@ -275,14 +335,14 @@ export class CalendarIntegration implements Integration {
 
 function toGoogleEvent(e: Record<string, any>): CalendarEvent {
   return {
-    id: e.id,
-    summary: e.summary ?? '(no title)',
-    description: e.description,
-    start: e.start?.dateTime ?? e.start?.date ?? '',
-    end: e.end?.dateTime ?? e.end?.date ?? '',
-    location: e.location,
-    htmlLink: e.htmlLink,
-    status: e.status,
+    id: e['id'],
+    summary: e['summary'] ?? '(no title)',
+    description: e['description'],
+    start: e['start']?.['dateTime'] ?? e['start']?.['date'] ?? '',
+    end: e['end']?.['dateTime'] ?? e['end']?.['date'] ?? '',
+    location: e['location'],
+    htmlLink: e['htmlLink'],
+    status: e['status'],
   };
 }
 
@@ -298,14 +358,14 @@ function fromGoogleEvent(ev: NewCalendarEvent) {
 
 function toOutlookEvent(e: Record<string, any>): CalendarEvent {
   return {
-    id: e.id,
-    summary: e.subject ?? '(no title)',
-    description: e.bodyPreview ?? e.body?.content,
-    start: e.start?.dateTime ?? '',
-    end: e.end?.dateTime ?? '',
-    location: e.location?.displayName,
-    htmlLink: e.webLink,
-    status: e.showAs,
+    id: e['id'],
+    summary: e['subject'] ?? '(no title)',
+    description: e['bodyPreview'] ?? e['body']?.['content'],
+    start: e['start']?.['dateTime'] ?? '',
+    end: e['end']?.['dateTime'] ?? '',
+    location: e['location']?.['displayName'],
+    htmlLink: e['webLink'],
+    status: e['showAs'],
   };
 }
 

@@ -1,5 +1,9 @@
 export class CalendarIntegrationError extends Error {
-  constructor(message: string, public readonly code: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public override readonly cause?: unknown,
+  ) {
     super(message);
     this.name = 'CalendarIntegrationError';
   }
@@ -20,7 +24,11 @@ export class CalendarWebhookVerificationError extends CalendarIntegrationError {
 }
 
 export class CalendarApiError extends CalendarIntegrationError {
-  constructor(message: string, public readonly status?: number, cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    cause?: unknown,
+  ) {
     super(message, 'CAL_API_ERROR', cause);
     this.name = 'CalendarApiError';
   }

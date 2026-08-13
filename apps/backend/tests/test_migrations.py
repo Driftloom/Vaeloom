@@ -8,7 +8,7 @@ from backend.migrations import MIGRATIONS, downgrade_to, run_migrations
 
 pytestmark = pytest.mark.asyncio
 
-EXPECTED_VERSIONS = {"0003_approvals", "0004_memory_taxonomy", "0005_rls", "0006_idempotency", "0007_gmail_watch"}
+EXPECTED_VERSIONS = {"0002_microservice_tables", "0003_approvals", "0004_memory_taxonomy", "0005_rls", "0006_idempotency", "0007_gmail_watch"}
 
 
 @pytest_asyncio.fixture
@@ -76,7 +76,7 @@ class TestMigrationRunner:
 
         async with migration_engine.begin() as conn:
             result = await conn.execute(text("SELECT version FROM schema_migrations ORDER BY version"))
-            assert [r[0] for r in result.fetchall()] == ["0003_approvals", "0004_memory_taxonomy"]
+            assert [r[0] for r in result.fetchall()] == ["0002_microservice_tables", "0003_approvals", "0004_memory_taxonomy"]
 
     async def test_downgrade_drops_approval_table(self, migration_engine):
         await run_migrations(migration_engine)

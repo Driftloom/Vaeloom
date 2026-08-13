@@ -1,4 +1,4 @@
-import { SlackConfig } from './config';
+import type { SlackConfig } from './config';
 
 export interface OAuthTokenResponse {
   accessToken: string;
@@ -29,7 +29,10 @@ export class SlackAuthClient {
   }
 
   /** Exchange an OAuth `code` for an access token via the Slack API. */
-  async exchangeCodeForToken(code: string, fetchImpl: typeof fetch = fetch): Promise<OAuthTokenResponse> {
+  async exchangeCodeForToken(
+    code: string,
+    fetchImpl: typeof fetch = fetch,
+  ): Promise<OAuthTokenResponse> {
     const body = new URLSearchParams({
       client_id: this.config.clientId,
       client_secret: this.config.clientSecret,
@@ -55,7 +58,9 @@ export class SlackAuthClient {
       tokenType: 'Bearer',
       botUserId: data['bot_user_id'] ? String(data['bot_user_id']) : undefined,
       teamId: data['team'] ? String((data['team'] as Record<string, unknown>)['id']) : undefined,
-      teamName: data['team'] ? String((data['team'] as Record<string, unknown>)['name']) : undefined,
+      teamName: data['team']
+        ? String((data['team'] as Record<string, unknown>)['name'])
+        : undefined,
     };
   }
 }

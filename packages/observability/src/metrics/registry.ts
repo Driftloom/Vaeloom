@@ -1,5 +1,6 @@
-import { Registry } from 'prom-client';
 import { randomUUID } from 'node:crypto';
+
+import { Registry } from 'prom-client';
 
 let registry: Registry | undefined;
 

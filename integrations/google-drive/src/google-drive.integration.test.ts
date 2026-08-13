@@ -1,5 +1,5 @@
-import { GoogleDriveIntegration } from './google-drive.integration';
 import { verifyGoogleChannel } from './auth';
+import { GoogleDriveIntegration } from './google-drive.integration';
 
 describe('GoogleDriveIntegration', () => {
   const config = {

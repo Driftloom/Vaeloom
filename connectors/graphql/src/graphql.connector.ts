@@ -1,7 +1,8 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
-import type { GraphQLConfig, GraphQLResponse, GraphQLSchema } from './types';
+
 import { INTROSPECTION_QUERY, parseIntrospectionResult } from './introspection';
 import { buildQuery } from './query-builder';
+import type { GraphQLConfig, GraphQLResponse, GraphQLSchema } from './types';
 
 export class GraphQLConnector {
   private client: AxiosInstance | null = null;
@@ -28,9 +29,11 @@ export class GraphQLConnector {
         const { status } = error.response;
 
         if (status >= 500) {
-          const retryCount = (error.config as AxiosRequestConfig & { _retryCount?: number })._retryCount ?? 0;
+          const retryCount =
+            (error.config as AxiosRequestConfig & { _retryCount?: number })._retryCount ?? 0;
           if (retryCount < 3) {
-            (error.config as AxiosRequestConfig & { _retryCount?: number })._retryCount = retryCount + 1;
+            (error.config as AxiosRequestConfig & { _retryCount?: number })._retryCount =
+              retryCount + 1;
             const backoff = Math.pow(2, retryCount) * 1000;
             await delay(backoff);
             return this.client!.request(error.config);

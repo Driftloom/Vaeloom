@@ -1,5 +1,9 @@
 export class NotionIntegrationError extends Error {
-  constructor(message: string, public readonly code: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public override readonly cause?: unknown,
+  ) {
     super(message);
     this.name = 'NotionIntegrationError';
   }
@@ -13,7 +17,11 @@ export class NotionAuthError extends NotionIntegrationError {
 }
 
 export class NotionApiError extends NotionIntegrationError {
-  constructor(message: string, public readonly status?: number, cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    cause?: unknown,
+  ) {
     super(message, 'NOTION_API_ERROR', cause);
     this.name = 'NotionApiError';
   }

@@ -1,5 +1,5 @@
-import { CalendarIntegration } from './calendar.integration';
 import { verifyCalendarChannel } from './auth';
+import { CalendarIntegration } from './calendar.integration';
 
 const googleConfig = {
   provider: 'calendar',
@@ -30,8 +30,8 @@ describe('CalendarIntegration', () => {
     const g = await integration.connect(googleConfig);
     const o = await integration.connect(outlookConfig);
     expect(g.provider).toBe('calendar');
-    expect(g.metadata?.backend).toBe('google');
-    expect(o.metadata?.backend).toBe('outlook');
+    expect(g.metadata?.['backend']).toBe('google');
+    expect(o.metadata?.['backend']).toBe('outlook');
   });
 
   it('builds google authorize url', () => {

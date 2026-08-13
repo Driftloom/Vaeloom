@@ -1,5 +1,14 @@
-import { GithubIntegration } from './github.integration';
+﻿import { createHmac } from 'node:crypto';
 import { verifyGithubSignature } from './auth';
+import { GithubIntegration } from './github.integration';
+
+// @octokit/rest is ESM-only; the tests exercise offline logic only, so mock it to
+// avoid Jest's CJS runtime having to parse the ESM dependency graph.
+jest.mock('@octokit/rest', () => ({
+  Octokit: class {
+    constructor(_opts?: unknown) {}
+  },
+}));
 
 describe('GithubIntegration', () => {
   const config = {
@@ -17,8 +26,7 @@ describe('GithubIntegration', () => {
   it('verifies a valid webhook signature', () => {
     const secret = 'whsec';
     const rawBody = '{"action":"opened"}';
-    const crypto = require('node:crypto');
-    const sig = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    const sig = 'sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex');
     expect(verifyGithubSignature(secret, sig, rawBody)).toBe(true);
   });
 
