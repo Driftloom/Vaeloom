@@ -21,7 +21,7 @@
 | MVP-P00 Intake and Existing-State Assessment            | COMPLETE (conditionally approved 2026-08-13) | `docs/phases/mvp-p00/` - deliverables + re-run gate `09-gate-2026-08-12.md` (**75.69/100**, re-score block; prompt paperwork closed via files 10-14); **user verdict 2026-08-13: ACCEPTED** -> PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY (13-readiness-and-done.md); plans moved progress/ -> completed/ |
 | MVP-P01 Discovery and Problem Definition                | COMPLETE - accepted by USER 2026-08-13 | docs/phases/mvp-p01/ - re-run @ 1def16d: gate 14 = 74.89/100, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY accepted (DEC-P01-09); zero-trust audit 16; P02 starts only on user command
 | MVP-P02 Research, Domain Analysis, Data Discovery       | COMPLETE - accepted by USER 2026-08-13 | docs/phases/mvp-p02/ - re-run @ 4aa6c71: gate 19 = **88.20/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY accepted (DEC-P02-06); BQ-P02-01..04 confirmed; DEC-P02-05 T2/T3 kept as proposals only; P03 starts only on user command |
-| MVP-P03 Requirements Engineering                        | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P03 Requirements Engineering                        | ✅ GO (accepted by USER 2026-08-14) | docs/phases/mvp-p03/ - re-run @ 93164de: gate 09 = **89.7/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY accepted (DEC-P03-01..05); coverage delta + EVD counts reconciled (RISK-MVP-P02-10/11 CLOSED); handoff `10-handoff-to-p04.md` live; P04 starts only on user command |
 | MVP-P04 Project Planning and Delivery Governance        | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
 | MVP-P05 Solution Architecture                           | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
 | MVP-P06 Technology Stack and Engineering Standards      | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
@@ -66,7 +66,14 @@
    USER, coverage delta reconcile in P03, no dependent/production
    authorization). Handoff `21-handoff-to-p03.md` live. Plans moved to
    `.agents/plans/completed/`.
-3. **MVP-P03 starts only on user command** — then each
+3. **MVP-P03 CLOSED 2026-08-14** — USER accepted the re-run verdict:
+   `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY` (gate
+   `09-gate-2026-08-14.md` **89.7/100**; DEC-P03-01..05; T2/T3 proposals-only;
+   coverage delta 94-vs-97 + stale EVD counts reconciled,
+   RISK-MVP-P02-10/11 CLOSED; restrictions: baseline binds P04+, cohort
+   VB-07/08 still blocked on USER, no claims without legal review, no code
+   until P05+). Handoff `10-handoff-to-p04.md` live. Plan archived.
+4. **MVP-P04 starts only on user command** — then each
    following phase likewise starts only on user command, one at a time.
-4. All other phases (P03–P21, CONT-P00…21, ENT-P00…21): **⬜ NOT STARTED —
+5. All other phases (P04–P21, CONT-P00…21, ENT-P00…21): **⬜ NOT STARTED —
    DO NOT GO** until their predecessor gate passes and the user commands start.
