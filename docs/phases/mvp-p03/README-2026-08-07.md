@@ -1,0 +1,65 @@
+# MVP-P03 — Requirements Engineering
+
+> **Prompt:** `MVP-P03` (66-prompt pack, validated) — governing execution
+> contract **Governing sources:** INT-02 (SHA-256 `2FA8966F…69640` verified
+> 2026-08-07) · INT-05 · INT-07/08/09 · gatekeeper compendiums ·
+> **Predecessor:** MVP-P02 ✅ CONDITIONAL GO 88/100 (2026-08-07) **Status:** ✅
+> COMPLETE — docs 01–10 written 2026-08-07; gate 88/100 CONDITIONAL GO, pending
+> user ratification; handoff to P04 ready
+
+## Entry criteria (prompt §6)
+
+- [x] Previous phase approved gate + valid handoff
+      (`../mvp-p02/08-handoff-to-p03.md`)
+- [x] Canonical sources + repo revision identified (`master` @ `81dc1e4`)
+- [x] Access: research-only; no production changes
+- [x] Owners named: user = sole approver (BQ-01); reviewers =
+      Security/Privacy/Data/ Accessibility/Operations veto on mandatory blockers
+      (prompt §2)
+- [x] Requirements traceable; no critical blocker makes work unsafe
+- [x] Test/evidence/rollback/docs plans — evidence plan §5
+
+## Blocking questions (prompt §8) — resolved
+
+| ID        | Question               | Decision (2026-08-07)                                                            |
+| --------- | ---------------------- | -------------------------------------------------------------------------------- |
+| BQ-01     | Approver               | User = sole approver; backup = none (solo)                                       |
+| BQ-02     | Baseline               | `master` @ `81dc1e4`; env = repo; no production access                           |
+| BQ-03/04  | Entities/region/age    | India, 18+, individual job seekers; **P1 + P2 both launch personas** (BQ-P02-02) |
+| BQ-05     | Team/budget/cohort     | Founder + AI agents; $0; volunteer cohort N≈10–20; no deadline                   |
+| BQ-06     | Release-blocking owner | User; change via approved change control (§7)                                    |
+| BQ-P02-01 | Value prop             | Accept proposal + **lead with automation** (tiered)                              |
+| BQ-P02-03 | Memory bar             | ≥80% retrieval hit-rate; ≥90% extraction accuracy; 0 data-loss; 100% deletion    |
+| BQ-P02-04 | Load                   | Target 100 concurrent; upper bound 1,000 concurrent                              |
+
+## Register index
+
+| #   | Document                          | Purpose                                                                          |
+| --- | --------------------------------- | -------------------------------------------------------------------------------- |
+| 01  | `01-source-register.md`           | Phase sources + conflict log                                                     |
+| 02  | `02-predecessor-audit.md`         | Audit of P02 handoff                                                             |
+| 03  | `03-requirements.md`              | **DEL-MVP-P03-01** — atomic FR/NFR set incl. hardened FR-52–FR-70, NFR-15–NFR-22 |
+| 04  | `04-stories-acceptance.md`        | **DEL-MVP-P03-02** — stories + acceptance                                        |
+| 05  | `05-traceability-matrix.md`       | **DEL-MVP-P03-03** — source→req→design→test→evidence                             |
+| 06  | `06-priority-release-baseline.md` | **DEL-MVP-P03-04** — MoSCoW + release baseline                                   |
+| 07  | `07-change-control.md`            | **DEL-MVP-P03-05** — change-control rules                                        |
+| 08  | `08-registers.md`                 | Risks/decisions/assumptions                                                      |
+| 09  | `09-gate-report.md`               | End-of-phase gate                                                                |
+| 10  | `10-handoff-to-p04.md`            | Next-phase handoff                                                               |
+
+## Workstreams
+
+| WS      | Workstream                            | Owner              | Output                    |
+| ------- | ------------------------------------- | ------------------ | ------------------------- |
+| WS-03.1 | Functional/journey requirements       | Product Manager/BA | `03-requirements.md` §1   |
+| WS-03.2 | Quality attributes/SLOs               | Solution Architect | `03-requirements.md` §2   |
+| WS-03.3 | Data/AI/security/privacy requirements | Security/Privacy   | `03-requirements.md` §3–4 |
+| WS-03.4 | Acceptance/traceability               | QA Lead            | `04/05`                   |
+| WS-03.5 | Prioritization/change control         | Product Manager    | `06/07`                   |
+
+## Scope note (prompt §3 conflict resolved)
+
+P03 §3 lists "unsupported job-platform automation" as out of scope; **DEC-P02-05
+(user, 2026-08-07) supersedes**: Tier-1 lawful automation is MVP scope; Tier-2/3
+are gated experimental requirements (flags AUTO-02/03, legal review before
+default-ON). Conflict resolved in `01-source-register.md` CF-P03-01.

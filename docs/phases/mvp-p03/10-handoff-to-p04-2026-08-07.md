@@ -1,0 +1,37 @@
+# MVP-P03 — 10. Handoff to MVP-P04 (Project Planning & Delivery Governance)
+
+> **Phase:** MVP-P03 → MVP-P04 · **Date:** 2026-08-07 · **Gate:** ✅ CONDITIONAL
+> GO (88/100). P04 must validate, not assume (prompt §31).
+
+## 1. What P04 receives
+
+| Item                                                   | Where                                       |
+| ------------------------------------------------------ | ------------------------------------------- |
+| Requirements baseline (FR/NFR + hardened FR-h*/NFR-h*) | `03-requirements.md`                        |
+| Stories + acceptance                                   | `04-stories-acceptance.md`                  |
+| Traceability matrix (source→req→story→test→evidence)   | `05-traceability-matrix.md`                 |
+| Priority + release baseline (MoSCoW; P0/P1 = MVP)      | `06-priority-release-baseline.md`           |
+| Change control rules                                   | `07-change-control.md`                      |
+| Registers (BQ resolved, risks, decisions, assumptions) | `08-registers.md`                           |
+| Automation tiers (T1 MVP; T2/T3 gated)                 | `../mvp-p02/09-automation-blueprint.md`     |
+| P00–P02 chain (scope, evidence, research)              | `../mvp-p00/`, `../mvp-p01/`, `../mvp-p02/` |
+
+## 2. P04 focus (per MVP-P04 prompt — planning & delivery governance)
+
+1. Translate P0/P1 requirements into a delivery plan: milestones, phases P04→P13
+   mapping, owners, dependency graph, risk-adjusted schedule.
+2. Governance: definition of ready/done per milestone; meeting/approval cadence;
+   reporting; escalation to user (sole approver).
+3. Resource plan: $0 budget, volunteer cohort, founder + AI agents.
+4. Quality gates per milestone tied to traceability matrix; release baseline
+   (P0/P1) as the contract.
+5. Test/evidence/rollback strategy per milestone.
+
+## 3. Constraints carried into P04
+
+- $0 budget; volunteer cohort (VB-07 signup still needed); India 18+; P1+P2
+  personas.
+- P0/P1 release baseline; T2/T3 gated (legal review before default-ON).
+- Draft-only Gmail default; per-user send only via T3 approval contract.
+- No compliance claims without legal review; no production authority (P19).
+- Repo truth (Next.js/FastAPI) outranks prompt prose.
