@@ -1,0 +1,83 @@
+# MVP-P02 — 17. Decision Implications (DEL-MVP-P02-05, WS-02.7)
+
+> **MVP-P02 re-run 2026-08-13.** Baseline: repo `master` @ `4aa6c71` (pushed
+> 0/0; P01 CLOSED - ACCEPTED BY USER 2026-08-13, DEC-P01-09; entry = CONDITIONAL
+> GO - NON-DEPENDENT WORK ONLY). Phase type: RESEARCH - docs only. Supersedes
+> prior P02 run 2026-08-07 (CONDITIONAL GO 88/100).
+
+This file consolidates the BQ-P02-01..04 proposals with evidence basis, the
+DEC-P02-05 automation tiers (prior user approval 2026-08-07, re-confirmation
+requested at gate), and the decision→implication matrix for all carried and new
+decisions.
+
+## 1. Blocking Questions — proposals confirmed by USER at gate (prompt §8)
+
+| ID        | Question                                               | Proposed Answer (evidence basis)                                                                                                                                                                | Evidence Location                                                                                                                                                                                                                | Status at Gate                                       |
+| --------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| BQ-P02-01 | What is the value proposition of the MVP?              | "Memory-first personal job-search assistant: never re-enter your career data, never miss a deadline (Gmail extraction), and never act without your approval (suggest-mode + draft-only Gmail)." | 12-domain-competitor-analysis.md §implications; 13-platform-research.md §1 (Gmail polling); 14-data-feasibility.md §1 (6 memory types); 15-regulatory-analysis.md §1 (consent/approval); 10-predecessor-audit.md (P01 PS-01..03) | ✅ RESOLVED — USER confirmed 2026-08-13 (DEC-P02-06) |
+| BQ-P02-02 | Who is the primary target customer/persona for launch? | **P1 "The Fresher"** — India, 18–24, first job search (P2 "Urban Switcher" secondary).                                                                                                          | 12-domain-competitor-analysis.md §2 (journey); 10-predecessor-audit.md (P01 personas PA-01..03); India labor stats (MoSPI/AISHE, 12-domain-competitor-analysis.md §1)                                                            | ✅ RESOLVED — USER confirmed 2026-08-13 (DEC-P02-06) |
+| BQ-P02-03 | What MVP memory quality is sufficient to retain users? | Retrieval hit-rate ≥80% on 6 memory types; deadline extraction accuracy ≥90% on eval set; zero data-loss incidents; deletion completeness 100%.                                                 | 14-data-feasibility.md §5 (eval-set plan); 11-evidence-plan.md §2 (RQ-02-05); 12-success-metrics.md (M-02/M-03/M-06)                                                                                                             | ✅ RESOLVED — USER confirmed 2026-08-13 (DEC-P02-06) |
+| BQ-P02-04 | Maximum user load for design (target + upper bound)?   | Target **100 concurrent** (cohort scale); upper bound **1,000 concurrent** (design headroom, stateless app + Postgres).                                                                         | 13-platform-research.md §1 (Gmail quota 15k units/min); 14-data-feasibility.md §3 (volume envelope); 06-registers-2026-08-07.md §4 (ASP-07)                                                                                      | ✅ RESOLVED — USER confirmed 2026-08-13 (DEC-P02-06) |
+
+> **Gate rule (Q&A-4, 2026-08-13):** BQ-P02-01..04 were **confirmed by USER at
+> the P02 gate on 2026-08-13** (DEC-P02-06) — no longer proposals. P03
+> requirements engineering uses them as the approved scope/metrics basis.
+
+## 2. DEC-P02-05 — Automation Breadth (prior approval 2026-08-07, re-confirmation requested)
+
+| Tier                                   | Scope                                                                                                                                                                            | Default | Flag    | Gate                                                             | Kill Switch                | Prior Approval              | Re-confirmation at P02 Gate                                                 |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------- | ---------------------------------------------------------------- | -------------------------- | --------------------------- | --------------------------------------------------------------------------- |
+| **T1 Lawful Orchestration** (MVP core) | Gmail polling (5–15 min latency), deadline extraction, auto-track status, auto-draft replies, reminders, URL ingest (job postings), prep assembler (resume/cover letter context) | **ON**  | —       | —                                                                | AUTO-01 (master)           | User "all above" 2026-08-07 | NOT REQUIRED (MVP core, no new scope)                                       |
+| **T2 Discovery Scraping**              | Read-only job listing fetch via Apify-style scrapers; pacing (≤1 req/2s per source); no anti-bot evasion; results cached; opt-in only                                            | **OFF** | AUTO-02 | Legal review (P13) before default-ON                             | AUTO-02 (per-source pause) | User "all above" 2026-08-07 | **REQUIRED** (USER at gate) — amends DEC-P01-04 (approved-integration-only) |
+| **T3 Auto-Apply Engine**               | Approval contract (review-first default); per-plan autopilot consent; payload-bound expiring approval + idempotency; pacing caps; audit log                                      | **OFF** | AUTO-03 | Legal review + per-plan consent; autopilot gated on legal review | AUTO-03 (global)           | User "all above" 2026-08-07 | **REQUIRED** (USER at gate) — amends DEC-P01-02 (suggest-mode-first)        |
+
+> **Amends:** T2/T3 relax DEC-P01-02 (recommend-mode-first) and DEC-P01-04
+> (approved-integration-only) from absolute prohibitions to **flag-gated,
+> opt-in, legal-review-gated capabilities**. **P02 gate verdict 2026-08-13: USER
+> kept T2/T3 as PROPOSALS ONLY — no amendment to DEC-P01-02/04.** T1 remains the
+> MVP core with no scope change. T2/T3 become runtime-authorized only via a
+> future user decision + legal review (P13).
+
+## 3. Decision → Implication Matrix
+
+| Decision ID | Decision (carried or new)                                             | Architecture                                                                   | Data                                             | Legal/Privacy                                                        | UX                                        | Ops                                         | Cost                        |
+| ----------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------ | -------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------- | --------------------------- |
+| DEC-P01-01  | 8-agent/6-memory MVP scope lock                                       | Agent interfaces fixed; no new agents in MVP                                   | 6 memory types mapped; no cross-user memory      | Single-user simplifies DPDP/COPPA                                    | Agent UX per agent                        | 8 agent processes; BullMQ queues            | $0 — OSS only               |
+| DEC-P01-02  | Recommend-mode-first (amended by DEC-P02-05 T2/T3)                    | Approval middleware required for all consequential actions                     | Payload-bound approval stored; immutable         | Audit trail for approvals                                            | "Suggest" UI default; approve button      | Approval state machine; idempotency keys    | Negligible                  |
+| DEC-P01-03  | Draft-only Gmail                                                      | Gmail connector = read + compose (no send scope)                               | No sent-email tracking; drafts stored            | Reduces OAuth sensitive scopes                                       | Draft appears in Gmail UI; user sends     | Polling cron (5–15 min) vs push (P15+)      | Free tier covers cohort     |
+| DEC-P01-04  | Approved-integration-only (amended by DEC-P02-05 T2)                  | No job-platform write APIs in MVP; T2 read-only behind flag                    | Job data = read + manual entry only              | Scraping = legal risk; T2 opt-in + legal review                      | User performs apply; assistant tracks     | T2 flag AUTO-02 = feature flag              | Free tier / Apify free tier |
+| DEC-P01-05  | Stop/pivot criteria                                                   | Stop on trust-driven churn; pivot on no memory value or deadline-accuracy miss | Memory quality metrics must be measurable        | —                                                                    | Churn/retention telemetry needed          | P13 gate: stop/pivot triggers               | —                           |
+| DEC-P01-06  | Cohort = India 18+ volunteers N≈10–20                                 | Design-partner protocol (11 §5); no prod infra                                 | Workspace-scoped; DPDP notice/consent            | DPDP consent + granular per-class; no PII in synthesis               | Interview protocol + telemetry            | Cohort onboarding + consent management      | $0 (volunteer)              |
+| DEC-P01-07  | $0 budget: OSS + free tiers                                           | No paid SaaS; self-hosted infra only                                           | Free-tier limits documented (16-build-buy.md)    | Data residency = self-hosted                                         | —                                         | Upstash Redis 256MB, Neon PG free, pgvector | $0 by design                |
+| DEC-P02-01  | Gmail polling (MVP); push = P15+ upgrade                              | Polling cron (BullMQ, 5–15 min); watch renewal cron if push added              | HistoryId persisted; full-resync on 404          | Read-only scope; no send                                             | Latency 5–15 min acceptable for deadlines | Quota monitoring; backoff                   | Free tier 15k units/min     |
+| DEC-P02-02  | Platform lawful surface: Naukri/LinkedIn/Indeed = read/manual only    | No job-platform write connectors in MVP                                        | Job data sourced from Gmail + manual             | Scraping prohibited; Proxycurl = legal review                        | User performs apply; assistant tracks     | Manual entry UI + Gmail parsing             | $0                          |
+| DEC-P02-03  | Eval dataset plan: 9 datasets, synthetic email corpus blocked on user | Eval harness (pytest) + synthetic generation (VB-08)                           | MIT/CC-BY/Apache-2.0 licensed; no PII            | No PII in eval; synthetic = consented                                | —                                         | CI eval pipeline (P14)                      | $0 datasets                 |
+| DEC-P02-04  | Regulatory: professional-review gate (P13); no self-claims            | Legal review before any compliance claim                                       | DPDP notice/consent design; EU AI Act disclosure | DPDP Rules 2025 in-force verified; EU AI Act 2026-08-02 transparency | Consent UI; AI disclosure                 | P13 legal gate blocks prod                  | Legal review cost           |
+| DEC-P02-05  | Automation tiers T1/T2/T3 (see table above)                           | Feature flags AUTO-01/02/03; kill switches                                     | T2: cached scraped data; T3: approval payloads   | T2: legal review; T3: approval contract + per-plan consent           | T1: on by default; T2/T3: opt-in          | Flag management + monitoring                | T2: Apify free tier; T3: $0 |
+
+## 4. Cross-Decision Dependencies
+
+| Dependency                                          | Decisions Involved                       | Resolution                                                                                              |
+| --------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| T3 auto-apply requires T1 approval middleware       | DEC-P01-02, DEC-P02-05 (T1, T3)          | T1 builds the approval UX; T3 reuses it with autopilot consent                                          |
+| T2 scraping requires legal review (P13)             | DEC-P02-05 (T2), DEC-P02-04 (legal gate) | P13 gate is a hard dependency; T2 cannot default-ON without it                                          |
+| Gmail polling quota limits concurrent users         | DEC-P02-01, BQ-P02-04 (design load)      | 15k units/min covers 1,000 concurrent with 5–15 min polling                                             |
+| Cohort consent design requires DPDP in-force status | DEC-P01-06, DEC-P02-04, RQ-02-08         | 15-regulatory-analysis.md §1 confirms DPDP Act + Rules 2025 verified; consent protocol designed to both |
+| Eval set synthetic emails require cohort consent    | DEC-P02-03, VB-08, RQ-02-05              | VB-08 BLOCKED on USER; synthetic corpus NOT_EXECUTED until consent                                      |
+
+## 5. Gate Expectations for USER
+
+At the P02 gate (19-gate-2026-08-13.md), USER is asked to:
+
+1. **Confirm or reject BQ-P02-01..04** (value prop, primary persona, memory
+   quality thresholds, design load) — these unblock P03 requirements engineering
+   scope.
+2. **Re-confirm DEC-P02-05 T2/T3** (T2 opt-in scraping, T3 auto-apply) — without
+   re-confirmation, T2/T3 remain proposals, not runtime-authorized; T1 (MVP
+   core) stands.
+3. **Accept the decision→implication matrix** as the basis for P03
+   architecture/contracts work.
+
+The gate recommendation will be
+`PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY` (≥88 band) with the above
+items as explicit restrictions.
