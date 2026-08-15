@@ -1,0 +1,54 @@
+# MVP-P06 — 08. Registers (Risks / Decisions / Assumptions)
+
+> Phase snapshot 2026-08-07. Burndown at each gate.
+
+## 1. Risks
+
+| ID              | Risk                                                                      | Sev           | Mitigation                                                                                   | Owner    | Status |
+| --------------- | ------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------- | -------- | ------ |
+| RISK-P03-01..05 | carried                                                                   | CRIT/HIGH     | as prior phases                                                                              | per-item | OPEN   |
+| RISK-P05-01..07 | carried (approval, RLS, Gmail, residency, LLM cost, UX)                   | CRIT/HIGH/MED | as P05                                                                                       | per-item | OPEN   |
+| RISK-P06-01     | Free/local LLM quality below thresholds (≥80% retrieval, ≥90% extraction) | HIGH          | eval harness at P12/P14; provider choice data-driven; paid fallback only via approved budget | AI Lead  | OPEN   |
+| RISK-P06-02     | Embedding dimension change (1536 → local-model dims) cascades to schema   | MED           | ADR-024 rebuild; flag P07 schema + P12 embeddings                                            | Data     | OPEN   |
+| RISK-P06-03     | Free-tier limits (rate/quotas) surprise at 100/1,000                      | MED           | P15 load tests; fallback providers; spend log                                                | Platform | OPEN   |
+| RISK-P06-04     | Version drift between pinned and lockfile                                 | MED           | frozen-lockfile CI; EOL watch                                                                | Platform | OPEN   |
+
+## 2. Decisions
+
+| ID          | Decision                                                                                            | Authority    | Date       |
+| ----------- | --------------------------------------------------------------------------------------------------- | ------------ | ---------- |
+| DEC-P03..05 | carried                                                                                             | User/Program | 2026-08-07 |
+| DEC-P06-01  | Stack pinned per repo manifests (EVD-P06-001); prohibitions per phase rule                          | Architecture | 2026-08-07 |
+| DEC-P06-02  | **LLM = local/free providers preferred; mock-first; paid = approved micro-budget only** (BQ-P06-02) | User         | 2026-08-07 |
+| DEC-P06-03  | Version policy adopted (patch/minor/major + EOL watch + exit playbooks)                             | Engineering  | 2026-08-07 |
+| DEC-P06-04  | Dependency governance adopted (license/vuln/secrets/provenance)                                     | Security     | 2026-08-07 |
+
+## 3. Assumptions
+
+| ID         | Assumption                                                     | Owner    | Reversible?        |
+| ---------- | -------------------------------------------------------------- | -------- | ------------------ |
+| ASP-P06-01 | Python 3.14 (repo runtime) remains compatible with pinned deps | Backend  | Yes — CI matrix    |
+| ASP-P06-02 | Free/local LLM suffices for cohort trial volumes (N≈10–20)     | AI       | Yes — measured P15 |
+| ASP-P06-03 | Meilisearch free/self-host within $0 for 100 users             | Platform | Yes — P15 load     |
+
+## 4. Deferred backlog
+
+| Idea                          | Trigger                                 | Owner    |
+| ----------------------------- | --------------------------------------- | -------- |
+| gitleaks/OSS license scanners | P16                                     | Security |
+| SBOM/SLSA-lite                | P16/P19                                 | DevOps   |
+| pip-audit coverage in CI      | P16                                     | Security |
+| LLM paid fallback             | approved micro-budget or quality breach | AI       |
+
+## 5. Evidence (EVD)
+
+| ID              | Claim                                    | Requirement     | Location                   | Status   |
+| --------------- | ---------------------------------------- | --------------- | -------------------------- | -------- |
+| EVD-MVP-P06-001 | Version inventory from live manifests    | MVP-P06-R01/R02 | `01-source-register.md` §3 | VERIFIED |
+| EVD-MVP-P06-002 | Technology decision matrix               | MVP-P06-R01     | `03`                       | VERIFIED |
+| EVD-MVP-P06-003 | Version policy                           | MVP-P06-R02     | `04`                       | VERIFIED |
+| EVD-MVP-P06-004 | Engineering standards                    | MVP-P06-R04     | `05`                       | VERIFIED |
+| EVD-MVP-P06-005 | Dependency governance                    | MVP-P06-R03     | `06`                       | VERIFIED |
+| EVD-MVP-P06-006 | Cost/exit strategy                       | MVP-P06-R05     | `07`                       | VERIFIED |
+| EVD-MVP-P06-007 | BQ-P06-02 user decision (local/free LLM) | MVP-P06-R03     | question-tool record       | VERIFIED |
+| EVD-MVP-P06-008 | User ratification of stack baseline      | R08             | PENDING user               | PENDING  |

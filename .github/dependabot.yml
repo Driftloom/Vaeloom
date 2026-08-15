@@ -1,31 +1,41 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     open-pull-requests-limit: 10
     labels:
-      - "dependencies"
+      - 'dependencies'
     groups:
       nestjs:
         patterns:
-          - "@nestjs/*"
+          - '@nestjs/*'
       react:
         patterns:
-          - "react"
-          - "react-dom"
-          - "@types/react*"
+          - 'react'
+          - 'react-dom'
+          - '@types/react*'
       dev-deps:
-        dependency-type: "development"
+        dependency-type: 'development'
 
-  - package-ecosystem: "docker"
-    directory: "/"
+  - package-ecosystem: 'docker'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'pip'
+    directory: '/apps/backend'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'python'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'

@@ -3,8 +3,7 @@ name: Docs Validation
 on:
   pull_request:
     paths:
-      - "Docs/**"
-      - "docs/**"
+      - 'docs/**'
 
 jobs:
   validate:
@@ -16,29 +15,24 @@ jobs:
       - name: Vale Lint
         uses: errata-ai/vale-action@v2
         with:
-          files: Docs
+          files: docs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Markdownlint
         uses: DavidAnson/markdownlint-cli2-action@v16
         with:
-          globs: "Docs/**/*.md"
+          globs: 'docs/**/*.md'
 
       - name: Check Broken Links
         uses: lycheeverse/lychee-action@v1
         with:
-          args: --no-progress Docs/**/*.md
+          args: --no-progress docs/**/*.md
 
       - name: Validate Document Structure
         run: |
-          $missing = @()
-          Get-ChildItem -Recurse -Filter "*.md" -Path Docs | ForEach-Object {
-            $content = Get-Content $_.FullName -Raw
-            if (-not ($content -match "^# ")) { $missing += "$_`: missing h1" }
-            if (-not ($content -match "```mermaid")) { $missing += "$_`: missing mermaid diagram" }
-            if (-not ($content -match "^> \*\*Status:\*\*")) { $missing += "$_`: missing metadata header" }
-          }
-          if ($missing.Count -gt 0) {
-            $missing | ForEach-Object { Write-Warning $_ }
-          }
+          find docs -name "*.md" | while read f; do
+            grep -q "^# " "$f" || echo "$f: missing h1"
+            grep -q '```mermaid' "$f" || echo "$f: missing mermaid diagram"
+            grep -q '^> \*\*Status:\*\*' "$f" || echo "$f: missing metadata header"
+          done

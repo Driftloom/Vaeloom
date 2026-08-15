@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: '0 6 * * 1'
 
 jobs:
   secret-scan:
@@ -38,7 +38,7 @@ jobs:
           languages: ${{ matrix.language }}
       - uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:${{ matrix.language }}"
+          category: '/language:${{ matrix.language }}'
 
   vulnerability-scan:
     name: Vulnerability Scan (Trivy)
@@ -87,21 +87,27 @@ jobs:
       contents: read
     strategy:
       matrix:
-        image: [web, api, ai-service]
+        service:
+          - name: web
+            context: .
+            dockerfile: apps/web/Dockerfile
+          - name: backend
+            context: apps/backend
+            dockerfile: apps/backend/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image
-        run: docker build -t vaeloom/${{ matrix.image }}:latest -f apps/${{ matrix.image }}/Dockerfile .
+        run: docker build -t vaeloom/${{ matrix.service.name }}:latest -f ${{ matrix.service.dockerfile }} ${{ matrix.service.context }}
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: image
-          image-ref: vaeloom/${{ matrix.image }}:latest
+          image-ref: vaeloom/${{ matrix.service.name }}:latest
           format: sarif
-          output: trivy-image-${{ matrix.image }}.sarif
+          output: trivy-image-${{ matrix.service.name }}.sarif
           severity: CRITICAL,HIGH
       - name: Upload Trivy image results
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: trivy-image-${{ matrix.image }}.sarif
-          category: trivy-docker-${{ matrix.image }}
+          sarif_file: trivy-image-${{ matrix.service.name }}.sarif
+          category: trivy-docker-${{ matrix.service.name }}

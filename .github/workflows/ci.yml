@@ -11,9 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "20"
-  PNPM_VERSION: "9.12.0"
-  PYTHON_VERSION: "3.12"
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9.12.0'
+  PYTHON_VERSION: '3.12'
 
 jobs:
   lint-typecheck:
@@ -43,7 +43,7 @@ jobs:
       - name: Markdown lint
         uses: DavidAnson/markdownlint-cli2-action@v16
         with:
-          globs: "Docs/**/*.md"
+          globs: 'docs/**/*.md'
 
   test:
     name: Test (with coverage)
@@ -82,11 +82,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: |
-            apps/ai-service/pyproject.toml
+            apps/backend/pyproject.toml
             packages/python-common/pyproject.toml
       - run: pip install ruff mypy
-      - run: ruff check packages/python-common/src apps/ai-service/src
-      - run: mypy packages/python-common/src apps/ai-service/src --ignore-missing-imports
+      - run: ruff check apps/backend/src packages/python-common/src
+      - run: mypy apps/backend/src packages/python-common/src --ignore-missing-imports
 
   build:
     name: Build
