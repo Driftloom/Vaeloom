@@ -1,56 +1,114 @@
 # MVP-P05 — 07. Failure & Evolution Model (DEL-MVP-P05-05)
 
-> Owner: SRE + AI Architect · Targets: BQ-P05-01 (99% best-effort, no SLA,
-> degraded modes OK). Behavior specs for P08/P11/P15.
+> Owner: SRE + AI Architect · Targets: BQ-P05-01 — 99% best-effort availability,
+> **no committed SLA**, degraded modes OK (`STAKEHOLDER_DECISION`: DEC-P05-01).
+> Behavior specs feed P08 contracts, P11 hardenings, P15 load/eval. Baseline:
+> `master` @ `6e8a7b4`. This is a design-only deliverable — nothing here is
+> runtime-enabling code.
 
-## 1. Failure domains & degradation
+## 0. Scope & honesty rules
 
-| Domain                    | Failure modes                    | Behavior spec (timeout/retry/backpressure)                                                                         | Degraded mode                                                                 |
-| ------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Gmail connector           | down, quota, 401 (scope revoked) | Poll timeout; exponential backoff + jitter; max attempts → status degraded; never synchronized retries (INT-02 §5) | Deadline extraction + reminders paused; UI notice; retry on next poll cycle   |
-| LLM provider              | down, rate limit, latency        | llm_service tenacity retries (exists); circuit_breaker; per-agent budget                                           | Assist-only: retrieval/facts serve; generation returns error; proposals queue |
-| Redis/queue               | down, backlog                    | BullMQ polling (exists); concurrency semaphore; DLQ (DeadLetterEvent exists)                                       | Jobs dead-lettered; reconciliation replays; no unbounded work                 |
-| Postgres                  | down, pool exhaustion            | pgbouncer (exists); connection pool limits; health 503                                                             | No partial reads; 503s; DR runbook                                            |
-| Object storage            | down                             | retries w/ backoff                                                                                                 | uploads queued; reads degrade                                                 |
-| Search/vector projections | stale/rebuilding                 | provenance timestamps; rebuild jobs                                                                                | fall back to relational retrieval; label freshness                            |
-| Provider model change     | version drift                    | version pins recorded (model/prompt/tool/retrieval/chunking/embedding/policy — INT-02 §4)                          | eval re-run before promotion                                                  |
+- Every claim carries one of: `SOURCE_DERIVED` (design/standard intent),
+  `REPO_VERIFIED` (`path:line` — live-inspected at `6e8a7b4`), `NEW_DESIGN`
+  (this phase's design decision), `STAKEHOLDER_DECISION` (user/approver),
+  `NOT_EXECUTED` (designed/expected but absent in repo).
+- INT-02 §11.6 reliability patterns are treated as authoritative intent; repo
+  evidence outranks prose (INT-02 truth rule, `01-source-register.md` §0.2).
+- This model defines **what degrades, how it behaves, and how we evolve** — it
+  does not change scope; deferred ideas stay deferred (see §4, no silent
+  growth).
+
+## 1. Failure domains & degradation table
+
+| Domain                      | Failure modes                          | Behavior spec (timeout/retry/backpressure)                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Degraded mode                                                                                                                                                                                |
+| --------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gmail connector             | down, quota (429), 401 (scope revoked) | Polling + watch per DEC-P02-01; `fetch_emails`/`list_drafts`/`start_watch`/`stop_watch`/`check_health`, **no send** (`REPO_VERIFIED`: `clients/gmail_client.py:84-189`); watch state persisted via `0007_gmail_watch.py` + `gmail_watches` (`REPO_VERIFIED`: `migrations/0007_gmail_watch.py:8-35`); quota pacing 15k units/min (`SOURCE_DERIVED`: EXT-12, 01 §4); 503 when API not configured (`REPO_VERIFIED`: `routers/gmail.py:73,89`); no synchronized retries (`SOURCE_DERIVED`: INT-02 §11.6) | Deadline extraction paused; retry on next poll cycle; UI notice; 401 → re-auth required, connector marked degraded                                                                           |
+| LLM provider                | down, rate limit (429), latency        | `RetryWithBackoff` max 3, base 1s, cap 30s, jitter ≤10% (`REPO_VERIFIED`: `infrastructure/agent_fallback.py:52-88`); `CircuitBreaker` threshold 5 / recovery 30s / half-open 3 (`REPO_VERIFIED`: `infrastructure/circuit_breaker.py:16-97`); per-agent budget — `AgentRateLimiter` rpm 30, concurrency 5 (`REPO_VERIFIED`: `infrastructure/agent_limits.py:53-93`); per-agent timeouts 30–300s (`REPO_VERIFIED`: `infrastructure/agent_timeout.py:15-40`)                                            | Assist-only: retrieval/facts serve; `ModelDowngradeFallback` sonnet→haiku (`REPO_VERIFIED`: `agent_fallback.py:137-169`); generation returns error; proposals queue for later                |
+| Redis / queue               | down, backlog                          | BullMQWorker concurrency 5 via `asyncio.Semaphore` + `blpop` (`REPO_VERIFIED`: `workers/queue_worker.py:24-101`); unhandled/failed jobs land in `bull:{q}:failed` (`REPO_VERIFIED`: `queue_worker.py:126-140`); `DeadLetterEvent`/`dead_letter_events` table exists (`REPO_VERIFIED`: `models/schema.py:581-590`) — **no code path moves jobs to it** (`NOT_EXECUTED`; wire DLQ at P07 `NEW_DESIGN`)                                                                                                 | Jobs dead-lettered / quarantined; reconciliation replay on recovery (`NEW_DESIGN`: P07); no unbounded work; graceful drain on shutdown (`REPO_VERIFIED`: `queue_worker.py:142-154`)          |
+| Postgres                    | down, pool exhaustion                  | pgbouncer + postgres in compose (`REPO_VERIFIED`: 01 §4 row Infra); `/ready` returns `ok`/`degraded` from critical dependency checks (`REPO_VERIFIED`: `routers/health.py:64-100`); read/write split router (`REPO_VERIFIED`: `infrastructure/database_router.py:21-67`); 503 on unavailable backing service (`REPO_VERIFIED`: `routers/gmail.py:73`)                                                                                                                                                | No partial reads; 503s; DR runbook: DB → queue replay (DLQ) → projection rebuild (`SOURCE_DERIVED`: `mvp-p07/07-backup-query-capacity.md:16`)                                                |
+| Object storage (MinIO/S3)   | down                                   | retries w/ backoff (`NEW_DESIGN`); storage keys validated (fail-fast on defaults) (`REPO_VERIFIED`: `config.py:58-59`, `services/encryption.py:15-16`); minio in compose (`REPO_VERIFIED`: 01 §4 row Infra)                                                                                                                                                                                                                                                                                          | Uploads queued; reads degrade; object store = erasure/restore source — data-loss SLO 0 must not be violated by outage alone                                                                  |
+| Search / vector projections | stale, rebuilding                      | `SearchIndex` ABC + `MeilisearchIndex` (`REPO_VERIFIED`: `infrastructure/search.py:11-60`); `VectorStore` pgvector (`REPO_VERIFIED`: `infrastructure/vector_store.py:4-18`); projections **rebuildable, never authoritative** — provenance columns + rebuild jobs (`SOURCE_DERIVED`: ADR-024); embedding provenance metadata contract (`SOURCE_DERIVED`: INT-02 §5.4)                                                                                                                                | Fall back to relational retrieval; label freshness; rebuild from relational truth on recovery (ADR-024)                                                                                      |
+| Provider model change       | version drift                          | Version pins: model/prompt/tool/retrieval/chunking/embedding/policy per run, **no floating alias** (`SOURCE_DERIVED`: INT-02 §5.6); `ModelDowngradeFallback` uses pinned model ids (`REPO_VERIFIED`: `agent_fallback.py:138`)                                                                                                                                                                                                                                                                        | Eval re-run before promotion (`SOURCE_DERIVED`: INT-02 §5.7/5.8); re-embed + rebuild projections if embedding dims change (`SOURCE_DERIVED`: ADR-024, `mvp-p07/04-migration-rollback.md:15`) |
+
+### 1.1 Degraded-mode invariants (hold in every row above)
+
+- **No data loss in any degraded mode** — SLO 0 (`STAKEHOLDER_DECISION`:
+  BQ-P02-03); a dependency outage alone must never destroy primary data.
+- **No silent wrong results** — degraded outputs are labeled (freshness,
+  degraded, partial) per retrieval/provenance rules (`SOURCE_DERIVED`: INT-02
+  §5.5).
+- **No unbounded retry/work** — every retry path is capped and jittered
+  (`REPO_VERIFIED`: `agent_fallback.py:52-88`) and queues are bounded.
+- **Best-effort only, no SLA** — degraded modes are acceptable product states
+  (`STAKEHOLDER_DECISION`: BQ-P05-01).
 
 ## 2. Failure-path behaviors (prompt §13)
 
-| Behavior                     | Spec                                                                                   | Where         |
-| ---------------------------- | -------------------------------------------------------------------------------------- | ------------- |
-| Timeout                      | per-call budgets defined P08 (connector 10s, LLM 30s gen/10s embed, DB pool 5s)        | P08 contracts |
-| Retry                        | exponential + jitter; capped; no sync retry storms; Gmail quota pacing                 | P08/P11       |
-| Cancel                       | user-cancelable jobs; queue job cancel path                                            | P11           |
-| Backpressure                 | worker semaphore; queue lag alert                                                      | P15/P17       |
-| Partial failure              | ingest pipeline per-document transaction; failures isolated per item, not batch        | P07/P12       |
-| Stale/duplicate/out-of-order | idempotency keys (ADR-021); dedup (ingestion dedup exists); event ordering via job ids | P07/P11       |
-| Provider outage              | circuit breaker open → degraded mode; alerts                                           | P11/P17       |
-| Rollback                     | reversible migrations (alembic), feature flags, git revert discipline per gate         | every phase   |
+| Behavior                         | Spec                                                                                                                                                                                                                                                                                                                                             | Evidence / where  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| Timeout                          | Per-call budgets finalized at P08 (connector 10s, LLM gen 30s / embed 10s, DB pool 5s) (`NEW_DESIGN`; numbers from this P05 model — P08 pins contracts); per-agent execution timeouts already exist 30–300s + `AGENT_TIMEOUT_SECONDS` override (`REPO_VERIFIED`: `agent_timeout.py:15-44`); SLO latency targets (`SOURCE_DERIVED`: INT-02 §11.5) | P08 contracts     |
+| Retry                            | Exponential + jitter + cap (base 1s → cap 30s, jitter ≤10%) (`REPO_VERIFIED`: `agent_fallback.py:75-82`); **no synchronized/uncertain retries after consequential action without idempotency verification** (`SOURCE_DERIVED`: INT-02 §11.6); Gmail quota pacing respects Retry-After (EXT-12)                                                   | P08/P11           |
+| Cancel                           | Graceful worker drain on SIGINT/SIGTERM (`REPO_VERIFIED`: `queue_worker.py:187-216`); user-cancelable jobs (`NEW_DESIGN`: P11)                                                                                                                                                                                                                   | P11               |
+| Backpressure                     | Worker semaphore concurrency 5 (`REPO_VERIFIED`: `queue_worker.py:40,76`); queue lag alert (`SOURCE_DERIVED`: INT-02 §11.6)                                                                                                                                                                                                                      | P15/P17           |
+| Partial failure                  | Ingest pipeline per-document transaction; failures isolated per item, never per batch (`NEW_DESIGN`: P07/P12)                                                                                                                                                                                                                                    | P07/P12           |
+| Stale / duplicate / out-of-order | Idempotency middleware: `Idempotency-Key` header, payload-hash, replay returns stored response, mismatch → 422, 24h retention (`REPO_VERIFIED`: `middleware/idempotency.py:26-133`); ingestion dedup (`SOURCE_DERIVED`: 07-2026-08-07 §2); job-id ordering via queue keys (`REPO_VERIFIED`: `queue_worker.py:60-61`)                             | P07/P11           |
+| Provider outage                  | Circuit breaker OPEN → degraded mode + fallback, HALF_OPEN probe before recovery (`REPO_VERIFIED`: `circuit_breaker.py:45-97`)                                                                                                                                                                                                                   | P11/P17           |
+| Rollback                         | Reversible migrations — **DUAL migration systems finding CF-P05-04** (`REPO_VERIFIED`: 01 §3 line 57) → **unify single migration path at P07** (`NEW_DESIGN`, risk RISK-MVP-P05-08); feature flags AUTO-01 ON / AUTO-02,03 OFF (`SOURCE_DERIVED`: DEC-P02-05); git-revert discipline at every gate (`SOURCE_DERIVED`: P04 EVD-MVP-P04-024)       | every phase → P07 |
+
+### 2.1 Per-domain timeout budgets (design for P08 pinning)
+
+| Call type                                  | Budget                          | Basis                                                                                                                        |
+| ------------------------------------------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Connector (Gmail/calendar/drive) sync call | 10s per call                    | `NEW_DESIGN`; external API P95 bound                                                                                         |
+| LLM generation                             | 30s                             | `NEW_DESIGN`; generation is the dominant agent cost — see agent budgets                                                      |
+| Embedding call                             | 10s                             | `NEW_DESIGN`                                                                                                                 |
+| DB pool acquire / query                    | 5s pool, 500ms read path target | `NEW_DESIGN`; read-path P95 <500ms `SOURCE_DERIVED`: NFR-02 (`mvp-p03/03-requirements.md:111`); INT-02 §11.5 read P95 <300ms |
+| Agent execution                            | 30–300s by agent type           | `REPO_VERIFIED`: `agent_timeout.py:15-40` (memory 300, resume 180, chat 60, …)                                               |
+
+### 2.2 Idempotency coverage honesty note
+
+`middleware/idempotency.py` currently guards only a narrow consequential set —
+`/consent/*`, `/gdpr/delete`, `/approvals/*` (`REPO_VERIFIED`:
+`middleware/idempotency.py:30-42`). Full consequential-surface coverage (agent
+actions, drafts promotion, scheduler writes) is **NOT_EXECUTED** and deferred to
+P07/P11 via ADR-021 (`SOURCE_DERIVED`: ADR-021; 01 §4 row Idempotency —
+IMPLEMENTED_UNVERIFIED).
 
 ## 3. SLOs (BQ-P05-01 — best-effort, no SLA)
 
-| SLI                            | SLO                                                               | Notes                           |
-| ------------------------------ | ----------------------------------------------------------------- | ------------------------------- |
-| Core API availability (health) | 99% monthly best-effort                                           | no penalty commitment           |
-| Ingest end-to-end p95          | < 60s for typical resume/email                                    | measured P15                    |
-| Retrieval hit-rate             | >= 80% (BQ-P02-03)                                                | eval harness P12/P14            |
-| Extraction accuracy            | >= 90% (BQ-P02-03)                                                | eval harness P12/P14            |
-| Data loss                      | 0 (BQ-P02-03)                                                     | erasure + restore tests P13/P14 |
-| Deletion                       | 100% (BQ-P02-03)                                                  | erasure matrix P13              |
-| Load                           | 100 concurrent target; 1,000 upper bound verified P15 (BQ-P02-04) | P15 load tests                  |
+| SLI                   | SLO                                                                                                                                                                        | Evidence / notes                                                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Core API availability | 99% monthly **best-effort** (`STAKEHOLDER_DECISION`: BQ-P05-01/DEC-P05-01); no penalty commitment; INT-02 §11.5 sets 99.5% as internal hardening target (`SOURCE_DERIVED`) | measured via health endpoints + OTel (`REPO_VERIFIED`: `routers/health.py`, `infrastructure/opentelemetry.py`) |
+| Ingest end-to-end p95 | < 60s for typical resume/email (`NEW_DESIGN`; verified P15)                                                                                                                | P15 measurement                                                                                                |
+| Retrieval hit-rate    | ≥ 80% (`STAKEHOLDER_DECISION`: BQ-P02-03)                                                                                                                                  | eval harness P12/P14                                                                                           |
+| Extraction accuracy   | ≥ 90% (`STAKEHOLDER_DECISION`: BQ-P02-03)                                                                                                                                  | eval harness P12/P14                                                                                           |
+| Data loss             | 0 (`STAKEHOLDER_DECISION`: BQ-P02-03)                                                                                                                                      | erasure + restore tests P13/P14                                                                                |
+| Deletion              | 100% completeness (`STAKEHOLDER_DECISION`: BQ-P02-03)                                                                                                                      | erasure matrix P13                                                                                             |
+| Load                  | 100 concurrent target; 1,000 concurrent upper bound verified P15 (`STAKEHOLDER_DECISION`: BQ-P02-04)                                                                       | P15 load tests                                                                                                 |
 
-## 4. Evolution & future readiness
+### 3.1 Verification plan
 
-| Item                                                                       | Problem/evidence                                  | Trigger                                   | Owner       | Sunset condition                     |
-| -------------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------- | ----------- | ------------------------------------ |
-| Gmail push (watch)                                                         | Polling MVP adequate (DEC-P02-01); push = latency | >100 users or p95 deadline-latency breach | Integration | auto-superseded by push when enabled |
-| RLS at scale                                                               | app-level scoping now; RLS defense-in-depth       | ADR-023 P07 (already scheduled)           | Security    | verified by isolation suite          |
-| k8s/terraform (existing infra/)                                            | PaaS-first MVP; enterprise future                 | enterprise track start                    | Cloud       | MVP PaaS decommissioned              |
-| T2 discovery / T3 autopilot                                                | DEC-P02-05 tiers                                  | legal review + kill switches + approval   | Product     | never default-ON                     |
-| Enterprise SSO/SCIM, billing, marketplace, multi-region, cross-user memory | INT-02 future boundary                            | MVP evidence gates                        | Product     | never imported into MVP              |
+- Availability/dataloss/load measured at P15 (soak 24–72h per INT-02 §11.3 —
+  `SOURCE_DERIVED`); retrieval/extraction measured by P12–P14 eval suites
+  (`SOURCE_DERIVED`: `mvp-p03/05-traceability-matrix.md:25-43`).
+- No compliance/scale claim is made in this design-only phase; every SLO above
+  is a target to verify, not a shipped promise (per P05 entry decision).
 
-All deferred items carry: problem/evidence, target users, deps,
-security/privacy/data cost, migration impact, validation experiment, adoption
-trigger, owner, sunset/rejection — kept in `08-registers.md` §4 and reviewed
-each gate (no silent scope growth, INT-02 future boundary).
+## 4. Evolution & future readiness (deferred, no silent scope growth)
+
+| Idea                                                                       | Problem / evidence                                                                                                                                                                                                          | Target users            | Deps                                                | Security/privacy/data cost                                                 | Migration impact                                                                        | Validation experiment                     | Adoption trigger                                                 | Owner       | Sunset / rejection                                         |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | --------------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------- | ----------- | ---------------------------------------------------------- |
+| Gmail push                                                                 | Polling adequate now (`SOURCE_DERIVED`: DEC-P02-01); watch exists but not wired as push path (`REPO_VERIFIED`: `gmail_client.py:160`, `0007_gmail_watch.py`); push = lower latency                                          | All Gmail users         | Google Pub/Sub topic; push webhook infra            | Webhook auth/signature; same data residency posture                        | Additive; watch table already models lifecycle (status/expiration)                      | Latency A/B polling vs push on cohort     | >100 users **or** deadline-latency p95 breach (`SOURCE_DERIVED`) | Integration | Superseded when push enabled; polling retained as fallback |
+| RLS native enforcement                                                     | App-level scoping is primary now; RLS = defense-in-depth (`SOURCE_DERIVED`: ADR-023); `TenantAwareBase` + `0005_rls.py` already exist (`REPO_VERIFIED`: `infrastructure/data_isolation.py:11-65`, `migrations/0005_rls.py`) | All tenants             | P07 verify; P14 isolation suite                     | Strengthens tenant isolation                                               | Migration already landed; coverage breadth unverified (`SOURCE_DERIVED`: 01 §4 line 72) | Cross-workspace isolation test matrix P14 | ADR-023 P07 (already scheduled)                                  | Security    | Verified by isolation suite; then closed                   |
+| k8s / terraform prod                                                       | PaaS-first MVP (nearest region) (`SOURCE_DERIVED`: ADR-026); `infra/k8s` + `infra/terraform` already exist as enterprise path (`REPO_VERIFIED`: 01 §4 row Infra)                                                            | Enterprise multi-tenant | Enterprise track                                    | Managed PaaS handles TLS/secrets; k8s shifts burden in-house               | Full deployment rework — PaaS exit documented                                           | Deploy rehearsal on staging               | Enterprise track start                                           | Cloud       | MVP PaaS decommissioned; k8s replaces it                   |
+| T2 discovery / T3 autopilot                                                | Tiers are PROPOSALS ONLY; flags AUTO-02/03 OFF (`SOURCE_DERIVED`: DEC-P02-05/DEC-P03-01); blast-radius bounded by kill switches                                                                                             | Power users             | P13 legal review gate; approval persistence ADR-021 | Higher consequential risk; audit + consent required                        | Flag-gated enablement independent of code presence                                      | Controlled pilot with kill-switch drill   | P13 legal re-confirmation                                        | Product     | Never default-ON; rejected if legal gate fails             |
+| Enterprise SSO/SCIM, billing, marketplace, multi-region, cross-user memory | INT-02 future boundary — outside canonical MVP scope (`SOURCE_DERIVED`: INT-02 §2.6); not imported into MVP                                                                                                                 | Enterprise              | Enterprise track; separate designs                  | Larger data/privacy surface (cross-user memory is a trust boundary change) | None into MVP; designed only when track starts                                          | MVP evidence gates                        | MVP evidence gates                                               | Product     | Never imported into MVP                                    |
+
+### 4.1 Governance
+
+- Each deferred item is re-reviewed at every gate and tracked in
+  `08-registers.md` §4 (`SOURCE_DERIVED`: 07-2026-08-07 §4); adoption requires
+  evidence, not enthusiasm.
+- Hard boundary: **no silent scope growth** — nothing in §4 is enabled by this
+  design; P05 entry decision restricts this phase to design only
+  (`SOURCE_DERIVED`: `02-predecessor-audit.md` §4).
