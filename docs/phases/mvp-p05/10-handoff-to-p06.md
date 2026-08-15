@@ -44,9 +44,12 @@
 - $0 budget (DEC-P01-08); nearest-region PaaS (BQ-P05-02, flagged P13); 99%
   best-effort, no SLA (BQ-P05-01).
 - Repo truth outranks prose; single FastAPI service + worker; no NestJS app.
-- **Approval-gate enforcement (RISK-MVP-P05-02) = release-blocking** — P07/P11
-  must wire approval_manager + payload_hash + immutable decisions before any
-  send-capable path; Gmail draft-only until per-user T3 enablement.
+- **Approval-gate enforcement (RISK-MVP-P05-02) = release-blocking** — verified
+  at `14a1936`: sole call site `orchestrator/loop.py:82-83` hardcodes
+  `has_approval=False`, `agent_approvals` never read back. P07/P11 must consult
+  persisted decisions + wire `approval_manager` + add `payload_hash` + immutable
+  decisions before any send-capable path; Gmail draft-only until per-user T3
+  enablement.
 - RLS coverage verify/complete P07 + isolation suite P14; workload identity
   ADR-025 = design gap → P07/P11; 6-memory taxonomy verify P07/P12 (ADR-022).
 - No compliance claims without legal review (P13); no production authority
