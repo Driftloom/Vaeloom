@@ -1,44 +1,79 @@
 # MVP-P04 — 10. Handoff to MVP-P05 (Solution Architecture)
 
-> **Phase:** MVP-P04 → MVP-P05 · **Date:** 2026-08-07 · **Gate:** ✅ CONDITIONAL
-> GO (88/100) — pending user ratification. P05 must validate, not assume (prompt
-> §31).
+> **Phase:** MVP-P04 → MVP-P05 · **Date:** 2026-08-15 (re-run) · **Baseline:**
+> repo `master` @ `dac2630` (pushed 0/0) · **Gate state:** 🟡 **RECOMMENDED
+> `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY`** (88.5/100,
+> `09-gate-2026-08-15.md`); **USER verdict pending** (sole gate authority,
+> BQ-01). **P05 starts ONLY on user command.** Prior run (2026-08-07,
+> CONDITIONAL GO 88/100, never ratified) superseded; history preserved
+> (`*-2026-08-07.md`).
 
-## 1. What P05 receives
+## 1. What P05 receives (validated — do not assume, re-verify)
 
-| Item                                         | Where                                                              |
-| -------------------------------------------- | ------------------------------------------------------------------ |
-| Requirements baseline (P0/P1 = MVP)          | `../mvp-p03/03-requirements.md`, `06-priority-release-baseline.md` |
-| Stories + acceptance                         | `../mvp-p03/04-stories-acceptance.md`                              |
-| Traceability matrix (fill `TBD_AT_IMPL`)     | `../mvp-p03/05-traceability-matrix.md`                             |
-| Roadmap M1–M8, WP-01..18                     | `03-roadmap.md`                                                    |
-| Dependency/critical path                     | `04-dependency-graph.md`                                           |
-| RACI/approvals                               | `05-raci-approvals.md`                                             |
-| Risk/governance + flags AUTO-01..03          | `06-risk-governance.md`                                            |
-| $0 cost scenarios                            | `07-resource-cost-scenarios.md`                                    |
-| Registers + unknowns (UNK-02/03, UNK-P03-01) | `08-registers.md`                                                  |
+| Item                                                                                                      | Where                                                                                   |
+| --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Source register + standards re-verified 2026-08-15 + conflicts CF-P04-01..04                              | `01-source-register.md`                                                                 |
+| P03 forensic audit + entry decision (CONDITIONAL GO — NON-DEPENDENT WORK ONLY)                            | `02-predecessor-audit.md` (PA-MVP-P04-001..011; 10 PASS / 1 PARTIAL carried)            |
+| Integrated roadmap P05→P21, milestones M1..M8, WPs WP-01..18, ship-window scenarios (DEC-P04-02)          | `03-roadmap.md` (DEL-MVP-P04-01)                                                        |
+| Dependency graph + critical path + kill switches/rollback points + blocking-dependency honesty            | `04-dependency-graph.md` (DEL-MVP-P04-02)                                               |
+| RACI + approval matrix (USER sole approver; reviewer veto; FR-50/51 approval contract)                    | `05-raci-approvals.md` (DEL-MVP-P04-03)                                                 |
+| Risk/governance model: risk burndown, decision-expiry + assumption/UNK calendars, exception governance    | `06-risk-governance.md` (DEL-MVP-P04-04)                                                |
+| Resource/cost scenarios: $0, cohort N≈10–20, load 100/1,000, FinOps guardrails, AI/provider spend         | `07-resource-cost-scenarios.md` (DEL-MVP-P04-05)                                        |
+| Registers: 21 risks OPEN (+2 CLOSED carried), 25 decisions (DEC-P04-01..08), 8 assumptions, 14 BQ, 12 UNK | `08-registers.md`                                                                       |
+| Gate (88.5/100) + this handoff + §30 completion response                                                  | `09-gate-2026-08-15.md`, `10-handoff-to-p05.md`, `11-completion-response-2026-08-15.md` |
+| P00–P03 chain (requirements baseline 76 rows, stories, matrix, release baseline P0+P1 = 73)               | `../mvp-p00/`, `../mvp-p01/`, `../mvp-p02/`, `../mvp-p03/`                              |
 
-## 2. P05 focus (Solution Architecture)
+## 2. P05 focus (per MVP-P05 prompt — Solution Architecture)
 
-1. **Reconcile repo vs INT-02/INT-07** (RISK-P04-01): inventory the real 25
-   packages (`apps/web`, `apps/backend`, integrations/, connectors/,
-   packages/…), verify what exists (RLS?, projections?, agent loop?, approval
-   API?) before designing anything new.
-2. Produce ADRs for: 6-memory model vs existing stores; 8-agent runtime;
-   approval contract (FR-50/51); projection rebuild; Gmail polling watcher; T1
-   automation wiring (DEC-P02-05).
-3. Sequence diagrams: ingest→organize→remember→assist; approval; erasure.
-4. Architectural NFR mapping: isolation (NFR-15/h15), projections (NFR-10), load
-   100/1,000 (NFR-02/03), WCAG AA (NFR-20/h21).
-5. Design decisions need user consultation (as established — ask via question
-   tool before locking options).
+1. Reconcile repo reality (Next.js `apps/web` + FastAPI `apps/backend`, 25
+   packages, CI/CD, OTel, RBAC, multi-tenancy) against INT-02 architecture
+   intent; produce ADRs (CF-P04-01/03: no NestJS, no `core-api`/`ai-service`
+   split in repo).
+2. Map the 76-row requirements baseline (FR/NFR/hardened) to concrete
+   components/services; carry FR-50/51 approval contract, FR-61/62 erasure,
+   NFR-15/h15 isolation, NFR-16 OAuth RFC 9700.
+3. Define trust/approval UX dataflow, 6-memory model ownership, projections
+   (relational = system of record), connector boundaries (Gmail polling
+   DEC-P02-01), kill switches AUTO-01..03.
+4. Entry/exit gates + evidence owners per M1 (P05+P06) per `03-roadmap.md`.
 
-## 3. Constraints carried
+## 3. Constraints carried into P05
 
-- $0 budget (DEC-P01-07); cohort N≈10–20; India 18+; P1+P2 personas.
-- Repo truth (Next.js/FastAPI) outranks prompt prose (CF-P03-02/CF-P04-01).
-- Draft-only Gmail (DEC-P01-03); per-user send via approval contract only.
-- T2/T3 gated (DEC-P02-05) — architecture may design hooks, not enable.
-- Approval = immutable, payload-bound, expiring, replay-safe (FR-50/51).
-- No compliance claims without legal review; no production authority (P19).
-- Runtime evidence required at every implementation gate; plan ≠ evidence.
+- $0 budget (DEC-P01-08); volunteer cohort N≈10–20 (DEC-P01-07); India 18+; P1
+  "The Fresher" (P2 secondary); single-user, workspace-scoped.
+- P0+P1 release baseline = 73 requirements (MoSCoW 57/16/2/1); T2/T3 = PROPOSALS
+  ONLY — flag-gated AUTO-02/03, legal review (P13) + USER re-confirmation before
+  any default-ON; no amendment to DEC-P01-02/04.
+- Gmail draft-only (DEC-P01-03); approved-integration-only submissions
+  (DEC-P01-04); no unsupported scraping, anti-bot circumvention, credential
+  replay (S-02/S-03).
+- No compliance/security/a11y/scale claims without evidence + professional legal
+  review (DEC-P02-04, P13); no product-market-fit claim.
+- Ship window scenario-based (DEC-P04-02) — no committed date until cohort.
+- Coverage of record = 94% (RISK-MVP-P02-10 CLOSED; re-anchor P13/P14).
+- Enterprise features (SSO/SCIM, admin, billing, marketplace, multi-region,
+  cross-user memory) stay disabled/unimplemented (NG-01..09); keep off MVP
+  critical path (prompt §12.6).
+- No code/config/runtime implementation from planning phase (owned P10+ design
+  P05–P09); no dependent work, migration, release or production changes without
+  a user command.
+
+## 4. Blocked-on-USER items carried into P05
+
+| Item                      | Needed from USER                                  | Impact if unresolved                          |
+| ------------------------- | ------------------------------------------------- | --------------------------------------------- |
+| VB-07 (cohort signup)     | Founder-network cohort access                     | Interviews UNKNOWN; proxy evidence stands     |
+| VB-08 (synthetic resumes) | Consent for synthetic corpus generation           | Eval corpus NOT_EXECUTED; public sets suffice |
+| Ship-window date          | Cohort existence + external blockers (DEC-P04-02) | Window stays scenario-based                   |
+| Gate verdict (this phase) | Approve / amend 88.5/100 conditional              | P05 blocked until verdict recorded            |
+
+## 5. Prohibited work (P05 may NOT)
+
+- No requirements changes outside approved change control
+  (`../mvp-p03/07-change-control.md`).
+- No T2/T3 runtime activation without USER re-confirmation + legal review (P13).
+- No compliance/security/accessibility/scale claims without evidence +
+  professional review.
+- No scope expansion into enterprise features; no fabricated user research.
+- No production/dependent implementation without authority, backup, rollback,
+  monitoring and named approver; code implementation owned P10+.

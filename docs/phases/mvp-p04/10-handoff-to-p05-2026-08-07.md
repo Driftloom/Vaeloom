@@ -1,0 +1,44 @@
+# MVP-P04 — 10. Handoff to MVP-P05 (Solution Architecture)
+
+> **Phase:** MVP-P04 → MVP-P05 · **Date:** 2026-08-07 · **Gate:** ✅ CONDITIONAL
+> GO (88/100) — pending user ratification. P05 must validate, not assume (prompt
+> §31).
+
+## 1. What P05 receives
+
+| Item                                         | Where                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| Requirements baseline (P0/P1 = MVP)          | `../mvp-p03/03-requirements.md`, `06-priority-release-baseline.md` |
+| Stories + acceptance                         | `../mvp-p03/04-stories-acceptance.md`                              |
+| Traceability matrix (fill `TBD_AT_IMPL`)     | `../mvp-p03/05-traceability-matrix.md`                             |
+| Roadmap M1–M8, WP-01..18                     | `03-roadmap.md`                                                    |
+| Dependency/critical path                     | `04-dependency-graph.md`                                           |
+| RACI/approvals                               | `05-raci-approvals.md`                                             |
+| Risk/governance + flags AUTO-01..03          | `06-risk-governance.md`                                            |
+| $0 cost scenarios                            | `07-resource-cost-scenarios.md`                                    |
+| Registers + unknowns (UNK-02/03, UNK-P03-01) | `08-registers.md`                                                  |
+
+## 2. P05 focus (Solution Architecture)
+
+1. **Reconcile repo vs INT-02/INT-07** (RISK-P04-01): inventory the real 25
+   packages (`apps/web`, `apps/backend`, integrations/, connectors/,
+   packages/…), verify what exists (RLS?, projections?, agent loop?, approval
+   API?) before designing anything new.
+2. Produce ADRs for: 6-memory model vs existing stores; 8-agent runtime;
+   approval contract (FR-50/51); projection rebuild; Gmail polling watcher; T1
+   automation wiring (DEC-P02-05).
+3. Sequence diagrams: ingest→organize→remember→assist; approval; erasure.
+4. Architectural NFR mapping: isolation (NFR-15/h15), projections (NFR-10), load
+   100/1,000 (NFR-02/03), WCAG AA (NFR-20/h21).
+5. Design decisions need user consultation (as established — ask via question
+   tool before locking options).
+
+## 3. Constraints carried
+
+- $0 budget (DEC-P01-07); cohort N≈10–20; India 18+; P1+P2 personas.
+- Repo truth (Next.js/FastAPI) outranks prompt prose (CF-P03-02/CF-P04-01).
+- Draft-only Gmail (DEC-P01-03); per-user send via approval contract only.
+- T2/T3 gated (DEC-P02-05) — architecture may design hooks, not enable.
+- Approval = immutable, payload-bound, expiring, replay-safe (FR-50/51).
+- No compliance claims without legal review; no production authority (P19).
+- Runtime evidence required at every implementation gate; plan ≠ evidence.
