@@ -63,11 +63,12 @@ phases; none is a fabrication.
 
 **N. Gate Result** — **87.3/100**, zero missing deliverables, no fabricated
 evidence. Recommendation: `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY`
-(pending USER ratification).
+(**RATIFIED BY USER 2026-08-15** after AMEND-2026-08-15 re-verification @
+`735f431`; EVD-MVP-P05-011).
 
 **O. Handoff** — `10-handoff-to-p06.md` (Technology Stack & Engineering
 Standards); P06 validates, not assumes; starts only on USER command.
 
 **P. Final Statement** — `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY`
-(score 87.3/100; 7 restrictions in `09-gate-2026-08-15.md`; USER is the sole
-gate authority and final verdict owner).
+(score 87.3/100; 7 restrictions in `09-gate-2026-08-15.md`; **RATIFIED BY USER
+2026-08-15** — sole gate authority; phase CLOSED).

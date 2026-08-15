@@ -4,10 +4,12 @@
 > runtime implementation. **Governing sources:** INT-02 (SHA-256
 > `2FA8966F…69640`) · INT-05 · INT-07/08/09 · gatekeeper · **Predecessor:**
 > MVP-P04 ✅ CONDITIONAL GO 88.5/100, accepted by user 2026-08-15. **Status:**
-> 🟡 RE-RUN COMPLETE 2026-08-15 @ `6e8a7b4` — gate **87.3/100** recommended
-> `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY`; **USER verdict pending**
-> (sole gate authority). Prior run (2026-08-07, 88/100, never ratified)
-> superseded — preserved `*-2026-08-07.md`.
+> ✅ **CLOSED 2026-08-15** — re-run @ `14a1936`, amended @ `735f431`: gate
+> **87.3/100**, user ratified
+> `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY` (AMEND-2026-08-15
+> re-verification, EVD-MVP-P05-011). Prior run (2026-08-07, 88/100, never
+> ratified) superseded — preserved `*-2026-08-07.md`. **P06 starts only on user
+> command.**
 
 ## Blocking questions (prompt §8) — resolved
 
