@@ -3,7 +3,7 @@
 > **Prompt ID:** `MVP-P01`  
 > **Artifact type:** Standalone generate + audit + execute + verify + gate + remediate + handoff prompt  
 > **Generated:** 2026-08-04  
-> **Truth status:** Design/prompt artifact complete; target repository execution, runtime tests, deployment and certification remain `NOT_EXECUTED` until real evidence is attached.  
+> **Truth status:** Design-phase prompt for partially implemented codebase (2333+ tests, 90+ endpoints, 38 DB models); Phase 1 execution begins from real code baseline.  
 > **Primary governing source:** `Universal_Enterprise_Phase_Prompt_Generator_and_Gatekeeper.md`
 
 ## How to Use This File
@@ -157,7 +157,7 @@ The content below is the complete phase execution prompt. The executing agent/te
 # Enterprise Execution Prompt — MVP Phase 01: Discovery and Problem Definition
 
 > **Mode:** `GENERATE_AND_EXECUTE_PHASE` when authorized access exists; otherwise preserve runtime work as `NOT_EXECUTED`.
-> **Track status:** PRE-CODE / DESIGN BASELINE; implementation and runtime evidence remain NOT_EXECUTED
+> **Track status:** PARTIALLY IMPLEMENTED; design baseline exists, code partial, runtime evidence exists but incomplete
 > **Phase type:** `DISCOVERY`
 > **Phase ID:** `MVP-P01`
 
@@ -192,7 +192,7 @@ The accountable role owns the gate. Security, privacy, data, accessibility, reli
 
 ## 3. Verified Project Context
 - **Context:** Single-user personal intelligence platform for students and early-career professionals; memory-first; eight total runtime agents including Orchestrator; six memory types; suggest-mode-first; approved connectors only.
-- **Architecture:** Next.js, NestJS, FastAPI, PostgreSQL as system of record with vector/graph projections, Redis/BullMQ, object storage and search; PaaS-first; every artifact workspace-scoped.
+- **Architecture:** Next.js 15 frontend, FastAPI/Python backend, PostgreSQL with pgvector, Redis, MinIO object storage; PaaS-first; every artifact workspace-scoped. No NestJS — single FastAPI monolith (ADR-001).
 - **In scope:** Prove ingest → organize → remember → assist, trust/approval UX, memory quality, resume/ATS value, lawful opportunity assistance, Gmail deadline extraction, reminders, export/deletion and bounded operational viability.
 - **Out of scope:** Enterprise SSO/SCIM, institution admin, billing, marketplace, multi-region cells, cross-user memory and unsupported job-platform automation.
 - **Phase-specific rule:** Validate the student/early-career wedge without claiming product-market fit.
@@ -321,7 +321,7 @@ Assess business/product, architecture, data, security, privacy, compliance, UX/a
 Status every task as `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `IMPLEMENTED_UNVERIFIED`, `VERIFIED` or `NOT_APPLICABLE`. Unverified work cannot pass.
 
 ## 13. Technical and Implementation Requirements
-- Preserve approved architecture: Next.js, NestJS, FastAPI, PostgreSQL as system of record with vector/graph projections, Redis/BullMQ, object storage and search; PaaS-first; every artifact workspace-scoped.
+- Preserve approved architecture: Next.js 15 frontend, FastAPI/Python backend, PostgreSQL with pgvector, Redis, MinIO object storage; PaaS-first; every artifact workspace-scoped. No NestJS — single FastAPI monolith.
 - Apply phase rule: Validate the student/early-career wedge without claiming product-market fit.
 - Use typed contracts, least privilege, idempotency, concurrency control, immutable audit and reversible changes.
 - Separate proposal/action, user/workload identity, source-of-truth/projection and business/transport status.
@@ -330,7 +330,7 @@ Status every task as `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `IMPLEMENTED_UNVER
 - Do not weaken constraints or tests to create a pass.
 
 ## 14. Repository and Artifact Inspection
-Inspect: `apps/web`, `apps/core-api`, `apps/ai-service`, `packages/contracts`, `packages/design-system`, `infra`, `docs`, `tests`, `.github/workflows`.
+Inspect: `apps/web`, `apps/backend`, `packages/shared-types`, `packages/ui-kit`, `integrations/`, `connectors/`, `infra`, `docs`, `tests`, `.github/workflows`.
 
 ```bash
 git status --short --branch && git rev-parse HEAD && git log -n 20 --oneline
