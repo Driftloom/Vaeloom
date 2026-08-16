@@ -10,7 +10,7 @@
 | Item                                                                                        | Where                                       |
 | ------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | P06 predecessor audit + P06 CONDITIONAL GO (69.9/100, carried failures)                     | `../mvp-p06/10-handoff-to-p07.md`           |
-| Data models/dictionary (DEL-01): 38 ORM classes, 35 unique tables, all columns documented   | `03-data-models-dictionary.md`              |
+| Data models/dictionary (DEL-01): 38 ORM tables + 14 microservice tables, all columns documented | `03-data-models-dictionary.md` |
 | Migration/rollback plan (DEL-02): 11 Alembic migrations (0001-0011), dual system documented | `04-migration-rollback.md`                  |
 | Isolation rules (DEL-03): 34-table RLS, SET LOCAL, FORCE RLS, 3 roles, CI tests             | `05-isolation-rules.md`                     |
 | Provenance/lifecycle/deletion (DEL-04): supersession chain, erasure matrix, retention       | `06-provenance-lifecycle-deletion.md`       |

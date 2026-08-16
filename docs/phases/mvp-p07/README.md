@@ -61,6 +61,6 @@
 - **In:** models, isolation, provenance, lifecycle, migration, backup, deletion,
   query/capacity — **design + code implementation**.
 - **Out:** production deployment, enterprise features, T2/T3 enablement.
-- **Repo truth:** 38 ORM classes (35 unique tables); 11 Alembic migrations
+- **Repo truth:** 38 ORM tables (unique); 12 Alembic migrations (0001-0012)
   (0001-0011); RLS on 34 tables with FORCE; HNSW vector index; production
   backup/restore scripts.

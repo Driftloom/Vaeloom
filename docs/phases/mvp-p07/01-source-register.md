@@ -8,7 +8,7 @@
 | ID         | Source                                                             | Use             | Status    |
 | ---------- | ------------------------------------------------------------------ | --------------- | --------- |
 | INT-01..10 | gatekeeper, INT-02 (SHA-256 `2FA8966F…69640`), INT-03/05/07/08/09  | as prior phases | Available |
-| REPO       | `master` @ `0c4f73a`; `apps/api/src/backend/models/schema.py` read | Schema truth    | Available |
+| REPO       | `master` @ `0c4f73a`; `apps/api/src/api/models/schema.py` read | Schema truth    | Available |
 
 ## 2. External standards — verified at phase start
 
@@ -23,9 +23,9 @@
 
 ## 3. Schema truth (live read — corrected)
 
-Total: **39 tables** (35 ORM-defined + 4 microservice-only via custom runner).
+Total: **52 unique tables** (38 ORM-defined + 14 microservice-only via Alembic 0002).
 
-### 3.1 Core tables (35)
+### 3.1 Core tables (38 ORM-defined)
 
 | Table                 | Existing columns                                                                                                                                                                                                                         | Gap → this phase                                   |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
@@ -63,29 +63,29 @@ Total: **39 tables** (35 ORM-defined + 4 microservice-only via custom runner).
 | `usage_records`       | id, tenant_id, workspace_id, user_id, metric, quantity, unit_price, metadata, timestamps                                                                                                                                                 | —                                                  |
 | `notifications`       | id, tenant_id, workspace_id, user_id, title, body, type, read, metadata, timestamps                                                                                                                                                      | —                                                  |
 | `integrations`        | id, workspace_id, name, type, config, status, timestamps                                                                                                                                                                                 | —                                                  |
-| `plugins`             | id, tenant_id, workspace_id, name, type, config, enabled, timestamps                                                                                                                                                                     | Custom runner 0007                                 |
-| `plugin_executions`   | id, plugin_id, input, output, status, duration_ms, timestamps                                                                                                                                                                            | Custom runner 0007                                 |
-| `agent_schedules`     | id, agent_id, cron, config, enabled, timestamps                                                                                                                                                                                          | Custom runner 0007                                 |
-| `gmail_watches`       | id, workspace_id, user_id, gmail_address, watch_channel_id, watch_expiration, status, timestamps                                                                                                                                         | Custom runner 0007                                 |
+| `plugins`             | id, tenant_id, workspace_id, name, type, config, enabled, timestamps                                                                                                                                                                     | Alembic 0002 (also has ORM)                         |
+| `plugin_executions`   | id, plugin_id, input, output, status, duration_ms, timestamps                                                                                                                                                                            | Alembic 0002 (also has ORM)                         |
+| `agent_schedules`     | id, agent_id, cron, config, enabled, timestamps                                                                                                                                                                                          | Alembic 0002 (also has ORM)                         |
+| `gmail_watches`       | id, workspace_id, user_id, gmail_address, watch_channel_id, watch_expiration, status, timestamps                                                                                                                                         | Custom runner 0007                                  |
 
-### 3.2 Microservice tables (17 — from custom runner 0002)
+### 3.2 Microservice tables (14 — from Alembic 0002, NO ORM models)
 
 | Table                        | Source      |
 | ---------------------------- | ----------- |
-| `analytics_events`           | custom 0002 |
-| `audit_events`               | custom 0002 |
-| `iam_users`                  | custom 0002 |
-| `iam_user_roles`             | custom 0002 |
-| `knowledge_nodes`            | custom 0002 |
-| `knowledge_edges`            | custom 0002 |
-| `notification_templates`     | custom 0002 |
-| `notification_subscribers`   | custom 0002 |
-| `notification_device_tokens` | custom 0002 |
-| `recommendations`            | custom 0002 |
-| `recommendation_feedback`    | custom 0002 |
-| `user_preference_vectors`    | custom 0002 |
-| `scheduled_jobs`             | custom 0002 |
-| `job_executions`             | custom 0002 |
+| `analytics_events`           | Alembic 0002 |
+| `audit_events`               | Alembic 0002 |
+| `iam_users`                  | Alembic 0002 |
+| `iam_user_roles`             | Alembic 0002 |
+| `knowledge_nodes`            | Alembic 0002 |
+| `knowledge_edges`            | Alembic 0002 |
+| `notification_templates`     | Alembic 0002 |
+| `notification_subscribers`   | Alembic 0002 |
+| `notification_device_tokens` | Alembic 0002 |
+| `recommendations`            | Alembic 0002 |
+| `recommendation_feedback`    | Alembic 0002 |
+| `user_preference_vectors`    | Alembic 0002 |
+| `scheduled_jobs`             | Alembic 0002 |
+| `job_executions`             | Alembic 0002 |
 
 ## 4. Migration inventory (corrected)
 
@@ -93,7 +93,7 @@ Total: **39 tables** (35 ORM-defined + 4 microservice-only via custom runner).
 | ------- | -------------------------- | --------------------------------------------------------------------------- | ------- |
 | Alembic | `0001_initial_schema`      | 25 core tables                                                              | Applied |
 | Alembic | `0002_microservice_tables` | 17 microservice tables                                                      | Applied |
-| Custom  | `0002_microservice_tables` | 17 microservice tables (DUPLICATE — same name, different runner)            | Applied |
+| Custom  | `0002_microservice_tables` | 2 microservice tables (`knowledge_nodes`, `knowledge_edges`)               | Applied |
 | Custom  | `0003_approvals`           | `agent_approvals` table                                                     | Applied |
 | Custom  | `0004_memory_taxonomy`     | `domain`/`supersedes_id`/`deleted_at` on `memories`                         | Applied |
 | Custom  | `0005_rls`                 | RLS on 4 tables (`memories`, `documents`, `agent_actions`, `usage_records`) | Applied |
@@ -106,22 +106,35 @@ Total: **39 tables** (35 ORM-defined + 4 microservice-only via custom runner).
 
 | What                                 | ORM definition           | Migration  | Notes                                                          |
 | ------------------------------------ | ------------------------ | ---------- | -------------------------------------------------------------- |
-| `approval_request` table             | schema.py:530            | ❌ None    | ORM exists, table does not                                     |
-| `approval_decision` table            | schema.py:555            | ❌ None    | ORM exists, table does not                                     |
-| `idempotency_key` on `applications`  | ORM field                | ❌ None    | Column exists in ORM, no migration                             |
-| `idempotency_key` on `agent_actions` | ORM field                | ❌ None    | Column exists in ORM, no migration                             |
+| `approval_request` table             | schema.py:530            | ✅ Alembic 0003 | Already exists in Alembic chain                            |
+| `approval_decision` table            | schema.py:555            | ✅ Alembic 0003 | Already exists in Alembic chain                            |
+| `idempotency_key` on `applications`  | ORM field                | ✅ Alembic 0003 | Already exists in Alembic chain                            |
+| `idempotency_key` on `agent_actions` | ORM field                | ✅ Alembic 0003 | Already exists in Alembic chain                            |
 | CHECK constraint on `Memory.domain`  | Not enforced             | ❌ None    | Domain column free-form, no validation                         |
 | RLS expansion                        | 4 of ~30 eligible tables | ❌ Partial | Only `memories`, `documents`, `agent_actions`, `usage_records` |
 
 ## 6. RLS policy status
 
+**Custom runner** (fallback path when Alembic fails):
+
 | Table                                | RLS | Policy                                                  |
 | ------------------------------------ | --- | ------------------------------------------------------- |
 | `memories`                           | ✅  | tenant isolation via `current_setting('app.tenant_id')` |
-| `documents`                          | ✅  | tenant isolation                                        |
-| `agent_actions`                      | ✅  | tenant isolation                                        |
+| `events`                             | ✅  | tenant isolation                                        |
 | `usage_records`                      | ✅  | tenant isolation                                        |
+| `api_keys`                           | ✅  | tenant isolation                                        |
 | All other tenant-scoped tables (~30) | ❌  | No RLS — relies on application-layer filtering only     |
+
+**Alembic** (primary path — `main.py:80-91`):
+
+| Table                                | RLS | Policy                                                  |
+| ------------------------------------ | --- | ------------------------------------------------------- |
+| 31 tables (workspaces→relationships) | ✅  | composite workspace_id + tenant_id via `app.*` GUCs     |
+| 3 additional tables (from 0007/0010) | ✅  | agent_approvals, idempotency_records, gmail_watches     |
+| All other tables                     | ❌  | No RLS                                                  |
+
+**Note:** `main.py:80-99` tries Alembic first, falls back to custom runner.
+Alembic provides stronger coverage (34 tables vs 4). Custom runner is dev-only.
 
 ## 7. Conflict log
 
@@ -129,7 +142,7 @@ Total: **39 tables** (35 ORM-defined + 4 microservice-only via custom runner).
 | --------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------- | ---------- |
 | CF-P07-01 | INT-09 memory intent (6 stores as separate stores) vs single `memories` table with free-form type     | ADR-022 (P05): domain-typed rows + supersession; no table split; migrations only                  | INT-02 §4 + REPO | 2026-08-07 |
 | CF-P07-02 | Embedding Vector(1536) (OpenAI) vs BQ-P06-02 local/free embeddings                                    | Dimension made configurable; migration 0007 guarded re-embed (ADR-024); final provider pinned P12 | User BQ-P06-02   | 2026-08-07 |
-| CF-P07-03 | Original register claimed 33 tables; actual count is 39 (35 ORM + 4 microservice-only)                | Corrected via deep audit of schema.py + all migration files                                       | Deep audit       | 2026-08-15 |
+| CF-P07-03 | Original register claimed 33 tables; actual count is 52 (38 ORM + 14 microservice-only)                | Corrected via deep audit of schema.py + all migration files                                       | Deep audit       | 2026-08-15 |
 | CF-P07-04 | Original register claimed no approval tables; `agent_approvals` exists (custom 0003), plus 2 ORM-only | `agent_approvals` is applied; `approval_request`/`approval_decision` need migrations              | Deep audit       | 2026-08-15 |
 | CF-P07-05 | Original register claimed 2 alembic migrations; actual: 2 Alembic + 7 custom runner = 9 total         | Custom runner migrations are a separate system, not Alembic                                       | Deep audit       | 2026-08-15 |
 

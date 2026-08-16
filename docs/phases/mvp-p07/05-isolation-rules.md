@@ -63,10 +63,11 @@ the row is invisible to all queries (fail-closed by design).
    tables with RLS, queries return zero rows unless the session variables are
    set. For the other ~26 tables, no RLS exists at all.
 
-3. **tenant_id-only filter in RLS.** The current RLS policies match on
-   `tenant_id` alone. Two workspaces within the same tenant can see each other's
-   rows at the database level (application-level filtering may still block this,
-   but there is no DB-level enforcement).
+3. **tenant_id-only filter in RLS (custom runner only).** The custom runner
+   (`migrations/0005_rls.py`) uses tenant_id-only policies on 4 tables.
+   The Alembic system (`alembic/versions/0005_rls_expanded.py`) uses composite
+   `workspace_id` + `tenant_id` policies on 31 tables. Two workspaces within
+   the same tenant can see each other's rows via the custom runner path.
 
 4. **TenantAwareRepository is not widely adopted.** Most agents and services
    query tables directly without going through the repository layer, bypassing

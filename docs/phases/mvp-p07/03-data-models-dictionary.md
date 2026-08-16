@@ -2,7 +2,7 @@
 
 > **Owner:** Data Architect · **Source of truth:**
 > `apps/api/src/api/models/schema.py` **Audit date:** 2026-08-17 · **ORM
-> classes:** 38 · **Unique `__tablename__`:** 34
+> classes:** 38 · **Unique `__tablename__`:** 38
 >
 > **Migration chain:** 0001 (initial 25) → 0002 (microservice tables) → 0003
 > (approval tables) → 0004 (memory taxonomy) → 0005 (RLS expanded) → 0006
@@ -61,14 +61,14 @@ newly created tables (`agent_approvals`, `idempotency_records`,
 
 | Store            | Table(s)                                                                 | Role                           | Authoritative  |
 | ---------------- | ------------------------------------------------------------------------ | ------------------------------ | -------------- |
-| System of record | Postgres: all 35 ORM-mapped tables + 17 microservice tables              | All persisted truth            | ✅             |
+| System of record | Postgres: all 38 ORM-mapped tables + 14 microservice tables              | All persisted truth            | ✅             |
 | Object storage   | documents files (MinIO/S3)                                               | Binary content                 | ✅ (files)     |
 | Projections      | embeddings (pgvector), entities/relationships (graph), Meilisearch index | Derived, rebuildable (ADR-024) | ❌ rebuildable |
 | Queue            | Redis (BullMQ-compatible)                                                | Transient jobs                 | ❌ ephemeral   |
 
 ---
 
-## 3. Data Dictionary — All 35 ORM Tables
+## 3. Data Dictionary — All 38 ORM Tables
 
 ---
 
