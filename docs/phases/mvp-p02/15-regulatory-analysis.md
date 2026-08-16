@@ -110,7 +110,7 @@ operator may be a non-India entity → within territorial scope.
 
 - Access summary (S. 11), correction/erasure (S. 12), grievance redressal (S.
   13), nomination (S. 14). Design impact: export, edit, hard-delete UX for all
-  six memory types; correction/supersession history preserved (prompt §17).
+  22 memory types; correction/supersession history preserved (prompt §17).
   `SOURCE_DERIVED`.
 
 ### 2.4 Breach notification (S. 8(6); Rules) — applicable, enforceable Phase 3
@@ -355,12 +355,12 @@ detail, radar).
 released 26 Jul 2024, 12 GenAI risk categories); NIST AI Agent Standards
 Initiative (Feb 2026) — radar for agent-specific guidance.
 
-| RMF function | Vaeloom actions                                                                                                                                                                                                                                                    | Owner                  | Evidence                                  |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- | ----------------------------------------- |
-| **GOVERN**   | Risk posture: suggest-mode-first, draft-only, approval-gated actions; AI inventory (8 agents / 6 memory types / model + tool versions); policies: data minimization, retention, deletion, incident response; accountable person = founder (BQ-01)                  | Founder + Security     | This doc; P01 registers; P04 requirements |
-| **MAP**      | Context: single-user job-seeker assistant, India, 18+; assets: six memory types, Gmail, resumes/JDs; intended purposes: ingest → organize → remember → assist; risk taxonomy: OWASP ASI/LLM (§7); third-party dependencies: model providers, Gmail API, connectors | P02 (this phase) → P04 | §3–§7 of this doc                         |
-| **MEASURE**  | Metrics: hostile-input/prompt-injection eval pass rate, approval-UX completion, memory-accuracy and deadline-extraction accuracy (BQ-06c pivot trigger), false-draft rates, telemetry; baseline + regression suites                                                | P12                    | P12 eval design                           |
-| **MANAGE**   | Mitigations: approval UX (below), draft-only enforcement, retention/deletion lifecycle, breach runbook (DPDP/GDPR 72h), model rollback, kill switch, continuous monitoring                                                                                         | P13 + P19              | P05/P13 artifacts                         |
+| RMF function | Vaeloom actions                                                                                                                                                                                                                                                                  | Owner                  | Evidence                                  |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ----------------------------------------- |
+| **GOVERN**   | Risk posture: suggest-mode-first, draft-only, approval-gated actions; AI inventory (21 agents registered / 8 MVP-canonical / 22 memory types / model + tool versions); policies: data minimization, retention, deletion, incident response; accountable person = founder (BQ-01) | Founder + Security     | This doc; P01 registers; P04 requirements |
+| **MAP**      | Context: single-user job-seeker assistant, India, 18+; assets: 22 memory types, Gmail, resumes/JDs; intended purposes: ingest → organize → remember → assist; risk taxonomy: OWASP ASI/LLM (§7); third-party dependencies: model providers, Gmail API, connectors                | P02 (this phase) → P04 | §3–§7 of this doc                         |
+| **MEASURE**  | Metrics: hostile-input/prompt-injection eval pass rate, approval-UX completion, memory-accuracy and deadline-extraction accuracy (BQ-06c pivot trigger), false-draft rates, telemetry; baseline + regression suites                                                              | P12                    | P12 eval design                           |
+| **MANAGE**   | Mitigations: approval UX (below), draft-only enforcement, retention/deletion lifecycle, breach runbook (DPDP/GDPR 72h), model rollback, kill switch, continuous monitoring                                                                                                       | P13 + P19              | P05/P13 artifacts                         |
 
 **Human oversight design (approval UX, `NEW_DESIGN`):**
 
