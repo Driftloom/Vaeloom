@@ -16,7 +16,7 @@
 | Research plan: RQ-02-01..10, WS plan, EVD-MVP-P02-001..016, design-partner protocol, VB carry, stopping criteria                          | `11-evidence-plan.md`                                                        |
 | Domain/competitor analysis (DEL-02): India ATS mechanics, journey map, 13-product landscape                                               | `12-domain-competitor-analysis.md`                                           |
 | Platform/standards (DEL-02): Gmail push/poll/quota/draft re-verified 2026-08-13, job-platform lawful surface, MCP rules, dependency radar | `13-platform-research.md`                                                    |
-| Data feasibility (DEL-03): 6-memory inventory, retention/deletion, eval-set plan (9 datasets, no PII)                                     | `14-data-feasibility.md`                                                     |
+| Data feasibility (DEL-03): 22-memory inventory, retention/deletion, eval-set plan (9 datasets, no PII)                                    | `14-data-feasibility.md`                                                     |
 | Regulatory analysis (DEL-04): DPDP/EU AI Act/student privacy; no compliance self-claims                                                   | `15-regulatory-analysis.md`                                                  |
 | Build-buy (DEL-05): $0 matrix, exit/portability                                                                                           | `16-build-buy.md`                                                            |
 | Decision implications (DEL-05): BQ-P02-01..04 proposals, DEC-P02-05 tiers, decision→implication matrix                                    | `17-decision-implications.md`                                                |

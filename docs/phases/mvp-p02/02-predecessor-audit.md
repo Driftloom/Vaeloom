@@ -6,14 +6,14 @@
 
 ## 1. Entry criteria check (prompt §6)
 
-| Criterion                                                                                                 | Evidence                                                                         | Status |
-| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------ |
-| Predecessor GO / CONDITIONAL GO, no mandatory blocker                                                     | P01 gate report 88/100; handoff `08-handoff-to-p02.md` valid; BQ-01..06 resolved | ✅     |
-| Add "P02" to checklist in master index                                                                    | `docs/phases/mvp-p02/README.md` register index + `docs/README.md` hub            | ✅     |
-| P02 checklist appears in master index                                                                     | Phase README is the phase index; docs hub links `phases/`                        | ✅     |
-| INT-02 scope lock (8 agents, 6 memories, suggest-mode-first, draft-only Gmail, approved-integration-only) | P01 registers DEC-P01-01..04                                                     | ✅     |
-| P01 evidence plan with cohort + research plan                                                             | `../mvp-p01/03-evidence-plan.md` (PS-01..03, VB-01..06, R-1/R-2/R-3)             | ✅     |
-| Source register                                                                                           | P00/P01 registers; P02 additions below                                           | ✅     |
+| Criterion                                                                                                                                     | Evidence                                                                         | Status |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------ |
+| Predecessor GO / CONDITIONAL GO, no mandatory blocker                                                                                         | P01 gate report 88/100; handoff `08-handoff-to-p02.md` valid; BQ-01..06 resolved | ✅     |
+| Add "P02" to checklist in master index                                                                                                        | `docs/phases/mvp-p02/README.md` register index + `docs/README.md` hub            | ✅     |
+| P02 checklist appears in master index                                                                                                         | Phase README is the phase index; docs hub links `phases/`                        | ✅     |
+| INT-02 scope lock (8 MVP-canonical agents of 21 registered, 22 memory types, suggest-mode-first, draft-only Gmail, approved-integration-only) | P01 registers DEC-P01-01..04                                                     | ✅     |
+| P01 evidence plan with cohort + research plan                                                                                                 | `../mvp-p01/03-evidence-plan.md` (PS-01..03, VB-01..06, R-1/R-2/R-3)             | ✅     |
+| Source register                                                                                                                               | P00/P01 registers; P02 additions below                                           | ✅     |
 
 ## 2. P01 deliverable audit
 
