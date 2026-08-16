@@ -12,6 +12,9 @@ docs/Documentation-Dashboard.html
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.ruff_cache/
+.venv/
 
 # Dependencies
 node_modules/
