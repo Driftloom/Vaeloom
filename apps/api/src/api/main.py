@@ -49,11 +49,11 @@ from .database import engine, Base
 from .infrastructure.logging import CorrelationIDMiddleware, RequestLoggingMiddleware, setup_logging, get_logger
 from .infrastructure.metrics import MetricsMiddleware
 from .infrastructure.opentelemetry import setup_opentelemetry, instrumement_fastapi
-from .migrations import run_migrations
 from .middleware.auth import AuthMiddleware
 from .middleware.csrf import CSRFMiddleware, create_csrf_token
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.security_headers import SecurityHeadersMiddleware
+from .middleware.tenant import TenantMiddleware
 from .middleware.api_version import APIVersionMiddleware
 from .middleware.prompt_injection import PromptInjectionMiddleware
 from .middleware.idempotency import IdempotencyMiddleware
@@ -77,11 +77,40 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Vaeloom Backend v%s (env=%s)", settings.service_version, settings.service_environment)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    await run_migrations(engine)
+    # Run Alembic migrations (standard, replaces custom migration runner)
+    try:
+        import os
+        from alembic.config import Config
+        from alembic import command
+        # Use absolute path to alembic.ini relative to this file
+        alembic_ini = os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
+        if not os.path.exists(alembic_ini):
+            # Fallback: try relative to current working directory
+            alembic_ini = "alembic.ini"
+        alembic_cfg = Config(alembic_ini)
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations applied successfully")
+    except FileNotFoundError as e:
+        logger.warning(f"Alembic config not found, using custom runner: {e}")
+        await _run_custom_migrations()
+    except Exception as e:
+        logger.error(f"Alembic migration FAILED (not just skipped): {e}")
+        # For real migration errors, still try custom runner but log loudly
+        await _run_custom_migrations()
     logger.info("Database tables verified and migrations applied")
     yield
     await engine.dispose()
     logger.info("Backend shutdown complete")
+
+
+async def _run_custom_migrations():
+    """Fallback: run custom migration runner for backward compatibility."""
+    try:
+        from .migrations import run_migrations as custom_run_migrations
+        await custom_run_migrations(engine)
+        logger.info("Custom migrations applied successfully")
+    except Exception as e2:
+        logger.warning(f"Custom migration runner also failed: {e2}")
 
 
 app = FastAPI(
@@ -91,19 +120,13 @@ app = FastAPI(
 )
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Correlation-ID", "X-Requested-With"],
-)
-app.add_middleware(
     RateLimitMiddleware,
     requests_per_minute=settings.rate_limit_requests,
     window_seconds=settings.rate_limit_window,
     api_key_rate_limit=settings.api_key_rate_limit,
 )
 app.add_middleware(AuthMiddleware)
+app.add_middleware(TenantMiddleware)
 app.add_middleware(CSRFMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CorrelationIDMiddleware)
@@ -112,6 +135,14 @@ app.add_middleware(APIVersionMiddleware)
 app.add_middleware(PromptInjectionMiddleware)
 app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(MetricsMiddleware)
+# CORS must be outermost (last added) so OPTIONS preflight is handled first
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Correlation-ID", "X-Requested-With", "X-Tenant-ID", "X-Workspace-ID"],
+)
 
 app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
@@ -132,8 +163,9 @@ async def get_csrf_token():
     return response
 
 
-# Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-# instrumement_fastapi(app)
+# ── Observability (re-enabled per ADR-011) ──────────────────────────
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+instrumement_fastapi(app)
 
 
 app.include_router(encryption_router, prefix="/api/v1", tags=["security"])

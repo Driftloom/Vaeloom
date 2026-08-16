@@ -23,6 +23,13 @@ class Base(DeclarativeBase):
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_factory() as session:
         try:
+            # CRITICAL: Set RLS session variables for tenant isolation
+            # This bridges the TenantMiddleware context to PostgreSQL RLS policies
+            try:
+                from .middleware.tenant import TenantContext, set_rls_session_vars
+                await set_rls_session_vars(session)
+            except Exception:
+                pass  # SQLite or non-PostgreSQL — RLS not applicable
             yield session
             await session.commit()
         except Exception:

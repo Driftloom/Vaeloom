@@ -1,10 +1,87 @@
 import logging
-from typing import Any, Dict
+import uuid
+from typing import Any, Dict, Optional
+
+from sqlalchemy import text
 
 from .state import LoopState, load_or_create_state, save_checkpoint
 from .base import BaseAgent
 
 logger = logging.getLogger(__name__)
+
+
+# ── Approval Lookup ────────────────────────────────────────────────
+
+async def lookup_approval(
+    workspace_id: str,
+    agent_name: str,
+    action_type: str,
+) -> Optional[Dict[str, Any]]:
+    """Look up an approved approval decision for the given agent/action.
+
+    Returns the approval record if found and APPROVED, None otherwise.
+    This replaces the hardcoded has_approval=False in the agent loop.
+    """
+    import json
+    from ..database import async_session_factory
+
+    try:
+        async with async_session_factory() as db:
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+
+            # Expire any stale approvals
+            await db.execute(
+                text("""
+                    UPDATE agent_approvals
+                    SET status = 'EXPIRED', updated_at = :now
+                    WHERE status = 'PENDING' AND expires_at IS NOT NULL AND expires_at < :now
+                """),
+                {"now": now},
+            )
+            await db.commit()
+
+            # Look up approved approvals for this agent/action
+            result = await db.execute(
+                text("""
+                    SELECT id, workspace_id, agent_name, action_type, payload, status
+                    FROM agent_approvals
+                    WHERE workspace_id = :workspace_id
+                      AND agent_name = :agent_name
+                      AND action_type = :action_type
+                      AND status = 'APPROVED'
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                """),
+                {
+                    "workspace_id": workspace_id,
+                    "agent_name": agent_name,
+                    "action_type": action_type,
+                },
+            )
+            row = result.fetchone()
+            if row:
+                # Handle payload: may be JSON string (SQLite) or dict (PostgreSQL)
+                payload = row[4]
+                if isinstance(payload, str):
+                    try:
+                        payload = json.loads(payload)
+                    except (json.JSONDecodeError, TypeError):
+                        payload = {}
+                elif not isinstance(payload, dict):
+                    payload = {}
+                return {
+                    "id": str(row[0]),
+                    "workspace_id": str(row[1]),
+                    "agent_name": row[2],
+                    "action_type": row[3],
+                    "payload": payload,
+                    "status": row[5],
+                }
+            return None
+    except Exception as exc:
+        logger.warning(f"Approval lookup failed (non-blocking): {exc}")
+        return None
 
 
 class AgentRequest:
@@ -79,8 +156,19 @@ async def act_phase(plan: Dict[str, Any], request: AgentRequest) -> Dict[str, An
 
         if agent_type == "ApplicationAgent":
             job = {"id": f"job_{request.id}", "title": message, "company": "Target Company"}
+            # CRITICAL FIX: Look up approval decision using request.agent_name
+            approval = await lookup_approval(
+                workspace_id=request.workspace_id,
+                agent_name=request.agent_name,
+                action_type="job_application",
+            )
+            has_approval = approval is not None and approval.get("status") == "APPROVED"
+            if has_approval:
+                logger.info(f"APPROVAL FOUND: {approval['id']} for job {job['id']}")
+            else:
+                logger.info("NO APPROVAL: Application will require user approval")
             return await agent.prepare(
-                job=job, resume_text="", user_profile={"name": "User", "skills": []}, has_approval=False
+                job=job, resume_text="", user_profile={"name": "User", "skills": []}, has_approval=has_approval
             )
 
         if agent_type in ("GmailAgent", "GmailAgentHandler"):

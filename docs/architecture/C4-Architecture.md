@@ -107,9 +107,10 @@ graph TB
 > interact through web/mobile. External systems provide identity, AI inference,
 > data sources, payments, and observability.
 
-## Level 2: Container
+## Level 2: Container (Runtime State — Verified 2026-08-16)
 
-The Container diagram shows the major deployable units within Vaeloom.
+The Container diagram shows the major deployable units within Vaeloom. **Status
+labels reflect actual runtime state, not documentation claims.**
 
 ```mermaid
 graph TB
@@ -119,56 +120,66 @@ graph TB
     classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
     classDef infra fill:#fce4ec,stroke:#c62828,color:#000,stroke-width:2px
     classDef external fill:#e0e0e0,stroke:#757575,color:#000,stroke-width:1px
+    classDef gap fill:#ffcdd2,stroke:#c62828,color:#000,stroke-width:2px,stroke-dasharray: 5 5
 
     subgraph Web["Web Client"]
         APP["apps/web<br/>Next.js 15 (App Router)<br/>Dashboard, Workspace, Admin"]:::frontend
     end
 
-    subgraph API["API Layer"]
-        GW["API Gateway<br/>FastAPI (Auth, Rate Limit, Routing)"]:::api
-        APISRV["apps/api<br/>FastAPI<br/>Auth, CRUD, Permissions, Agents, Memory, RAG"]:::api
-    end
-
-    subgraph AI["AI Layer (same process)"]
-        AISRV["apps/api<br/>FastAPI<br/>Agents, Memory, RAG, Inference"]:::ai
-        GATEWAY["AI Gateway<br/>Model Router, Fallback, Caching"]:::ai
+    subgraph API["API Layer (Unified Monolith)"]
+        GW["API Middleware Stack<br/>CORS → RateLimit → Auth → CSRF<br/>→ SecurityHeaders → Tenant → RBAC"]:::api
+        APISRV["apps/api (FastAPI)<br/>27 routers, 50 services<br/>24 AI agents, 13 middleware"]:::api
     end
 
     subgraph Data["Data Layer"]
-        PG["PostgreSQL 16<br/>Documents, Users, Audit<br/>+ pgvector (embeddings)<br/>+ Apache AGE (provisioned, unused)"]:::data
-        REDIS["Redis 7<br/>Session cache, Metering<br/>Queue (Bull), Pub/Sub"]:::data
-        S3["S3 / MinIO<br/>Document files, Exports,<br/>Audit archive"]:::data
+        PG["PostgreSQL 16 + pgvector<br/>System of Record<br/>RLS: 4/36 tables ⚠️"]:::data
+        REDIS["Redis 7<br/>Cache + Session + Queue<br/>BullMQ: installed, 0 consumers ⚠️"]:::data
+        S3["MinIO (S3-compatible)<br/>Document files, Exports"]:::data
+        MEILI["Meilisearch<br/>NOT_INSTALLED ⚠️<br/>Currently: SQL ILIKE"]:::gap
     end
 
-    subgraph Infra["Infrastructure"]
-        K8S["Kubernetes (EKS)<br/>Container orchestration"]:::infra
-        PROM["Prometheus + Grafana<br/>Metrics & dashboards"]:::infra
-        JAEGER["Jaeger / OTel<br/>Distributed tracing"]:::infra
+    subgraph Observability["Observability (Partial)"]
+        PROM["Prometheus<br/>COMMENTED OUT ⚠️"]:::gap
+        GRAFANA["Grafana<br/>NOT_DEPLOYED ⚠️"]:::gap
+        OTEL["OpenTelemetry<br/>SDK disabled in dev<br/>No Collector ⚠️"]:::gap
     end
 
-    subgraph External["External"]
-        LLM["LLM APIs<br/>(OpenAI, Anthropic, Google)"]:::external
-        IDP["IdPs<br/>(Okta, Azure AD)"]:::external
-        MCP_S["MCP Sources<br/>(Gmail, GitHub, Drive)"]:::external
+    subgraph External["External Providers"]
+        LLM["LLM APIs<br/>OpenAI / Anthropic<br/>(Claude 3.5 Sonnet default)"]:::external
+        OAUTH["OAuth Providers<br/>Google / Microsoft<br/>(SSO)"]:::external
+        MCP_S["MCP Sources<br/>Gmail, GitHub, Drive<br/>Calendar, Notion, Slack"]:::external
     end
 
-    APP -->|"REST/GraphQL"| GW --> APISRV
-    APISRV -->|"gRPC/HTTP"| AISRV
-    AISRV -->|"model calls"| GATEWAY --> LLM
-    APISRV -->|"SQL"| PG
+    APP -->|"HTTPS REST"| GW --> APISRV
+    APISRV -->|"SQL + pgvector"| PG
     APISRV -->|"cache/queue"| REDIS
-    AISRV -->|"SQL + graph + vector"| PG
-    AISRV -->|"cache"| REDIS
     APISRV -->|"file I/O"| S3
-    GW -->|"OIDC"| IDP
-    AISRV -->|"MCP protocol"| MCP_S
-    APISRV & AISRV -->|"traces"| JAEGER
-    APISRV & AISRV -->|"metrics"| PROM
+    APISRV -->|"model calls"| LLM
+    APISRV -->|"OIDC"| OAUTH
+    APISRV -->|"MCP protocol"| MCP_S
+    APISRV -.->|"metrics (disabled)"| PROM
+    APISRV -.->|"traces (disabled)"| OTEL
 ```
 
-> **Diagram:** C4 Level 2 — Container. The web client talks to the FastAPI
-> backend, which handles all API and AI logic. Both share PostgreSQL and Redis.
-> The AI Gateway routes model calls to external LLM providers.
+> **Diagram:** C4 Level 2 — Container (Runtime State). The web client talks to
+> the FastAPI monolith which handles all API and AI logic. Dashed lines and ⚠️
+> indicate components that are documented but not fully operational. See
+> `docs/phases/mvp-p05/09-gate-2026-08-15.md` for gap details.
+
+### Container Runtime Status
+
+| Container         | Technology              | Runtime Status | Gap Reference                                   |
+| ----------------- | ----------------------- | -------------- | ----------------------------------------------- |
+| **apps/web**      | Next.js 15 (App Router) | ✅ OPERATIONAL | —                                               |
+| **apps/api**      | FastAPI (Python 3.12)   | ✅ OPERATIONAL | —                                               |
+| **PostgreSQL 16** | RDS / Docker            | ⚠️ PARTIAL     | RLS: 4/36 tables; GUC `app.tenant_id` never SET |
+| **Redis 7**       | ElastiCache / Docker    | ⚠️ PARTIAL     | BullMQ installed, 0 consumers deployed          |
+| **MinIO (S3)**    | Docker                  | ✅ OPERATIONAL | —                                               |
+| **Meilisearch**   | NOT_INSTALLED           | ❌ MISSING     | Search uses SQL ILIKE                           |
+| **Prometheus**    | COMMENTED OUT           | ❌ DISABLED    | `main.py:135-136`                               |
+| **Grafana**       | NOT_DEPLOYED            | ❌ MISSING     | No dashboard JSON files                         |
+| **OpenTelemetry** | SDK disabled            | ⚠️ PARTIAL     | No Collector config                             |
+| **Apache AGE**    | Provisioned in Docker   | ❌ UNUSED      | No code references                              |
 
 ## Level 3: Component
 
