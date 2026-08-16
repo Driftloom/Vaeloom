@@ -2,9 +2,99 @@
 
 > DEL-MVP-P06-01. Pinned from repo manifests at HEAD `e48f547` (zero-trust,
 > `01-source-register.md` §4 authority). Prior run (2026-08-07) preserved as
-> `*-2026-08-07.md`.
+> `*-2026-08-07.md`. Scoring per prompt §12 task 2: "Score frontend/backend/
+> AI/data/queue/search/observability/deployment choices."
 
-## 1. Backend Runtime
+## 0. Prompt vs Repo — Architecture Alignment
+
+The prompt §3 states the approved architecture as "Next.js, NestJS, FastAPI,
+PostgreSQL with vector/graph projections, Redis/BullMQ, object storage and
+search." Reality at HEAD:
+
+| Prompt expects        | Repo has                                                         | Status                  |
+| --------------------- | ---------------------------------------------------------------- | ----------------------- |
+| Next.js               | Next.js 15.5.20 (`apps/web/`)                                    | ✅ DEPLOYED             |
+| NestJS                | `packages/service-auth`, `packages/observability` — NOT deployed | ⚠️ LEGACY PACKAGES ONLY |
+| FastAPI               | FastAPI 0.115.14 (`apps/backend/`)                               | ✅ DEPLOYED             |
+| PostgreSQL + pgvector | PostgreSQL pg16 + pgvector 0.5.0                                 | ✅ DEPLOYED             |
+| Redis                 | Redis 7-alpine                                                   | ✅ DEPLOYED             |
+| BullMQ                | `packages/queue` — NOT deployed, no consumers                    | ⚠️ LEGACY PACKAGE ONLY  |
+| Object storage        | MinIO (S3-compatible)                                            | ✅ DEPLOYED             |
+| Search (Meilisearch)  | Not installed; SQL ILIKE actual                                  | ❌ NOT PRESENT          |
+
+**Conclusion:** The approved architecture is partially implemented. NestJS and
+BullMQ exist as internal packages but are not deployed — they are legacy
+artifacts from an earlier microservices architecture. The current unified
+backend is pure FastAPI/Python. Meilisearch, Neo4j, Qdrant, and Kafka are
+absent. All 8 conflicts (CF-P06-01..08) between documentation and repo reality
+have been resolved with evidence (source register §3, this section §8).
+
+## 1. Technology Scoring Matrix
+
+Scoring dimensions (1-5 scale, 5 = best):
+
+| Dimension     | Weight | Definition                                               |
+| ------------- | ------ | -------------------------------------------------------- |
+| Compatibility | 25%    | Fits existing stack, no conflicts, mature ecosystem      |
+| Security      | 20%    | Security track record, vulnerability history, maintainer |
+| Performance   | 20%    | Benchmarks, async support, production use                |
+| Cost          | 15%    | Free/open-source, no licensing risk                      |
+| Support       | 10%    | Documentation, community, LTS guarantees                 |
+| Exit          | 10%    | Low lock-in, alternatives available, standard interfaces |
+
+### 1a. Backend Stack Scoring
+
+| Component    | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision |
+| ------------ | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | -------- |
+| Python 3.12+ | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED  |
+| FastAPI      | 5      | 4        | 5    | 5    | 4       | 4    | **4.60**     | ADOPTED  |
+| SQLAlchemy 2 | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED  |
+| asyncpg      | 5      | 4        | 5    | 5    | 4       | 4    | **4.60**     | ADOPTED  |
+| Pydantic 2   | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED  |
+| pgvector     | 5      | 4        | 4    | 5    | 3       | 4    | **4.35**     | ADOPTED  |
+| Redis 7      | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED  |
+| boto3        | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED  |
+
+### 1b. Frontend Stack Scoring
+
+| Component  | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision |
+| ---------- | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | -------- |
+| Next.js 15 | 5      | 4        | 5    | 5    | 5       | 4    | **4.65**     | ADOPTED  |
+| React 18   | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED  |
+| TS 5.9     | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED  |
+| Tailwind 3 | 5      | 3        | 5    | 5    | 4       | 5    | **4.45**     | ADOPTED  |
+| SWR 2      | 5      | 3        | 5    | 5    | 4       | 4    | **4.35**     | ADOPTED  |
+| Zustand 5  | 5      | 3        | 5    | 5    | 4       | 5    | **4.45**     | ADOPTED  |
+
+### 1c. Infrastructure Scoring
+
+| Component     | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision |
+| ------------- | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | -------- |
+| PostgreSQL 16 | 5      | 5        | 5    | 5    | 5       | 5    | **5.00**     | ADOPTED  |
+| Redis 7       | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED  |
+| MinIO         | 5      | 4        | 4    | 5    | 4       | 5    | **4.45**     | ADOPTED  |
+| PgBouncer     | 5      | 3        | 5    | 5    | 3       | 4    | **4.25**     | ADOPTED  |
+| Docker        | 5      | 4        | 4    | 5    | 5       | 4    | **4.45**     | ADOPTED  |
+
+### 1d. AI/LLM Stack Scoring
+
+| Component     | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision              |
+| ------------- | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | --------------------- |
+| Anthropic SDK | 4      | 4        | 4    | 2    | 4       | 5    | **3.75**     | ADOPTED (fallback)    |
+| OpenAI SDK    | 4      | 4        | 4    | 2    | 5       | 5    | **3.80**     | ADOPTED (fallback)    |
+| raw httpx     | 5      | 4        | 4    | 5    | 3       | 5    | **4.35**     | ACTUAL IMPLEMENTATION |
+| pgvector      | 5      | 4        | 4    | 5    | 3       | 4    | **4.35**     | ADOPTED (embeddings)  |
+| NumPy         | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED (cosine sim)  |
+
+### 1e. Observability Stack Scoring
+
+| Component                 | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision            |
+| ------------------------- | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | ------------------- |
+| OpenTelemetry             | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED             |
+| structlog                 | 5      | 4        | 5    | 5    | 4       | 5    | **4.55**     | ADOPTED             |
+| Prometheus instrumentator | 5      | 3        | 4    | 5    | 4       | 5    | **4.25**     | COMMENTED OUT (GAP) |
+
+## 2. Backend Runtime (Pinned Versions)
 
 | Component                         | Pinned Version                   | Evidence (file:line)                 | Rationale / Exit Notes                                          |
 | --------------------------------- | -------------------------------- | ------------------------------------ | --------------------------------------------------------------- |
@@ -31,7 +121,7 @@
 | prometheus-fastapi-instrumentator | 7.1.0                            | `uv.lock`                            | Metrics; exit: prometheus_client                                |
 | numpy                             | 2.5.2                            | `uv.lock`                            | Numerical; exit: scipy                                          |
 
-## 2. Frontend Runtime
+## 3. Frontend Runtime (Pinned Versions)
 
 | Component          | Pinned Version | Evidence (file:line)    | Rationale / Exit Notes                            |
 | ------------------ | -------------- | ----------------------- | ------------------------------------------------- |
@@ -44,7 +134,7 @@
 | Jest               | 29.7.0         | `apps/web/package.json` | Testing; exit: Vitest, Playwright                 |
 | eslint-config-next | 15.5.20        | `apps/web/package.json` | Linting; exit: manual eslint                      |
 
-## 3. Infrastructure / Services
+## 4. Infrastructure / Services (Pinned Versions)
 
 | Component             | Pinned Version           | Evidence (file:line)                              | Rationale / Exit Notes                                        |
 | --------------------- | ------------------------ | ------------------------------------------------- | ------------------------------------------------------------- |
@@ -55,20 +145,44 @@
 | Node.js               | 20.14.0                  | `.nvmrc`                                          | Frontend runtime; exit: LTS Node versions                     |
 | pnpm                  | 9.12.0                   | `package.json` `packageManager`                   | Package manager; exit: npm, yarn                              |
 
-## 4. Tools & DevDependencies
+## 5. Tools & DevDependencies
 
-| Component  | Pinned Version   | Evidence                                | Rationale                           |
-| ---------- | ---------------- | --------------------------------------- | ----------------------------------- |
-| ESLint     | 8.57.0           | `package.json` override                 | Legacy flat-config migration needed |
-| Prettier   | 3.2.x            | root devDeps                            | Formatting                          |
-| Husky      | 9.x              | root devDeps                            | Git hooks                           |
-| Commitlint | 21.2.x           | root devDeps                            | Conventional commits                |
-| Playwright | 1.62.1           | root devDeps                            | E2E + a11y                          |
-| Nx         | 20.0.0           | root devDeps                            | Monorepo task runner                |
-| ruff       | (NOT IN BACKEND) | `apps/backend/pyproject.toml` — MISSING | GAP: needs adding (Q&A-2)           |
-| mypy       | (NOT IN BACKEND) | `apps/backend/pyproject.toml` — MISSING | GAP: needs adding (Q&A-2)           |
+| Component  | Pinned Version | Evidence                                  | Rationale                           |
+| ---------- | -------------- | ----------------------------------------- | ----------------------------------- |
+| ESLint     | 8.57.0         | `package.json` override                   | Legacy flat-config migration needed |
+| Prettier   | 3.2.x          | root devDeps                              | Formatting                          |
+| Husky      | 9.x            | root devDeps                              | Git hooks                           |
+| Commitlint | 21.2.x         | root devDeps                              | Conventional commits                |
+| Playwright | 1.62.1         | root devDeps                              | E2E + a11y                          |
+| Nx         | 20.0.0         | root devDeps                              | Monorepo task runner                |
+| ruff       | 0.4.x (NEW)    | `apps/backend/pyproject.toml` [tool.ruff] | Q&A-2: added to backend             |
+| mypy       | 1.15.x (NEW)   | `apps/backend/pyproject.toml` [tool.mypy] | Q&A-2: added to backend             |
 
-## 5. Phase Prohibitions (prompt §3)
+## 6. Compatibility Verification
+
+### 6a. Version Compatibility Matrix
+
+| Component A   | Component B    | Compatible? | Evidence                                |
+| ------------- | -------------- | ----------- | --------------------------------------- |
+| Python 3.12+  | FastAPI 0.115  | ✅ YES      | `pyproject.toml` requires-python >=3.12 |
+| Python 3.12+  | SQLAlchemy 2.0 | ✅ YES      | SQLAlchemy 2.0 supports 3.12+           |
+| Python 3.12+  | Pydantic 2.13  | ✅ YES      | Pydantic 2.0+ supports 3.12+            |
+| Node.js 20    | Next.js 15     | ✅ YES      | Next.js 15 requires Node 18+            |
+| pnpm 9.12     | Nx 20.0        | ✅ YES      | Nx 20 supports pnpm 9+                  |
+| PostgreSQL 16 | pgvector 0.5   | ✅ YES      | pgvector 0.5 supports PG 16             |
+| Redis 7       | redis-py 8.1   | ✅ YES      | redis-py 8.x supports Redis 7           |
+| FastAPI 0.115 | asyncpg 0.31   | ✅ YES      | Standard async PG driver                |
+
+### 6b. Known Incompatibilities
+
+| Issue                                  | Status | Mitigation                                   |
+| -------------------------------------- | ------ | -------------------------------------------- |
+| Python 3.14 runtime vs CI 3.12         | ACTIVE | CI matrix covers 3.12; runtime 3.14 untested |
+| ESLint 8 legacy vs flat config         | ACTIVE | DEFERRED to P16                              |
+| NestJS packages (service-auth, observ) | ACTIVE | NOT DEPLOYED; legacy only                    |
+| BullMQ package (queue)                 | ACTIVE | NOT DEPLOYED; no consumers                   |
+
+## 7. Phase Prohibitions (prompt §3)
 
 | Prohibited Tech | Reason                                                      | Status                                    |
 | --------------- | ----------------------------------------------------------- | ----------------------------------------- |
@@ -79,17 +193,20 @@
 | OpenSearch      | Not installed; `infrastructure/search.py` dead code         | OUT; SQL ILIKE sufficient for MVP         |
 | Meilisearch     | Not installed (meilisearch Python pkg missing from uv.lock) | OUT; SQL ILIKE + pgvector sufficient      |
 
-## 6. Contradictions & Stale Claims (CF-P06-01..N)
+## 8. Contradictions & Stale Claims (CF-P06-01..N) — ALL RESOLVED
 
-| ID        | Claim in docs                          | Reality at HEAD `e48f547`                                             | Impact                                |
-| --------- | -------------------------------------- | --------------------------------------------------------------------- | ------------------------------------- |
-| CF-P06-01 | "shadcn/ui" in ADR-009, developer docs | ui-kit = 5 hand-written Tailwind primitives; no @radix-ui in lockfile | Docs must be corrected                |
-| CF-P06-02 | "All 16 pages wired" in ADR-002        | 23 page routes; ~10 are static mockups with zero API wiring           | Docs must be corrected                |
-| CF-P06-3  | "NestJS" in prompt §3                  | No NestJS app; only TS library packages (service-auth, observability) | Repo truth: single FastAPI service    |
-| CF-P06-4  | "Meilisearch" in search docs           | Not installed; actual = SQL ILIKE                                     | Dead code in infrastructure/search.py |
-| CF-P06-5  | "BullMQ queue" in architecture docs    | No consumers; worker not deployed; Redis rate-limit/cache only        | Queue layer declared, not running     |
+| ID        | Claim in docs                                                  | Reality at HEAD `e48f547`                                                                             | Status   | Impact                             |
+| --------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------- | ---------------------------------- |
+| CF-P06-01 | "NestJS" in prompt §3                                          | No NestJS app; only TS library packages (service-auth, observability); all docs updated               | RESOLVED | Repo truth: single FastAPI service |
+| CF-P06-02 | "shadcn/ui" in ADR-009, developer docs                         | ui-kit = 5 hand-written Tailwind primitives; no @radix-ui in lockfile; ADR-009 updated                | RESOLVED | Docs corrected                     |
+| CF-P06-03 | "All 16 pages wired" in ADR-002                                | 23 page routes; ~10 are static mockups with zero API wiring; updated to actual count                  | RESOLVED | Docs corrected                     |
+| CF-P06-04 | "Meilisearch" in search docs                                   | Not installed; actual = SQL ILIKE; dead code in infrastructure/search.py documented                   | RESOLVED | NOT_INSTALLED throughout           |
+| CF-P06-05 | "BullMQ queue" in architecture docs                            | No consumers; worker not deployed; installed but NO consumers deployed; wrapper exists but idle       | RESOLVED | Queue layer declared, not running  |
+| CF-P06-06 | "11 workflows (backend, frontend, docker, deploy, release)"    | No release workflow exists; actual count documented                                                   | RESOLVED | Missing CI stage corrected         |
+| CF-P06-07 | "PostgreSQL as system of record with vector/graph projections" | SQLite in dev/tests, PostgreSQL intended in docker; pgvector cols exist but no HNSW index; AGE unused | RESOLVED | Partial implementation clarified   |
+| CF-P06-08 | Dual migration systems                                         | Alembic 0001-0006 + custom 0002-0007; unified path planned at P07                                     | RESOLVED | Known issue documented             |
 
-## 7. Evidence (EVD)
+## 9. Evidence (EVD)
 
 | ID              | Claim                                   | Requirement     | Type          | Location                                 | Result | Date       | Verified by |
 | --------------- | --------------------------------------- | --------------- | ------------- | ---------------------------------------- | ------ | ---------- | ----------- |
@@ -97,3 +214,5 @@
 | EVD-MVP-P06-002 | Frontend version pins from package.json | MVP-P06-R01/R02 | REPO_VERIFIED | `apps/web/package.json`                  | PASS   | 2026-08-15 | Agent B     |
 | EVD-MVP-P06-003 | Infrastructure pins from docker-compose | MVP-P06-R01/R02 | REPO_VERIFIED | `docker-compose.yml`                     | PASS   | 2026-08-15 | Agent B     |
 | EVD-MVP-P06-004 | Phase prohibitions verified             | MVP-P06-R01     | REPO_VERIFIED | grep + uv.lock                           | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-020 | Compatibility matrix verified           | MVP-P06-R01     | REPO_VERIFIED | §6a above                                | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-021 | Technology scoring completed            | MVP-P06-R01     | DESIGN        | §1 above                                 | PASS   | 2026-08-15 | Agent B     |

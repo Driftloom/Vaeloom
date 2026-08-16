@@ -3,6 +3,8 @@
 > **Phase:** MVP-P00 — Intake and Existing-State Assessment **Method:**
 > repository inspected and runtime checks EXECUTED 2026-08-06 and **RE-EXECUTED
 > 2026-08-12** (Windows PowerShell, Python 3.14.6, pnpm, Playwright 3 projects)
+> **Zero-trust re-audit 2026-08-16:** counts/claims re-checked against current
+> HEAD `2f12d94`; full-suite execution remains pinned at `3ad6bca` (see §6).
 > **Key rule applied:** documentation completeness ≠ runtime readiness. Every
 > row below is classified by evidence actually observed, not by prose.
 > **Register root:** `docs/phases/mvp-p00/`
@@ -65,6 +67,39 @@ config.
 
 ## 3. Maturity matrix — MVP track objectives
 
+### 3.1 Honest status summary (corrected 2026-08-16 audit)
+
+| Status              | Area                                                      | Details                                                                                                                                |
+| ------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **IMPLEMENTED**     | Auth (JWT, CSRF, rate limiting, CORS, security headers)   | Security suite 172/172 PASS; middleware present and functional                                                                         |
+| **IMPLEMENTED**     | Memory (extraction, merge, retrieval, versioning)         | 6 memory types, memory_agent, memory_service — tests green                                                                             |
+| **IMPLEMENTED**     | Agents (21 + orchestrator)                                | Scope-lock tests green; MVP 8-agent gate enforced in code                                                                              |
+| **IMPLEMENTED**     | Search (ILIKE-based)                                      | PostgreSQL ILIKE search implemented, tests green                                                                                       |
+| **IMPLEMENTED**     | Scheduling / reminders                                    | scheduler_agent, reminder_agent, scheduler_service — tests green                                                                       |
+| **IMPLEMENTED**     | Resumes / ATS                                             | resume_agent, ats_agent, resume_service — tests green                                                                                  |
+| **IMPLEMENTED**     | Connectors (GraphQL, MCP, REST)                           | 3 connector dirs with unit tests                                                                                                       |
+| **IMPLEMENTED**     | CI/CD (11 GitHub Actions workflows)                       | Present but format:check/ruff drift in CI scope (RISK-P00-11/12)                                                                       |
+| **IMPLEMENTED**     | Frontend pages with real API                              | 16 pages wired to typed API client                                                                                                     |
+| **PARTIAL**         | Multi-tenancy                                             | JWT tenant context works; **TenantMiddleware EXISTS but NOT MOUNTED in main.py**; RLS on 4/36 tables only; GUC app.tenant_id never SET |
+| **PARTIAL**         | Observability (OTel)                                      | OTel setup partial; Prometheus `/metrics` endpoint **COMMENTED OUT** in main.py; FastAPI OTel auto-instrumentation **COMMENTED OUT**   |
+| **PARTIAL**         | RBAC                                                      | Dependency-injection helper exists; **NOT middleware-based** — no enforced route-level RBAC                                            |
+| **PARTIAL**         | Frontend API coverage                                     | 16 pages use real API; **7 pages use hardcoded mock data**                                                                             |
+| **NOT_IMPLEMENTED** | Prometheus `/metrics`                                     | Endpoint exists in code but **COMMENTED OUT**                                                                                          |
+| **NOT_IMPLEMENTED** | OTel FastAPI instrumentation                              | Auto-instrumentation **COMMENTED OUT** in main.py                                                                                      |
+| **NOT_IMPLEMENTED** | SAML SSO                                                  | Provider methods **return None** (STUB)                                                                                                |
+| **NOT_IMPLEMENTED** | SCIM mounting                                             | SCIM router exists but **NOT MOUNTED** in main.py                                                                                      |
+| **NOT_IMPLEMENTED** | IP allowlist mounting                                     | IPFilter middleware exists but **NOT MOUNTED** in main.py                                                                              |
+| **NOT_IMPLEMENTED** | Tenant middleware mounting                                | TenantMiddleware exists but **NOT MOUNTED** in main.py                                                                                 |
+| **NOT_IMPLEMENTED** | Approval gate integration                                 | `has_approval=False` hardcoded in send paths                                                                                           |
+| **NOT_IMPLEMENTED** | BullMQ consumers                                          | Queue abstractions exist; **no active consumers**                                                                                      |
+| **NOT_IMPLEMENTED** | Meilisearch                                               | Not configured; ILIKE only                                                                                                             |
+| **NOT_IMPLEMENTED** | Apache AGE usage                                          | Referenced in docs; **not connected**                                                                                                  |
+| **NOT_IMPLEMENTED** | Event schemas/handlers                                    | infra/events/ dir exists; **no active event handlers**                                                                                 |
+| **NOT_IMPLEMENTED** | Smoke / security / chaos / fuzz / visual-regression tests | Dirs exist but **all empty** — only e2e has tests                                                                                      |
+| **STUB**            | SAML SSO provider                                         | Methods exist but return None — no real SAML flow                                                                                      |
+
+### 3.2 Detailed maturity matrix — MVP track objectives
+
 | #    | MVP objective                                                                                              | Evidence class                          | Evidence observed                                                                                                                                                | Gap                                                                                        |
 | ---- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | M-01 | Eight runtime agents + Orchestrator                                                                        | IMPLEMENTED_WITH_EVIDENCE (partial)     | Orchestrator (loop/router/state/base) + 23 agent dirs under `agents/`; scope-lock tests (mvp_scope_enforced) green in full suite                                 | 15 extra agents = enterprise scope creep (CF-05); 8-agent MVP set mapping confirmed in P05 |
@@ -81,12 +116,12 @@ config.
 
 ## 4. Documentation-maturity (for reference only — never runtime evidence)
 
-| Item                        | Value                                                  |
-| --------------------------- | ------------------------------------------------------ |
-| docs tree                   | 492 .md, 20 ADRs, canonical 01–06                      |
-| gap-analysis report         | baseline 74/100 → completion report 93/100 (docs only) |
-| IMPLEMENTATION-CHECKLIST.md | Phase 0–1 marked complete (unverified vs runtime)      |
-| COMMIT_PLAN.md              | ~280-commit plan (planning artifact)                   |
+| Item                        | Value                                                                    |
+| --------------------------- | ------------------------------------------------------------------------ |
+| docs tree                   | **574** .md (2026-08-16; was 492), **26 ADRs** (was 20), canonical 01–06 |
+| gap-analysis report         | baseline 74/100 → completion report 93/100 (docs only)                   |
+| IMPLEMENTATION-CHECKLIST.md | Phase 0–1 marked complete (unverified vs runtime)                        |
+| COMMIT_PLAN.md              | ~280-commit plan (planning artifact)                                     |
 
 ## 5. Test inventory (backend, on-disk)
 
@@ -116,8 +151,25 @@ Runtime truth re-verified 2026-08-12 @ `3ad6bca`:
 - **No deployment, no SLO, no production evidence, no a11y run in this
   environment** — every "production-ready / secure / compliant / accessible /
   scalable" claim in docs remains UNVERIFIED.
-- **Docs are mature (492) but not authoritative for runtime state** — repo
+- **Docs are mature (574) but not authoritative for runtime state** — repo
   evidence outranks them.
+
+### 2026-08-16 zero-trust re-audit (see `15-zero-trust-reaudit-2026-08-16.md`)
+
+- **2335 backend tests still collect** at current working tree (HEAD `2f12d94`
+  - uncommitted P06/P07 changes) — no collection/import regression introduced.
+- **66-prompt pack SHA256SUMS re-verified 75/75**; INT-02/03/04 hashes stable.
+- **Scope lock re-confirmed in code** (`config.py:69-70`,
+  `orchestrator/router.py:178-232`).
+- **Counts corrected for repo drift:** docs 574, ADRs 26, services 46 committed
+  / 49 on disk, alembic 0001–0002 committed + 0003–0006 uncommitted, src 217
+  committed / 220 on disk.
+- **External standards refreshed** — OWASP LLM Top 10 2026, EU AI Act high-risk
+  delay, DPDP Rules finalized, COPPA fully in force, Gmail quota model, GitHub
+  user tokens (register 01 §3, ★ rows).
+- Full-suite execution at the moved HEAD + uncommitted tree is
+  **P07-gate-owned** (do not re-claim 2333/0/2xf for `2f12d94` without a fresh
+  run).
 
 → Full breakdown feeds the gate score in `09-gate-2026-08-12.md`.
 
@@ -131,7 +183,7 @@ Prompt-mandated paperwork closed without touching source code:
   P16/P17/P19 named), 3 NOT_APPLICABLE (cost, sustainability, localization) —
   each with reason.
 - **§23 Evidence & traceability** → `11-evidence-traceability.md` —
-  EVD-MVP-P00-001…021 (every material claim → file/run → result → date →
+  EVD-MVP-P00-001…022 (every material claim → file/run → result → date →
   verifier; failures visible).
 - **Future-readiness overlay** → `12-future-readiness-backlog.md` — FB-01…05
   (manifest, SBOM/AI-BOM, retention/hashing, conflict protocol, scope

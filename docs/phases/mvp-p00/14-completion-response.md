@@ -120,17 +120,18 @@
 
 ## K. Traceability
 
-- EVD-MVP-P00-001…021 — `11-evidence-traceability.md`; chain source →
+- EVD-MVP-P00-001…022 — `11-evidence-traceability.md`; chain source →
   requirement → design → file → test → evidence → risk → gate → handoff
   documented.
 
 ## L. Risks / Decisions
 
-- 13 risks (10 OPEN incl. RISK-P00-08 legal and new CI-red RISK-P00-11/12 +
-  coverage-honesty RISK-P00-13, 3 RESOLVED) —
-  `04-risk-decision-assumption-register.md`.
-- 8 decisions incl. user-approved DEC-P00-06 (INT-02 governs) and DEC-P00-07
-  (2026-08-12 re-run supersedes) and DEC-P00-08 (completion pass).
+- 15 risks (12 OPEN incl. RISK-P00-08 legal, CI-red RISK-P00-11/12,
+  coverage-honesty RISK-P00-13, standards-drift RISK-P00-14, baseline-drift
+  RISK-P00-15; 3 RESOLVED) — `04-risk-decision-assumption-register.md`.
+- 9 decisions incl. user-approved DEC-P00-06 (INT-02 governs), DEC-P00-07
+  (2026-08-12 re-run supersedes), DEC-P00-08 (completion pass), DEC-P00-09
+  (2026-08-16 zero-trust re-audit).
 
 ## M. Gaps
 

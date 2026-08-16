@@ -57,24 +57,28 @@
 
 ## 5. Evidence (EVD)
 
-| ID              | Claim                                        | Requirement     | Type                 | Location                              | Result | Date       | Verified by |
-| --------------- | -------------------------------------------- | --------------- | -------------------- | ------------------------------------- | ------ | ---------- | ----------- |
-| EVD-MVP-P06-001 | Backend version inventory from uv.lock       | MVP-P06-R01/R02 | REPO_VERIFIED        | `01-source-register.md` §4            | PASS   | 2026-08-15 | Agent A     |
-| EVD-MVP-P06-002 | Frontend version inventory from package.json | MVP-P06-R01/R02 | REPO_VERIFIED        | `01-source-register.md` §4            | PASS   | 2026-08-15 | Agent A     |
-| EVD-MVP-P06-003 | Infrastructure inventory from docker-compose | MVP-P06-R01/R02 | REPO_VERIFIED        | `01-source-register.md` §4            | PASS   | 2026-08-15 | Agent A     |
-| EVD-MVP-P06-004 | Supply chain inventory                       | MVP-P06-R03     | REPO_VERIFIED        | `01-source-register.md` §4            | PASS   | 2026-08-15 | Agent A     |
-| EVD-MVP-P06-005 | Lockfile strategy documented                 | MVP-P06-R02     | DESIGN               | `04-version-policy.md` §2             | PASS   | 2026-08-15 | Agent C     |
-| EVD-MVP-P06-006 | EOL watch configured                         | MVP-P06-R02     | REPO_VERIFIED        | `.github/dependabot.yml`              | PASS   | 2026-08-15 | Agent C     |
-| EVD-MVP-P06-007 | SBOM + provenance configured                 | MVP-P06-R02     | REPO_VERIFIED        | `security-scan.yml`, `deploy.yml`     | PASS   | 2026-08-15 | Agent C     |
-| EVD-MVP-P06-008 | Lint/format/test tooling inventory           | MVP-P06-R04     | REPO_VERIFIED        | root configs + pyproject.toml         | PASS   | 2026-08-15 | Agent D     |
-| EVD-MVP-P06-009 | Security headers configured                  | MVP-P06-R04     | REPO_VERIFIED        | `apps/web/next.config.js`             | PASS   | 2026-08-15 | Agent D     |
-| EVD-MVP-P06-010 | Error taxonomy documented                    | MVP-P06-R04     | DESIGN               | `05-engineering-standards.md` §6      | PASS   | 2026-08-15 | Agent D     |
-| EVD-MVP-P06-011 | License policy defined                       | MVP-P06-R03     | DESIGN               | `06-dependency-governance.md` §1      | PASS   | 2026-08-15 | Agent E     |
-| EVD-MVP-P06-012 | Vulnerability SLA defined                    | MVP-P06-R03     | DESIGN               | `06-dependency-governance.md` §2      | PASS   | 2026-08-15 | Agent E     |
-| EVD-MVP-P06-013 | Supply-chain threats mapped                  | MVP-P06-R03     | DESIGN               | `06-dependency-governance.md` §7      | PASS   | 2026-08-15 | Agent E     |
-| EVD-MVP-P06-014 | Dependency governance documented             | MVP-P06-R03     | DESIGN               | `06-dependency-governance.md`         | PASS   | 2026-08-15 | Agent E     |
-| EVD-MVP-P06-015 | Cost guardrails documented                   | MVP-P06-R05     | DESIGN               | `07-cost-exit-strategy.md` §1         | PASS   | 2026-08-15 | Agent F     |
-| EVD-MVP-P06-016 | Exit playbooks defined                       | MVP-P06-R05     | DESIGN               | `07-cost-exit-strategy.md` §3         | PASS   | 2026-08-15 | Agent F     |
-| EVD-MVP-P06-017 | PaaS framework defined                       | MVP-P06-R05     | DESIGN               | `07-cost-exit-strategy.md` §2         | PASS   | 2026-08-15 | Agent F     |
-| EVD-MVP-P06-018 | BQ-P06-02 user decision (local/free LLM)     | MVP-P06-R03     | STAKEHOLDER_DECISION | DEC-P06-02                            | PASS   | 2026-08-15 | User        |
-| EVD-MVP-P06-019 | Prior P06 evidence date-renamed              | MVP-P06-R07     | REPO_VERIFIED        | `docs/phases/mvp-p06/*-2026-08-07.md` | PASS   | 2026-08-15 | Agent A     |
+| ID              | Claim                                        | Requirement     | Type                 | Location                               | Result | Date       | Verified by |
+| --------------- | -------------------------------------------- | --------------- | -------------------- | -------------------------------------- | ------ | ---------- | ----------- |
+| EVD-MVP-P06-001 | Backend version inventory from uv.lock       | MVP-P06-R01/R02 | REPO_VERIFIED        | `01-source-register.md` §4             | PASS   | 2026-08-15 | Agent A     |
+| EVD-MVP-P06-002 | Frontend version inventory from package.json | MVP-P06-R01/R02 | REPO_VERIFIED        | `01-source-register.md` §4             | PASS   | 2026-08-15 | Agent A     |
+| EVD-MVP-P06-003 | Infrastructure inventory from docker-compose | MVP-P06-R01/R02 | REPO_VERIFIED        | `01-source-register.md` §4             | PASS   | 2026-08-15 | Agent A     |
+| EVD-MVP-P06-004 | Supply chain inventory                       | MVP-P06-R03     | REPO_VERIFIED        | `01-source-register.md` §4             | PASS   | 2026-08-15 | Agent A     |
+| EVD-MVP-P06-005 | Lockfile strategy documented                 | MVP-P06-R02     | DESIGN               | `04-version-policy.md` §2              | PASS   | 2026-08-15 | Agent C     |
+| EVD-MVP-P06-006 | EOL watch configured                         | MVP-P06-R02     | REPO_VERIFIED        | `.github/dependabot.yml`               | PASS   | 2026-08-15 | Agent C     |
+| EVD-MVP-P06-007 | SBOM + provenance configured                 | MVP-P06-R02     | REPO_VERIFIED        | `security-scan.yml`, `deploy.yml`      | PASS   | 2026-08-15 | Agent C     |
+| EVD-MVP-P06-008 | Lint/format/test tooling inventory           | MVP-P06-R04     | REPO_VERIFIED        | root configs + pyproject.toml          | PASS   | 2026-08-15 | Agent D     |
+| EVD-MVP-P06-009 | Security headers configured                  | MVP-P06-R04     | REPO_VERIFIED        | `apps/web/next.config.js`              | PASS   | 2026-08-15 | Agent D     |
+| EVD-MVP-P06-010 | Error taxonomy documented                    | MVP-P06-R04     | DESIGN               | `05-engineering-standards.md` §6       | PASS   | 2026-08-15 | Agent D     |
+| EVD-MVP-P06-011 | License policy defined                       | MVP-P06-R03     | DESIGN               | `06-dependency-governance.md` §1       | PASS   | 2026-08-15 | Agent E     |
+| EVD-MVP-P06-012 | Vulnerability SLA defined                    | MVP-P06-R03     | DESIGN               | `06-dependency-governance.md` §2       | PASS   | 2026-08-15 | Agent E     |
+| EVD-MVP-P06-013 | Supply-chain threats mapped                  | MVP-P06-R03     | DESIGN               | `06-dependency-governance.md` §7       | PASS   | 2026-08-15 | Agent E     |
+| EVD-MVP-P06-014 | Dependency governance documented             | MVP-P06-R03     | DESIGN               | `06-dependency-governance.md`          | PASS   | 2026-08-15 | Agent E     |
+| EVD-MVP-P06-015 | Cost guardrails documented                   | MVP-P06-R05     | DESIGN               | `07-cost-exit-strategy.md` §1          | PASS   | 2026-08-15 | Agent F     |
+| EVD-MVP-P06-016 | Exit playbooks defined                       | MVP-P06-R05     | DESIGN               | `07-cost-exit-strategy.md` §3          | PASS   | 2026-08-15 | Agent F     |
+| EVD-MVP-P06-017 | PaaS framework defined                       | MVP-P06-R05     | DESIGN               | `07-cost-exit-strategy.md` §2          | PASS   | 2026-08-15 | Agent F     |
+| EVD-MVP-P06-018 | BQ-P06-02 user decision (local/free LLM)     | MVP-P06-R03     | STAKEHOLDER_DECISION | DEC-P06-02                             | PASS   | 2026-08-15 | User        |
+| EVD-MVP-P06-019 | Prior P06 evidence date-renamed              | MVP-P06-R07     | REPO_VERIFIED        | `docs/phases/mvp-p06/*-2026-08-07.md`  | PASS   | 2026-08-15 | Agent A     |
+| EVD-MVP-P06-020 | Compatibility matrix verified                | MVP-P06-R01     | REPO_VERIFIED        | `03-technology-decision-matrix.md` §6a | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-021 | Technology scoring completed                 | MVP-P06-R01     | DESIGN               | `03-technology-decision-matrix.md` §1  | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-022 | Cost model with numbers                      | MVP-P06-R05     | DESIGN               | `07-cost-exit-strategy.md` §1a         | PASS   | 2026-08-15 | Agent F     |
+| EVD-MVP-P06-023 | Load triggers with metrics                   | MVP-P06-R05     | DESIGN               | `07-cost-exit-strategy.md` §5          | PASS   | 2026-08-15 | Agent F     |

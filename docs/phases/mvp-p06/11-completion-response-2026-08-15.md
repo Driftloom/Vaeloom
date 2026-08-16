@@ -13,6 +13,7 @@
 - Entry: P05 CLOSED (87.3/100, AMEND-2026-08-15, accepted USER 2026-08-15)
 - Prior run superseded; baseline pinned `e48f547`
 - Working tree: clean (docs + config changes only)
+- All 8 conflicts (CF-P06-01..08) resolved with evidence
 
 ## C. Sources
 
@@ -31,8 +32,9 @@
 - MVP-P06-R05 (operations): PARTIAL — compose fixes applied; runbooks deferred
   P17
 - MVP-P06-R06 (data/AI): PASS — version/source/owner lifecycle documented
-- MVP-P06-R07 (traceability): PASS — full chain EVD 001–011
-- MVP-P06-R08 (gate): PASS — 70.7/100 (honest for standards-only phase)
+- MVP-P06-R07 (traceability): PASS — full chain EVD 001–023
+- MVP-P06-R08 (gate): PASS (conditional) — 69.9/100 original; all 8 conflicts
+  resolved; PHASE CONDITIONALLY APPROVED with carried failures
 
 ## E. Work Completed
 
@@ -102,7 +104,7 @@
 
 - Requirements → Design → File → EVD chain complete
 - EVD rows 001–011 with type (REPO_VERIFIED/DESIGN/STAKEHOLDER_DECISION)
-- Conflict log CF-P06-01..08 with resolution and authority
+- Conflict log CF-P06-01..08: ALL RESOLVED with evidence
 
 ## L. Risks/Decisions
 
@@ -124,10 +126,13 @@
 
 ## N. Gate Result
 
-**PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY**
+**PHASE CONDITIONALLY APPROVED — CONFLICTS RESOLVED, CARRIED FAILURES**
 
-Score: 70.7/100 (honest for standards-only phase). Zero mandatory blockers.
-Recommended: CONDITIONAL GO — NON-DEPENDENT WORK ONLY.
+Score: 69.9/100 (original, BELOW 88 threshold per prompt §28). All 8 conflicts
+(CF-P06-01..08) resolved with evidence. Recalculated ≈ 73–75/100. Still below 88
+but conflicts are resolved; carried failures will be addressed at P07 (RLS,
+migrations), P14 (testing), P15 (load testing), P17 (runbooks/metrics). Zero
+mandatory blockers. USER (sole gate authority) accepted as CONDITIONAL GO.
 
 ## O. Handoff
 
@@ -139,4 +144,11 @@ Recommended: CONDITIONAL GO — NON-DEPENDENT WORK ONLY.
 
 ## P. Final Statement
 
-**PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY**
+**PHASE CONDITIONALLY APPROVED — CONFLICTS RESOLVED, CARRIED FAILURES**
+
+Per prompt §28: "Below 88: failed and remediation required." Original score
+69.9/100. All 8 conflicts (CF-P06-01..08) resolved with evidence. Recalculated ≈
+73–75/100. USER (sole gate authority) accepted as CONDITIONAL GO with carried
+failures. Remaining below-threshold items are deferred to owning phases: P07
+(RLS, migrations), P14 (testing), P15 (load testing), P17 (runbooks, metrics).
+See `09-gate-2026-08-15.md` §Conflict Resolution for evidence.

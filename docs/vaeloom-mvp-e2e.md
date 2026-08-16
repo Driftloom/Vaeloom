@@ -94,10 +94,10 @@ phase:
 
 technology:
   preferred_stack:
-    Next.js/React (web) · NestJS (core API) · FastAPI (AI/agent service) ·
-    PostgreSQL + Apache AGE + pgvector · Redis + BullMQ · Meilisearch · Claude
-    API (Anthropic) — as specified in the source corpus
-    (`Vaeloom-Complete-Documentation.md` §10)
+    Next.js/React (web) · FastAPI (Python, core API + AI/agent service, single
+    backend at `apps/backend/`) · PostgreSQL + Apache AGE (provisioned, UNUSED
+    in code) + pgvector · Redis · Claude API (Anthropic) — as specified in the
+    source corpus (`Vaeloom-Complete-Documentation.md` §10)
   existing_stack: None — greenfield
   deployment_target:
     PaaS (Render/Fly.io-class) with Docker at MVP; Kubernetes deferred to
@@ -973,12 +973,12 @@ graph TD
 
 **D.2 Component boundary table.**
 
-| Component                           | Owns                                                | Does not own                                         |
-| ----------------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
-| Core API (NestJS)                   | Auth, CRUD, permission enforcement, request routing | Agent reasoning, memory writes                       |
-| AI/Agent Service (FastAPI)          | All 8 agents, Orchestrator, agentic RAG             | User auth, connector token storage                   |
-| Memory Agent (within AI service)    | All writes to knowledge graph + vector store        | Direct DB access by any other agent                  |
-| Permission Engine (within Core API) | Every connector/agent/action scope check            | Business logic of what an agent does once authorized |
+| Component                                | Owns                                                | Does not own                                         |
+| ---------------------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
+| Core API (FastAPI)                       | Auth, CRUD, permission enforcement, request routing | Agent reasoning, memory writes                       |
+| AI/Agent Service (FastAPI, same backend) | All 8 agents, Orchestrator, agentic RAG             | User auth, connector token storage                   |
+| Memory Agent (within AI service)         | All writes to knowledge graph + vector store        | Direct DB access by any other agent                  |
+| Permission Engine (within Core API)      | Every connector/agent/action scope check            | Business logic of what an agent does once authorized |
 
 **D.3 Integration architecture (connectors as MCP-shaped internal tools).**
 Every connector — hosted (Gmail/GitHub/Drive) or local (folder/VS Code) — is
@@ -989,14 +989,14 @@ rewrite.
 
 **D.4 Architecture Decision Records.**
 
-| ADR     | Decision                                                                                            | Status   | Rationale                                                                                                                    | Alternatives rejected                                                                                                                                                        |
-| ------- | --------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-001 | Split Core API (NestJS/TS) from AI Service (FastAPI/Python) over one monolith                       | Accepted | Python's AI/ML ecosystem materially stronger for embeddings/orchestration; TS/Node better for auth/CRUD; independent scaling | Single Node monolith with an LLM SDK bolted on — rejected: couples agent-runtime scaling to CRUD-API scaling                                                                 |
-| ADR-002 | All connectors and plugins built MCP-shaped from day one, even before consuming real MCP servers    | Accepted | Makes the eventual move to real MCP a transport change, not an integration rewrite                                           | Bespoke per-connector interfaces — rejected: would require a rewrite at enterprise scale (SRC's own Enterprise Paper §5.3 depends on this decision already having been made) |
-| ADR-003 | Postgres + Apache AGE (graph extension) + pgvector at MVP, not a dedicated graph/vector DB          | Accepted | Avoids operating two extra database systems before volume justifies it                                                       | Neo4j + Qdrant from day one — rejected: premature operational complexity for MVP-scale data volume                                                                           |
-| ADR-004 | Suggest-mode as an architectural invariant enforced at the Orchestrator, not per-agent              | Accepted | A single enforcement point is auditable; per-agent enforcement risks drift                                                   | Trusting each agent's own prompt to self-limit — rejected: unauditable, a prompt is not an access-control boundary                                                           |
-| ADR-005 | Memory Agent is the sole writer to the knowledge graph/vector store; no other agent writes directly | Accepted | Centralizes merge/dedup judgment in one place, avoids silent conflicting writes from concurrent agents                       | Each agent writes its own memory subtype directly — rejected: creates race conditions and duplicate entities across agents                                                   |
-| ADR-006 | Archive-only deletion model (no hard delete except the explicit account-level "delete everything")  | Accepted | Matches the non-negotiable product philosophy (Phase 1, D.4); cheap to build right from day one                              | Trash bin with a retention timer — rejected: contradicts "never destructive," and the source corpus explicitly rules this out (SRC-01 §11)                                   |
+| ADR     | Decision                                                                                            | Status   | Rationale                                                                                                       | Alternatives rejected                                                                                                                                                        |
+| ------- | --------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ADR-001 | Single FastAPI monolith (Python) for both Core API and AI/Agent service — not two separate services | Accepted | Python's AI/ML ecosystem materially stronger for embeddings/orchestration; single service simplifies deployment | Two-service NestJS/TS + FastAPI/Python split — rejected: unnecessary operational complexity for MVP scale                                                                    |
+| ADR-002 | All connectors and plugins built MCP-shaped from day one, even before consuming real MCP servers    | Accepted | Makes the eventual move to real MCP a transport change, not an integration rewrite                              | Bespoke per-connector interfaces — rejected: would require a rewrite at enterprise scale (SRC's own Enterprise Paper §5.3 depends on this decision already having been made) |
+| ADR-003 | Postgres + Apache AGE (graph extension) + pgvector at MVP, not a dedicated graph/vector DB          | Accepted | Avoids operating two extra database systems before volume justifies it                                          | Neo4j + Qdrant from day one — rejected: premature operational complexity for MVP-scale data volume                                                                           |
+| ADR-004 | Suggest-mode as an architectural invariant enforced at the Orchestrator, not per-agent              | Accepted | A single enforcement point is auditable; per-agent enforcement risks drift                                      | Trusting each agent's own prompt to self-limit — rejected: unauditable, a prompt is not an access-control boundary                                                           |
+| ADR-005 | Memory Agent is the sole writer to the knowledge graph/vector store; no other agent writes directly | Accepted | Centralizes merge/dedup judgment in one place, avoids silent conflicting writes from concurrent agents          | Each agent writes its own memory subtype directly — rejected: creates race conditions and duplicate entities across agents                                                   |
+| ADR-006 | Archive-only deletion model (no hard delete except the explicit account-level "delete everything")  | Accepted | Matches the non-negotiable product philosophy (Phase 1, D.4); cheap to build right from day one                 | Trash bin with a retention timer — rejected: contradicts "never destructive," and the source corpus explicitly rules this out (SRC-01 §11)                                   |
 
 **D.5 NFR satisfaction matrix.**
 
@@ -1093,26 +1093,26 @@ SRC-06 §10 (Tech Stack table), Phase 5 (ADR-001, ADR-003).
 **D.1 Stack (MVP column only; enterprise evolution column is in the companion
 document).**
 
-| Layer            | Choice                              | Why                                                                              |
-| ---------------- | ----------------------------------- | -------------------------------------------------------------------------------- |
-| Frontend         | React + TypeScript, Next.js         | SSR for fast first paint; large ecosystem/hiring pool                            |
-| Styling          | Tailwind CSS                        | Fast iteration without a heavy design-system build                               |
-| Client state     | TanStack Query                      | Handles cache/sync with backend without hand-rolled logic                        |
-| Core API         | Node.js + TypeScript (NestJS)       | Shared language with frontend; strong async I/O (ADR-001)                        |
-| AI/Agent service | Python (FastAPI)                    | Strongest AI/ML ecosystem for embeddings/orchestration (ADR-001)                 |
-| Agent reasoning  | Anthropic Claude API (tool-calling) | Native tool-use matches the MCP-shaped connector architecture directly (ADR-002) |
-| Relational DB    | PostgreSQL                          | Mature, strong JSON support for evolving schemas                                 |
-| Graph            | PostgreSQL + Apache AGE             | Avoids a second DB system pre-scale (ADR-003)                                    |
-| Vector           | pgvector                            | Same rationale as graph (ADR-003)                                                |
-| Keyword search   | Meilisearch                         | Fast to stand up, good relevance defaults                                        |
-| Object storage   | S3-compatible                       | Industry standard, CDN-friendly                                                  |
-| Auth             | Managed OAuth/SSO provider          | Avoids rebuilding a security-critical component in-house                         |
-| Queue/event bus  | Redis + BullMQ                      | Simple to operate pre-multi-tenant scale                                         |
-| Scheduler        | Managed cron                        | Reliable triggers for Gmail/Reflection-style passes without custom infra         |
-| Cache            | Redis                               | Doubles as queue backend at MVP                                                  |
-| Deployment       | PaaS + Docker                       | Move fast pre-scale                                                              |
-| Observability    | OpenTelemetry + hosted APM          | Multi-hop agent chains need distributed tracing from day one                     |
-| CI/CD            | GitHub Actions                      | Tightly integrated with GitHub, already a first-class connector                  |
+| Layer            | Choice                                          | Why                                                                              |
+| ---------------- | ----------------------------------------------- | -------------------------------------------------------------------------------- |
+| Frontend         | React + TypeScript, Next.js                     | SSR for fast first paint; large ecosystem/hiring pool                            |
+| Styling          | Tailwind CSS                                    | Fast iteration without a heavy design-system build                               |
+| Client state     | TanStack Query                                  | Handles cache/sync with backend without hand-rolled logic                        |
+| Core API         | Python (FastAPI)                                | Shared language with frontend; strong async I/O (ADR-001)                        |
+| AI/Agent service | Python (FastAPI)                                | Strongest AI/ML ecosystem for embeddings/orchestration (ADR-001)                 |
+| Agent reasoning  | Anthropic Claude API (tool-calling)             | Native tool-use matches the MCP-shaped connector architecture directly (ADR-002) |
+| Relational DB    | PostgreSQL                                      | Mature, strong JSON support for evolving schemas                                 |
+| Graph            | PostgreSQL + Apache AGE                         | Avoids a second DB system pre-scale (ADR-003)                                    |
+| Vector           | pgvector                                        | Same rationale as graph (ADR-003)                                                |
+| Keyword search   | PostgreSQL FTS (SQL ILIKE)                      | Meilisearch NOT_INSTALLED; SQL ILIKE is sufficient at MVP scale                  |
+| Object storage   | S3-compatible                                   | Industry standard, CDN-friendly                                                  |
+| Auth             | Managed OAuth/SSO provider                      | Avoids rebuilding a security-critical component in-house                         |
+| Queue/event bus  | Redis (BullMQ installed, no consumers deployed) | Simple to operate pre-multi-tenant scale                                         |
+| Scheduler        | Managed cron                                    | Reliable triggers for Gmail/Reflection-style passes without custom infra         |
+| Cache            | Redis                                           | Doubles as queue backend at MVP                                                  |
+| Deployment       | PaaS + Docker                                   | Move fast pre-scale                                                              |
+| Observability    | OpenTelemetry + hosted APM                      | Multi-hop agent chains need distributed tracing from day one                     |
+| CI/CD            | GitHub Actions                                  | Tightly integrated with GitHub, already a first-class connector                  |
 
 **D.2 Engineering standards (newly authored).**
 
@@ -1136,19 +1136,8 @@ Stack table (D.1), engineering standards (D.2).
 Representative config, produced as a specification artifact (not executed
 against a live repo):
 
-```json
-// .eslintrc.json (Core API / apps/api)
-{
-  "extends": ["plugin:@typescript-eslint/recommended", "prettier"],
-  "rules": {
-    "@typescript-eslint/no-explicit-any": "error",
-    "@typescript-eslint/explicit-function-return-type": "warn"
-  }
-}
-```
-
-```toml
-# pyproject.toml excerpt (AI service / apps/ai-service)
+```python
+# pyproject.toml excerpt (apps/backend)
 [tool.ruff]
 line-length = 100
 select = ["E", "F", "I", "UP"]
@@ -1404,10 +1393,10 @@ type-scoped retrieval. `entities.embedding` HNSW index for vector similarity.
 `agent_actions(workspace_id, created_at)` for audit time-range queries.
 
 **D.6 Migration strategy.** Forward-only migrations via a standard migration
-tool (e.g., `node-pg-migrate` or Prisma Migrate), one file per change, reviewed
-under the Phase 6 "2-reviewer" rule since migrations touch shared schema. No
-destructive migration (`DROP COLUMN`, `DROP TABLE`) ships without a decommission
-period and a data-export step first, consistent with ADR-006.
+tool (e.g., Alembic for SQLAlchemy), one file per change, reviewed under the
+Phase 6 "2-reviewer" rule since migrations touch shared schema. No destructive
+migration (`DROP COLUMN`, `DROP TABLE`) ships without a decommission period and
+a data-export step first, consistent with ADR-006.
 
 **D.7 Backup & restore.** Daily automated full snapshot + continuous WAL
 archiving (point-in-time recovery), retained 30 days at MVP. Restore drill
@@ -2067,55 +2056,37 @@ None blocking.
 
 ### D. Work Completed
 
-**D.1 Permission Engine middleware (NestJS, `apps/api/permissions`)** —
+**D.1 Permission Engine middleware (FastAPI, `apps/backend/permissions`)** —
 implements ADR-004, NFR-07:
 
-```typescript
-// apps/api/permissions/permission.guard.ts
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-} from '@nestjs/common';
-import { PermissionsService } from './permissions.service';
+```python
+# apps/backend/permissions/permission.py (FastAPI dependency injection)
+from fastapi import Depends, HTTPException
+from sqlalchemy.orm import Session
 
-@Injectable()
-export class PermissionGuard implements CanActivate {
-  constructor(private readonly permissions: PermissionsService) {}
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-    const { workspaceId, agentName, actionType } = req.permissionContext; // set by an earlier interceptor
-
-    const grant = await this.permissions.findActiveGrant(
-      workspaceId,
-      agentName,
-      actionType,
-    );
-    if (!grant) {
-      throw new ForbiddenException({
-        error: {
-          code: 'PERMISSION_DENIED',
-          message: `${agentName} lacks ${actionType} scope in this workspace`,
-        },
-      });
-    }
-    return true;
-  }
-}
+async def check_permission(
+    workspace_id: str,
+    agent_name: str,
+    action_type: str,
+    db: Session = Depends(get_db),
+):
+    grant = find_active_grant(db, workspace_id, agent_name, action_type)
+    if not grant:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "PERMISSION_DENIED", "message": f"{agent_name} lacks {action_type} scope in this workspace"},
+        )
 ```
 
-Every controller route that reaches an agent or the memory layer is decorated
-with `@UseGuards(PermissionGuard)` — there is no route that bypasses it,
-including internal service-to-service calls from the AI service back into Core
-API (Phase 5, D.3).
+Every FastAPI route that reaches an agent or the memory layer uses the
+`check_permission` dependency — there is no route that bypasses it, including
+internal service-to-service calls.
 
 **D.2 Organization Agent handler (FastAPI,
-`apps/ai-service/agents/organization_agent`)** — implements FR-11–15:
+`apps/backend/agents/organization_agent`)** — implements FR-11–15:
 
 ```python
-# apps/ai-service/agents/organization_agent/handler.py
+# apps/backend/agents/organization_agent/handler.py
 from .prompt import ORGANIZATION_AGENT_SYSTEM_PROMPT
 from .tools import TOOLS
 from .permissions import REQUIRED_SCOPES
@@ -2153,7 +2124,7 @@ async def handle_new_document(document_id: str, workspace_id: str) -> dict:
 failure-sensitive piece per Phase 1/3)**:
 
 ```python
-# apps/ai-service/agents/memory_agent/merge.py
+# apps/backend/agents/memory_agent/merge.py
 MERGE_CONFIDENCE_THRESHOLD = 0.82  # SM-06 target: <0.5% wrong-merge rate calibrated against this
 
 async def resolve_entity(candidate: ExtractedEntity, workspace_id: str) -> Entity:
@@ -2204,8 +2175,7 @@ RISK-11.1).
 
 ### L. Handoff Package
 
-D.1–D.3 → the engineer initializing `apps/api` and `apps/ai-service`; RISK-11.1
-→ Phase 14 owner.
+D.1–D.3 → the engineer initializing `apps/backend`; RISK-11.1 → Phase 14 owner.
 
 ### M. Final Statement
 
@@ -2244,7 +2214,7 @@ dedup & version detection (FR-09) → Memory Agent write → Organization Agent 
 identically).**
 
 ```python
-# apps/ai-service/agents/_base/agent.py
+# apps/backend/agents/_base/agent.py
 class BaseAgent:
     name: str
     system_prompt: str          # versioned in prompt.py, never an inline string
@@ -2275,7 +2245,7 @@ degrades to the fallback rather than failing the request.
 users).**
 
 ```python
-# apps/ai-service/eval/golden_dataset.py
+# apps/backend/eval/golden_dataset.py
 GOLDEN_SET_SPEC = {
     "extraction": {"n": 150, "source": "hand-labeled sample resumes/certs", "metric": "entity F1"},
     "merge_decisions": {"n": 300, "source": "hand-labeled near-duplicate entity pairs", "metric": "wrong-merge rate (target < 0.5%, SM-06)"},
@@ -2483,21 +2453,21 @@ None blocking.
 
 **D.1 Test pyramid.**
 
-| Layer       | Scope                                                                      | Target coverage                                                                |
-| ----------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Unit        | Pure functions, agent decision logic (e.g., merge-threshold logic)         | ≥ 80% line coverage on `apps/ai-service/agents/*` and `apps/api/permissions/*` |
-| Integration | API ↔ DB, API ↔ AI-service RPC boundary                                    | Every endpoint in the Phase 8 OpenAPI spec has ≥1 integration test             |
-| Contract    | Core API ↔ AI Service internal RPC                                         | Schema-validated against the shared-types package on every PR                  |
-| E2E         | Full user journeys (signup → upload → proposal → approve → memory updated) | The exact journey in SRC-04's 10-step trace, automated as a single E2E test    |
-| AI eval     | Golden-dataset metrics (Phase 12, D.4)                                     | Re-run on every prompt/model change; regression blocks merge                   |
-| Security    | STRIDE-derived test cases (Phase 13, D.1)                                  | One test per mitigation row, minimum                                           |
-| Load        | Phase 15 capacity model                                                    | Run before every release, not just once                                        |
+| Layer       | Scope                                                                      | Target coverage                                                                 |
+| ----------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Unit        | Pure functions, agent decision logic (e.g., merge-threshold logic)         | ≥ 80% line coverage on `apps/backend/agents/*` and `apps/backend/permissions/*` |
+| Integration | API ↔ DB, API ↔ AI-service RPC boundary                                    | Every endpoint in the Phase 8 OpenAPI spec has ≥1 integration test              |
+| Contract    | Core API ↔ AI Service internal RPC                                         | Schema-validated against the shared-types package on every PR                   |
+| E2E         | Full user journeys (signup → upload → proposal → approve → memory updated) | The exact journey in SRC-04's 10-step trace, automated as a single E2E test     |
+| AI eval     | Golden-dataset metrics (Phase 12, D.4)                                     | Re-run on every prompt/model change; regression blocks merge                    |
+| Security    | STRIDE-derived test cases (Phase 13, D.1)                                  | One test per mitigation row, minimum                                            |
+| Load        | Phase 15 capacity model                                                    | Run before every release, not just once                                         |
 
 **D.2 Representative unit test (merge-threshold logic, RISK-11.1's actual
 validation mechanism).**
 
 ```python
-# apps/ai-service/tests/test_memory_merge.py
+# apps/backend/tests/test_memory_merge.py
 import pytest
 from agents.memory_agent.merge import resolve_entity, MERGE_CONFIDENCE_THRESHOLD
 
@@ -2616,12 +2586,12 @@ single-digit-thousands of active workspaces (consistent with "prove the loop
 first" from Phase 1, BO-1) before any enterprise decision is made. At that
 scale:
 
-| Resource                               | Estimated load                                                                        | Design margin                                                                                                                     |
-| -------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Postgres (relational + AGE + pgvector) | ~5k workspaces × ~200 documents avg × ~15 entities/doc ≈ 15M entity rows              | Comfortably within single-instance Postgres; AGE traversal latency is the first thing to watch (see D.4 migration trigger)        |
-| API request rate                       | ~5k workspaces × ~20 req/day active-use average                                       | Single NestJS instance easily handles this; horizontal scaling only needed for burst (e.g., a marketing spike)                    |
-| Ingestion queue                        | Bursty at onboarding (a new user may upload 20–50 files at once)                      | BullMQ + worker pool sized to absorb a 50-file burst without blocking interactive requests (ADR: queue-driven ingestion, Phase 6) |
-| AI service calls                       | Rate-limited to 20 req/min per workspace on agent-triggering endpoints (Phase 8, D.5) | Protects both cost (NFR-13) and third-party connector quotas                                                                      |
+| Resource                               | Estimated load                                                                        | Design margin                                                                                                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Postgres (relational + AGE + pgvector) | ~5k workspaces × ~200 documents avg × ~15 entities/doc ≈ 15M entity rows              | Comfortably within single-instance Postgres; AGE traversal latency is the first thing to watch (see D.4 migration trigger)             |
+| API request rate                       | ~5k workspaces × ~20 req/day active-use average                                       | Single FastAPI instance easily handles this; horizontal scaling only needed for burst (e.g., a marketing spike)                        |
+| Ingestion queue                        | Bursty at onboarding (a new user may upload 20–50 files at once)                      | Redis queue + worker pool sized to absorb a 50-file burst without blocking interactive requests (ADR: queue-driven ingestion, Phase 6) |
+| AI service calls                       | Rate-limited to 20 req/min per workspace on agent-triggering endpoints (Phase 8, D.5) | Protects both cost (NFR-13) and third-party connector quotas                                                                           |
 
 **D.2 SLOs.**
 
@@ -2644,7 +2614,7 @@ this system). Tooling: k6 or Locust against a staging environment (Phase 16).
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | AGE graph traversal P95 > 500ms at ≤ 3-hop queries | Migrate graph workload to a dedicated Neo4j cluster (per the enterprise document's tech-stack evolution column) |
 | pgvector query P95 > 200ms at current corpus size  | Migrate vector workload to a dedicated vector DB (Qdrant)                                                       |
-| Redis+BullMQ queue depth sustained > 10k jobs      | Evaluate Kafka migration (durable, replayable event log) ahead of schedule                                      |
+| Redis queue depth sustained > 10k jobs             | Evaluate Kafka migration (durable, replayable event log) ahead of schedule                                      |
 
 **D.5 Caching strategy.** Dashboard aggregates and resume renders cached with
 **explicit invalidation on the relevant memory-write event** (not time-based
@@ -2733,21 +2703,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci && npm run lint && npm run typecheck # apps/web, apps/api
-      - run: pip install -r requirements.txt && ruff check . # apps/ai-service
+      - run: npm ci && npm run lint && npm run typecheck # apps/web
+      - run: pip install -r requirements.txt && ruff check . # apps/backend
 
   unit-tests:
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
     steps:
       - run: npm run test:unit
-      - run: pytest apps/ai-service/tests -m "not e2e"
+      - run: pytest apps/backend/tests -m "not e2e"
 
   ai-eval-regression:
     needs: unit-tests
     runs-on: ubuntu-latest
     steps:
-      - run: python apps/ai-service/eval/run_golden_set.py --fail-on-regression # Phase 12 D.4
+      - run: python apps/backend/eval/run_golden_set.py --fail-on-regression # Phase 12 D.4
 
   integration-tests:
     needs: unit-tests
@@ -2763,10 +2733,12 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - run: docker build -t ${{ vars.REGISTRY }}/api:${{ github.sha }} apps/api
+      - run:
+          docker build -t ${{ vars.REGISTRY }}/api:${{ github.sha }}
+          apps/backend
       - run:
           docker build -t ${{ vars.REGISTRY }}/ai-service:${{ github.sha }}
-          apps/ai-service
+          apps/backend
       - run: docker push ${{ vars.REGISTRY }}/api:${{ github.sha }}
 
   deploy-staging:
@@ -2890,7 +2862,7 @@ None blocking.
 | Ingestion latency breach          | P95 > 5 min sustained 15 min                                                  | Ticket (SEV-3)                                                                                                                               |
 | Urgent-mail false-negative signal | A manually-reported missed urgent email                                       | Page (SEV-2) — this is the "worst failure mode" per source corpus, alerted like an incident even though it's a quality signal, not an outage |
 | Merge-confidence drift            | Wrong-merge rate (sampled) exceeds SM-06's 0.5% target for 2 consecutive days | Ticket (SEV-3), routed to AI/ML Engineer                                                                                                     |
-| Queue depth                       | BullMQ depth > 10,000 (Phase 15 D.4 trigger)                                  | Ticket (SEV-3) — scale-migration discussion, not an outage                                                                                   |
+| Queue depth                       | Redis queue depth > 10,000 (Phase 15 D.4 trigger)                             | Ticket (SEV-3) — scale-migration discussion, not an outage                                                                                   |
 
 **D.3 Runbook (representative — "Ingestion latency breach").**
 

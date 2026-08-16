@@ -1,32 +1,57 @@
 ﻿# Vaeloom Integration Guide
 
-> **Purpose:** Comprehensive guide for integrating third-party services with Vaeloom through the connector framework — covering connector SDK usage, OAuth implementation, webhook setup, data sync, rate limiting, error recovery, and certification
-> **Status:** ðŸ†• New
-> **Owner:** Backend Team
-> **Last Updated:** 2026-07-13
-> **Canonical source:** [`docs/Integration-Guide.md`](./Integration-Guide.md)
+> **Purpose:** Comprehensive guide for integrating third-party services with
+> Vaeloom through the connector framework — covering connector SDK usage, OAuth
+> implementation, webhook setup, data sync, rate limiting, error recovery, and
+> certification **Status:** ðŸ†• New **Owner:** Backend Team **Last Updated:**
+> 2026-07-13 **Canonical source:**
+> [`docs/Integration-Guide.md`](./Integration-Guide.md)
 
 ---
 
 ## Overview
 
-Vaeloom connects to the services where users already keep their professional data — email (Gmail, Outlook), code repositories (GitHub, GitLab), messaging (Slack, Discord), cloud storage (Google Drive, OneDrive), and calendaring (Google Calendar, Outlook Calendar). Each integration is built as a **connector** — a self-contained module that handles authentication, data synchronization, webhook reception, and error recovery for a single external service.
+Vaeloom connects to the services where users already keep their professional
+data — email (Gmail, Outlook), code repositories (GitHub, GitLab), messaging
+(Slack, Discord), cloud storage (Google Drive, OneDrive), and calendaring
+(Google Calendar, Outlook Calendar). Each integration is built as a
+**connector** — a self-contained module that handles authentication, data
+synchronization, webhook reception, and error recovery for a single external
+service.
 
-This guide is the reference for engineers building new connectors. It covers the connector SDK, OAuth 2.0 authorization flows, webhook endpoint setup and verification, polling-based sync strategies, rate limit management, error handling patterns, and the connector certification process. The audience is backend engineers and integration partners who need to add or maintain a connector in the Vaeloom ecosystem.
+This guide is the reference for engineers building new connectors. It covers the
+connector SDK, OAuth 2.0 authorization flows, webhook endpoint setup and
+verification, polling-based sync strategies, rate limit management, error
+handling patterns, and the connector certification process. The audience is
+backend engineers and integration partners who need to add or maintain a
+connector in the Vaeloom ecosystem.
 
-The connector framework sits at the boundary between Vaeloom's internal event-driven architecture and the external APIs it consumes. Connectors are registered with the Connector Agent, communicate through the Event Bus, and store credentials in the Secrets Manager. Understanding the [Event Architecture](./Architecture/Event-Architecture.md) and [Authentication](./Backend/Authentication.md) systems is a prerequisite for this guide.
+The connector framework sits at the boundary between Vaeloom's internal
+event-driven architecture and the external APIs it consumes. Connectors are
+registered with the Connector Agent, communicate through the Event Bus, and
+store credentials in the Secrets Manager. Understanding the
+[Event Architecture](./Architecture/Event-Architecture.md) and
+[Authentication](./Backend/Authentication.md) systems is a prerequisite for this
+guide.
 
-Reliable integrations are critical because Vaeloom's core value proposition — an always-current second brain — depends on continuous, correct data flow from external sources. A broken connector means stale memory, missed deadlines, and eroded user trust.
+Reliable integrations are critical because Vaeloom's core value proposition — an
+always-current second brain — depends on continuous, correct data flow from
+external sources. A broken connector means stale memory, missed deadlines, and
+eroded user trust.
 
 ---
 
 ## Goals
 
 - Define the connector integration architecture and component boundaries
-- Establish standards for OAuth 2.0 implementation, token lifecycle, and scope management
-- Provide implementation patterns for webhook setup, signature verification, idempotency, and retry policies
-- Document sync strategies (full, incremental, webhook-driven, reconciliation) with performance trade-offs
-- Enable operational excellence through rate limiting, error queues, monitoring dashboards, and connector certification
+- Establish standards for OAuth 2.0 implementation, token lifecycle, and scope
+  management
+- Provide implementation patterns for webhook setup, signature verification,
+  idempotency, and retry policies
+- Document sync strategies (full, incremental, webhook-driven, reconciliation)
+  with performance trade-offs
+- Enable operational excellence through rate limiting, error queues, monitoring
+  dashboards, and connector certification
 
 ---
 
@@ -36,28 +61,35 @@ Reliable integrations are critical because Vaeloom's core value proposition — 
 
 - Connector SDK structure and usage patterns
 - OAuth 2.0 authorization flows (authorization code, PKCE, client credentials)
-- Webhook endpoint configuration, signature verification, retry policies, and idempotency
-- Data synchronization strategies — full sync, incremental sync, webhook-driven sync, reconciliation
-- Rate limiting — per-connector configuration, queue management, backpressure signals
-- Error handling — transient vs permanent errors, retry policies, dead letter queue, alerting
+- Webhook endpoint configuration, signature verification, retry policies, and
+  idempotency
+- Data synchronization strategies — full sync, incremental sync, webhook-driven
+  sync, reconciliation
+- Rate limiting — per-connector configuration, queue management, backpressure
+  signals
+- Error handling — transient vs permanent errors, retry policies, dead letter
+  queue, alerting
 - Connector manifest format and registration
 - Connector certification requirements and testing
-- Security — credential encryption, scope enforcement, audit logging, connector isolation
+- Security — credential encryption, scope enforcement, audit logging, connector
+  isolation
 
 ### Out of Scope
 
-- Internal agent-to-agent communication patterns (see [Event Architecture](./Architecture/Event-Architecture.md))
+- Internal agent-to-agent communication patterns (see
+  [Event Architecture](./Architecture/Event-Architecture.md))
 - Frontend UI for connector configuration and management
 - Database schema migrations for connector storage
 - Third-party API design or documentation
-- Custom enterprise SSO integration (see [Authentication](./Backend/Authentication.md))
+- Custom enterprise SSO integration (see
+  [Authentication](./Backend/Authentication.md))
 - Connector plugin marketplace (see Future Improvements section)
 
 ---
 
 ## Architecture
 
-```mermaid
+````mermaid
 graph TD
     classDef external fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
     classDef adapter fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
@@ -82,7 +114,7 @@ graph TD
         A5["Rate Limiter<br/>Per-connector buckets"]
     end
 
-    subgraph Bus["ðŸ“¨ Event Bus (Redis / Kafka)"]
+    subgraph Bus["ðŸ“¨ Event Bus (Redis Streams)"]
         B1["webhook.gmail.incoming"]
         B2["sync.github.completed"]
         B3["connector.degraded"]
@@ -127,7 +159,7 @@ graph TD
     class C1,C2,C3 cross
 ```text
 
-> **Diagram:** Connector architecture showing five layers. **External Services** connect via REST/GraphQL APIs or webhooks. The **Connector Adapter Layer** manages OAuth, webhook reception, sync scheduling, and rate limiting. Validated events publish to the **Event Bus** (Redis/Kafka) on typed topics. The **Processing Pipeline** routes, classifies, deduplicates, and extracts entities into memory. **Cross-Cutting** concerns include encrypted credential storage, a dead letter error queue, and a health dashboard.
+> **Diagram:** Connector architecture showing five layers. **External Services** connect via REST/GraphQL APIs or webhooks. The **Connector Adapter Layer** manages OAuth, webhook reception, sync scheduling, and rate limiting. Validated events publish to the **Event Bus** (Redis Streams) on typed topics. The **Processing Pipeline** routes, classifies, deduplicates, and extracts entities into memory. **Cross-Cutting** concerns include encrypted credential storage, a dead letter error queue, and a health dashboard.
 
 ---
 
@@ -136,9 +168,9 @@ graph TD
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
 | Connector SDK | Base class, manifest validation, HTTP client, token injection | TypeScript / Python | SDK versioned per connector |
-| OAuth Handler | Authorization URL generation, code exchange, token refresh, scope negotiation | TypeScript (NestJS) | Stateless — scales horizontally |
-| Webhook Receiver | Endpoint registration, HMAC verification, idempotency check, event publishing | TypeScript (NestJS) | Stateless — scales horizontally |
-| Sync Scheduler | Cron triggers, sync queue management, pagination, page token tracking | TypeScript (BullMQ) | Worker pool — partitioned by connector_id |
+| OAuth Handler | Authorization URL generation, code exchange, token refresh, scope negotiation | Python (FastAPI) | Stateless — scales horizontally |
+| Webhook Receiver | Endpoint registration, HMAC verification, idempotency check, event publishing | Python (FastAPI) | Stateless — scales horizontally |
+| Sync Scheduler | Cron triggers, sync queue management, pagination, page token tracking | Python (FastAPI + asyncio) | Worker pool — partitioned by connector_id |
 | Rate Limiter | Token bucket per connector, Retry-After parsing, backoff orchestration | TypeScript (Redis) | Redis-backed — shared state |
 | Error Queue | Dead letter storage, replay, TTL-based retention | Redis / PostgreSQL | Partitioned by error type |
 | Connector Registry | Manifest storage, versioning, health state, metrics aggregation | PostgreSQL | Read replicas for dashboard |
@@ -1072,3 +1104,4 @@ curl -X POST https://api.Vaeloom.dev/webhooks/github \
 - [`Operations/SLO.md`](./Operations/SLO.md) — Service level objectives for connector sync latency and availability
 - [`Testing/Integration-Testing.md`](./Testing/Integration-Testing.md) — Integration testing patterns for connectors
 - [`Vaeloom-Complete-Documentation.md`](./Vaeloom-Complete-Documentation.md) — Full product and system documentation
+````

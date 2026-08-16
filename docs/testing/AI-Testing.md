@@ -1,7 +1,7 @@
 ﻿# AI Testing
 
-> **Purpose:** Define AI-specific testing practices for Vaeloom
-> **Status:** ðŸ†• New
+> **Purpose:** Define AI-specific testing practices for Vaeloom **Status:** ðŸ†•
+> New
 
 ## AI Testing Architecture
 
@@ -53,7 +53,11 @@ graph TD
     class S1,S2,S3,S4 stats
 ```
 
-> **Diagram:** AI testing differs from traditional testing across 4 dimensions (determinism, assertions, data, statistics). **Golden datasets** (50+ hand-labeled examples per agent) drive **5 evaluation types** (accuracy, hallucination, consistency, latency, safety). Regressions are added to the golden dataset. **Statistical significance** targets ensure reliable results.
+> **Diagram:** AI testing differs from traditional testing across 4 dimensions
+> (determinism, assertions, data, statistics). **Golden datasets** (50+
+> hand-labeled examples per agent) drive **5 evaluation types** (accuracy,
+> hallucination, consistency, latency, safety). Regressions are added to the
+> golden dataset. **Statistical significance** targets ensure reliable results.
 
 ---
 
@@ -61,11 +65,11 @@ graph TD
 
 AI testing differs from traditional software testing:
 
-| Traditional | AI |
-|-------------|-----|
-| Deterministic outputs | Non-deterministic outputs |
-| Exact assertions | Threshold-based assertions |
-| Static test data | Golden datasets that evolve |
+| Traditional           | AI                                      |
+| --------------------- | --------------------------------------- |
+| Deterministic outputs | Non-deterministic outputs               |
+| Exact assertions      | Threshold-based assertions              |
+| Static test data      | Golden datasets that evolve             |
 | One test per behavior | Statistical significance across samples |
 
 ## Golden Datasets
@@ -79,13 +83,13 @@ Every agent has a golden dataset:
 
 ## Eval Types
 
-| Eval Type | Description | Example |
-|-----------|-------------|---------|
-| Accuracy | % correct within tolerance | Extraction entity matches ground truth |
-| Hallucination | % fabricated information | Resume agent invents a skill |
-| Consistency | Same input → similar output | Document classified same way twice |
-| Latency | Response time | Agent completes within budget |
-| Safety | Harmful content detection | QA Agent catches policy violation |
+| Eval Type     | Description                 | Example                                |
+| ------------- | --------------------------- | -------------------------------------- |
+| Accuracy      | % correct within tolerance  | Extraction entity matches ground truth |
+| Hallucination | % fabricated information    | Resume agent invents a skill           |
+| Consistency   | Same input → similar output | Document classified same way twice     |
+| Latency       | Response time               | Agent completes within budget          |
+| Safety        | Harmful content detection   | QA Agent catches policy violation      |
 
 ## Regression Testing
 
@@ -97,131 +101,177 @@ When a bug is fixed:
 
 ## Statistical Significance
 
-| Metric | Minimum Sample | Confidence Level |
-|--------|---------------|-----------------|
-| Classification accuracy | 500 items | 95% |
-| Extraction accuracy | 100 documents | 95% |
-| Generation quality | 50 outputs | 90% |
-| Ranking quality | 100 comparisons | 95% |
+| Metric                  | Minimum Sample  | Confidence Level |
+| ----------------------- | --------------- | ---------------- |
+| Classification accuracy | 500 items       | 95%              |
+| Extraction accuracy     | 100 documents   | 95%              |
+| Generation quality      | 50 outputs      | 90%              |
+| Ranking quality         | 100 comparisons | 95%              |
 
 ## Common Mistakes
 
-| Mistake | Consequence |
-|---------|-------------|
-| Using deterministic assertions on non-deterministic output | Tests flake due to LLM variability |
-| Testing with too few golden examples | Low statistical significance, false conclusions |
-| Not updating golden datasets when prompts change | Tests pass against stale ground truth, real quality degrades |
+| Mistake                                                    | Consequence                                                  |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| Using deterministic assertions on non-deterministic output | Tests flake due to LLM variability                           |
+| Testing with too few golden examples                       | Low statistical significance, false conclusions              |
+| Not updating golden datasets when prompts change           | Tests pass against stale ground truth, real quality degrades |
 
 ## Best Practices
 
-| Practice | Rationale |
-|----------|-----------|
+| Practice                                             | Rationale                                               |
+| ---------------------------------------------------- | ------------------------------------------------------- |
 | Use threshold-based assertions with tolerance levels | Accounts for LLM non-determinism while ensuring quality |
-| Maintain minimum 50 golden examples per agent | Ensures statistical significance in eval results |
-| Run AI tests on every prompt change, not just PRs | Catches regressions immediately |
+| Maintain minimum 50 golden examples per agent        | Ensures statistical significance in eval results        |
+| Run AI tests on every prompt change, not just PRs    | Catches regressions immediately                         |
 
 ## Security Considerations
 
-| Concern | Mitigation |
-|---------|------------|
-| Golden datasets may contain PII if sourced from production | Use synthetic or anonymized data in golden datasets |
-| AI eval logs could leak prompt internals | Redact system prompts in test output and logs |
-| Adversarial test cases test injection — but may reveal techniques | Keep adversarial test cases in private repos |
+| Concern                                                           | Mitigation                                          |
+| ----------------------------------------------------------------- | --------------------------------------------------- |
+| Golden datasets may contain PII if sourced from production        | Use synthetic or anonymized data in golden datasets |
+| AI eval logs could leak prompt internals                          | Redact system prompts in test output and logs       |
+| Adversarial test cases test injection — but may reveal techniques | Keep adversarial test cases in private repos        |
 
 ## Performance Considerations
 
-| Concern | Mitigation |
-|---------|------------|
-| AI golden tests are slow (5s+ each) | Run on prompt changes only, parallelize across agents |
-| Running full eval suite blocks CI | Run targeted evals on PR, full suite on staging |
-| Statistical significance requires many samples | Sample size can be reduced for quick smoke tests |
+| Concern                                        | Mitigation                                            |
+| ---------------------------------------------- | ----------------------------------------------------- |
+| AI golden tests are slow (5s+ each)            | Run on prompt changes only, parallelize across agents |
+| Running full eval suite blocks CI              | Run targeted evals on PR, full suite on staging       |
+| Statistical significance requires many samples | Sample size can be reduced for quick smoke tests      |
 
 ## Workflows
 
-1. **Golden dataset update**: Bug found in Memory Agent output → failing case added to golden dataset (`golden/memory-agent/regression-042.json`) → prompt engineer fixes prompt → runs `python -m eval.test_prompts --agent memory_agent` → all golden tests pass at >90% tolerance → dataset versioned alongside prompt → PR merged
-2. **Full AI eval suite on prompt change**: Developer modifies Memory Agent system prompt → CI triggers `python -m eval.run_all --agents memory_agent` → accuracy, hallucination, consistency, latency, and safety evals run → each eval runs with statistically significant sample size → results compared to baseline → pass/fail reported
-3. **Hallucination detection regression**: QA agent flags hallucination in Resume Agent output → new golden test case added with expected rejection → resume agent prompt adjusted → hallucination eval re-run with 50 samples → hallucination rate drops below 2% threshold
-4. **Adversarial test execution**: Security team adds adversarial test case → `python -m eval.test_prompts --type adversarial` runs all adversarial tests against all agents → prompt injection, role confusion, system prompt leak and jailbreak attempts tested → any failure blocks deployment
+1. **Golden dataset update**: Bug found in Memory Agent output → failing case
+   added to golden dataset (`golden/memory-agent/regression-042.json`) → prompt
+   engineer fixes prompt → runs
+   `python -m eval.test_prompts --agent memory_agent` → all golden tests pass
+   at >90% tolerance → dataset versioned alongside prompt → PR merged
+2. **Full AI eval suite on prompt change**: Developer modifies Memory Agent
+   system prompt → CI triggers `python -m eval.run_all --agents memory_agent` →
+   accuracy, hallucination, consistency, latency, and safety evals run → each
+   eval runs with statistically significant sample size → results compared to
+   baseline → pass/fail reported
+3. **Hallucination detection regression**: QA agent flags hallucination in
+   Resume Agent output → new golden test case added with expected rejection →
+   resume agent prompt adjusted → hallucination eval re-run with 50 samples →
+   hallucination rate drops below 2% threshold
+4. **Adversarial test execution**: Security team adds adversarial test case →
+   `python -m eval.test_prompts --type adversarial` runs all adversarial tests
+   against all agents → prompt injection, role confusion, system prompt leak and
+   jailbreak attempts tested → any failure blocks deployment
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
-|-----------|---------------|--------------|---------------|
-| Golden dataset examples per agent | 50 | 500 examples with synthetic data augmentation | 10,000 examples with automated ground-truth generation |
-| AI eval types per agent | 5 (accuracy, hallucination, consistency, latency, safety) | 10 eval types (add relevance, completeness, formatting, bias, attribution) | 25+ eval types with AI-judged rubrics |
-| Concurrent agent eval runs | 1 per CI job | Parallel eval across agents with independent compute | Distributed eval cluster with priority queue |
-| Statistical significance sample size | 50-500 depending on eval | Automated power analysis to determine min sample | Stream-based eval that checks significance continuously |
+| Dimension                            | Current Limit                                             | 10x Strategy                                                               | 100x Strategy                                           |
+| ------------------------------------ | --------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Golden dataset examples per agent    | 50                                                        | 500 examples with synthetic data augmentation                              | 10,000 examples with automated ground-truth generation  |
+| AI eval types per agent              | 5 (accuracy, hallucination, consistency, latency, safety) | 10 eval types (add relevance, completeness, formatting, bias, attribution) | 25+ eval types with AI-judged rubrics                   |
+| Concurrent agent eval runs           | 1 per CI job                                              | Parallel eval across agents with independent compute                       | Distributed eval cluster with priority queue            |
+| Statistical significance sample size | 50-500 depending on eval                                  | Automated power analysis to determine min sample                           | Stream-based eval that checks significance continuously |
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
-|----------|-----------|------------|----------|
-| Golden dataset test fails after prompt change | Eval returns accuracy below tolerance | Block PR merge; show per-example breakdown of failures | Prompt engineer iterates on prompt and re-runs |
-| LLM API returns error during eval | HTTP 5xx or timeout | Retry with exponential backoff (3 attempts); skip and log if persistent | Mark eval as inconclusive; alert platform team |
-| Hallucination rate exceeds threshold | Eval reports > 5% fabricated information | Flag agent as degraded; prevent rollout; alert on-call | Rollback prompt to previous version; investigate root cause |
-| Adversarial test detects vulnerability | Injection test succeeds | Immediately block deploy; security team notified | Patch prompt with guardrails; re-run adversarial suite |
+| Scenario                                      | Detection                                | Mitigation                                                              | Recovery                                                    |
+| --------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Golden dataset test fails after prompt change | Eval returns accuracy below tolerance    | Block PR merge; show per-example breakdown of failures                  | Prompt engineer iterates on prompt and re-runs              |
+| LLM API returns error during eval             | HTTP 5xx or timeout                      | Retry with exponential backoff (3 attempts); skip and log if persistent | Mark eval as inconclusive; alert platform team              |
+| Hallucination rate exceeds threshold          | Eval reports > 5% fabricated information | Flag agent as degraded; prevent rollout; alert on-call                  | Rollback prompt to previous version; investigate root cause |
+| Adversarial test detects vulnerability        | Injection test succeeds                  | Immediately block deploy; security team notified                        | Patch prompt with guardrails; re-run adversarial suite      |
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
-|--------|----------------|----------|-----------|
-| Golden dataset accuracy per agent | < 85% | Critical | Grafana — AI Eval Dashboard |
-| Hallucination rate | > 2% | Warning | Grafana — AI Safety Dashboard |
-| AI eval latency (p99) | > 30s per agent | Warning | Grafana — AI Performance |
-| Adversarial test failure rate | > 0 | Critical | Security Dashboard |
-| Prompt change frequency | > 5 per week per agent | Info | GitHub — Prompt audit log |
+| Metric                            | Alert Threshold        | Severity | Dashboard                     |
+| --------------------------------- | ---------------------- | -------- | ----------------------------- |
+| Golden dataset accuracy per agent | < 85%                  | Critical | Grafana — AI Eval Dashboard   |
+| Hallucination rate                | > 2%                   | Warning  | Grafana — AI Safety Dashboard |
+| AI eval latency (p99)             | > 30s per agent        | Warning  | Grafana — AI Performance      |
+| Adversarial test failure rate     | > 0                    | Critical | Security Dashboard            |
+| Prompt change frequency           | > 5 per week per agent | Info     | GitHub — Prompt audit log     |
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Golden dataset becomes stale as user data evolves | Medium | High | Refresh golden datasets quarterly with recent real-world inputs |
-| LLM model update changes output distribution | Medium | High | Pin model version; run full eval suite on model provider changes |
-| Adversarial test cases leak to production prompts | Low | Critical | Store adversarial tests in separate private repo with restricted access |
-| Eval results show false improvement due to overfitting | Medium | Medium | Maintain separate held-back validation set that is never used for prompt tuning |
+| Risk                                                   | Likelihood | Impact   | Mitigation                                                                      |
+| ------------------------------------------------------ | ---------- | -------- | ------------------------------------------------------------------------------- |
+| Golden dataset becomes stale as user data evolves      | Medium     | High     | Refresh golden datasets quarterly with recent real-world inputs                 |
+| LLM model update changes output distribution           | Medium     | High     | Pin model version; run full eval suite on model provider changes                |
+| Adversarial test cases leak to production prompts      | Low        | Critical | Store adversarial tests in separate private repo with restricted access         |
+| Eval results show false improvement due to overfitting | Medium     | Medium   | Maintain separate held-back validation set that is never used for prompt tuning |
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
-|------------|--------|------------|-------------------|
-| Golden datasets are manually labeled | Expensive to scale across many agents | Use semi-automated labeling with human review | AI-assisted golden dataset generation with confidence scoring |
-| AI evals are non-deterministic | Results vary between runs | Run each eval 3 times and take median | Use temperature=0 for eval; statistical significance gates |
+| Limitation                                             | Impact                                            | Workaround                                            | Future Resolution                                                                     |
+| ------------------------------------------------------ | ------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Golden datasets are manually labeled                   | Expensive to scale across many agents             | Use semi-automated labeling with human review         | AI-assisted golden dataset generation with confidence scoring                         |
+| AI evals are non-deterministic                         | Results vary between runs                         | Run each eval 3 times and take median                 | Use temperature=0 for eval; statistical significance gates                            |
 | Latency evaluation depends on LLM provider performance | Cannot distinguish agent latency from API latency | Measure API call time separately from processing time | Dedicated evaluation infrastructure with local LLM for consistent latency measurement |
 
 ## Overview
 
-AI testing at Vaeloom fundamentally differs from traditional software testing. Where traditional testing deals with deterministic outputs, exact assertions, and static test data, AI testing must account for non-deterministic LLM outputs, threshold-based assertions, evolving golden datasets, and statistical significance across samples. This document defines the methodology, tooling, and processes for testing Vaeloom's AI agents.
+AI testing at Vaeloom fundamentally differs from traditional software testing.
+Where traditional testing deals with deterministic outputs, exact assertions,
+and static test data, AI testing must account for non-deterministic LLM outputs,
+threshold-based assertions, evolving golden datasets, and statistical
+significance across samples. This document defines the methodology, tooling, and
+processes for testing Vaeloom's AI agents.
 
-The core of AI testing is the golden dataset — a hand-labeled collection of at least 50 input/output examples per agent that serves as the ground truth for accuracy evaluation. Every prompt change triggers a full evaluation run across five metrics: accuracy (correctness within tolerance), hallucination (fabricated information), consistency (same input produces similar output), latency (response time compliance), and safety (harmful content detection). Statistical significance targets ensure that evaluation results are reliable — classification accuracy requires 500 samples at 95% confidence, while generation quality requires 50 outputs at 90% confidence.
+The core of AI testing is the golden dataset — a hand-labeled collection of at
+least 50 input/output examples per agent that serves as the ground truth for
+accuracy evaluation. Every prompt change triggers a full evaluation run across
+five metrics: accuracy (correctness within tolerance), hallucination (fabricated
+information), consistency (same input produces similar output), latency
+(response time compliance), and safety (harmful content detection). Statistical
+significance targets ensure that evaluation results are reliable —
+classification accuracy requires 500 samples at 95% confidence, while generation
+quality requires 50 outputs at 90% confidence.
 
-For Vaeloom's suite of AI agents (Memory Agent, Organization Agent, Resume Agent, Career Intelligence Agent, Communication Agent, QA Agent), AI testing ensures that every agent meets quality bars before deployment. When a bug is found — such as the Resume Agent inventing a skill — the failing case is added to the golden dataset, the prompt is fixed, and all golden tests are re-run to verify no regression has occurred.
+For Vaeloom's suite of AI agents (Memory Agent, Organization Agent, Resume
+Agent, Career Intelligence Agent, Communication Agent, QA Agent), AI testing
+ensures that every agent meets quality bars before deployment. When a bug is
+found — such as the Resume Agent inventing a skill — the failing case is added
+to the golden dataset, the prompt is fixed, and all golden tests are re-run to
+verify no regression has occurred.
 
-Adversarial testing is a critical component, testing prompt injection, role confusion, system prompt leak, and jailbreak attempts against every agent. These tests run on every prompt change and block deployment on any failure. The adversarial test suite is stored in a separate private repository with restricted access to prevent attack technique exposure.
+Adversarial testing is a critical component, testing prompt injection, role
+confusion, system prompt leak, and jailbreak attempts against every agent. These
+tests run on every prompt change and block deployment on any failure. The
+adversarial test suite is stored in a separate private repository with
+restricted access to prevent attack technique exposure.
 
 ## Goals
 
 - Maintain golden dataset accuracy above 85% for every AI agent at all times
-- Keep hallucination rate below 2% across all agents through continuous golden dataset expansion
-- Block deployments on any adversarial test failure (prompt injection, jailbreak, system prompt leak)
-- Maintain minimum 50 golden examples per agent with quarterly refresh from production patterns
-- Achieve statistical significance at 95% confidence for classification and extraction evaluations
+- Keep hallucination rate below 2% across all agents through continuous golden
+  dataset expansion
+- Block deployments on any adversarial test failure (prompt injection,
+  jailbreak, system prompt leak)
+- Maintain minimum 50 golden examples per agent with quarterly refresh from
+  production patterns
+- Achieve statistical significance at 95% confidence for classification and
+  extraction evaluations
 
 ## Scope
 
 ### In Scope
 
-- Golden datasets with minimum 50 hand-labeled examples per agent, versioned alongside prompts
+- Golden datasets with minimum 50 hand-labeled examples per agent, versioned
+  alongside prompts
 - Five evaluation types: accuracy, hallucination, consistency, latency, safety
-- Statistical significance targets: classification (500 items, 95%), extraction (100 docs, 95%), generation (50 outputs, 90%), ranking (100 comparisons, 95%)
-- Regression testing: bug findings added to golden dataset before fix, full suite re-run after fix
-- Adversarial testing: prompt injection, role confusion, system prompt leak, jailbreak attempts
+- Statistical significance targets: classification (500 items, 95%), extraction
+  (100 docs, 95%), generation (50 outputs, 90%), ranking (100 comparisons, 95%)
+- Regression testing: bug findings added to golden dataset before fix, full
+  suite re-run after fix
+- Adversarial testing: prompt injection, role confusion, system prompt leak,
+  jailbreak attempts
 - CI integration: full eval suite on every prompt change, targeted evals on PRs
 
 ### Out of Scope
 
-- AI-powered golden dataset auto-generation with human validation (future improvement)
+- AI-powered golden dataset auto-generation with human validation (future
+  improvement)
 - Continuous eval in production with shadow traffic (future improvement)
-- 25+ eval types including bias, attribution, and completeness (future improvement)
+- 25+ eval types including bias, attribution, and completeness (future
+  improvement)
 - Automated prompt optimization based on eval results (future improvement)
 
 ## Examples
@@ -229,7 +279,7 @@ Adversarial testing is a critical component, testing prompt injection, role conf
 ### Golden Dataset Eval Runner
 
 ```python
-# apps/ai-service/eval/test_prompts.py
+# apps/backend/tests/unit/test_prompts.py
 import json
 from pathlib import Path
 
@@ -307,12 +357,12 @@ sequenceDiagram
 
 ---
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| AI-powered golden dataset auto-generation with human validation | High | High | Q3 2027 |
-| Continuous eval in production with shadow traffic | High | Medium | Q2 2027 |
-| 25+ eval types including bias, attribution, and completeness | Medium | High | Q4 2027 |
-| Automated prompt optimization based on eval results | Medium | High | Q4 2027 |
+| Improvement                                                     | Priority | Complexity | Timeline |
+| --------------------------------------------------------------- | -------- | ---------- | -------- |
+| AI-powered golden dataset auto-generation with human validation | High     | High       | Q3 2027  |
+| Continuous eval in production with shadow traffic               | High     | Medium     | Q2 2027  |
+| 25+ eval types including bias, attribution, and completeness    | Medium   | High       | Q4 2027  |
+| Automated prompt optimization based on eval results             | Medium   | High       | Q4 2027  |
 
 ## Related Documents
 

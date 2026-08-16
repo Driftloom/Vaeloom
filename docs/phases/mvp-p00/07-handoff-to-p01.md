@@ -24,7 +24,7 @@
 | Gate report + remediation list R1–R8                  | `docs/phases/mvp-p00/06-gate-report.md`                                          |
 | Baseline hashes (sources + repo docs)                 | `01-source-register.md` §2                                                       |
 | Enterprise completeness (prompt §10)                  | `10-enterprise-completeness.md` — BLOCKED rows = P01's risk radar, not P00 debts |
-| Evidence & traceability register (prompt §23)         | `11-evidence-traceability.md` (EVD-MVP-P00-001…021)                              |
+| Evidence & traceability register (prompt §23)         | `11-evidence-traceability.md` (EVD-MVP-P00-001…022)                              |
 | Future-readiness backlog (overlay)                    | `12-future-readiness-backlog.md` (FB-01…05 adoption triggers)                    |
 | DoR/DoD checklists (prompt §26/§27)                   | `13-readiness-and-done.md`                                                       |
 | Completion response A–P (prompt §30)                  | `14-completion-response.md`                                                      |

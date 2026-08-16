@@ -1,32 +1,43 @@
 # Agentic RAG
 
-> **Purpose:** Define the Agentic RAG architecture — retrieval that chooses its own strategy per query, rather than a fixed pipeline
-> **Status:** ✅ Upgraded to enterprise quality
-> **Owner:** AI Team
-> **Last Updated:** 2026-07-12
-> **Canonical source:** [`/docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../docs/Vaeloom-Complete-Documentation.md#65-agentic-rag)
+> **Purpose:** Define the Agentic RAG architecture — retrieval that chooses its
+> own strategy per query, rather than a fixed pipeline **Status:** ✅ Upgraded
+> to enterprise quality **Owner:** AI Team **Last Updated:** 2026-07-12
+> **Canonical source:**
+> [`/docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../docs/Vaeloom-Complete-Documentation.md#65-agentic-rag)
 
 ---
 
 ## Overview
 
-Traditional RAG runs one fixed retrieval pipeline for every query. Agentic RAG means the requesting agent decides, per query, which combination of strategies (vector, keyword, graph, or hybrid) actually answers the question. This is a core differentiator for Vaeloom — it allows agents to ask the right kind of question for the context, rather than forcing every query through the same funnel.
+Traditional RAG runs one fixed retrieval pipeline for every query. Agentic RAG
+means the requesting agent decides, per query, which combination of strategies
+(vector, keyword, graph, or hybrid) actually answers the question. This is a
+core differentiator for Vaeloom — it allows agents to ask the right kind of
+question for the context, rather than forcing every query through the same
+funnel.
 
-This document covers the agentic RAG architecture, retrieval strategy selection, ranking, context assembly, and implementation patterns.
+This document covers the agentic RAG architecture, retrieval strategy selection,
+ranking, context assembly, and implementation patterns.
 
 ## Goals
 
-- Enable per-query retrieval strategy selection so agents choose the optimal search method (vector, keyword, graph, or hybrid) for each context need
-- Achieve sub-2-second end-to-end retrieval latency through parallel store queries and efficient context assembly
-- Maintain >90% relevance precision (Precision@5) via multi-factor ranking across relevance, freshness, importance, and confidence
-- Ensure zero cross-tenant data leakage by scoping every retrieval operation to the originating workspace_id
-- Provide full source provenance on every assembled context result for auditability and explainability
+- Enable per-query retrieval strategy selection so agents choose the optimal
+  search method (vector, keyword, graph, or hybrid) for each context need
+- Achieve sub-2-second end-to-end retrieval latency through parallel store
+  queries and efficient context assembly
+- Maintain >90% relevance precision (Precision@5) via multi-factor ranking
+  across relevance, freshness, importance, and confidence
+- Ensure zero cross-tenant data leakage by scoping every retrieval operation to
+  the originating workspace_id
+- Provide full source provenance on every assembled context result for
+  auditability and explainability
 
 ---
 
 ## Query Lifecycle State Machine
 
-```mermaid
+````mermaid
 stateDiagram-v2
     direction LR
 
@@ -116,17 +127,17 @@ stateDiagram-v2
 ```mermaid
 graph TD
     Query[Agent Query] --> Router[Retrieval Router]
-    
+
     Router -->|Semantic Query| Vector[Vector Search]
     Router -->|Exact Match| Keyword[Keyword Search]
     Router -->|Relationship| Graph[Graph Traversal]
     Router -->|Complex| Hybrid[Hybrid Search]
-    
+
     Vector --> Ranker[Relevance Ranker]
     Keyword --> Ranker
     Graph --> Ranker
     Hybrid --> Ranker
-    
+
     Ranker --> Assembler[Context Assembler]
     Assembler --> Prune[Prune to Budget]
     Prune --> Agent[Return to Agent]
@@ -147,7 +158,7 @@ The Router analyzes the query to determine the optimal strategy:
 ### Router Implementation
 
 ```python
-# apps/ai-service/retrieval/router.py
+# apps/backend/src/backend/rag/router.py
 from enum import Enum
 from dataclasses import dataclass
 from typing import List, Optional
@@ -163,30 +174,30 @@ class RetrievalPlan:
     strategy: RetrievalStrategy
     weights: Optional[dict] = None  # For hybrid: {"vector": 0.6, "keyword": 0.2, "graph": 0.2}
     filters: Optional[dict] = None  # Time range, entity type, workspace_id
-    
+
 def plan_retrieval(query: str, context: dict) -> RetrievalPlan:
     """
     Analyzes the query to determine the optimal retrieval strategy.
-    
+
     Args:
         query: The agent's query string
         context: Agent context (workspace_id, memory types available)
-        
+
     Returns:
         RetrievalPlan with strategy and parameters
     """
     # Check for exact match signals
     has_exact_terms = bool(re.search(r'"[^"]+"', query))
     has_course_code = bool(re.search(r'[A-Z]{2,4}\s*\d{3,4}', query))
-    
+
     # Check for relationship signals
-    has_relationship = any(word in query.lower() 
+    has_relationship = any(word in query.lower()
                           for word in ['connected', 'related', 'linked', 'using'])
-    
+
     # Check for time signals
     has_time = any(word in query.lower()
                   for word in ['last', 'recent', 'this', 'previous'])
-    
+
     if has_exact_terms or has_course_code:
         return RetrievalPlan(
             strategy=RetrievalStrategy.HYBRID,
@@ -212,16 +223,16 @@ def plan_retrieval(query: str, context: dict) -> RetrievalPlan:
 ## Hybrid Search Execution
 
 ```python
-# apps/ai-service/retrieval/executor.py
+# apps/backend/src/backend/rag/executor.py
 async def execute_hybrid_search(
     plan: RetrievalPlan,
     workspace_id: str,
     limit: int = 20
 ) -> List[MemoryResult]:
     """Execute a hybrid search across vector, keyword, and graph stores."""
-    
+
     results = []
-    
+
     if plan.weights.get("vector", 0) > 0:
         vector_results = await vector_store.search(
             query=plan.query,
@@ -230,7 +241,7 @@ async def execute_hybrid_search(
             filters=plan.filters
         )
         results.extend(vector_results)
-    
+
     if plan.weights.get("keyword", 0) > 0:
         keyword_results = await keyword_store.search(
             query=plan.query,
@@ -238,7 +249,7 @@ async def execute_hybrid_search(
             limit=int(limit * plan.weights["keyword"])
         )
         results.extend(keyword_results)
-    
+
     if plan.weights.get("graph", 0) > 0:
         graph_results = await graph_store.traverse(
             query=plan.query,
@@ -246,7 +257,7 @@ async def execute_hybrid_search(
             limit=int(limit * plan.weights["graph"])
         )
         results.extend(graph_results)
-    
+
     return results
 ```text
 
@@ -282,14 +293,14 @@ graph LR
 ## Context Assembly
 
 ```python
-# apps/ai-service/retrieval/assembler.py
+# apps/backend/src/backend/rag/assembler.py
 def assemble_context(
     results: List[MemoryResult],
     max_tokens: int = 8000
 ) -> str:
     """
     Assembles retrieved memories into a context string for the agent.
-    
+
     - Deduplicates overlapping memories
     - Prioritizes by score
     - Prunes to fit within max_tokens
@@ -297,26 +308,26 @@ def assemble_context(
     """
     seen_entities = set()
     unique_results = []
-    
+
     for r in sorted(results, key=lambda x: x.score, reverse=True):
         if r.entity_id not in seen_entities:
             seen_entities.add(r.entity_id)
             unique_results.append(r)
-    
+
     # Build context with provenance
     context_parts = []
     token_count = 0
-    
+
     for r in unique_results:
         entry = f"[Source: {r.source_document} | Score: {r.score:.2f}]\n{r.content}\n"
         entry_tokens = estimate_tokens(entry)
-        
+
         if token_count + entry_tokens > max_tokens:
             break
-            
+
         context_parts.append(entry)
         token_count += entry_tokens
-    
+
     return "\n---\n".join(context_parts)
 ```text
 
@@ -396,7 +407,7 @@ This document covers the Agentic RAG system for Vaeloom, including retrieval str
 | Retrieval Router | Classifies query, selects strategy, dispatches to stores | Python async service (FastAPI) | Horizontal scaling with queue buffer |
 | Vector Search Engine | Semantic similarity search over embeddings | pgvector (MVP) → Qdrant (Enterprise) | Shard by workspace_id |
 | Keyword Search Engine | Exact-term full-text search | PostgreSQL FTS (GIN indexes) | Read replicas for search volume |
-| Graph Traversal Engine | Entity relationship navigation | AGE (MVP) → Neo4j (Enterprise) | Graph partitioning by entity cluster |
+| Graph Traversal Engine | Entity relationship navigation | SQLAlchemy models (Apache AGE provisioned but **UNUSED**) → Neo4j (Enterprise) | Graph partitioning by entity cluster |
 | Relevance Ranker | Cross-encoder re-ranking of results | SentenceTransformers (cross-encoder) | Dedicated GPU workers at scale |
 | Context Assembler | Dedup, prioritize, prune, build prompt context | In-memory Python | Stateless, scales horizontally |
 
@@ -446,20 +457,20 @@ sequenceDiagram
 
     AG->>RR: RetrieveContext(query, workspace_id)
     RR->>RR: Classify query strategy
-    
+
     par Parallel Search
         RR->>VS: VectorSearch(query, limit)
         RR->>KS: KeywordSearch(query, limit)
         RR->>GS: GraphTraverse(query, limit)
     end
-    
+
     VS-->>RK: top-k vector results
-    KS-->>RK: top-k keyword results  
+    KS-->>RK: top-k keyword results
     GS-->>RK: top-k graph results
-    
+
     RK->>RK: Compute weighted scores
     RK->>CA: Ranked results with scores
-    
+
     CA->>CA: Deduplicate by entity_id
     CA->>CA: Prune to token budget
     CA-->>AG: Assembled context with provenance
@@ -481,7 +492,7 @@ sequenceDiagram
                           ▼                         ▼                     ▼
                    ┌────────────┐          ┌──────────────┐      ┌──────────────┐
                    │Vector Store│          │Keyword Store  │      │ Graph Store  │
-                   │(pgvector)  │          │(PG FTS)       │      │(AGE/Neo4j)  │
+                   │(pgvector)  │          │(PG FTS)       │      │(SQLAlchemy/Neo4j)  │
                    └────────────┘          └──────────────┘      └──────────────┘
                           │                         │                     │
                           └──────────────┬──────────┘─────────────────────┘
@@ -535,7 +546,7 @@ sequenceDiagram
 |-----------|--------------|--------------|---------------|
 | Queries per second | 100 QPS per workspace | Horizontal scaling of Router + Redis cache layer | Global query routing with regional caches |
 | Vector store size | 10M vectors (pgvector) | Migrate to Qdrant with auto-sharding | Distributed Qdrant cluster with multi-region replication |
-| Document corpus | 100K documents | AGE → Neo4j for graph store; document chunking increases embedding count | Dedicated GPU cluster for embedding generation |
+| Document corpus | 100K documents | Neo4j for graph store; document chunking increases embedding count | Dedicated GPU cluster for embedding generation |
 | Concurrent agents | 8 agents (MVP) | Agent-specific router instances with shared cache | Full mesh agent-router topology with affinity routing |
 | Context assembly | 10 results per query | Tiered assembly: preview (top-3) → full (top-10) | Streaming assembly with progressive context delivery |
 
@@ -661,3 +672,4 @@ assert plan.strategy == RetrievalStrategy.GRAPH
 - [Embeddings.md](./Embeddings.md)
 - [Memory.md](./Memory.md)
 - [`/docs/Vaeloom-Complete-Documentation.md#65-agentic-rag`](../../docs/Vaeloom-Complete-Documentation.md#65-agentic-rag)
+````

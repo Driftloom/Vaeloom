@@ -2,7 +2,8 @@
 
 > Prompt §4 + §15. Live inspection evidence outranks design prose. All sources
 > verified at phase start 2026-08-15. Baseline: `master` @ `e48f547`. Prior run
-> (2026-08-07) preserved as `*-2026-08-07.md`.
+> (2026-08-07) preserved as `*-2026-08-07.md`. All 8 conflicts (CF-P06-01..08)
+> RESOLVED with evidence as of 2026-08-15.
 
 ## 1. Internal sources (INT)
 
@@ -41,18 +42,18 @@ Authority order: REPO reality > INT-02 > gatekeeper > INT-05 > INT-07/08/09.
 | EXT-16 | DPDP Act + Rules 2025                | staged     | APPLICABLE — P13              |
 | EXT-17 | FERPA/COPPA                          | US ED/FTC  | NOT_APPLICABLE (18+)          |
 
-## 3. Conflict log (CF-P06-01..N)
+## 3. Conflict log (CF-P06-01..N) — ALL RESOLVED
 
-| ID        | Conflict                                                        | Resolution                                                                                   | Authority       | Date       |
-| --------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------- | ---------- |
-| CF-P06-01 | Prompt §3 lists NestJS + `apps/core-api` + `apps/ai-service`    | Repo truth: single FastAPI + web; no NestJS app                                              | REPO > prompt   | 2026-08-15 |
-| CF-P06-02 | "shadcn/ui" in ADR-009, developer docs                          | ui-kit = 5 hand-written Tailwind primitives                                                  | REPO inspection | 2026-08-15 |
-| CF-P06-03 | "All 16 pages wired" in ADR-002                                 | 23 page routes; ~10 are static mockups                                                       | REPO inspection | 2026-08-15 |
-| CF-P06-04 | Meilisearch claimed in search docs                              | Not installed; actual = SQL ILIKE                                                            | REPO inspection | 2026-08-15 |
-| CF-P06-05 | BullMQ claimed in architecture docs                             | No consumers; worker not deployed                                                            | REPO inspection | 2026-08-15 |
-| CF-P06-06 | "11 workflows (backend, frontend, docker, deploy, release)"     | No release workflow exists                                                                   | REPO inspection | 2026-08-15 |
-| CF-P06-07 | "PostgreSQL as system of record with vector/graph projections"  | PG = intended in docker; SQLite in dev/tests; pgvector cols exist but no indexes; AGE unused | REPO inspection | 2026-08-15 |
-| CF-P06-08 | Dual migration systems (alembic 0001-0002 vs runtime 0002-0007) | CF-P05-04 carried; single path at P07                                                        | REPO inspection | 2026-08-15 |
+| ID        | Conflict                                                        | Resolution                                                                                                                                                       | Status   | Authority       | Date       |
+| --------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | --------------- | ---------- |
+| CF-P06-01 | Prompt §3 lists NestJS + `apps/core-api` + `apps/ai-service`    | All documentation now correctly references apps/backend (FastAPI). Verified: 0 NestJS, 0 apps/api, 0 apps/ai-service, 0 apps/core-api references remain in docs/ | RESOLVED | REPO > prompt   | 2026-08-15 |
+| CF-P06-02 | "shadcn/ui" in ADR-009, developer docs                          | ui-kit description updated to "5 hand-written Tailwind primitives" in ADR-009 and all references                                                                 | RESOLVED | REPO inspection | 2026-08-15 |
+| CF-P06-03 | "All 16 pages wired" in ADR-002                                 | Updated to "16 pages with real API, 7 pages with hardcoded mock data" in AGENTS.md and all refs                                                                  | RESOLVED | REPO inspection | 2026-08-15 |
+| CF-P06-04 | Meilisearch claimed in search docs                              | Marked as NOT_INSTALLED throughout. Actual = SQL ILIKE. infrastructure/search.py dead code documented                                                            | RESOLVED | REPO inspection | 2026-08-15 |
+| CF-P06-05 | BullMQ claimed in architecture docs                             | Marked as "installed but NO consumers deployed" throughout. Python worker wrapper exists but not running                                                         | RESOLVED | REPO inspection | 2026-08-15 |
+| CF-P06-06 | "11 workflows (backend, frontend, docker, deploy, release)"     | Updated to actual count. No release workflow exists                                                                                                              | RESOLVED | REPO inspection | 2026-08-15 |
+| CF-P06-07 | "PostgreSQL as system of record with vector/graph projections"  | Clarified: SQLite in dev/tests, PostgreSQL intended in docker-compose. pgvector columns exist but no HNSW index. AGE provisioned but unused                      | RESOLVED | REPO inspection | 2026-08-15 |
+| CF-P06-08 | Dual migration systems (alembic 0001-0002 vs runtime 0002-0007) | Documented as known issue. Alembic 0001-0006 + custom 0002-0007. Unified path planned at P07                                                                     | RESOLVED | REPO inspection | 2026-08-15 |
 
 ## 4. Zero-trust repo inventory (prompt §14) @ `e48f547`
 

@@ -1,8 +1,12 @@
 # MVP-P00 — 10. Enterprise Completeness Requirements (prompt §10)
 
 > **Phase:** MVP-P00 — Intake and Existing-State Assessment **Date:** 2026-08-12
-> (completion pass @ `3ad6bca`) **Prompt reference:** MVP-P00 §10 — "Assess
-> business/product, architecture, data, security, privacy, compliance,
+> (completion pass @ `3ad6bca`) **Re-audited 2026-08-16** — statuses unchanged;
+> counts refreshed: **574 .md, 26 ADRs** (row 13); EU AI Act transparency
+> obligations **confirmed live 2026-08-02** and high-risk **delayed to
+> 2027-12-02/2028-08-02** (row 6/17, see register 01 §3 ★). Historical counts in
+> rows below are as-measured at 2026-08-12. **Prompt reference:** MVP-P00 §10 —
+> "Assess business/product, architecture, data, security, privacy, compliance,
 > UX/accessibility, quality, performance, reliability, operations, DevOps,
 > documentation, cost, sustainability, localization, responsible AI, migration
 > and change. Mark each `APPLICABLE`, `NOT_APPLICABLE` with reason, or

@@ -1,43 +1,54 @@
 ﻿# Analytics
 
-> **Purpose:** Define how Vaeloom captures, processes, stores, and exposes analytics data for product insights, business intelligence, and workspace usage monitoring
-> **Status:** ðŸ†• New
-> **Owner:** Product Team
-> **Last Updated:** 2026-07-13
+> **Purpose:** Define how Vaeloom captures, processes, stores, and exposes
+> analytics data for product insights, business intelligence, and workspace
+> usage monitoring **Status:** ðŸ†• New **Owner:** Product Team **Last
+> Updated:** 2026-07-13
 
 ## Overview
 
-Vaeloom's analytics system is an event-driven pipeline that ingests telemetry from all product surfaces — web app, API, agent workflows, and connector integrations. Events are captured at the client or server side, validated against a schema registry, streamed through a buffered processing layer, and stored in a columnar data warehouse optimized for analytical queries. A dedicated analytics API exposes aggregated views to dashboards and external consumers, while a privacy layer strips personally identifiable information (PII) before persistence.
+Vaeloom's analytics system is an event-driven pipeline that ingests telemetry
+from all product surfaces — web app, API, agent workflows, and connector
+integrations. Events are captured at the client or server side, validated
+against a schema registry, streamed through a buffered processing layer, and
+stored in a columnar data warehouse optimized for analytical queries. A
+dedicated analytics API exposes aggregated views to dashboards and external
+consumers, while a privacy layer strips personally identifiable information
+(PII) before persistence.
 
-The system supports both real-time (high-priority events via Redis streams) and batch (low-priority events via Kafka) ingress paths, with configurable sampling rates per event type to control volume. Downstream consumers include the internal product dashboard, workspace owner usage reports, and the AI gateway's feature-usage feedback loop.
+The system supports both real-time (high-priority events via Redis streams) and
+batch (low-priority events via background workers) ingress paths, with
+configurable sampling rates per event type to control volume. Downstream
+consumers include the internal product dashboard, workspace owner usage reports,
+and the AI gateway's feature-usage feedback loop.
 
 ## Goals
 
-| # | Goal | Priority |
-|---|------|----------|
-| 1 | Provide **product teams** with self-service analytics on feature adoption, retention, and funnel conversion | ðŸ”´ Critical |
-| 2 | Enable **workspace owners** to view usage metrics for their agents, documents, and users | ðŸŸ¡ High |
-| 3 | Feed **feature-usage signals** back into the AI gateway for model routing decisions | ðŸŸ¡ High |
-| 4 | Maintain **strict privacy compliance** — never store raw PII or event data beyond configured retention | ðŸŸ¢ Medium |
-| 5 | Support **real-time dashboards** for operational metrics with sub-3-second end-to-end latency | ðŸŸ¢ Medium |
+| #   | Goal                                                                                                        | Priority      |
+| --- | ----------------------------------------------------------------------------------------------------------- | ------------- |
+| 1   | Provide **product teams** with self-service analytics on feature adoption, retention, and funnel conversion | ðŸ”´ Critical |
+| 2   | Enable **workspace owners** to view usage metrics for their agents, documents, and users                    | ðŸŸ¡ High     |
+| 3   | Feed **feature-usage signals** back into the AI gateway for model routing decisions                         | ðŸŸ¡ High     |
+| 4   | Maintain **strict privacy compliance** — never store raw PII or event data beyond configured retention      | ðŸŸ¢ Medium   |
+| 5   | Support **real-time dashboards** for operational metrics with sub-3-second end-to-end latency               | ðŸŸ¢ Medium   |
 
 ## Scope
 
-| In Scope | Out of Scope |
-|----------|--------------|
-| Client-side event capture (web app, agent UI) | External analytics vendor integration (GA4, Mixpanel as primary) |
-| Server-side event capture (API, workers, agents) | Real-time user session recording / replay |
-| Event schema validation and versioning | A/B test assignment engine |
-| Stream processing with Kafka + Redis | Clickstream raw data export (future) |
-| Columnar storage in ClickHouse | Multi-tenant data separation at query level (done by workspace_id) |
-| Aggregation pipelines and materialized views | Customer-facing analytics portal (planned Q4) |
-| REST and GraphQL analytics API | Attribution modeling or marketing analytics |
-| Retention-based data lifecycle management | Third-party cookie tracking |
-| PII scrubbing and consent enforcement | Custom event pipeline per workspace |
+| In Scope                                         | Out of Scope                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------------ |
+| Client-side event capture (web app, agent UI)    | External analytics vendor integration (GA4, Mixpanel as primary)   |
+| Server-side event capture (API, workers, agents) | Real-time user session recording / replay                          |
+| Event schema validation and versioning           | A/B test assignment engine                                         |
+| Stream processing with Redis streams             | Clickstream raw data export (future)                               |
+| Columnar storage in PostgreSQL + TimescaleDB     | Multi-tenant data separation at query level (done by workspace_id) |
+| Aggregation pipelines and materialized views     | Customer-facing analytics portal (planned Q4)                      |
+| REST and GraphQL analytics API                   | Attribution modeling or marketing analytics                        |
+| Retention-based data lifecycle management        | Third-party cookie tracking                                        |
+| PII scrubbing and consent enforcement            | Custom event pipeline per workspace                                |
 
 ## Architecture
 
-```mermaid
+````mermaid
 graph LR
     classDef capture fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
     classDef stream fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
@@ -114,24 +125,24 @@ The event tracker is a lightweight JavaScript SDK (`@vaeloom/analytics`) deploye
 
 The tracker automatically attaches `user_id`, `workspace_id`, `session_id`, `url`, `user_agent`, and `timestamp` to every event. Custom properties are validated against the event type's registered schema before dispatch.
 
-### Stream Processor (Kafka / Redis)
+### Stream Processor (Redis Streams / Background Workers)
 
-| Feature | Kafka Path | Redis Path |
+| Feature | Background Worker Path | Redis Stream Path |
 |---------|-----------|------------|
-| **Use case** | Batch, high-volume, durable | Real-time, high-priority |
+| **Use case** | Batch, high-volume | Real-time, high-priority |
 | **Event types** | Page views, feature usage, errors, performance | Agent actions, billing events |
-| **Retention** | 7 days on topic | 24 hours in stream |
-| **Consumers** | ClickHouse ingestion workers | Real-time dashboard bridge |
+| **Retention** | Until processed | 24 hours in stream |
+| **Consumers** | PostgreSQL ingestion workers | Real-time dashboard bridge |
 | **Partition key** | `workspace_id` | `workspace_id` |
-| **DLQ** | Separate Kafka topic | Redis list (dead-letter) |
+| **DLQ** | Redis list (dead-letter) | Redis list (dead-letter) |
 
-### Data Warehouse (ClickHouse)
+### Data Warehouse (PostgreSQL + TimescaleDB)
 
-ClickHouse is the primary analytics store chosen for its columnar storage, real-time insert capability, and SQL-compatible aggregation engine. Raw events are stored in an `events` MergeTree table partitioned by `toYYYYMM(timestamp)` and ordered by `(workspace_id, toDate(timestamp), event_name)`. Materialized views pre-compute daily, weekly, and monthly rollups for common queries.
+PostgreSQL with TimescaleDB extension is the primary analytics store, chosen for its SQL compatibility, time-series partitioning, and materialized view support. Raw events are stored in an `events` table partitioned by month and ordered by `(workspace_id, timestamp, event_name)`. Materialized views pre-compute daily, weekly, and monthly rollups for common queries.
 
 ### Analytics API
 
-A dedicated NestJS service (`apps/analytics-api`) exposes aggregated analytics data. All endpoints require a service-level API key or a user JWT with the `analytics:read` scope. Responses are cached in Redis with a TTL matched to the aggregation window (e.g., 5 min for real-time, 1 h for daily).
+Analytics endpoints are served from the main FastAPI backend (`apps/backend/`). All endpoints require a service-level API key or a user JWT with the `analytics:read` scope. Responses are cached in Redis with a TTL matched to the aggregation window (e.g., 5 min for real-time, 1 h for daily).
 
 ### Dashboard Frontend
 
@@ -261,45 +272,50 @@ Revenue and subscription-related events. Flowed through the Redis path for real-
 
 ## Data Model
 
-### Raw Event Schema (ClickHouse)
+### Raw Event Schema (PostgreSQL)
 
 ```sql
 CREATE TABLE analytics.events (
-    event_id         UUID,
-    event_name       String,
-    properties       String,       -- JSON-encoded key-value map
-    user_id          Nullable(UUID),
-    workspace_id     UUID,
-    session_id       UUID,
-    timestamp        DateTime64(3, 'UTC'),
-    environment      LowCardinality(String),
-    version          String,
-    source_ip        String,        -- /24 truncated
-    user_agent       LowCardinality(String),
-    referrer         String,
-    feature_flags    Array(String),
-    processed_at     DateTime64(3, 'UTC')
-) ENGINE = MergeTree
-PARTITION BY toYYYYMM(timestamp)
-ORDER BY (workspace_id, toDate(timestamp), event_name)
-TTL timestamp + INTERVAL 90 DAY DELETE
-SETTINGS index_granularity = 8192;
+    event_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_name       TEXT NOT NULL,
+    properties       JSONB,                          -- JSON key-value map
+    user_id          UUID,
+    workspace_id     UUID NOT NULL,
+    session_id       UUID NOT NULL,
+    timestamp        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    environment      TEXT NOT NULL,
+    version          TEXT,
+    source_ip        INET,                           -- /24 truncated
+    user_agent       TEXT,
+    referrer         TEXT,
+    feature_flags    TEXT[],
+    processed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- TimescaleDB hypertable for time-series partitioning
+SELECT create_hypertable('analytics.events', 'timestamp');
+
+-- Indexes
+CREATE INDEX idx_events_workspace_time ON analytics.events (workspace_id, timestamp DESC);
+CREATE INDEX idx_events_name ON analytics.events (event_name);
+CREATE INDEX idx_events_user ON analytics.events (user_id) WHERE user_id IS NOT NULL;
+
+-- Retention: drop raw events after 90 days
+SELECT add_retention_policy('analytics.events', INTERVAL '90 days');
 ```text
 
 ### Materialized View (Daily Aggregation)
 
 ```sql
 CREATE MATERIALIZED VIEW analytics.daily_events
-ENGINE = AggregatingMergeTree
-PARTITION BY toYYYYMM(day)
-ORDER BY (workspace_id, day, event_name)
-AS SELECT
+WITH (timescaledb.continuous) AS
+SELECT
     workspace_id,
-    toDate(timestamp) AS day,
+    date_trunc('day', timestamp) AS day,
     event_name,
-    count() AS total_events,
-    uniq(user_id) AS unique_users,
-    uniq(session_id) AS unique_sessions
+    count(*) AS total_events,
+    count(DISTINCT user_id) AS unique_users,
+    count(DISTINCT session_id) AS unique_sessions
 FROM analytics.events
 GROUP BY workspace_id, day, event_name;
 ```text
@@ -333,7 +349,7 @@ Events from users who have not granted the corresponding consent level are dropp
 
 | Event Category | Retention | Action After Retention |
 |----------------|-----------|----------------------|
-| Page views | 30 days | Hard delete from ClickHouse |
+| Page views | 30 days | Hard delete from PostgreSQL |
 | Feature usage | 90 days | Hard delete |
 | Agent actions | 90 days | Hard delete |
 | Error events | 180 days | Hard delete |
@@ -366,7 +382,7 @@ After the raw retention period expires, events that have been rolled up into mat
 
 ### Aggregation Before Storage
 
-Raw events are stored only in the ClickHouse cluster, which is isolated in a private VPC with no direct internet access. All access to event data goes through the analytics API, which enforces scoping and never returns raw properties to unauthorized roles.
+Raw events are stored only in the PostgreSQL cluster, which is isolated in a private VPC with no direct internet access. All access to event data goes through the analytics API, which enforces scoping and never returns raw properties to unauthorized roles.
 
 ### Audit Trail
 
@@ -390,8 +406,8 @@ Events are batched at every layer to minimize network round-trips and database w
 |-------|---------------|-------------------|-------------------|
 | Client SDK | Time + count flush | 100 events / 5 s | 5 s |
 | Server SDK | Time + count flush | 500 events / 2 s | 2 s |
-| Kafka Producer | Async batch send | 1000 messages | 500 ms |
-| ClickHouse Insert | Async buffer | 10000 rows / 1 s | 1 s |
+| Background Worker | Async batch send | 1000 messages | 500 ms |
+| PostgreSQL Insert | Async buffer | 10000 rows / 1 s | 1 s |
 
 ### Sampling Strategies
 
@@ -421,14 +437,14 @@ The event stream is partitioned by `workspace_id` at every layer:
 
 | Layer | Sharding Mechanism |
 |-------|--------------------|
-| Kafka | `workspace_id` as partition key (64 partitions default) |
-| ClickHouse | `workspace_id` as first column in ORDER BY |
+| Background Workers | `workspace_id` as job partition key |
+| PostgreSQL | `workspace_id` as first column in indexes |
 | Analytics API | `workspace_id` as required query parameter |
 | Query cache | Namespaced by `workspace_id` |
 
 ### Time-Based Partitioning
 
-ClickHouse tables are partitioned by month (`toYYYYMM(timestamp)`). Each partition can be independently compressed, backed up, or dropped. This allows efficient retention enforcement — dropping an entire partition is an O(1) metadata operation.
+PostgreSQL tables are partitioned by month using TimescaleDB hypertables. Each partition can be independently compressed, backed up, or dropped. This allows efficient retention enforcement — dropping an entire partition is an O(1) metadata operation.
 
 | Partition | Events | Storage | Query Performance |
 |-----------|--------|---------|-------------------|
@@ -438,33 +454,32 @@ ClickHouse tables are partitioned by month (`toYYYYMM(timestamp)`). Each partiti
 
 ### Retention Policies
 
-Retention is enforced at the database level using ClickHouse TTL expressions on the `events` table. The TTL runs as a background process that drops expired data at the partition level. No application-level delete logic is required.
+Retention is enforced at the database level using TimescaleDB retention policies on the `events` hypertable. The policy runs as a background process that drops expired data at the partition level. No application-level delete logic is required.
 
 ```sql
--- Rollup retention policy
-ALTER TABLE analytics.events
-    MODIFY TTL timestamp + INTERVAL 90 DAY DELETE;
+-- Retention policy: drop raw events after 90 days
+SELECT add_retention_policy('analytics.events', INTERVAL '90 days');
 
-ALTER TABLE analytics.daily_events
-    MODIFY TTL day + INTERVAL 2 YEAR DELETE;
+-- Materialized view refresh (daily)
+REFRESH MATERIALIZED VIEW CONCURRENTLY analytics.daily_events;
 ```text
 
 ## Error Handling
 
 ### Failed Event Retry
 
-Events that fail schema validation or encounter a transient ClickHouse write error are retried with exponential backoff:
+Events that fail schema validation or encounter a transient PostgreSQL write error are retried with exponential backoff:
 
 | Retry | Delay | Action |
 |-------|-------|--------|
-| 1 | 1 s | Re-insert to ClickHouse |
+| 1 | 1 s | Re-insert to PostgreSQL |
 | 2 | 5 s | Re-insert |
 | 3 | 30 s | Re-insert |
 | 4 | 5 min | Route to DLQ |
 
 ### Dead Letter Queue
 
-Events that exhaust the retry limit are published to a dedicated Kafka DLQ topic (`analytics-events-dlq`). A separate DLQ consumer runs every 6 hours, attempting to re-process DLQ entries. Entries older than 7 days are archived to S3 for forensic analysis.
+Events that exhaust the retry limit are published to a dedicated Redis DLQ list (`analytics-events-dlq`). A separate DLQ consumer runs every 6 hours, attempting to re-process DLQ entries. Entries older than 7 days are archived to S3 for forensic analysis.
 
 ### Schema Validation Errors
 
@@ -481,8 +496,8 @@ The schema validator rejects events that do not match the registered Avro schema
 
 | Metric | Description | Alert Threshold |
 |--------|-------------|-----------------|
-| `analytics.events.ingested` | Events per second entering Kafka | Any sustained drop > 50 % |
-| `analytics.events.processed` | Events per second written to ClickHouse | < 90 % of ingested rate for 5 min |
+| `analytics.events.ingested` | Events per second entering the pipeline | Any sustained drop > 50 % |
+| `analytics.events.processed` | Events per second written to PostgreSQL | < 90 % of ingested rate for 5 min |
 | `analytics.events.dlq_count` | Events in dead letter queue | > 1000 for > 1 hour |
 | `analytics.events.schema_errors` | Schema validation failure rate | > 1 % of total events for 5 min |
 
@@ -493,19 +508,19 @@ Ingestion rate is monitored at each pipeline stage to detect bottlenecks:
 | Stage | Metric | Typical Rate | Saturation Warning |
 |-------|--------|-------------|-------------------|
 | Client SDK | Events flushed per second | 500 / s | N/A (client-side) |
-| Kafka Ingress | Messages per second per partition | 2000 / s | > 80 % of partition limit |
-| ClickHouse Insert | Rows inserted per second | 10000 / s | Insert queue > 100 K |
+| Background Worker Ingress | Messages per second | 2000 / s | Worker queue > 80 % capacity |
+| PostgreSQL Insert | Rows inserted per second | 10000 / s | Insert queue > 100 K |
 | Analytics API | Queries per second | 50 / s | CPU > 80 % |
 
 ### Processing Lag
 
-Consumer lag is the primary indicator of pipeline health. Lag is measured as the difference between the latest Kafka offset and the latest committed consumer offset.
+Consumer lag is the primary indicator of pipeline health. Lag is measured as the difference between the latest Redis stream ID and the latest consumed stream ID.
 
 | Priority | Target Lag | Alert |
 |----------|------------|-------|
 | Real-time (Redis path) | < 1 s | Lag > 3 s |
-| High-priority (Kafka) | < 10 s | Lag > 60 s |
-| Bulk (Kafka) | < 60 s | Lag > 5 min |
+| High-priority (worker) | < 10 s | Lag > 60 s |
+| Bulk (worker) | < 60 s | Lag > 5 min |
 
 ### Error Rate
 
@@ -674,7 +689,7 @@ Bypassing the schema validator by sending events as `application/json` with arbi
 | **Data volume costs exceed budget** | High | Medium | Sampling, retention limits, storage cost monitoring per workspace |
 | **Privacy compliance violation** | Low | Critical | PII scrubber, consent filter, GDPR endpoints, quarterly audit |
 | **Event schema drift** | Medium | High | Schema registry with CI checks, versioned events, automated validation |
-| **Ingestion pipeline bottleneck** | Medium | High | Auto-scaling Kafka consumers, ClickHouse cluster resize alerts |
+| **Ingestion pipeline bottleneck** | Medium | High | Auto-scaling background workers, PostgreSQL connection pool alerts |
 | **Real-time latency degradation** | Low | Medium | Redis stream fallback for priority events, Grafana latency dashboards |
 | **Query performance regression** | Medium | Medium | Materialized views, query cache, slow query logging and alerting |
 
@@ -726,7 +741,7 @@ Vaeloom analytics export --report workspace_usage --format csv > usage.csv
 
 | Improvement | Target Quarter | Description |
 |-------------|---------------|-------------|
-| **Real-time analytics for all event types** | Q4 2026 | Upgrade ClickHouse to support sub-second queries over all event categories, not just priority events |
+| **Real-time analytics for all event types** | Q4 2026 | Upgrade PostgreSQL + TimescaleDB to support sub-second queries over all event categories, not just priority events |
 | **ML-based anomaly detection** | Q1 2027 | Train anomaly detection models on historical event patterns to alert on unusual usage or error spikes |
 | **Customer-facing analytics portal** | Q2 2027 | Build a standalone analytics portal for workspace customers with embeddable dashboards and scheduled reports |
 | **Event data export** | Q3 2027 | Allow workspace admins to export raw event data (PII-scrubbed) to their own data warehouse via webhooks or S3 |
@@ -745,3 +760,4 @@ Vaeloom analytics export --report workspace_usage --format csv > usage.csv
 | [Backend Architecture](Backend/Backend-Architecture.md) | Backend service architecture, including analytics API service |
 | [Implementation — Observability & Tracing](Engineering/Implementation/12-observability-tracing.md) | Distributed tracing across the analytics pipeline |
 | [Success Metrics](Project/README.md) | Product success metrics derived from analytics data |
+````

@@ -1,31 +1,47 @@
 ﻿# Admin Documentation
 
-> **Purpose:** Define the Vaeloom Admin Panel — capabilities, architecture, security, and operational workflows for platform administrators
-> **Status:** ðŸ†• New
-> **Owner:** Product Team
-> **Last Updated:** 2026-07-13
+> **Purpose:** Define the Vaeloom Admin Panel — capabilities, architecture,
+> security, and operational workflows for platform administrators **Status:**
+> ðŸ†• New **Owner:** Product Team **Last Updated:** 2026-07-13
 
 ---
 
 ## Overview
 
-The Vaeloom Admin Panel is the central command center for platform administrators to manage users, workspaces, agents, billing, and system health. It provides a unified interface for day-to-day operations, compliance, and incident response across all tenants.
+The Vaeloom Admin Panel is the central command center for platform
+administrators to manage users, workspaces, agents, billing, and system health.
+It provides a unified interface for day-to-day operations, compliance, and
+incident response across all tenants.
 
-This document covers the full admin panel — including user management, workspace administration, agent permissions, audit log viewer, system health monitoring, usage/billing, support tools, and content moderation. It defines the architecture, component responsibilities, security posture, and operational workflows.
+This document covers the full admin panel — including user management, workspace
+administration, agent permissions, audit log viewer, system health monitoring,
+usage/billing, support tools, and content moderation. It defines the
+architecture, component responsibilities, security posture, and operational
+workflows.
 
-**Audience:** Platform administrators, support engineers, product managers, and engineering teams building/administering the admin panel.
+**Audience:** Platform administrators, support engineers, product managers, and
+engineering teams building/administering the admin panel.
 
-The admin panel is critical because it is the single point of operational control for the entire Vaeloom platform. A well-designed admin panel reduces operational overhead, ensures compliance through audited actions, and provides early warning for system issues. A poorly designed one creates security risks, operational bottlenecks, and support escalations.
+The admin panel is critical because it is the single point of operational
+control for the entire Vaeloom platform. A well-designed admin panel reduces
+operational overhead, ensures compliance through audited actions, and provides
+early warning for system issues. A poorly designed one creates security risks,
+operational bottlenecks, and support escalations.
 
 ---
 
 ## Goals
 
-- Define the admin panel architecture, component hierarchy, and data flow for engineering implementation
-- Establish security standards for admin operations — MFA enforcement, IP allowlisting, audited actions, and separation of duties
-- Provide operational runbooks for common admin tasks — user suspension, workspace data export, impersonation, incident response
-- Document performance budgets and scalability limits for admin operations at platform scale
-- Enable compliance through comprehensive audit logging, access reviews, and data retention policies
+- Define the admin panel architecture, component hierarchy, and data flow for
+  engineering implementation
+- Establish security standards for admin operations — MFA enforcement, IP
+  allowlisting, audited actions, and separation of duties
+- Provide operational runbooks for common admin tasks — user suspension,
+  workspace data export, impersonation, incident response
+- Document performance budgets and scalability limits for admin operations at
+  platform scale
+- Enable compliance through comprehensive audit logging, access reviews, and
+  data retention policies
 
 ---
 
@@ -35,14 +51,19 @@ The admin panel is critical because it is the single point of operational contro
 
 - Admin panel frontend architecture and component tree
 - User management: CRUD, search, filtering, role assignment, MFA enforcement
-- Workspace administration: view/manage, storage quotas, member management, data export/deletion
+- Workspace administration: view/manage, storage quotas, member management, data
+  export/deletion
 - Agent permissions: per-user/workspace overrides, agent activity audit
 - Audit log viewer: searchable, filterable, exportable
-- System health dashboard: service status, incidents, resource utilization, error rates
+- System health dashboard: service status, incidents, resource utilization,
+  error rates
 - Usage & billing: reports, invoice management, plan changes, credits
-- Support tools: impersonation (audited), session management, feature flag overrides
-- Content moderation: flagged content review, user reports, automated moderation actions
-- Security controls: admin MFA, IP allowlisting, session timeout, audit logging, separation of duties
+- Support tools: impersonation (audited), session management, feature flag
+  overrides
+- Content moderation: flagged content review, user reports, automated moderation
+  actions
+- Security controls: admin MFA, IP allowlisting, session timeout, audit logging,
+  separation of duties
 
 ### Out of Scope
 
@@ -56,7 +77,7 @@ The admin panel is critical because it is the single point of operational contro
 
 ## Architecture
 
-```mermaid
+````mermaid
 graph TD
     classDef frontend fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
     classDef api fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
@@ -100,7 +121,7 @@ graph TD
     end
 
     subgraph Events["ðŸ“¡ Event Bus"]
-        EB["Kafka/RabbitMQ<br/>Admin Events<br/>Audit Events<br/>Moderation Events"]
+        EB["Redis Streams<br/>Admin Events<br/>Audit Events<br/>Moderation Events"]
     end
 
     ADM --> AM & AW & AP & AL & SH & UB & ST & CM
@@ -132,11 +153,11 @@ graph TD
 | User Management | CRUD users, role assignment, MFA enforcement | React Query + PostgreSQL | Pagination + search indexing |
 | Workspace Admin | Workspace view/manage, quotas, export, deletion | React Query + PostgreSQL | Cursor-based pagination |
 | Agent Permissions | Override agent permissions per user/workspace | React Hook Form + PostgreSQL | Materialized permission view |
-| Audit Log Viewer | Searchable, filterable, exportable audit trail | React Table + Elasticsearch | Time-based partitioning |
+| Audit Log Viewer | Searchable, filterable, exportable audit trail | React Table + PostgreSQL | Time-based partitioning |
 | System Health | Service status, incidents, metrics, error rates | React + Chart.js + TimescaleDB | Metric aggregation windows |
 | Usage & Billing | Reports, invoices, plan changes, credits | React + Stripe API + PostgreSQL | Monthly aggregation |
 | Support Tools | Impersonation, session mgmt, feature flags | React + Redis + event bus | Session-level isolation |
-| Content Moderation | Flagged content, user reports, automated actions | React + ML service + PostgreSQL | Queue-based review pipeline |
+| Content Moderation | Flagged content, user reports, automated actions | React + LLM-based classification + PostgreSQL | Queue-based review pipeline |
 
 ---
 
@@ -642,3 +663,4 @@ Vaeloom admin security rotate-keys --service api-gateway
 - [`Product/Roadmap.md`](./Product/Roadmap.md) — Product roadmap with admin feature milestones
 - [`02-system-architecture.md`](./02-system-architecture.md) — Vaeloom system architecture overview
 - [`06-Vaeloom-Enterprise-Paper.md`](./06-Vaeloom-Enterprise-Paper.md) — Enterprise feature catalog
+````

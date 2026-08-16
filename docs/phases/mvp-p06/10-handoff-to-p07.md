@@ -1,12 +1,11 @@
 # MVP-P06 — 10. Handoff to MVP-P07 (Data Architecture & Database Design)
 
 > **Phase:** MVP-P06 → MVP-P07 · **Date:** 2026-08-15 (re-run) · **Baseline:**
-> repo `master` @ `e48f547` · **Gate state:** 🟡 **RECOMMENDED
-> `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY`** (70.7/100,
-> `09-gate-2026-08-15.md`); **USER verdict pending** (sole gate authority,
-> BQ-01). **P07 starts ONLY on user command.** Prior run (2026-08-07,
-> CONDITIONAL GO 88/100, never ratified) superseded; history preserved
-> (`*-2026-08-07.md`).
+> repo `master` @ `e48f547` · **Gate state:** 🔴 **RECOMMENDED
+> `PHASE FAILED — REMEDIATION REQUIRED`** (69.9/100, `09-gate-2026-08-15.md`);
+> **USER verdict pending** (sole gate authority, BQ-01). **P07 starts ONLY on
+> user command.** Prior run (2026-08-07, CONDITIONAL GO 88/100, never ratified)
+> superseded; history preserved (`*-2026-08-07.md`).
 
 ## 1. What P07 receives (validated — do not assume, re-verify)
 
@@ -20,7 +19,7 @@
 | Dependency governance (DEL-04): license, vuln SLA, secrets, provenance, supply-chain threats                         | `06-dependency-governance.md`                                                           |
 | Cost/exit strategy (DEL-05): PaaS framework, $0 guardrails, exit playbooks                                           | `07-cost-exit-strategy.md`                                                              |
 | Config edits: backend ruff/mypy/coverage, .python-version, CI fixes, compose fixes, dependabot pip                   | Various                                                                                 |
-| Registers: 14 risks, 9 decisions, 4 assumptions, 13 deferred, 11 EVD                                                 | `08-registers.md`                                                                       |
+| Registers: 14 risks, 9 decisions, 4 assumptions, 13 deferred, 23 EVD                                                 | `08-registers.md`                                                                       |
 | Gate + handoff + completion response                                                                                 | `09-gate-2026-08-15.md`, `10-handoff-to-p07.md`, `11-completion-response-2026-08-15.md` |
 | P00–P05 chain (requirements baseline 76 rows, stories, matrix, ADRs, architecture)                                   | `../mvp-p00/` … `../mvp-p05/`                                                           |
 
@@ -57,7 +56,7 @@
 
 | Item                      | Needed from USER                        | Impact if unresolved               |
 | ------------------------- | --------------------------------------- | ---------------------------------- |
-| Gate verdict (this phase) | Approve / amend 70.7/100 conditional    | P07 blocked until verdict recorded |
+| Gate verdict (this phase) | Approve / amend 69.9/100 (BELOW 88)     | P07 blocked until verdict recorded |
 | VB-07 (cohort signup)     | Founder-network cohort access           | Interviews UNKNOWN                 |
 | VB-08 (synthetic resumes) | Consent for synthetic corpus generation | Eval corpus NOT_EXECUTED           |
 | Ship-window date          | Cohort existence + external blockers    | Window stays scenario-based        |

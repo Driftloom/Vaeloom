@@ -771,7 +771,7 @@ ADR-001–006).**
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ADR-ENT-001 | Tenant isolation via **row-level security (RLS) with `tenant_id` on every table**, not schema-per-tenant or database-per-tenant                                                              | Accepted | RLS scales to tens-to-hundreds of tenants without per-tenant operational overhead (migrations, backups multiplied per tenant); enforced at the database layer, not just application code — directly satisfies ENFR-01's "even under an application-logic bug" requirement | Database-per-tenant — rejected: operationally expensive at this tenant count and doesn't meaningfully improve isolation over correctly-implemented RLS; Schema-per-tenant — rejected: migration complexity scales linearly with tenant count |
 | ADR-ENT-002 | Consent is a first-class data-model entity (`consent_grants` table) checked by the Permission Engine on every institutional-admin-initiated read, not a policy documented outside the schema | Accepted | Makes EFR-02/03/04 enforceable in code, not just in a privacy policy document — mirrors ADR-004's "suggest-mode enforced at the Orchestrator, not per-agent" philosophy applied to consent                                                                                | Consent as an external policy layer checked only at the API gateway — rejected: doesn't protect against a direct internal-tooling query bypassing the gateway                                                                                |
-| ADR-ENT-003 | Event bus migrates from MVP's Redis+BullMQ to Kafka at this tier                                                                                                                             | Accepted | Durable, replayable event log needed once multiple tenants' agent actions, notifications, and audit requirements run concurrently at real load (this is the exact trigger condition the MVP document's Phase 15 D.4 already anticipated)                                  | Stay on Redis+BullMQ — rejected: lacks durable replay, which the audit/compliance requirements (ENFR-12) need                                                                                                                                |
+| ADR-ENT-003 | Event bus migrates from MVP's Redis queue to Kafka at this tier                                                                                                                              | Accepted | Durable, replayable event log needed once multiple tenants' agent actions, notifications, and audit requirements run concurrently at real load (this is the exact trigger condition the MVP document's Phase 15 D.4 already anticipated)                                  | Stay on Redis queue — rejected: lacks durable replay, which the audit/compliance requirements (ENFR-12) need                                                                                                                                 |
 | ADR-ENT-004 | Graph store migrates from MVP's Postgres+AGE to a dedicated Neo4j cluster                                                                                                                    | Accepted | Per the explicit trigger threshold set in the MVP document's Phase 15, D.4 (traversal P95 > 500ms) — decided in advance, not improvised under load                                                                                                                        | Stay on AGE — rejected: doesn't meet the pre-declared trigger once enterprise-scale traversal volume is expected                                                                                                                             |
 | ADR-ENT-005 | Plugin sandboxing via a separate execution context (e.g., a restricted container/runtime) with capability-scoped tool access, not in-process execution with a permission check               | Accepted | An in-process check can be bypassed by a sufficiently malicious plugin; a separate execution boundary is a structural guarantee, not a trust-the-code guarantee (ENFR-06)                                                                                                 | In-process scope-checked execution — rejected: insufficient isolation for third-party, untrusted code                                                                                                                                        |
 | ADR-ENT-006 | Analytics is a strictly read-only consumer of the event bus/memory stores — it never writes back to memory                                                                                   | Accepted | Keeps "what happened" (memory, subject to consent rules) cleanly separated from "what we learned by observing it" (analytics) — this separation is also what makes the SOC 2 audit story (ENFR-12) clean: analytics can't be a hidden write path around the consent model | Analytics agent with write access to a "learnings" memory type — rejected: blurs the audit boundary                                                                                                                                          |
@@ -901,15 +901,15 @@ compliance-audited software.
 
 **D.1 Stack deltas from MVP (per ADR-ENT-003/004, and net-new categories).**
 
-| Layer           | MVP choice     | Enterprise choice                                                               | Trigger (from MVP Phase 15, D.4)             |
-| --------------- | -------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
-| Graph           | Postgres + AGE | Neo4j cluster                                                                   | Traversal P95 > 500ms (ADR-ENT-004)          |
-| Vector          | pgvector       | Qdrant                                                                          | Query P95 > 200ms                            |
-| Search          | Meilisearch    | OpenSearch                                                                      | Scale + advanced query needs                 |
-| Queue/event bus | Redis + BullMQ | Kafka                                                                           | Durable, replayable log needed (ADR-ENT-003) |
-| Deployment      | PaaS + Docker  | Managed Kubernetes                                                              | Multi-service, multi-tenant orchestration    |
-| SSO             | N/A            | SAML 2.0 / OIDC via a managed identity broker                                   | New requirement (EFR-07)                     |
-| Plugin runtime  | N/A            | Sandboxed container runtime (e.g., gVisor-class or Firecracker-class isolation) | New requirement (ADR-ENT-005)                |
+| Layer           | MVP choice                             | Enterprise choice                                                               | Trigger (from MVP Phase 15, D.4)             |
+| --------------- | -------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
+| Graph           | Postgres + AGE                         | Neo4j cluster                                                                   | Traversal P95 > 500ms (ADR-ENT-004)          |
+| Vector          | pgvector                               | Qdrant                                                                          | Query P95 > 200ms                            |
+| Search          | SQL ILIKE (Meilisearch NOT_INSTALLED)  | OpenSearch                                                                      | Scale + advanced query needs                 |
+| Queue/event bus | Redis (BullMQ installed, no consumers) | Kafka                                                                           | Durable, replayable log needed (ADR-ENT-003) |
+| Deployment      | PaaS + Docker                          | Managed Kubernetes                                                              | Multi-service, multi-tenant orchestration    |
+| SSO             | N/A                                    | SAML 2.0 / OIDC via a managed identity broker                                   | New requirement (EFR-07)                     |
+| Plugin runtime  | N/A                                    | Sandboxed container runtime (e.g., gVisor-class or Firecracker-class isolation) | New requirement (ADR-ENT-005)                |
 
 **D.2 Engineering standards additions.**
 
@@ -1505,55 +1505,33 @@ enforcement RISK-E10.1 depends on) and the consent-check enforcement.
 
 ### D. Work Completed
 
-**D.1 Tenant-context session binding (NestJS interceptor — sets the Postgres
+**D.1 Tenant-context session binding (FastAPI middleware — sets the Postgres
 session variable RLS policies check).**
 
-```typescript
-// apps/api/tenancy/tenant-context.interceptor.ts
-@Injectable()
-export class TenantContextInterceptor implements NestInterceptor {
-  constructor(private readonly db: DatabaseService) {}
+```python
+# apps/backend/middleware/tenant_context.py
+from fastapi import Request
+from sqlalchemy import text
 
-  async intercept(context: ExecutionContext, next: CallHandler) {
-    const req = context.switchToHttp().getRequest();
-    const tenantId = req.user?.tenantId ?? null; // derived from the verified JWT, NEVER from a request header
-
-    await this.db.query(`SET app.current_tenant_id = $1`, [
-      tenantId ?? '00000000-0000-0000-0000-000000000000',
-    ]);
-    return next.handle();
-  }
-}
+async def set_tenant_context(request: Request, db_session):
+    tenant_id = request.state.user.get("tenant_id") if hasattr(request.state, "user") else None
+    await db_session.execute(
+        text("SET app.current_tenant_id = :tid"),
+        {"tid": tenant_id or "00000000-0000-0000-0000-000000000000"},
+    )
 ```
 
 **D.2 Consent-check enforcement (the code-level implementation of ADR-ENT-002,
 checked by Phase 6's consent-check lint rule).**
 
-```typescript
-// apps/api/consent/consent.service.ts
-@Injectable()
-export class ConsentService {
-  async assertConsentedRead(
-    workspaceId: string,
-    tenantId: string,
-    scope: string,
-  ): Promise<void> {
-    const grant = await this.db.consentGrants.findActive({
-      workspaceId,
-      tenantId,
-      scope,
-    });
-    if (!grant) {
-      throw new ForbiddenException({
-        error: {
-          code: 'CONSENT_NOT_GRANTED',
-          message:
-            'This individual has not granted the requested consent scope.',
-        },
-      });
-    }
-  }
-}
+```python
+# apps/backend/consent/service.py
+from fastapi import HTTPException
+
+async def assert_consented_read(db, workspace_id: str, tenant_id: str, scope: str):
+    grant = await db.consent_grants.find_active(workspace_id=workspace_id, tenant_id=tenant_id, scope=scope)
+    if not grant:
+        raise HTTPException(status_code=403, detail={"code": "CONSENT_NOT_GRANTED", "message": "This individual has not granted the requested consent scope."})
 ```
 
 **D.3 k-anonymity floor enforcement (Phase 9 D.3/RISK-E9.1, made concrete in
@@ -1617,7 +1595,7 @@ but no existing entry for the 8 MVP agents is modified. The golden-dataset suite
 check, on every enterprise-tier agent PR:
 
 ```python
-# apps/ai-service/eval/regression_gate.py
+# apps/backend/eval/regression_gate.py
 def run_regression_gate():
     mvp_results = run_golden_set(agents=MVP_AGENT_NAMES)   # the original 8
     assert mvp_results.meets_targets(), "Enterprise change regressed an MVP agent — BLOCKED"
@@ -1629,7 +1607,7 @@ def run_regression_gate():
 model is itself a design decision).**
 
 ```python
-# apps/ai-service/agents/reflection_agent/handler.py
+# apps/backend/agents/reflection_agent/handler.py
 async def run_scheduled_reflection(workspace_id: str):
     recent = await get_recent_memory_writes(workspace_id, window_days=30)
     patterns = await detect_patterns(recent)   # e.g., "3 rejected frontend-heavy roles"
@@ -1795,7 +1773,7 @@ plugin-sandbox boundary tests.
 across every table, not hand-written per table).**
 
 ```python
-# apps/api/tests/test_tenant_isolation_exhaustive.py
+# apps/backend/tests/test_tenant_isolation_exhaustive.py
 TENANT_SCOPED_TABLES = get_all_tables_with_tenant_id_or_workspace_fk()  # introspected from schema, not hardcoded
 
 @pytest.mark.parametrize("table", TENANT_SCOPED_TABLES)
@@ -1917,7 +1895,7 @@ cross-tenant-isolation-suite:
   needs: unit-tests
   runs-on: ubuntu-latest
   steps:
-    - run: pytest apps/api/tests/test_tenant_isolation_exhaustive.py # Phase 14, D.2 — release-blocking, not optional
+    - run: pytest apps/backend/tests/test_tenant_isolation_exhaustive.py # Phase 14, D.2 — release-blocking, not optional
 
 rls-policy-lint:
   runs-on: ubuntu-latest

@@ -1,20 +1,28 @@
 ﻿# API Versioning
 
-> **Purpose:** Define Vaeloom's API versioning strategy for public REST APIs, internal RPC, and SDKs — version lifecycle, breaking-change policy, deprecation process, and migration guidance
-> **Status:** ðŸ†• New
-> **Owner:** Architecture Team
-> **Version:** 1.0
-> **Last Updated:** 2026-07-16
-> **Dependencies:** [`API-Architecture.md`](./API-Architecture.md), [`API-Reference.md`](./API-Reference.md), [`REST-Standards.md`](./REST-Standards.md), [`../Engineering/Versioning.md`](../Engineering/Versioning.md), [`Service-Contracts.md`](./Service-Contracts.md)
-> **Implementation Status:** ðŸ“‹ Spec Only
+> **Purpose:** Define Vaeloom's API versioning strategy for public REST APIs,
+> Internal calls, and SDKs — version lifecycle, breaking-change policy,
+> deprecation process, and migration guidance **Status:** ðŸ†• New **Owner:**
+> Architecture Team **Version:** 1.0 **Last Updated:** 2026-07-16
+> **Dependencies:** [`API-Architecture.md`](./API-Architecture.md),
+> [`API-Reference.md`](./API-Reference.md),
+> [`REST-Standards.md`](./REST-Standards.md),
+> [`../Engineering/Versioning.md`](../Engineering/Versioning.md),
+> [`Service-Contracts.md`](./Service-Contracts.md) **Implementation Status:**
+> ðŸ“‹ Spec Only
 
 ## Overview
 
-API versioning is the contract between Vaeloom and its API consumers (frontend, SDKs, partners, enterprise integrations). Without a clear versioning strategy, breaking changes become a coordination nightmare and consumers lose trust. This document defines how Vaeloom versions its public API, internal RPC, and SDKs; what constitutes a breaking change; how deprecation works; and how consumers migrate between versions.
+API versioning is the contract between Vaeloom and its API consumers (frontend,
+SDKs, partners, enterprise integrations). Without a clear versioning strategy,
+breaking changes become a coordination nightmare and consumers lose trust. This
+document defines how Vaeloom versions its public API, Internal calls, and SDKs;
+what constitutes a breaking change; how deprecation works; and how consumers
+migrate between versions.
 
 ## Goals
 
-- Define the versioning scheme for public REST API, internal RPC, and SDKs
+- Define the versioning scheme for public REST API, Internal calls, and SDKs
 - Establish breaking vs non-breaking change criteria
 - Define version lifecycle (current, deprecated, sunset, retired)
 - Document deprecation headers and timelines
@@ -25,7 +33,7 @@ API versioning is the contract between Vaeloom and its API consumers (frontend, 
 ### In Scope
 
 - Public REST API versioning (URL-based)
-- Internal RPC versioning (protobuf package versioning)
+- Internal calls versioning (protobuf package versioning)
 - SDK versioning (semver)
 - Version lifecycle and deprecation process
 - Migration guides
@@ -33,21 +41,22 @@ API versioning is the contract between Vaeloom and its API consumers (frontend, 
 ### Out of Scope
 
 - Detailed migration steps per endpoint (per-release migration guides)
-- Feature flag strategy (see [`../Enterprise/Feature-Flags.md`](../Enterprise/Feature-Flags.md))
+- Feature flag strategy (see
+  [`../Enterprise/Feature-Flags.md`](../Enterprise/Feature-Flags.md))
 
 ## Versioning Schemes
 
-| API Type | Scheme | Format | Example |
-|----------|--------|--------|---------|
-| **Public REST** | URL-based major version | `/v{N}/...` | `/v1/documents`, `/v2/documents` |
-| **Internal RPC** | Protobuf package version | `vaeloom.internal.v{N}` | `vaeloom.internal.v1.AgentService` |
-| **SDK** | Semantic versioning (semver) | `MAJOR.MINOR.PATCH` | `@vaeloom/sdk@2.1.3` |
+| API Type           | Scheme                       | Format                  | Example                            |
+| ------------------ | ---------------------------- | ----------------------- | ---------------------------------- |
+| **Public REST**    | URL-based major version      | `/v{N}/...`             | `/v1/documents`, `/v2/documents`   |
+| **Internal calls** | Protobuf package version     | `vaeloom.internal.v{N}` | `vaeloom.internal.v1.AgentService` |
+| **SDK**            | Semantic versioning (semver) | `MAJOR.MINOR.PATCH`     | `@vaeloom/sdk@2.1.3`               |
 
 ## Public REST API Versioning
 
 ### URL-Based
 
-```bash
+````bash
 # Current version
 GET https://api.vaeloom.dev/v1/documents
 
@@ -149,9 +158,9 @@ When releasing a new major version (e.g., v2):
   7. Notify any remaining v1 consumers individually before retirement
 ```text
 
-## Internal RPC Versioning
+## Internal calls Versioning
 
-Internal RPC (between apps/api and apps/ai-service) uses protobuf package versioning:
+Internal module interfaces uses protobuf package versioning:
 
 ```protobuf
 // Current
@@ -210,5 +219,8 @@ SDK major versions align with API major versions: `@vaeloom/sdk@2.x` targets `/v
 - [`API-Reference.md`](./API-Reference.md) — endpoint reference
 - [`REST-Standards.md`](./REST-Standards.md) — REST conventions
 - [`../Engineering/Versioning.md`](../Engineering/Versioning.md) — general versioning policy
-- [`Service-Contracts.md`](./Service-Contracts.md) — internal RPC versioning
+- [`Service-Contracts.md`](./Service-Contracts.md) — Internal calls versioning
 - [`../Enterprise/Feature-Flags.md`](../Enterprise/Feature-Flags.md) — feature flag strategy
+
+
+````

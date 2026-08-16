@@ -1,34 +1,42 @@
 # Enterprise
 
-> **Purpose:** Enterprise features, multi-tenancy, consent model, and the full enterprise product vision
-> **Status:** ? Active
-> **Owner:** Product Team
-> **Version:** 1.1
-> **Last Updated:** 2026-07-16
+> **Purpose:** Enterprise features, multi-tenancy, consent model, and the full
+> enterprise product vision **Status:** ? Active **Owner:** Product Team
+> **Version:** 1.1 **Last Updated:** 2026-07-16
 
 ## Overview
 
-The Enterprise directory documents Vaeloom's enterprise product vision, multi-tenant architecture, consent model, and enterprise build prompts. These documents define how Vaeloom scales from individual accounts to organization-provisioned enterprise deployments.
+The Enterprise directory documents Vaeloom's enterprise product vision,
+multi-tenant architecture, consent model, and enterprise build prompts. These
+documents define how Vaeloom scales from individual accounts to
+organization-provisioned enterprise deployments.
 
-Key topics include the enterprise product vision, enterprise architecture with AI components, the multi-tenant and consent model, enterprise build prompts, and future innovations. The MVP-to-enterprise migration path ensures schema forward-compatibility and a clear growth trajectory from 8 to 28 agents and 6 to 20+ memory types.
+Key topics include the enterprise product vision, enterprise architecture with
+AI components, the multi-tenant and consent model, enterprise build prompts, and
+future innovations. The MVP-to-enterprise migration path ensures schema
+forward-compatibility and a clear growth trajectory from 8 to 28 agents and 6 to
+20+ memory types.
 
-The consent model is a critical architectural component that enables tenant-provisioned accounts while preserving individual memory ownership through granular, revocable consent, ensuring enterprise adoption does not compromise the core product philosophy.
+The consent model is a critical architectural component that enables
+tenant-provisioned accounts while preserving individual memory ownership through
+granular, revocable consent, ensuring enterprise adoption does not compromise
+the core product philosophy.
 
 ## What's here
 
-| Document | Location | Status |
-|----------|----------|--------|
+| Document                  | Location                                                                            | Status      |
+| ------------------------- | ----------------------------------------------------------------------------------- | ----------- |
 | Enterprise Product Vision | [`/docs/06-Vaeloom-Enterprise-Paper.md`](../../docs/06-Vaeloom-Enterprise-Paper.md) | ? Excellent |
-| Enterprise Architecture | [`./Enterprise-Architecture.md`](./Enterprise-Architecture.md) | ? Complete |
-| Multi-Tenancy | [`./Multi-Tenancy.md`](./Multi-Tenancy.md) | ?? New |
-| Organizations | [`./Organizations.md`](./Organizations.md) | ?? New |
-| Billing | [`./Billing.md`](./Billing.md) | ?? New |
-| Licensing | [`./Licensing.md`](./Licensing.md) | ?? New |
-| Admin Portal | [`./Admin-Portal.md`](./Admin-Portal.md) | ?? New |
-| Feature Flags | [`./Feature-Flags.md`](./Feature-Flags.md) | ?? New |
-| Plugin Marketplace | [`./Plugin-Marketplace.md`](./Plugin-Marketplace.md) | ?? New |
-| Enterprise APIs | [`./Enterprise-APIs.md`](./Enterprise-APIs.md) | ?? New |
-| Enterprise Build Prompts | [`../Engineering/Implementation/`](../Engineering/Implementation/) | ? Canonical |
+| Enterprise Architecture   | [`./Enterprise-Architecture.md`](./Enterprise-Architecture.md)                      | ? Complete  |
+| Multi-Tenancy             | [`./Multi-Tenancy.md`](./Multi-Tenancy.md)                                          | ?? New      |
+| Organizations             | [`./Organizations.md`](./Organizations.md)                                          | ?? New      |
+| Billing                   | [`./Billing.md`](./Billing.md)                                                      | ?? New      |
+| Licensing                 | [`./Licensing.md`](./Licensing.md)                                                  | ?? New      |
+| Admin Portal              | [`./Admin-Portal.md`](./Admin-Portal.md)                                            | ?? New      |
+| Feature Flags             | [`./Feature-Flags.md`](./Feature-Flags.md)                                          | ?? New      |
+| Plugin Marketplace        | [`./Plugin-Marketplace.md`](./Plugin-Marketplace.md)                                | ?? New      |
+| Enterprise APIs           | [`./Enterprise-APIs.md`](./Enterprise-APIs.md)                                      | ?? New      |
+| Enterprise Build Prompts  | [`../Engineering/Implementation/`](../Engineering/Implementation/)                  | ? Canonical |
 
 ```mermaid
 graph LR
@@ -50,7 +58,7 @@ graph LR
 
     subgraph Enterprise["🏢 Enterprise"]
         E1["Individual + Org-Provisioned"]
-        E2["+ SAML/OIDC SSO"]
+        E2["+ SAML/OIDC SSO<br/>(SAML=STUB, OIDC=working)"]
         E3["25+ Connectors + Plugin SDK"]
         E4["28 Full Agent Roster"]
         E5["20+ Full Memory Taxonomy"]
@@ -72,29 +80,32 @@ graph LR
 
 ## Enterprise vs MVP: key differences
 
-| Capability | MVP | Enterprise |
-|------------|-----|------------|
-| User model | Individual accounts | Individual + org-provisioned |
-| Auth | Email/password | + SAML/OIDC SSO |
-| Permissions | Per-agent autonomy | + RBAC at tenant level |
-| Connectors | 5 core connectors | 25+ including LMS, HRIS |
-| Agents | 8 specialist agents | 28 full roster |
-| Memory types | 6 types | 20+ full taxonomy |
-| Plugin ecosystem | Internal tools only | Plugin SDK + Marketplace |
-| Admin console | None | Full tenant management |
-| Data isolation | Workspace-scoped | Verified tenant isolation |
+| Capability       | MVP                 | Enterprise                                                           |
+| ---------------- | ------------------- | -------------------------------------------------------------------- |
+| User model       | Individual accounts | Individual + org-provisioned                                         |
+| Auth             | Email/password      | + SAML/OIDC SSO (SAML=STUB, Google/Microsoft OIDC=working)           |
+| Permissions      | Per-agent autonomy  | + RBAC (dependency injection helper, NOT middleware) at tenant level |
+| Connectors       | 5 core connectors   | 25+ including LMS, HRIS                                              |
+| Agents           | 8 specialist agents | 28 full roster                                                       |
+| Memory types     | 6 types             | 20+ full taxonomy                                                    |
+| Plugin ecosystem | Internal tools only | Plugin SDK + Marketplace                                             |
+| Admin console    | None                | Full tenant management                                               |
+| Data isolation   | Workspace-scoped    | Verified tenant isolation                                            |
 
 ## The consent model (critical architecture)
 
-The consent model makes enterprise (tenant-provisioned) accounts work without compromising the core promise that a person's memory belongs to them:
+The consent model makes enterprise (tenant-provisioned) accounts work without
+compromising the core promise that a person's memory belongs to them:
 
 - Organization can provision accounts and set policy boundaries
-- Organization **cannot** read individual memory contents without explicit, granular, revocable consent
+- Organization **cannot** read individual memory contents without explicit,
+  granular, revocable consent
 - Consent revoked → organization access reduced going forward (not retroactive)
 
 ## Migration path from MVP
 
-The MVP and Enterprise designs share the same architecture at two points in time:
+The MVP and Enterprise designs share the same architecture at two points in
+time:
 
 1. Memory schema is forward-compatible (6 types → 20+ types)
 2. Agent roster grows, never replaces
@@ -103,9 +114,11 @@ The MVP and Enterprise designs share the same architecture at two points in time
 
 ## Goals
 
-- Provide a high-level entry point to Vaeloom's enterprise product vision and architecture
+- Provide a high-level entry point to Vaeloom's enterprise product vision and
+  architecture
 - Document the MVP-to-enterprise migration path and schema forward-compatibility
-- Define the consent model that enables org-provisioned accounts while preserving individual memory ownership
+- Define the consent model that enables org-provisioned accounts while
+  preserving individual memory ownership
 - Index all enterprise-related documentation for easy navigation
 - Communicate the key differences between MVP and enterprise capabilities
 
@@ -143,10 +156,10 @@ Vaeloom enterprise audit-log export --from 2025-01-01 --to 2025-06-30
 # Enterprise SSO configuration
 sso:
   provider: saml
-  idp_metadata_url: "https://idp.company.com/metadata"
+  idp_metadata_url: 'https://idp.company.com/metadata'
   attribute_mapping:
-    email: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
-    groups: "http://schemas.company.com/claims/groups"
+    email: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+    groups: 'http://schemas.company.com/claims/groups'
 ```
 
 ```bash
@@ -157,11 +170,11 @@ Vaeloom enterprise usage report --month 2025-06
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| Full enterprise tenant isolation implementation | High | High | Q2 2027 |
-| Enterprise SSO provider certification matrix | Medium | Medium | Q1 2027 |
-| Enterprise pricing and tier model validation | Medium | Low | Q4 2026 |
+| Improvement                                     | Priority | Complexity | Timeline |
+| ----------------------------------------------- | -------- | ---------- | -------- |
+| Full enterprise tenant isolation implementation | High     | High       | Q2 2027  |
+| Enterprise SSO provider certification matrix    | Medium   | Medium     | Q1 2027  |
+| Enterprise pricing and tier model validation    | Medium   | Low        | Q4 2026  |
 
 ## Related categories
 
@@ -172,6 +185,9 @@ Vaeloom enterprise usage report --month 2025-06
 
 ## Related Documents
 
-- [Enterprise Product Vision](../06-Vaeloom-Enterprise-Paper.md) — Full enterprise paper
-- [Enterprise Architecture](./Enterprise-Architecture.md) — Multi-tenant deep dive
-- [Security Overview](../Security/README.md) — Enterprise security and compliance
+- [Enterprise Product Vision](../06-Vaeloom-Enterprise-Paper.md) — Full
+  enterprise paper
+- [Enterprise Architecture](./Enterprise-Architecture.md) — Multi-tenant deep
+  dive
+- [Security Overview](../Security/README.md) — Enterprise security and
+  compliance

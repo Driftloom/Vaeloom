@@ -1,7 +1,7 @@
-# Authorization
+﻿# Authorization
 
-> **Purpose:** Define the authorization model for Vaeloom
-> **Canonical source:** [`/docs/06-Vaeloom-Enterprise-Paper.md#193-permission-engine`](../../docs/06-Vaeloom-Enterprise-Paper.md#193-permission-engine)
+> **Purpose:** Define the authorization model for Vaeloom **Canonical source:**
+> [`/docs/06-Vaeloom-Enterprise-Paper.md#193-permission-engine`](../../docs/06-Vaeloom-Enterprise-Paper.md#193-permission-engine)
 
 ## Authorization Architecture
 
@@ -44,29 +44,36 @@ graph TD
     class A1,A2,A3 autonomy
 ```
 
-> **Diagram:** Authorization model — **Permission Engine** evaluates 4 ABAC attributes (Subject, Resource, Action, Context) → **4 permission levels** (Read → Suggest → Act → Full) → **hierarchy** (User→Workspace→Connector→Perm) → **agent autonomy model** (Default suggest → Earned auto-execute → Revoked on error).
+> **Diagram:** Authorization model — **Permission Engine** evaluates 4 ABAC
+> attributes (Subject, Resource, Action, Context) → **4 permission levels**
+> (Read → Suggest → Act → Full) → **hierarchy** (User→Workspace→Connector→Perm)
+> → **agent autonomy model** (Default suggest → Earned auto-execute → Revoked on
+> error).
 
 ---
 
 ## Authorization Model
 
-Vaeloom uses a **Permission Engine** that implements **Attribute-Based Access Control (ABAC)** under the hood (see [`ABAC.md`](./ABAC.md) for the detailed policy model). Every request — user or agent — is evaluated against four attribute categories:
+Vaeloom uses a **Permission Engine** that implements **Attribute-Based Access
+Control (ABAC)** under the hood (see [`ABAC.md`](./ABAC.md) for the detailed
+policy model). Every request — user or agent — is evaluated against four
+attribute categories:
 
-| Attribute Category | Description | Examples |
-|-------------------|-------------|---------|
-| Subject (who) | User/Agent identity and role | User ID, Agent name, role claims |
-| Resource (what) | Resource type, owner, workspace | Document, memory record, connector scope |
-| Action (how) | Operation being performed | Read, Write, Act, Delete |
-| Context (when/where) | Environment and conditions | Time of day, IP range, workspace membership |
+| Attribute Category   | Description                     | Examples                                    |
+| -------------------- | ------------------------------- | ------------------------------------------- |
+| Subject (who)        | User/Agent identity and role    | User ID, Agent name, role claims            |
+| Resource (what)      | Resource type, owner, workspace | Document, memory record, connector scope    |
+| Action (how)         | Operation being performed       | Read, Write, Act, Delete                    |
+| Context (when/where) | Environment and conditions      | Time of day, IP range, workspace membership |
 
 ## Permission Levels
 
-| Level | Meaning | Examples |
-|-------|---------|---------|
-| Read-only | Can view data | ATS Agent reading resume |
-| Suggest | Can propose changes | Organization Agent proposing file moves |
-| Act | Can execute autonomously | Scheduler Agent creating reminders |
-| Full | Can do anything within scope | Memory Agent writing to knowledge graph |
+| Level     | Meaning                      | Examples                                |
+| --------- | ---------------------------- | --------------------------------------- |
+| Read-only | Can view data                | ATS Agent reading resume                |
+| Suggest   | Can propose changes          | Organization Agent proposing file moves |
+| Act       | Can execute autonomously     | Scheduler Agent creating reminders      |
+| Full      | Can do anything within scope | Memory Agent writing to knowledge graph |
 
 ## Permission Hierarchy
 
@@ -76,54 +83,58 @@ User → Workspace → Connectors → Permissions per (Connector × Agent × Act
 
 ## Agent Autonomy Model
 
-| Stage | Behavior | Threshold |
-|-------|----------|-----------|
-| Default | Suggest-mode — propose, user approves | None |
-| Earned | Auto-execute for proven action types | 95%+ approval over 50 actions |
-| Revoked | Return to suggest-mode | Single incorrect autonomous action |
+| Stage   | Behavior                              | Threshold                          |
+| ------- | ------------------------------------- | ---------------------------------- |
+| Default | Suggest-mode — propose, user approves | None                               |
+| Earned  | Auto-execute for proven action types  | 95%+ approval over 50 actions      |
+| Revoked | Return to suggest-mode                | Single incorrect autonomous action |
 
 ## Common Mistakes
 
-| Mistake | Consequence |
-|---------|-------------|
-| Applying authorization only at the API layer | Authorization must also be enforced at the data layer — an RPC call from a compromised service bypasses API-level checks |
-| Permission levels that are too broad | "Full" access to a connector scope may include actions the agent shouldn't take — each permission level should have a specific allowed action list |
-| Caching authorization decisions too aggressively | User roles or permissions can change — cached decisions lead to stale authorization for minutes after an admin revokes access |
-| Mixing ABAC and RBAC without a clear bridge | ABAC (attribute evaluation) and RBAC (role assignment) serve different purposes — define how roles map to attribute conditions explicitly |
+| Mistake                                          | Consequence                                                                                                                                        |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Applying authorization only at the API layer     | Authorization must also be enforced at the data layer — an RPC call from a compromised service bypasses API-level checks                           |
+| Permission levels that are too broad             | "Full" access to a connector scope may include actions the agent shouldn't take — each permission level should have a specific allowed action list |
+| Caching authorization decisions too aggressively | User roles or permissions can change — cached decisions lead to stale authorization for minutes after an admin revokes access                      |
+| Mixing ABAC and RBAC without a clear bridge      | ABAC (attribute evaluation) and RBAC (role assignment) serve different purposes — define how roles map to attribute conditions explicitly          |
 
 ## Best Practices
 
-| Practice | Why |
-|----------|-----|
-| Enforce authorization at every layer | API gateway, service layer, and data access layer must each perform their own authorization check — defense in depth |
-| Use the principle of least privilege | Every agent and user starts with the minimum permissions needed — escalate only when a demonstrated need exists |
-| Log every authorization decision | Denied requests are critical for debugging access issues and detecting potential attacks |
-| Test the authorization matrix with every deployment | A permission matrix covering all (Subject, Resource, Action, Context) combinations should be part of CI/CD |
+| Practice                                            | Why                                                                                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Enforce authorization at every layer                | API gateway, service layer, and data access layer must each perform their own authorization check — defense in depth |
+| Use the principle of least privilege                | Every agent and user starts with the minimum permissions needed — escalate only when a demonstrated need exists      |
+| Log every authorization decision                    | Denied requests are critical for debugging access issues and detecting potential attacks                             |
+| Test the authorization matrix with every deployment | A permission matrix covering all (Subject, Resource, Action, Context) combinations should be part of CI/CD           |
 
 ## Security
 
-| Concern | Mitigation |
-|---------|------------|
-| Authorization bypass via internal RPC | If the Permission Engine is enforced only at the API gateway, internal RPC calls between services bypass authorization — enforce the engine at every service boundary |
+| Concern                                            | Mitigation                                                                                                                                                                 |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authorization bypass via Internal calls            | If the Permission Engine is enforced only at the API gateway, Internal calls calls between services bypass authorization — enforce the engine at every service boundary    |
 | Permission escalation through context manipulation | An attacker who controls a context attribute (e.g., claiming a different workspace_id) can escalate privileges — workspace_id must come from the JWT, not the request body |
-| Stale authorization decisions due to caching | Cached permission decisions may serve stale results minutes after an admin revokes a user's access — cache with short TTLs and invalidate on permission changes |
+| Stale authorization decisions due to caching       | Cached permission decisions may serve stale results minutes after an admin revokes a user's access — cache with short TTLs and invalidate on permission changes            |
 
 ## Performance
 
-| Concern | Mitigation |
-|---------|------------|
-| Permission evaluation on every request | Evaluating ABAC policies involves fetching attributes from multiple sources — cache evaluated permissions per (user, resource, action) for the duration of the request |
-| Policy rule explosion slowing evaluation | Hundreds of ABAC rules evaluated linearly slow every request — compile policies into a decision tree keyed by (action, resource_type) for O(1) matching |
+| Concern                                          | Mitigation                                                                                                                                                              |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Permission evaluation on every request           | Evaluating ABAC policies involves fetching attributes from multiple sources — cache evaluated permissions per (user, resource, action) for the duration of the request  |
+| Policy rule explosion slowing evaluation         | Hundreds of ABAC rules evaluated linearly slow every request — compile policies into a decision tree keyed by (action, resource_type) for O(1) matching                 |
 | Attribute fetch latency from distributed sources | Fetching subject attributes from the auth provider and resource attributes from the resource service adds network hops — batch attribute fetches in a single round trip |
 
 ---
 
 ## Goals
 
-1. **Unified authorization model** — Provide a single Permission Engine that governs all access decisions for both human users and AI agents
-2. **Least-privilege by default** — Every subject starts with minimum permissions; escalate only when need is demonstrated via the autonomy model
-3. **Agent-safe autonomy** — Allow agents to earn auto-execute privileges through proven reliability, with instant revocation on error
-4. **Auditable decision trail** — Every authorization decision, whether allowed or denied, must be logged with full context
+1. **Unified authorization model** — Provide a single Permission Engine that
+   governs all access decisions for both human users and AI agents
+2. **Least-privilege by default** — Every subject starts with minimum
+   permissions; escalate only when need is demonstrated via the autonomy model
+3. **Agent-safe autonomy** — Allow agents to earn auto-execute privileges
+   through proven reliability, with instant revocation on error
+4. **Auditable decision trail** — Every authorization decision, whether allowed
+   or denied, must be logged with full context
 
 ---
 
@@ -131,10 +142,12 @@ User → Workspace → Connectors → Permissions per (Connector × Agent × Act
 
 ### In Scope
 
-- ABAC-based permission evaluation for all resource types (documents, memory, connectors, agents)
+- ABAC-based permission evaluation for all resource types (documents, memory,
+  connectors, agents)
 - Four permission levels: Read-only, Suggest, Act, Full
 - Agent autonomy model with earned auto-execute and instant revocation
-- Permission hierarchy: User → Workspace → Connector → Permissions per (Connector × Agent × Action)
+- Permission hierarchy: User → Workspace → Connector → Permissions per
+  (Connector × Agent × Action)
 - Integration with Permission Engine for policy evaluation
 
 ### Out of Scope
@@ -148,25 +161,25 @@ User → Workspace → Connectors → Permissions per (Connector × Agent × Act
 
 ## Functional Requirements
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| F-001 | System SHALL evaluate authorization using 4 attribute categories: Subject, Resource, Action, Context | P0 |
-| F-002 | System SHALL support 4 permission levels: Read-only, Suggest, Act, Full | P0 |
-| F-003 | System SHALL enforce agent autonomy model with suggest → auto-execute → revoke lifecycle | P0 |
-| F-004 | System SHALL evaluate permissions at every service boundary (API, RPC, event bus) | P0 |
-| F-005 | System SHALL support permission hierarchy: User → Workspace → Connector → (Connector × Agent × Action) | P1 |
+| ID    | Requirement                                                                                            | Priority |
+| ----- | ------------------------------------------------------------------------------------------------------ | -------- |
+| F-001 | System SHALL evaluate authorization using 4 attribute categories: Subject, Resource, Action, Context   | P0       |
+| F-002 | System SHALL support 4 permission levels: Read-only, Suggest, Act, Full                                | P0       |
+| F-003 | System SHALL enforce agent autonomy model with suggest → auto-execute → revoke lifecycle               | P0       |
+| F-004 | System SHALL evaluate permissions at every service boundary (API, RPC, event bus)                      | P0       |
+| F-005 | System SHALL support permission hierarchy: User → Workspace → Connector → (Connector × Agent × Action) | P1       |
 
 ---
 
 ## Non-Functional Requirements
 
-| ID | Requirement | Target |
-|----|-------------|--------|
-| NF-001 | Authorization evaluation latency | < 15ms p95 including attribute fetch |
-| NF-002 | Authorization cache hit ratio | > 90% for repeated access patterns |
-| NF-003 | Autonomy model accuracy | < 1% false auto-execute decisions |
-| NF-004 | Authorization log retention | 90 days in hot storage, 1 year in archive |
-| NF-005 | Policy propagation delay | < 30 seconds across all API nodes |
+| ID     | Requirement                      | Target                                    |
+| ------ | -------------------------------- | ----------------------------------------- |
+| NF-001 | Authorization evaluation latency | < 15ms p95 including attribute fetch      |
+| NF-002 | Authorization cache hit ratio    | > 90% for repeated access patterns        |
+| NF-003 | Autonomy model accuracy          | < 1% false auto-execute decisions         |
+| NF-004 | Authorization log retention      | 90 days in hot storage, 1 year in archive |
+| NF-005 | Policy propagation delay         | < 30 seconds across all API nodes         |
 
 ---
 
@@ -190,7 +203,10 @@ sequenceDiagram
     Note over Agent,AL: If action was incorrect:<br/>AA detects error --> revoke to suggest-mode
 ```
 
-> **Diagram:** Authorization with autonomy — Agent requests `act` permission; Permission Engine checks autonomy tracker, evaluates ABAC policy, and allows auto-execute for earned agents. Errors trigger automatic revocation to suggest-mode.
+> **Diagram:** Authorization with autonomy — Agent requests `act` permission;
+> Permission Engine checks autonomy tracker, evaluates ABAC policy, and allows
+> auto-execute for earned agents. Errors trigger automatic revocation to
+> suggest-mode.
 
 ---
 
@@ -213,91 +229,91 @@ sequenceDiagram
 
 ## APIs
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/permissions/evaluate` | POST | Evaluate authorization for a single (subject, resource, action) tuple |
-| `/v1/permissions/levels` | GET | List all permission levels and their capabilities |
-| `/v1/permissions/hierarchy` | GET | Get permission hierarchy for a workspace |
-| `/v1/permissions/autonomy` | GET | Query agent autonomy status (suggest/earned/revoked) |
-| `/v1/permissions/autonomy` | PUT | Update agent autonomy configuration (workspace admin) |
+| Endpoint                    | Method | Description                                                           |
+| --------------------------- | ------ | --------------------------------------------------------------------- |
+| `/v1/permissions/evaluate`  | POST   | Evaluate authorization for a single (subject, resource, action) tuple |
+| `/v1/permissions/levels`    | GET    | List all permission levels and their capabilities                     |
+| `/v1/permissions/hierarchy` | GET    | Get permission hierarchy for a workspace                              |
+| `/v1/permissions/autonomy`  | GET    | Query agent autonomy status (suggest/earned/revoked)                  |
+| `/v1/permissions/autonomy`  | PUT    | Update agent autonomy configuration (workspace admin)                 |
 
 ---
 
 ## Database
 
-| Table | Purpose | Key Columns |
-|-------|---------|-------------|
-| `permission_assignments` | Explicit permission grants per (subject, resource_scope, level) | id, subject_id, scope_type (workspace/connector), scope_id, permission_level, granted_by, expires_at |
-| `autonomy_tracker` | Agent autonomy state machine | id, agent_id, workspace_id, status (suggest/earned/revoked), approval_count, total_actions, last_action_at |
-| `autonomy_votes` | User approval/disapproval history for agent suggestions | id, action_id, voter_id, decision (approve/deny), voted_at |
-| `authorization_audit` | Append-only authorization decision log | id, subject_id, resource_id, action, decision, context_snapshot (jsonb), evaluated_at |
+| Table                    | Purpose                                                         | Key Columns                                                                                                |
+| ------------------------ | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `permission_assignments` | Explicit permission grants per (subject, resource_scope, level) | id, subject_id, scope_type (workspace/connector), scope_id, permission_level, granted_by, expires_at       |
+| `autonomy_tracker`       | Agent autonomy state machine                                    | id, agent_id, workspace_id, status (suggest/earned/revoked), approval_count, total_actions, last_action_at |
+| `autonomy_votes`         | User approval/disapproval history for agent suggestions         | id, action_id, voter_id, decision (approve/deny), voted_at                                                 |
+| `authorization_audit`    | Append-only authorization decision log                          | id, subject_id, resource_id, action, decision, context_snapshot (jsonb), evaluated_at                      |
 
 ---
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
-|-----------|---------------|--------------|---------------|
-| Permission evaluations | 1,000/s per node | Horizontal scaling with stateless PE nodes | Local permission cache with Redis-backed invalidation |
-| Autonomy tracker entries | 10K agents | Shard autonomy data by agent_id | Autonomous agent registry with lazy loading |
-| Authorization audit volume | 500K decisions/day | Partition audit log by date | Archive to cold storage after 90 days |
-| Permission level granularity | 4 levels | Add resource-type-specific sub-levels | Dynamic permission level framework |
+| Dimension                    | Current Limit      | 10x Strategy                               | 100x Strategy                                         |
+| ---------------------------- | ------------------ | ------------------------------------------ | ----------------------------------------------------- |
+| Permission evaluations       | 1,000/s per node   | Horizontal scaling with stateless PE nodes | Local permission cache with Redis-backed invalidation |
+| Autonomy tracker entries     | 10K agents         | Shard autonomy data by agent_id            | Autonomous agent registry with lazy loading           |
+| Authorization audit volume   | 500K decisions/day | Partition audit log by date                | Archive to cold storage after 90 days                 |
+| Permission level granularity | 4 levels           | Add resource-type-specific sub-levels      | Dynamic permission level framework                    |
 
 ---
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
-|----------|-----------|------------|----------|
-| Permission Engine unavailable | Request returns 5xx or timeout | Fall back to cached permission decision (stale-by-5min) | Retry with backoff; alert on-call |
-| Ambiguous permission levels (subject has multiple) | Subject assigned to two levels with conflicting scope | Resolve to least-privileged level automatically | Log conflict; admin reviews assignment |
-| Autonomy tracker inconsistency | Approval count vs. total actions mismatch | Recalculate from autonomy_votes table | Background job reconciles nightly |
-| Attribute source failure | Auth provider or resource service timeout | Use cached attributes if available; deny if attributes missing | Alert; re-evaluate when source recovers |
+| Scenario                                           | Detection                                             | Mitigation                                                     | Recovery                                |
+| -------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------- |
+| Permission Engine unavailable                      | Request returns 5xx or timeout                        | Fall back to cached permission decision (stale-by-5min)        | Retry with backoff; alert on-call       |
+| Ambiguous permission levels (subject has multiple) | Subject assigned to two levels with conflicting scope | Resolve to least-privileged level automatically                | Log conflict; admin reviews assignment  |
+| Autonomy tracker inconsistency                     | Approval count vs. total actions mismatch             | Recalculate from autonomy_votes table                          | Background job reconciles nightly       |
+| Attribute source failure                           | Auth provider or resource service timeout             | Use cached attributes if available; deny if attributes missing | Alert; re-evaluate when source recovers |
 
 ---
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
-|--------|-----------------|----------|-----------|
-| Authorization decision latency | > 15ms p95 | Warning | Authorization > Latency |
-| Autonomy revocation rate | > 5% of auto-execute actions | Warning | Authorization > Autonomy |
-| Denied requests rate | > 10% of total | Info | Authorization > Decisions |
-| Permission cache hit ratio | < 85% | Warning | Authorization > Cache |
-| Unresolved permission conflicts | > 0 | Critical | Authorization > Conflicts |
+| Metric                          | Alert Threshold              | Severity | Dashboard                 |
+| ------------------------------- | ---------------------------- | -------- | ------------------------- |
+| Authorization decision latency  | > 15ms p95                   | Warning  | Authorization > Latency   |
+| Autonomy revocation rate        | > 5% of auto-execute actions | Warning  | Authorization > Autonomy  |
+| Denied requests rate            | > 10% of total               | Info     | Authorization > Decisions |
+| Permission cache hit ratio      | < 85%                        | Warning  | Authorization > Cache     |
+| Unresolved permission conflicts | > 0                          | Critical | Authorization > Conflicts |
 
 ---
 
 ## Deployment
 
-| Environment | Method | Trigger | Verification |
-|-------------|--------|---------|--------------|
-| Development | Permission Engine as NestJS module | Git push | Unit tests pass for all permission levels |
-| Staging | Deployed with API service | PR merged to main | Integration tests: all (subject, resource, action) combinations |
-| Production | Distributed PE nodes (4+ replicas) | Tagged release via CI/CD | Canary: verify decision parity against known test matrix |
+| Environment | Method                                            | Trigger                  | Verification                                                    |
+| ----------- | ------------------------------------------------- | ------------------------ | --------------------------------------------------------------- |
+| Development | Permission Engine as FastAPI dependency injection | Git push                 | Unit tests pass for all permission levels                       |
+| Staging     | Deployed with API service                         | PR merged to main        | Integration tests: all (subject, resource, action) combinations |
+| Production  | Distributed PE nodes (4+ replicas)                | Tagged release via CI/CD | Canary: verify decision parity against known test matrix        |
 
 ---
 
 ## Configuration
 
-| Variable | Purpose | Default | Required |
-|----------|---------|---------|----------|
-| `AUTHZ_EVALUATION_TIMEOUT` | Max time for permission evaluation | 1000ms | Yes |
-| `AUTHZ_CACHE_TTL` | Cached permission decision TTL | 300s | Yes |
-| `AUTHZ_AUTONOMY_APPROVAL_THRESHOLD` | Approval % for earned autonomy | 0.95 | Yes |
-| `AUTHZ_AUTONOMY_MIN_ACTIONS` | Minimum actions before earning auto-execute | 50 | Yes |
-| `AUTHZ_AUDIT_RETENTION_DAYS` | Audit log retention in hot storage | 90 | No |
+| Variable                            | Purpose                                     | Default | Required |
+| ----------------------------------- | ------------------------------------------- | ------- | -------- |
+| `AUTHZ_EVALUATION_TIMEOUT`          | Max time for permission evaluation          | 1000ms  | Yes      |
+| `AUTHZ_CACHE_TTL`                   | Cached permission decision TTL              | 300s    | Yes      |
+| `AUTHZ_AUTONOMY_APPROVAL_THRESHOLD` | Approval % for earned autonomy              | 0.95    | Yes      |
+| `AUTHZ_AUTONOMY_MIN_ACTIONS`        | Minimum actions before earning auto-execute | 50      | Yes      |
+| `AUTHZ_AUDIT_RETENTION_DAYS`        | Audit log retention in hot storage          | 90      | No       |
 
 ---
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
-|------------|--------|------------|-------------------|
-| Permission levels are not resource-type-specific | "Full" access to documents means same level as "Full" to connectors | Define per-resource-type allowed action lists | Add resource-type-aware sub-levels |
-| Autonomy is a binary state (earned/not) | Graduated trust levels not supported | Use action-type-based earned status (read earned ≠ write earned) | Continuous trust scoring with graduated autonomy |
-| No cross-workspace authorization | Users with multiple workspaces have separate permission contexts | User switches workspace explicitly in UI | Add workspace-context delegation |
-| Authorization not enforced at data layer for direct DB access | Internal tools or scripts bypass permission checks | Use database roles matching service identity | Enforce RLS with permission context propagation |
+| Limitation                                                    | Impact                                                              | Workaround                                                       | Future Resolution                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
+| Permission levels are not resource-type-specific              | "Full" access to documents means same level as "Full" to connectors | Define per-resource-type allowed action lists                    | Add resource-type-aware sub-levels               |
+| Autonomy is a binary state (earned/not)                       | Graduated trust levels not supported                                | Use action-type-based earned status (read earned ≠ write earned) | Continuous trust scoring with graduated autonomy |
+| No cross-workspace authorization                              | Users with multiple workspaces have separate permission contexts    | User switches workspace explicitly in UI                         | Add workspace-context delegation                 |
+| Authorization not enforced at data layer for direct DB access | Internal tools or scripts bypass permission checks                  | Use database roles matching service identity                     | Enforce RLS with permission context propagation  |
 
 ---
 
@@ -330,13 +346,13 @@ curl -X GET "https://api.Vaeloom.ai/v1/users/user_42/permissions" \
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| Resource-type-aware permission sub-levels | High | Medium | Q1 2027 |
-| Continuous trust scoring for agent autonomy | Medium | High | Q2 2027 |
-| Cross-workspace permission delegation | Medium | Medium | Q4 2026 |
-| Data-layer authorization enforcement via RLS | High | Medium | Q3 2026 |
-| Permission simulation sandbox for admins | Low | Low | Q4 2026 |
+| Improvement                                  | Priority | Complexity | Timeline |
+| -------------------------------------------- | -------- | ---------- | -------- |
+| Resource-type-aware permission sub-levels    | High     | Medium     | Q1 2027  |
+| Continuous trust scoring for agent autonomy  | Medium   | High       | Q2 2027  |
+| Cross-workspace permission delegation        | Medium   | Medium     | Q4 2026  |
+| Data-layer authorization enforcement via RLS | High     | Medium     | Q3 2026  |
+| Permission simulation sandbox for admins     | Low      | Low        | Q4 2026  |
 
 ---
 

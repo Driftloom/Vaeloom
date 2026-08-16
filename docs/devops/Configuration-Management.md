@@ -1,29 +1,45 @@
 ﻿# Configuration Management
 
-> **Purpose:** Define the configuration management strategy, tooling, and standards for all Vaeloom services across environments
-> **Status:** ðŸ†• New
-> **Owner:** DevOps Team
-> **Last Updated:** 2026-07-13
+> **Purpose:** Define the configuration management strategy, tooling, and
+> standards for all Vaeloom services across environments **Status:** ðŸ†• New
+> **Owner:** DevOps Team **Last Updated:** 2026-07-13
 
 ---
 
 ## Overview
 
-Vaeloom's configuration management system governs how application settings, secrets, feature flags, and environment variables are defined, validated, distributed, and consumed across the entire service mesh. As a multi-service platform spanning `apps/web` (Next.js), `apps/api` (Node.js/Express), `apps/ai-service` (FastAPI), `apps/memory` (vector/graph store), and supporting infrastructure (Redis, Postgres, RabbitMQ), a cohesive configuration strategy is essential to prevent drift, reduce deployment failures, and ensure security.
+Vaeloom's configuration management system governs how application settings,
+secrets, feature flags, and environment variables are defined, validated,
+distributed, and consumed across the entire service mesh. As a platform spanning
+`apps/web` (Next.js) and `apps/backend` (FastAPI, including all AI logic), with
+supporting infrastructure (Redis, Postgres), a cohesive configuration strategy
+is essential to prevent drift, reduce deployment failures, and ensure security.
 
-This document defines the four-layer config pipeline — **Source → Validation → Distribution → Injection → Runtime** — covering every environment from local development to production. It establishes a centralized configuration schema registry, environment variable conventions, ConfigMap definitions, feature flag semantics, and secret management practices.
+This document defines the four-layer config pipeline — **Source → Validation →
+Distribution → Injection → Runtime** — covering every environment from local
+development to production. It establishes a centralized configuration schema
+registry, environment variable conventions, ConfigMap definitions, feature flag
+semantics, and secret management practices.
 
-Readers should understand Vaeloom's service architecture and deployment environments before reading. Configuration management is critical because misconfiguration is the leading cause of production incidents in distributed systems, and secrets exposure is the most common vector for security breaches.
+Readers should understand Vaeloom's service architecture and deployment
+environments before reading. Configuration management is critical because
+misconfiguration is the leading cause of production incidents in distributed
+systems, and secrets exposure is the most common vector for security breaches.
 
 ---
 
 ## Goals
 
-- Establish a single source of truth for all configuration across environments with clear inheritance and override rules
-- Automate config validation at CI time to catch missing or malformed values before deployment
-- Secure secrets through vault integration, encryption, and strict access controls — ensuring secrets never appear in logs, env dumps, or error messages
-- Enable gradual feature rollouts with percentage-based targeting, A/B testing, and kill switches
-- Provide auditability and observability through config change logging, drift detection, and flag usage telemetry
+- Establish a single source of truth for all configuration across environments
+  with clear inheritance and override rules
+- Automate config validation at CI time to catch missing or malformed values
+  before deployment
+- Secure secrets through vault integration, encryption, and strict access
+  controls — ensuring secrets never appear in logs, env dumps, or error messages
+- Enable gradual feature rollouts with percentage-based targeting, A/B testing,
+  and kill switches
+- Provide auditability and observability through config change logging, drift
+  detection, and flag usage telemetry
 
 ---
 
@@ -43,17 +59,21 @@ Readers should understand Vaeloom's service architecture and deployment environm
 ### Out of Scope
 
 - Application-level business logic configuration (routing, ML model params)
-- Database connection pooling configuration details (covered in [`../Architecture/Storage.md`](../Architecture/Storage.md))
-- TLS certificate management and mTLS configuration (covered in [`../Security/IAM.md`](../Security/IAM.md))
+- Database connection pooling configuration details (covered in
+  [`../Architecture/Storage.md`](../Architecture/Storage.md))
+- TLS certificate management and mTLS configuration (covered in
+  [`../Security/IAM.md`](../Security/IAM.md))
 - CI/CD pipeline configuration itself (covered in [`./CI-CD.md`](./CI-CD.md))
-- Infrastructure provisioning and Terraform variable management (covered in [`./Terraform.md`](./Terraform.md))
-- Docker build args and Compose file specifications (covered in [`./Docker.md`](./Docker.md))
+- Infrastructure provisioning and Terraform variable management (covered in
+  [`./Terraform.md`](./Terraform.md))
+- Docker build args and Compose file specifications (covered in
+  [`./Docker.md`](./Docker.md))
 
 ---
 
 ## Architecture
 
-```mermaid
+````mermaid
 graph LR
     classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
     classDef valid fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
@@ -89,10 +109,8 @@ graph LR
 
     subgraph Runtime["5. Runtime"]
         SERVICE_WEB["apps/web<br/>Next.js"]
-        SERVICE_API["apps/api<br/>Express"]
-        SERVICE_AI["apps/ai-service<br/>FastAPI"]
-        SERVICE_MEM["apps/memory<br/>Vector/Graph"]
-        INFRA["Infrastructure<br/>Redis / Postgres / RabbitMQ"]
+        SERVICE_API["apps/backend<br/>FastAPI"]
+        INFRA["Infrastructure<br/>Redis / Postgres"]
     end
 
     ENV_FILES --> CI_VAL
@@ -113,22 +131,16 @@ graph LR
 
     APP_ENV --> SERVICE_WEB
     APP_ENV --> SERVICE_API
-    APP_ENV --> SERVICE_AI
-    APP_ENV --> SERVICE_MEM
     APP_ENV --> INFRA
 
     CONFIG_CLIENT --> SERVICE_WEB
     CONFIG_CLIENT --> SERVICE_API
-    CONFIG_CLIENT --> SERVICE_AI
 
     FLAG_CLIENT --> SERVICE_WEB
     FLAG_CLIENT --> SERVICE_API
-    FLAG_CLIENT --> SERVICE_AI
 
     SERVICE_WEB --> RUNTIME_VAL
     SERVICE_API --> RUNTIME_VAL
-    SERVICE_AI --> RUNTIME_VAL
-    SERVICE_MEM --> RUNTIME_VAL
 
     CONFIG_MAP --> FEATURE_FLAGS
 
@@ -136,7 +148,7 @@ graph LR
     class SCHEMA_REGISTRY,CI_VAL,RUNTIME_VAL valid
     class K8S_CONFIG,ENV_INJECT,SIDE_CAR dist
     class APP_ENV,CONFIG_CLIENT,FLAG_CLIENT inject
-    class SERVICE_WEB,SERVICE_API,SERVICE_AI,SERVICE_MEM,INFRA runtime
+    class SERVICE_WEB,SERVICE_API,INFRA runtime
 ```text
 
 > **Diagram:** Configuration pipeline flows from four source types through CI validation, then distribution via Kubernetes/Helm/Docker Compose, injection into process environments and config clients, and finally consumed by all Vaeloom services at runtime.
@@ -174,7 +186,7 @@ Loading order (last wins): `.env` → `.env.<environment>` → `.env.local`
 Kubernetes ConfigMaps are the primary distribution mechanism for non-sensitive config in staging and production. Each service has a dedicated ConfigMap.
 
 ```yaml
-# apps/api/config/staging.yaml
+# apps/backend/config/staging.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -183,7 +195,7 @@ metadata:
 data:
   NODE_ENV: "staging"
   LOG_LEVEL: "info"
-  API_PORT: "4000"
+  API_PORT: "8000"
   RATE_LIMIT_WINDOW_MS: "60000"
   RATE_LIMIT_MAX_REQUESTS: "100"
   REDIS_HOST: "redis.Vaeloom-staging.svc.cluster.local"
@@ -237,7 +249,7 @@ graph BT
 | Variable | Local | Dev | Staging | Production |
 |----------|-------|-----|---------|------------|
 | `LOG_LEVEL` | `debug` | `debug` | `info` | `warn` |
-| `API_PORT` | `4000` | `4000` | `4000` | `8080` |
+| `API_PORT` | `8000` | `8000` | `8000` | `8080` |
 | `RATE_LIMIT_MAX` | `1000` | `500` | `200` | `100` |
 | `REDIS_HOST` | `localhost` | `redis.dev` | `redis.staging` | `redis.prod` |
 | `DB_POOL_SIZE` | `5` | `10` | `20` | `50` |
@@ -278,7 +290,7 @@ graph BT
       "type": "integer",
       "minimum": 1024,
       "maximum": 65535,
-      "default": 4000,
+      "default": 8000,
       "description": "HTTP server listen port"
     },
     "RATE_LIMIT_WINDOW_MS": {
@@ -367,7 +379,7 @@ import { z } from "zod";
 const ConfigSchema = z.object({
   NODE_ENV: z.enum(["local", "dev", "staging", "production", "test"]),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
-  API_PORT: z.coerce.number().int().min(1024).max(65535).default(4000),
+  API_PORT: z.coerce.number().int().min(1024).max(65535).default(8000),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().min(1).default(100),
   REDIS_HOST: z.string().min(1),
@@ -396,7 +408,7 @@ export function validateConfig(env: Record<string, string | undefined>): Vaeloom
 ```text
 
 ```python
-# apps/ai-service/app/config.py
+# apps/backend/app/config.py
 from pydantic import BaseSettings, Field, validator
 
 class VaeloomSettings(BaseSettings):
@@ -658,10 +670,10 @@ vault kv rollback -version=5 secret/Vaeloom/production/api/db
 
 ## Examples
 
-### Full Config — `apps/api`
+### Full Config — `apps/backend`
 
 ```yaml
-# apps/api/config/production.yaml
+# apps/backend/config/production.yaml
 NODE_ENV: "production"
 LOG_LEVEL: "warn"
 API_PORT: 8080
@@ -702,10 +714,10 @@ OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.Vaeloom-prod.svc.cluster.loc
 SENTRY_DSN: "https://sentry-key@sentry.Vaeloom.ai/prod"
 ```text
 
-### Full Config — `apps/ai-service`
+### Full Config — `apps/backend` (AI section)
 
 ```yaml
-# apps/ai-service/config/production.yaml
+# apps/backend/config/production-ai.yaml
 NODE_ENV: "production"
 LOG_LEVEL: "warn"
 API_PORT: 8000
@@ -803,7 +815,7 @@ const dbPool = config.DB_POOL_SIZE;
 ```text
 
 ```python
-# apps/ai-service/app/main.py
+# apps/backend/app/main.py
 from app.config import VaeloomSettings
 
 settings = VaeloomSettings()
@@ -931,3 +943,4 @@ sequenceDiagram
 - [`../Architecture/Microservices.md`](../Architecture/Microservices.md) — Service architecture and inter-service communication
 - [`../Engineering/Implementation/16-deployment-infrastructure.md`](../Engineering/Implementation/16-deployment-infrastructure.md) — Detailed deployment infrastructure design
 - [`../Testing/Security-Testing.md`](../Testing/Security-Testing.md) — Security testing practices including config injection tests
+````

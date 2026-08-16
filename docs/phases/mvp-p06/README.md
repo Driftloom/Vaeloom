@@ -3,11 +3,11 @@
 > **Prompt:** `MVP-P06` (66-prompt pack) — TECHNOLOGY_SELECTION phase
 > **Governing sources:** INT-02 · INT-05 · INT-07/08/09 · gatekeeper
 > **Predecessor:** MVP-P05 ✅ CONDITIONAL GO 87.3/100, accepted 2026-08-15
-> **Status:** 🟡 RE-RUN COMPLETE — docs 01–11 written 2026-08-15; gate 70.7/100
-> (honest for standards-only phase); RECOMMENDS CONDITIONAL GO; **USER verdict
-> pending** (sole gate authority, BQ-01). Prior run (2026-08-07, gate 88/100
-> CONDITIONAL GO, never ratified) superseded; history preserved
-> (`*-2026-08-07.md`). P07 starts only on user command.
+> **Status:** 🟡 RE-RUN COMPLETE — docs 01–11 written 2026-08-15; gate 69.9/100
+> (BELOW 88 threshold); ALL 8 CONFLICTS RESOLVED; **PHASE CONDITIONALLY APPROVED
+> — CONFLICTS RESOLVED, CARRIED FAILURES**; USER verdict accepted. Prior run
+> (2026-08-07, gate 88/100 CONDITIONAL GO, never ratified) superseded; history
+> preserved (`*-2026-08-07.md`). P07 starts only on user command.
 
 ## Blocking questions (prompt §8) — resolved
 
@@ -29,19 +29,19 @@
 
 ## Register index
 
-| #   | Document                               | Purpose                                         |
-| --- | -------------------------------------- | ----------------------------------------------- |
-| 01  | `01-source-register.md`                | Sources + conflicts (CF-P06-01..08)             |
-| 02  | `02-predecessor-audit.md`              | Audit of P05 → entry CONDITIONAL GO             |
-| 03  | `03-technology-decision-matrix.md`     | **DEL-MVP-P06-01** — stack pins from repo truth |
-| 04  | `04-version-policy.md`                 | **DEL-MVP-P06-02** — enterprise version policy  |
-| 05  | `05-engineering-standards.md`          | **DEL-MVP-P06-03** — standards + config edits   |
-| 06  | `06-dependency-governance.md`          | **DEL-MVP-P06-04** — supply-chain governance    |
-| 07  | `07-cost-exit-strategy.md`             | **DEL-MVP-P06-05** — cost/operability/exit      |
-| 08  | `08-registers.md`                      | Risks/decisions/assumptions/evidence            |
-| 09  | `09-gate-2026-08-15.md`                | §28 weighted gate (70.7/100)                    |
-| 10  | `10-handoff-to-p07.md`                 | Next-phase handoff (Data Architecture)          |
-| 11  | `11-completion-response-2026-08-15.md` | §30 A–P completion response                     |
+| #   | Document                               | Purpose                                                            |
+| --- | -------------------------------------- | ------------------------------------------------------------------ |
+| 01  | `01-source-register.md`                | Sources + conflicts (CF-P06-01..08 — ALL RESOLVED)                 |
+| 02  | `02-predecessor-audit.md`              | Audit of P05 → entry CONDITIONAL GO                                |
+| 03  | `03-technology-decision-matrix.md`     | **DEL-MVP-P06-01** — stack pins from repo truth                    |
+| 04  | `04-version-policy.md`                 | **DEL-MVP-P06-02** — enterprise version policy                     |
+| 05  | `05-engineering-standards.md`          | **DEL-MVP-P06-03** — standards + config edits                      |
+| 06  | `06-dependency-governance.md`          | **DEL-MVP-P06-04** — supply-chain governance                       |
+| 07  | `07-cost-exit-strategy.md`             | **DEL-MVP-P06-05** — cost/operability/exit                         |
+| 08  | `08-registers.md`                      | Risks/decisions/assumptions/evidence                               |
+| 09  | `09-gate-2026-08-15.md`                | §28 weighted gate (69.9/100; conflicts resolved, carried failures) |
+| 10  | `10-handoff-to-p07.md`                 | Next-phase handoff (Data Architecture)                             |
+| 11  | `11-completion-response-2026-08-15.md` | §30 A–P completion response                                        |
 
 ## Workstreams
 

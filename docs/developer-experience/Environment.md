@@ -39,17 +39,20 @@ graph TD
     class C1,C2,C3 config
 ```
 
-> **Diagram:** Environment architecture — **3 environment types** (dev/staging/prod) with configuration sources → **key variables** (core, database, auth, AI, storage, connectors) → **environment-specific config** (log level, rate limits vary by environment).
+> **Diagram:** Environment architecture — **3 environment types**
+> (dev/staging/prod) with configuration sources → **key variables** (core,
+> database, auth, AI, storage, connectors) → **environment-specific config**
+> (log level, rate limits vary by environment).
 
 ---
 
 ## Environment Types
 
-| Environment | Purpose | Configuration Source |
-|-------------|---------|---------------------|
-| Development | Local development | `.env` file (gitignored) |
-| Staging | Integration testing | PaaS secrets / CI variables |
-| Production | Live user traffic | Secrets manager |
+| Environment | Purpose             | Configuration Source        |
+| ----------- | ------------------- | --------------------------- |
+| Development | Local development   | `.env` file (gitignored)    |
+| Staging     | Integration testing | PaaS secrets / CI variables |
+| Production  | Live user traffic   | Secrets manager             |
 
 ## Environment Variables
 
@@ -60,7 +63,7 @@ ENVIRONMENT=development
 LOG_LEVEL=debug
 
 # Database
-DATABASE_URL=postgresql://Vaeloom:Vaeloom@localhost:5432/Vaeloom_db
+DATABASE_URL=postgresql+asyncpg://Vaeloom:Vaeloom@localhost:5432/Vaeloom_db
 
 # Redis
 REDIS_URL=redis://localhost:6379
@@ -111,86 +114,85 @@ PORT=3000
 
 ## Environment-Specific Config
 
-```typescript
-// apps/api/src/config/index.ts
-const config = {
-  development: {
-    databaseUrl: process.env.DATABASE_URL,
-    logLevel: 'debug',
-    rateLimitMultiplier: 2, // Double limits in dev
-  },
-  staging: {
-    databaseUrl: process.env.DATABASE_URL,
-    logLevel: 'info',
-    rateLimitMultiplier: 1.5,
-  },
-  production: {
-    databaseUrl: process.env.DATABASE_URL,
-    logLevel: 'info',
-    rateLimitMultiplier: 1,
-  },
-}[process.env.ENVIRONMENT || 'development'];
+```python
+# apps/backend/config.py
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    ENVIRONMENT: str = "development"
+    DATABASE_URL: str
+    REDIS_URL: str | None = None
+    LOG_LEVEL: str = "debug"
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()
 ```
 
 ## Common Mistakes
 
-| Mistake | Consequence |
-|---------|-------------|
-| Committing `.env` files to version control | A committed `.env` file exposes API keys, database credentials, and secrets to everyone with repository access — it's the most common source of credential leaks |
-| Using production API keys in local development | A local development error (infinite loop, accidental delete) with a production API key can incur real costs or modify production data — API keys should be scoped per environment |
-| Sharing `.env` files via unencrypted channels | Sending `.env` files over Slack, email, or chat exposes secrets in transport logs — use a secrets manager or encrypted sharing instead |
-| Hardcoding fallback values when environment variables are missing | A fallback like `ANTHROPIC_API_KEY` with a default fake key silently uses the fake key — prefer failing fast with a clear error message |
+| Mistake                                                           | Consequence                                                                                                                                                                       |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Committing `.env` files to version control                        | A committed `.env` file exposes API keys, database credentials, and secrets to everyone with repository access — it's the most common source of credential leaks                  |
+| Using production API keys in local development                    | A local development error (infinite loop, accidental delete) with a production API key can incur real costs or modify production data — API keys should be scoped per environment |
+| Sharing `.env` files via unencrypted channels                     | Sending `.env` files over Slack, email, or chat exposes secrets in transport logs — use a secrets manager or encrypted sharing instead                                            |
+| Hardcoding fallback values when environment variables are missing | A fallback like `ANTHROPIC_API_KEY` with a default fake key silently uses the fake key — prefer failing fast with a clear error message                                           |
 
 ## Best Practices
 
-| Practice | Why |
-|----------|-----|
-| Keep `.env` in `.gitignore` and never commit it | The `.env` file is in `.gitignore` by default — verify with `git status` before committing. Use `.env.example` as the template |
-| Use separate API keys for development, staging, and production | Dev keys should have rate limits and no access to production data — API key scoping prevents cross-environment accidents |
-| Use a secrets manager for sharing credentials | For team environments, use a vault or secrets manager (1Password CLI, Doppler, AWS Secrets Manager) — never share `.env` files directly |
-| Fail fast with clear error messages for missing variables | `if (!DATABASE_URL) throw new Error('DATABASE_URL is required')` — catching missing config early prevents confusing connection errors at runtime |
+| Practice                                                       | Why                                                                                                                                              |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Keep `.env` in `.gitignore` and never commit it                | The `.env` file is in `.gitignore` by default — verify with `git status` before committing. Use `.env.example` as the template                   |
+| Use separate API keys for development, staging, and production | Dev keys should have rate limits and no access to production data — API key scoping prevents cross-environment accidents                         |
+| Use a secrets manager for sharing credentials                  | For team environments, use a vault or secrets manager (1Password CLI, Doppler, AWS Secrets Manager) — never share `.env` files directly          |
+| Fail fast with clear error messages for missing variables      | `if (!DATABASE_URL) throw new Error('DATABASE_URL is required')` — catching missing config early prevents confusing connection errors at runtime |
 
 ## Security Considerations
 
-| Consideration | Mitigation |
-|--------------|-----------|
-| .env file permissions | The `.env` file should have file permissions `600` (owner read/write only) — prevent other processes on the same machine from reading secrets |
+| Consideration                        | Mitigation                                                                                                                                               |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| .env file permissions                | The `.env` file should have file permissions `600` (owner read/write only) — prevent other processes on the same machine from reading secrets            |
 | Environment variable injection in CI | CI/CD pipeline variables can be printed in logs or leaked through build artifacts — mark sensitive variables as "masked" or "secret" in CI configuration |
-| Local environment isolation | Each project should use its own `.env` file — shared dotfiles (`.bashrc`, `.zshrc`) with global environment variables create conflicts between projects |
+| Local environment isolation          | Each project should use its own `.env` file — shared dotfiles (`.bashrc`, `.zshrc`) with global environment variables create conflicts between projects  |
 
 ## Performance Considerations
 
-| Consideration | Approach |
-|--------------|----------|
-| Environment variable lookups are not free | Reading `process.env` thousands of times per request adds overhead — cache env vars at startup in a config object, not per-request lookups |
+| Consideration                                | Approach                                                                                                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Environment variable lookups are not free    | Reading `process.env` thousands of times per request adds overhead — cache env vars at startup in a config object, not per-request lookups                                           |
 | Development vs production config differences | Dev config uses debug logging and higher rate limits — ensure the config system correctly reads `NODE_ENV` and doesn't fall through to a default that could apply the wrong settings |
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
-|----------|-----------|------------|----------|
-| Missing required environment variable | App crashes on startup with clear error message | Add startup validation that fails fast with specific variable name | Set the missing variable in `.env` and restart |
-| Wrong environment values in production | Unexpected behavior or data loss | Validate `NODE_ENV` against deployment environment | Correct variable and redeploy; audit for data impact |
-| Secret rotation without updating config | Auth failures across services | Use secrets manager with auto-rotation; cache with TTL | Check all services for stale secrets; trigger rotation webhook |
+| Scenario                                | Detection                                       | Mitigation                                                         | Recovery                                                       |
+| --------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------- |
+| Missing required environment variable   | App crashes on startup with clear error message | Add startup validation that fails fast with specific variable name | Set the missing variable in `.env` and restart                 |
+| Wrong environment values in production  | Unexpected behavior or data loss                | Validate `NODE_ENV` against deployment environment                 | Correct variable and redeploy; audit for data impact           |
+| Secret rotation without updating config | Auth failures across services                   | Use secrets manager with auto-rotation; cache with TTL             | Check all services for stale secrets; trigger rotation webhook |
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| `.env` file accidentally committed to git | High | Critical | `.env` in `.gitignore` enforced by CI pre-commit hook; `git secrets` scan in PR pipeline |
-| Production credentials used in local development | Medium | Critical | Environment-specific API keys with scope limits; `ENVIRONMENT` must match key's allowed environment |
-| Environment variable conflicts across projects | Medium | Medium | Use project-prefixed variable names (`Vaeloom_DATABASE_URL` vs bare `DATABASE_URL`) |
+| Risk                                             | Likelihood | Impact   | Mitigation                                                                                          |
+| ------------------------------------------------ | ---------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `.env` file accidentally committed to git        | High       | Critical | `.env` in `.gitignore` enforced by CI pre-commit hook; `git secrets` scan in PR pipeline            |
+| Production credentials used in local development | Medium     | Critical | Environment-specific API keys with scope limits; `ENVIRONMENT` must match key's allowed environment |
+| Environment variable conflicts across projects   | Medium     | Medium   | Use project-prefixed variable names (`Vaeloom_DATABASE_URL` vs bare `DATABASE_URL`)                 |
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
-|------------|--------|------------|-------------------|
-| .env.example must be manually updated | New variables may be missing from template | Add checklist item in PR template; automate .env.example generation from config schema | Auto-generate .env.example from validated config schema (v1.5) |
-| No per-developer environment isolation | Developers working on same machine share env state | Use separate `.env.local` overrides | Dev container with isolated environment per workspace (V2) |
+| Limitation                             | Impact                                             | Workaround                                                                             | Future Resolution                                              |
+| -------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| .env.example must be manually updated  | New variables may be missing from template         | Add checklist item in PR template; automate .env.example generation from config schema | Auto-generate .env.example from validated config schema (v1.5) |
+| No per-developer environment isolation | Developers working on same machine share env state | Use separate `.env.local` overrides                                                    | Dev container with isolated environment per workspace (V2)     |
 
 ## Overview
 
-The Environment Configuration document defines Vaeloom's environment variable standards across development, staging, and production. It covers the required variables for each service, environment-specific configuration differences (log levels, rate limits), security practices for secret management, and the `.env.example` template that serves as the onboarding starting point.
+The Environment Configuration document defines Vaeloom's environment variable
+standards across development, staging, and production. It covers the required
+variables for each service, environment-specific configuration differences (log
+levels, rate limits), security practices for secret management, and the
+`.env.example` template that serves as the onboarding starting point.
 
 ---
 
@@ -209,7 +211,8 @@ The Environment Configuration document defines Vaeloom's environment variable st
 ### In Scope
 
 - Environment types (development, staging, production) and configuration sources
-- Key environment variables across all services (core, database, auth, AI, storage, connectors)
+- Key environment variables across all services (core, database, auth, AI,
+  storage, connectors)
 - Environment-specific configuration differences
 - .env.example template and conventions
 - Security practices for secrets and environment isolation
@@ -225,11 +228,11 @@ The Environment Configuration document defines Vaeloom's environment variable st
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| Auto-generate .env.example from validated config schema | High | Low | v1.5 (2027 H1) |
-| Dev container with isolated environment per workspace | Medium | Medium | V2 (2027 H2) |
-| Environment validation tool (`Vaeloom env check`) | Medium | Low | v1.5 (2027 H1) |
+| Improvement                                             | Priority | Complexity | Timeline       |
+| ------------------------------------------------------- | -------- | ---------- | -------------- |
+| Auto-generate .env.example from validated config schema | High     | Low        | v1.5 (2027 H1) |
+| Dev container with isolated environment per workspace   | Medium   | Medium     | V2 (2027 H2)   |
+| Environment validation tool (`Vaeloom env check`)       | Medium   | Low        | v1.5 (2027 H1) |
 
 ## Security Considerations
 
@@ -237,52 +240,69 @@ The Environment Configuration document defines Vaeloom's environment variable st
 
 ### Environment config validation
 
-```typescript
-// apps/api/src/config/index.ts
-function getConfig() {
-  const env = process.env.ENVIRONMENT || 'development';
-  const configs = {
-    development: { logLevel: 'debug', rateLimitMultiplier: 2 },
-    staging: { logLevel: 'info', rateLimitMultiplier: 1.5 },
-    production: { logLevel: 'info', rateLimitMultiplier: 1 },
-  };
-  const config = configs[env];
-  if (!config) throw new Error(`Unknown environment: ${env}`);
-  return config;
-}
+```python
+# apps/backend/config.py
+from pydantic_settings import BaseSettings
+from pydantic import model_validator
+
+class Settings(BaseSettings):
+    ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "debug"
+    RATE_LIMIT_MULTIPLIER: float = 2.0
+
+    @model_validator(mode="after")
+    def apply_env_defaults(self):
+        env_defaults = {
+            "development": {"LOG_LEVEL": "debug", "RATE_LIMIT_MULTIPLIER": 2.0},
+            "staging": {"LOG_LEVEL": "info", "RATE_LIMIT_MULTIPLIER": 1.5},
+            "production": {"LOG_LEVEL": "info", "RATE_LIMIT_MULTIPLIER": 1.0},
+        }
+        defaults = env_defaults.get(self.ENVIRONMENT, {})
+        for key, value in defaults.items():
+            if getattr(self, key) == Settings.model_fields[key].default:
+                setattr(self, key, value)
+        return self
+
+settings = Settings()
 ```
 
 ### Startup env validation
 
-```typescript
-// apps/api/src/main.ts
-const required = ['DATABASE_URL', 'REDIS_URL', 'AUTH_SECRET'];
-for (const key of required) {
-  if (!process.env[key]) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-}
+```python
+# apps/backend/main.py
+from backend.config import settings
+import sys
+
+required_vars = ["DATABASE_URL"]
+for var in required_vars:
+    if not getattr(settings, var, None):
+        print(f"Missing required environment variable: {var}", file=sys.stderr)
+        sys.exit(1)
 ```
 
 ### .env.example template
 
 ```bash
 # Copy to .env and fill values
-DATABASE_URL=postgresql://Vaeloom:Vaeloom@localhost:5432/Vaeloom_db
+DATABASE_URL=postgresql+asyncpg://Vaeloom:Vaeloom@localhost:5432/Vaeloom_db
 REDIS_URL=redis://localhost:6379
-AUTH_SECRET=your-dev-secret
-ANTHROPIC_API_KEY=sk-ant-your-key
+JWT_SECRET=your-dev-secret
+LLM_API_KEY=sk-ant-your-key
 LOG_LEVEL=debug
 ```
 
 ### Environment-aware API client
 
 ```typescript
+// apps/web/lib/api.ts
 function getApiUrl(): string {
-  switch (process.env.ENVIRONMENT) {
-    case 'production': return 'https://api.Vaeloom.dev';
-    case 'staging': return 'https://api.staging.Vaeloom.dev';
-    default: return 'http://localhost:4000';
+  switch (process.env.NEXT_PUBLIC_ENVIRONMENT) {
+    case 'production':
+      return 'https://api.Vaeloom.dev';
+    case 'staging':
+      return 'https://api.staging.Vaeloom.dev';
+    default:
+      return 'http://localhost:8000';
   }
 }
 ```

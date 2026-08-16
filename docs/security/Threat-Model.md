@@ -1,29 +1,32 @@
 ﻿# Threat Model
 
-> **Purpose:** Comprehensive threat model covering assets, attack vectors, and mitigations for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
-> **Owner:** Security Team
-> **Last Updated:** 2026-07-12
+> **Purpose:** Comprehensive threat model covering assets, attack vectors, and
+> mitigations for Vaeloom **Status:** âœ… Upgraded to enterprise quality
+> **Owner:** Security Team **Last Updated:** 2026-07-12
 
 ---
 
 ## Overview
 
-This threat model identifies and evaluates security threats to the Vaeloom platform, covering all layers from infrastructure to application logic. It follows the STRIDE methodology (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege).
+This threat model identifies and evaluates security threats to the Vaeloom
+platform, covering all layers from infrastructure to application logic. It
+follows the STRIDE methodology (Spoofing, Tampering, Repudiation, Information
+Disclosure, Denial of Service, Elevation of Privilege).
 
-The threat model should be reviewed quarterly and updated when significant architecture changes are made.
+The threat model should be reviewed quarterly and updated when significant
+architecture changes are made.
 
 ## Assets
 
-| Asset | Sensitivity | Description | CIA Triad Priority |
-|-------|-------------|-------------|-------------------|
-| User documents | **High** | Personal files, resumes, certificates | Confidentiality > Integrity > Availability |
-| Memory graph | **High** | Structured knowledge about the user | Confidentiality > Integrity > Availability |
-| OAuth access tokens | **Critical** | Access to connected services (Gmail, GitHub) | Confidentiality > Integrity > Availability |
-| AI model API keys | **Critical** | Access to Anthropic/OpenAI APIs | Confidentiality > Availability |
-| User credentials | **Critical** | Password hashes (delegated to auth provider) | Confidentiality > Integrity |
-| Agent action logs | **Medium** | Audit trail of system actions | Integrity > Availability |
-| Application source code | **Medium** | Proprietary business logic | Confidentiality > Integrity |
+| Asset                   | Sensitivity  | Description                                  | CIA Triad Priority                         |
+| ----------------------- | ------------ | -------------------------------------------- | ------------------------------------------ |
+| User documents          | **High**     | Personal files, resumes, certificates        | Confidentiality > Integrity > Availability |
+| Memory graph            | **High**     | Structured knowledge about the user          | Confidentiality > Integrity > Availability |
+| OAuth access tokens     | **Critical** | Access to connected services (Gmail, GitHub) | Confidentiality > Integrity > Availability |
+| AI model API keys       | **Critical** | Access to Anthropic/OpenAI APIs              | Confidentiality > Availability             |
+| User credentials        | **Critical** | Password hashes (delegated to auth provider) | Confidentiality > Integrity                |
+| Agent action logs       | **Medium**   | Audit trail of system actions                | Integrity > Availability                   |
+| Application source code | **Medium**   | Proprietary business logic                   | Confidentiality > Integrity                |
 
 ## Attack Surface
 
@@ -34,32 +37,32 @@ flowchart TB
         User_Agent[Malicious User]
         Compromised_User[Compromised User Account]
     end
-    
+
     subgraph "Public Services"
         LB[Load Balancer]
         Web[Web App]
         API[API Gateway]
         Connectors[Connector APIs]
     end
-    
+
     subgraph "Internal Services"
         AI[AI Service]
         Queue[Queue Workers]
     end
-    
+
     subgraph "Data Stores"
         DB[(PostgreSQL)]
         Redis[(Redis)]
         S3[(Object Storage)]
         SM[(Secrets Manager)]
     end
-    
+
     subgraph "External Dependencies"
         Claude[Claude API]
         GAuth[Gmail OAuth]
         GH[GitHub OAuth]
     end
-    
+
     Internet -->|HTTPS| LB
     LB --> Web
     Web --> API
@@ -72,7 +75,7 @@ flowchart TB
     Connectors --> GH
     User_Agent -.->|Auth Bypass| API
     Compromised_User -.->|Token Theft| Connectors
-    
+
     style Internet fill:#f44
     style User_Agent fill:#f44
     style Compromised_User fill:#f44
@@ -81,7 +84,10 @@ flowchart TB
 
 ## Threat Analysis (STRIDE)
 
-Below is the STRIDE threat-to-mitigation mapping. Each category shows attack vectors and the controls that counter them, followed by detailed tables. Cross-cutting mitigations (controls that address multiple STRIDE categories) are highlighted at the bottom.
+Below is the STRIDE threat-to-mitigation mapping. Each category shows attack
+vectors and the controls that counter them, followed by detailed tables.
+Cross-cutting mitigations (controls that address multiple STRIDE categories) are
+highlighted at the bottom.
 
 ```mermaid
 flowchart TB
@@ -162,55 +168,56 @@ flowchart TB
     LINK["â¬‡  See detailed tables below"]:::badge
 ```
 
-**Cross-cutting mitigations** are controls that protect against multiple STRIDE categories simultaneously — they're the highest-value security investments.
+**Cross-cutting mitigations** are controls that protect against multiple STRIDE
+categories simultaneously — they're the highest-value security investments.
 
 ### Spoofing
 
-| Threat | Severity | Vector | Mitigation |
-|--------|----------|--------|------------|
-| User identity spoofing | Critical | Stolen JWT, session hijacking | Short-lived tokens, httpOnly cookies, auth provider |
-| Agent identity spoofing | High | Agent impersonation | Internal mTLS for service-to-service |
-| Connector OAuth replay | High | Reused OAuth tokens | PKCE, state parameter verification |
+| Threat                  | Severity | Vector                        | Mitigation                                          |
+| ----------------------- | -------- | ----------------------------- | --------------------------------------------------- |
+| User identity spoofing  | Critical | Stolen JWT, session hijacking | Short-lived tokens, httpOnly cookies, auth provider |
+| Agent identity spoofing | High     | Agent impersonation           | Internal mTLS for service-to-service                |
+| Connector OAuth replay  | High     | Reused OAuth tokens           | PKCE, state parameter verification                  |
 
 ### Tampering
 
-| Threat | Severity | Vector | Mitigation |
-|--------|----------|--------|------------|
-| Memory graph corruption | Critical | Unauthorized memory write | Permission Engine on every write |
-| Document tampering | High | Direct object storage access | Signed URLs, S3 bucket policies |
-| Queue job tampering | Medium | Modified queue messages | Queue authentication, message validation |
+| Threat                  | Severity | Vector                       | Mitigation                               |
+| ----------------------- | -------- | ---------------------------- | ---------------------------------------- |
+| Memory graph corruption | Critical | Unauthorized memory write    | Permission Engine on every write         |
+| Document tampering      | High     | Direct object storage access | Signed URLs, S3 bucket policies          |
+| Queue job tampering     | Medium   | Modified queue messages      | Queue authentication, message validation |
 
 ### Repudiation
 
-| Threat | Severity | Vector | Mitigation |
-|--------|----------|--------|------------|
-| Agent action denial | Medium | Agent claims it didn't act | Append-only audit log with provenance |
-| User action denial | Low | User claims they didn't approve | Signed approval records |
+| Threat              | Severity | Vector                          | Mitigation                            |
+| ------------------- | -------- | ------------------------------- | ------------------------------------- |
+| Agent action denial | Medium   | Agent claims it didn't act      | Append-only audit log with provenance |
+| User action denial  | Low      | User claims they didn't approve | Signed approval records               |
 
 ### Information Disclosure
 
-| Threat | Severity | Vector | Mitigation |
-|--------|----------|--------|------------|
-| Cross-tenant data access | **Critical** | workspace_id manipulation | Scoped on every query, penetration tested |
-| OAuth token leakage | Critical | Secrets exposure | Secrets manager, never in logs |
-| Source document exposure | High | Unauthorized document read | Permission check on every document GET |
-| Memory query leakage | High | Agent returns unrelated data | Workspace-scoped RAG, no cross-tenant context |
+| Threat                   | Severity     | Vector                       | Mitigation                                    |
+| ------------------------ | ------------ | ---------------------------- | --------------------------------------------- |
+| Cross-tenant data access | **Critical** | workspace_id manipulation    | Scoped on every query, penetration tested     |
+| OAuth token leakage      | Critical     | Secrets exposure             | Secrets manager, never in logs                |
+| Source document exposure | High         | Unauthorized document read   | Permission check on every document GET        |
+| Memory query leakage     | High         | Agent returns unrelated data | Workspace-scoped RAG, no cross-tenant context |
 
 ### Denial of Service
 
-| Threat | Severity | Vector | Mitigation |
-|--------|----------|--------|------------|
-| API DoS | Medium | Request flooding | Rate limiting, auto-scaling |
-| AI model cost attack | High | Repeated expensive queries | Per-user rate limits, cost alerts |
-| Queue saturation | Medium | Job flooding | Queue depth alerts, prioritization |
+| Threat               | Severity | Vector                     | Mitigation                         |
+| -------------------- | -------- | -------------------------- | ---------------------------------- |
+| API DoS              | Medium   | Request flooding           | Rate limiting, auto-scaling        |
+| AI model cost attack | High     | Repeated expensive queries | Per-user rate limits, cost alerts  |
+| Queue saturation     | Medium   | Job flooding               | Queue depth alerts, prioritization |
 
 ### Elevation of Privilege
 
-| Threat | Severity | Vector | Mitigation |
-|--------|----------|--------|------------|
-| Agent autonomy escalation | High | Agent self-modifies permissions | Permission Engine immutable by agents |
-| Role escalation | High | User modifies own role | RBAC enforced at API layer, not client |
-| Plugin sandbox escape | Medium | Plugin accesses outside scope | Manifest enforcement at runtime |
+| Threat                    | Severity | Vector                          | Mitigation                             |
+| ------------------------- | -------- | ------------------------------- | -------------------------------------- |
+| Agent autonomy escalation | High     | Agent self-modifies permissions | Permission Engine immutable by agents  |
+| Role escalation           | High     | User modifies own role          | RBAC enforced at API layer, not client |
+| Plugin sandbox escape     | Medium   | Plugin accesses outside scope   | Manifest enforcement at runtime        |
 
 ## Attack Tree: Cross-Tenant Data Access
 
@@ -241,18 +248,16 @@ Goal: Access another user's memory
 ## Mitigation Implementation
 
 ```typescript
-// apps/api/src/permissions/tenant.guard.ts
+// apps/backend/permissions/tenant.py
 @Injectable()
 export class TenantGuard implements CanActivate {
-  constructor(
-    private permissionService: PermissionService,
-  ) {}
+  constructor(private permissionService: PermissionService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const workspaceId = this.extractWorkspaceId(request);
     const userId = request.user.id;
-    
+
     // workspace_id is extracted from auth token, NOT from request body
     // This prevents tenant spoofing via request manipulation
     if (workspaceId !== request.user.workspaceId) {
@@ -263,7 +268,7 @@ export class TenantGuard implements CanActivate {
       });
       throw new ForbiddenException('Access denied');
     }
-    
+
     return true;
   }
 }
@@ -271,42 +276,42 @@ export class TenantGuard implements CanActivate {
 
 ## Best Practices
 
-| Practice | Rationale |
-|----------|-----------|
-| workspace_id from token, not request | Prevents tenant spoofing |
-| Rate limit by user, not IP | Users can share IPs; rate limiting per user prevents abuse |
-| Never log sensitive data | Auth tokens, passwords, API keys must not appear in logs |
-| Fail closed on permission check | If permission engine is down, deny access — don't allow |
-| Audit every access attempt | Both allowed and denied — denied attempts may indicate attacks |
-| Test tenant isolation quarterly | Dedicated penetration testing for cross-tenant leakage |
+| Practice                             | Rationale                                                      |
+| ------------------------------------ | -------------------------------------------------------------- |
+| workspace_id from token, not request | Prevents tenant spoofing                                       |
+| Rate limit by user, not IP           | Users can share IPs; rate limiting per user prevents abuse     |
+| Never log sensitive data             | Auth tokens, passwords, API keys must not appear in logs       |
+| Fail closed on permission check      | If permission engine is down, deny access — don't allow        |
+| Audit every access attempt           | Both allowed and denied — denied attempts may indicate attacks |
+| Test tenant isolation quarterly      | Dedicated penetration testing for cross-tenant leakage         |
 
 ## Common Mistakes
 
-| Mistake | Consequence | Fix |
-|---------|-------------|-----|
-| Using request body for tenant ID | User can modify request to access other tenants | Extract from auth token |
-| Logging tokens for debugging | Tokens appear in log aggregation tools | Filter sensitive fields before logging |
-| Permissions as middleware only | Easy to forget on new endpoints | Global guard, not per-route |
-| Weak rate limiting (per IP) | Multiple users behind NAT share limit | Rate limit by user_id in token |
+| Mistake                          | Consequence                                     | Fix                                    |
+| -------------------------------- | ----------------------------------------------- | -------------------------------------- |
+| Using request body for tenant ID | User can modify request to access other tenants | Extract from auth token                |
+| Logging tokens for debugging     | Tokens appear in log aggregation tools          | Filter sensitive fields before logging |
+| Permissions as middleware only   | Easy to forget on new endpoints                 | Global guard, not per-route            |
+| Weak rate limiting (per IP)      | Multiple users behind NAT share limit           | Rate limit by user_id in token         |
 
 ## Security Considerations
 
-| Concern | Mitigation |
-|---------|------------|
-| AI model hallucinates personal data | Agents can only access their workspace's data |
-| Prompt injection bypasses guardrails | Input sanitization, output validation, QA gate |
-| Compromised admin account | MFA required for admin; anomaly detection on admin actions |
-| Third-party plugin vulnerability | Plugin sandboxing, manifest scope enforcement |
-| Insider threat | Access logging, quarterly access reviews |
+| Concern                              | Mitigation                                                 |
+| ------------------------------------ | ---------------------------------------------------------- |
+| AI model hallucinates personal data  | Agents can only access their workspace's data              |
+| Prompt injection bypasses guardrails | Input sanitization, output validation, QA gate             |
+| Compromised admin account            | MFA required for admin; anomaly detection on admin actions |
+| Third-party plugin vulnerability     | Plugin sandboxing, manifest scope enforcement              |
+| Insider threat                       | Access logging, quarterly access reviews                   |
 
 ## Threat Model Review Schedule
 
-| Review | Frequency | Trigger |
-|--------|-----------|---------|
-| Quarterly review | Every 3 months | Calendar |
-| Architecture change | On change | Major feature, new service |
-| Incident post-mortem | Per incident | Security incident |
-| Penetration test follow-up | Per test | Pen test findings |
+| Review                     | Frequency      | Trigger                    |
+| -------------------------- | -------------- | -------------------------- |
+| Quarterly review           | Every 3 months | Calendar                   |
+| Architecture change        | On change      | Major feature, new service |
+| Incident post-mortem       | Per incident   | Security incident          |
+| Penetration test follow-up | Per test       | Pen test findings          |
 
 ## Workflows
 
@@ -355,45 +360,64 @@ Result: Attack blocked at first check. Attacker gains nothing.
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Threat model becomes stale between quarterly reviews | Medium | High | Trigger automated checks in CI/CD for significant architecture changes |
-| Mitigation effectiveness drifts without automated verification | Medium | High | Include automated control tests in CI pipeline |
-| Manual attack tree analysis misses edge cases | Medium | Medium | Supplement with automated threat modeling tools quarterly |
-| New dependency introduces unpredicted attack surface | Medium | High | Dependency scan in CI; security review for each new external integration |
+| Risk                                                           | Likelihood | Impact | Mitigation                                                               |
+| -------------------------------------------------------------- | ---------- | ------ | ------------------------------------------------------------------------ |
+| Threat model becomes stale between quarterly reviews           | Medium     | High   | Trigger automated checks in CI/CD for significant architecture changes   |
+| Mitigation effectiveness drifts without automated verification | Medium     | High   | Include automated control tests in CI pipeline                           |
+| Manual attack tree analysis misses edge cases                  | Medium     | Medium | Supplement with automated threat modeling tools quarterly                |
+| New dependency introduces unpredicted attack surface           | Medium     | High   | Dependency scan in CI; security review for each new external integration |
 
 ---
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
-|------------|--------|------------|-------------------|
-| STRIDE analysis manually maintained | Threats may be missed between reviews | Automated tooling supplement | Continuous threat modeling pipeline (Phase 2) |
-| Attack trees limited to known goals | Unknown attack patterns not captured | Regular pentesting | Adversarial ML-based attack discovery (Phase 3) |
-| No threat intelligence feed integration | Zero-day threats not reflected | Manual review of security advisories | Automated threat intel feed ingestion (Phase 2) |
-| Mitigation tests are manual | Human error in verification | Scheduled manual testing | Policy-as-code in CI (Phase 2) |
+| Limitation                              | Impact                                | Workaround                           | Future Resolution                               |
+| --------------------------------------- | ------------------------------------- | ------------------------------------ | ----------------------------------------------- |
+| STRIDE analysis manually maintained     | Threats may be missed between reviews | Automated tooling supplement         | Continuous threat modeling pipeline (Phase 2)   |
+| Attack trees limited to known goals     | Unknown attack patterns not captured  | Regular pentesting                   | Adversarial ML-based attack discovery (Phase 3) |
+| No threat intelligence feed integration | Zero-day threats not reflected        | Manual review of security advisories | Automated threat intel feed ingestion (Phase 2) |
+| Mitigation tests are manual             | Human error in verification           | Scheduled manual testing             | Policy-as-code in CI (Phase 2)                  |
 
 ---
 
 ## Overview
 
-Vaeloom's threat model systematically identifies, classifies, and documents security threats across all platform components — web application, API service, AI service, database, storage, and third-party integrations. The model uses STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege) as the primary classification framework, with data flow diagrams (DFDs) mapping every trust boundary.
+Vaeloom's threat model systematically identifies, classifies, and documents
+security threats across all platform components — web application, API service,
+AI service, database, storage, and third-party integrations. The model uses
+STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of
+Service, Elevation of Privilege) as the primary classification framework, with
+data flow diagrams (DFDs) mapping every trust boundary.
 
-This document serves as the living reference for understanding where and how the Vaeloom platform could be attacked, what controls are in place, and what residual risks remain. The primary audience is security engineers, penetration testers, and developers building security-sensitive features.
+This document serves as the living reference for understanding where and how the
+Vaeloom platform could be attacked, what controls are in place, and what
+residual risks remain. The primary audience is security engineers, penetration
+testers, and developers building security-sensitive features.
 
-Within the Vaeloom platform, threat modeling is not a one-time exercise. Every significant feature addition or architecture change requires a threat modeling session where the team walks through the data flow, identifies new trust boundaries, and assesses whether existing controls cover the new risks.
+Within the Vaeloom platform, threat modeling is not a one-time exercise. Every
+significant feature addition or architecture change requires a threat modeling
+session where the team walks through the data flow, identifies new trust
+boundaries, and assesses whether existing controls cover the new risks.
 
-Enterprise-grade threat modeling requires a systematic, repeatable approach. Each threat is documented with its STRIDE category, affected component, attack vector, likelihood, impact, existing controls, and gap analysis. High-risk threats have explicit mitigation plans with assigned owners and deadlines.
+Enterprise-grade threat modeling requires a systematic, repeatable approach.
+Each threat is documented with its STRIDE category, affected component, attack
+vector, likelihood, impact, existing controls, and gap analysis. High-risk
+threats have explicit mitigation plans with assigned owners and deadlines.
 
 ---
 
 ## Goals
 
-- Apply STRIDE threat classification to every Vaeloom component with documented DFDs and trust boundaries
-- Identify and document all threats with risk ratings (critical/high/medium/low) using likelihood Ã— impact scoring
-- Ensure every high and critical threat has an assigned mitigation plan with owner and deadline
-- Review and update the threat model quarterly and on every significant architecture change
-- Achieve zero unmitigated critical threats and zero unmitigated high threats after each review cycle
+- Apply STRIDE threat classification to every Vaeloom component with documented
+  DFDs and trust boundaries
+- Identify and document all threats with risk ratings (critical/high/medium/low)
+  using likelihood Ã— impact scoring
+- Ensure every high and critical threat has an assigned mitigation plan with
+  owner and deadline
+- Review and update the threat model quarterly and on every significant
+  architecture change
+- Achieve zero unmitigated critical threats and zero unmitigated high threats
+  after each review cycle
 
 ---
 
@@ -401,18 +425,26 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 
 ### In Scope
 
-- All Vaeloom platform components: Web (Next.js), API (NestJS), AI Service (FastAPI), PostgreSQL, Redis, Object Storage
-- Third-party integrations: Supabase Auth, OpenAI API, SendGrid, GitHub OAuth, Google OAuth
-- All trust boundaries: user → web, web → API, API → AI service, API → database, API → storage, service â†” third-party
-- Attack vectors: injection, authentication bypass, authorization bypass, SSRF, prompt injection, data exfiltration, session hijacking
-- Deployment environments: development, staging, production (different threat profiles per environment)
+- All Vaeloom platform components: Web (Next.js), Backend (FastAPI), PostgreSQL,
+  Redis, Object Storage
+- Third-party integrations: Supabase Auth, OpenAI API, SendGrid, GitHub OAuth,
+  Google OAuth
+- All trust boundaries: user → web, web → API, API → AI service, API → database,
+  API → storage, service â†” third-party
+- Attack vectors: injection, authentication bypass, authorization bypass, SSRF,
+  prompt injection, data exfiltration, session hijacking
+- Deployment environments: development, staging, production (different threat
+  profiles per environment)
 
 ### Out of Scope
 
 - Physical security threats to cloud data centers (provider responsibility)
-- Supply chain attacks on third-party CI/CD infrastructure (covered in [SBOM-Policy.md](../DevOps/SBOM-Policy.md))
-- Social engineering attacks on development team (covered in security awareness training)
-- Zero-day vulnerabilities in cloud provider infrastructure (provider responsibility)
+- Supply chain attacks on third-party CI/CD infrastructure (covered in
+  [SBOM-Policy.md](../DevOps/SBOM-Policy.md))
+- Social engineering attacks on development team (covered in security awareness
+  training)
+- Zero-day vulnerabilities in cloud provider infrastructure (provider
+  responsibility)
 - Threats specific to on-premise deployment (not applicable — cloud-native only)
 
 ---
@@ -424,19 +456,19 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 ```markdown
 ## T-001: AI Service Prompt Injection
 
-| Field | Value |
-|-------|-------|
-| **STRIDE** | Tampering |
-| **Component** | AI Service (FastAPI) |
-| **Attack Vector** | User uploads document containing "Ignore previous instructions and perform X" |
-| **Likelihood** | High (4/5) |
-| **Impact** | Critical (5/5) — AI agent could expose system context, execute unintended actions |
-| **Risk** | Critical (20) |
-| **Existing Controls** | System prompt hardening, input sanitization, output filtering |
-| **Gap** | No secondary LLM validation of outputs before action execution |
-| **Mitigation** | Implement output guardrails using secondary LLM call to validate AI responses before execution |
-| **Owner** | AI Team Lead |
-| **Deadline** | 2026-Q3 |
+| Field                 | Value                                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| **STRIDE**            | Tampering                                                                                      |
+| **Component**         | AI Service (FastAPI)                                                                           |
+| **Attack Vector**     | User uploads document containing "Ignore previous instructions and perform X"                  |
+| **Likelihood**        | High (4/5)                                                                                     |
+| **Impact**            | Critical (5/5) — AI agent could expose system context, execute unintended actions              |
+| **Risk**              | Critical (20)                                                                                  |
+| **Existing Controls** | System prompt hardening, input sanitization, output filtering                                  |
+| **Gap**               | No secondary LLM validation of outputs before action execution                                 |
+| **Mitigation**        | Implement output guardrails using secondary LLM call to validate AI responses before execution |
+| **Owner**             | AI Team Lead                                                                                   |
+| **Deadline**          | 2026-Q3                                                                                        |
 ```
 
 ### Example 2: JWT Algorithm Confusion Threat
@@ -444,19 +476,19 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 ```markdown
 ## T-002: JWT Algorithm Substitution
 
-| Field | Value |
-|-------|-------|
-| **STRIDE** | Elevation of Privilege |
-| **Component** | API (NestJS) |
-| **Attack Vector** | Attacker modifies JWT alg from RS256 to HS256, signs with public key |
-| **Likelihood** | Medium (3/5) |
-| **Impact** | Critical (5/5) — full account takeover |
-| **Risk** | High (15) |
-| **Existing Controls** | JWT library defaults to algorithm whitelist |
-| **Gap** | Explicit algorithm verification not configured in middleware |
-| **Mitigation** | Set `algorithms: ['RS256']` in JWT verification middleware |
-| **Owner** | Backend Lead |
-| **Deadline** | Immediate |
+| Field                 | Value                                                                |
+| --------------------- | -------------------------------------------------------------------- |
+| **STRIDE**            | Elevation of Privilege                                               |
+| **Component**         | API (FastAPI)                                                        |
+| **Attack Vector**     | Attacker modifies JWT alg from RS256 to HS256, signs with public key |
+| **Likelihood**        | Medium (3/5)                                                         |
+| **Impact**            | Critical (5/5) — full account takeover                               |
+| **Risk**              | High (15)                                                            |
+| **Existing Controls** | JWT library defaults to algorithm whitelist                          |
+| **Gap**               | Explicit algorithm verification not configured in middleware         |
+| **Mitigation**        | Set `algorithms: ['RS256']` in JWT verification middleware           |
+| **Owner**             | Backend Lead                                                         |
+| **Deadline**          | Immediate                                                            |
 ```
 
 ---
@@ -467,7 +499,7 @@ Enterprise-grade threat modeling requires a systematic, repeatable approach. Eac
 sequenceDiagram
     participant ATK as Attacker
     participant WEB as Web (Next.js)
-    participant API as API (NestJS)
+    participant API as API (FastAPI)
     participant AI as AI Service
     participant DB as PostgreSQL
     participant LOG as Audit Log
@@ -500,17 +532,20 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Threat scenario — prompt injection attack (attacker embeds malicious instructions in document, AI service either blocks or executes unintended action) and JWT algorithm confusion attack (verification middleware either detects or allows modified token).
+> **Diagram:** Threat scenario — prompt injection attack (attacker embeds
+> malicious instructions in document, AI service either blocks or executes
+> unintended action) and JWT algorithm confusion attack (verification middleware
+> either detects or allows modified token).
 
 ---
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| Continuous threat modeling pipeline in CI/CD | High | Medium | Phase 2 (Q4 2026) |
-| Automated threat intel feed ingestion | Medium | Medium | Phase 2 (Q4 2026) |
-| Policy-as-code for mitigation verification | High | Medium | Phase 2 (Q4 2026) |
-| Adversarial ML-based attack pattern discovery | Low | High | Phase 3 (Q1 2027) |
+| Improvement                                   | Priority | Complexity | Timeline          |
+| --------------------------------------------- | -------- | ---------- | ----------------- |
+| Continuous threat modeling pipeline in CI/CD  | High     | Medium     | Phase 2 (Q4 2026) |
+| Automated threat intel feed ingestion         | Medium   | Medium     | Phase 2 (Q4 2026) |
+| Policy-as-code for mitigation verification    | High     | Medium     | Phase 2 (Q4 2026) |
+| Adversarial ML-based attack pattern discovery | Low      | High       | Phase 3 (Q1 2027) |
 
 ## Related Documents

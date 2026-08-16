@@ -1,22 +1,35 @@
 # Event Flow
 
-> **Purpose:** Document how events flow through Vaeloom's event-driven architecture — from emission through processing, routing, dead-letter handling, and replay
-> **Status:** 🆕 New
-> **Owner:** Architecture Team
-> **Version:** 1.0
-> **Last Updated:** 2026-07-16
-**Dependencies:** [`Event-Architecture.md`](./Event-Architecture.md), [`Queue.md`](./Queue.md), [`Data-Flow.md`](./Data-Flow.md), [`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md), [`../Backend/Workers.md`](../Backend/Workers.md)
-> **Implementation Status:** 📋 Spec Only
+> **Purpose:** Document how events flow through Vaeloom's event-driven
+> architecture — from emission through processing, routing, dead-letter
+> handling, and replay **Status:** 🆕 New **Owner:** Architecture Team
+> **Version:** 1.0 **Last Updated:** 2026-07-16 **Dependencies:**
+> [`Event-Architecture.md`](./Event-Architecture.md), [`Queue.md`](./Queue.md),
+> [`Data-Flow.md`](./Data-Flow.md),
+> [`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md),
+> [`../Backend/Workers.md`](../Backend/Workers.md) **Implementation Status:** 📋
+> Spec Only
 
 ## Overview
 
-Vaeloom uses an event-driven architecture to decouple services and enable asynchronous processing. When a user uploads a document, an event is emitted; the ingestion pipeline picks it up, parses it, extracts entities, generates embeddings, and stores results — each step emitting its own events so other services can react independently. This document traces how events flow end-to-end for key scenarios, defines the event bus topology, and specifies dead-letter handling, replay, and schema evolution.
+Vaeloom uses an event-driven architecture to decouple services and enable
+asynchronous processing. When a user uploads a document, an event is emitted;
+the ingestion pipeline picks it up, parses it, extracts entities, generates
+embeddings, and stores results — each step emitting its own events so other
+services can react independently. This document traces how events flow
+end-to-end for key scenarios, defines the event bus topology, and specifies
+dead-letter handling, replay, and schema evolution.
 
-This complements [`Event-Architecture.md`](./Event-Architecture.md) (which covers the event bus types and schema design) and [`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md) (which catalogs every event). This doc is about *flow* — how events move through the system in practice.
+This complements [`Event-Architecture.md`](./Event-Architecture.md) (which
+covers the event bus types and schema design) and
+[`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md) (which catalogs
+every event). This doc is about _flow_ — how events move through the system in
+practice.
 
 ## Goals
 
-- Trace event flows for the three most critical scenarios (document ingestion, agent execution, memory update)
+- Trace event flows for the three most critical scenarios (document ingestion,
+  agent execution, memory update)
 - Define the event bus topology and routing rules
 - Specify dead-letter queue handling and event replay
 - Document event versioning and schema evolution in practice
@@ -34,7 +47,8 @@ This complements [`Event-Architecture.md`](./Event-Architecture.md) (which cover
 
 ### Out of Scope
 
-- Event catalog (see [`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md))
+- Event catalog (see
+  [`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md))
 - Event schema design (see [`Event-Architecture.md`](./Event-Architecture.md))
 
 ## Architecture
@@ -60,7 +74,7 @@ graph TD
         INGEST["Ingestion Pipeline<br/>(parse, extract, embed)"]:::consumer
         MEMORY["Memory Service<br/>(graph write, vector upsert)"]:::consumer
         NOTIF["Notification Worker<br/>(email, in-app)"]:::consumer
-        SEARCH["Search Indexer<br/>(Elasticsearch upsert)"]:::consumer
+        SEARCH["Search Indexer<br/>(SQL ILIKE upsert)"]:::consumer
         AUDIT["Audit Logger<br/>(immutable store)"]:::consumer
         ANALYTICS["Analytics Pipeline<br/>(warehouse write)"]:::consumer
     end
@@ -74,7 +88,9 @@ graph TD
     Consumers -->|"processing failure"| DLQ_STREAM
 ```
 
-> **Diagram:** Event bus topology. Producers emit events to a single Redis Stream. Consumer groups subscribe to topics. Processing failures route to a dead-letter stream for inspection and replay.
+> **Diagram:** Event bus topology. Producers emit events to a single Redis
+> Stream. Consumer groups subscribe to topics. Processing failures route to a
+> dead-letter stream for inspection and replay.
 
 ## Event Flow: Document Ingestion
 
@@ -107,7 +123,7 @@ sequenceDiagram
     EMBED->>STREAM: emit document.embedded { id, chunks[], vectors[] }
 
     STREAM->>MEMORY: consume document.embedded
-    MEMORY->>MEMORY: Upsert knowledge graph (Apache AGE) + vector store (pgvector)
+    MEMORY->>MEMORY: Upsert knowledge graph (Apache AGE provisioned, currently unused) + vector store (pgvector)
     MEMORY->>STREAM: emit document.indexed { id, graph_nodes, vectors }
 
     STREAM->>SEARCH: consume document.indexed
@@ -164,7 +180,7 @@ graph TD
     classDef event fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
     classDef action fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    E1["memory.created<br/>(source: document, agent, user)"]:::event -->|"upsert graph node"| A1["Knowledge Graph<br/>(Apache AGE)"]:::action
+    E1["memory.created<br/>(source: document, agent, user)"]:::event -->|"upsert graph node"| A1["Knowledge Graph<br/>(Apache AGE — provisioned, unused)"]:::action
     E1 -->|"upsert vector"| A2["Vector Store<br/>(pgvector)"]:::action
 
     A2 -->|"vector stored"| E2["memory.vector_stored"]:::event -->|"rerank"| A3["RAG Index<br/>(refresh ranking)"]:::action
@@ -174,7 +190,9 @@ graph TD
     E2 & E3 -->|"both stored"| E4["memory.indexed"]:::event -->|"notify"| A5["Notification<br/>(memory update confirmation)"]:::action
 ```
 
-> **Diagram:** The memory update chain. A `memory.created` event triggers parallel graph and vector upserts. Each completion triggers downstream indexing and notification events.
+> **Diagram:** The memory update chain. A `memory.created` event triggers
+> parallel graph and vector upserts. Each completion triggers downstream
+> indexing and notification events.
 
 ## Dead-Letter Queue Handling
 
@@ -194,11 +212,11 @@ When an event consumer fails to process an event:
 
 Events are replayed in two scenarios:
 
-| Scenario | Mechanism | Scope |
-|----------|-----------|-------|
-| **Recovery from failure** | Replay DLQ events after root cause fix | Single event or batch |
-| **Feature backfill** | Replay all events of a type to populate a new consumer | All events of a type, time-bounded |
-| **Debugging** | Replay specific events to a staging consumer | Single event, non-production |
+| Scenario                  | Mechanism                                              | Scope                              |
+| ------------------------- | ------------------------------------------------------ | ---------------------------------- |
+| **Recovery from failure** | Replay DLQ events after root cause fix                 | Single event or batch              |
+| **Feature backfill**      | Replay all events of a type to populate a new consumer | All events of a type, time-bounded |
+| **Debugging**             | Replay specific events to a staging consumer           | Single event, non-production       |
 
 ```bash
 # Replay a failed event from DLQ
@@ -210,54 +228,56 @@ vaeloom events replay --type document.uploaded --from 2026-07-09 --to 2026-07-16
 
 ## Event Schema Versioning
 
-Events follow CloudEvents format with a `specversion` and `type` field. Schema evolution rules:
+Events follow CloudEvents format with a `specversion` and `type` field. Schema
+evolution rules:
 
-| Change type | Example | Action |
-|-------------|---------|--------|
-| Add optional field | Add `metadata.source_app` | No version bump; consumers ignore unknown fields |
-| Add required field | Add `tenant_id` (required) | Bump to v2; consumer must handle both v1 and v2 |
-| Rename field | `file_name` → `filename` | Add new field; deprecate old; support both for 90 days |
-| Remove field | Remove `legacy_id` | Bump to v2; v1 consumers must be migrated first |
-| Change type | `size: string` → `size: number` | Bump to v2; converter in consumer for backward compat |
+| Change type        | Example                         | Action                                                 |
+| ------------------ | ------------------------------- | ------------------------------------------------------ |
+| Add optional field | Add `metadata.source_app`       | No version bump; consumers ignore unknown fields       |
+| Add required field | Add `tenant_id` (required)      | Bump to v2; consumer must handle both v1 and v2        |
+| Rename field       | `file_name` → `filename`        | Add new field; deprecate old; support both for 90 days |
+| Remove field       | Remove `legacy_id`              | Bump to v2; v1 consumers must be migrated first        |
+| Change type        | `size: string` → `size: number` | Bump to v2; converter in consumer for backward compat  |
 
 ## Security
 
-| Concern | Mitigation | Verification |
-|---------|-----------|--------------|
+| Concern                                   | Mitigation                                                                         | Verification                                  |
+| ----------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------- |
 | Event injection (malicious event emitted) | Events are emitted by authenticated services only; producers sign events with HMAC | Consumer verifies signature before processing |
-| Event tampering in transit | TLS between all services; Redis Streams support TLS | Network policy enforcement |
-| Sensitive data in event payload | PII fields encrypted at event level; event schema marks sensitive fields | Schema validator rejects unencrypted PII |
+| Event tampering in transit                | TLS between all services; Redis Streams support TLS                                | Network policy enforcement                    |
+| Sensitive data in event payload           | PII fields encrypted at event level; event schema marks sensitive fields           | Schema validator rejects unencrypted PII      |
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
-|--------|-----------------|----------|-----------|
-| `event_consumer_lag_seconds` | >30s | P2 | Event Bus |
-| `event_dlq_size` | >100 | P2 | Event Bus |
-| `event_processing_error_rate` | >1% | P2 | Event Bus |
-| `event_throughput_per_second` | Sudden drop >50% | P3 | Event Bus |
+| Metric                        | Alert Threshold  | Severity | Dashboard |
+| ----------------------------- | ---------------- | -------- | --------- |
+| `event_consumer_lag_seconds`  | >30s             | P2       | Event Bus |
+| `event_dlq_size`              | >100             | P2       | Event Bus |
+| `event_processing_error_rate` | >1%              | P2       | Event Bus |
+| `event_throughput_per_second` | Sudden drop >50% | P3       | Event Bus |
 
 ## Best Practices
 
-| # | Practice | Rationale |
-|---|----------|-----------|
-| 1 | Every event must be idempotent | Consumers may receive duplicate events (at-least-once delivery) |
-| 2 | Never include raw PII in event payloads | Encrypt sensitive fields; include only identifiers |
-| 3 | Always set a TTL on events in the stream | Prevents unbounded stream growth (default: 7 days) |
-| 4 | Monitor consumer lag continuously | Lag indicates a processing bottleneck that will cause delays |
+| #   | Practice                                 | Rationale                                                       |
+| --- | ---------------------------------------- | --------------------------------------------------------------- |
+| 1   | Every event must be idempotent           | Consumers may receive duplicate events (at-least-once delivery) |
+| 2   | Never include raw PII in event payloads  | Encrypt sensitive fields; include only identifiers              |
+| 3   | Always set a TTL on events in the stream | Prevents unbounded stream growth (default: 7 days)              |
+| 4   | Monitor consumer lag continuously        | Lag indicates a processing bottleneck that will cause delays    |
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| Event schema registry (Avro/Protobuf) | Medium | High | Q2 2027 |
-| Exactly-once delivery semantics | Low | High | Q3 2027 |
-| Self-healing DLQ (auto-retry transient failures) | High | Medium | Q1 2027 |
+| Improvement                                      | Priority | Complexity | Timeline |
+| ------------------------------------------------ | -------- | ---------- | -------- |
+| Event schema registry (Avro/Protobuf)            | Medium   | High       | Q2 2027  |
+| Exactly-once delivery semantics                  | Low      | High       | Q3 2027  |
+| Self-healing DLQ (auto-retry transient failures) | High     | Medium     | Q1 2027  |
 
 ## Related Documents
 
 - [`Event-Architecture.md`](./Event-Architecture.md) — event bus design
 - [`Data-Flow.md`](./Data-Flow.md) — data flow through the system
-- [`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md) — full event catalog
+- [`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md) — full event
+  catalog
 - [`../Backend/Workers.md`](../Backend/Workers.md) — worker processes
 - [`../Backend/Queue.md`](../Backend/Queue.md) — queue architecture
