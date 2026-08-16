@@ -41,13 +41,12 @@ jobs:
       - name: Start preview server
         working-directory: apps/web
         run: |
-          npx playwright test --reporter=null &
           npx next start -p 3000 &
           sleep 5
           curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || (echo "Server failed to start" && exit 1)
 
       - name: Run axe-core audit
-        working-directory: testing/a11y
+        working-directory: testing/accessibility
         run: npx tsx audit-pages.ts
         env:
           BASE_URL: http://localhost:3000
@@ -58,13 +57,13 @@ jobs:
         if: always()
         with:
           name: accessibility-report
-          path: testing/a11y/reports/
+          path: testing/accessibility/reports/
           retention-days: 30
 
       - name: Fail on critical violations
         run: |
-          if [[ -f testing/a11y/reports/critical-violations.txt ]]; then
+          if [[ -f testing/accessibility/reports/critical-violations.txt ]]; then
             echo "Critical accessibility violations found:"
-            cat testing/a11y/reports/critical-violations.txt
+            cat testing/accessibility/reports/critical-violations.txt
             exit 1
           fi

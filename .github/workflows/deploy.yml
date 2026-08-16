@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment"
+        description: 'Target environment'
         type: environment
         required: true
         default: staging
@@ -52,25 +52,6 @@ jobs:
         service:
           - web
           - api
-          - ai-service
-          - memory-store
-          - auth-service
-          - knowledge-graph
-          - event-bus
-          - search-service
-          - agent-engine
-          - analytics-service
-          - audit-service
-          - billing-service
-          - connector-service
-          - document-ingestion
-          - iam-service
-          - integration-service
-          - job-scheduler
-          - notification-service
-          - plugin-service
-          - rbac-service
-          - recommendation-service
     steps:
       - uses: actions/checkout@v4
       - name: Configure AWS credentials

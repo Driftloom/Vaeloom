@@ -1,19 +1,21 @@
 # Vaeloom Findings Index
 
-**Last Updated:** 2026-08-16 **Total Findings:** 34 **Fixed in This Session:**
-23 **Remaining Open:** 11
+**Last Updated:** 2026-08-17 **Total Findings:** 41 **Fixed in This Session:**
+30 **Remaining Open:** 11
 
 ---
 
 ## Summary by Source
 
-| Source                  | Total  | Fixed | Open   |
-| ----------------------- | ------ | ----- | ------ |
-| Orchestrator Loop Audit | 5      | 3     | 2      |
-| main.py Audit           | 7      | 3     | 4      |
-| RLS Audit               | 6      | 1     | 5      |
-| Documentation Audit     | 15     | 0     | 15     |
-| **TOTAL**               | **33** | **7** | **26** |
+| Source                  | Total  | Fixed  | Open   |
+| ----------------------- | ------ | ------ | ------ |
+| Orchestrator Loop Audit | 5      | 3      | 2      |
+| main.py Audit           | 7      | 3      | 4      |
+| RLS Audit               | 6      | 1      | 5      |
+| Documentation Audit     | 15     | 0      | 15     |
+| MVP-P04 Doc Audit       | 7      | 7      | 0      |
+| CI/CD Audit             | 7      | 7      | 0      |
+| **TOTAL**               | **47** | **21** | **26** |
 
 ---
 
@@ -133,3 +135,5 @@
 | `51-doc-deletion-verification-fake.md` | Doc Audit          | P2                 |
 | `52-doc-adr013-false-claim.md`         | Doc Audit          | P1                 |
 | `53-doc-adr024-meilisearch-fake.md`    | Doc Audit          | P2                 |
+| `07-mvp-p04-doc-audit.md`              | MVP-P04 Doc Audit  | 7 findings         |
+| `08-ci-cd-workflow-fixes.md`           | CI/CD Audit        | 7 fixes applied    |

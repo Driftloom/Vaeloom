@@ -123,7 +123,7 @@ jobs:
     needs: [build]
     strategy:
       matrix:
-        service: [web, api, ai-service]
+        service: [web, api]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx

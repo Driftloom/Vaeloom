@@ -35,7 +35,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Run pnpm audit
         run: pnpm audit --audit-level=high
-        continue-on-error: true
       - name: Check allowed packages
         run: node .github/scripts/security-audit-check.js
 
@@ -53,7 +52,7 @@ jobs:
         run: pip install pip-audit
       - name: Audit Python dependencies
         working-directory: apps/api
-        run: pip-audit || true
+        run: pip-audit
 
   gitleaks:
     name: Gitleaks secrets scan
