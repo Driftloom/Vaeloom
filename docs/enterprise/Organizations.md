@@ -111,7 +111,7 @@ graph TD
 
 | Component               | Responsibility                                                       | Technology                                                                        | Scale Strategy                            |
 | ----------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------- |
-| Organization Service    | CRUD for orgs/departments/teams; hierarchy enforcement               | FastAPI module (apps/backend)                                                     | Stateless; horizontal                     |
+| Organization Service    | CRUD for orgs/departments/teams; hierarchy enforcement               | FastAPI module (apps/api)                                                         | Stateless; horizontal                     |
 | Membership Service      | Add/remove members; role assignment; SCIM sync                       | FastAPI module + Redis cache                                                      | Cache org membership for fast authz       |
 | Resource Scope Resolver | Determine which resources a member can access based on org hierarchy | FastAPI dependency injection                                                      | Cached scope tree; invalidation on change |
 | SCIM Sync Handler       | Receive SCIM provisioning events from IdP                            | FastAPI router (**NOT MOUNTED** — code exists but router not included in main.py) | Event-driven; idempotent                  |
@@ -159,7 +159,7 @@ graph TD
 ## SCIM Provisioning
 
 > **Implementation Status: NOT MOUNTED** — The SCIM router code exists
-> (`apps/backend/.../scim/`, ~226 lines) but the router is **never mounted** in
+> (`apps/api/.../scim/`, ~226 lines) but the router is **never mounted** in
 > `main.py`. SCIM endpoints will return 404 until the router is registered.
 
 ```mermaid

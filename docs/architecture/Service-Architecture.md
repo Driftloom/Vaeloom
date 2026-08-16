@@ -10,7 +10,7 @@
 ```mermaid
 graph TD
     LB[CDN / Load Balancer] --> Web[apps/web: Next.js]
-    Web --> API[apps/backend: FastAPI]
+    Web --> API[apps/api: FastAPI]
     API --> PG[(PostgreSQL + pgvector)]
     API --> Redis[(Redis: Cache)]
     API --> Claude[Claude API - External]
@@ -24,7 +24,7 @@ graph TD
 - Client-side routing and state management
 - Static asset serving through CDN
 
-### apps/backend (FastAPI + Python)
+### apps/api (FastAPI + Python)
 
 - Authentication and session management
 - CRUD operations for all resources

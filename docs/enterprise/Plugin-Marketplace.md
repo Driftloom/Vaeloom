@@ -91,7 +91,7 @@ graph TD
 
 | Component                | Responsibility                                             | Technology                                 | Scale Strategy                                |
 | ------------------------ | ---------------------------------------------------------- | ------------------------------------------ | --------------------------------------------- |
-| Plugin Manager           | Install, configure, update, remove plugins per user/tenant | FastAPI module (apps/backend)              | Stateless; horizontal                         |
+| Plugin Manager           | Install, configure, update, remove plugins per user/tenant | FastAPI module (apps/api)                  | Stateless; horizontal                         |
 | Plugin Registry          | Plugin metadata, versions, packages, reviews               | Postgres + S3                              | CDN for packages; read replicas               |
 | Security Review Pipeline | Automated lint + dependency scan + manual review           | CI pipeline + review queue                 | Parallel review workers                       |
 | Sandboxed Runtime        | Execute plugin code in isolated containers                 | gVisor containers (Kubernetes pods)        | One pod per plugin instance; horizontal scale |

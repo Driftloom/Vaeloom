@@ -1,17 +1,18 @@
 # Vaeloom Disaster Recovery Runbook
 
-This runbook defines recovery procedures for infrastructure failures, data corruption, and region-level outages.
+This runbook defines recovery procedures for infrastructure failures, data
+corruption, and region-level outages.
 
 ## RTO/RPO Targets
 
-| Tier | Metric | Target | Severity |
-|------|--------|--------|----------|
-| **Critical** | Recovery Time Objective | 1 hour | Full outage, data loss |
-| **High** | Recovery Time Objective | 4 hours | Partial outage, degraded perf |
-| **Medium** | Recovery Time Objective | 24 hours | Non-critical feature down |
-| **Critical** | Recovery Point Objective | 5 minutes | Database writes |
-| **High** | Recovery Point Objective | 1 hour | File storage writes |
-| **Critical** | Availability SLA | 99.95% | Overall platform uptime |
+| Tier         | Metric                   | Target    | Severity                      |
+| ------------ | ------------------------ | --------- | ----------------------------- |
+| **Critical** | Recovery Time Objective  | 1 hour    | Full outage, data loss        |
+| **High**     | Recovery Time Objective  | 4 hours   | Partial outage, degraded perf |
+| **Medium**   | Recovery Time Objective  | 24 hours  | Non-critical feature down     |
+| **Critical** | Recovery Point Objective | 5 minutes | Database writes               |
+| **High**     | Recovery Point Objective | 1 hour    | File storage writes           |
+| **Critical** | Availability SLA         | 99.95%    | Overall platform uptime       |
 
 ## Backup Strategy
 
@@ -46,7 +47,9 @@ aws s3 sync s3://vaeloom-files-prod s3://vaeloom-files-prod-dr --delete
 
 ### Redis (ElastiCache)
 
-Redis is a cache layer — no formal backup is required. On restart, it repopulates from application usage. For the rate limiter, this means rate limits reset on Redis failover.
+Redis is a cache layer — no formal backup is required. On restart, it
+repopulates from application usage. For the rate limiter, this means rate limits
+reset on Redis failover.
 
 ## Backup Verification
 
@@ -109,7 +112,7 @@ kubectl edit secret vaeloom-db -n vaeloom
 # Update DATABASE_URL to point to vaeloom-prod-restored
 
 # 5. Verify data integrity
-kubectl exec -it deployment/vaeloom-backend -- python -c "
+kubectl exec -it deployment/vaeloom-api -- python -c "
 from backend.database import engine
 import asyncio
 async def check():
@@ -120,7 +123,7 @@ asyncio.run(check())
 "
 
 # 6. Scale up backend pods
-kubectl scale deployment/vaeloom-backend -n vaeloom --replicas=3
+kubectl scale deployment/vaeloom-api -n vaeloom --replicas=3
 
 # 7. Rename restored instance to original name (optional)
 aws rds modify-db-instance \
@@ -226,7 +229,7 @@ kubectl edit configmap vaeloom-config -n vaeloom
 # Update DATABASE_URL to point to DR RDS endpoint
 
 # 3. Scale up DR EKS cluster
-kubectl scale deployment/vaeloom-backend -n vaeloom --replicas=3
+kubectl scale deployment/vaeloom-api -n vaeloom --replicas=3
 kubectl scale deployment/vaeloom-web -n vaeloom --replicas=3
 
 # 4. Update DNS (Route53 failover)
@@ -270,12 +273,12 @@ curl -f https://app.vaeloom.dev
 
 ## Incident Response
 
-| Severity | Definition | Response | Escalation |
-|----------|-----------|----------|------------|
-| SEV-1 | Complete platform outage | 15 min response | VP Eng |
-| SEV-2 | Major feature unavailable | 30 min response | Engineering lead |
-| SEV-3 | Minor feature degraded | 4 hour response | Team lead |
-| SEV-4 | Cosmetic/bug | Next sprint | Jira ticket |
+| Severity | Definition                | Response        | Escalation       |
+| -------- | ------------------------- | --------------- | ---------------- |
+| SEV-1    | Complete platform outage  | 15 min response | VP Eng           |
+| SEV-2    | Major feature unavailable | 30 min response | Engineering lead |
+| SEV-3    | Minor feature degraded    | 4 hour response | Team lead        |
+| SEV-4    | Cosmetic/bug              | Next sprint     | Jira ticket      |
 
 ### Incident Communication
 
@@ -287,19 +290,19 @@ curl -f https://app.vaeloom.dev
 
 ## Key Contacts
 
-| Role | Contact |
-|------|---------|
+| Role             | Contact            |
+| ---------------- | ------------------ |
 | On-call engineer | PagerDuty schedule |
-| Engineering lead | Slack @eng-lead |
-| VP Engineering | Slack @vp-eng |
-| Database admin | Slack @dba-team |
-| Security officer | Slack @security |
+| Engineering lead | Slack @eng-lead    |
+| VP Engineering   | Slack @vp-eng      |
+| Database admin   | Slack @dba-team    |
+| Security officer | Slack @security    |
 
 ## DR Test Schedule
 
-| Test | Frequency | Quarter |
-|------|-----------|---------|
-| Database restore to staging | Weekly (automated) | Ongoing |
-| Cross-region failover | Quarterly | Q1, Q2, Q3, Q4 |
-| Full DR演习 (tabletop) | Bi-annual | Q2, Q4 |
-| Backup integrity check | Monthly | Ongoing |
+| Test                        | Frequency          | Quarter        |
+| --------------------------- | ------------------ | -------------- |
+| Database restore to staging | Weekly (automated) | Ongoing        |
+| Cross-region failover       | Quarterly          | Q1, Q2, Q3, Q4 |
+| Full DR演习 (tabletop)      | Bi-annual          | Q2, Q4         |
+| Backup integrity check      | Monthly            | Ongoing        |

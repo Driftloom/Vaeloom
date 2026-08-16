@@ -97,7 +97,7 @@ graph TD
 
 | Component           | Responsibility                                                          | Technology                                    | Scale Strategy            |
 | ------------------- | ----------------------------------------------------------------------- | --------------------------------------------- | ------------------------- |
-| Entitlement Service | Resolve entitlements for a user/tenant; reconcile with Stripe/contracts | FastAPI module (apps/backend)                 | Stateless; Redis cache    |
+| Entitlement Service | Resolve entitlements for a user/tenant; reconcile with Stripe/contracts | FastAPI module (apps/api)                     | Stateless; Redis cache    |
 | License Store       | Persisted entitlement state (plan, limits, expiry)                      | Postgres                                      | Read replicas             |
 | Entitlement Guard   | Dependency injection that checks before permitting actions              | FastAPI Depends()                             | Stateless                 |
 | Overage Tracker     | Track usage vs limits; block or allow with overage                      | Redis counters (shared with Billing metering) | Same as Billing           |

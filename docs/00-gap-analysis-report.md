@@ -40,7 +40,7 @@ by default** — no consequential action without human approval in the MVP.
 ### Tech stack (actual)
 
 - **Backend:** FastAPI (Python) — auth, CRUD, permissions, agents, memory, and
-  retrieval in a single monolith at `apps/backend/`
+  retrieval in a single monolith at `apps/api/`
 - **Frontend:** Next.js (App Router) at `apps/web/`
 - **Data:** PostgreSQL (with pgvector for embeddings), Redis, MinIO
   (S3-compatible)

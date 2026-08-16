@@ -157,14 +157,14 @@ depth).
 
 ## Components
 
-| Component         | Responsibility                                      | Location                           | Documentation                                                       |
-| ----------------- | --------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------- |
-| Orchestrator      | Route user/schedule requests to specialist agents   | `apps/backend/src/backend/agents/` | [Agent Workflows](../../docs/03-agent-workflow.md)                  |
-| Specialist Agents | Execute domain-specific tasks                       | `apps/backend/src/backend/agents/` | [Agent Roster](../../docs/01-Vaeloom-MVP-Spec.md#5-agent-roster-v1) |
-| Agentic RAG       | Context retrieval with strategy selection           | `apps/backend/src/backend/rag/`    | [Agentic-RAG.md](./Agentic-RAG.md)                                  |
-| Memory System     | Knowledge graph + vector store + structured records | `apps/backend/src/backend/memory/` | [Memory.md](./Memory.md)                                            |
-| Model Router      | Optimal model selection per task type               | `apps/backend/src/backend/llm/`    | [Model-Routing.md](./Model-Routing.md)                              |
-| QA Agent          | Output validation before delivery                   | `apps/backend/src/backend/agents/` | [Guardrails.md](./Guardrails.md)                                    |
+| Component         | Responsibility                                      | Location                       | Documentation                                                       |
+| ----------------- | --------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------- |
+| Orchestrator      | Route user/schedule requests to specialist agents   | `apps/api/src/backend/agents/` | [Agent Workflows](../../docs/03-agent-workflow.md)                  |
+| Specialist Agents | Execute domain-specific tasks                       | `apps/api/src/backend/agents/` | [Agent Roster](../../docs/01-Vaeloom-MVP-Spec.md#5-agent-roster-v1) |
+| Agentic RAG       | Context retrieval with strategy selection           | `apps/api/src/backend/rag/`    | [Agentic-RAG.md](./Agentic-RAG.md)                                  |
+| Memory System     | Knowledge graph + vector store + structured records | `apps/api/src/backend/memory/` | [Memory.md](./Memory.md)                                            |
+| Model Router      | Optimal model selection per task type               | `apps/api/src/backend/llm/`    | [Model-Routing.md](./Model-Routing.md)                              |
+| QA Agent          | Output validation before delivery                   | `apps/api/src/backend/agents/` | [Guardrails.md](./Guardrails.md)                                    |
 
 ---
 

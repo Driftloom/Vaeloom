@@ -98,7 +98,7 @@ graph TD
 
 | Component          | Responsibility                                                  | Technology                     | Scale Strategy                      |
 | ------------------ | --------------------------------------------------------------- | ------------------------------ | ----------------------------------- |
-| Billing Service    | Process webhooks, manage subscription state, generate invoices  | FastAPI module in apps/backend | Stateless; horizontal               |
+| Billing Service    | Process webhooks, manage subscription state, generate invoices  | FastAPI module in apps/api     | Stateless; horizontal               |
 | Metering Service   | Increment Redis counters per feature per billing period         | Redis INCR + daily batch flush | Redis cluster for >10K users        |
 | Stripe Integration | Checkout sessions, customer portal, webhook verification        | Stripe SDK (Node)              | Delegated to Stripe                 |
 | Invoice Generator  | Monthly aggregation of usage records into Stripe invoices       | Cron job (monthly)             | Single worker; horizontal if needed |

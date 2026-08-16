@@ -87,7 +87,7 @@ The `env.validation.ts` files did not check for known insecure patterns.
 
 **Impact:** High. Risk of deploying with default credentials.
 
-**Action:** ✅ Addressed in `apps/backend/src/config/env.validation.ts` with
+**Action:** ✅ Addressed in `apps/api/src/config/env.validation.ts` with
 `warnOnInsecure()` checks (commit `security: add production env validation`).
 
 ---
@@ -135,7 +135,7 @@ Only."
 **Doc:** `docs-portal.html` and various architecture docs list 16+ microservice
 URLs.
 
-**Reality:** The original `apps/backend/src/config/env.validation.ts` defined 16
+**Reality:** The original `apps/api/src/config/env.validation.ts` defined 16
 service URL variables as `optional()` with no production-mode requirement
 validation — a misconfigured service URL would silently default to empty or
 cause a runtime error rather than failing at startup.

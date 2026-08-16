@@ -23,10 +23,10 @@
 
 ### 2.1 apps
 
-| Asset          | Files                                                                                           | Purpose                                                                                                                                    | Status                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| `apps/web`     | 89 TypeScript source files (src/app 23 pages, components, hooks, i18n, lib, store, styles, e2e) | Next.js 15 frontend; 23 page routes under `src/app/workspace/[workspaceId]/`                                                               | IMPLEMENTED_WITH_EVIDENCE (jest 37/37, e2e 39/39)          |
-| `apps/backend` | **220 Python source files** (apps/backend/); **130 test files**                                 | FastAPI: 21 agents + orchestrator, 30 DB models, 26 routers, 49 services, 12 middleware, SQLAlchemy + Alembic, 11 GitHub Actions workflows | IMPLEMENTED_WITH_EVIDENCE (2333 pass / 0 fail / 2 xfailed) |
+| Asset      | Files                                                                                           | Purpose                                                                                                                                    | Status                                                     |
+| ---------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `apps/web` | 89 TypeScript source files (src/app 23 pages, components, hooks, i18n, lib, store, styles, e2e) | Next.js 15 frontend; 23 page routes under `src/app/workspace/[workspaceId]/`                                                               | IMPLEMENTED_WITH_EVIDENCE (jest 37/37, e2e 39/39)          |
+| `apps/api` | **220 Python source files** (apps/api/); **130 test files**                                     | FastAPI: 21 agents + orchestrator, 30 DB models, 26 routers, 49 services, 12 middleware, SQLAlchemy + Alembic, 11 GitHub Actions workflows | IMPLEMENTED_WITH_EVIDENCE (2333 pass / 0 fail / 2 xfailed) |
 
 ### 2.2 packages (9)
 
@@ -83,12 +83,12 @@ tests, audit scripts.
 
 ### 2.8 Environments / secrets / data
 
-| Item                                                                                      | Status                                                                                                                                                 |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `.env` + `.env.example` + `.env.production.template` at root; `apps/backend/.env.example` | PRESENT — contents NOT verified (secrets policy); must confirm via `DATABASE__URL` double-underscore scheme (Pydantic does NOT read `.env` by default) |
-| `dev.db` (SQLite) at root                                                                 | PRESENT — dev artifact; runtime evidence only for local tests                                                                                          |
-| Postgres/Redis/object storage (prod)                                                      | NOT_PROVISIONED / access UNKNOWN — BQ-02 blocker                                                                                                       |
-| Gmail/LLM provider credentials                                                            | UNKNOWN — BQ-02/03                                                                                                                                     |
+| Item                                                                                  | Status                                                                                                                                                 |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.env` + `.env.example` + `.env.production.template` at root; `apps/api/.env.example` | PRESENT — contents NOT verified (secrets policy); must confirm via `DATABASE__URL` double-underscore scheme (Pydantic does NOT read `.env` by default) |
+| `dev.db` (SQLite) at root                                                             | PRESENT — dev artifact; runtime evidence only for local tests                                                                                          |
+| Postgres/Redis/object storage (prod)                                                  | NOT_PROVISIONED / access UNKNOWN — BQ-02 blocker                                                                                                       |
+| Gmail/LLM provider credentials                                                        | UNKNOWN — BQ-02/03                                                                                                                                     |
 
 ## 3. Owner / access matrix
 

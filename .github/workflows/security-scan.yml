@@ -91,9 +91,9 @@ jobs:
           - name: web
             context: .
             dockerfile: apps/web/Dockerfile
-          - name: backend
-            context: apps/backend
-            dockerfile: apps/backend/Dockerfile
+          - name: api
+            context: apps/api
+            dockerfile: apps/api/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image

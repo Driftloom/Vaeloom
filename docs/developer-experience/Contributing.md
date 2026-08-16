@@ -209,7 +209,7 @@ expectations.
 git checkout -b feat/add-resume-parser
 
 # Make changes and commit
-git add apps/backend/agents/resume_agent/
+git add apps/api/agents/resume_agent/
 git commit -m "feat(ai): add resume parsing agent"
 
 # Rebase on latest main
@@ -231,13 +231,13 @@ gh pr create --title "Add resume parsing agent" --body "Closes #142"
 npm run lint
 npm run test
 npm run build
-cd apps/backend && source .venv/bin/activate && pytest && ruff check .
+cd apps/api && source .venv/bin/activate && pytest && ruff check .
 ```
 
 ### Adding a golden dataset test
 
 ```python
-# apps/backend/tests/golden/test_resume_agent.py
+# apps/api/tests/golden/test_resume_agent.py
 GOLDEN_CASES = [
     {
         "input": {"content": "Education: B.Tech CSE, IIT Delhi", "type": "resume"},

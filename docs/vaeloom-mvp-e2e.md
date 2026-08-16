@@ -95,8 +95,8 @@ phase:
 technology:
   preferred_stack:
     Next.js/React (web) · FastAPI (Python, core API + AI/agent service, single
-    backend at `apps/backend/`) · PostgreSQL + Apache AGE (provisioned, UNUSED
-    in code) + pgvector · Redis · Claude API (Anthropic) — as specified in the
+    backend at `apps/api/`) · PostgreSQL + Apache AGE (provisioned, UNUSED in
+    code) + pgvector · Redis · Claude API (Anthropic) — as specified in the
     source corpus (`Vaeloom-Complete-Documentation.md` §10)
   existing_stack: None — greenfield
   deployment_target:
@@ -1137,7 +1137,7 @@ Representative config, produced as a specification artifact (not executed
 against a live repo):
 
 ```python
-# pyproject.toml excerpt (apps/backend)
+# pyproject.toml excerpt (apps/api)
 [tool.ruff]
 line-length = 100
 select = ["E", "F", "I", "UP"]
@@ -2056,11 +2056,11 @@ None blocking.
 
 ### D. Work Completed
 
-**D.1 Permission Engine middleware (FastAPI, `apps/backend/permissions`)** —
+**D.1 Permission Engine middleware (FastAPI, `apps/api/permissions`)** —
 implements ADR-004, NFR-07:
 
 ```python
-# apps/backend/permissions/permission.py (FastAPI dependency injection)
+# apps/api/permissions/permission.py (FastAPI dependency injection)
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -2083,10 +2083,10 @@ Every FastAPI route that reaches an agent or the memory layer uses the
 internal service-to-service calls.
 
 **D.2 Organization Agent handler (FastAPI,
-`apps/backend/agents/organization_agent`)** — implements FR-11–15:
+`apps/api/agents/organization_agent`)** — implements FR-11–15:
 
 ```python
-# apps/backend/agents/organization_agent/handler.py
+# apps/api/agents/organization_agent/handler.py
 from .prompt import ORGANIZATION_AGENT_SYSTEM_PROMPT
 from .tools import TOOLS
 from .permissions import REQUIRED_SCOPES
@@ -2124,7 +2124,7 @@ async def handle_new_document(document_id: str, workspace_id: str) -> dict:
 failure-sensitive piece per Phase 1/3)**:
 
 ```python
-# apps/backend/agents/memory_agent/merge.py
+# apps/api/agents/memory_agent/merge.py
 MERGE_CONFIDENCE_THRESHOLD = 0.82  # SM-06 target: <0.5% wrong-merge rate calibrated against this
 
 async def resolve_entity(candidate: ExtractedEntity, workspace_id: str) -> Entity:
@@ -2175,7 +2175,7 @@ RISK-11.1).
 
 ### L. Handoff Package
 
-D.1–D.3 → the engineer initializing `apps/backend`; RISK-11.1 → Phase 14 owner.
+D.1–D.3 → the engineer initializing `apps/api`; RISK-11.1 → Phase 14 owner.
 
 ### M. Final Statement
 
@@ -2214,7 +2214,7 @@ dedup & version detection (FR-09) → Memory Agent write → Organization Agent 
 identically).**
 
 ```python
-# apps/backend/agents/_base/agent.py
+# apps/api/agents/_base/agent.py
 class BaseAgent:
     name: str
     system_prompt: str          # versioned in prompt.py, never an inline string
@@ -2245,7 +2245,7 @@ degrades to the fallback rather than failing the request.
 users).**
 
 ```python
-# apps/backend/eval/golden_dataset.py
+# apps/api/eval/golden_dataset.py
 GOLDEN_SET_SPEC = {
     "extraction": {"n": 150, "source": "hand-labeled sample resumes/certs", "metric": "entity F1"},
     "merge_decisions": {"n": 300, "source": "hand-labeled near-duplicate entity pairs", "metric": "wrong-merge rate (target < 0.5%, SM-06)"},
@@ -2453,21 +2453,21 @@ None blocking.
 
 **D.1 Test pyramid.**
 
-| Layer       | Scope                                                                      | Target coverage                                                                 |
-| ----------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Unit        | Pure functions, agent decision logic (e.g., merge-threshold logic)         | ≥ 80% line coverage on `apps/backend/agents/*` and `apps/backend/permissions/*` |
-| Integration | API ↔ DB, API ↔ AI-service RPC boundary                                    | Every endpoint in the Phase 8 OpenAPI spec has ≥1 integration test              |
-| Contract    | Core API ↔ AI Service internal RPC                                         | Schema-validated against the shared-types package on every PR                   |
-| E2E         | Full user journeys (signup → upload → proposal → approve → memory updated) | The exact journey in SRC-04's 10-step trace, automated as a single E2E test     |
-| AI eval     | Golden-dataset metrics (Phase 12, D.4)                                     | Re-run on every prompt/model change; regression blocks merge                    |
-| Security    | STRIDE-derived test cases (Phase 13, D.1)                                  | One test per mitigation row, minimum                                            |
-| Load        | Phase 15 capacity model                                                    | Run before every release, not just once                                         |
+| Layer       | Scope                                                                      | Target coverage                                                             |
+| ----------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Unit        | Pure functions, agent decision logic (e.g., merge-threshold logic)         | ≥ 80% line coverage on `apps/api/agents/*` and `apps/api/permissions/*`     |
+| Integration | API ↔ DB, API ↔ AI-service RPC boundary                                    | Every endpoint in the Phase 8 OpenAPI spec has ≥1 integration test          |
+| Contract    | Core API ↔ AI Service internal RPC                                         | Schema-validated against the shared-types package on every PR               |
+| E2E         | Full user journeys (signup → upload → proposal → approve → memory updated) | The exact journey in SRC-04's 10-step trace, automated as a single E2E test |
+| AI eval     | Golden-dataset metrics (Phase 12, D.4)                                     | Re-run on every prompt/model change; regression blocks merge                |
+| Security    | STRIDE-derived test cases (Phase 13, D.1)                                  | One test per mitigation row, minimum                                        |
+| Load        | Phase 15 capacity model                                                    | Run before every release, not just once                                     |
 
 **D.2 Representative unit test (merge-threshold logic, RISK-11.1's actual
 validation mechanism).**
 
 ```python
-# apps/backend/tests/test_memory_merge.py
+# apps/api/tests/test_memory_merge.py
 import pytest
 from agents.memory_agent.merge import resolve_entity, MERGE_CONFIDENCE_THRESHOLD
 
@@ -2704,20 +2704,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm ci && npm run lint && npm run typecheck # apps/web
-      - run: pip install -r requirements.txt && ruff check . # apps/backend
+      - run: pip install -r requirements.txt && ruff check . # apps/api
 
   unit-tests:
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
     steps:
       - run: npm run test:unit
-      - run: pytest apps/backend/tests -m "not e2e"
+      - run: pytest apps/api/tests -m "not e2e"
 
   ai-eval-regression:
     needs: unit-tests
     runs-on: ubuntu-latest
     steps:
-      - run: python apps/backend/eval/run_golden_set.py --fail-on-regression # Phase 12 D.4
+      - run: python apps/api/eval/run_golden_set.py --fail-on-regression # Phase 12 D.4
 
   integration-tests:
     needs: unit-tests
@@ -2733,12 +2733,10 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - run:
-          docker build -t ${{ vars.REGISTRY }}/api:${{ github.sha }}
-          apps/backend
+      - run: docker build -t ${{ vars.REGISTRY }}/api:${{ github.sha }} apps/api
       - run:
           docker build -t ${{ vars.REGISTRY }}/ai-service:${{ github.sha }}
-          apps/backend
+          apps/api
       - run: docker push ${{ vars.REGISTRY }}/api:${{ github.sha }}
 
   deploy-staging:

@@ -1509,7 +1509,7 @@ enforcement RISK-E10.1 depends on) and the consent-check enforcement.
 session variable RLS policies check).**
 
 ```python
-# apps/backend/middleware/tenant_context.py
+# apps/api/middleware/tenant_context.py
 from fastapi import Request
 from sqlalchemy import text
 
@@ -1525,7 +1525,7 @@ async def set_tenant_context(request: Request, db_session):
 checked by Phase 6's consent-check lint rule).**
 
 ```python
-# apps/backend/consent/service.py
+# apps/api/consent/service.py
 from fastapi import HTTPException
 
 async def assert_consented_read(db, workspace_id: str, tenant_id: str, scope: str):
@@ -1595,7 +1595,7 @@ but no existing entry for the 8 MVP agents is modified. The golden-dataset suite
 check, on every enterprise-tier agent PR:
 
 ```python
-# apps/backend/eval/regression_gate.py
+# apps/api/eval/regression_gate.py
 def run_regression_gate():
     mvp_results = run_golden_set(agents=MVP_AGENT_NAMES)   # the original 8
     assert mvp_results.meets_targets(), "Enterprise change regressed an MVP agent — BLOCKED"
@@ -1607,7 +1607,7 @@ def run_regression_gate():
 model is itself a design decision).**
 
 ```python
-# apps/backend/agents/reflection_agent/handler.py
+# apps/api/agents/reflection_agent/handler.py
 async def run_scheduled_reflection(workspace_id: str):
     recent = await get_recent_memory_writes(workspace_id, window_days=30)
     patterns = await detect_patterns(recent)   # e.g., "3 rejected frontend-heavy roles"
@@ -1773,7 +1773,7 @@ plugin-sandbox boundary tests.
 across every table, not hand-written per table).**
 
 ```python
-# apps/backend/tests/test_tenant_isolation_exhaustive.py
+# apps/api/tests/test_tenant_isolation_exhaustive.py
 TENANT_SCOPED_TABLES = get_all_tables_with_tenant_id_or_workspace_fk()  # introspected from schema, not hardcoded
 
 @pytest.mark.parametrize("table", TENANT_SCOPED_TABLES)
@@ -1895,7 +1895,7 @@ cross-tenant-isolation-suite:
   needs: unit-tests
   runs-on: ubuntu-latest
   steps:
-    - run: pytest apps/backend/tests/test_tenant_isolation_exhaustive.py # Phase 14, D.2 — release-blocking, not optional
+    - run: pytest apps/api/tests/test_tenant_isolation_exhaustive.py # Phase 14, D.2 — release-blocking, not optional
 
 rls-policy-lint:
   runs-on: ubuntu-latest

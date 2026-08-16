@@ -17,7 +17,7 @@ graph TD
     subgraph AutoScaling["📈 Auto-Scaling Services"]
         direction TB
         WEB["apps/web<br/>Auto-scale: CPU > 70% 10m<br/>Scale-down: CPU < 30% 30m"]
-        API["apps/backend<br/>Auto-scale: p99 > 1s 5m<br/>Scale-down: p99 < 200ms 30m"]
+        API["apps/api<br/>Auto-scale: p99 > 1s 5m<br/>Scale-down: p99 < 200ms 30m"]
     end
 
     subgraph Triggers["⚡ Scaling Triggers"]
@@ -68,21 +68,21 @@ graph TD
 
 ## Horizontal Scaling
 
-| Service      | MVP                        | Enterprise                            |
-| ------------ | -------------------------- | ------------------------------------- |
-| apps/web     | Add instances              | Auto-scaling                          |
-| apps/backend | Add instances              | Auto-scaling based on request latency |
-| ai-service   | Add instances              | Auto-scaling based on queue depth     |
-| Postgres     | Vertical (larger instance) | Read replicas + partitioning          |
-| Redis        | Vertical (larger instance) | Cluster mode                          |
+| Service    | MVP                        | Enterprise                            |
+| ---------- | -------------------------- | ------------------------------------- |
+| apps/web   | Add instances              | Auto-scaling                          |
+| apps/api   | Add instances              | Auto-scaling based on request latency |
+| ai-service | Add instances              | Auto-scaling based on queue depth     |
+| Postgres   | Vertical (larger instance) | Read replicas + partitioning          |
+| Redis      | Vertical (larger instance) | Cluster mode                          |
 
 ### Scaling Triggers
 
-| Service      | Scale-Up                    | Scale-Down                     |
-| ------------ | --------------------------- | ------------------------------ |
-| apps/web     | CPU > 70% for 10 min        | CPU < 30% for 30 min           |
-| apps/backend | Latency p99 > 1s for 5 min  | Latency p99 < 200ms for 30 min |
-| ai-service   | Queue depth > 500 for 5 min | Queue depth < 50 for 30 min    |
+| Service    | Scale-Up                    | Scale-Down                     |
+| ---------- | --------------------------- | ------------------------------ |
+| apps/web   | CPU > 70% for 10 min        | CPU < 30% for 30 min           |
+| apps/api   | Latency p99 > 1s for 5 min  | Latency p99 < 200ms for 30 min |
+| ai-service | Queue depth > 500 for 5 min | Queue depth < 50 for 30 min    |
 
 ### Database Scaling
 

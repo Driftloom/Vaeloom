@@ -1,16 +1,17 @@
 # Vaeloom Developer Onboarding Guide
 
-Welcome to Vaeloom. This guide walks you through setting up a local development environment, running the stack, and understanding the architecture.
+Welcome to Vaeloom. This guide walks you through setting up a local development
+environment, running the stack, and understanding the architecture.
 
 ## Prerequisites
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Node.js | >=18.x (see `.nvmrc`) | Frontend + tooling |
-| pnpm | >=9.x | Package management (25 packages) |
-| Python | >=3.12 | Backend |
-| Docker Desktop | Latest | PostgreSQL, Redis, MinIO |
-| Git | Latest | Version control |
+| Tool           | Version               | Purpose                          |
+| -------------- | --------------------- | -------------------------------- |
+| Node.js        | >=18.x (see `.nvmrc`) | Frontend + tooling               |
+| pnpm           | >=9.x                 | Package management (25 packages) |
+| Python         | >=3.12                | Backend                          |
+| Docker Desktop | Latest                | PostgreSQL, Redis, MinIO         |
+| Git            | Latest                | Version control                  |
 
 ## Clone & Setup
 
@@ -25,7 +26,7 @@ pnpm install
 # Expected time: ~2-3 minutes
 
 # 3. Set up the Python backend
-cd apps/backend
+cd apps/api
 python -m venv .venv
 source .venv/Scripts/activate  # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
@@ -50,7 +51,7 @@ This starts PostgreSQL (port 5432), Redis (6379), and MinIO (9000/9001).
 ```bash
 pnpm dev:be
 # or directly:
-cd apps/backend && python -m uvicorn backend.main:app --reload --port 8000
+cd apps/api && python -m uvicorn api.main:app --reload --port 8000
 ```
 
 API available at `http://localhost:8000/docs` (Swagger UI).
@@ -63,7 +64,8 @@ pnpm dev:web
 cd apps/web && pnpm next dev
 ```
 
-**IMPORTANT:** Never use `pnpm dev` — it runs Nx across all 25 packages and hangs. Use `pnpm dev:web` or `pnpm dev:be`.
+**IMPORTANT:** Never use `pnpm dev` — it runs Nx across all 25 packages and
+hangs. Use `pnpm dev:web` or `pnpm dev:be`.
 
 Frontend available at `http://localhost:3000`.
 
@@ -72,7 +74,7 @@ Frontend available at `http://localhost:3000`.
 ### Backend Tests
 
 ```bash
-cd apps/backend
+cd apps/api
 python -m pytest tests/ -q
 # With coverage:
 python -m pytest tests/ --cov=src --cov-report=term-missing
@@ -116,7 +118,8 @@ Get-Process -Name "node" | Stop-Process -Force
 
 ### pnpm install hangs
 
-`.npmrc` is pre-configured: `auto-install-peers=true`, `strict-peer-dependencies=false`.
+`.npmrc` is pre-configured: `auto-install-peers=true`,
+`strict-peer-dependencies=false`.
 
 ### Backend can't connect to PostgreSQL
 
@@ -125,31 +128,34 @@ Ensure Docker containers are running: `docker ps | findstr vaeloom`.
 ### Alembic migration fails
 
 ```bash
-cd apps/backend
+cd apps/api
 alembic downgrade -1
 alembic upgrade head
 ```
 
 ### Python dependency conflicts
 
-Always use `pip install -e ".[dev]"` inside the venv, never pip install individual packages.
+Always use `pip install -e ".[dev]"` inside the venv, never pip install
+individual packages.
 
 ## PR Workflow
 
-1. **Branch**: `git checkout -b feat/your-feature` (prefix: `feat/`, `fix/`, `chore/`, `docs/`)
+1. **Branch**: `git checkout -b feat/your-feature` (prefix: `feat/`, `fix/`,
+   `chore/`, `docs/`)
 2. **Develop**: Write code, add tests, run lint + typecheck
 3. **Lint & Typecheck**
 
    ```bash
    pnpm lint           # ESLint across all packages
    pnpm typecheck      # TypeScript type checking
-   cd apps/backend && ruff check src/ tests/
-   cd apps/backend && python -m pytest tests/ -q
+   cd apps/api && ruff check src/ tests/
+   cd apps/api && python -m pytest tests/ -q
    ```
 
 4. **Commit**: Conventional commits — `feat:`, `fix:`, `docs:`, `chore:`
 5. **Push**: `git push -u origin feat/your-feature`
-6. **PR**: Create PR against `main`. CI runs: lint, typecheck, test (backend + frontend), security audit
+6. **PR**: Create PR against `main`. CI runs: lint, typecheck, test (backend +
+   frontend), security audit
 7. **Review**: At least one approval required. Address all comments.
 8. **Merge**: Squash merge with descriptive message.
 
@@ -179,18 +185,18 @@ Always use `pip install -e ".[dev]"` inside the venv, never pip install individu
 
 ### Key Directories
 
-| Path | Purpose |
-|------|---------|
-| `apps/backend/` | FastAPI backend (Python) |
-| `apps/web/` | Next.js 15 frontend (TypeScript) |
-| `packages/ui-kit/` | Shared React components (shadcn/ui) |
-| `packages/shared-types/` | TypeScript types shared across packages |
-| `integrations/*/` | External service integrations |
-| `connectors/*/` | Protocol connectors (MCP, REST, GraphQL) |
-| `plugins/*/` | Sandboxed plugins |
-| `sdk/typescript/` | Public TypeScript SDK |
-| `infra/terraform/` | AWS infrastructure (IaC) |
-| `infra/kubernetes/` | Kubernetes manifests (Kustomize) |
+| Path                     | Purpose                                  |
+| ------------------------ | ---------------------------------------- |
+| `apps/api/`              | FastAPI backend (Python)                 |
+| `apps/web/`              | Next.js 15 frontend (TypeScript)         |
+| `packages/ui-kit/`       | Shared React components (shadcn/ui)      |
+| `packages/shared-types/` | TypeScript types shared across packages  |
+| `integrations/*/`        | External service integrations            |
+| `connectors/*/`          | Protocol connectors (MCP, REST, GraphQL) |
+| `plugins/*/`             | Sandboxed plugins                        |
+| `sdk/typescript/`        | Public TypeScript SDK                    |
+| `infra/terraform/`       | AWS infrastructure (IaC)                 |
+| `infra/kubernetes/`      | Kubernetes manifests (Kustomize)         |
 
 ### Technology Stack
 

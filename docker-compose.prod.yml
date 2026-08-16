@@ -44,7 +44,7 @@ services:
     depends_on:
       web:
         condition: service_started
-      backend:
+      api:
         condition: service_started
     healthcheck:
       test: ['CMD', 'nginx', '-t']
@@ -91,16 +91,16 @@ services:
           memory: '256M'
     <<: *service-base
 
-  # ─── Backend (FastAPI) ───────────────────────────────────────────────
-  backend:
+  # ─── API (FastAPI) ───────────────────────────────────────────────
+  api:
     build:
-      context: apps/backend
+      context: apps/api
       dockerfile: Dockerfile
-    container_name: vaeloom-backend
+    container_name: vaeloom-api
     env_file:
       - .env.production
     environment:
-      SERVICE_NAME: vaeloom-backend
+      SERVICE_NAME: vaeloom-api
       SERVICE_ENVIRONMENT: production
     expose:
       - '8000'

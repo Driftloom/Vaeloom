@@ -1,6 +1,6 @@
-﻿# Backend Architecture
+# Backend Architecture
 
-> **Purpose:** Define the backend architecture for Vaeloom **Status:** ✅
+> **Purpose:** Define the backend architecture for Vaeloom **Status:** ?
 > Upgraded to enterprise quality **Owner:** Backend Team **Last Updated:**
 > 2026-07-13 **Canonical source:**
 > [`/docs/Vaeloom-Complete-Documentation.md#43-backend`](../../docs/Vaeloom-Complete-Documentation.md#43-backend)
@@ -15,15 +15,15 @@ graph TD
     classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef mw fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Frontend["🌐 Frontend"]
+    subgraph Frontend["?? Frontend"]
         WEB["Next.js App<br/>SSR + Client"]
     end
 
-    subgraph Backend["⚙️ apps/backend -- FastAPI (Python)"]
+    subgraph Backend["?? apps/api -- FastAPI (Python)"]
         direction TB
         B1["Router<br/>Resource endpoints"]
 
-        subgraph Middleware["🔗 Middleware Stack (order)"]
+        subgraph Middleware["?? Middleware Stack (order)"]
             direction TB
             M1["1. Logger<br/>Structured request logging"]
             M2["2. Auth<br/>JWT validation + session"]
@@ -38,10 +38,10 @@ graph TD
         A2["Model Router<br/>Haiku / Sonnet / GPT-4o"]
     end
 
-    subgraph Data["💾 Data Layer"]
+    subgraph Data["?? Data Layer"]
         PG["( PostgreSQL<br/>+ AGE + pgvector )"]
         REDIS["( Redis<br/>Cache + Queue )"]
-        EVENTS["📨 Event Bus<br/>Redis --> Kafka"]
+        EVENTS["?? Event Bus<br/>Redis --> Kafka"]
     end
 
     WEB -->|REST HTTPS| B1
@@ -63,8 +63,8 @@ graph TD
 ```
 
 > **Diagram:** The backend is a single monolithic FastAPI (Python) application
-> at `apps/backend/`. It runs a 5-layer middleware stack — Logger → Auth →
-> Permission → Rate Limit → Validation — before routing to CRUD handlers or
+> at `apps/api/`. It runs a 5-layer middleware stack � Logger ? Auth ?
+> Permission ? Rate Limit ? Validation � before routing to CRUD handlers or
 > agent tasks. Agent runtime, memory, RAG, and model routing all run within the
 > same FastAPI app. Everything shares PostgreSQL, Redis, and the event bus.
 
@@ -72,24 +72,24 @@ graph TD
 
 The backend is a single monolithic FastAPI application:
 
-| Component      | Technology       | Responsibility                                                                |
-| -------------- | ---------------- | ----------------------------------------------------------------------------- |
-| `apps/backend` | FastAPI + Python | Auth, CRUD, permissions, event publishing, agents, memory, RAG, model routing |
+| Component  | Technology       | Responsibility                                                                |
+| ---------- | ---------------- | ----------------------------------------------------------------------------- |
+| `apps/api` | FastAPI + Python | Auth, CRUD, permissions, event publishing, agents, memory, RAG, model routing |
 
 ```text
-Frontend → apps/backend (REST)
-              ↓
+Frontend ? apps/api (REST)
+              ?
         PostgreSQL + Redis + Claude API
 ```
 
 ## Request Lifecycle
 
 ```text
-1. HTTP Request → FastAPI Router
+1. HTTP Request ? FastAPI Router
 2. Auth Middleware (JWT validation)
 3. Permission Engine (check scope, agent, action)
 4. Route to handler (CRUD or agent request)
-5. Response → client
+5. Response ? client
 6. Event published to event bus
 ```
 
@@ -107,39 +107,39 @@ Frontend → apps/backend (REST)
 
 | Mistake                                     | Consequence                                                                                                                                       |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tight coupling between modules              | Direct function calls between unrelated modules create synchronization dependencies — changes to one module can break others without warning      |
-| Letting the middleware stack grow unchecked | Adding middleware for "one-off" concerns creates a bloated pipeline — every request pays the latency cost of all middleware, even irrelevant ones |
-| Using the database as a message queue       | Polling the database for new work creates contention and misses — use Redis/BullMQ for queues, PostgreSQL for data                                |
-| Ignoring the event bus until it's critical  | Events like "document.ingested" are consumed by multiple agents — skipping events from the start means retrofitting them later at high cost       |
+| Tight coupling between modules              | Direct function calls between unrelated modules create synchronization dependencies � changes to one module can break others without warning      |
+| Letting the middleware stack grow unchecked | Adding middleware for "one-off" concerns creates a bloated pipeline � every request pays the latency cost of all middleware, even irrelevant ones |
+| Using the database as a message queue       | Polling the database for new work creates contention and misses � use Redis/BullMQ for queues, PostgreSQL for data                                |
+| Ignoring the event bus until it's critical  | Events like "document.ingested" are consumed by multiple agents � skipping events from the start means retrofitting them later at high cost       |
 
 ## Best Practices
 
 | Practice                                                | Why                                                                                                                                            |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Communicate between modules via well-defined interfaces | Keep module boundaries clean with explicit public APIs — internal implementation details should not leak across module boundaries              |
-| Keep the middleware stack lean and ordered              | Only add middleware that applies to every request — endpoint-specific logic belongs in guards or interceptors, not the global middleware stack |
-| Use the event bus for cross-module communication        | API publishes events → modules subscribe — this decouples modules and allows multiple consumers without API changes                            |
-| Separate read and write workloads                       | Commands (writes) and queries (reads) have different scaling requirements — separate them early to avoid contention                            |
+| Communicate between modules via well-defined interfaces | Keep module boundaries clean with explicit public APIs � internal implementation details should not leak across module boundaries              |
+| Keep the middleware stack lean and ordered              | Only add middleware that applies to every request � endpoint-specific logic belongs in guards or interceptors, not the global middleware stack |
+| Use the event bus for cross-module communication        | API publishes events ? modules subscribe � this decouples modules and allows multiple consumers without API changes                            |
+| Separate read and write workloads                       | Commands (writes) and queries (reads) have different scaling requirements � separate them early to avoid contention                            |
 
 ## Security
 
 | Concern                                 | Mitigation                                                                                                                                                                                  |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unauthenticated internal calls          | Without proper auth on internal endpoints, any compromised code can call sensitive functions — enforce authentication on all internal routes                                                |
-| Event bus injection attacks             | If events published by one module are consumed by another without validation, an attacker can inject malicious events via compromised endpoints — validate event payloads at every consumer |
-| Data layer access without authorization | Backend code accessing PostgreSQL or Redis directly bypasses the Permission Engine — enforce row-level security and separate service accounts per module                                    |
+| Unauthenticated internal calls          | Without proper auth on internal endpoints, any compromised code can call sensitive functions � enforce authentication on all internal routes                                                |
+| Event bus injection attacks             | If events published by one module are consumed by another without validation, an attacker can inject malicious events via compromised endpoints � validate event payloads at every consumer |
+| Data layer access without authorization | Backend code accessing PostgreSQL or Redis directly bypasses the Permission Engine � enforce row-level security and separate service accounts per module                                    |
 
 ## Performance
 
 | Concern                                        | Mitigation                                                                                                                                                                                             |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| JSON serialization overhead for small payloads | N/A — single FastAPI app, no inter-service serialization cost                                                                                                                                          | N/A |
-| Database connection pool contention            | A single connection pool shared across all modules — if agent tasks hold connections during LLM calls (500ms+), CRUD operations starve. Use separate read/write pools with dedicated connection limits |
-| Inter-module call overhead                     | Direct function calls between modules add minimal overhead (< 1ms) — no RPC serialization cost                                                                                                         | N/A |
+| JSON serialization overhead for small payloads | N/A � single FastAPI app, no inter-service serialization cost                                                                                                                                          | N/A |
+| Database connection pool contention            | A single connection pool shared across all modules � if agent tasks hold connections during LLM calls (500ms+), CRUD operations starve. Use separate read/write pools with dedicated connection limits |
+| Inter-module call overhead                     | Direct function calls between modules add minimal overhead (< 1ms) � no RPC serialization cost                                                                                                         | N/A |
 
 ## Goals
 
-- Establish a modular monolithic architecture (apps/backend) with clear module
+- Establish a modular monolithic architecture (apps/api) with clear module
   boundaries for auth, CRUD, permissions, agents, memory, and RAG
 - Maintain sub-200ms p95 response time for CRUD operations through optimized
   middleware and database access
@@ -154,7 +154,7 @@ Frontend → apps/backend (REST)
 
 **In Scope:**
 
-- FastAPI (Python) backend architecture at `apps/backend/` for auth, CRUD,
+- FastAPI (Python) backend architecture at `apps/api/` for auth, CRUD,
   permissions, agents, memory, RAG, and model routing
 - 5-layer middleware stack (Logger, Auth, Permission, Rate Limiter, Validation)
 - Redis-backed event bus for asynchronous cross-module communication
@@ -197,24 +197,24 @@ Frontend → apps/backend (REST)
 | Component        | Responsibility                                        | Technology           | Scale Strategy                      |
 | ---------------- | ----------------------------------------------------- | -------------------- | ----------------------------------- |
 | API Router       | Resource endpoint routing, HTTP handling              | FastAPI + Uvicorn    | Horizontal scale via load balancer  |
-| Middleware Stack | Logging, auth, permissions, rate limiting, validation | FastAPI middleware   | Stateless — scales horizontally     |
+| Middleware Stack | Logging, auth, permissions, rate limiting, validation | FastAPI middleware   | Stateless � scales horizontally     |
 | CRUD Handlers    | Document, resume, application, connector operations   | FastAPI + SQLAlchemy | Horizontal with connection pooling  |
 | Event Publisher  | Publish all actions to event bus                      | Redis                | Cluster Redis for higher throughput |
 | Agent Runtime    | Agent execution, memory, RAG, model routing           | FastAPI + Python     | Horizontal with session affinity    |
 
 ## Data Flow
 
-1. **Client Request** — Frontend sends HTTPS request to api.Vaeloom.dev/v1/...
+1. **Client Request** � Frontend sends HTTPS request to api.Vaeloom.dev/v1/...
    with JWT Bearer token in Authorization header
-2. **Middleware Processing** — Request passes through Logger (structured
+2. **Middleware Processing** � Request passes through Logger (structured
    capture), Auth (JWT validation), Permission (scope check), Rate Limiter
    (token consumption), Validation (schema check) in fixed order
-3. **Handler Routing** — FastAPI router matches URI to handler; CRUD requests
+3. **Handler Routing** � FastAPI router matches URI to handler; CRUD requests
    query PostgreSQL via SQLAlchemy; agent requests execute within the same app
-4. **Event Publication** — Handler publishes a domain event to the Redis event
+4. **Event Publication** � Handler publishes a domain event to the Redis event
    bus after successful processing (e.g., document.ingested,
    application.submitted)
-5. **Response Assembly** — Handler serializes response as JSON, adds
+5. **Response Assembly** � Handler serializes response as JSON, adds
    X-Request-Id header, and returns HTTP status 200/201 with payload or error
    envelope
 
@@ -256,7 +256,7 @@ Frontend → apps/backend (REST)
 | PORT              | HTTP server listen port          | 8000                                | Yes      |
 | DATABASE_URL      | PostgreSQL connection string     | postgresql://localhost:5432/Vaeloom | Yes      |
 | REDIS_URL         | Redis connection string          | redis://localhost:6379              | Yes      |
-| JWT_SECRET        | Token signing secret             | —                                   | Yes      |
+| JWT_SECRET        | Token signing secret             | �                                   | Yes      |
 | RATE_LIMIT_MAX    | Max requests per user per window | 100                                 | No       |
 | RATE_LIMIT_WINDOW | Rate limit window in seconds     | 60                                  | No       |
 | LOG_LEVEL         | Structured logging verbosity     | info                                | No       |

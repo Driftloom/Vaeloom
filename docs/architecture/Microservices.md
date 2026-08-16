@@ -5,7 +5,7 @@
 
 > **Note:** Vaeloom is currently a monolithic FastAPI application. This document
 > describes a target microservice decomposition for future scaling. The current
-> architecture is a single `apps/backend` FastAPI service.
+> architecture is a single `apps/api` FastAPI service.
 
 ## Service Architecture
 
@@ -21,7 +21,7 @@ graph TD
     subgraph Services["🏗️ Service Decomposition (TARGET)"]
         direction TB
         WEB["apps/web<br/>Next.js SSR<br/>Frontend Team"]
-        API["apps/backend<br/>FastAPI<br/>Backend Team"]
+        API["apps/api<br/>FastAPI<br/>Backend Team"]
         WRK["infra/worker<br/>BullMQ (installed, no consumers deployed)<br/>Backend Team"]
     end
 
@@ -35,7 +35,7 @@ graph TD
 
     subgraph Data_Ownership["🗄️ Data Ownership"]
         direction TB
-        D1["apps/backend owns:<br/>User data, documents,<br/>permissions, agents,<br/>memory, RAG"]
+        D1["apps/api owns:<br/>User data, documents,<br/>permissions, agents,<br/>memory, RAG"]
         D2["🚫 No separate service<br/>database boundary yet"]
     end
 
@@ -62,7 +62,7 @@ graph TD
 
 ```
 
-> **Diagram:** Currently two services: **apps/web** talks to **apps/backend**
+> **Diagram:** Currently two services: **apps/web** talks to **apps/api**
 > (FastAPI) via HTTP. Background jobs are handled via **infra/worker** (BullMQ
 > installed but no consumers deployed). Each service owns its data. This
 > document describes a target microservice decomposition for future scaling.
@@ -74,7 +74,7 @@ graph TD
 | Service        | Responsibility                               | Team     | Can Scale Independently                      |
 | -------------- | -------------------------------------------- | -------- | -------------------------------------------- |
 | `apps/web`     | Frontend rendering, SSR                      | Frontend | ✅                                           |
-| `apps/backend` | Auth, CRUD, permissions, agents, memory, RAG | Backend  | ✅                                           |
+| `apps/api`     | Auth, CRUD, permissions, agents, memory, RAG | Backend  | ✅                                           |
 | `infra/worker` | Background jobs (ingestion, sync)            | Backend  | ✅ (BullMQ installed, no consumers deployed) |
 
 ## Service Communication
@@ -88,7 +88,7 @@ graph TD
 
 Currently all backend logic runs in a single FastAPI service:
 
-- `apps/backend` owns user data, documents, permissions, agents, memory, RAG
+- `apps/api` owns user data, documents, permissions, agents, memory, RAG
 - In a future microservice split, each service would own its data and expose it
   through defined APIs
 
@@ -181,20 +181,20 @@ Currently all backend logic runs in a single FastAPI service:
 | Component    | Responsibility                                                 | Technology                                         | Scale Strategy                              |
 | ------------ | -------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------- |
 | apps/web     | Frontend rendering, client state, static assets                | Next.js, React, TypeScript                         | Horizontal scaling via CDN + instance count |
-| apps/backend | Auth, CRUD, permissions, agents, memory, RAG, event publishing | FastAPI, Python 3.12                               | Horizontal scaling based on request latency |
+| apps/api     | Auth, CRUD, permissions, agents, memory, RAG, event publishing | FastAPI, Python 3.12                               | Horizontal scaling based on request latency |
 | infra/worker | Background job processing (ingestion, sync, notifications)     | BullMQ (installed, no consumers deployed) / Python | Queue-driven scaling per job type           |
 
 ## Data Flow
 
-1. Frontend (apps/web) sends an authenticated request to apps/backend via
-   HTTP/REST for any data access or action
-2. apps/backend validates permissions and determines if the request can be
-   handled directly (CRUD on PostgreSQL) or requires AI processing
-3. For AI tasks, apps/backend routes internally to the agent orchestration
-   layer, which retrieves relevant context from its owned data stores
+1. Frontend (apps/web) sends an authenticated request to apps/api via HTTP/REST
+   for any data access or action
+2. apps/api validates permissions and determines if the request can be handled
+   directly (CRUD on PostgreSQL) or requires AI processing
+3. For AI tasks, apps/api routes internally to the agent orchestration layer,
+   which retrieves relevant context from its owned data stores
 4. AI agents process the request using specialist agents, call external Model
    APIs, and return the result
-5. For background operations, apps/backend publishes events to the bus, which
+5. For background operations, apps/api publishes events to the bus, which
    infra/worker consumers process asynchronously (BullMQ installed, no consumers
    deployed)
 

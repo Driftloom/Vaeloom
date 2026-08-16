@@ -14,7 +14,7 @@
 - [x] Folder validation: `apps/`, `packages/` have scaffold
 - [x] Technology validation (from docs, locked, no substitutions):
   - TypeScript strict — `apps/web` (Next.js 15)
-  - Python 3.12 — `apps/backend` (FastAPI/SQLAlchemy)
+  - Python 3.12 — `apps/api` (FastAPI/SQLAlchemy)
   - Postgres + pgvector (vectors), Redis, MinIO/S3
   - Alembic (Python) for migrations
 - [x] Architecture validation: single FastAPI backend + Next.js frontend
@@ -31,10 +31,10 @@ Source: `docs/engineering/Implementation/01-foundation-infra.md`,
 - [x] `docker-compose.yml` — Postgres(pgvector), Redis, MinIO, web, backend
 - [x] `infra/docker/` Dockerfiles per service + custom Postgres image
 - [x] CI pipeline `.github/workflows/ci.yml` (lint, typecheck, test, build)
-- [x] `apps/backend` config layer (Pydantic settings, env validation)
-- [x] `apps/backend` SQLAlchemy models + Alembic migrations
-- [x] `apps/backend` Auth module (email/password, bcrypt, JWT, guard)
-- [x] `apps/backend` Workspaces module (`POST /workspaces`)
+- [x] `apps/api` config layer (Pydantic settings, env validation)
+- [x] `apps/api` SQLAlchemy models + Alembic migrations
+- [x] `apps/api` Auth module (email/password, bcrypt, JWT, guard)
+- [x] `apps/api` Workspaces module (`POST /workspaces`)
 - [x] `packages/shared-types` auth/workspace DTOs (imported by web + backend, no
       duplication)
 - [x] `apps/web` signup/login/dashboard + API client
@@ -68,7 +68,7 @@ Source: `docs/engineering/Implementation/01-foundation-infra.md`,
 Source: `docs/backend/*`, `docs/security/*`
 
 - [x] Routers / services / dependencies / middleware
-- [x] Events + queue worker (`apps/backend/src/backend/workers/queue_worker.py`)
+- [x] Events + queue worker (`apps/api/src/backend/workers/queue_worker.py`)
 - [x] Caching — memory-based cache service; search — SQL ILIKE (not Meilisearch)
 - [x] Validation — Pydantic models for all request/response schemas
 - [x] Rate limiting — sliding window middleware with per-endpoint overrides
@@ -80,7 +80,7 @@ Source: `docs/backend/*`, `docs/security/*`
 - [x] Workspaces module — GET (list + single), POST (create), PATCH (update),
       DELETE (remove), all ownership-verified
 
-## Phase 4: AI Foundation (apps/backend) [COMPLETED]
+## Phase 4: AI Foundation (apps/api) [COMPLETED]
 
 ### Ingestion Pipeline
 

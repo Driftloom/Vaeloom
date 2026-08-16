@@ -101,8 +101,8 @@ graph TD
    one
 5. **Suggest-mode by default** — no agent takes consequential actions without
    approval in MVP
-6. **Monolithic backend** — `apps/backend` (FastAPI) handles all API and AI
-   logic in a single service
+6. **Monolithic backend** — `apps/api` (FastAPI) handles all API and AI logic in
+   a single service
 
 ## Common Mistakes
 

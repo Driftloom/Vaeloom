@@ -65,7 +65,7 @@ graph TD
 docker compose logs -f backend
 
 # Run agent evaluation locally
-cd apps/backend
+cd apps/api
 python -m eval.run_single memory_agent --document_id=doc_abc123
 
 # Test prompt directly
@@ -239,7 +239,7 @@ scenarios with detection commands, mitigation steps, and recovery procedures.
 docker compose logs -f backend
 
 # Run agent eval locally
-cd apps/backend
+cd apps/api
 python -m eval.run_single memory_agent --document_id=doc_abc123
 
 # Test prompt directly

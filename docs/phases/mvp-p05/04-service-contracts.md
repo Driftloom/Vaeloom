@@ -6,7 +6,7 @@
 > STAKEHOLDER_DECISION / NOT_EXECUTED. Unverified = UNVERIFIED. Covers WS-05.2
 > (identity/authorization) and WS-05.3 (data/event/agent flows). MVP scope only.
 
-## 1. API surface — routers registered in `apps/backend/src/backend/main.py`
+## 1. API surface — routers registered in `apps/api/src/backend/main.py`
 
 FastAPI unified service; **30 `include_router`** found (REPO_VERIFIED
 main.py:139-173). 22 unconditional (MVP) + 8 enterprise-gated

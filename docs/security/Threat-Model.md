@@ -1,7 +1,7 @@
-﻿# Threat Model
+# Threat Model
 
 > **Purpose:** Comprehensive threat model covering assets, attack vectors, and
-> mitigations for Vaeloom **Status:** âœ… Upgraded to enterprise quality
+> mitigations for Vaeloom **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Security Team **Last Updated:** 2026-07-12
 
 ---
@@ -91,7 +91,7 @@ highlighted at the bottom.
 
 ```mermaid
 flowchart TB
-    %% â”€â”€ Style definitions â”€â”€
+    %% ── Style definitions ──
     classDef spoofing fill:#fff3e0,stroke:#e65100,color:#000
     classDef tampering fill:#fce4ec,stroke:#c62828,color:#000
     classDef repudiation fill:#f3e5f5,stroke:#6a1b9a,color:#000
@@ -103,58 +103,58 @@ flowchart TB
     classDef crossCutting fill:#fffff0,stroke:#d69e2e,stroke-width:3px,color:#000
     classDef badge fill:#eceff1,stroke:#90a4ae,color:#000,stroke-dasharray:3 3
 
-    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Spoofing â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    subgraph Spoofing["ðŸ”¶ ðŸ”  Spoofing"]
+    %% ═══════════════ Spoofing ═══════════════
+    subgraph Spoofing["🔶 🔁  Spoofing"]
         direction LR
         S1["Stolen JWT<br/>Session hijacking"]:::attack --> S2["Short-lived tokens (15m)<br/>httpOnly cookies"]:::mitigation
         S3["Agent impersonation"]:::attack --> S4["Service-to-service<br/>mTLS"]:::mitigation
         S5["OAuth replay attack"]:::attack --> S6["PKCE + state parameter<br/>verification"]:::mitigation
     end
 
-    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Tampering â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    subgraph Tampering["ðŸ”´ ðŸ”§  Tampering"]
+    %% ═══════════════ Tampering ═══════════════
+    subgraph Tampering["🔴 🔧  Tampering"]
         direction LR
         T1["Memory graph<br/>corruption"]:::attack --> T2["Permission Engine<br/>on every write"]:::mitigation
         T3["Direct object<br/>storage access"]:::attack --> T4["Signed URLs +<br/>S3 bucket policies"]:::mitigation
         T5["Queue job<br/>injection"]:::attack --> T6["Message signing +<br/>payload validation"]:::mitigation
     end
 
-    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Repudiation â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    subgraph Repudiation["ðŸŸ£ ðŸ“‹  Repudiation"]
+    %% ═══════════════ Repudiation ═══════════════
+    subgraph Repudiation["🟣 📋  Repudiation"]
         direction LR
         R1["Agent denies<br/>its own action"]:::attack --> R2["Append-only audit log<br/>with provenance chain"]:::mitigation
         R3["User denies<br/>approval"]:::attack --> R4["Signed approval<br/>records"]:::mitigation
     end
 
-    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Information Disclosure â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    subgraph Disclosure["ðŸ”µ ðŸ”Ž  Information Disclosure"]
+    %% ═══════════════ Information Disclosure ═══════════════
+    subgraph Disclosure["🔵 🔎  Information Disclosure"]
         direction LR
         D1["Cross-tenant<br/>data access"]:::attack --> D2["workspace_id from token<br/>enforced on every query"]:::mitigation
         D3["OAuth token<br/>leakage"]:::attack --> D4["Secrets Manager<br/>never in logs"]:::mitigation
         D5["Memory query<br/>data leakage"]:::attack --> D6["Workspace-scoped RAG<br/>no cross-tenant context"]:::mitigation
     end
 
-    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Denial of Service â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    subgraph Denial["ðŸŸ¢ ðŸš«  Denial of Service"]
+    %% ═══════════════ Denial of Service ═══════════════
+    subgraph Denial["🟢 🚫  Denial of Service"]
         direction LR
         N1["API request<br/>flooding"]:::attack --> N2["Rate limiting +<br/>auto-scaling"]:::mitigation
         N3["AI model cost<br/>attack"]:::attack --> N4["Per-user rate limits<br/>cost alerts"]:::mitigation
         N5["Queue job<br/>flooding"]:::attack --> N6["Queue depth alerts<br/>prioritization"]:::mitigation
     end
 
-    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Elevation of Privilege â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    subgraph Elevation["ðŸŸ§ â¬†  Elevation of Privilege"]
+    %% ═══════════════ Elevation of Privilege ═══════════════
+    subgraph Elevation["🟧 ⬆  Elevation of Privilege"]
         direction LR
         E1["Agent self-modifies<br/>permissions"]:::attack --> E2["Permission Engine<br/>immutable by agents"]:::mitigation
         E3["User modifies<br/>own role"]:::attack --> E4["RBAC enforced at<br/>API layer not client"]:::mitigation
         E5["Plugin sandbox<br/>escape"]:::attack --> E6["Manifest enforcement<br/>at runtime"]:::mitigation
     end
 
-    %% â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Cross-Cutting Mitigations â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    C1["ðŸ”’  Permission Engine<br/>S Â· T Â· EoP"]:::crossCutting
-    C2["ðŸ“  Audit Logging<br/>R Â· I Â· EoP"]:::crossCutting
-    C3["â±  Rate Limiting<br/>D Â· I"]:::crossCutting
-    C4["ðŸ”‘  Short-lived Tokens<br/>S Â· I"]:::crossCutting
+    %% ═══════════════ Cross-Cutting Mitigations ═══════════════
+    C1["🔒  Permission Engine<br/>S · T · EoP"]:::crossCutting
+    C2["📝  Audit Logging<br/>R · I · EoP"]:::crossCutting
+    C3["⏱  Rate Limiting<br/>D · I"]:::crossCutting
+    C4["🔑  Short-lived Tokens<br/>S · I"]:::crossCutting
 
     S2 -.->|Auth pattern| C4
     T2 -.->|Core guard| C1
@@ -165,11 +165,11 @@ flowchart TB
     N2 -.->|Scalability| C3
 
     LINK ~~~ C1 ~~~ C2 ~~~ C3 ~~~ C4
-    LINK["â¬‡  See detailed tables below"]:::badge
+    LINK["⬇  See detailed tables below"]:::badge
 ```
 
 **Cross-cutting mitigations** are controls that protect against multiple STRIDE
-categories simultaneously — they're the highest-value security investments.
+categories simultaneously � they're the highest-value security investments.
 
 ### Spoofing
 
@@ -225,30 +225,30 @@ This is the highest-severity threat. Here's the full attack tree:
 
 ```text
 Goal: Access another user's memory
-â”œâ”€â”€ 1. Modify workspace_id in API request
-â”‚   â”œâ”€â”€ 1.1 Capture another user's workspace_id
-â”‚   â”‚   â”œâ”€â”€ 1.1.1 Guess UUID (infeasible: 2^128 possibilities) [MITIGATED]
-â”‚   â”‚   â””â”€â”€ 1.1.2 Leak via error message
-â”‚   â”‚       â””â”€â”€ [MITIGATED: Generic error messages, no IDs in errors]
-â”‚   â””â”€â”€ 1.2 Bypass workspace_id validation
-â”‚       â””â”€â”€ [MITIGATED: workspace_id extracted from auth token, not request body]
-â”‚
-â”œâ”€â”€ 2. Direct database access
-â”‚   â”œâ”€â”€ 2.1 SQL injection [MITIGATED: Parameterized queries only]
-â”‚   â”œâ”€â”€ 2.2 Database credential theft
-â”‚   â”‚   â””â”€â”€ [MITIGATED: Secrets manager, rotation policy]
-â”‚   â””â”€â”€ 2.3 Network-level access
-â”‚       â””â”€â”€ [MITIGATED: VPC, firewall rules]
-â”‚
-â””â”€â”€ 3. Exploit AI service request
-    â”œâ”€â”€ 3.1 Agent retrieves wrong tenant's data [MITIGATED: workspace_id enforced in all queries]
-    â””â”€â”€ 3.2 Model hallucinates another user's data [MITIGATED: Impossible - model has no access to other tenants]
+├── 1. Modify workspace_id in API request
+│   ├── 1.1 Capture another user's workspace_id
+│   │   ├── 1.1.1 Guess UUID (infeasible: 2^128 possibilities) [MITIGATED]
+│   │   └── 1.1.2 Leak via error message
+│   │       └── [MITIGATED: Generic error messages, no IDs in errors]
+│   └── 1.2 Bypass workspace_id validation
+│       └── [MITIGATED: workspace_id extracted from auth token, not request body]
+│
+├── 2. Direct database access
+│   ├── 2.1 SQL injection [MITIGATED: Parameterized queries only]
+│   ├── 2.2 Database credential theft
+│   │   └── [MITIGATED: Secrets manager, rotation policy]
+│   └── 2.3 Network-level access
+│       └── [MITIGATED: VPC, firewall rules]
+│
+└── 3. Exploit AI service request
+    ├── 3.1 Agent retrieves wrong tenant's data [MITIGATED: workspace_id enforced in all queries]
+    └── 3.2 Model hallucinates another user's data [MITIGATED: Impossible - model has no access to other tenants]
 ```
 
 ## Mitigation Implementation
 
 ```typescript
-// apps/backend/permissions/tenant.py
+// apps/api/permissions/tenant.py
 @Injectable()
 export class TenantGuard implements CanActivate {
   constructor(private permissionService: PermissionService) {}
@@ -281,8 +281,8 @@ export class TenantGuard implements CanActivate {
 | workspace_id from token, not request | Prevents tenant spoofing                                       |
 | Rate limit by user, not IP           | Users can share IPs; rate limiting per user prevents abuse     |
 | Never log sensitive data             | Auth tokens, passwords, API keys must not appear in logs       |
-| Fail closed on permission check      | If permission engine is down, deny access — don't allow        |
-| Audit every access attempt           | Both allowed and denied — denied attempts may indicate attacks |
+| Fail closed on permission check      | If permission engine is down, deny access � don't allow        |
+| Audit every access attempt           | Both allowed and denied � denied attempts may indicate attacks |
 | Test tenant isolation quarterly      | Dedicated penetration testing for cross-tenant leakage         |
 
 ## Common Mistakes
@@ -318,10 +318,10 @@ export class TenantGuard implements CanActivate {
 ### 1. Quarterly Threat Model Review
 
 1. Security team schedules quarterly review (calendar reminder)
-2. Review current assets list — add/remove/update as needed
-3. Walk through each STRIDE category — check if new threats emerged
+2. Review current assets list � add/remove/update as needed
+3. Walk through each STRIDE category � check if new threats emerged
 4. Review mitigations for continued effectiveness
-5. Check attack trees — new paths to existing goals?
+5. Check attack trees � new paths to existing goals?
 6. Verify all CI/CD pipeline security checks still passing
 7. Document review outcome in security records
 8. If significant changes found: schedule architecture-level threat model update
@@ -348,9 +348,9 @@ Goal: Access another user's memory graph
 Attempt: Modify workspace_id in API request body
 
 Defense chain:
-1. API Gateway authenticates user → extracts workspace_id from JWT
+1. API Gateway authenticates user ? extracts workspace_id from JWT
 2. TenantGuard compares JWT workspace_id vs. request workspace_id
-3. Mismatch detected → 403 Forbidden + audit log entry
+3. Mismatch detected ? 403 Forbidden + audit log entry
 4. Security team alerted (threshold: >5 mismatches per minute)
 
 Result: Attack blocked at first check. Attacker gains nothing.
@@ -383,7 +383,7 @@ Result: Attack blocked at first check. Attacker gains nothing.
 ## Overview
 
 Vaeloom's threat model systematically identifies, classifies, and documents
-security threats across all platform components — web application, API service,
+security threats across all platform components � web application, API service,
 AI service, database, storage, and third-party integrations. The model uses
 STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of
 Service, Elevation of Privilege) as the primary classification framework, with
@@ -411,7 +411,7 @@ threats have explicit mitigation plans with assigned owners and deadlines.
 - Apply STRIDE threat classification to every Vaeloom component with documented
   DFDs and trust boundaries
 - Identify and document all threats with risk ratings (critical/high/medium/low)
-  using likelihood Ã— impact scoring
+  using likelihood × impact scoring
 - Ensure every high and critical threat has an assigned mitigation plan with
   owner and deadline
 - Review and update the threat model quarterly and on every significant
@@ -429,8 +429,8 @@ threats have explicit mitigation plans with assigned owners and deadlines.
   Redis, Object Storage
 - Third-party integrations: Supabase Auth, OpenAI API, SendGrid, GitHub OAuth,
   Google OAuth
-- All trust boundaries: user → web, web → API, API → AI service, API → database,
-  API → storage, service â†” third-party
+- All trust boundaries: user ? web, web ? API, API ? AI service, API ? database,
+  API ? storage, service ↔ third-party
 - Attack vectors: injection, authentication bypass, authorization bypass, SSRF,
   prompt injection, data exfiltration, session hijacking
 - Deployment environments: development, staging, production (different threat
@@ -445,7 +445,7 @@ threats have explicit mitigation plans with assigned owners and deadlines.
   training)
 - Zero-day vulnerabilities in cloud provider infrastructure (provider
   responsibility)
-- Threats specific to on-premise deployment (not applicable — cloud-native only)
+- Threats specific to on-premise deployment (not applicable � cloud-native only)
 
 ---
 
@@ -462,7 +462,7 @@ threats have explicit mitigation plans with assigned owners and deadlines.
 | **Component**         | AI Service (FastAPI)                                                                           |
 | **Attack Vector**     | User uploads document containing "Ignore previous instructions and perform X"                  |
 | **Likelihood**        | High (4/5)                                                                                     |
-| **Impact**            | Critical (5/5) — AI agent could expose system context, execute unintended actions              |
+| **Impact**            | Critical (5/5) � AI agent could expose system context, execute unintended actions              |
 | **Risk**              | Critical (20)                                                                                  |
 | **Existing Controls** | System prompt hardening, input sanitization, output filtering                                  |
 | **Gap**               | No secondary LLM validation of outputs before action execution                                 |
@@ -482,7 +482,7 @@ threats have explicit mitigation plans with assigned owners and deadlines.
 | **Component**         | API (FastAPI)                                                        |
 | **Attack Vector**     | Attacker modifies JWT alg from RS256 to HS256, signs with public key |
 | **Likelihood**        | Medium (3/5)                                                         |
-| **Impact**            | Critical (5/5) — full account takeover                               |
+| **Impact**            | Critical (5/5) � full account takeover                               |
 | **Risk**              | High (15)                                                            |
 | **Existing Controls** | JWT library defaults to algorithm whitelist                          |
 | **Gap**               | Explicit algorithm verification not configured in middleware         |
@@ -532,7 +532,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Threat scenario — prompt injection attack (attacker embeds
+> **Diagram:** Threat scenario � prompt injection attack (attacker embeds
 > malicious instructions in document, AI service either blocks or executes
 > unintended action) and JWT algorithm confusion attack (verification middleware
 > either detects or allows modified token).

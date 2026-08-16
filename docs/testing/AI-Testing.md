@@ -1,6 +1,6 @@
-﻿# AI Testing
+# AI Testing
 
-> **Purpose:** Define AI-specific testing practices for Vaeloom **Status:** ðŸ†•
+> **Purpose:** Define AI-specific testing practices for Vaeloom **Status:** 🆕
 > New
 
 ## AI Testing Architecture
@@ -12,7 +12,7 @@ graph TD
     classDef eval fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef regress fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Differences["ðŸ”„ AI vs Traditional Testing"]
+    subgraph Differences["🔄 AI vs Traditional Testing"]
         direction TB
         D1["Traditional: Deterministic<br/>AI: Non-deterministic"]
         D2["Traditional: Exact assertions<br/>AI: Threshold-based"]
@@ -20,11 +20,11 @@ graph TD
         D4["Traditional: One test per behavior<br/>AI: Statistical significance"]
     end
 
-    subgraph GoldenDatasets["ðŸ“Š Golden Datasets"]
-        G1["Hand-labeled expected I/O<br/>â‰¥ 50 examples per agent<br/>Versioned alongside prompts<br/>Updated on prompt change"]
+    subgraph GoldenDatasets["📊 Golden Datasets"]
+        G1["Hand-labeled expected I/O<br/>≥ 50 examples per agent<br/>Versioned alongside prompts<br/>Updated on prompt change"]
     end
 
-    subgraph Evals["ðŸ§ª Evaluation Types"]
+    subgraph Evals["🧪 Evaluation Types"]
         E1["Accuracy<br/>% correct within tolerance"]
         E2["Hallucination<br/>% fabricated information"]
         E3["Consistency<br/>Same input --> similar output"]
@@ -32,11 +32,11 @@ graph TD
         E5["Safety<br/>Harmful content detection"]
     end
 
-    subgraph Regression["ðŸ”„ Regression Process"]
+    subgraph Regression["🔄 Regression Process"]
         R1["Bug found --> Add to golden dataset<br/>--> Verify fix --> Run all golden tests<br/>--> Ensure no regression"]
     end
 
-    subgraph Stats["ðŸ“ˆ Statistical Significance"]
+    subgraph Stats["📈 Statistical Significance"]
         S1["Classification: 500 items, 95% confidence"]
         S2["Extraction: 100 docs, 95% confidence"]
         S3["Generation: 50 outputs, 90% confidence"]
@@ -87,7 +87,7 @@ Every agent has a golden dataset:
 | ------------- | --------------------------- | -------------------------------------- |
 | Accuracy      | % correct within tolerance  | Extraction entity matches ground truth |
 | Hallucination | % fabricated information    | Resume agent invents a skill           |
-| Consistency   | Same input → similar output | Document classified same way twice     |
+| Consistency   | Same input ? similar output | Document classified same way twice     |
 | Latency       | Response time               | Agent completes within budget          |
 | Safety        | Harmful content detection   | QA Agent catches policy violation      |
 
@@ -130,7 +130,7 @@ When a bug is fixed:
 | ----------------------------------------------------------------- | --------------------------------------------------- |
 | Golden datasets may contain PII if sourced from production        | Use synthetic or anonymized data in golden datasets |
 | AI eval logs could leak prompt internals                          | Redact system prompts in test output and logs       |
-| Adversarial test cases test injection — but may reveal techniques | Keep adversarial test cases in private repos        |
+| Adversarial test cases test injection � but may reveal techniques | Keep adversarial test cases in private repos        |
 
 ## Performance Considerations
 
@@ -142,24 +142,24 @@ When a bug is fixed:
 
 ## Workflows
 
-1. **Golden dataset update**: Bug found in Memory Agent output → failing case
-   added to golden dataset (`golden/memory-agent/regression-042.json`) → prompt
-   engineer fixes prompt → runs
-   `python -m eval.test_prompts --agent memory_agent` → all golden tests pass
-   at >90% tolerance → dataset versioned alongside prompt → PR merged
+1. **Golden dataset update**: Bug found in Memory Agent output ? failing case
+   added to golden dataset (`golden/memory-agent/regression-042.json`) ? prompt
+   engineer fixes prompt ? runs
+   `python -m eval.test_prompts --agent memory_agent` ? all golden tests pass
+   at >90% tolerance ? dataset versioned alongside prompt ? PR merged
 2. **Full AI eval suite on prompt change**: Developer modifies Memory Agent
-   system prompt → CI triggers `python -m eval.run_all --agents memory_agent` →
-   accuracy, hallucination, consistency, latency, and safety evals run → each
-   eval runs with statistically significant sample size → results compared to
-   baseline → pass/fail reported
+   system prompt ? CI triggers `python -m eval.run_all --agents memory_agent` ?
+   accuracy, hallucination, consistency, latency, and safety evals run ? each
+   eval runs with statistically significant sample size ? results compared to
+   baseline ? pass/fail reported
 3. **Hallucination detection regression**: QA agent flags hallucination in
-   Resume Agent output → new golden test case added with expected rejection →
-   resume agent prompt adjusted → hallucination eval re-run with 50 samples →
+   Resume Agent output ? new golden test case added with expected rejection ?
+   resume agent prompt adjusted ? hallucination eval re-run with 50 samples ?
    hallucination rate drops below 2% threshold
-4. **Adversarial test execution**: Security team adds adversarial test case →
+4. **Adversarial test execution**: Security team adds adversarial test case ?
    `python -m eval.test_prompts --type adversarial` runs all adversarial tests
-   against all agents → prompt injection, role confusion, system prompt leak and
-   jailbreak attempts tested → any failure blocks deployment
+   against all agents ? prompt injection, role confusion, system prompt leak and
+   jailbreak attempts tested ? any failure blocks deployment
 
 ## Scalability
 
@@ -183,11 +183,11 @@ When a bug is fixed:
 
 | Metric                            | Alert Threshold        | Severity | Dashboard                     |
 | --------------------------------- | ---------------------- | -------- | ----------------------------- |
-| Golden dataset accuracy per agent | < 85%                  | Critical | Grafana — AI Eval Dashboard   |
-| Hallucination rate                | > 2%                   | Warning  | Grafana — AI Safety Dashboard |
-| AI eval latency (p99)             | > 30s per agent        | Warning  | Grafana — AI Performance      |
+| Golden dataset accuracy per agent | < 85%                  | Critical | Grafana � AI Eval Dashboard   |
+| Hallucination rate                | > 2%                   | Warning  | Grafana � AI Safety Dashboard |
+| AI eval latency (p99)             | > 30s per agent        | Warning  | Grafana � AI Performance      |
 | Adversarial test failure rate     | > 0                    | Critical | Security Dashboard            |
-| Prompt change frequency           | > 5 per week per agent | Info     | GitHub — Prompt audit log     |
+| Prompt change frequency           | > 5 per week per agent | Info     | GitHub � Prompt audit log     |
 
 ## Risks
 
@@ -215,20 +215,20 @@ threshold-based assertions, evolving golden datasets, and statistical
 significance across samples. This document defines the methodology, tooling, and
 processes for testing Vaeloom's AI agents.
 
-The core of AI testing is the golden dataset — a hand-labeled collection of at
+The core of AI testing is the golden dataset � a hand-labeled collection of at
 least 50 input/output examples per agent that serves as the ground truth for
 accuracy evaluation. Every prompt change triggers a full evaluation run across
 five metrics: accuracy (correctness within tolerance), hallucination (fabricated
 information), consistency (same input produces similar output), latency
 (response time compliance), and safety (harmful content detection). Statistical
-significance targets ensure that evaluation results are reliable —
+significance targets ensure that evaluation results are reliable �
 classification accuracy requires 500 samples at 95% confidence, while generation
 quality requires 50 outputs at 90% confidence.
 
 For Vaeloom's suite of AI agents (Memory Agent, Organization Agent, Resume
 Agent, Career Intelligence Agent, Communication Agent, QA Agent), AI testing
 ensures that every agent meets quality bars before deployment. When a bug is
-found — such as the Resume Agent inventing a skill — the failing case is added
+found � such as the Resume Agent inventing a skill � the failing case is added
 to the golden dataset, the prompt is fixed, and all golden tests are re-run to
 verify no regression has occurred.
 
@@ -279,7 +279,7 @@ restricted access to prevent attack technique exposure.
 ### Golden Dataset Eval Runner
 
 ```python
-# apps/backend/tests/unit/test_prompts.py
+# apps/api/tests/unit/test_prompts.py
 import json
 from pathlib import Path
 
@@ -347,10 +347,10 @@ sequenceDiagram
     EVAL->>EVAL: Check hallucination rate < 2%
     EVAL->>REPORT: Generate eval report
     alt Pass
-        REPORT-->>CI: âœ… All tests pass
+        REPORT-->>CI: ✅ All tests pass
         CI-->>DEV: PR approved
     else Fail
-        REPORT-->>CI: âŒ Accuracy 82% (target 85%)
+        REPORT-->>CI: ❌ Accuracy 82% (target 85%)
         CI-->>DEV: PR blocked with failure report
     end
 ```

@@ -1,14 +1,14 @@
-﻿# Analytics
+# Analytics
 
 > **Purpose:** Define how Vaeloom captures, processes, stores, and exposes
 > analytics data for product insights, business intelligence, and workspace
-> usage monitoring **Status:** ðŸ†• New **Owner:** Product Team **Last
-> Updated:** 2026-07-13
+> usage monitoring **Status:** 🆕 New **Owner:** Product Team **Last Updated:**
+> 2026-07-13
 
 ## Overview
 
 Vaeloom's analytics system is an event-driven pipeline that ingests telemetry
-from all product surfaces — web app, API, agent workflows, and connector
+from all product surfaces � web app, API, agent workflows, and connector
 integrations. Events are captured at the client or server side, validated
 against a schema registry, streamed through a buffered processing layer, and
 stored in a columnar data warehouse optimized for analytical queries. A
@@ -24,13 +24,13 @@ and the AI gateway's feature-usage feedback loop.
 
 ## Goals
 
-| #   | Goal                                                                                                        | Priority      |
-| --- | ----------------------------------------------------------------------------------------------------------- | ------------- |
-| 1   | Provide **product teams** with self-service analytics on feature adoption, retention, and funnel conversion | ðŸ”´ Critical |
-| 2   | Enable **workspace owners** to view usage metrics for their agents, documents, and users                    | ðŸŸ¡ High     |
-| 3   | Feed **feature-usage signals** back into the AI gateway for model routing decisions                         | ðŸŸ¡ High     |
-| 4   | Maintain **strict privacy compliance** — never store raw PII or event data beyond configured retention      | ðŸŸ¢ Medium   |
-| 5   | Support **real-time dashboards** for operational metrics with sub-3-second end-to-end latency               | ðŸŸ¢ Medium   |
+| #   | Goal                                                                                                        | Priority    |
+| --- | ----------------------------------------------------------------------------------------------------------- | ----------- |
+| 1   | Provide **product teams** with self-service analytics on feature adoption, retention, and funnel conversion | 🔴 Critical |
+| 2   | Enable **workspace owners** to view usage metrics for their agents, documents, and users                    | 🟡 High     |
+| 3   | Feed **feature-usage signals** back into the AI gateway for model routing decisions                         | 🟡 High     |
+| 4   | Maintain **strict privacy compliance** � never store raw PII or event data beyond configured retention      | 🟢 Medium   |
+| 5   | Support **real-time dashboards** for operational metrics with sub-3-second end-to-end latency               | 🟢 Medium   |
 
 ## Scope
 
@@ -57,38 +57,38 @@ graph LR
     classDef dash fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
     classDef privacy fill:#e0f2f1,stroke:#00695c,color:#000,stroke-width:1px
 
-    subgraph Capture["ðŸ“¡ Event Capture"]
+    subgraph Capture["📡 Event Capture"]
         WEB["Web App<br/>JS Tracker"]
         API["API Gateway<br/>Server SDK"]
         AGENT["Agent Runtime<br/>Instrumentation"]
         CONN["Connectors<br/>Webhook Events"]
     end
 
-    subgraph Privacy["ðŸ”’ Privacy Layer"]
+    subgraph Privacy["🔒 Privacy Layer"]
         PII["PII Scrubber<br/>Regex + ML"]
         CONSENT["Consent Check<br/>Opt-in Filter"]
     end
 
-    subgraph Stream["âš¡ Stream Processing"]
+    subgraph Stream["⚡ Stream Processing"]
         KAFKA["Kafka<br/>Persistent Queue"]
         REDIS["Redis Streams<br/>Real-Time Path"]
         VAL["Schema Validator<br/>Avro Registry"]
         SAMPLER["Sampler<br/>Rate Limiter"]
     end
 
-    subgraph Store["ðŸ’¾ Data Warehouse"]
+    subgraph Store["💾 Data Warehouse"]
         CH["ClickHouse<br/>Columnar Store"]
         MATVIEW["Materialized<br/>Views"]
         RETENTION["Retention<br/>TTL Manager"]
     end
 
-    subgraph Query["ðŸ” Analytics Query"]
+    subgraph Query["🔍 Analytics Query"]
         REST["REST API<br/>(analytics.Vaeloom.dev)"]
         GQL["GraphQL<br/>Embedded Queries"]
         CACHE["Query Cache<br/>Redis"]
     end
 
-    subgraph Dash["ðŸ“Š Dashboards"]
+    subgraph Dash["📊 Dashboards"]
         PROD["Product Dashboard<br/>Metabase"]
         WS["Workspace Reports<br/>In-App"]
         ALERT["Alert Rules<br/>Threshold Engine"]
@@ -142,7 +142,7 @@ PostgreSQL with TimescaleDB extension is the primary analytics store, chosen for
 
 ### Analytics API
 
-Analytics endpoints are served from the main FastAPI backend (`apps/backend/`). All endpoints require a service-level API key or a user JWT with the `analytics:read` scope. Responses are cached in Redis with a TTL matched to the aggregation window (e.g., 5 min for real-time, 1 h for daily).
+Analytics endpoints are served from the main FastAPI backend (`apps/api/`). All endpoints require a service-level API key or a user JWT with the `analytics:read` scope. Responses are cached in Redis with a TTL matched to the aggregation window (e.g., 5 min for real-time, 1 h for daily).
 
 ### Dashboard Frontend
 
@@ -328,8 +328,8 @@ All events pass through a PII scrubber before entering the stream layer. The scr
 
 | Technique | Target | Implementation |
 |-----------|--------|----------------|
-| Email detection | `properties.*` string values | Regex `\b[\w\.-]+@[\w\.-]+\.\w+\b` → `[REDACTED]` |
-| Credit card Luhn check | `properties.*` string values | Luhn algorithm → `[REDACTED]` |
+| Email detection | `properties.*` string values | Regex `\b[\w\.-]+@[\w\.-]+\.\w+\b` ? `[REDACTED]` |
+| Credit card Luhn check | `properties.*` string values | Luhn algorithm ? `[REDACTED]` |
 | IP truncation | `source_ip` | Preserve only /24 subnet prefix |
 | Custom patterns | Configurable per workspace | Regex patterns defined in workspace settings |
 
@@ -426,7 +426,7 @@ The nightly aggregation pipeline runs materialized view rebuilds and rollup comp
 
 - **Incremental materialization**: Only process partitions that have new data since last run.
 - **Parallel partition processing**: Each partition is processed independently by separate ClickHouse threads.
-- **Pre-aggregated hourly rollups**: Hourly tables feed into daily, which feed into weekly — avoiding full table scans.
+- **Pre-aggregated hourly rollups**: Hourly tables feed into daily, which feed into weekly � avoiding full table scans.
 - **TTL-based compaction**: Partitions past their retention TTL are dropped, not scanned.
 
 ## Scalability
@@ -444,7 +444,7 @@ The event stream is partitioned by `workspace_id` at every layer:
 
 ### Time-Based Partitioning
 
-PostgreSQL tables are partitioned by month using TimescaleDB hypertables. Each partition can be independently compressed, backed up, or dropped. This allows efficient retention enforcement — dropping an entire partition is an O(1) metadata operation.
+PostgreSQL tables are partitioned by month using TimescaleDB hypertables. Each partition can be independently compressed, backed up, or dropped. This allows efficient retention enforcement � dropping an entire partition is an O(1) metadata operation.
 
 | Partition | Events | Storage | Query Performance |
 |-----------|--------|---------|-------------------|
@@ -636,25 +636,25 @@ Each metric has a registered definition that controls how it appears in dashboar
 
 ### Event Naming Consistency
 
-- Always use `object.action.context` — never abbreviate or use free-form names.
-- Use past tense for actions — `created`, `completed`, `failed` — never `create`, `finish`, `error`.
-- Keep names lowercase with dots as separators — never use camelCase, snake_case, or spaces.
+- Always use `object.action.context` � never abbreviate or use free-form names.
+- Use past tense for actions � `created`, `completed`, `failed` � never `create`, `finish`, `error`.
+- Keep names lowercase with dots as separators � never use camelCase, snake_case, or spaces.
 - Register every event name in the schema registry before instrumenting it.
 - Use the `context` segment consistently to distinguish UI from API from system-triggered events.
 
 ### Batching
 
-- Always flush events in batches — never send one event per HTTP request.
-- Set the batch size proportional to the expected event frequency — high-frequency events should buffer more aggressively.
+- Always flush events in batches � never send one event per HTTP request.
+- Set the batch size proportional to the expected event frequency � high-frequency events should buffer more aggressively.
 - Configure the flush interval to match the acceptable latency for the event type (2 s for real-time, 10 s for bulk).
-- Use the server-side SDK for backend events — never emit client events from server code (and vice versa).
+- Use the server-side SDK for backend events � never emit client events from server code (and vice versa).
 
 ### Sampling for High-Volume Events
 
 - Enable sampling for any event type expected to exceed 100,000 events/day per workspace.
-- Use workspace-tier-based sampling rates — enterprise workspaces get 100 % sampling, others get sampled.
-- Never sample error events — every error must be captured.
-- Sample at the stream processor level, not at the client — clients should always send all events.
+- Use workspace-tier-based sampling rates � enterprise workspaces get 100 % sampling, others get sampled.
+- Never sample error events � every error must be captured.
+- Sample at the stream processor level, not at the client � clients should always send all events.
 - Document sampling rates in the event type registry so dashboard consumers can factor in the multiplier.
 
 ## Common Mistakes
@@ -669,7 +669,7 @@ Events from users who have not granted the appropriate consent level must be dro
 
 ### PII in Event Properties
 
-Developers often unintentionally include PII in custom `properties` — for example, passing a user's email as a property for debugging. The PII scrubber catches common patterns, but it cannot catch workspace-specific identifiers or custom data formats. Always treat the `properties` object as a public, auditable field and never write raw user data into it.
+Developers often unintentionally include PII in custom `properties` � for example, passing a user's email as a property for debugging. The PII scrubber catches common patterns, but it cannot catch workspace-specific identifiers or custom data formats. Always treat the `properties` object as a public, auditable field and never write raw user data into it.
 
 | Mistake | Example | Correct Approach |
 |---------|---------|-----------------|
@@ -697,9 +697,9 @@ Bypassing the schema validator by sending events as `application/json` with arbi
 
 | Limitation | Detail |
 |------------|--------|
-| **Real-time availability** | Real-time (sub-second) processing is reserved for high-priority event types (agent actions, billing, errors). All other events have 5–60 s latency. |
+| **Real-time availability** | Real-time (sub-second) processing is reserved for high-priority event types (agent actions, billing, errors). All other events have 5�60 s latency. |
 | **Sampling for non-critical events** | Page views and performance metrics are sampled at rates as low as 1 % for non-enterprise workspaces. Dashboard numbers for these metrics are estimates. |
-| **Data retention** | Raw event data is stored for a maximum of 180 days (error events). No raw event retention beyond that — only aggregated rollups remain. |
+| **Data retention** | Raw event data is stored for a maximum of 180 days (error events). No raw event retention beyond that � only aggregated rollups remain. |
 | **Cross-workspace queries** | There is no cross-workspace analytics view. All queries must specify a single `workspace_id`. Multi-workspace comparisons are not supported. |
 | **Funnel analysis depth** | Funnel analysis supports a maximum of 10 steps. Funnels spanning multiple event types beyond this limit require custom queries. |
 | **Custom event properties** | Custom `properties` are limited to 50 keys per event, with each value capped at 1 KB. Total event size must not exceed 64 KB. |
@@ -758,6 +758,6 @@ Vaeloom analytics export --report workspace_usage --format csv > usage.csv
 | [RBAC](Backend/RBAC.md) | Role-based access control for analytics API endpoints |
 | [API Reference](Backend/API-Reference.md) | Complete API reference including analytics endpoints |
 | [Backend Architecture](Backend/Backend-Architecture.md) | Backend service architecture, including analytics API service |
-| [Implementation — Observability & Tracing](Engineering/Implementation/12-observability-tracing.md) | Distributed tracing across the analytics pipeline |
+| [Implementation � Observability & Tracing](Engineering/Implementation/12-observability-tracing.md) | Distributed tracing across the analytics pipeline |
 | [Success Metrics](Project/README.md) | Product success metrics derived from analytics data |
 ````

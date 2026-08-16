@@ -1,10 +1,10 @@
-version: "3.9"
+version: '3.9'
 
 x-logging: &default-logging
-  driver: "json-file"
+  driver: 'json-file'
   options:
-    max-size: "10m"
-    max-file: "3"
+    max-size: '10m'
+    max-file: '3'
 
 x-service-base: &service-base
   networks:
@@ -35,11 +35,11 @@ services:
       POSTGRES_USER: vaeloom
       POSTGRES_PASSWORD: vaeloom_dev
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vaeloom"]
+      test: ['CMD-SHELL', 'pg_isready -U vaeloom']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -49,11 +49,11 @@ services:
     image: redis:7-alpine
     container_name: vaeloom-redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 5
@@ -67,18 +67,18 @@ services:
       PORT: 3000
       NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:
-      - "3000:3000"
+      - '3000:3000'
     depends_on:
-      - backend
+      - api
     <<: *service-base
 
-  # ─── Unified Backend (FastAPI) ───
-  backend:
-    build: ./apps/backend
-    container_name: vaeloom-backend
+  # ─── Unified API (FastAPI) ───
+  api:
+    build: ./apps/api
+    container_name: vaeloom-api
     environment:
-      SERVICE_NAME: vaeloom-backend
-      SERVICE_VERSION: "0.2.0"
+      SERVICE_NAME: vaeloom-api
+      SERVICE_VERSION: '0.2.0'
       SERVICE_ENVIRONMENT: development
       LOG_LEVEL: DEBUG
       DATABASE__URL: postgresql+asyncpg://vaeloom:vaeloom_dev@postgres:5432/vaeloom
@@ -92,7 +92,7 @@ services:
       STORAGE_BUCKET: vaeloom-storage
       STORAGE_REGION: us-east-1
     ports:
-      - "8000:8000"
+      - '8000:8000'
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,8 +105,8 @@ services:
     image: quay.io/minio/minio:latest
     container_name: vaeloom-minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - '9000:9000'
+      - '9001:9001'
     environment:
       MINIO_ROOT_USER: vaeloom
       MINIO_ROOT_PASSWORD: vaeloom_dev_minio
@@ -115,7 +115,7 @@ services:
       - minio-data:/data
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -137,7 +137,7 @@ services:
       MAX_CLIENT_CONN: 200
       SERVER_IDLE_TIMEOUT: 300
     ports:
-      - "6432:6432"
+      - '6432:6432'
     depends_on:
       - postgres
     <<: *service-base
@@ -150,7 +150,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@vaeloom.dev
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
-      - "5050:80"
+      - '5050:80'
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     depends_on:

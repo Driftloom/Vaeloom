@@ -1,6 +1,6 @@
-﻿## Header
+## Header
 
-> **Purpose:** Detailed specification for ATS Scoring **Status:** ðŸ†• New
+> **Purpose:** Detailed specification for ATS Scoring **Status:** 🆕 New
 > **Owner:** Product Team **Last Updated:** 2026-07-13
 
 ## Overview
@@ -18,17 +18,17 @@ The scoring is grounded in the user's own memory graph, not just keyword
 overlap. When the ATS Agent identifies a skill gap, it checks whether the user
 actually has that skill in their memory graph but hasn't surfaced it in the
 resume. If the skill exists in memory but is missing from the resume, the
-suggestion is "add this skill — it's in your profile but not on your resume." If
+suggestion is "add this skill � it's in your profile but not on your resume." If
 the skill is genuinely absent, the suggestion becomes a learning recommendation
-that feeds into the Learning Roadmap (V2). This distinction — known-but-missing
-vs. genuinely-absent — is what makes Vaeloom's ATS feedback qualitatively
+that feeds into the Learning Roadmap (V2). This distinction � known-but-missing
+vs. genuinely-absent � is what makes Vaeloom's ATS feedback qualitatively
 different from a keyword matcher.
 
 The ATS screen is accessed from the Resume screen (split-view) or the Jobs
 screen (per-role). Users can paste a job description URL, upload a JD PDF, or
 type/paste text directly. The score updates in real-time as the user edits their
 resume, showing which changes move the needle and which don't. Every score is
-accompanied by a confidence indicator — low-confidence scores (incomplete JD,
+accompanied by a confidence indicator � low-confidence scores (incomplete JD,
 unusual format) are marked with a warning rather than presented as
 authoritative.
 
@@ -60,7 +60,7 @@ which keywords matter and start fixing the gaps that actually hurt my chances."
 | ATS-7  | Score comparison across multiple JDs (save scan history)            | P2       |
 | ATS-8  | Export scan report as PDF                                           | P2       |
 | ATS-9  | Confidence indicator on every score (low/medium/high)               | P1       |
-| ATS-10 | Resume edit moves score — specific changes highlighted in green/red | P2       |
+| ATS-10 | Resume edit moves score � specific changes highlighted in green/red | P2       |
 
 ## Data Model
 
@@ -72,7 +72,7 @@ which keywords matter and start fixing the gaps that actually hurt my chances."
 | `applications`            | `id`, `workspace_id`, `ats_score`, `ats_report_snapshot` | Cached scan per application                  |
 | `resumes`                 | `id`, `content (jsonb)`, `variant_type`                  | Resume content being scored                  |
 
-No new tables needed — ATS data is written into `memory_records` as scan results
+No new tables needed � ATS data is written into `memory_records` as scan results
 and optionally cached on `applications`.
 
 ## API Endpoints
@@ -104,7 +104,7 @@ and optionally cached on `applications`.
 | Document    | Yes  | No    | Resume content read                        |
 | Career      | No   | Yes   | Scan results cached on application records |
 | Episodic    | Yes  | Yes   | Scan events logged with outcome            |
-| Preference  | No   | No    | —                                          |
+| Preference  | No   | No    | �                                          |
 | Working     | Yes  | No    | Current scan session state                 |
 
 ## Permission Model
@@ -116,7 +116,7 @@ and optionally cached on `applications`.
 | `resume:read`  | Read current resume for scoring    | Granted (implicit) |
 | `profile:read` | Check known skills in memory       | Granted (implicit) |
 
-Autonomy level: **Read-only** — the ATS Agent scores and reports but never
+Autonomy level: **Read-only** � the ATS Agent scores and reports but never
 modifies the resume or JD without user action.
 
 ## Error Scenarios
@@ -124,7 +124,7 @@ modifies the resume or JD without user action.
 | Scenario                                            | Error                | User Impact                                     | Recovery                                                   |
 | --------------------------------------------------- | -------------------- | ----------------------------------------------- | ---------------------------------------------------------- |
 | JD URL is behind a login wall                       | Cannot scrape JD     | Prompt user to paste text or upload file        | Fallback to text input                                     |
-| JD is an image with no extractable text             | OCR fails            | "Could not read this JD — try pasting the text" | OCR retry with different model; if still fails, text input |
+| JD is an image with no extractable text             | OCR fails            | "Could not read this JD � try pasting the text" | OCR retry with different model; if still fails, text input |
 | Resume has very few matching entities               | Low confidence score | Score shown with "low confidence" badge         | Suggestion to add more detail to resume first              |
 | Scan takes >15s due to LLM latency                  | Slow response        | User sees progress bar with estimated time      | Background processing; notify when complete                |
 | JD contains ambiguous or contradictory requirements | Partial parsing      | Flagged sections shown with warning             | User can clarify which interpretation to use               |
@@ -143,7 +143,7 @@ modifies the resume or JD without user action.
 
 | Concern                                       | Mitigation                                                                                                                                              |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| JD content sent to LLM for analysis           | JD text is ephemeral — not stored longer than scan retention period; user can delete scan immediately                                                   |
+| JD content sent to LLM for analysis           | JD text is ephemeral � not stored longer than scan retention period; user can delete scan immediately                                                   |
 | Resume content exposed in scan                | Scan access requires same auth scope as resume read; scans are workspace-scoped                                                                         |
 | ATS suggestions expose salary or bias signals | ATS Agent prompt explicitly excludes consideration of demographics, salary, or protected characteristics; QA Agent validates output for biased language |
 | Scan data shared across users                 | All ATS data is strictly workspace-scoped; no cross-user comparison without explicit opt-in                                                             |
@@ -158,7 +158,7 @@ modifies the resume or JD without user action.
   experience section failed); error badge on failed section with retry button
 - **Edge cases:** Very short JD (<50 words) produces "low confidence" warning;
   extremely long JD (>5000 words) is truncated with a note; resume with no
-  overlapping keywords shows "No direct match — consider tailoring your resume
+  overlapping keywords shows "No direct match � consider tailoring your resume
   for this role"; identical scan submitted twice returns cached result with a
   "returning result from earlier scan" indicator
 
@@ -177,7 +177,7 @@ modifies the resume or JD without user action.
 |                  |                                                                                                                                                                                                                                                                                                                                                                                           |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **In Scope**     | JD input via URL, file upload (PDF/DOCX), or text paste; per-section breakdown (skills, experience, education, keywords); gap analysis distinguishing "known but missing" vs. "genuinely absent" skills; real-time score updates as resume is edited; score history and comparison across multiple JDs; PDF export of scan reports; low-confidence warnings for incomplete or unusual JDs |
-| **Out of Scope** | Automated resume editing (the ATS Agent suggests but never modifies); cross-user score comparison (each user's scores are private); ATS-specific formatting advice (e.g., "use this template"); integration with specific ATS platforms (Greenhouse, Lever) — scoring is against job description, not ATS behavior                                                                        |
+| **Out of Scope** | Automated resume editing (the ATS Agent suggests but never modifies); cross-user score comparison (each user's scores are private); ATS-specific formatting advice (e.g., "use this template"); integration with specific ATS platforms (Greenhouse, Lever) � scoring is against job description, not ATS behavior                                                                        |
 
 ## Architecture
 
@@ -187,19 +187,19 @@ graph TD
     classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef output fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Input["ðŸ“¥ Input Channels"]
+    subgraph Input["📥 Input Channels"]
         I1["URL Scraper<br/>Parse JD from URL"]
         I2["File Parser<br/>PDF/DOCX JD upload"]
         I3["Text Input<br/>Paste JD directly"]
     end
 
-    subgraph Process["âš™ï¸ Scoring Engine"]
+    subgraph Process["⚙️ Scoring Engine"]
         P1["ATS Agent<br/>Score resume vs JD"]
         P2["Memory Agent<br/>Check skill existence"]
         P3["QA Agent<br/>Validate for hallucination"]
     end
 
-    subgraph Output["ðŸ“Š Output"]
+    subgraph Output["📊 Output"]
         O1["Match % Score"]
         O2["Per-Section Breakdown"]
         O3["Gap Report<br/>(known-missing vs absent)"]
@@ -217,12 +217,12 @@ graph TD
 
 | Component             | Responsibility                                                          | Technology                   | Dependencies                          |
 | --------------------- | ----------------------------------------------------------------------- | ---------------------------- | ------------------------------------- |
-| JD Input Handler      | Accept URL, file upload, or text paste; normalize to plain text         | FastAPI (apps/backend)       | File storage (S3), URL validator      |
+| JD Input Handler      | Accept URL, file upload, or text paste; normalize to plain text         | FastAPI (apps/api)           | File storage (S3), URL validator      |
 | ATS Scoring Engine    | Compare resume against JD; generate per-section scores and gap analysis | FastAPI + Claude API         | Memory Agent (skill lookup), QA Agent |
 | Score Caching Service | Cache identical JD scans; manage scan history per workspace             | Redis (TTL 24h) + PostgreSQL | Scan storage                          |
 | Gap Analysis Module   | Distinguish known-missing vs. genuinely-absent skills                   | FastAPI + Memory Agent       | Entity graph, skill taxonomy          |
-| Export Service        | Generate PDF scan reports                                               | PDFKit / Puppeteer           | —                                     |
-| QA Validation Module  | Check for hallucinated gaps, biased language, salary signals            | FastAPI + LLM eval           | —                                     |
+| Export Service        | Generate PDF scan reports                                               | PDFKit / Puppeteer           | �                                     |
+| QA Validation Module  | Check for hallucinated gaps, biased language, salary signals            | FastAPI + LLM eval           | �                                     |
 
 ## Workflows
 
@@ -267,17 +267,17 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **JD Ingestion:** URL → HTML → extracted text → plain text JD (stored
+1. **JD Ingestion:** URL ? HTML ? extracted text ? plain text JD (stored
    ephemerally)
-2. **Resume Retrieval:** User's master resume fetched from `resumes` table →
+2. **Resume Retrieval:** User's master resume fetched from `resumes` table ?
    JSON structure
-3. **Scoring:** JD text + resume JSON → LLM prompt → structured score object
+3. **Scoring:** JD text + resume JSON ? LLM prompt ? structured score object
    (match %, per-section breakdown, gap list)
-4. **Gap Classification:** Each gap sent to Memory Agent → entity lookup in
-   `entities` table → "exists" or "absent" flag
+4. **Gap Classification:** Each gap sent to Memory Agent ? entity lookup in
+   `entities` table ? "exists" or "absent" flag
 5. **Caching:** Scan result written to `memory_records` (Episodic type) and
    optionally linked to `applications` record
-6. **Export:** Scan result → PDF template → generated file → user download
+6. **Export:** Scan result ? PDF template ? generated file ? user download
 
 ## Non-Functional Requirements
 
@@ -314,7 +314,7 @@ sequenceDiagram
 | ----------- | ---------------- | ----------------------------- | ------------------------- |
 | Development | Docker Compose   | `docker compose up`           | Local health endpoint     |
 | Staging     | Helm chart (K8s) | CI/CD merge to staging branch | Smoketest suite passes    |
-| Production  | ArgoCD           | Git tag `v*.*.*`              | Canary (10% → 50% → 100%) |
+| Production  | ArgoCD           | Git tag `v*.*.*`              | Canary (10% ? 50% ? 100%) |
 
 ## Configuration
 
@@ -350,7 +350,7 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/ats/scan \
   },
   "confidence": "high",
   "suggestions": [
-    "Add React to your resume — it's in your profile but missing from the document",
+    "Add React to your resume � it's in your profile but missing from the document",
     "Consider a Kubernetes course (Learning Roadmap can help)",
     "Your education section fully matches this JD"
   ]
@@ -367,7 +367,7 @@ curl -X GET https://api.Vaeloom.dev/v1/workspaces/{id}/ats/export/scan_xyz \
 | Practice                                     | Rationale                                                                                                                           |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Always review low-confidence scores manually | Scores below 70% confidence should not be used for application decisions without manual verification of the JD and resume alignment |
-| Use ATS scoring as a guide, not a gate       | A low score doesn't mean don't apply — it means the resume needs tailoring for that specific role                                   |
+| Use ATS scoring as a guide, not a gate       | A low score doesn't mean don't apply � it means the resume needs tailoring for that specific role                                   |
 | Run scans after every resume update          | Every new project, skill, or experience added to the resume should trigger a re-scan against saved JDs to track improvement         |
 | Combine ATS scoring with Learning Roadmap    | Skills identified as "genuinely absent" should feed directly into the Learning Roadmap for structured skill development             |
 

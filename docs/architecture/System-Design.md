@@ -159,11 +159,11 @@ graph TB
     end
 
     subgraph API_Layer["Application Layer"]
-        API["apps/backend<br/>FastAPI · Python 3.12+"]
+        API["apps/api<br/>FastAPI · Python 3.12+"]
     end
 
     subgraph AI_Layer["AI Layer (same process)"]
-        AISvc["apps/backend<br/>FastAPI · Python 3.12+"]
+        AISvc["apps/api<br/>FastAPI · Python 3.12+"]
         Router["Model Router<br/>Haiku · Sonnet · GPT-4o"]
     end
 
@@ -231,10 +231,10 @@ graph TB
 
 ### Service Responsibilities
 
-| Service        | Stack                      | Responsibility                                              | Port | Scale Strategy            |
-| -------------- | -------------------------- | ----------------------------------------------------------- | ---- | ------------------------- |
-| `apps/web`     | Next.js, React, TypeScript | Frontend rendering, SSR, client state                       | 3000 | Horizontal (auto-scaling) |
-| `apps/backend` | FastAPI, Python 3.12       | Auth, CRUD, permissions, agents, memory, RAG, model routing | 8000 | Horizontal (auto-scaling) |
+| Service    | Stack                      | Responsibility                                              | Port | Scale Strategy            |
+| ---------- | -------------------------- | ----------------------------------------------------------- | ---- | ------------------------- |
+| `apps/web` | Next.js, React, TypeScript | Frontend rendering, SSR, client state                       | 3000 | Horizontal (auto-scaling) |
+| `apps/api` | FastAPI, Python 3.12       | Auth, CRUD, permissions, agents, memory, RAG, model routing | 8000 | Horizontal (auto-scaling) |
 
 ### Data Flow Summary
 

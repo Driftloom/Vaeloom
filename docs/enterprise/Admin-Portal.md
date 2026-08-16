@@ -92,7 +92,7 @@ graph TD
     end
 
     GUARD["RBAC Guard<br/>(dependency injection per route)"]:::guard
-    API["Admin API<br/>(apps/backend)"]:::api
+    API["Admin API<br/>(apps/api)"]:::api
     AUDIT["Audit Pipeline"]:::audit
 
     Portal --> GUARD --> API --> AUDIT

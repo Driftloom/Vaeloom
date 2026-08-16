@@ -1,6 +1,6 @@
-﻿# Scripts
+# Scripts
 
-> **Purpose:** Define development scripts for Vaeloom **Status:** ðŸ†• New
+> **Purpose:** Define development scripts for Vaeloom **Status:** 🆕 New
 
 ## Script Architecture
 
@@ -11,7 +11,7 @@ graph TD
     classDef api fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef ai fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Root["ðŸ“ Root-Level Scripts"]
+    subgraph Root["📁 Root-Level Scripts"]
         R1["./scripts/dev.sh<br/>Start all services"]
         R2["./scripts/reset-db.sh<br/>Drop --> recreate --> migrate --> seed"]
         R3["./scripts/seed-data.sh<br/>Load seed data"]
@@ -19,7 +19,7 @@ graph TD
         R5["./scripts/ci-local.sh<br/>Run CI pipeline locally"]
     end
 
-    subgraph Frontend["ðŸŒ Frontend (apps/web)"]
+    subgraph Frontend["🌐 Frontend (apps/web)"]
         F1["npm run dev --> Start (port 3000)"]
         F2["npm run build --> Production build"]
         F3["npm run test --> Run tests"]
@@ -27,8 +27,8 @@ graph TD
         F5["npm run analyze --> Bundle analysis"]
     end
 
-    subgraph Backend["🐍 Backend (apps/backend)"]
-        B1["uvicorn backend.main:app --reload --> Dev server (port 8000)"]
+    subgraph Backend["?? Backend (apps/api)"]
+        B1["uvicorn api.main:app --reload --> Dev server (port 8000)"]
         B2["alembic upgrade head --> DB migration"]
         B3["alembic downgrade -1 --> Rollback"]
         B4["pytest --> Run tests"]
@@ -44,7 +44,7 @@ graph TD
     class B1,B2,B3,B4,B5,B6,B7 ai
 ```
 
-> **Diagram:** Script architecture — **root-level scripts** (dev, reset-db,
+> **Diagram:** Script architecture � **root-level scripts** (dev, reset-db,
 > seed, smoke-test, CI) serve **2 services**: **Frontend**
 > (dev/build/test/lint/analyze) and **Backend** (uvicorn
 > server/migrations/test/lint/typecheck/eval).
@@ -84,10 +84,10 @@ npm run test:watch   # Run tests in watch mode
 npm run analyze      # Bundle analysis
 ```
 
-### Backend (apps/backend)
+### Backend (apps/api)
 
 ```bash
-uvicorn backend.main:app --reload --port 8000  # Dev server
+uvicorn api.main:app --reload --port 8000  # Dev server
 alembic upgrade head                             # Run migrations
 alembic downgrade -1                              # Rollback last migration
 pytest                                            # Run tests
@@ -107,27 +107,27 @@ python -m eval.run_all                           # Run evals
 
 | Mistake                                                       | Consequence                                                                                                                                                             |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Running `reset-db.sh` without checking the target environment | The script drops and recreates all tables — running it against staging or production destroys all user data. Always check `NODE_ENV` or the database URL before running |
-| Hardcoding paths or credentials inside scripts                | A script with hardcoded `/Users/name/Vaeloom` paths breaks for every other developer — scripts must use relative paths and environment variables                        |
-| Skipping error handling in CI scripts                         | A CI script that doesn't `set -e` continues executing after a failure — the next step may run against corrupted state, masking the original error                       |
-| Not making scripts idempotent                                 | A seed script that creates the same data twice causes duplicate keys or constraint violations — scripts should check for existing data before inserting                 |
+| Running `reset-db.sh` without checking the target environment | The script drops and recreates all tables � running it against staging or production destroys all user data. Always check `NODE_ENV` or the database URL before running |
+| Hardcoding paths or credentials inside scripts                | A script with hardcoded `/Users/name/Vaeloom` paths breaks for every other developer � scripts must use relative paths and environment variables                        |
+| Skipping error handling in CI scripts                         | A CI script that doesn't `set -e` continues executing after a failure � the next step may run against corrupted state, masking the original error                       |
+| Not making scripts idempotent                                 | A seed script that creates the same data twice causes duplicate keys or constraint violations � scripts should check for existing data before inserting                 |
 
 ## Best Practices
 
 | Practice                                                  | Why                                                                                                                                     |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Always use shell safety flags at the top of shell scripts | Exits on errors, catches unset variables, and surfaces pipe failures — prevents silent failures in script pipelines                     |
+| Always use shell safety flags at the top of shell scripts | Exits on errors, catches unset variables, and surfaces pipe failures � prevents silent failures in script pipelines                     |
 | Use relative paths derived from the script's own location | `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` allows the script to work from any working directory                       |
-| Add a confirmation prompt to destructive operations       | `read -p "Reset database? This will delete all data. Type 'yes': " confirm` — a simple prompt prevents the most common script accidents |
+| Add a confirmation prompt to destructive operations       | `read -p "Reset database? This will delete all data. Type 'yes': " confirm` � a simple prompt prevents the most common script accidents |
 | Use `--dry-run` flags for operations that change state    | Adding a `--dry-run` flag that logs what would happen without executing it lets developers verify script behavior safely                |
 
 ## Security Considerations
 
 | Consideration                       | Mitigation                                                                                                                                                              |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Secrets in script output            | Scripts that run database queries or API calls may output sensitive data — ensure script output is piped through a redaction filter or only shown in debug mode         |
-| Script execution by untrusted users | Shell scripts run with the user's permissions — a malicious script in the repository could read `.env` files or access credentials. Review scripts as part of PR review |
-| CI script credential exposure       | CI scripts often have access to deployment keys and tokens — scripts should not log environment variables or pass them as command-line arguments                        |
+| Secrets in script output            | Scripts that run database queries or API calls may output sensitive data � ensure script output is piped through a redaction filter or only shown in debug mode         |
+| Script execution by untrusted users | Shell scripts run with the user's permissions � a malicious script in the repository could read `.env` files or access credentials. Review scripts as part of PR review |
+| CI script credential exposure       | CI scripts often have access to deployment keys and tokens � scripts should not log environment variables or pass them as command-line arguments                        |
 
 ## Error Handling
 
@@ -154,7 +154,7 @@ python -m eval.run_all                           # Run evals
 
 ## Overview
 
-The Scripts document catalogs all development scripts in the Vaeloom monorepo —
+The Scripts document catalogs all development scripts in the Vaeloom monorepo �
 root-level shell scripts for service orchestration, npm scripts for the
 frontend, and Python commands for the backend. It defines conventions for script
 safety (idempotency, error handling, confirmation prompts) and documents usage
@@ -203,8 +203,8 @@ patterns for each script.
 
 | Consideration                   | Approach                                                                                                                                                       |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Script startup overhead         | Shell scripts invoked via npm run can add 200-500ms startup time — for frequently-run scripts, consider using a faster alternative like a direct command alias |
-| Seed data script execution time | Loading large seed datasets can take minutes — provide a `--minimal` flag that loads only essential seed data for quick setup                                  |
+| Script startup overhead         | Shell scripts invoked via npm run can add 200-500ms startup time � for frequently-run scripts, consider using a faster alternative like a direct command alias |
+| Seed data script execution time | Loading large seed datasets can take minutes � provide a `--minimal` flag that loads only essential seed data for quick setup                                  |
 
 ## Examples
 
@@ -239,8 +239,8 @@ cd apps/web && npm run dev      # Start (port 3000)
 npm run analyze                 # Bundle analysis
 
 # Backend
-cd apps/backend && source .venv/bin/activate
-uvicorn backend.main:app --reload --port 8000   # Dev server
+cd apps/api && source .venv/bin/activate
+uvicorn api.main:app --reload --port 8000   # Dev server
 alembic upgrade head                             # Run migrations
 alembic downgrade -1                              # Rollback last migration
 pytest tests/test_memory_agent.py -v             # Run specific test

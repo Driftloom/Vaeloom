@@ -1,7 +1,7 @@
-﻿# Site Reliability Engineering (SRE)
+# Site Reliability Engineering (SRE)
 
 > **Purpose:** Define SRE practices, SLOs, error budgets, and operational
-> excellence for Vaeloom **Status:** âœ… Upgraded to enterprise quality
+> excellence for Vaeloom **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** DevOps Team **Last Updated:** 2026-07-12
 
 ---
@@ -22,7 +22,7 @@ operational practices that keep Vaeloom reliable at scale.
 graph TD
     subgraph "SRE Practices"
         SLO[SLO Definition] --> EB[Error Budgets]
-        EB --> Balance[Reliability â†” Velocity Balance]
+        EB --> Balance[Reliability ↔ Velocity Balance]
         Balance --> Automation[Toil Automation]
         Automation --> Observability[Observability]
         Observability --> Incident[Incident Response]
@@ -47,16 +47,16 @@ graph TD
 | Service               | SLO         | Measurement                         | Budget (30 days) |
 | --------------------- | ----------- | ----------------------------------- | ---------------- |
 | API availability      | 99.9%       | Health check success rate           | 43 minutes       |
-| API latency (p99)     | < 500ms     | Request duration percentile         | —                |
+| API latency (p99)     | < 500ms     | Request duration percentile         | �                |
 | AI agent availability | 99.5%       | Agent execution success rate        | 3.6 hours        |
-| Agent latency (p99)   | < 10s       | Agent execution duration percentile | —                |
-| Document ingestion    | < 30s (p95) | Queue → completed duration          | —                |
+| Agent latency (p99)   | < 10s       | Agent execution duration percentile | �                |
+| Document ingestion    | < 30s (p95) | Queue ? completed duration          | �                |
 | Database availability | 99.95%      | Connection success rate             | 21.6 minutes     |
 
 ### Error Budget Calculation
 
 ```typescript
-// apps/backend/sre/error_budget.py
+// apps/api/sre/error_budget.py
 interface ErrorBudget {
   slo: number; // e.g., 0.999 for 99.9%
   periodSeconds: number; // e.g., 30 * 24 * 3600 = 2,592,000
@@ -66,7 +66,7 @@ interface ErrorBudget {
 
 function calculateErrorBudget(slo: number, periodDays: number): ErrorBudget {
   const periodSeconds = periodDays * 24 * 3600;
-  // Error budget = (1 - SLO) Ã— total time
+  // Error budget = (1 - SLO) × total time
   const budgetSeconds = (1 - slo) * periodSeconds;
 
   return {
@@ -78,7 +78,7 @@ function calculateErrorBudget(slo: number, periodDays: number): ErrorBudget {
 }
 
 // Example: 30-day error budget at 99.9% SLO
-// (1 - 0.999) Ã— 2,592,000 = 2,592 seconds = 43.2 minutes
+// (1 - 0.999) × 2,592,000 = 2,592 seconds = 43.2 minutes
 const apiBudget = calculateErrorBudget(0.999, 30);
 console.log(`API error budget: ${apiBudget.budgetSeconds / 60} minutes`);
 // Output: API error budget: 43.2 minutes
@@ -121,9 +121,9 @@ graph LR
 
 | Metric                      | Target                        | Measurement                   |
 | --------------------------- | ----------------------------- | ----------------------------- |
-| Mean Time to Detect (MTTD)  | < 5 min                       | Alert → acknowledgment        |
-| Mean Time to Respond (MTTR) | < 15 min (P1), < 30 min (P2)  | Alert → mitigation            |
-| Mean Time to Resolve (MTTR) | < 1 hour (P1), < 4 hours (P2) | Alert → resolution            |
+| Mean Time to Detect (MTTD)  | < 5 min                       | Alert ? acknowledgment        |
+| Mean Time to Respond (MTTR) | < 15 min (P1), < 30 min (P2)  | Alert ? mitigation            |
+| Mean Time to Resolve (MTTR) | < 1 hour (P1), < 4 hours (P2) | Alert ? resolution            |
 | Change Failure Rate         | < 10%                         | Deployments causing incidents |
 
 ## Best Practices
@@ -132,9 +132,9 @@ graph LR
 | ------------------------------------ | ---------------------------------------------------------- |
 | Measure everything in production     | You can't improve what you don't measure                   |
 | Error budgets over 100% availability | 100% is impossible; budget trades reliability for velocity |
-| Automate the boring stuff            | Toil doesn't scale — invest in automation                  |
+| Automate the boring stuff            | Toil doesn't scale � invest in automation                  |
 | Runbooks for every known failure     | Reduces MTT* metrics by 50%+                               |
-| Post-mortems within 48 hours         | Memory fades fast — document while fresh                   |
+| Post-mortems within 48 hours         | Memory fades fast � document while fresh                   |
 | Chaos engineering in staging         | Test failure modes before they happen in prod              |
 
 ## Common Mistakes
@@ -159,32 +159,32 @@ graph LR
 
 | Concern                                                       | Mitigation                                                                                                                                                                                           |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Error budget consumed by noisy but low-impact failures        | Not all downtime is equal — a brief blip on a health check consumes the same error budget as a multi-minute outage. Use burn-rate alerts that distinguish slow vs. fast budget consumption           |
+| Error budget consumed by noisy but low-impact failures        | Not all downtime is equal � a brief blip on a health check consumes the same error budget as a multi-minute outage. Use burn-rate alerts that distinguish slow vs. fast budget consumption           |
 | Toil reduction targets not translating to actual time savings | Automating a task that takes 1 hour/week sounds good, but if the automation takes 20 hours to build and maintain, the ROI is negative. Track actual toil time reduction after automation is deployed |
-| SLO monitoring overhead affecting system performance          | The instrumentation needed to track SLOs (counters, traces, health checks) adds overhead — keep metric collection overhead under 1% of CPU and sample traces at 10% for high-volume endpoints        |
+| SLO monitoring overhead affecting system performance          | The instrumentation needed to track SLOs (counters, traces, health checks) adds overhead � keep metric collection overhead under 1% of CPU and sample traces at 10% for high-volume endpoints        |
 
 ## Performance Considerations
 
 | Concern                                                       | Approach                                                                                                                                                                                             |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Error budget consumed by noisy but low-impact failures        | Not all downtime is equal — a brief blip on a health check consumes the same error budget as a multi-minute outage. Use burn-rate alerts that distinguish slow vs. fast budget consumption           |
+| Error budget consumed by noisy but low-impact failures        | Not all downtime is equal � a brief blip on a health check consumes the same error budget as a multi-minute outage. Use burn-rate alerts that distinguish slow vs. fast budget consumption           |
 | Toil reduction targets not translating to actual time savings | Automating a task that takes 1 hour/week sounds good, but if the automation takes 20 hours to build and maintain, the ROI is negative. Track actual toil time reduction after automation is deployed |
-| SLO monitoring overhead affecting system performance          | The instrumentation needed to track SLOs (counters, traces, health checks) adds overhead — keep metric collection overhead under 1% of CPU and sample traces at 10% for high-volume endpoints        |
+| SLO monitoring overhead affecting system performance          | The instrumentation needed to track SLOs (counters, traces, health checks) adds overhead � keep metric collection overhead under 1% of CPU and sample traces at 10% for high-volume endpoints        |
 
 ## Workflows
 
-1. **Weekly SLO review:** Check error budget consumption → review incident
-   response metrics → update runbooks
-2. **Error budget decision:** If < 50% consumed → normal ops. If 50-75% → reduce
-   deploys. If 75-100% → freeze features. If > 100% → emergency
-3. **Toil reduction:** Identify manual task → measure time spent → automate →
+1. **Weekly SLO review:** Check error budget consumption ? review incident
+   response metrics ? update runbooks
+2. **Error budget decision:** If < 50% consumed ? normal ops. If 50-75% ? reduce
+   deploys. If 75-100% ? freeze features. If > 100% ? emergency
+3. **Toil reduction:** Identify manual task ? measure time spent ? automate ?
    measure time saved
-4. **Incident response:** Alert → acknowledge → mitigate → recover → post-mortem
+4. **Incident response:** Alert ? acknowledge ? mitigate ? recover ? post-mortem
    (within 48h)
-5. **Chaos engineering:** Design experiment → test in staging → review results →
+5. **Chaos engineering:** Design experiment ? test in staging ? review results ?
    improve system
-6. **Capacity review:** Monthly trend analysis → quarterly formal capacity
-   review → adjust auto-scaling
+6. **Capacity review:** Monthly trend analysis ? quarterly formal capacity
+   review ? adjust auto-scaling
 
 ---
 
@@ -329,9 +329,9 @@ function calculateErrorBudget(slo: number, periodDays: number): number {
   const periodSeconds = periodDays * 24 * 3600;
   return ((1 - slo) * periodSeconds) / 60; // minutes
 }
-//  99.9% → 43.2 min/month
-//  99.5% → 216 min/month
-//  99.95% → 21.6 min/month
+//  99.9% ? 43.2 min/month
+//  99.5% ? 216 min/month
+//  99.95% ? 21.6 min/month
 ```
 
 ### SRE Health Check (CLI)

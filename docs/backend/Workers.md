@@ -1,64 +1,64 @@
-﻿# Workers
+# Workers
 
 > **Purpose:** Define the background worker architecture for Vaeloom **Status:**
-> 🆕 New **Honest Status:** BullMQ is installed but NO TypeScript consumers are
-> deployed. The actual worker is `apps/backend/queue_worker.py` (Python).
-> TypeScript worker examples shown below are SPEC ONLY.
+> ?? New **Honest Status:** BullMQ is installed but NO TypeScript consumers are
+> deployed. The actual worker is `apps/api/queue_worker.py` (Python). TypeScript
+> worker examples shown below are SPEC ONLY.
 
 ## Worker Queue Lifecycle
 
 Every job in the Vaeloom worker system follows a standardized lifecycle through
-enqueue, processing, retry, and—if all attempts fail—dead-lettering. The
+enqueue, processing, retry, and�if all attempts fail�dead-lettering. The
 sequence diagram below traces a job end-to-end.
 
 ```mermaid
 sequenceDiagram
-    participant S as ðŸ“¤ Service
-    participant Q as ðŸ“¥ Queue (Redis)
-    participant W as âš™ï¸ Worker
-    participant DB as ðŸ--„ï¸ Database
-    participant DLQ as â˜ ï¸ Dead Letter Queue
-    participant M as ðŸ”” Monitoring
+    participant S as 📤 Service
+    participant Q as 📥 Queue (Redis)
+    participant W as ⚙️ Worker
+    participant DB as �--�️ Database
+    participant DLQ as ☠️ Dead Letter Queue
+    participant M as 🔔 Monitoring
 
-    Note over S,M: â”€â”€â”€â”€â”€â”€ 1. ENQUEUE â”€â”€â”€â”€â”€â”€
+    Note over S,M: ────── 1. ENQUEUE ──────
     S->>Q: add(jobPayload)
     Q-->>S: jobId + ack
     S->>DB: INSERT job_status
     Note right of S: Status: pending
 
-    Note over S,M: â”€â”€â”€â”€â”€â”€ 2. PROCESS â”€â”€â”€â”€â”€â”€
+    Note over S,M: ────── 2. PROCESS ──────
     W->>Q: poll / pop
     Q-->>W: next job
     W->>DB: UPDATE job_status = 'processing'
     W->>W: Execute handler
     W->>DB: UPDATE job_status = 'completed'
     Q-->>W: acknowledge (remove from queue)
-    Note right of W: âœ… Success
+    Note right of W: ✅ Success
 
-    Note over S,M: â”€â”€â”€â”€â”€â”€ 3. RETRY (on failure) â”€â”€â”€â”€â”€â”€
+    Note over S,M: ────── 3. RETRY (on failure) ──────
     W->>DB: UPDATE job_status = 'failed'
     W->>Q: requeue with backoff
     Note right of W: Exponential backoff:
     Note right of W: 1s --> 4s --> 16s
     Q-->>W: delayed job scheduled
 
-    Note over S,M: â”€â”€â”€â”€â”€â”€ 4. DEAD LETTER (after 3 failures) â”€â”€â”€â”€â”€â”€
+    Note over S,M: ────── 4. DEAD LETTER (after 3 failures) ──────
     W->>DB: UPDATE job_status = 'dead_lettered'
     W->>DLQ: move to dead letter queue
     DLQ->>M: alert: job dead-lettered
     M->>M: Notify on-call
     Note right of DLQ: Manual review & retry
 
-    Note over S,M: â”€â”€â”€â”€â”€â”€ 5. ALTERNATIVE PATHS â”€â”€â”€â”€â”€â”€
+    Note over S,M: ────── 5. ALTERNATIVE PATHS ──────
     S->>Q: cancel(jobId)
     Q-->>S: job removed
     S->>DB: UPDATE job_status = 'cancelled'
-    Note right of S: âŒ Cancelled before processing
+    Note right of S: ❌ Cancelled before processing
 
     W->>DB: UPDATE job_status = 'stalled'
     W->>M: heartbeat timeout
     M->>M: escalate: worker restart
-    Note right of M: â° Stale job detection
+    Note right of M: ⏰ Stale job detection
 ```
 
 The lifecycle has five distinct paths:
@@ -66,10 +66,10 @@ The lifecycle has five distinct paths:
 | Path             | Outcome                                 | DB Status                    |
 | ---------------- | --------------------------------------- | ---------------------------- |
 | **Happy path**   | Job processed and acknowledged          | `completed`                  |
-| **Retry**        | Transient failure → exponential backoff | `failed` → `pending` (retry) |
-| **Dead letter**  | Max retries exceeded → manual review    | `dead_lettered`              |
+| **Retry**        | Transient failure ? exponential backoff | `failed` ? `pending` (retry) |
+| **Dead letter**  | Max retries exceeded ? manual review    | `dead_lettered`              |
 | **Cancellation** | Job removed before processing           | `cancelled`                  |
-| **Stall**        | Worker heartbeat lost → restart         | `stalled` (auto-restart)     |
+| **Stall**        | Worker heartbeat lost ? restart         | `stalled` (auto-restart)     |
 
 ---
 
@@ -87,7 +87,7 @@ The lifecycle has five distinct paths:
 ## Worker Implementation
 
 ```typescript
-# apps/backend/queue_worker.py
+# apps/api/queue_worker.py
 # BullMQ installed but NO consumers deployed yet
 # IngestionWorker - NOT deployed yet {
   @Process({ concurrency: 3 })
@@ -118,18 +118,18 @@ The lifecycle has five distinct paths:
 | Failure Type     | Retries | Backoff                   | Notes                 |
 | ---------------- | ------- | ------------------------- | --------------------- |
 | Transient error  | 3       | Exponential (1s, 4s, 16s) | Network, timeout      |
-| Validation error | 0       | —                         | Don't retry bad input |
+| Validation error | 0       | �                         | Don't retry bad input |
 | Rate limit       | 2       | Respect Retry-After       | Connector throttling  |
-| Dead letter      | After 3 | —                         | Manual review needed  |
+| Dead letter      | After 3 | �                         | Manual review needed  |
 
 ## Worker Monitoring
 
-| Metric             | Severity      | Notes                          |
-| ------------------ | ------------- | ------------------------------ |
-| Queue depth > 1000 | ðŸ”´ Critical | Depth exceeds safe buffer      |
-| Job age > 15 min   | ðŸ”´ Critical | Job stuck or worker stalled    |
-| Failure rate > 10% | ðŸ”´ Critical | Systemic issue — alert on-call |
-| Worker stopped     | ðŸ”´ Critical | Process crashed or OOM         |
+| Metric             | Severity    | Notes                          |
+| ------------------ | ----------- | ------------------------------ |
+| Queue depth > 1000 | 🔴 Critical | Depth exceeds safe buffer      |
+| Job age > 15 min   | 🔴 Critical | Job stuck or worker stalled    |
+| Failure rate > 10% | 🔴 Critical | Systemic issue � alert on-call |
+| Worker stopped     | 🔴 Critical | Process crashed or OOM         |
 
 > **Note:** Monitoring thresholds are defined in
 > [`Architecture/Queue.md`](../Architecture/Queue.md). Worker-level alerts
@@ -139,17 +139,17 @@ The lifecycle has five distinct paths:
 
 | Mistake                                                         | Consequence                                                                                                                                     |
 | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workers that are not idempotent                                 | If a worker crashes after processing but before acknowledging the job, the job is retried — non-idempotent handlers cause duplicate operations  |
-| Missing dead letter queue handling                              | Jobs that fail all retries are lost without trace — dead letter queues preserve failed jobs for manual inspection and replay                    |
-| No heartbeat check on long-running jobs                         | A worker that hangs (memory leak, deadlock) holds the job for the visibility timeout — other workers can't pick it up until the timeout expires |
-| Mixing validation errors with transient failures in retry logic | Invalid payloads will never succeed on retry — retrying them wastes resources and delays legitimate retries                                     |
+| Workers that are not idempotent                                 | If a worker crashes after processing but before acknowledging the job, the job is retried � non-idempotent handlers cause duplicate operations  |
+| Missing dead letter queue handling                              | Jobs that fail all retries are lost without trace � dead letter queues preserve failed jobs for manual inspection and replay                    |
+| No heartbeat check on long-running jobs                         | A worker that hangs (memory leak, deadlock) holds the job for the visibility timeout � other workers can't pick it up until the timeout expires |
+| Mixing validation errors with transient failures in retry logic | Invalid payloads will never succeed on retry � retrying them wastes resources and delays legitimate retries                                     |
 
 ## Best Practices
 
 | Practice                                            | Why                                                                                                                                 |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Implement idempotent job handlers                   | Use a deduplication key (unique across payloads) — if the same key is processed twice, the second attempt is a no-op                |
-| Separate transient failures from permanent failures | Validation errors → don't retry (move to dead letter). Network timeouts → retry with backoff. Rate limits → retry after Retry-After |
+| Implement idempotent job handlers                   | Use a deduplication key (unique across payloads) � if the same key is processed twice, the second attempt is a no-op                |
+| Separate transient failures from permanent failures | Validation errors ? don't retry (move to dead letter). Network timeouts ? retry with backoff. Rate limits ? retry after Retry-After |
 | Export queue metrics (depth, age, failure rate)     | Without these metrics, you won't know a worker is failing until users report missing data                                           |
 | Set worker concurrency to match downstream capacity | A worker that calls an external API should limit concurrency to the API's rate limit, not the server's CPU cores                    |
 
@@ -157,31 +157,31 @@ The lifecycle has five distinct paths:
 
 | Concern                                    | Mitigation                                                                                                                                                                                                      |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Untrusted job payloads executed by workers | A worker that processes data from external connectors without validation can execute SQL injection payloads or trigger unauthorized actions — validate all job payloads at the worker boundary before executing |
-| Permission escalation in worker context    | A worker running with elevated privileges (cron jobs, maintenance) can access data it shouldn't — run each worker pool with the minimum required database role and service permissions                          |
-| Sensitive data in worker logs              | Workers processing documents or emails often log payload content for debugging — sanitize log output to remove PII, tokens, and sensitive fields before writing to log aggregation systems                      |
+| Untrusted job payloads executed by workers | A worker that processes data from external connectors without validation can execute SQL injection payloads or trigger unauthorized actions � validate all job payloads at the worker boundary before executing |
+| Permission escalation in worker context    | A worker running with elevated privileges (cron jobs, maintenance) can access data it shouldn't � run each worker pool with the minimum required database role and service permissions                          |
+| Sensitive data in worker logs              | Workers processing documents or emails often log payload content for debugging � sanitize log output to remove PII, tokens, and sensitive fields before writing to log aggregation systems                      |
 
 ## Performance
 
 | Concern                                          | Mitigation                                                                                                                                                                                              |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Worker concurrency exceeding downstream capacity | 10 concurrent workers each making API calls to a rate-limited external service (20 req/min) will hit 429 responses instantly — limit worker concurrency to match the external rate limit, not CPU cores |
-| Job batching inefficiency for high-volume queues | Processing 500 ingestion jobs one at a time with per-job overhead (dequeue, deserialize, acknowledge) wastes resources — batch jobs with similar payloads into a single handler invocation              |
-| Queue polling overhead with idle workers         | Workers polling an empty queue every 100ms create 10 req/s of Redis overhead per idle worker — use blocking pop operations or exponential backoff polling when the queue is consistently empty          |
+| Worker concurrency exceeding downstream capacity | 10 concurrent workers each making API calls to a rate-limited external service (20 req/min) will hit 429 responses instantly � limit worker concurrency to match the external rate limit, not CPU cores |
+| Job batching inefficiency for high-volume queues | Processing 500 ingestion jobs one at a time with per-job overhead (dequeue, deserialize, acknowledge) wastes resources � batch jobs with similar payloads into a single handler invocation              |
+| Queue polling overhead with idle workers         | Workers polling an empty queue every 100ms create 10 req/s of Redis overhead per idle worker � use blocking pop operations or exponential backoff polling when the queue is consistently empty          |
 
 ---
 
 ## Goals
 
-1. **Reliable background processing** — Execute document ingestion, memory
+1. **Reliable background processing** � Execute document ingestion, memory
    extraction, connector sync, and other async tasks reliably with retry and
    dead-letter handling
-2. **Clear worker lifecycle** — Every job follows a standardized path: enqueue →
-   process → acknowledge (success) / retry (transient failure) / dead letter
+2. **Clear worker lifecycle** � Every job follows a standardized path: enqueue ?
+   process ? acknowledge (success) / retry (transient failure) / dead letter
    (permanent failure)
-3. **Efficient resource utilization** — Match worker concurrency to downstream
+3. **Efficient resource utilization** � Match worker concurrency to downstream
    capacity (external API rate limits, database connection pool size)
-4. **Observable worker health** — Monitor queue depth, job age, failure rate,
+4. **Observable worker health** � Monitor queue depth, job age, failure rate,
    and worker saturation to detect issues before users are affected
 
 ---
@@ -193,7 +193,7 @@ The lifecycle has five distinct paths:
 - 6 worker types: Ingestion (concurrency 3), Memory (concurrency 2),
   Organization (concurrency 2), Gmail (concurrency 1), Resume (concurrency 1),
   Search (concurrency 1)
-- Job lifecycle: enqueue → process → retry (max 3, exponential backoff) → dead
+- Job lifecycle: enqueue ? process ? retry (max 3, exponential backoff) ? dead
   letter
 - Idempotent job handlers with deduplication keys
 - Worker monitoring: queue depth, job age, failure rate, stall detection
@@ -202,7 +202,7 @@ The lifecycle has five distinct paths:
 ### Out of Scope
 
 - Worker process management (handled by PM2 / Kubernetes)
-- Queue infrastructure (handled by Redis + BullMQ — see Queue.md)
+- Queue infrastructure (handled by Redis + BullMQ � see Queue.md)
 - Workflow orchestration with DAG dependencies (separate system if needed)
 - Real-time message streaming (WebSocket/SSE for frontend push)
 
@@ -214,7 +214,7 @@ The lifecycle has five distinct paths:
 | ----- | ---------------------------------------------------------------------------------------- | -------- |
 | F-001 | Workers SHALL process jobs from their assigned queue with configurable concurrency       | P0       |
 | F-002 | Workers SHALL acknowledge jobs on success and remove from queue                          | P0       |
-| F-003 | Workers SHALL requeue jobs on transient failure with exponential backoff (1s → 4s → 16s) | P0       |
+| F-003 | Workers SHALL requeue jobs on transient failure with exponential backoff (1s ? 4s ? 16s) | P0       |
 | F-004 | Workers SHALL move jobs to dead letter queue after max retries (3)                       | P0       |
 | F-005 | Workers SHALL emit heartbeat signals to detect stalls                                    | P1       |
 | F-006 | Workers SHALL support cancellation of in-progress jobs                                   | P1       |
@@ -244,17 +244,17 @@ sequenceDiagram
     participant DLQ as Dead Letter Queue
     participant M as Monitoring
 
-    Note over S,M: â”œâ”€â”€ IDLE: worker blocks on queue â”€â”€â”¤
+    Note over S,M: ├── IDLE: worker blocks on queue ──┤
     W->>Q: blpop (blocking pop, timeout=30s)
     Q-->>W: job payload {documentId: "doc_123", attempt: 1}
 
-    Note over S,M: â”œâ”€â”€ PROCESS: worker executes handler â”€â”€â”¤
+    Note over S,M: ├── PROCESS: worker executes handler ──┤
     W->>DB: SELECT document WHERE id = doc_123
     W->>W: Parse document content
     W->>DB: INSERT extracted entities
     W->>W: Checkpoint progress
 
-    Note over S,M: â”œâ”€â”€ RESULT: success or failure â”€â”€â”¤
+    Note over S,M: ├── RESULT: success or failure ──┤
     alt Success
         W->>Q: acknowledge (remove from queue)
         W->>M: emit metric (success, duration, records)
@@ -267,11 +267,11 @@ sequenceDiagram
         W->>M: alert on-call
     end
 
-    Note over S,M: â”œâ”€â”€ BACK TO IDLE â”€â”€â”¤
+    Note over S,M: ├── BACK TO IDLE ──┤
     W->>Q: blpop (blocking pop)
 ```
 
-> **Diagram:** Worker lifecycle — Worker blocks on queue with blocking pop. On
+> **Diagram:** Worker lifecycle � Worker blocks on queue with blocking pop. On
 > job receipt, it processes (parse, extract, persist). On success: acknowledge.
 > On transient failure: requeue with exponential backoff. After max retries:
 > move to dead letter and alert.
@@ -283,7 +283,7 @@ sequenceDiagram
 ```text
 1. Worker starts and subscribes to its assigned queue(s) via blocking pop
 2. When job arrives, worker deserializes payload and validates schema
-3. Worker checks deduplication key — if already processed, acknowledge without executing
+3. Worker checks deduplication key � if already processed, acknowledge without executing
 4. Worker executes job handler:
    a. Fetch any additional data needed (DB queries, external API calls)
    b. Process data according to job type (parse, classify, extract, generate)
@@ -298,7 +298,7 @@ sequenceDiagram
    a. Move to dead letter queue
    b. Update job_status to 'dead_lettered'
    c. Trigger alert for manual review
-8. Worker sends heartbeat every 30s — if 2 heartbeats missed, worker is presumed stalled
+8. Worker sends heartbeat every 30s � if 2 heartbeats missed, worker is presumed stalled
 9. Metrics emitted after each job: duration, records_processed, success/fail, queue_name
 ```
 
@@ -367,7 +367,7 @@ sequenceDiagram
 | Environment | Method                                                  | Trigger                  | Verification                                                |
 | ----------- | ------------------------------------------------------- | ------------------------ | ----------------------------------------------------------- |
 | Development | Worker process spawned alongside API (Docker)           | Git push                 | Unit tests: job handler with mocked queue                   |
-| Staging     | Worker deployment in Kubernetes (1-2 replicas per type) | PR merged to main        | Integration test: enqueue → process → verify DB updated     |
+| Staging     | Worker deployment in Kubernetes (1-2 replicas per type) | PR merged to main        | Integration test: enqueue ? process ? verify DB updated     |
 | Production  | Worker deployment with auto-scaling (2-4 replicas)      | Tagged release via CI/CD | Canary: verify no increase in dead-letter rate after deploy |
 
 ---

@@ -126,11 +126,11 @@ graph TB
 
     subgraph API["API Layer"]
         GW["API Gateway<br/>FastAPI (Auth, Rate Limit, Routing)"]:::api
-        APISRV["apps/backend<br/>FastAPI<br/>Auth, CRUD, Permissions, Agents, Memory, RAG"]:::api
+        APISRV["apps/api<br/>FastAPI<br/>Auth, CRUD, Permissions, Agents, Memory, RAG"]:::api
     end
 
     subgraph AI["AI Layer (same process)"]
-        AISRV["apps/backend<br/>FastAPI<br/>Agents, Memory, RAG, Inference"]:::ai
+        AISRV["apps/api<br/>FastAPI<br/>Agents, Memory, RAG, Inference"]:::ai
         GATEWAY["AI Gateway<br/>Model Router, Fallback, Caching"]:::ai
     end
 
@@ -172,7 +172,7 @@ graph TB
 
 ## Level 3: Component
 
-### apps/backend (FastAPI)
+### apps/api (FastAPI)
 
 ```mermaid
 graph TB
@@ -180,7 +180,7 @@ graph TB
     classDef module fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
     classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph API["apps/backend (FastAPI)"]
+    subgraph API["apps/api (FastAPI)"]
         GW["API Gateway<br/>Rate Limiting, CORS, Routing"]:::guard
         AUTH["AuthModule<br/>JWT validation, session management"]:::guard
         TENANT["TenantMiddleware<br/>tenant_id context"]:::guard
@@ -213,10 +213,10 @@ graph TB
 > pipeline is Auth → Tenant → Permissions → Business Module. AI modules (agents,
 > memory, RAG) are part of the same service.
 
-### apps/backend AI Modules (FastAPI)
+### apps/api AI Modules (FastAPI)
 
-> **Note:** AI logic currently runs within `apps/backend` (monolith). This
-> diagram shows the internal module structure.
+> **Note:** AI logic currently runs within `apps/api` (monolith). This diagram
+> shows the internal module structure.
 
 ```mermaid
 graph TB
@@ -225,7 +225,7 @@ graph TB
     classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
     classDef guard fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph AI["apps/backend AI Modules (FastAPI)"]
+    subgraph AI["apps/api AI Modules (FastAPI)"]
         HARNESS["Agent Harness<br/>Shared agentic loop<br/>(Plan-->Act-->Observe-->Reflect)"]:::core
         ORCH["Orchestrator<br/>Request routing, plan assembly"]:::agent
         GUARD["Guardrails<br/>Input validation, output QA"]:::guard
@@ -334,7 +334,7 @@ graph TB
 | Container         | Technology              | Components                                                                                                   | Deployment                      |
 | ----------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------- |
 | **apps/web**      | Next.js 15 (App Router) | Dashboard, Workspace, Admin Portal, Auth pages                                                               | CDN (CloudFront) + Edge         |
-| **apps/backend**  | FastAPI (Python 3.12)   | Auth, Users, Documents, Workspaces, Connectors, Tenants, Billing, Search, Notifications, Agents, Memory, RAG | EKS (HPA: 2-20 pods)            |
+| **apps/api**      | FastAPI (Python 3.12)   | Auth, Users, Documents, Workspaces, Connectors, Tenants, Billing, Search, Notifications, Agents, Memory, RAG | EKS (HPA: 2-20 pods)            |
 | **PostgreSQL 16** | RDS Multi-AZ            | Relational data + pgvector (embeddings)                                                                      | Primary + 2 read replicas       |
 | **Redis 7**       | ElastiCache Cluster     | Session cache, metering counters, cache                                                                      | 3-node cluster + replica        |
 | **S3**            | AWS S3                  | Document files, exports, audit archive                                                                       | Versioned, lifecycle policy     |

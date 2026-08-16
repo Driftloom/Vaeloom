@@ -17,8 +17,8 @@ graph TD
         S1["1. Clone repo<br/>git clone Vaeloom.git"]
         S2["2. Configure env<br/>cp .env.example .env<br/>Set ANTHROPIC_API_KEY"]
         S3["3. Start infra<br/>docker compose up -d<br/>postgres + redis"]
-        S4["4. DB migrations<br/>cd apps/backend<br/>alembic upgrade head"]
-        S5["5. Start Backend<br/>cd apps/backend<br/>uvicorn backend.main:app --reload<br/>Port 8000"]
+        S4["4. DB migrations<br/>cd apps/api<br/>alembic upgrade head"]
+        S5["5. Start Backend<br/>cd apps/api<br/>uvicorn api.main:app --reload<br/>Port 8000"]
         S6["6. Start Frontend<br/>cd apps/web && npm run dev<br/>Port 3000"]
     end
 
@@ -125,7 +125,7 @@ docker compose ps
 ### Step 4: Run Database Migrations
 
 ```bash
-cd apps/backend
+cd apps/api
 alembic upgrade head
 # This creates tables: users, workspaces, documents, memory_records, etc.
 
@@ -136,13 +136,13 @@ python scripts/seed.py
 ### Step 5: Start the Backend
 
 ```bash
-# In a new terminal, from apps/backend/
+# In a new terminal, from apps/api/
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 
-uvicorn backend.main:app --reload --port 8000
+uvicorn api.main:app --reload --port 8000
 # Backend runs on http://localhost:8000
 # Verify: curl http://localhost:8000/v1/health
 ```
@@ -198,14 +198,14 @@ Vaeloom/
 
 ### Common Issues
 
-| Issue                                        | Likely Cause                        | Solution                                                              |
-| -------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------- |
-| `docker compose up` fails with port conflict | PostgreSQL or Redis already running | Stop existing instances: `sudo systemctl stop postgresql`             |
-| `alembic upgrade head` fails                 | Database not ready                  | Wait 10s and retry, or check `docker compose logs postgres`           |
-| `npm install` fails with permissions         | Node.js version mismatch            | `nvm use 20` or update Node.js                                        |
-| `uvicorn` can't find module                  | Virtual environment not activated   | `source .venv/bin/activate` and `pip install -r requirements.txt`     |
-| Backend returns 401                          | Missing API key                     | Check `ANTHROPIC_API_KEY` in `.env`                                   |
-| Frontend shows loading spinner               | Backend not running                 | Start backend: `cd apps/backend && uvicorn backend.main:app --reload` |
+| Issue                                        | Likely Cause                        | Solution                                                          |
+| -------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------- |
+| `docker compose up` fails with port conflict | PostgreSQL or Redis already running | Stop existing instances: `sudo systemctl stop postgresql`         |
+| `alembic upgrade head` fails                 | Database not ready                  | Wait 10s and retry, or check `docker compose logs postgres`       |
+| `npm install` fails with permissions         | Node.js version mismatch            | `nvm use 20` or update Node.js                                    |
+| `uvicorn` can't find module                  | Virtual environment not activated   | `source .venv/bin/activate` and `pip install -r requirements.txt` |
+| Backend returns 401                          | Missing API key                     | Check `ANTHROPIC_API_KEY` in `.env`                               |
+| Frontend shows loading spinner               | Backend not running                 | Start backend: `cd apps/api && uvicorn api.main:app --reload`     |
 
 ### Docker Issues
 
@@ -324,7 +324,7 @@ docker stats
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Docker resource allocation | PostgreSQL and Redis containers share system resources — allocate at least 4GB RAM to Docker for smooth development, or use lightweight alternatives (SQLite for dev)                             |
 | First migration speed      | Running `alembic upgrade head` for the first time creates all tables at once — this can take 30-60 seconds even on fast machines. Consider a pre-built dev database snapshot for new contributors |
-| pip install time           | `pip install -r requirements.txt` in `apps/backend` installs all dependencies — this takes 2-5 minutes depending on network. Use a package manager cache if available                             |
+| pip install time           | `pip install -r requirements.txt` in `apps/api` installs all dependencies — this takes 2-5 minutes depending on network. Use a package manager cache if available                                 |
 
 ## Examples
 
@@ -341,9 +341,9 @@ echo "Redis: $(docker compose exec redis redis-cli ping)"
 ### Seeding test data
 
 ```python
-# apps/backend/scripts/seed.py
+# apps/api/scripts/seed.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.models import Workspace, Document
+from api.models import Workspace, Document
 
 async def main(session: AsyncSession):
     workspace = Workspace(name="Test Workspace")
@@ -374,7 +374,7 @@ docker stats
 
 ```bash
 # Create new migration
-cd apps/backend
+cd apps/api
 alembic revision --autogenerate -m "add_resume_table"
 
 # Apply migrations

@@ -54,9 +54,9 @@ Frontend implemented against P09 design, verified by real runs:
 
 ## Constraints for successor
 
-- Backend: FastAPI unified app `apps/backend`; `models/schema.py` 33 tables;
-  alembic 0001/0002 exist — 0003..0007 on top; 1626 tests must stay green
-  (SQLite tests use `Base.metadata.create_all` — keep behind ENV check)
+- Backend: FastAPI unified app `apps/api`; `models/schema.py` 33 tables; alembic
+  0001/0002 exist — 0003..0007 on top; 1626 tests must stay green (SQLite tests
+  use `Base.metadata.create_all` — keep behind ENV check)
 - CSRF `SKIP_PREFIXES` must remain `/api/v1/auth` only (AGENTS.md item 4)
 - transformKeys snake↔camel contract (AGENTS.md item 3) — response shapes must
   match what the frontend expects

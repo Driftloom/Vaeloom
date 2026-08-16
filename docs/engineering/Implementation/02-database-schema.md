@@ -11,7 +11,7 @@ This phase establishes the entire relational schema that every later phase reads
 from and writes to. It implements 13 core tables spanning users, workspaces,
 documents, memory, agents, and permissions — plus vector storage via pgvector,
 graph storage via Apache AGE (provisioned but unused), indexes, migrations, and
-seed data. The schema is accessed by the backend service (`apps/backend` via
+seed data. The schema is accessed by the backend service (`apps/api` via
 SQLAlchemy) and must remain perfectly synchronized.
 
 The schema is organized into three logical layers: Core Tables (users,
@@ -99,10 +99,10 @@ project.
 ## Requirements
 
 **Migration tool:** use SQLAlchemy (TypeScript) for type-safe schema access from
-`apps/backend`, with raw SQL migrations mirrored for `apps/backend` (Python) to
-consume via SQLAlchemy — pick whichever ORM pairing you're most confident
-keeping in sync; the requirement is that both services see an identical schema,
-never two drifted copies.
+`apps/api`, with raw SQL migrations mirrored for `apps/api` (Python) to consume
+via SQLAlchemy — pick whichever ORM pairing you're most confident keeping in
+sync; the requirement is that both services see an identical schema, never two
+drifted copies.
 
 **Tables to create** (exact columns, not illustrative):
 
@@ -154,8 +154,8 @@ migration (enterprise upgrade).
 ## Acceptance criteria
 
 - [ ] `prisma migrate dev` (or equivalent) runs cleanly from an empty database.
-- [ ] Both `apps/backend` and `apps/backend` can read/write the same tables with
-      no schema drift.
+- [ ] Both `apps/api` and `apps/api` can read/write the same tables with no
+      schema drift.
 - [ ] Seed script produces a workspace with queryable sample data.
 - [ ] A `pgvector` similarity query against the seeded `embeddings` table
       returns results.
@@ -203,8 +203,8 @@ migration (enterprise upgrade).
   applications, schedule_events, agent_actions, permissions
 - pgvector extension for vector similarity search with embeddings table
 - Apache AGE extension for graph projection mirroring entities/relationships
-- SQLAlchemy schema (TypeScript) for apps/backend and SQLAlchemy models (Python)
-  for apps/backend
+- SQLAlchemy schema (TypeScript) for apps/api and SQLAlchemy models (Python) for
+  apps/api
 - Transactional migrations and seed data for local development
 - Required indexes on workspace_id, (type, workspace_id), (workspace_id,
   created_at), and (source_connector_id)
@@ -255,7 +255,7 @@ CREATE TABLE embeddings (
 ```
 
 ```typescript
-// SQLAlchemy schema (apps/backend)
+// SQLAlchemy schema (apps/api)
 model MemoryRecord {
   id          String   @id @default(uuid())
   workspaceId String   @map("workspace_id")
@@ -269,7 +269,7 @@ model MemoryRecord {
 ```
 
 ```python
-# SQLAlchemy model (apps/backend)
+# SQLAlchemy model (apps/api)
 from sqlalchemy import Column, String, Float, DateTime, JSON
 from sqlalchemy.dialects.postgresql import UUID
 

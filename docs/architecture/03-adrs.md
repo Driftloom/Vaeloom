@@ -33,7 +33,7 @@ graph TD
     classDef pending fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
     subgraph Accepted["✅ Accepted ADRs"]
-        A1["ADR-001: Monolithic Backend<br/>FastAPI (apps/backend)<br/>Single service for API + AI"]
+        A1["ADR-001: Monolithic Backend<br/>FastAPI (apps/api)<br/>Single service for API + AI"]
         A2["ADR-002: MCP-Shaped Tools<br/>Adopt MCP tool shape from Day 1<br/>Transport layer swap later"]
         A3["ADR-003: Suggest-Mode Default<br/>Agents propose, users approve<br/>Autonomy earned via accuracy"]
         A4["ADR-004: Memory Before Features<br/>Features = memory read/write<br/>No memory sync step"]
@@ -114,10 +114,10 @@ deploy.
 
 ### Decision
 
-Use a single FastAPI service (`apps/backend`) that owns all backend logic:
+Use a single FastAPI service (`apps/api`) that owns all backend logic:
 
-- **`apps/backend`** (FastAPI, Python 3.12) — owns auth, CRUD, permissions,
-  agents, memory, retrieval, model routing, event publishing
+- **`apps/api`** (FastAPI, Python 3.12) — owns auth, CRUD, permissions, agents,
+  memory, retrieval, model routing, event publishing
 
 All logic runs within one deployable service. No inter-service RPC boundary.
 

@@ -56,7 +56,7 @@ graph TD
 
 ## Agent Architecture Pattern
 
-Every agent in `apps/backend/agents/` follows an identical internal structure:
+Every agent in `apps/api/agents/` follows an identical internal structure:
 
 ```text
 agents/

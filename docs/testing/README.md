@@ -206,7 +206,7 @@ services:
     image: postgis/postgis:16
     tmpfs: /var/lib/postgresql/data
   api-test:
-    build: ./apps/backend
+    build: ./apps/api
     depends_on: [postgres-test]
     command: npm run test:integration
 ```

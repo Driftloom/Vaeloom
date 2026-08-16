@@ -1,7 +1,7 @@
-﻿# Database Optimization
+# Database Optimization
 
 > **Purpose:** Define database optimization strategies for Vaeloom **Status:**
-> ðŸ†• New
+> 🆕 New
 
 ## Overview
 
@@ -9,7 +9,7 @@ Database optimization at Vaeloom follows a data-driven approach: identify slow
 queries through pg_stat_statements, diagnose the root cause (missing index, N+1
 pattern, over-fetching, JSONB abuse), apply the appropriate fix, and verify the
 improvement. Optimization priorities are determined by query frequency and
-impact — a query that runs 10,000 times per day at 100ms costs 1,000 seconds of
+impact � a query that runs 10,000 times per day at 100ms costs 1,000 seconds of
 cumulative latency, while a query that runs once per day at 10 seconds costs
 only 10 seconds. Connection pooling, vacuum strategy, and batch operations
 complete the optimization picture.
@@ -19,7 +19,7 @@ anti-patterns, connection pool sizing per service tier, vacuum strategy for
 different table types, and batch operation sizes. It is intended for backend
 developers writing database queries, SRE engineers troubleshooting performance
 issues, and database engineers planning capacity. The guiding principle: measure
-before optimizing — every optimization must be backed by pg_stat_statements
+before optimizing � every optimization must be backed by pg_stat_statements
 data.
 
 ## Goals
@@ -53,7 +53,7 @@ data.
 - Query optimization for non-PostgreSQL stores (AGE graph queries, vector
   similarity search)
 - Database hardware optimization (CPU, memory, disk I/O configuration)
-- Application-level caching strategies (Redis — covered in Infrastructure docs)
+- Application-level caching strategies (Redis � covered in Infrastructure docs)
 - Read replica query routing optimization (covered in Replication.md)
 - ORM-level query optimization (SQLAlchemy specific patterns)
 
@@ -69,12 +69,12 @@ graph TD
     classDef vacuum fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef batch fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Detection["ðŸ“¡ Slow Query Detection"]
+    subgraph Detection["📡 Slow Query Detection"]
         D1["pg_stat_statements<br/>Queries with p95 > 200ms"]
         D2["Check: mean_time, rows,<br/>shared_blks_hit, shared_blks_read"]
     end
 
-    subgraph Patterns["ðŸ”§ Common Optimization Patterns"]
+    subgraph Patterns["🔧 Common Optimization Patterns"]
         direction TB
         P1["N+1 Queries<br/>Loading related entities separately<br/>--> Use JOINs or batch loading"]
         P2["Missing Index<br/>Sequential scans on large tables<br/>--> Add appropriate indexes"]
@@ -82,19 +82,19 @@ graph TD
         P4["JSONB Abuse<br/>Heavy JSON ops in WHERE<br/>--> Extract to indexed columns"]
     end
 
-    subgraph Pooling["ðŸ”Œ Connection Pooling"]
+    subgraph Pooling["🔌 Connection Pooling"]
         direction TB
-        C1["apps/backend<br/>max: 20, min: 5<br/>idle: 30s"]
+        C1["apps/api<br/>max: 20, min: 5<br/>idle: 30s"]
         C2["infra/worker<br/>max: 5, min: 1<br/>idle: 120s"]
     end
 
-    subgraph Vacuum["ðŸ§¹ Vacuum Strategy"]
+    subgraph Vacuum["🧹 Vacuum Strategy"]
         direction TB
         V1["High-churn tables<br/>memory_records, agent_actions<br/>--> VACUUM ANALYZE aggressively"]
         V2["Read-heavy tables<br/>documents, entities<br/>--> VACUUM lighter touch"]
     end
 
-    subgraph Batch["ðŸ“¦ Batch Operations"]
+    subgraph Batch["📦 Batch Operations"]
         direction TB
         B1["Document ingestion: 100 files/batch"]
         B2["Memory consolidation: 1K records/weekly"]
@@ -151,9 +151,9 @@ LIMIT 20;
 ## Connection Pooling
 
 ```python
-# apps/backend connection pool (SQLAlchemy)
+# apps/api connection pool (SQLAlchemy)
 pool_config = {
-    # apps/backend: handles user requests and agent processing
+    # apps/api: handles user requests and agent processing
     "backend": {"pool_size": 20, "max_overflow": 5, "pool_timeout": 30},
 
     # Workers: batch processing
@@ -186,35 +186,35 @@ VACUUM ANALYZE entities;
 
 | Mistake                                                         | Consequence                                                                                                                                                        |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Premature optimization before measuring                         | Adding indexes or rewriting queries before identifying actual bottlenecks wastes engineering time — always start with `pg_stat_statements` data                    |
-| Tuning for the 99th percentile at the expense of the median     | Optimizing a query that runs once a day for 10 users while ignoring a query that runs 1000 times a day for everyone — prioritize high-frequency queries            |
-| Applying the same vacuum strategy to all tables                 | High-churn tables (memory_records, agent_actions) need aggressive vacuuming — read-heavy tables (documents, entities) are harmed by unnecessary vacuum overhead    |
-| Ignoring connection pool saturation as a source of slow queries | A query that normally takes 50ms that takes 5 seconds is often waiting for a connection, not actually executing — monitor pool wait times before blaming the query |
+| Premature optimization before measuring                         | Adding indexes or rewriting queries before identifying actual bottlenecks wastes engineering time � always start with `pg_stat_statements` data                    |
+| Tuning for the 99th percentile at the expense of the median     | Optimizing a query that runs once a day for 10 users while ignoring a query that runs 1000 times a day for everyone � prioritize high-frequency queries            |
+| Applying the same vacuum strategy to all tables                 | High-churn tables (memory_records, agent_actions) need aggressive vacuuming � read-heavy tables (documents, entities) are harmed by unnecessary vacuum overhead    |
+| Ignoring connection pool saturation as a source of slow queries | A query that normally takes 50ms that takes 5 seconds is often waiting for a connection, not actually executing � monitor pool wait times before blaming the query |
 
 ## Best Practices
 
 | Practice                                                  | Why                                                                                                                                                                 |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Measure before optimizing — always use pg_stat_statements | Without data on query frequency, duration, and I/O patterns, optimization is guesswork — pg_stat_statements provides the signal                                     |
-| Optimize for the most frequent query patterns first       | A query that runs 10,000 times/day at 100ms costs 1000 seconds/day — optimizing it to 10ms saves 900 seconds. A query that runs once at 10 seconds costs 10 seconds |
-| Keep connection pool sizes appropriate for the workload   | Backend servers need more connections (pool_size 20), workers need fewer (pool_size 5) — a single oversized pool causes contention                                  |
-| Use batch operations for bulk data processing             | Inserting or updating rows one at a time is 10-100x slower than batch operations — batch sizes of 100-1000 rows provide optimal throughput                          |
+| Measure before optimizing � always use pg_stat_statements | Without data on query frequency, duration, and I/O patterns, optimization is guesswork � pg_stat_statements provides the signal                                     |
+| Optimize for the most frequent query patterns first       | A query that runs 10,000 times/day at 100ms costs 1000 seconds/day � optimizing it to 10ms saves 900 seconds. A query that runs once at 10 seconds costs 10 seconds |
+| Keep connection pool sizes appropriate for the workload   | Backend servers need more connections (pool_size 20), workers need fewer (pool_size 5) � a single oversized pool causes contention                                  |
+| Use batch operations for bulk data processing             | Inserting or updating rows one at a time is 10-100x slower than batch operations � batch sizes of 100-1000 rows provide optimal throughput                          |
 
 ## Security Considerations
 
 | Consideration                    | Mitigation                                                                                                                                                     |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pg_stat_statements data exposure | Query statistics may contain sensitive data (PII in WHERE clauses, SQL injection patterns) — restrict access to the pg_stat_statements view to database admins |
-| EXPLAIN ANALYZE on production    | Running EXPLAIN ANALYZE on production queries executes them and may modify data — use EXPLAIN (no ANALYZE) for SELECT queries, or run on a replica             |
-| Connection pool credentials      | Pool configuration files may contain database credentials — use environment variables or secrets manager, never hardcode connection strings                    |
+| pg_stat_statements data exposure | Query statistics may contain sensitive data (PII in WHERE clauses, SQL injection patterns) � restrict access to the pg_stat_statements view to database admins |
+| EXPLAIN ANALYZE on production    | Running EXPLAIN ANALYZE on production queries executes them and may modify data � use EXPLAIN (no ANALYZE) for SELECT queries, or run on a replica             |
+| Connection pool credentials      | Pool configuration files may contain database credentials � use environment variables or secrets manager, never hardcode connection strings                    |
 
 ## Performance Considerations
 
 | Consideration             | Approach                                                                                                                               |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Sequential scan detection | A sequential scan on a table >10K rows that runs frequently is the primary optimization target — add an index or restructure the query |
-| N+1 query batching        | Loading related entities one-at-a-time destroys performance — use JOINs or batch loading (WHERE id IN (...)) for relationship queries  |
-| JSONB extraction overhead | Accessing JSONB fields in WHERE clauses prevents index usage — extract frequently-queried JSONB paths to indexed columns               |
+| Sequential scan detection | A sequential scan on a table >10K rows that runs frequently is the primary optimization target � add an index or restructure the query |
+| N+1 query batching        | Loading related entities one-at-a-time destroys performance � use JOINs or batch loading (WHERE id IN (...)) for relationship queries  |
+| JSONB extraction overhead | Accessing JSONB fields in WHERE clauses prevents index usage � extract frequently-queried JSONB paths to indexed columns               |
 
 ---
 
@@ -372,7 +372,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Optimization pipeline — slow queries are captured by
+> **Diagram:** Optimization pipeline � slow queries are captured by
 > pg_stat_statements, diagnosed via EXPLAIN ANALYZE, fixed with indexes or pool
 > tuning, and verified through p95 tracking. Vacuum strategies are applied when
 > table bloat is detected.

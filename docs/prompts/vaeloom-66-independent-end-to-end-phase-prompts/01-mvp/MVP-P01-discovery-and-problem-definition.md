@@ -330,7 +330,7 @@ Status every task as `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `IMPLEMENTED_UNVER
 - Do not weaken constraints or tests to create a pass.
 
 ## 14. Repository and Artifact Inspection
-Inspect: `apps/web`, `apps/backend`, `packages/shared-types`, `packages/ui-kit`, `integrations/`, `connectors/`, `infra`, `docs`, `tests`, `.github/workflows`.
+Inspect: `apps/web`, `apps/api`, `packages/shared-types`, `packages/ui-kit`, `integrations/`, `connectors/`, `infra`, `docs`, `tests`, `.github/workflows`.
 
 ```bash
 git status --short --branch && git rev-parse HEAD && git log -n 20 --oneline

@@ -1,19 +1,19 @@
-﻿# Service Contracts
+# Service Contracts
 
-> **Purpose:** Define the formal internal module contracts within apps/backend
+> **Purpose:** Define the formal internal module contracts within apps/api
 > (FastAPI), including shared schema, interface definitions, versioning, and
-> contract testing **Status:** 🆕 New **Owner:** Architecture Team **Version:**
+> contract testing **Status:** ?? New **Owner:** Architecture Team **Version:**
 > 1.0 **Last Updated:** 2026-07-16 **Dependencies:**
 > [`API-Architecture.md`](./API-Architecture.md),
 > [`../Architecture/C4-Architecture.md`](../Architecture/C4-Architecture.md),
 > [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md),
-> [`Workers.md`](./Workers.md) **Implementation Status:** 📋 Spec Only
+> [`Workers.md`](./Workers.md) **Implementation Status:** ?? Spec Only
 
 ## Overview
 
-Vaeloom's backend is a single monolithic FastAPI application at `apps/backend`
+Vaeloom's backend is a single monolithic FastAPI application at `apps/api`
 (Python) handling auth, CRUD, permissions, agents, memory, RAG, and inference.
-This document defines the internal module interfaces and contracts — the message
+This document defines the internal module interfaces and contracts � the message
 formats, error codes, versioning rules, and testing strategy that ensure they
 can evolve independently without breaking each other.
 
@@ -58,8 +58,8 @@ graph TD
     classDef ai fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef test fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    API["apps/backend<br/>Consumer"]:::api
-    AI["apps/backend<br/>Provider"]:::ai
+    API["apps/api<br/>Consumer"]:::api
+    AI["apps/api<br/>Provider"]:::ai
 
     subgraph Contract["Service Contract"]
         PROTO["vaeloom_internal.proto<br/>Shared schema definition"]:::contract
@@ -201,8 +201,8 @@ Contract testing strategy (consumer-driven via Pact):
      - Fails if any consumer expectation is unmet
 
   3. CI pipeline:
-     - Consumer tests run on every API PR → generates Pact files
-     - Provider tests run on every AI PR → verifies against all Pact files
+     - Consumer tests run on every API PR ? generates Pact files
+     - Provider tests run on every AI PR ? verifies against all Pact files
      - Either side failing blocks the PR
 
   4. Pact broker stores the latest verified contracts.
@@ -213,15 +213,15 @@ Contract testing strategy (consumer-driven via Pact):
 | State                   | Condition                      | Behavior                                                         |
 | ----------------------- | ------------------------------ | ---------------------------------------------------------------- |
 | **Closed** (normal)     | Error rate < 10% in 60s window | All requests routed normally                                     |
-| **Open** (failing)      | Error rate ≥ 50% in 60s window | All requests immediately return fallback; no calls to AI service |
-| **Half-Open** (probing) | After 30s in Open state        | Allow 1 test request; if succeeds → Closed; if fails → Open      |
+| **Open** (failing)      | Error rate = 50% in 60s window | All requests immediately return fallback; no calls to AI service |
+| **Half-Open** (probing) | After 30s in Open state        | Allow 1 test request; if succeeds ? Closed; if fails ? Open      |
 
 Fallback behavior when circuit is open:
 
-- `SubmitAgentTask` → return HTTP 503 with `x-circuit-breaker: open` header and
+- `SubmitAgentTask` ? return HTTP 503 with `x-circuit-breaker: open` header and
   retry-after: 60
-- `StreamAgentResponse` → return a single error chunk
-- `GetTaskResult` → return last known result from cache (if available), else 503
+- `StreamAgentResponse` ? return a single error chunk
+- `GetTaskResult` ? return last known result from cache (if available), else 503
 
 ## Error Codes
 
@@ -273,10 +273,10 @@ Fallback behavior when circuit is open:
 
 ## Related Documents
 
-- [`API-Architecture.md`](./API-Architecture.md) — public API architecture
-- [`../Architecture/C4-Architecture.md`](../Architecture/C4-Architecture.md) —
+- [`API-Architecture.md`](./API-Architecture.md) � public API architecture
+- [`../Architecture/C4-Architecture.md`](../Architecture/C4-Architecture.md) �
   system container diagram
-- [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md) —
+- [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md) �
   event-driven patterns
-- [`Workers.md`](./Workers.md) — background workers
-- [`REST-Standards.md`](./REST-Standards.md) — REST conventions (public API)
+- [`Workers.md`](./Workers.md) � background workers
+- [`REST-Standards.md`](./REST-Standards.md) � REST conventions (public API)

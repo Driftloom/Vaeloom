@@ -1,6 +1,6 @@
-﻿# Developer Guide
+# Developer Guide
 
-> **Purpose:** Comprehensive guide for Vaeloom developers **Status:** ðŸ†• New
+> **Purpose:** Comprehensive guide for Vaeloom developers **Status:** 🆕 New
 
 ## Developer Guide Architecture
 
@@ -10,21 +10,21 @@ graph TD
     classDef task fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef debug fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Navigation["ðŸ--ºï¸ Project Navigation"]
+    subgraph Navigation["�--�️ Project Navigation"]
         N1["apps/web -- Next.js frontend"]
-        N2["apps/backend -- FastAPI backend (auth/CRUD/permissions)"]
+        N2["apps/api -- FastAPI backend (auth/CRUD/permissions)"]
         N3["packages/shared-types + ui-kit"]
         N4["infra/docker + migrations"]
         N5["docs/ -- All documentation"]
     end
 
-    subgraph Tasks["ðŸ“‹ Common Tasks"]
+    subgraph Tasks["📋 Common Tasks"]
         T1["Add API Endpoint<br/>Route --> Validation --> Service --> Perms --> Tests"]
         T2["Add New Agent<br/>Directory --> prompt/tools/handler/permissions<br/>--> Register in Orchestrator --> Eval --> Tests"]
         T3["Add Connector<br/>Manifest --> OAuth --> Sync --> Register --> Monitor"]
     end
 
-    subgraph Debugging["ðŸ” Debugging Tips"]
+    subgraph Debugging["🔍 Debugging Tips"]
         D1["Agent wrong output: Prompt drift --> Check eval tests"]
         D2["Memory write failing: Schema mismatch --> Run migrations"]
         D3["API 403: Permission missing --> Check Permission Engine"]
@@ -38,7 +38,7 @@ graph TD
     class D1,D2,D3,D4 debug
 ```
 
-> **Diagram:** Developer guide — **project navigation** (5 key directories),
+> **Diagram:** Developer guide � **project navigation** (5 key directories),
 > **common tasks** (adding API endpoints, agents, connectors with step-by-step
 > flows), **debugging tips** (4 common issues with causes and fixes).
 
@@ -48,8 +48,8 @@ graph TD
 
 | Path                     | What It Contains                                               |
 | ------------------------ | -------------------------------------------------------------- |
-| `apps/web/`              | Next.js frontend — all pages and components                    |
-| `apps/backend/`          | FastAPI backend — auth, CRUD, permissions, agents, memory, RAG |
+| `apps/web/`              | Next.js frontend � all pages and components                    |
+| `apps/api/`              | FastAPI backend � auth, CRUD, permissions, agents, memory, RAG |
 | `packages/shared-types/` | Shared TypeScript + Python type definitions                    |
 | `packages/ui-kit/`       | Reusable UI components                                         |
 | `infra/docker/`          | Docker Compose files for local dev                             |
@@ -60,7 +60,7 @@ graph TD
 
 ### Adding a New API Endpoint
 
-1. Define the route in `apps/backend/routes/`
+1. Define the route in `apps/api/routes/`
 2. Add validation schema
 3. Add service logic
 4. Add permission checks
@@ -68,7 +68,7 @@ graph TD
 
 ### Adding a New Agent
 
-1. Create agent directory in `apps/backend/agents/`
+1. Create agent directory in `apps/api/agents/`
 2. Define `prompt.py`, `tools.py`, `handler.py`, `permissions.py`
 3. Register agent in the Orchestrator
 4. Add agent to evaluation framework
@@ -95,34 +95,34 @@ graph TD
 
 | Mistake                                                              | Consequence                                                                                                                                                                 |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Adding logic to controllers instead of services                      | Controllers should only handle HTTP concerns — logic in controllers is not reusable across different interfaces (REST, events, CLIs) and can't be unit tested independently |
-| Creating new agents without registering them in the Orchestrator     | An agent that exists in the filesystem but isn't registered in the Orchestrator never receives requests — this silent failure wastes debugging time                         |
-| Forgetting to add permission checks for new API endpoints            | A new endpoint that returns data without a permission check exposes user data — every endpoint must go through the Permission Engine                                        |
-| Modifying the database schema directly instead of through migrations | Direct schema changes create drift between development and production — the next migration may overwrite the change or fail                                                 |
+| Adding logic to controllers instead of services                      | Controllers should only handle HTTP concerns � logic in controllers is not reusable across different interfaces (REST, events, CLIs) and can't be unit tested independently |
+| Creating new agents without registering them in the Orchestrator     | An agent that exists in the filesystem but isn't registered in the Orchestrator never receives requests � this silent failure wastes debugging time                         |
+| Forgetting to add permission checks for new API endpoints            | A new endpoint that returns data without a permission check exposes user data � every endpoint must go through the Permission Engine                                        |
+| Modifying the database schema directly instead of through migrations | Direct schema changes create drift between development and production � the next migration may overwrite the change or fail                                                 |
 
 ## Best Practices
 
 | Practice                                               | Why                                                                                                                                                                           |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Follow the Controller → Service → Repository layering  | Each layer has one responsibility — controllers route HTTP, services contain business rules, repositories handle data access. This makes code testable and maintainable       |
-| Register every new agent in the Orchestrator           | The Orchestrator routes requests to agents — if an agent isn't registered, it's invisible. Add registration as the last step before testing any new agent                     |
-| Add permission checks and tests for every new endpoint | Every new endpoint should be added to the permission matrix and tested with all roles (owner, admin, member, viewer) — a missing permission check is a security vulnerability |
-| Always create a migration for schema changes           | Schema drift between environments causes deployment failures — use Alembic to generate migrations for every schema change, no matter how small                                |
+| Follow the Controller ? Service ? Repository layering  | Each layer has one responsibility � controllers route HTTP, services contain business rules, repositories handle data access. This makes code testable and maintainable       |
+| Register every new agent in the Orchestrator           | The Orchestrator routes requests to agents � if an agent isn't registered, it's invisible. Add registration as the last step before testing any new agent                     |
+| Add permission checks and tests for every new endpoint | Every new endpoint should be added to the permission matrix and tested with all roles (owner, admin, member, viewer) � a missing permission check is a security vulnerability |
+| Always create a migration for schema changes           | Schema drift between environments causes deployment failures � use Alembic to generate migrations for every schema change, no matter how small                                |
 
 ## Security Considerations
 
 | Consideration                | Mitigation                                                                                                                                                                      |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| New endpoint permission gaps | Every new API endpoint must go through the middleware stack (auth → permission → rate limit → validation) — bypassing middleware exposes the endpoint to unauthenticated access |
-| Agent action authorization   | Agents operate with specific permission scopes — a memory agent should not be able to trigger application submission actions, even if the code path exists                      |
-| Cross-service data access    | The backend handles all data access — ensure database-level permissions restrict the backend user to only the tables and operations it needs                                    |
+| New endpoint permission gaps | Every new API endpoint must go through the middleware stack (auth ? permission ? rate limit ? validation) � bypassing middleware exposes the endpoint to unauthenticated access |
+| Agent action authorization   | Agents operate with specific permission scopes � a memory agent should not be able to trigger application submission actions, even if the code path exists                      |
+| Cross-service data access    | The backend handles all data access � ensure database-level permissions restrict the backend user to only the tables and operations it needs                                    |
 
 ## Performance Considerations
 
 | Consideration                | Approach                                                                                                                                                          |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| N+1 query prevention         | When adding a new API endpoint that returns related data, use JOINs or batch loading — loading related entities one-at-a-time causes N+1 query problems           |
-| Agent handler timeout limits | Agent handlers that make LLM calls should have explicit timeout limits (default 30s) — an unresponsive LLM call should not block the service handler indefinitely |
+| N+1 query prevention         | When adding a new API endpoint that returns related data, use JOINs or batch loading � loading related entities one-at-a-time causes N+1 query problems           |
+| Agent handler timeout limits | Agent handlers that make LLM calls should have explicit timeout limits (default 30s) � an unresponsive LLM call should not block the service handler indefinitely |
 
 ## Error Handling
 
@@ -223,7 +223,7 @@ class StatsService {
 ### Adding a new agent
 
 ```python
-# apps/backend/agents/resume_agent/handler.py
+# apps/api/agents/resume_agent/handler.py
 class ResumeAgentHandler(BaseAgent):
     async def handle(self, request: AgentRequest) -> AgentResponse:
         entities = await self.extract_entities(request.document)

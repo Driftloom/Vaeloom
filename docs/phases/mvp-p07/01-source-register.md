@@ -5,10 +5,10 @@
 
 ## 1. Internal sources
 
-| ID         | Source                                                                 | Use             | Status    |
-| ---------- | ---------------------------------------------------------------------- | --------------- | --------- |
-| INT-01..10 | gatekeeper, INT-02 (SHA-256 `2FA8966F…69640`), INT-03/05/07/08/09      | as prior phases | Available |
-| REPO       | `master` @ `0c4f73a`; `apps/backend/src/backend/models/schema.py` read | Schema truth    | Available |
+| ID         | Source                                                             | Use             | Status    |
+| ---------- | ------------------------------------------------------------------ | --------------- | --------- |
+| INT-01..10 | gatekeeper, INT-02 (SHA-256 `2FA8966F…69640`), INT-03/05/07/08/09  | as prior phases | Available |
+| REPO       | `master` @ `0c4f73a`; `apps/api/src/backend/models/schema.py` read | Schema truth    | Available |
 
 ## 2. External standards — verified at phase start
 

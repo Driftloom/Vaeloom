@@ -34,7 +34,7 @@ deferred to P16 but policy defined now).
 | Tool              | Scope                         | Cadence                  | Config                           | Status                           |
 | ----------------- | ----------------------------- | ------------------------ | -------------------------------- | -------------------------------- |
 | pnpm audit        | JS/TS deps                    | CI + weekly cron         | `--audit-level=high` + allowlist | ACTIVE (continue-on-error: true) |
-| pip-audit         | Python deps                   | CI                       | FIXING path to `apps/backend`    | FIXING                           |
+| pip-audit         | Python deps                   | CI                       | FIXING path to `apps/api`        | FIXING                           |
 | trivy             | Container images + filesystem | CI (`security-scan.yml`) | `--severity CRITICAL,HIGH`       | ACTIVE                           |
 | CodeQL            | JS/TS + Python SAST           | CI + weekly              | `security-scan.yml`              | ACTIVE                           |
 | gitleaks          | Secrets in git history        | CI + weekly              | Default config                   | ACTIVE                           |

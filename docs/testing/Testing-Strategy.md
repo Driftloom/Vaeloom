@@ -76,7 +76,7 @@ graph TB
 
 ```typescript
 // ✅ Good: Tests business logic in isolation
-// apps/backend/tests/unit/test_document_service.py
+// apps/api/tests/unit/test_document_service.py
 describe('DocumentService', () => {
   let service: DocumentService;
   let mockRepo: jest.Mocked<DocumentRepository>;
@@ -210,7 +210,7 @@ test.describe('Document Upload and Organization', () => {
 ## AI Test Standards
 
 ```python
-# apps/backend/tests/unit/test_memory_agent.py
+# apps/api/tests/unit/test_memory_agent.py
 import pytest
 from agents.memory_agent.handler import MemoryAgentHandler
 
@@ -295,13 +295,13 @@ class TestMemoryAgent:
 
 ## Coverage Targets
 
-| Module                   | Line Coverage | Branch Coverage | Notes                  |
-| ------------------------ | ------------- | --------------- | ---------------------- |
-| apps/web (components)    | 80%           | 70%             | UI-heavy, lower target |
-| apps/backend (services)  | 90%           | 80%             | Core business logic    |
-| apps/backend (agents)    | 90%           | 80%             | Critical AI logic      |
-| apps/backend (retrieval) | 85%           | 75%             | RAG pipeline           |
-| Golden datasets          | 95% accuracy  | —               | AI correctness         |
+| Module                | Line Coverage | Branch Coverage | Notes                  |
+| --------------------- | ------------- | --------------- | ---------------------- |
+| apps/web (components) | 80%           | 70%             | UI-heavy, lower target |
+| apps/api (services)   | 90%           | 80%             | Core business logic    |
+| apps/api (agents)     | 90%           | 80%             | Critical AI logic      |
+| apps/api (retrieval)  | 85%           | 75%             | RAG pipeline           |
+| Golden datasets       | 95% accuracy  | —               | AI correctness         |
 
 ## Performance Testing Considerations
 

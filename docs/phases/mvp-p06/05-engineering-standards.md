@@ -37,8 +37,8 @@ vaeloom/
 | ---------------- | ------------------ | -------------------------------------------------------------------- | -------------------------------------------- |
 | **Prettier**     | TS/JS/JSON/MD/YAML | `.prettierrc` (semi, singleQuote, trailingComma:all, printWidth:100) | Pre-commit + CI `format:check`               |
 | **ESLint**       | TS/JS              | `packages/eslint-config/{base,nextjs}.js`                            | Pre-commit + CI `lint`                       |
-| **Ruff**         | Python (all)       | `[tool.ruff]` in `apps/backend/pyproject.toml` (NEW: Q&A-2)          | CI `ci-backend.yml` (FIXING dead path)       |
-| **mypy**         | Python (all)       | `[tool.mypy]` in `apps/backend/pyproject.toml` (NEW: Q&A-2)          | CI `ci-backend.yml` (FIXING dead path)       |
+| **Ruff**         | Python (all)       | `[tool.ruff]` in `apps/api/pyproject.toml` (NEW: Q&A-2)              | CI `ci-backend.yml` (FIXING dead path)       |
+| **mypy**         | Python (all)       | `[tool.mypy]` in `apps/api/pyproject.toml` (NEW: Q&A-2)              | CI `ci-backend.yml` (FIXING dead path)       |
 | **markdownlint** | Markdown           | `.markdownlint.json`                                                 | CI `docs-validate.yml` (FIXING Docs/** path) |
 | **Vale**         | Prose              | `.vale.ini` (Vaeloom custom + write-good)                            | CI `docs-validate.yml`                       |
 | **cspell**       | Spelling           | `.cspell.json` (custom `meridian` dict)                              | IDE + CI                                     |
@@ -145,8 +145,8 @@ refactor, test, ci, perf, build.
 | No `[tool.mypy]` in backend pyproject          | ADD mypy strict config                                              | P06   | IMPLEMENTING |
 | No `[tool.coverage]` in backend pyproject      | ADD coverage config                                                 | P06   | IMPLEMENTING |
 | No `.python-version`                           | ADD `.python-version` with `3.12`                                   | P06   | IMPLEMENTING |
-| CI ruff targets nonexistent `apps/ai-service`  | FIX to target `apps/backend`                                        | P06   | IMPLEMENTING |
-| CI mypy targets nonexistent `apps/ai-service`  | FIX to target `apps/backend`                                        | P06   | IMPLEMENTING |
+| CI ruff targets nonexistent `apps/ai-service`  | FIX to target `apps/api`                                            | P06   | IMPLEMENTING |
+| CI mypy targets nonexistent `apps/ai-service`  | FIX to target `apps/api`                                            | P06   | IMPLEMENTING |
 | No eslint flat config (ESLint 8 legacy)        | DEFER to P16; document in standards                                 | P16   | DEFERRED     |
 | No `eslint-plugin-security`                    | DEFER to P16                                                        | P16   | DEFERRED     |
 | Pre-commit runs only prettier (no eslint/ruff) | Consider adding; DEFER to P16                                       | P16   | DEFERRED     |

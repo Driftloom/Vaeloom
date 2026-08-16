@@ -15,14 +15,14 @@
 
 ## Quick Commands
 
-| Action                | Command                                           | Time     |
-| --------------------- | ------------------------------------------------- | -------- |
-| **Frontend dev**      | **`pnpm dev:web`**                                | **2-5s** |
-| Frontend dev (direct) | `make dev-web`                                    | **2-5s** |
-| Backend dev           | `pnpm dev:be`                                     | instant  |
-| Install deps          | `pnpm install`                                    | **2.2s** |
-| Backend tests         | `cd apps/backend && python -m pytest tests/ -q`   | ~5min    |
-| ALL tests w/ cov      | `cd apps/backend && python -m pytest tests/ --co` | ~10min   |
+| Action                | Command                                       | Time     |
+| --------------------- | --------------------------------------------- | -------- |
+| **Frontend dev**      | **`pnpm dev:web`**                            | **2-5s** |
+| Frontend dev (direct) | `make dev-web`                                | **2-5s** |
+| API dev               | `pnpm dev:be`                                 | instant  |
+| Install deps          | `pnpm install`                                | **2.2s** |
+| Backend tests         | `cd apps/api && python -m pytest tests/ -q`   | ~5min    |
+| ALL tests w/ cov      | `cd apps/api && python -m pytest tests/ --co` | ~10min   |
 
 ## CRITICAL: Never use `pnpm dev`
 
@@ -32,7 +32,7 @@
 
 - **`pnpm dev:web`** — runs only the web app via Nx (2-5s startup)
 - **`make dev-web`** — runs `cd apps/web && pnpm next dev` directly (fastest)
-- **`pnpm dev:be`** — runs the backend only
+- **`pnpm dev:be`** — runs the API only
 
 ## Frontend — Startup Issues
 
@@ -43,7 +43,7 @@
 3. **`next.config.js`** — `output: 'standalone'` is gated behind
    `process.env.CI` (local builds are fast)
 
-## Backend — Test State
+## API — Test State
 
 - **2333 tests pass, 2 xfailed, 0 failures** (re-measured 2026-08-13 via fresh
   full-suite run; security suite 172/172; coverage **94% total** — see
@@ -63,7 +63,7 @@
 | 0.6 CORS hardening        | DONE   | IMPLEMENTED   | Restricted origins/methods/headers, security headers                                                                                               |
 | 0.7 Docs consolidation    | DONE   | IMPLEMENTED   | Documents/ deleted, references fixed                                                                                                               |
 | 0.8 Logging               | DONE   | IMPLEMENTED   | JSON/pretty formatters, correlation IDs, structured fields                                                                                         |
-| 1.x CI/CD                 | DONE   | IMPLEMENTED   | GitHub Actions (backend, frontend, docker, deploy) — no release workflow                                                                           |
+| 1.x CI/CD                 | DONE   | IMPLEMENTED   | GitHub Actions (api, frontend, docker, deploy) — no release workflow                                                                               |
 | 2.x Frontend API          | DONE   | PARTIAL       | Typed client + 16 pages with real API; 7 pages use hardcoded mock data                                                                             |
 | 3.x Next.js pages         | DONE   | IMPLEMENTED   | loading.tsx, error.tsx, not-found.tsx (global + per-route)                                                                                         |
 | 4.x Enterprise auth       | DONE   | PARTIAL       | SSO (Google/Microsoft) implemented; SAML is STUB (methods return None); RBAC is dependency injection helper, not middleware                        |
@@ -96,9 +96,9 @@ When starting fresh, **these 4 things WILL break** if not handled:
 ### Server Startup
 
 ```
-# Terminal 1: Backend (set vars BEFORE python)
+# Terminal 1: API (set vars BEFORE python)
 $env:JWT_SECRET="super-secret-key-12345-dev-only"; $env:ENCRYPTION_KEY="MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="; $env:DATABASE__URL="sqlite+aiosqlite:///./dev.db"; $env:LLM_API_KEY="mock-key"; $env:OTEL_SDK_DISABLED="true"
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 
 # Terminal 2: Frontend
 pnpm dev:web
@@ -120,7 +120,7 @@ pnpm dev:web
 
 25 packages total:
 
-- `apps/` — web (Next.js 15), backend (FastAPI/Python)
+- `apps/` — web (Next.js 15), api (FastAPI/Python)
 - `packages/` — ui-kit, shared-types, eslint-config, tsconfig, observability,
   etc.
 - `integrations/` — calendar, email, github, google-drive, notion, slack

@@ -26,7 +26,7 @@ The frontend is a component-driven SPA with SSR for fast initial loads.
 - `app/workspace/page.tsx` � File browser
 - `components/ProposalCard.tsx` � Agent proposal UI
 
-### 2. Backend: `apps/backend/` (FastAPI)
+### 2. Backend: `apps/api/` (FastAPI)
 
 REST API handling auth, CRUD, permissions, agents, memory, RAG, and all business
 logic.
@@ -49,13 +49,13 @@ PostgreSQL stores structured data, graph relationships (AGE), and vectors
 ### Adding a New API Endpoint
 
 1. Define types in `packages/shared-types/`
-2. Create route handler in `apps/backend/routes/`
+2. Create route handler in `apps/api/routes/`
 3. Add service logic
 4. Add to Permission Engine
 
 ### Adding a New Agent
 
-1. Create agent directory in `apps/backend/agents/`
+1. Create agent directory in `apps/api/agents/`
 2. Define `prompt.py`, `tools.py`, `handler.py`, `permissions.py`
 3. Register agent in the Orchestrator
 
@@ -176,7 +176,7 @@ async function healthCheck(): Promise<boolean> {
 ### Agent handler registration
 
 ```python
-# apps/backend/orchestrator/router.py
+# apps/api/orchestrator/router.py
 from agents.memory_agent.handler import MemoryAgentHandler
 
 orchestrator.register_agent(
@@ -190,8 +190,8 @@ orchestrator.register_agent(
 ### Backend service call
 
 ```python
-# apps/backend/services/document_service.py
-from backend.agents.orchestrator.router import orchestrator
+# apps/api/services/document_service.py
+from api.agents.orchestrator.router import orchestrator
 
 async def process_document(content: str):
     response = await orchestrator.route_request(
@@ -204,7 +204,7 @@ async def process_document(content: str):
 ### Permission check middleware
 
 ```python
-# apps/backend/permissions/engine.py
+# apps/api/permissions/engine.py
 from fastapi import Request, HTTPException
 
 async def require_permission(request: Request, action: str):

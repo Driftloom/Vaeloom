@@ -1,13 +1,13 @@
-﻿# Backend
+# Backend
 
 > **Purpose:** API architecture, authentication, authorization, validation,
 > business logic, service contracts, event catalog, workers, connectors, and
-> queue infrastructure **Status:** ✅ Upgraded to enterprise quality **Owner:**
+> queue infrastructure **Status:** ? Upgraded to enterprise quality **Owner:**
 > Backend Team **Version:** 1.0 **Last Updated:** 2026-07-16
 
 ## Overview
 
-Vaeloom's backend is a single monolithic FastAPI application at `apps/backend`
+Vaeloom's backend is a single monolithic FastAPI application at `apps/api`
 (Python) handling auth, CRUD, permissions, agents, memory, RAG, and inference.
 All modules communicate via direct function calls, with event-driven
 coordination through a shared message bus. The backend documentation covers the
@@ -23,29 +23,29 @@ formally defined to ensure backward compatibility and independent deployability.
 
 ## What's here
 
-| Document              | Location                                                 | Status       |
-| --------------------- | -------------------------------------------------------- | ------------ |
-| Backend Architecture  | [`./Backend-Architecture.md`](./Backend-Architecture.md) | ✅ Excellent |
-| REST Standards        | [`./REST-Standards.md`](./REST-Standards.md)             | ✅ Excellent |
-| API Architecture      | [`./API-Architecture.md`](./API-Architecture.md)         | ✅ Excellent |
-| API Reference         | [`./API-Reference.md`](./API-Reference.md)               | ✅ Complete  |
-| Authentication        | [`./Authentication.md`](./Authentication.md)             | ✅ Complete  |
-| Authorization         | [`./Authorization.md`](./Authorization.md)               | ✅ Complete  |
-| Connectors            | [`./Connectors.md`](./Connectors.md)                     | ✅ Good      |
-| Rate Limiting         | [`./Rate-Limiting.md`](./Rate-Limiting.md)               | ✅ Good      |
-| ABAC                  | [`./ABAC.md`](./ABAC.md)                                 | 🆕 New       |
-| API Versioning        | [`./API-Versioning.md`](./API-Versioning.md)             | 🆕 New       |
-| Business Logic        | [`./Business-Logic.md`](./Business-Logic.md)             | 🆕 New       |
-| Cron Jobs             | [`./Cron-Jobs.md`](./Cron-Jobs.md)                       | 🆕 New       |
-| Error Standards       | [`./Error-Standards.md`](./Error-Standards.md)           | 🆕 New       |
-| Event Catalog         | [`./Event-Catalog.md`](./Event-Catalog.md)               | 🆕 New       |
-| GraphQL               | [`./GraphQL.md`](./GraphQL.md)                           | 🆕 New       |
-| Module Specifications | [`./Module-Specs.md`](./Module-Specs.md)                 | 🆕 New       |
-| Queue                 | [`./Queue.md`](./Queue.md)                               | 🆕 New       |
-| RBAC                  | [`./RBAC.md`](./RBAC.md)                                 | 🆕 New       |
-| Service Contracts     | [`./Service-Contracts.md`](./Service-Contracts.md)       | 🆕 New       |
-| Validation            | [`./Validation.md`](./Validation.md)                     | 🆕 New       |
-| Workers               | [`./Workers.md`](./Workers.md)                           | 🆕 New       |
+| Document              | Location                                                 | Status      |
+| --------------------- | -------------------------------------------------------- | ----------- |
+| Backend Architecture  | [`./Backend-Architecture.md`](./Backend-Architecture.md) | ? Excellent |
+| REST Standards        | [`./REST-Standards.md`](./REST-Standards.md)             | ? Excellent |
+| API Architecture      | [`./API-Architecture.md`](./API-Architecture.md)         | ? Excellent |
+| API Reference         | [`./API-Reference.md`](./API-Reference.md)               | ? Complete  |
+| Authentication        | [`./Authentication.md`](./Authentication.md)             | ? Complete  |
+| Authorization         | [`./Authorization.md`](./Authorization.md)               | ? Complete  |
+| Connectors            | [`./Connectors.md`](./Connectors.md)                     | ? Good      |
+| Rate Limiting         | [`./Rate-Limiting.md`](./Rate-Limiting.md)               | ? Good      |
+| ABAC                  | [`./ABAC.md`](./ABAC.md)                                 | ?? New      |
+| API Versioning        | [`./API-Versioning.md`](./API-Versioning.md)             | ?? New      |
+| Business Logic        | [`./Business-Logic.md`](./Business-Logic.md)             | ?? New      |
+| Cron Jobs             | [`./Cron-Jobs.md`](./Cron-Jobs.md)                       | ?? New      |
+| Error Standards       | [`./Error-Standards.md`](./Error-Standards.md)           | ?? New      |
+| Event Catalog         | [`./Event-Catalog.md`](./Event-Catalog.md)               | ?? New      |
+| GraphQL               | [`./GraphQL.md`](./GraphQL.md)                           | ?? New      |
+| Module Specifications | [`./Module-Specs.md`](./Module-Specs.md)                 | ?? New      |
+| Queue                 | [`./Queue.md`](./Queue.md)                               | ?? New      |
+| RBAC                  | [`./RBAC.md`](./RBAC.md)                                 | ?? New      |
+| Service Contracts     | [`./Service-Contracts.md`](./Service-Contracts.md)       | ?? New      |
+| Validation            | [`./Validation.md`](./Validation.md)                     | ?? New      |
+| Workers               | [`./Workers.md`](./Workers.md)                           | ?? New      |
 
 ## Goals
 
@@ -65,13 +65,13 @@ formally defined to ensure backward compatibility and independent deployability.
 
 ### In Scope
 
-- FastAPI (`apps/backend`) backend architecture and module specifications
-- FastAPI (`apps/backend`) backend architecture and module specifications
+- FastAPI (`apps/api`) backend architecture and module specifications
+- FastAPI (`apps/api`) backend architecture and module specifications
 - REST API standards, OpenAPI reference, and versioning
 - Authentication and authorization (ABAC, RBAC, permission engine)
 - Service contract between backend services (RPC protocol, shared schema)
-- Event catalog — every event in the system
-- Connector architecture — OAuth token lifecycle, sync scheduling, rate limiting
+- Event catalog � every event in the system
+- Connector architecture � OAuth token lifecycle, sync scheduling, rate limiting
 - Background workers, queue patterns, and cron jobs
 - Input validation standards and error handling
 

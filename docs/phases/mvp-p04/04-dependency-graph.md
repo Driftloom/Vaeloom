@@ -1,8 +1,8 @@
 # MVP-P04 — 04. Dependency Graph & Critical Path (DEL-MVP-P04-02)
 
 > Owner: Engineering Manager · Baseline: master @ dac2630 (P03 CLOSED
-> 2026-08-14) · Repo truth: Next.js (apps/web) + FastAPI (apps/backend) — no
-> NestJS (CF-P04-01) · Status: APPROVED_BASELINE pending gate.
+> 2026-08-14) · Repo truth: Next.js (apps/web) + FastAPI (apps/api) — no NestJS
+> (CF-P04-01) · Status: APPROVED_BASELINE pending gate.
 
 ## 1. Phase dependency graph (MVP track)
 
@@ -104,7 +104,7 @@ due phase — never fabricated as resolved:
 
 | ID              | Claim                                                                                                                                                                                                                                     | Requirement | Type           | Location         | Result                         | Date       | Verified by         |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------------- | ---------------- | ------------------------------ | ---------- | ------------------- |
-| EVD-MVP-P04-021 | Dependency graph reflects P03 baseline master @ dac2630 (P03 CLOSED 2026-08-14), 25-package repo (Next.js apps/web + FastAPI apps/backend, no NestJS CF-P04-01)                                                                           | MVP-P04-R01 | SOURCE_DERIVED | this file (§1)   | APPROVED_BASELINE pending gate | 2026-08-15 | Engineering Manager |
+| EVD-MVP-P04-021 | Dependency graph reflects P03 baseline master @ dac2630 (P03 CLOSED 2026-08-14), 25-package repo (Next.js apps/web + FastAPI apps/api, no NestJS CF-P04-01)                                                                               | MVP-P04-R01 | SOURCE_DERIVED | this file (§1)   | APPROVED_BASELINE pending gate | 2026-08-15 | Engineering Manager |
 | EVD-MVP-P04-022 | Critical path chain P05→P06→P07→P08→P11→P13→P14→P15→P16→P17→P18→P19→P20→P21 = longest chain (design→data→contracts→backend→harden→certify→ship); P10/P09/P12 off path                                                                     | MVP-P04-R01 | NEW_DESIGN     | this file (§2)   | APPROVED_BASELINE pending gate | 2026-08-15 | Engineering Manager |
 | EVD-MVP-P04-023 | Key dependencies incl. P12 eval harness thresholds (≥90% deadline extraction / ≥80% retrieval evidence) → P14/P13; enterprise features kept OUT of MVP critical path (prompt §12.6)                                                       | MVP-P04-R02 | SOURCE_DERIVED | this file (§3–4) | APPROVED_BASELINE pending gate | 2026-08-15 | Engineering Manager |
 | EVD-MVP-P04-024 | Kill switches/rollback points: per-gate git revert discipline; feature flags AUTO-01 (T1 ON), AUTO-02 (T2 OFF), AUTO-03 (T3 OFF) (DEC-P02-05/DEC-P03-01) enablement independent of code presence; connector outage isolation (NFR-15/h15) | MVP-P04-R02 | SOURCE_DERIVED | this file (§5)   | APPROVED_BASELINE pending gate | 2026-08-15 | Engineering Manager |

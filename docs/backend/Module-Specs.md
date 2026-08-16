@@ -1,18 +1,18 @@
-ï»¿# Module Specifications
+# Module Specifications
 
-> **Purpose:** Define every module within apps/backend (FastAPI), their
+> **Purpose:** Define every module within apps/api (FastAPI), their
 > responsibilities, dependencies, interfaces, and ownership boundaries
-> **Status:** ðŸ†• New **Owner:** Architecture Team **Version:** 1.0 **Last
+> **Status:** ?? New **Owner:** Architecture Team **Version:** 1.0 **Last
 > Updated:** 2026-07-16 **Dependencies:**
 > [`API-Architecture.md`](./API-Architecture.md),
 > [`Service-Contracts.md`](./Service-Contracts.md),
 > [`Backend-Architecture.md`](./Backend-Architecture.md),
 > [`../Architecture/C4-Architecture.md`](../Architecture/C4-Architecture.md)
-> **Implementation Status:** ðŸ“‹ Spec Only
+> **Implementation Status:** ?? Spec Only
 
 ## Overview
 
-Each backend service is organized into modules â€” cohesive units of code that own
+Each backend service is organized into modules — cohesive units of code that own
 a bounded domain, expose a public interface, and have explicit dependencies on
 other modules. This document specifies every module, its responsibility, its
 public interface (what other modules can call), its dependencies (what it
@@ -22,7 +22,7 @@ teams to work in parallel.
 
 ## Goals
 
-- Define every module in apps/backend
+- Define every module in apps/api
 - Specify module responsibilities and public interfaces
 - Map inter-module dependencies and communication patterns
 - Establish module ownership boundaries
@@ -32,15 +32,15 @@ teams to work in parallel.
 
 ### In Scope
 
-- apps/backend modules (FastAPI)
+- apps/api modules (FastAPI)
 - Module dependency graph
 - Communication patterns
 - Ownership boundaries
 
 ### Out of Scope
 
-- Detailed implementation of each module â€” see individual feature docs
-- Database schema per module â€” see
+- Detailed implementation of each module — see individual feature docs
+- Database schema per module — see
   [`../Database/Schema.md`](../Database/Schema.md)
 
 ## Architecture
@@ -52,7 +52,7 @@ graph TD
     classDef shared fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef rpc fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph API["apps/backend (FastAPI)"]
+    subgraph API["apps/api (FastAPI)"]
         AUTH["AuthModule"]:::api_mod
         USERS["UsersModule"]:::api_mod
         DOCS["DocumentsModule"]:::api_mod
@@ -88,7 +88,7 @@ graph TD
 > solid, event = labeled). Shared types and events are in the shared kernel. All
 > modules run within the same FastAPI application.
 
-## apps/backend Modules (FastAPI)
+## apps/api Modules (FastAPI)
 
 | Module                  | Responsibility                                              | Public Interface                                                   | Dependencies                                    | Communication                         |
 | ----------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------- | ------------------------------------- |
@@ -104,7 +104,7 @@ graph TD
 | **NotificationsModule** | Email, in-app, push notifications                           | `send()`, `markRead()`, `listNotifications()`                      | AuthModule, UsersModule                         | Direct + event (notification.created) |
 | **AnalyticsModule**     | Usage analytics, feature adoption, tenant-level reporting   | `getUsageSummary()`, `getAdoptionMetrics()`                        | AuthModule, TenantsModule                       | Direct call (read-only)               |
 
-## Agent & AI Modules (within apps/backend)
+## Agent & AI Modules (within apps/api)
 
 | Module               | Responsibility                                                   | Public Interface                                                   | Dependencies                                                          | Communication                                            |
 | -------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -122,7 +122,7 @@ graph TD
 | Pattern                     | When to Use                                               | Example                                                                     |
 | --------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------- |
 | **Direct call**             | Synchronous request-response within same app              | `PermissionsModule.checkPermission()` called by any API controller          |
-| **Event (async)**           | Fire-and-forget or fan-out scenarios                      | `DocumentsModule` emits `document.uploaded` â†’ `IngestionModule` picks it up |
+| **Event (async)**           | Fire-and-forget or fan-out scenarios                      | `DocumentsModule` emits `document.uploaded` ? `IngestionModule` picks it up |
 | **Direct call (intra-app)** | Synchronous calls between modules in the same FastAPI app | `SearchModule` calls `RAGModule.retrieve()` directly                        |
 | **Shared kernel**           | Shared types, enums, event schemas                        | Pydantic models, CloudEvents types                                          |
 
@@ -164,9 +164,9 @@ graph TD
 
 ## Related Documents
 
-- [`API-Architecture.md`](./API-Architecture.md) â€” API-level architecture
-- [`Service-Contracts.md`](./Service-Contracts.md) â€” cross-service RPC contracts
-- [`Backend-Architecture.md`](./Backend-Architecture.md) â€” backend overview
-- [`../Architecture/C4-Architecture.md`](../Architecture/C4-Architecture.md) â€”
+- [`API-Architecture.md`](./API-Architecture.md) — API-level architecture
+- [`Service-Contracts.md`](./Service-Contracts.md) — cross-service RPC contracts
+- [`Backend-Architecture.md`](./Backend-Architecture.md) — backend overview
+- [`../Architecture/C4-Architecture.md`](../Architecture/C4-Architecture.md) —
   C4 component views
-- [`../AI/AI-Agents.md`](../AI/AI-Agents.md) â€” agent architecture
+- [`../AI/AI-Agents.md`](../AI/AI-Agents.md) — agent architecture

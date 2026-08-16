@@ -1,24 +1,24 @@
-﻿# 01 — Foundation & Infrastructure Scaffolding (MVP)
+# 01 � Foundation & Infrastructure Scaffolding (MVP)
 
-> **Purpose:** Stand up the deployable monorepo skeleton — three services that
-> boot, talk to each other, pass CI, and let a user sign up. **Status:** âœ…
+> **Purpose:** Stand up the deployable monorepo skeleton � three services that
+> boot, talk to each other, pass CI, and let a user sign up. **Status:** ✅
 > Upgraded to enterprise quality **Owner:** Engineering Team **Last Updated:**
 > 2026-07-13
 
 ## Overview
 
 This is the first implementation phase and the foundation every later phase
-builds upon. It establishes the monorepo structure (`apps/web`, `apps/backend`,
+builds upon. It establishes the monorepo structure (`apps/web`, `apps/api`,
 `packages/shared-types`), the CI pipeline via GitHub Actions, local development
 via Docker Compose, and the authentication scaffold. No feature logic exists yet
-— the goal is a working, deployable, empty version of Vaeloom.
+� the goal is a working, deployable, empty version of Vaeloom.
 
-The backend is a single FastAPI service (`apps/backend`) that handles all
+The backend is a single FastAPI service (`apps/api`) that handles all
 functionality: auth, CRUD, permissions, agents, memory, and retrieval. The
 Next.js frontend (`apps/web`) provides a placeholder dashboard that file 14
 replaces with the full UI.
 
-All later phases (02–16) assume this skeleton is green and running. Every
+All later phases (02�16) assume this skeleton is green and running. Every
 engineer must be able to run `docker-compose up` from a clean checkout and see
 all three services boot with zero manual steps beyond copying `.env.example` to
 `.env`.
@@ -42,7 +42,7 @@ graph TD
 
     subgraph Repo["Monorepo Scaffold"]
         A["Root Vaeloom/"]:::primary --> B["apps/web (Next.js)"]:::secondary
-        A --> C["apps/backend (FastAPI)"]:::secondary
+        A --> C["apps/api (FastAPI)"]:::secondary
         A --> E["packages/shared-types"]:::secondary
         A --> F["infra/docker + ci"]:::secondary
     end
@@ -52,7 +52,7 @@ graph TD
         H --> I["Typecheck (tsc + mypy)"]:::secondary
         I --> J["Unit Tests"]:::secondary
         J --> K["Build"]:::secondary
-        K --> L["Green CI âœ…"]:::primary
+        K --> L["Green CI ✅"]:::primary
     end
 
     subgraph Local["Local Dev (docker-compose)"]
@@ -74,7 +74,7 @@ graph TD
 
 ## Context
 
-Read `00-master-build-order.md` first. This is the first build phase — the deployable skeleton every later phase builds on top of. No feature logic yet.
+Read `00-master-build-order.md` first. This is the first build phase � the deployable skeleton every later phase builds on top of. No feature logic yet.
 
 ## Objective
 
@@ -86,26 +86,26 @@ Stand up a working, deployable, empty version of Vaeloom: three services that bo
 
 ```text
 Vaeloom/
-â”œâ”€â”€ apps/
-â”‚   â”œâ”€â”€ web/            # Next.js 14+, TypeScript, App Router, Tailwind CSS
-â”‚   â”œâ”€â”€ api/             # FastAPI, TypeScript
-â”‚   â””â”€â”€ ai-service/      # FastAPI, Python 3.11+
-â”œâ”€â”€ packages/
-â”‚   â””â”€â”€ shared-types/    # types shared between web and api
-â”œâ”€â”€ infra/
-â”‚   â”œâ”€â”€ docker/          # Dockerfiles per service
-â”‚   â””â”€â”€ ci/
-â””â”€â”€ docker-compose.yml   # Postgres, Redis, all three services, for local dev
+├── apps/
+│   ├── web/            # Next.js 14+, TypeScript, App Router, Tailwind CSS
+│   ├── api/             # FastAPI, TypeScript
+│   └── ai-service/      # FastAPI, Python 3.11+
+├── packages/
+│   └── shared-types/    # types shared between web and api
+├── infra/
+│   ├── docker/          # Dockerfiles per service
+│   └── ci/
+└── docker-compose.yml   # Postgres, Redis, all three services, for local dev
 ```text
 
-**apps/backend (FastAPI):**
+**apps/api (FastAPI):**
 
 - Health-check endpoint (`GET /health`) returning service status.
 - Auth module: email/password signup + login to start (bcrypt-hashed passwords), structured so an OAuth/SSO provider can be swapped in later (file 15) without changing the interface.
 - Auth middleware/guard usable by every future endpoint.
-- `POST /workspaces` — provisions a new, empty workspace for the authenticated user (see file 02 for the table this writes to).
+- `POST /workspaces` � provisions a new, empty workspace for the authenticated user (see file 02 for the table this writes to).
 
-**apps/backend (FastAPI):**
+**apps/api (FastAPI):**
 
 - Health-check endpoint.
 - Empty `orchestrator/` and `agents/` folders with a `README.md` stub explaining they're populated in file 05.
@@ -113,7 +113,7 @@ Vaeloom/
 **apps/web (Next.js):**
 
 - Signup and login pages, calling the api service.
-- An empty, authenticated Dashboard route that renders "Workspace ready" once a workspace exists — this is the placeholder file 14 replaces.
+- An empty, authenticated Dashboard route that renders "Workspace ready" once a workspace exists � this is the placeholder file 14 replaces.
 
 **CI (`infra/ci/`, GitHub Actions):**
 
@@ -123,11 +123,11 @@ Vaeloom/
 **Local dev:**
 
 - `docker-compose.yml` bringing up Postgres, Redis, and all three apps with hot reload.
-- `.env.example` at the repo root documenting every required variable (DB URL, Redis URL, JWT secret, etc.) — no service should require an undocumented env var to boot.
+- `.env.example` at the repo root documenting every required variable (DB URL, Redis URL, JWT secret, etc.) � no service should require an undocumented env var to boot.
 
 ## Out of scope
 
-Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any memory or ingestion logic (files 02–04), production deployment (file 16 — this phase is local + CI only).
+Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any memory or ingestion logic (files 02�04), production deployment (file 16 � this phase is local + CI only).
 
 ## Acceptance criteria
 
@@ -171,7 +171,7 @@ Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any
 
 ### In Scope
 
-- Monorepo scaffold with two services: apps/web (Next.js), apps/backend (FastAPI)
+- Monorepo scaffold with two services: apps/web (Next.js), apps/api (FastAPI)
 - packages/shared-types for cross-service type sharing
 - CI pipeline via GitHub Actions: lint (ESLint + ruff), typecheck (tsc + mypy), test, build on every PR
 - Auth module: email/password signup + login with bcrypt, structured for OAuth/SSO swap-in
@@ -182,7 +182,7 @@ Real OAuth/SSO providers (file 15 stub only), any AI/agent logic (file 05+), any
 
 - Real OAuth/SSO providers (deferred to Phase 15)
 - Any AI or agent logic (deferred to Phase 05+)
-- Memory or ingestion logic (deferred to Phases 02–04)
+- Memory or ingestion logic (deferred to Phases 02�04)
 - Production deployment configuration (Phase 16)
 - Kubernetes or container orchestration (enterprise phase)
 
@@ -214,7 +214,7 @@ curl -X POST http://localhost:4000/auth/login \
 ```text
 
 ```typescript
-// packages/shared-types/src/index.ts — types shared between web and api
+// packages/shared-types/src/index.ts � types shared between web and api
 export interface User {
   id: string;
   email: string;
@@ -229,7 +229,7 @@ export interface Workspace {
 ```text
 
 ```yaml
-# .github/workflows/ci.yml — CI pipeline entry
+# .github/workflows/ci.yml � CI pipeline entry
 name: CI
 on: [pull_request]
 jobs:
@@ -260,8 +260,8 @@ jobs:
 
 ## Related Documents
 
-- [00 — Master Build Order](00-master-build-order.md) — Entry point and build sequence
-- [02 — Database Schema](02-database-schema.md) — Next phase: Postgres schema and migrations
-- [15 — Security & Compliance](15-security-compliance.md) — Auth upgrade and secrets management
-- [Architecture System Design](../../Architecture/System-Design.md) — System architecture context
+- [00 � Master Build Order](00-master-build-order.md) � Entry point and build sequence
+- [02 � Database Schema](02-database-schema.md) � Next phase: Postgres schema and migrations
+- [15 � Security & Compliance](15-security-compliance.md) � Auth upgrade and secrets management
+- [Architecture System Design](../../Architecture/System-Design.md) � System architecture context
 ````

@@ -58,7 +58,7 @@
 
 | File                                   | Change                                                      | Destructive? |
 | -------------------------------------- | ----------------------------------------------------------- | ------------ |
-| `apps/backend/pyproject.toml`          | Added [tool.ruff], [tool.mypy], [tool.coverage]             | No           |
+| `apps/api/pyproject.toml`              | Added [tool.ruff], [tool.mypy], [tool.coverage]             | No           |
 | `.python-version`                      | Created with `3.12`                                         | No           |
 | `.github/workflows/ci.yml`             | Fixed python-checks (ai-service → backend); fixed docs path | No           |
 | `.github/workflows/security-audit.yml` | Fixed pip-audit path (ai-service → backend)                 | No           |

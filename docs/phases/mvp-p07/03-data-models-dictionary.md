@@ -1,7 +1,7 @@
 # MVP-P07 — 03. Data Models & Dictionary
 
 > **Owner:** Data Architect · **Source of truth:**
-> `apps/backend/src/backend/models/schema.py` **Audit date:** 2026-08-16 · **ORM
+> `apps/api/src/backend/models/schema.py` **Audit date:** 2026-08-16 · **ORM
 > classes:** 38 · **Unique `__tablename__`:** 35
 >
 > **Migration chain:** 0001 (initial 25) → 0002 (microservice tables) → 0003

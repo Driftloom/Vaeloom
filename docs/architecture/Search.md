@@ -104,7 +104,7 @@ A single search surface spanning all data types:
 ## Search Ranking Algorithm
 
 ```python
-# apps/backend/search/ranking.py
+# apps/api/search/ranking.py
 interface RankedResult {
   id: string;
   source: string;

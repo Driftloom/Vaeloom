@@ -19,7 +19,7 @@ externally) · `NEW_DESIGN` · `STAKEHOLDER_DECISION` ·
 
 ## 2. Runtime evidence — commands actually run
 
-### 2.1 Backend test suite (apps/backend) — RE-RUN 2026-08-12 @ `3ad6bca`
+### 2.1 Backend test suite (apps/api) — RE-RUN 2026-08-12 @ `3ad6bca`
 
 ```text
 env: JWT_SECRET=super-secret-key-12345-dev-only, ENCRYPTION_KEY=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=,
@@ -62,7 +62,7 @@ config.
 | --------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Prettier (CI)   | `pnpm format:check`                                         | **FAIL (exit 2)** — pre-existing drift on committed files: `sdk/typescript/src/types.ts`, `SECURITY.md`, `testing/accessibility/audit-pages.ts`, `axe-config.ts`, `testing/integration/test-containers.ts` → CI `lint-typecheck` job would fail → RISK-P00-11 |
 | Ruff (CI scope) | `ruff check packages/python-common/src apps/ai-service/src` | **FAIL (18 errors)** — style drift (UP007 `X                                                                                                                                                                                                                  | None`, 11 auto-fixable) → CI `python-checks` job would fail → RISK-P00-12 |
-| Ruff (backend)  | `ruff check src tests` (apps/backend)                       | 405 errors — **not** CI-enforced for apps/backend (ci-backend.yml runs pytest only); informational only                                                                                                                                                       |
+| Ruff (backend)  | `ruff check src tests` (apps/api)                           | 405 errors — **not** CI-enforced for apps/api (ci-backend.yml runs pytest only); informational only                                                                                                                                                           |
 | Nx root lint    | `pnpm lint` (nx run-many)                                   | Hangs in this shell (same limitation as `pnpm dev` — some packages lack lint targets); per-package lint clean                                                                                                                                                 |
 
 ## 3. Maturity matrix — MVP track objectives
@@ -125,8 +125,8 @@ config.
 
 ## 5. Test inventory (backend, on-disk)
 
-- `apps/backend/tests/`: **130 test files + 3 conftest.py + 1 debug harness**
-  (134 `.py` total) — unit, integration, security, conftest with mock_llm/
+- `apps/api/tests/`: **130 test files + 3 conftest.py + 1 debug harness** (134
+  `.py` total) — unit, integration, security, conftest with mock_llm/
   mock_connector fixtures; 2335 tests collected / 2333 passed.
 - `testing/`: 10 suites (accessibility, chaos, e2e, fuzz, integration,
   performance, security, smoke, unit, visual-regression) — **e2e live (39/39);

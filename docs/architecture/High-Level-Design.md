@@ -19,10 +19,10 @@ graph TD
 
 ## Service Responsibilities
 
-| Service      | Tech                 | Responsibility                                              |
-| ------------ | -------------------- | ----------------------------------------------------------- |
-| apps/web     | Next.js, React       | Frontend, SSR, UI                                           |
-| apps/backend | FastAPI, Python 3.12 | Auth, CRUD, permissions, agents, memory, RAG, model routing |
+| Service  | Tech                 | Responsibility                                              |
+| -------- | -------------------- | ----------------------------------------------------------- |
+| apps/web | Next.js, React       | Frontend, SSR, UI                                           |
+| apps/api | FastAPI, Python 3.12 | Auth, CRUD, permissions, agents, memory, RAG, model routing |
 
 ## Key Design Decisions
 

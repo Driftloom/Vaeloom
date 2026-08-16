@@ -304,14 +304,14 @@ alembic check
 alembic upgrade head
 
 # 3. Run full test suite
-cd apps/backend && python -m pytest tests/ -q
+cd apps/api && python -m pytest tests/ -q
 
 # 4. Verify rollback
 alembic downgrade base
 
 # 5. Re-apply and confirm tests pass again
 alembic upgrade head
-cd apps/backend && python -m pytest tests/ -q
+cd apps/api && python -m pytest tests/ -q
 
 echo "Migration verified: up, down, and re-up all pass"
 ```

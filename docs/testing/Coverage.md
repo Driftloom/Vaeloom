@@ -1,7 +1,7 @@
-﻿# Test Coverage
+# Test Coverage
 
 > **Purpose:** Define test coverage targets and measurement for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** 🆕 New
 
 ## Coverage Architecture
 
@@ -12,27 +12,27 @@ graph TD
     classDef ci fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef exclude fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Targets["ðŸŽ¯ Coverage Targets"]
+    subgraph Targets["🎯 Coverage Targets"]
         direction TB
         T1["apps/web (components)<br/>Line: 80% | Branch: 70%"]
         T2["apps/web (pages)<br/>Line: 70% | Branch: 60%"]
-        T3["apps/backend (services)<br/>Line: 90% | Branch: 80%"]
-        T4["apps/backend (routes)<br/>Line: 85% | Branch: 75%"]
-        T5["apps/backend (agents)<br/>Line: 90% | Branch: 80%"]
-        T6["apps/backend (retrieval)<br/>Line: 85% | Branch: 75%"]
+        T3["apps/api (services)<br/>Line: 90% | Branch: 80%"]
+        T4["apps/api (routes)<br/>Line: 85% | Branch: 75%"]
+        T5["apps/api (agents)<br/>Line: 90% | Branch: 80%"]
+        T6["apps/api (retrieval)<br/>Line: 85% | Branch: 75%"]
     end
 
-    subgraph Tools["ðŸ”§ Coverage Tools"]
+    subgraph Tools["🔧 Coverage Tools"]
         U1["Frontend: Jest + Istanbul<br/>npm test -- --coverage"]
-        U2["Backend: pytest-cov<br/>--cov=apps/backend"]
+        U2["Backend: pytest-cov<br/>--cov=apps/api"]
     end
 
-    subgraph CI["âš™ï¸ CI Enforcement"]
-        C1["GitHub Action:<br/>pytest --cov=apps/backend"]
+    subgraph CI["⚙️ CI Enforcement"]
+        C1["GitHub Action:<br/>pytest --cov=apps/api"]
         C2["Threshold check:<br/>pytest --cov-fail-under=80"]
     end
 
-    subgraph Exclusions["âŒ What NOT to Measure"]
+    subgraph Exclusions["❌ What NOT to Measure"]
         E1["Configuration files<br/>Logic-less"]
         E2["Migration files<br/>One-time execution"]
         E3["Type definitions<br/>No runtime behavior"]
@@ -58,28 +58,28 @@ graph TD
 
 ## Coverage Targets
 
-| Module                   | Line Coverage | Branch Coverage | Rationale           |
-| ------------------------ | ------------- | --------------- | ------------------- |
-| apps/web (components)    | 80%           | 70%             | UI components       |
-| apps/web (pages)         | 70%           | 60%             | Integration heavy   |
-| apps/backend (services)  | 90%           | 80%             | Core business logic |
-| apps/backend (routes)    | 85%           | 75%             | Request handling    |
-| apps/backend (agents)    | 90%           | 80%             | Critical AI logic   |
-| apps/backend (retrieval) | 85%           | 75%             | RAG pipeline        |
+| Module                | Line Coverage | Branch Coverage | Rationale           |
+| --------------------- | ------------- | --------------- | ------------------- |
+| apps/web (components) | 80%           | 70%             | UI components       |
+| apps/web (pages)      | 70%           | 60%             | Integration heavy   |
+| apps/api (services)   | 90%           | 80%             | Core business logic |
+| apps/api (routes)     | 85%           | 75%             | Request handling    |
+| apps/api (agents)     | 90%           | 80%             | Critical AI logic   |
+| apps/api (retrieval)  | 85%           | 75%             | RAG pipeline        |
 
 ## Coverage Tools
 
-| Service                | Tool            | Configuration        |
-| ---------------------- | --------------- | -------------------- |
-| Frontend (apps/web)    | Jest + Istanbul | `--coverage` flag    |
-| Backend (apps/backend) | pytest-cov      | `--cov=apps/backend` |
+| Service             | Tool            | Configuration     |
+| ------------------- | --------------- | ----------------- |
+| Frontend (apps/web) | Jest + Istanbul | `--coverage` flag |
+| Backend (apps/api)  | pytest-cov      | `--cov=apps/api`  |
 
 ## Coverage in CI
 
 ```yaml
 # .github/workflows/ci.yml
 - name: Run tests with coverage
-  run: pytest --cov=apps/backend --cov-report=json
+  run: pytest --cov=apps/api --cov-report=json
 
 - name: Check coverage
   run: |
@@ -117,7 +117,7 @@ module.exports = {
 | Mistake                                            | Consequence                                                 |
 | -------------------------------------------------- | ----------------------------------------------------------- |
 | Treating 100% coverage as the goal                 | Team writes shallow tests to hit targets, missing real bugs |
-| Measuring coverage only at the end of a sprint     | Too late to improve — coverage debt accumulates             |
+| Measuring coverage only at the end of a sprint     | Too late to improve � coverage debt accumulates             |
 | Ignoring branch coverage in favor of line coverage | Misses untested conditional logic paths                     |
 
 ## Best Practices
@@ -146,21 +146,21 @@ module.exports = {
 
 ## Workflows
 
-1. **Developer runs tests with coverage**: `npm test -- --coverage` → Jest
-   instruments code with Istanbul → tests execute → coverage report generated →
-   thresholds checked → if below targets, CI fails with line/branch numbers →
+1. **Developer runs tests with coverage**: `npm test -- --coverage` ? Jest
+   instruments code with Istanbul ? tests execute ? coverage report generated ?
+   thresholds checked ? if below targets, CI fails with line/branch numbers ?
    developer adds missing tests
-2. **Coverage threshold enforcement in CI**: PR pushed →
-   `npm run test -- --coverage` runs → Jest outputs JSON summary → custom script
-   parses `coverage-summary.json` → compares line/branch coverage per module
-   against thresholds → if below, PR blocked with detailed report
-3. **Coverage gap analysis**: Quarterly coverage review → script identifies
-   modules below threshold → sorts by gap severity → generates report with
-   specific uncovered lines → tickets created for critical gaps → team assigns
+2. **Coverage threshold enforcement in CI**: PR pushed ?
+   `npm run test -- --coverage` runs ? Jest outputs JSON summary ? custom script
+   parses `coverage-summary.json` ? compares line/branch coverage per module
+   against thresholds ? if below, PR blocked with detailed report
+3. **Coverage gap analysis**: Quarterly coverage review ? script identifies
+   modules below threshold ? sorts by gap severity ? generates report with
+   specific uncovered lines ? tickets created for critical gaps ? team assigns
    to sprints
 4. **Incremental coverage on PR**: CI runs tests on only changed files
-   (`--changedSince`) → coverage measured only on diff → incremental coverage
-   must meet module target → prevents new code from reducing overall coverage
+   (`--changedSince`) ? coverage measured only on diff ? incremental coverage
+   must meet module target ? prevents new code from reducing overall coverage
 
 ## Scalability
 
@@ -173,22 +173,22 @@ module.exports = {
 
 ## Error Handling
 
-| Scenario                                        | Detection                                   | Mitigation                                                                           | Recovery                                          |
-| ----------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| Coverage threshold not met                      | CI script compares against target and fails | PR blocked with explicit error: "Coverage 72% (target 80%) in apps/backend/services" | Developer adds tests to uncovered code; re-pushes |
-| Coverage tool fails to instrument               | Istanbul throws during test                 | Retry without coverage flag; warn but allow merge                                    | Fix instrumentation config in follow-up PR        |
-| Coverage report corrupt                         | JSON parse fails on output                  | Regenerate report; if persistent, clear coverage cache                               | File bug against Jest/Istanbul version            |
-| Threshold config references non-existent module | Script fails to match module path           | Validate threshold config at CI setup time                                           | Fix module path in jest.config.js                 |
+| Scenario                                        | Detection                                   | Mitigation                                                                       | Recovery                                          |
+| ----------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Coverage threshold not met                      | CI script compares against target and fails | PR blocked with explicit error: "Coverage 72% (target 80%) in apps/api/services" | Developer adds tests to uncovered code; re-pushes |
+| Coverage tool fails to instrument               | Istanbul throws during test                 | Retry without coverage flag; warn but allow merge                                | Fix instrumentation config in follow-up PR        |
+| Coverage report corrupt                         | JSON parse fails on output                  | Regenerate report; if persistent, clear coverage cache                           | File bug against Jest/Istanbul version            |
+| Threshold config references non-existent module | Script fails to match module path           | Validate threshold config at CI setup time                                       | Fix module path in jest.config.js                 |
 
 ## Monitoring
 
 | Metric                                                 | Alert Threshold | Severity | Dashboard                        |
 | ------------------------------------------------------ | --------------- | -------- | -------------------------------- |
-| Overall line coverage                                  | < 80%           | Warning  | Grafana — Code Quality Dashboard |
-| Branch coverage in critical modules (auth, encryption) | < 90%           | Critical | Grafana — Security Dashboard     |
-| Coverage delta per PR                                  | < -1%           | Warning  | GitHub Checks — Coverage Report  |
-| Modules below threshold                                | > 3 modules     | Warning  | Code Quality — Quarterly Review  |
-| Time since last full coverage run                      | > 7 days        | Info     | CI Pipeline — Coverage Schedule  |
+| Overall line coverage                                  | < 80%           | Warning  | Grafana � Code Quality Dashboard |
+| Branch coverage in critical modules (auth, encryption) | < 90%           | Critical | Grafana � Security Dashboard     |
+| Coverage delta per PR                                  | < -1%           | Warning  | GitHub Checks � Coverage Report  |
+| Modules below threshold                                | > 3 modules     | Warning  | Code Quality � Quarterly Review  |
+| Time since last full coverage run                      | > 7 days        | Info     | CI Pipeline � Coverage Schedule  |
 
 ## Risks
 
@@ -236,9 +236,9 @@ prevents coverage debt from accumulating during rapid feature development.
 ## Goals
 
 - Maintain 90% line and 80% branch coverage for all backend service modules
-  (apps/backend/services)
+  (apps/api/services)
 - Maintain 90% line and 80% branch coverage for all AI agent modules
-  (apps/backend/agents)
+  (apps/api/agents)
 - Maintain 80% line and 70% branch coverage for frontend components
 - Enforce zero coverage regression per PR through incremental coverage checking
 - Generate quarterly coverage gap analysis with actionable remediation tickets
@@ -247,8 +247,8 @@ prevents coverage debt from accumulating during rapid feature development.
 
 ### In Scope
 
-- Per-module coverage targets: apps/web (80% line, 70% branch), apps/backend
-  (85-90% line, 75-80% branch)
+- Per-module coverage targets: apps/web (80% line, 70% branch), apps/api (85-90%
+  line, 75-80% branch)
 - Jest + Istanbul for TypeScript/JavaScript coverage measurement
 - pytest-cov for Python coverage measurement
 - CI enforcement via pytest-cov thresholds with per-module configuration
@@ -273,7 +273,7 @@ prevents coverage debt from accumulating during rapid feature development.
 module.exports = {
   collectCoverage: true,
   coverageThreshold: {
-    './apps/backend/src/services/': {
+    './apps/api/src/services/': {
       lines: 90,
       branches: 80,
       functions: 85,
@@ -301,7 +301,7 @@ module.exports = {
 ```ini
 # .coveragerc
 [run]
-source = apps/backend
+source = apps/api
 omit = */migrations/*,*/tests/*,*/seeds/*,*/config/*
 
 [report]
@@ -317,7 +317,7 @@ exclude_lines =
 ```yaml
 # .github/workflows/coverage.yml
 - name: Run tests with coverage
-  run: pytest --cov=apps/backend --cov-report=json
+  run: pytest --cov=apps/api --cov-report=json
 
 - name: Check coverage thresholds
   run: |
@@ -335,18 +335,18 @@ sequenceDiagram
     participant REPORT as Coverage Report
 
     DEV->>CI: Push PR with code changes
-    CI->>JEST: pytest --cov=apps/backend --cov-report=json
+    CI->>JEST: pytest --cov=apps/api --cov-report=json
     JEST->>JEST: Instrument code, run tests
     JEST-->>CHECK: coverage-summary.json
     CHECK->>CHECK: Compare: lines 82% (target 80%)
     CHECK->>CHECK: Compare: branches 72% (target 75%)
     alt All thresholds met
-        CHECK-->>CI: âœ… Coverage passes
+        CHECK-->>CI: ✅ Coverage passes
         CI-->>DEV: PR proceeds
     else Threshold not met
-        CHECK-->>CI: âŒ Branches 72% < target 75%
+        CHECK-->>CI: ❌ Branches 72% < target 75%
         CI-->>REPORT: Generate uncovered lines report
-        REPORT-->>DEV: PR blocked: "Branch coverage 72% in apps/backend/services"
+        REPORT-->>DEV: PR blocked: "Branch coverage 72% in apps/api/services"
     end
 ```
 
@@ -355,7 +355,7 @@ sequenceDiagram
 | Improvement                                                   | Priority | Complexity | Timeline |
 | ------------------------------------------------------------- | -------- | ---------- | -------- |
 | Mutation testing integration (Stryker) for test quality       | Medium   | High       | Q3 2027  |
-| Test Impact Analysis — run only tests affected by code change | High     | High       | Q2 2027  |
+| Test Impact Analysis � run only tests affected by code change | High     | High       | Q2 2027  |
 | Automatic test generation for uncovered code paths            | Low      | High       | Q4 2027  |
 | Coverage trend dashboard with ML anomaly detection            | Medium   | Medium     | Q2 2027  |
 

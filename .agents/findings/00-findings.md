@@ -11,11 +11,11 @@ recommendations).
 ## 1. NOT_MOUNTED — Code Exists, Never Loaded
 
 These middleware/services have working implementations but are never registered
-in `apps/backend/src/backend/main.py`. The running server does not include them.
+in `apps/api/src/backend/main.py`. The running server does not include them.
 
 ### 1.1 Prometheus `/metrics` Endpoint
 
-- **File:** `apps/backend/src/backend/main.py:135-136`
+- **File:** `apps/api/src/backend/main.py:135-136`
 - **What exists:** Full OpenTelemetry + Prometheus setup in
   `infrastructure/opentelemetry.py` and `infrastructure/metrics.py`
 - **What's broken:** The entire setup block is **commented out**:
@@ -30,7 +30,7 @@ in `apps/backend/src/backend/main.py`. The running server does not include them.
 
 ### 1.2 IP Allowlist Middleware
 
-- **File:** `apps/backend/src/backend/middleware/ip_allowlist.py`
+- **File:** `apps/api/src/backend/middleware/ip_allowlist.py`
 - **What exists:** Full middleware class with CIDR matching, block/allow lists,
   configurable per-endpoint
 - **What's broken:** Never called via `app.add_middleware()` in main.py
@@ -41,7 +41,7 @@ in `apps/backend/src/backend/main.py`. The running server does not include them.
 
 ### 1.3 TenantMiddleware (Multi-Tenancy)
 
-- **File:** `apps/backend/src/backend/middleware/tenant.py`
+- **File:** `apps/api/src/backend/middleware/tenant.py`
 - **What exists:** Extracts `X-Tenant-ID` header, sets tenant context, includes
   `set_rls_session_vars()` for PostgreSQL RLS
 - **What's broken:** Never mounted in main.py. `app.tenant_id` GUC is never set.
@@ -54,7 +54,7 @@ in `apps/backend/src/backend/main.py`. The running server does not include them.
 
 ### 1.4 SCIM Provisioning
 
-- **File:** `apps/backend/...` (enterprise identity sync module)
+- **File:** `apps/api/...` (enterprise identity sync module)
 - **What exists:** SCIM 2.0 protocol handler for automatic user provisioning
   from identity providers
 - **What's broken:** Never wired into the app. No routes exposed.
@@ -71,7 +71,7 @@ These have function signatures and some logic, but the core behavior returns
 
 ### 2.1 SAML SSO
 
-- **File:** `apps/backend/.../sso.py`
+- **File:** `apps/api/.../sso.py`
 - **What exists:** `saml_authenticate()` method signature, docstring describing
   SAML flow
 - **What's broken:** Method body returns `None`. Only Google OAuth and Microsoft
@@ -83,7 +83,7 @@ These have function signatures and some logic, but the core behavior returns
 
 ### 2.2 Approval Gate (CRITICAL)
 
-- **File:** `apps/backend/src/backend/orchestrator/loop.py:83`
+- **File:** `apps/api/src/backend/orchestrator/loop.py:83`
 - **What exists:** `ApprovalRequest` and `ApprovalDecision` models in schema.py,
   approval gate logic in orchestrator loop
 - **What's broken:** `has_approval=False` is **hardcoded** in the main agent
@@ -106,7 +106,7 @@ code — but nothing in the system actually calls them.
 
 ### 3.1 BullMQ Queues
 
-- **File:** `apps/backend/infra/queue/`
+- **File:** `apps/api/infra/queue/`
 - **What exists:** Redis queue configuration, BullMQ import, job type
   definitions
 - **What's broken:** Zero consumers registered. No job processors. No worker
@@ -119,7 +119,7 @@ code — but nothing in the system actually calls them.
 
 ### 3.2 Apache AGE (Graph Database)
 
-- **File:** `apps/backend/.../graph/` module
+- **File:** `apps/api/.../graph/` module
 - **What exists:** AGE extension import, graph query functions, Cypher query
   builder
 - **What's broken:** AGE extension is never loaded into PostgreSQL. Graph
@@ -132,7 +132,7 @@ code — but nothing in the system actually calls them.
 
 ### 3.3 Meilisearch (Full-Text Search)
 
-- **File:** `apps/backend/...` (search module)
+- **File:** `apps/api/...` (search module)
 - **What exists:** Meilisearch client import, search index config, relevance
   tuning
 - **What's broken:** Meilisearch is never installed (not in

@@ -1,10 +1,10 @@
-๏ปฟ# MVP-P01 - 11. Value / Risk Hypotheses (DEL-MVP-P01-03)
+# MVP-P01 - 11. Value / Risk Hypotheses (DEL-MVP-P01-03)
 
 > **Deliverable:** DEL-MVP-P01-03 - value/risk hypotheses; versioned, owned,
 > reviewed and linked. **Status:** V2.0 - upgraded 2026-08-16 to reflect actual
 > codebase reality: 22 memory types (not6), approval gate hardcoded OFF, QA gate
 > exists. **Owner:** Product Manager / AI Product Lead / UX Researcher. **Prompt
-> reference:** ยง1/ยง2/ยง3/ยง12/ยง18. **Rule:** hypotheses are falsifiable and tied
+> reference:** ง1/ง2/ง3/ง12/ง18. **Rule:** hypotheses are falsifiable and tied
 > to a validation-backlog experiment (`05-validation-backlog.md`, VB-01..08). No
 > hypothesis has been executed - all experiments require the design-partner
 > cohort (DEC-P01-07, RB-04) or runtime phases (P05+). Status is `NOT_EXECUTED`
@@ -21,12 +21,12 @@
   location, event, document, conversation; `schemas/memory_types.py`) record and
   recall a user's career facts from ingested inputs, THEN the user re-enters the
   same fact <1x/week after adoption, BECAUSE memory replaces manual re-entry
-  across features that share one spine (spec ยง7). CODEBASE GAP: the MemoryAgent
+  across features that share one spine (spec ง7). CODEBASE GAP: the MemoryAgent
   (`memory_agent/handler.py:25-27`) currently reads/writes only `profile` and
-  `document` types โ€” 2 of22. The remaining20 types have extraction prompts and
+  `document` types — 2 of22. The remaining20 types have extraction prompts and
   validation rules in the registry but are not wired into the extraction
   pipeline. This gap must be closed before H-01 can be meaningfully tested.
-- **Why it matters:** memory is the product (spec ยง3); if it does not remove
+- **Why it matters:** memory is the product (spec ง3); if it does not remove
   re-entry, the wedge fails (BQ-06b pivot, DEC-P01-05).
 - **Falsification test:** repeat-input rate (duplicate entry events per user per
   week) does not decline >=30% vs. baseline within N weeks of adoption, or
@@ -60,9 +60,9 @@
 - **Hypothesis:** IF approval requests are payload-bound, expiring, and state
   exactly what will happen in plain language, THEN users mis-approve or abandon
   approvals <5% of the time and accept >=80% of proposals, BECAUSE
-  suggest-mode-first makes the agent's reach legible (spec ยง12, prompt ยง3).
-  CODEBASE GAP: the approval gate described in spec ยง12 is not implemented in
-  the core loop โ€” `loop.py:83` hardcodes `has_approval=False` for
+  suggest-mode-first makes the agent's reach legible (spec ง12, prompt ง3).
+  CODEBASE GAP: the approval gate described in spec ง12 is not implemented in
+  the core loop — `loop.py:83` hardcodes `has_approval=False` for
   ApplicationAgent. No approval infrastructure (payload binding, expiry,
   immutable confirmation) exists in the agent loop. The QA gate
   (`router.py:278-296`) validates agent outputs but does not enforce user
@@ -81,15 +81,15 @@
 ### H-04 - Resume/ATS value: tailoring gets faster and better (value)
 
 - **Hypothesis:** IF the Resume + ATS agents reuse memory and score against the
-  JD (spec ยง4.5/ยง4.6), THEN per-application tailoring time falls >=30% and
+  JD (spec ง4.5/ง4.6), THEN per-application tailoring time falls >=30% and
   keyword coverage rises vs. manual baseline, BECAUSE JD-aware rewrites with
   diff review beat hand editing.
 - **Why it matters:** ATS filtering is the measurable gate for fresh graduates
-  (research brief ยง2); resume tools are table stakes - the memory reuse is the
-  differentiator (research brief ยง5).
+  (research brief ง2); resume tools are table stakes - the memory reuse is the
+  differentiator (research brief ง5).
 - **Falsification test:** no prep-time saving >=30% or no ATS coverage gain in
   before/after cohort measurement; or users reject the tailored diff more than
-  half the time (diff must be shown, spec ยง4.6).
+  half the time (diff must be shown, spec ง4.6).
 - **Experiment design:** VB-06 (resume value check); VB-04 (application-status
   completeness).
 - **Status:** NOT_EXECUTED.
@@ -100,7 +100,7 @@
 - **Hypothesis:** IF the Gmail Agent (draft-only) classifies mail and extracts
   deadlines with F1 >= agreed threshold, THEN the cohort's deadline-miss rate
   drops below baseline, BECAUSE extracted dates become scheduled reminders
-  instead of buried emails (spec ยง8).
+  instead of buried emails (spec ง8).
 - **Why it matters:** missed deadlines are a named trust failure (prompt overlay
   item 1); accuracy below threshold is the BQ-06c PIVOT trigger (DEC-P01-05,
   UNK-05).
@@ -114,7 +114,7 @@
 ### H-06 - Reminders arrive with useful lead time (value)
 
 - **Hypothesis:** IF the Scheduler surfaces deadlines and reminders at
-  user-tunable lead times with conflict detection (spec ยง4.9/ยง5), THEN on-time
+  user-tunable lead times with conflict detection (spec ง4.9/ง5), THEN on-time
   action rate >= agreed threshold and no deadline is missed because a reminder
   was too late, BECAUSE the scheduler separates what matters from what is merely
   new.
@@ -131,7 +131,7 @@
 ### H-07 - Export/deletion is complete and trusted (value + risk)
 
 - **Hypothesis:** IF "export everything" and "delete everything" complete fully
-  and observably within RTO (spec ยง11), THEN users rate deletion/export
+  and observably within RTO (spec ง11), THEN users rate deletion/export
   confidence >= agreed threshold and no purge is incomplete, BECAUSE the right
   to leave with or erase data is unconditional and verifiable.
 - **Why it matters:** difficult deletion is a named trust failure (prompt
@@ -148,10 +148,10 @@
 
 - **Hypothesis:** IF consequential actions (job submission, sends, destructive
   file ops) require immutable payload-bound expiring approval + idempotency
-  (prompt ยง3), THEN zero unauthorized consequential actions occur and users
+  (prompt ง3), THEN zero unauthorized consequential actions occur and users
   report no surprise actions, BECAUSE suggest-mode-first + approval binding
-  bound the agent's reach by construction (spec ยง3/ยง12). CODEBASE GAP: approval
-  gate not implemented โ€” `loop.py:83` hardcodes `has_approval=False`. The
+  bound the agent's reach by construction (spec ง3/ง12). CODEBASE GAP: approval
+  gate not implemented — `loop.py:83` hardcodes `has_approval=False`. The
   ApplicationAgent runs without user confirmation. H-08 is unfalsifiable until
   approval infrastructure is built. The QA gate (`router.py:278-296`) is the
   only runtime quality gate but does not enforce user consent.
@@ -169,7 +169,7 @@
   `best_effort_after_retries` flag frequency in cohort telemetry. Status:
   NOT_EXECUTED. Owner: AI Product Lead.
 - **Why it matters:** overreach is the hardest trust failure (prompt overlay
-  item 1); unapproved action is a hard block (prompt ยง16).
+  item 1); unapproved action is a hard block (prompt ง16).
 - **Falsification test:** any unapproved consequential action in cohort or
   automated tests (approval expiry, payload tamper, replay, idempotency replay);
   user-reported surprise-action events >0.
@@ -183,12 +183,12 @@
 | ID   | Type          | Domain                                       | Status                        | Owner                | Linked experiment   | Codebase note                        |
 | ---- | ------------- | -------------------------------------------- | ----------------------------- | -------------------- | ------------------- | ------------------------------------ |
 | H-01 | Value         | Memory quality (recall)                      | REQUIRES_STAKEHOLDER_DECISION | Product              | VB-02               | MemoryAgent scoped to2 of22 types    |
-| H-02 | Risk/negative | Wrong memory                                 | NOT_EXECUTED                  | AI Product Lead / UX | VB-01, VB-02, RB-01 | โ€”                                    |
+| H-02 | Risk/negative | Wrong memory                                 | NOT_EXECUTED                  | AI Product Lead / UX | VB-01, VB-02, RB-01 | —                                    |
 | H-03 | Value + risk  | Trust/approval UX (confusing approvals)      | REQUIRES_STAKEHOLDER_DECISION | Privacy / UX         | VB-03               | Approval gate hardcoded OFF          |
-| H-04 | Value         | Resume/ATS value                             | NOT_EXECUTED                  | Product              | VB-04, VB-06        | โ€”                                    |
-| H-05 | Value + risk  | Gmail deadline extraction (missed deadlines) | REQUIRES_STAKEHOLDER_DECISION | AI Product Lead      | VB-01               | โ€”                                    |
-| H-06 | Value         | Reminders                                    | NOT_EXECUTED                  | Product              | VB-01               | โ€”                                    |
-| H-07 | Value + risk  | Export/deletion (difficult deletion)         | NOT_EXECUTED                  | Privacy              | VB-05               | โ€”                                    |
+| H-04 | Value         | Resume/ATS value                             | NOT_EXECUTED                  | Product              | VB-04, VB-06        | —                                    |
+| H-05 | Value + risk  | Gmail deadline extraction (missed deadlines) | REQUIRES_STAKEHOLDER_DECISION | AI Product Lead      | VB-01               | —                                    |
+| H-06 | Value         | Reminders                                    | NOT_EXECUTED                  | Product              | VB-01               | —                                    |
+| H-07 | Value + risk  | Export/deletion (difficult deletion)         | NOT_EXECUTED                  | Privacy              | VB-05               | —                                    |
 | H-08 | Risk/negative | Bounded ops (overreach)                      | NOT_EXECUTED                  | Security / AI        | VB-03, P13 tests    | Approval gate hardcoded OFF          |
 | H-09 | Value         | QA gate reduces bad outputs                  | NOT_EXECUTED                  | AI Product Lead      | Telemetry-based     | QA gate exists (`router.py:278-296`) |
 
@@ -204,7 +204,7 @@ the QA gate that was not in prior P01 deliverables.
 - `docs/phases/mvp-p01/12-success-metrics.md` (measurement methods)
 - `docs/phases/mvp-p01/13-non-goals-research-backlog.md` (RB-01..05)
 - `docs/phases/mvp-p00/12-future-readiness-backlog.md` (FB-01..05)
-- `apps/backend/src/backend/schemas/memory_types.py` (22 memory types)
-- `apps/backend/src/backend/agents/memory_agent/handler.py` (MemoryAgent scope)
-- `apps/backend/src/backend/orchestrator/loop.py:83` (approval gate OFF)
-- `apps/backend/src/backend/orchestrator/router.py:278-296` (QA gate)
+- `apps/api/src/backend/schemas/memory_types.py` (22 memory types)
+- `apps/api/src/backend/agents/memory_agent/handler.py` (MemoryAgent scope)
+- `apps/api/src/backend/orchestrator/loop.py:83` (approval gate OFF)
+- `apps/api/src/backend/orchestrator/router.py:278-296` (QA gate)

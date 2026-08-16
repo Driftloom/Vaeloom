@@ -1,6 +1,6 @@
-﻿# Integration Testing
+# Integration Testing
 
-> **Purpose:** Define integration testing standards for Vaeloom **Status:** ðŸ†•
+> **Purpose:** Define integration testing standards for Vaeloom **Status:** 🆕
 > New
 
 ## Integration Test Architecture
@@ -11,7 +11,7 @@ graph TD
     classDef infra fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef data fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Tests["ðŸ§ª Integration Test Scenarios"]
+    subgraph Tests["🧪 Integration Test Scenarios"]
         direction TB
         T1["Backend --> Database<br/>CRUD operations<br/>PostgreSQL test instance"]
         T2["Backend AI Logic<br/>Agent request routing<br/>Real agent, mocked LLM"]
@@ -20,13 +20,13 @@ graph TD
         T5["Web --> Backend<br/>Frontend-backend contract<br/>Pact contract testing"]
     end
 
-    subgraph Infra["âš™ï¸ Test Infrastructure"]
+    subgraph Infra["⚙️ Test Infrastructure"]
         I1["postgres-test<br/>postgis/postgis:16<br/>tmpfs (in-memory)"]
         I2["redis-test<br/>redis:7-alpine<br/>No persistence"]
         I3["api-test<br/>npm run test:integration<br/>Depends on PG + Redis"]
     end
 
-    subgraph Strategy["ðŸ“Š Test Data Strategy"]
+    subgraph Strategy["📊 Test Data Strategy"]
         D1["Seed Data<br/>Migration files<br/>Per test class"]
         D2["Test-specific<br/>Factory functions<br/>Per test (tx rollback)"]
         D3["Golden Datasets<br/>JSON fixtures<br/>Read-only"]
@@ -40,8 +40,8 @@ graph TD
     class D1,D2,D3 data
 ```
 
-> **Diagram:** Integration tests cover 5 service boundary scenarios (Backend→DB,
-> Backend AI Logic, Backend→Redis, AI Logic→DB, Web→Backend). Each test runs
+> **Diagram:** Integration tests cover 5 service boundary scenarios (Backend?DB,
+> Backend AI Logic, Backend?Redis, AI Logic?DB, Web?Backend). Each test runs
 > against **dedicated test infrastructure** with in-memory PostgreSQL and
 > ephemeral Redis. The **test data strategy** uses three tiers: seed data
 > (migrations), test-specific (factories), and golden datasets (JSON fixtures).
@@ -52,13 +52,13 @@ graph TD
 
 Integration tests verify that services work correctly together:
 
-| Test                | Services Involved         | What It Verifies          |
-| ------------------- | ------------------------- | ------------------------- |
-| Backend → Database  | apps/backend + PostgreSQL | CRUD operations           |
-| Backend → AI Logic  | apps/backend (internal)   | Agent request routing     |
-| Backend → Redis     | apps/backend + Redis      | Queue and cache           |
-| AI Logic → Database | apps/backend + PostgreSQL | Memory read/write         |
-| Web → Backend       | apps/web + apps/backend   | Frontend-backend contract |
+| Test                | Services Involved     | What It Verifies          |
+| ------------------- | --------------------- | ------------------------- |
+| Backend ? Database  | apps/api + PostgreSQL | CRUD operations           |
+| Backend ? AI Logic  | apps/api (internal)   | Agent request routing     |
+| Backend ? Redis     | apps/api + Redis      | Queue and cache           |
+| AI Logic ? Database | apps/api + PostgreSQL | Memory read/write         |
+| Web ? Backend       | apps/web + apps/api   | Frontend-backend contract |
 
 ## Test Infrastructure
 
@@ -78,7 +78,7 @@ services:
     command: redis-server --appendonly no # No persistence for tests
 
   api-test:
-    build: ./apps/backend
+    build: ./apps/api
     environment:
       DATABASE_URL: postgresql://test:test@postgres-test:5432/Vaeloom_test
       REDIS_URL: redis://redis-test:6379
@@ -135,7 +135,7 @@ describe('Document Integration', () => {
 | --------------------------------------------------------- | --------------------------------------------------------- |
 | Using production-like data without isolation              | Test data leaks between test runs, causing flaky failures |
 | Not resetting state between test cases                    | Tests become order-dependent and unreliable               |
-| Mocking the service under test's dependencies incorrectly | False confidence — tests pass but real integration fails  |
+| Mocking the service under test's dependencies incorrectly | False confidence � tests pass but real integration fails  |
 
 ## Best Practices
 
@@ -163,21 +163,21 @@ describe('Document Integration', () => {
 
 ## Workflows
 
-1. **Backend → Database integration test**: Test container starts PostgreSQL
-   (in-memory tmpfs) → migration runs → test seeds data → test sends HTTP
-   request to backend → backend queries test database → response verified
-   against expectations → transaction rolled back → clean state for next test
+1. **Backend ? Database integration test**: Test container starts PostgreSQL
+   (in-memory tmpfs) ? migration runs ? test seeds data ? test sends HTTP
+   request to backend ? backend queries test database ? response verified
+   against expectations ? transaction rolled back ? clean state for next test
 2. **Backend AI Logic integration test**: Test spins up backend + mocked LLM
-   endpoint → test sends document to backend → backend routes to AI agent →
-   agent calls mocked LLM → structured response returned → backend returns
-   enhanced document → verify extraction accuracy
-3. **Web → Backend contract test (Pact)**: Frontend team defines expected API
-   contract → Pact file generated → backend team runs provider verification
-   against Pact → if contract broken, CI fails with diff → teams coordinate on
+   endpoint ? test sends document to backend ? backend routes to AI agent ?
+   agent calls mocked LLM ? structured response returned ? backend returns
+   enhanced document ? verify extraction accuracy
+3. **Web ? Backend contract test (Pact)**: Frontend team defines expected API
+   contract ? Pact file generated ? backend team runs provider verification
+   against Pact ? if contract broken, CI fails with diff ? teams coordinate on
    API change
-4. **AI Logic → Database memory integration**: Test creates memory entities via
-   backend AI logic → service writes to PostgreSQL → test reads back from
-   database → verifies entity graph structure → cleans up test data
+4. **AI Logic ? Database memory integration**: Test creates memory entities via
+   backend AI logic ? service writes to PostgreSQL ? test reads back from
+   database ? verifies entity graph structure ? cleans up test data
 
 ## Scalability
 
@@ -201,10 +201,10 @@ describe('Document Integration', () => {
 
 | Metric                              | Alert Threshold  | Severity | Dashboard                       |
 | ----------------------------------- | ---------------- | -------- | ------------------------------- |
-| Integration test pass rate          | < 98%            | Critical | Grafana — Test Dashboard        |
-| Container startup time              | > 30s            | Warning  | CI Pipeline — Integration Setup |
-| Pact contract verification failures | > 0 per PR       | Critical | GitHub Checks — Pact Report     |
-| Test data isolation violations      | > 1 per test run | Warning  | CI Pipeline — Test Logs         |
+| Integration test pass rate          | < 98%            | Critical | Grafana � Test Dashboard        |
+| Container startup time              | > 30s            | Warning  | CI Pipeline � Integration Setup |
+| Pact contract verification failures | > 0 per PR       | Critical | GitHub Checks � Pact Report     |
+| Test data isolation violations      | > 1 per test run | Warning  | CI Pipeline � Test Logs         |
 
 ## Risks
 
@@ -232,7 +232,7 @@ routing with mocked LLM), Backend to Redis (queue publishing and cache
 operations), AI Logic to Database (memory entity read/write), and Web to Backend
 (frontend-backend contract via Pact).
 
-Each integration test runs against dedicated test infrastructure — PostgreSQL on
+Each integration test runs against dedicated test infrastructure � PostgreSQL on
 tmpfs for in-memory speed, ephemeral Redis without persistence, and mocked
 external services. This infrastructure is defined in a `docker-compose.test.yml`
 that CI spins up before the test run and tears down after, ensuring clean state
@@ -264,8 +264,8 @@ expectations, CI fails with a detailed diff of the contract mismatch.
 
 ### In Scope
 
-- Five integration scenarios: Backend→DB, Backend AI Logic, Backend→Redis, AI
-  Logic→DB, Web→Backend (Pact contract)
+- Five integration scenarios: Backend?DB, Backend AI Logic, Backend?Redis, AI
+  Logic?DB, Web?Backend (Pact contract)
 - Dedicated test infrastructure: PostgreSQL on tmpfs, ephemeral Redis, mocked
   external services
 - Transaction rollback for per-test database state isolation
@@ -290,7 +290,7 @@ sequenceDiagram
     participant CI as CI Pipeline
     participant DC as Docker Compose
     participant PG as PostgreSQL (tmpfs)
-    participant API as apps/backend
+    participant API as apps/api
 
     DEV->>CI: Push PR
     CI->>DC: docker compose -f docker-compose.test.yml up
@@ -318,7 +318,7 @@ sequenceDiagram
 | Ephemeral production-replica test environments per PR      | High     | High       | Q4 2027  |
 | Shadow-mode AI integration testing with traffic mirroring  | High     | High       | Q3 2027  |
 | Automated contract test generation from API schemas        | Medium   | Medium     | Q2 2027  |
-| Integration test impact analysis — only run affected tests | Medium   | High       | Q2 2027  |
+| Integration test impact analysis � only run affected tests | Medium   | High       | Q2 2027  |
 
 ## Examples
 
@@ -389,7 +389,7 @@ services:
     image: postgis/postgis:16
     tmpfs: /var/lib/postgresql/data
   backend-test:
-    build: ./apps/backend
+    build: ./apps/api
     depends_on: [postgres-test]
     command: pytest tests/integration/
 ```

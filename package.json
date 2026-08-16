@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nx run-many --target=dev --parallel",
     "dev:web": "nx run @vaeloom/web:dev",
-    "dev:be": "cd apps/backend && uvicorn backend.main:app --reload --port 8000",
+    "dev:be": "cd apps/api && uvicorn api.main:app --reload --port 8000",
     "build": "nx run-many --target=build --parallel",
     "build:web": "nx run @vaeloom/web:build",
     "test": "nx run-many --target=test --parallel",

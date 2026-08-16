@@ -23,7 +23,7 @@ updates:
       interval: 'weekly'
 
   - package-ecosystem: 'pip'
-    directory: '/apps/backend'
+    directory: '/apps/api'
     schedule:
       interval: 'weekly'
       day: 'monday'

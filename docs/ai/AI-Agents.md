@@ -97,7 +97,7 @@ Every agent in Vaeloom shares the same structure:
 ## Agent Architecture
 
 ```text
-apps/backend/src/backend/agents/
+apps/api/src/backend/agents/
 ├── organization_agent/
 │   ├── prompt.py      # Versioned system prompt
 │   ├── tools.py       # Declared tool list (MCP-shaped)

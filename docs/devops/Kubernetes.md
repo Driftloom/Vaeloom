@@ -1,7 +1,7 @@
-﻿# Kubernetes
+# Kubernetes
 
 > **Purpose:** Define Kubernetes deployment configuration for Vaeloom
-> (Enterprise) **Status:** ðŸ†• New — Enterprise-only. MVP uses PaaS.
+> (Enterprise) **Status:** 🆕 New � Enterprise-only. MVP uses PaaS.
 
 ## Cluster Architecture
 
@@ -13,7 +13,7 @@ graph TD
     classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
     classDef trigger fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Triggers["ðŸš¦ When to Move to K8s (Enterprise)"]
+    subgraph Triggers["🚦 When to Move to K8s (Enterprise)"]
         direction TB
         T1["> 5 microservices<br/>Manual mgmt error-prone"]
         T2["PaaS auto-scaling<br/>insufficient"]
@@ -21,13 +21,13 @@ graph TD
         T4["> 5 engineers<br/>deploying independently"]
     end
 
-    subgraph Cluster["â˜¸ï¸ Kubernetes Cluster"]
+    subgraph Cluster["☸️ Kubernetes Cluster"]
         direction TB
         INGRESS["Ingress NGINX<br/>SSL termination + routing"]
 
         subgraph Services["Services (HPA)"]
             WEB["apps/web<br/>Replicas: 2-8<br/>CPU: 250m/500m"]
-            API["apps/backend<br/>Replicas: 2-10<br/>CPU: 250m/500m"]
+            API["apps/api<br/>Replicas: 2-10<br/>CPU: 250m/500m"]
         end
 
         subgraph Infra["Infrastructure"]
@@ -39,7 +39,7 @@ graph TD
         WEB & API --> PG & REDIS
     end
 
-    subgraph HPAConfig["ðŸ“ˆ Horizontal Pod Autoscaler"]
+    subgraph HPAConfig["📈 Horizontal Pod Autoscaler"]
         H1["apiVersion: autoscaling/v2<br/>targetCPUUtilization: 70%<br/>minReplicas: 2, maxReplicas: 10"]
     end
 
@@ -75,7 +75,7 @@ graph TD
 ## Service Deployment
 
 ```yaml
-# apps/backend/k8s/deployment.yaml
+# apps/api/k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -146,49 +146,49 @@ spec:
 
 | Mistake                                         | Consequence                                                                                                                                                                                                                                                |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Over-engineering the cluster before it's needed | Setting up service mesh, sidecar proxies, and custom operators before the team has basic Kubernetes experience creates operational debt — start with minimal manifests (Deployment, Service, Ingress) and add complexity only when the use case demands it |
-| Not setting resource requests and limits        | A pod without CPU/memory limits can consume all node resources and starve other pods — every container must have resource requests (guaranteed) and limits (maximum) to enable fair scheduling                                                             |
-| Using latest tag for container images           | `image: Vaeloom/api:latest` means you don't know which version is running on which node — pin to semantic versions (`v1.2.3`) or commit SHAs for traceable deployments                                                                                     |
+| Over-engineering the cluster before it's needed | Setting up service mesh, sidecar proxies, and custom operators before the team has basic Kubernetes experience creates operational debt � start with minimal manifests (Deployment, Service, Ingress) and add complexity only when the use case demands it |
+| Not setting resource requests and limits        | A pod without CPU/memory limits can consume all node resources and starve other pods � every container must have resource requests (guaranteed) and limits (maximum) to enable fair scheduling                                                             |
+| Using latest tag for container images           | `image: Vaeloom/api:latest` means you don't know which version is running on which node � pin to semantic versions (`v1.2.3`) or commit SHAs for traceable deployments                                                                                     |
 
 ## Best Practices
 
 | Practice                                                                           | Why                                                                                                                                                                                                |
 | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Start minimal — Deployment, Service, Ingress — and add complexity only when needed | Service meshes, sidecars, and operators add operational overhead that a small team doesn't need — prove basic Kubernetes competence first, then add advanced features only for validated use cases |
-| Always set resource requests and limits on every container                         | Requests guarantee the pod gets that much CPU/memory; limits prevent a pod from consuming all node resources — both are required for the scheduler to make intelligent placement decisions         |
-| Pin container images to semantic versions or commit SHAs                           | `latest` is non-deterministic — a new deploy can pull a different image on each node. Use versioned tags and promote images through environments (staging tested → prod)                           |
+| Start minimal � Deployment, Service, Ingress � and add complexity only when needed | Service meshes, sidecars, and operators add operational overhead that a small team doesn't need � prove basic Kubernetes competence first, then add advanced features only for validated use cases |
+| Always set resource requests and limits on every container                         | Requests guarantee the pod gets that much CPU/memory; limits prevent a pod from consuming all node resources � both are required for the scheduler to make intelligent placement decisions         |
+| Pin container images to semantic versions or commit SHAs                           | `latest` is non-deterministic � a new deploy can pull a different image on each node. Use versioned tags and promote images through environments (staging tested ? prod)                           |
 
 ## Security
 
 | Concern                                             | Mitigation                                                                                                                                                                                                         |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pods running as root with unrestricted capabilities | A container running as root with `CAP_SYS_ADMIN` can escape the container and compromise the host — enforce `securityContext.runAsNonRoot: true` and drop all capabilities except those explicitly needed          |
-| Network policies not isolating services             | Without NetworkPolicies, any pod can talk to any other pod — a compromised web pod could directly access the database. Apply least-privilege network policies that only allow necessary service-to-service traffic |
-| Secrets stored in ConfigMaps instead of Secrets     | ConfigMap values are not encrypted at rest — database passwords and API keys stored in ConfigMaps are accessible to anyone with etcd access. Use Secrets (or external secrets operators) for all sensitive values  |
+| Pods running as root with unrestricted capabilities | A container running as root with `CAP_SYS_ADMIN` can escape the container and compromise the host � enforce `securityContext.runAsNonRoot: true` and drop all capabilities except those explicitly needed          |
+| Network policies not isolating services             | Without NetworkPolicies, any pod can talk to any other pod � a compromised web pod could directly access the database. Apply least-privilege network policies that only allow necessary service-to-service traffic |
+| Secrets stored in ConfigMaps instead of Secrets     | ConfigMap values are not encrypted at rest � database passwords and API keys stored in ConfigMaps are accessible to anyone with etcd access. Use Secrets (or external secrets operators) for all sensitive values  |
 
 ## Performance
 
 | Concern                                              | Mitigation                                                                                                                                                                                                                     |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| HPA configuration that causes thrashing              | An auto-scaler that reacts to every 2-minute CPU spike creates instability — set stabilization windows (scale-up: 3 min, scale-down: 10 min) to prevent rapid replica count changes                                            |
-| Pod startup time delaying autoscaling responsiveness | If a pod takes 60s to start (image pull + init + readiness), auto-scaling can't keep up with sudden traffic spikes — optimize image size, use pod topology spread, and consider pod priority classes for critical services     |
-| Resource limits that are too tight causing OOM kills | A container with 256Mi memory limit that regularly hits 250Mi gets OOM-killed during traffic spikes — monitor actual resource usage in production (not staging) and set limits based on p95 real utilization with 30% headroom |
+| HPA configuration that causes thrashing              | An auto-scaler that reacts to every 2-minute CPU spike creates instability � set stabilization windows (scale-up: 3 min, scale-down: 10 min) to prevent rapid replica count changes                                            |
+| Pod startup time delaying autoscaling responsiveness | If a pod takes 60s to start (image pull + init + readiness), auto-scaling can't keep up with sudden traffic spikes � optimize image size, use pod topology spread, and consider pod priority classes for critical services     |
+| Resource limits that are too tight causing OOM kills | A container with 256Mi memory limit that regularly hits 250Mi gets OOM-killed during traffic spikes � monitor actual resource usage in production (not staging) and set limits based on p95 real utilization with 30% headroom |
 
 ## Security Considerations
 
 | Concern                                             | Mitigation                                                                                                                                                                                                         |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pods running as root with unrestricted capabilities | A container running as root with `CAP_SYS_ADMIN` can escape the container and compromise the host — enforce `securityContext.runAsNonRoot: true` and drop all capabilities except those explicitly needed          |
-| Network policies not isolating services             | Without NetworkPolicies, any pod can talk to any other pod — a compromised web pod could directly access the database. Apply least-privilege network policies that only allow necessary service-to-service traffic |
-| Secrets stored in ConfigMaps instead of Secrets     | ConfigMap values are not encrypted at rest — database passwords and API keys stored in ConfigMaps are accessible to anyone with etcd access. Use Secrets (or external secrets operators) for all sensitive values  |
+| Pods running as root with unrestricted capabilities | A container running as root with `CAP_SYS_ADMIN` can escape the container and compromise the host � enforce `securityContext.runAsNonRoot: true` and drop all capabilities except those explicitly needed          |
+| Network policies not isolating services             | Without NetworkPolicies, any pod can talk to any other pod � a compromised web pod could directly access the database. Apply least-privilege network policies that only allow necessary service-to-service traffic |
+| Secrets stored in ConfigMaps instead of Secrets     | ConfigMap values are not encrypted at rest � database passwords and API keys stored in ConfigMaps are accessible to anyone with etcd access. Use Secrets (or external secrets operators) for all sensitive values  |
 
 ## Performance Considerations
 
 | Concern                                              | Approach                                                                                                                                                                                                                       |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| HPA configuration that causes thrashing              | An auto-scaler that reacts to every 2-minute CPU spike creates instability — set stabilization windows (scale-up: 3 min, scale-down: 10 min) to prevent rapid replica count changes                                            |
-| Pod startup time delaying autoscaling responsiveness | If a pod takes 60s to start (image pull + init + readiness), auto-scaling can't keep up with sudden traffic spikes — optimize image size, use pod topology spread, and consider pod priority classes for critical services     |
-| Resource limits that are too tight causing OOM kills | A container with 256Mi memory limit that regularly hits 250Mi gets OOM-killed during traffic spikes — monitor actual resource usage in production (not staging) and set limits based on p95 real utilization with 30% headroom |
+| HPA configuration that causes thrashing              | An auto-scaler that reacts to every 2-minute CPU spike creates instability � set stabilization windows (scale-up: 3 min, scale-down: 10 min) to prevent rapid replica count changes                                            |
+| Pod startup time delaying autoscaling responsiveness | If a pod takes 60s to start (image pull + init + readiness), auto-scaling can't keep up with sudden traffic spikes � optimize image size, use pod topology spread, and consider pod priority classes for critical services     |
+| Resource limits that are too tight causing OOM kills | A container with 256Mi memory limit that regularly hits 250Mi gets OOM-killed during traffic spikes � monitor actual resource usage in production (not staging) and set limits based on p95 real utilization with 30% headroom |
 
 ## Components
 
@@ -293,7 +293,7 @@ multi-tenancy requirements.
 Enterprise-grade Kubernetes requires careful configuration of resource requests
 and limits to ensure fair scheduling, pod security contexts to prevent privilege
 escalation, and network policies to isolate service-to-service traffic. The
-cluster architecture follows a progressive complexity model — starting minimal
+cluster architecture follows a progressive complexity model � starting minimal
 and adding service mesh, cluster auto-scaling, and OPA policies only when
 validated use cases emerge.
 
@@ -320,7 +320,7 @@ validated use cases emerge.
 
 - Kubernetes Deployment, Service, and Ingress manifests for web, API, and AI
   service
-- Horizontal Pod Autoscaler configuration with CPU-based scaling (2–10 replicas
+- Horizontal Pod Autoscaler configuration with CPU-based scaling (2�10 replicas
   per service)
 - Health check probes (liveness, readiness) for automated pod health management
 - Helm-based deployment of infrastructure components (Redis, PostgreSQL
@@ -350,7 +350,7 @@ validated use cases emerge.
 
 ```bash
 # Build and push new image
-docker build -t ghcr.io/Vaeloom/backend:v2.1.0 apps/backend
+docker build -t ghcr.io/Vaeloom/backend:v2.1.0 apps/api
 docker push ghcr.io/Vaeloom/backend:v2.1.0
 
 # Update deployment image
@@ -405,7 +405,7 @@ sequenceDiagram
     else Pod Unhealthy
         POD-->>DEP: CrashLoopBackOff
         DEP->>DEP: Rollback to previous ReplicaSet
-        DEP-->>CI: âŒ Deployment failed
+        DEP-->>CI: ❌ Deployment failed
     end
 
     Note over HPA: Continuous monitoring
@@ -414,7 +414,7 @@ sequenceDiagram
     HPA->>DEP: Scale up/down replicas (2-10)
 ```
 
-> **Diagram:** Kubernetes deployment flow — CI applies new manifest, deployment
+> **Diagram:** Kubernetes deployment flow � CI applies new manifest, deployment
 > controller creates pods with health checks, unhealthy pods trigger automatic
 > rollback, HPA continuously adjusts replica count based on CPU utilization.
 

@@ -260,7 +260,7 @@ Run tests:
 
 ```bash
 # Backend tests
-cd apps/backend && python -m pytest tests/ -q
+cd apps/api && python -m pytest tests/ -q
 
 # Frontend tests
 cd apps/web && pnpm test

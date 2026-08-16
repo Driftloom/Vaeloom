@@ -15,7 +15,7 @@ search." Reality at HEAD:
 | --------------------- | ---------------------------------------------------------------- | ----------------------- |
 | Next.js               | Next.js 15.5.20 (`apps/web/`)                                    | ✅ DEPLOYED             |
 | NestJS                | `packages/service-auth`, `packages/observability` — NOT deployed | ⚠️ LEGACY PACKAGES ONLY |
-| FastAPI               | FastAPI 0.115.14 (`apps/backend/`)                               | ✅ DEPLOYED             |
+| FastAPI               | FastAPI 0.115.14 (`apps/api/`)                                   | ✅ DEPLOYED             |
 | PostgreSQL + pgvector | PostgreSQL pg16 + pgvector 0.5.0                                 | ✅ DEPLOYED             |
 | Redis                 | Redis 7-alpine                                                   | ✅ DEPLOYED             |
 | BullMQ                | `packages/queue` — NOT deployed, no consumers                    | ⚠️ LEGACY PACKAGE ONLY  |
@@ -147,16 +147,16 @@ Scoring dimensions (1-5 scale, 5 = best):
 
 ## 5. Tools & DevDependencies
 
-| Component  | Pinned Version | Evidence                                  | Rationale                           |
-| ---------- | -------------- | ----------------------------------------- | ----------------------------------- |
-| ESLint     | 8.57.0         | `package.json` override                   | Legacy flat-config migration needed |
-| Prettier   | 3.2.x          | root devDeps                              | Formatting                          |
-| Husky      | 9.x            | root devDeps                              | Git hooks                           |
-| Commitlint | 21.2.x         | root devDeps                              | Conventional commits                |
-| Playwright | 1.62.1         | root devDeps                              | E2E + a11y                          |
-| Nx         | 20.0.0         | root devDeps                              | Monorepo task runner                |
-| ruff       | 0.4.x (NEW)    | `apps/backend/pyproject.toml` [tool.ruff] | Q&A-2: added to backend             |
-| mypy       | 1.15.x (NEW)   | `apps/backend/pyproject.toml` [tool.mypy] | Q&A-2: added to backend             |
+| Component  | Pinned Version | Evidence                              | Rationale                           |
+| ---------- | -------------- | ------------------------------------- | ----------------------------------- |
+| ESLint     | 8.57.0         | `package.json` override               | Legacy flat-config migration needed |
+| Prettier   | 3.2.x          | root devDeps                          | Formatting                          |
+| Husky      | 9.x            | root devDeps                          | Git hooks                           |
+| Commitlint | 21.2.x         | root devDeps                          | Conventional commits                |
+| Playwright | 1.62.1         | root devDeps                          | E2E + a11y                          |
+| Nx         | 20.0.0         | root devDeps                          | Monorepo task runner                |
+| ruff       | 0.4.x (NEW)    | `apps/api/pyproject.toml` [tool.ruff] | Q&A-2: added to backend             |
+| mypy       | 1.15.x (NEW)   | `apps/api/pyproject.toml` [tool.mypy] | Q&A-2: added to backend             |
 
 ## 6. Compatibility Verification
 
@@ -208,11 +208,11 @@ Scoring dimensions (1-5 scale, 5 = best):
 
 ## 9. Evidence (EVD)
 
-| ID              | Claim                                   | Requirement     | Type          | Location                                 | Result | Date       | Verified by |
-| --------------- | --------------------------------------- | --------------- | ------------- | ---------------------------------------- | ------ | ---------- | ----------- |
-| EVD-MVP-P06-001 | Backend version pins from uv.lock       | MVP-P06-R01/R02 | REPO_VERIFIED | `apps/backend/pyproject.toml`, `uv.lock` | PASS   | 2026-08-15 | Agent B     |
-| EVD-MVP-P06-002 | Frontend version pins from package.json | MVP-P06-R01/R02 | REPO_VERIFIED | `apps/web/package.json`                  | PASS   | 2026-08-15 | Agent B     |
-| EVD-MVP-P06-003 | Infrastructure pins from docker-compose | MVP-P06-R01/R02 | REPO_VERIFIED | `docker-compose.yml`                     | PASS   | 2026-08-15 | Agent B     |
-| EVD-MVP-P06-004 | Phase prohibitions verified             | MVP-P06-R01     | REPO_VERIFIED | grep + uv.lock                           | PASS   | 2026-08-15 | Agent B     |
-| EVD-MVP-P06-020 | Compatibility matrix verified           | MVP-P06-R01     | REPO_VERIFIED | §6a above                                | PASS   | 2026-08-15 | Agent B     |
-| EVD-MVP-P06-021 | Technology scoring completed            | MVP-P06-R01     | DESIGN        | §1 above                                 | PASS   | 2026-08-15 | Agent B     |
+| ID              | Claim                                   | Requirement     | Type          | Location                             | Result | Date       | Verified by |
+| --------------- | --------------------------------------- | --------------- | ------------- | ------------------------------------ | ------ | ---------- | ----------- |
+| EVD-MVP-P06-001 | Backend version pins from uv.lock       | MVP-P06-R01/R02 | REPO_VERIFIED | `apps/api/pyproject.toml`, `uv.lock` | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-002 | Frontend version pins from package.json | MVP-P06-R01/R02 | REPO_VERIFIED | `apps/web/package.json`              | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-003 | Infrastructure pins from docker-compose | MVP-P06-R01/R02 | REPO_VERIFIED | `docker-compose.yml`                 | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-004 | Phase prohibitions verified             | MVP-P06-R01     | REPO_VERIFIED | grep + uv.lock                       | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-020 | Compatibility matrix verified           | MVP-P06-R01     | REPO_VERIFIED | §6a above                            | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-021 | Technology scoring completed            | MVP-P06-R01     | DESIGN        | §1 above                             | PASS   | 2026-08-15 | Agent B     |

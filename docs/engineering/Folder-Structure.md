@@ -16,10 +16,10 @@ graph TD
     subgraph Apps["📱 apps/"]
         direction TB
         WEB["apps/web<br/>Next.js frontend<br/>11 page routes"]
-        API["apps/backend<br/>FastAPI backend<br/>Core API + agent runtime"]
+        API["apps/api<br/>FastAPI backend<br/>Core API + agent runtime"]
     end
 
-    subgraph Agents["🤖 apps/backend/agents/"]
+    subgraph Agents["🤖 apps/api/agents/"]
         A1["organization_agent"]
         A2["memory_agent"]
         A3["resume_agent"]
@@ -176,21 +176,21 @@ Vaeloom/
 
 ## Common Mistakes
 
-| Mistake                                                       | Consequence                                                                                                                                                                            |
-| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Adding files outside the established directory structure      | A utility function placed in `apps/backend/utils/` instead of `packages/shared-types/` isn't available to other services — one-off locations create duplication and integration issues |
-| Nesting folders more than 4 levels deep                       | `apps/backend/agents/memory/tools/parsers/document.py` is hard to navigate and creates excessively long import paths — flatten after 4 levels                                          |
-| Empty or ambiguous directory names                            | A directory called `misc/`, `utils/`, or `helpers/` with unrelated files becomes a dumping ground — every directory should have a clear, single purpose                                |
-| Creating new agent directories without updating this document | A new agent that exists in the filesystem but isn't documented here creates confusion — new agents must be added to the Folder Structure doc as part of the PR                         |
+| Mistake                                                       | Consequence                                                                                                                                                                        |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Adding files outside the established directory structure      | A utility function placed in `apps/api/utils/` instead of `packages/shared-types/` isn't available to other services — one-off locations create duplication and integration issues |
+| Nesting folders more than 4 levels deep                       | `apps/api/agents/memory/tools/parsers/document.py` is hard to navigate and creates excessively long import paths — flatten after 4 levels                                          |
+| Empty or ambiguous directory names                            | A directory called `misc/`, `utils/`, or `helpers/` with unrelated files becomes a dumping ground — every directory should have a clear, single purpose                            |
+| Creating new agent directories without updating this document | A new agent that exists in the filesystem but isn't documented here creates confusion — new agents must be added to the Folder Structure doc as part of the PR                     |
 
 ## Best Practices
 
-| Practice                                                          | Why                                                                                                                                                           |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Keep the directory structure flat — no more than 4 levels deep    | Deep nesting creates long import paths and makes the structure hard to visualize — `apps/backend/agents/{agent_name}/` should be the deepest standard pattern |
-| Name directories after the domain concept, not the implementation | Use `agents/memory_agent/` not `agents/nlp/` — names should reflect what the code does, not the technology it uses                                            |
-| Update the folder structure doc when adding new directories       | A stale `Folder-Structure.md` misleads new developers — adding a new directory should include updating this document in the same PR                           |
-| Use the monorepo tooling to enforce path conventions              | Workspace-level ESLint rules should restrict imports to valid paths — prevent accidental cross-service dependencies at the lint level                         |
+| Practice                                                          | Why                                                                                                                                                       |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Keep the directory structure flat — no more than 4 levels deep    | Deep nesting creates long import paths and makes the structure hard to visualize — `apps/api/agents/{agent_name}/` should be the deepest standard pattern |
+| Name directories after the domain concept, not the implementation | Use `agents/memory_agent/` not `agents/nlp/` — names should reflect what the code does, not the technology it uses                                        |
+| Update the folder structure doc when adding new directories       | A stale `Folder-Structure.md` misleads new developers — adding a new directory should include updating this document in the same PR                       |
+| Use the monorepo tooling to enforce path conventions              | Workspace-level ESLint rules should restrict imports to valid paths — prevent accidental cross-service dependencies at the lint level                     |
 
 ## Security Considerations
 
@@ -201,17 +201,17 @@ Vaeloom/
 
 ## Performance Considerations
 
-| Consideration                         | Approach                                                                                                                                                                         |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Monorepo size and CI clone time       | A monorepo with 5+ years of history can take minutes to clone — use shallow clone (`--depth=1`) in CI and sparse checkout for targeted operations                                |
-| Directory structure and build caching | A well-organized monorepo enables granular build caching — each `apps/` directory should produce a separate build artifact so changes to `apps/web` don't rebuild `apps/backend` |
+| Consideration                         | Approach                                                                                                                                                                     |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo size and CI clone time       | A monorepo with 5+ years of history can take minutes to clone — use shallow clone (`--depth=1`) in CI and sparse checkout for targeted operations                            |
+| Directory structure and build caching | A well-organized monorepo enables granular build caching — each `apps/` directory should produce a separate build artifact so changes to `apps/web` don't rebuild `apps/api` |
 
 ## Workflows
 
 1. **New agent creation:** Create directory under
-   `apps/backend/agents/{agent_name}/` with `__init__.py`, `agent.py`, `tools/`,
+   `apps/api/agents/{agent_name}/` with `__init__.py`, `agent.py`, `tools/`,
    `prompts/`, `tests/`
-2. **New API module:** Add directory under `apps/backend/{module_name}/` with
+2. **New API module:** Add directory under `apps/api/{module_name}/` with
    router, service, schema, and test files
 3. **New frontend page:** Add route directory under `apps/web/app/{route}/` with
    `page.tsx` and `components/`
@@ -282,17 +282,17 @@ Vaeloom/
 ## Overview
 
 The Vaeloom monorepo follows a structured layout that separates concerns across
-two application directories (`apps/web`, `apps/backend`), three shared packages
+two application directories (`apps/web`, `apps/api`), three shared packages
 (`packages/shared-types`, `packages/plugin-sdk`, `packages/ui-kit`),
 infrastructure configuration (`infra/`), and documentation (`docs/`). This
 document defines every directory's purpose, naming conventions, and depth limits
 so engineers can navigate the codebase without guesswork.
 
-The backend is a unified FastAPI service (`apps/backend`) that owns auth, CRUD,
+The backend is a unified FastAPI service (`apps/api`) that owns auth, CRUD,
 permissions, agents, memory, and retrieval. The frontend (`apps/web`) talks
-exclusively to `apps/backend`. Each of the 10 specialist agents lives in its own
-directory under `apps/backend/agents/`, reinforcing the permission boundary at
-the filesystem level.
+exclusively to `apps/api`. Each of the 10 specialist agents lives in its own
+directory under `apps/api/agents/`, reinforcing the permission boundary at the
+filesystem level.
 
 All Vaeloom engineers use this document as the canonical reference when creating
 new directories, modules, or agents. The structure is enforced through
@@ -319,9 +319,9 @@ validation gate for Q3 2026.
 - Top-level directory layout: apps/, packages/, infra/, docs/, scripts/,
   testing/
 - apps/web structure: Next.js App Router pages, components
-- apps/backend structure: FastAPI routers (auth, workspaces, documents,
-  connectors, permissions, audit, events), orchestrator, agents (10 specialist
-  agents), ingestion, retrieval, tools
+- apps/api structure: FastAPI routers (auth, workspaces, documents, connectors,
+  permissions, audit, events), orchestrator, agents (10 specialist agents),
+  ingestion, retrieval, tools
 - packages structure: shared-types, plugin-sdk, ui-kit
 - infra structure: ci, database, docker, events, logging, migrations,
   monitoring, ops, security, telemetry
@@ -347,12 +347,12 @@ validation gate for Q3 2026.
 
 ```bash
 # Create a new specialist agent directory structure
-mkdir -p apps/backend/agents/new_agent/{tools,prompts,tests}
-touch apps/backend/agents/new_agent/__init__.py
-touch apps/backend/agents/new_agent/agent.py
+mkdir -p apps/api/agents/new_agent/{tools,prompts,tests}
+touch apps/api/agents/new_agent/__init__.py
+touch apps/api/agents/new_agent/agent.py
 
 # Create a new API module
-mkdir -p apps/backend/{module_name}/
+mkdir -p apps/api/{module_name}/
 # Creates: router.py, service.py, schema.py, test.py
 
 # Create a new frontend route page

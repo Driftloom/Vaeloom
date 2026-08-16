@@ -154,7 +154,7 @@ graph LR
 
 ```bash
 # Option 1: Revert to previous version
-flyctl deploy apps/backend --image Vaeloom-backend:v1.2.3
+flyctl deploy apps/api --image vaeloom-api:v1.2.3
 
 # Option 2: Git revert + redeploy
 git revert HEAD

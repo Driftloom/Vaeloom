@@ -1,6 +1,6 @@
-﻿## Header
+## Header
 
-> **Purpose:** Detailed specification for Tailored Applications **Status:** ðŸ†•
+> **Purpose:** Detailed specification for Tailored Applications **Status:** 🆕
 > New **Owner:** Product Team **Last Updated:** 2026-07-13
 
 ## Overview
@@ -11,8 +11,8 @@ shortlist, the Application Agent generates a tailored resume variant and cover
 letter using the user's master resume, the ATS gap analysis, and the specific
 job description. The user reviews the tailored materials, makes any final edits,
 and either submits via an integrated platform API or receives a deep-link to
-complete the application on the platform directly. Every submission — outcome
-known or not — is logged back to career memory for future ranking calibration.
+complete the application on the platform directly. Every submission � outcome
+known or not � is logged back to career memory for future ranking calibration.
 
 The Application Agent operates exclusively in approval-gated mode. It cannot
 submit any application without explicit user consent per submission. The QA
@@ -70,7 +70,7 @@ customization."
 | `schedule_events` | `id`, `workspace_id`, `source`, `date`, `type`                                                                                | Follow-up reminders for application status      |
 
 Application status enum:
-`shortlisted → tailoring → ready_for_review → submitted → interviewing → offer → rejected → withdrawn`
+`shortlisted ? tailoring ? ready_for_review ? submitted ? interviewing ? offer ? rejected ? withdrawn`
 
 ## API Endpoints
 
@@ -117,14 +117,14 @@ Application status enum:
 | `applications:auto-submit`   | Autonomous submission without review | Never granted (MVP)           |
 | `connector:{platform}:write` | Submit via platform API              | Per-connector, approval-gated |
 
-Autonomy level: **Approval-gated** — every application requires explicit user
+Autonomy level: **Approval-gated** � every application requires explicit user
 confirmation per submission. No earned autonomy path for submissions in MVP.
 
 ## Error Scenarios
 
 | Scenario                                     | Error           | User Impact                                                    | Recovery                                              |
 | -------------------------------------------- | --------------- | -------------------------------------------------------------- | ----------------------------------------------------- |
-| Platform submission API returns 403          | Auth failure    | "Could not submit — platform requires manual login"            | Fallback to deep-link; user completes manually        |
+| Platform submission API returns 403          | Auth failure    | "Could not submit � platform requires manual login"            | Fallback to deep-link; user completes manually        |
 | Tailored resume contains fabricated skill    | QA Agent flags  | Document shown with "Unverified content" badge, user must edit | User removes or confirms the entry                    |
 | Cover letter generation takes >60s           | Timeout         | "Still working on your cover letter..." with progress          | Background task completes; notify when ready          |
 | Application already submitted externally     | Duplicate       | "You already applied to this role on [date]"                   | Link to existing application record                   |
@@ -154,11 +154,11 @@ confirmation per submission. No earned autonomy path for submissions in MVP.
 ## UI States
 
 - **Loading:** Tailoring progress indicator showing steps: "Reading job
-  description... → Customizing resume... → Writing cover letter... →
+  description... ? Customizing resume... ? Writing cover letter... ?
   Validating..." with estimated remaining time
 - **Empty:** "No applications yet. Find jobs to apply to in the Jobs screen, or
   upload a job description to start tailoring."
-- **Error:** Specific error per step (e.g., "Cover letter generation failed —
+- **Error:** Specific error per step (e.g., "Cover letter generation failed �
   retry" with preserved progress); partial results shown if resume is ready but
   cover letter failed
 - **Edge cases:** Very short deadline role (<48h) shows "Quick apply" badge and
@@ -206,26 +206,26 @@ graph TD
     SUB --> KAN[Kanban Board]
 ```
 
-> **Diagram:** Tailored Applications architecture — approved job + master
-> resume + ATS analysis → Application Agent → variant + cover letter → QA → user
-> review → submit.
+> **Diagram:** Tailored Applications architecture � approved job + master
+> resume + ATS analysis ? Application Agent ? variant + cover letter ? QA ? user
+> review ? submit.
 
 ## Components
 
-| Component           | Responsibility                                   | Technology             |
-| ------------------- | ------------------------------------------------ | ---------------------- |
-| Application Agent   | Coordinate tailoring and submission flow         | FastAPI + Claude API   |
-| Variant Generator   | Create JD-specific resume variant                | FastAPI + Claude API   |
-| Cover Letter Writer | Generate personalized cover letter               | FastAPI + Claude API   |
-| QA Agent            | Validate documents for hallucination, bias, tone | FastAPI + LLM eval     |
-| Submission Engine   | Submit via API or generate deep-link             | FastAPI (apps/backend) |
-| Kanban Board        | Track application status across pipeline stages  | React + drag-and-drop  |
+| Component           | Responsibility                                   | Technology            |
+| ------------------- | ------------------------------------------------ | --------------------- |
+| Application Agent   | Coordinate tailoring and submission flow         | FastAPI + Claude API  |
+| Variant Generator   | Create JD-specific resume variant                | FastAPI + Claude API  |
+| Cover Letter Writer | Generate personalized cover letter               | FastAPI + Claude API  |
+| QA Agent            | Validate documents for hallucination, bias, tone | FastAPI + LLM eval    |
+| Submission Engine   | Submit via API or generate deep-link             | FastAPI (apps/api)    |
+| Kanban Board        | Track application status across pipeline stages  | React + drag-and-drop |
 
 ## Workflows
 
 ### Tailored Application Workflow
 
-1. User approves job from shortlist → Application Agent receives request
+1. User approves job from shortlist ? Application Agent receives request
 2. Agent fetches master resume and ATS gap analysis for the target role
 3. Variant Generator creates tailored resume: emphasizes matching skills,
    de-emphasizes irrelevant sections, reorders content for role fit
@@ -235,7 +235,7 @@ graph TD
    appropriate tone
 6. User reviews documents in compare mode (variant vs master)
 7. User makes final edits if needed
-8. User confirms submission — explicit per-application approval required
+8. User confirms submission � explicit per-application approval required
 9. Submit via platform API (if supported) or generate deep-link
 10. Application recorded on kanban board with status "submitted"
 
@@ -265,16 +265,16 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Trigger:** User approves job → `applications` record created (status:
+1. **Trigger:** User approves job ? `applications` record created (status:
    tailoring)
-2. **Generation:** Master resume + JD + ATS analysis → LLM prompts → tailored
-   JSON → rendered to documents
-3. **Validation:** QA Agent checks each document against source entities →
+2. **Generation:** Master resume + JD + ATS analysis ? LLM prompts ? tailored
+   JSON ? rendered to documents
+3. **Validation:** QA Agent checks each document against source entities ?
    passes or flags issues
-4. **Submission:** User confirmation → platform API call → response →
+4. **Submission:** User confirmation ? platform API call ? response ?
    `applications.status` updated
-5. **Outcome:** User report or Gmail inference → `applications.outcome` updated
-   → ranking model recalibrated
+5. **Outcome:** User report or Gmail inference ? `applications.outcome` updated
+   ? ranking model recalibrated
 
 ## Non-Functional Requirements
 
@@ -343,15 +343,15 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/applications/{app_id}/su
 | Practice                                                | Rationale                                                                                                                                  |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Review all tailored documents before submission         | The QA Agent catches hallucinated skills and incorrect dates, but only you can verify that the tone and emphasis match your voice          |
-| Set tone preference for cover letters                   | Professional, warm, or enthusiastic — setting your tone preference once applies to all future cover letters                                |
-| Log outcomes for every application                      | Outcome data feeds the ranking engine — logging "rejected after interview" helps the system identify patterns in what roles you succeed at |
-| Use the kanban board as your master application tracker | The board shows every application from shortlisted through offer — check it weekly to update statuses and plan next steps                  |
+| Set tone preference for cover letters                   | Professional, warm, or enthusiastic � setting your tone preference once applies to all future cover letters                                |
+| Log outcomes for every application                      | Outcome data feeds the ranking engine � logging "rejected after interview" helps the system identify patterns in what roles you succeed at |
+| Use the kanban board as your master application tracker | The board shows every application from shortlisted through offer � check it weekly to update statuses and plan next steps                  |
 
 ## Limitations
 
 | Limitation                                                   | Impact                                                        | Workaround                                                                                                                         | Future Resolution                                  |
 | ------------------------------------------------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| No auto-submit (every submission requires user confirmation) | Users must manually confirm each submission                   | Process is intentional — no application is submitted without your explicit consent; deep-link flow is fast for manual confirmation | Per-platform auto-submit with earned autonomy (V3) |
+| No auto-submit (every submission requires user confirmation) | Users must manually confirm each submission                   | Process is intentional � no application is submitted without your explicit consent; deep-link flow is fast for manual confirmation | Per-platform auto-submit with earned autonomy (V3) |
 | Cover letter quality depends on memory richness              | Users with sparse memory graphs get generic cover letters     | Seed memory with resume upload during onboarding for immediate improvement                                                         | Progressive cover letter depth as memory grows     |
 | Platform API submit support varies                           | Some platforms require deep-link fallback (manual copy-paste) | Deep-link opens the application form pre-filled as much as possible                                                                | Expand platform API integrations over time         |
 

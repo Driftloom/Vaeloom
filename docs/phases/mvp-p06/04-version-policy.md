@@ -16,12 +16,12 @@
 
 ## 2. Lockfile Enforcement
 
-| Context        | Command                                                                    | Enforcement                                                                 |
-| -------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| CI install     | `pnpm install --frozen-lockfile`                                           | `.github/workflows/ci*.yml`                                                 |
-| CI backend     | `uv sync --frozen`                                                         | `.github/workflows/ci-backend.yml`                                          |
-| Docker build   | `pnpm install --frozen-lockfile --filter @vaeloom/web`                     | `apps/web/Dockerfile`                                                       |
-| Docker backend | `pip install . --no-build-isolation` (setuptools, no lockfile enforcement) | `apps/backend/Dockerfile` — GAP: consider `uv pip install --require-hashes` |
+| Context        | Command                                                                    | Enforcement                                                             |
+| -------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| CI install     | `pnpm install --frozen-lockfile`                                           | `.github/workflows/ci*.yml`                                             |
+| CI backend     | `uv sync --frozen`                                                         | `.github/workflows/ci-backend.yml`                                      |
+| Docker build   | `pnpm install --frozen-lockfile --filter @vaeloom/web`                     | `apps/web/Dockerfile`                                                   |
+| Docker backend | `pip install . --no-build-isolation` (setuptools, no lockfile enforcement) | `apps/api/Dockerfile` — GAP: consider `uv pip install --require-hashes` |
 
 ## 3. Update Policy
 
@@ -33,13 +33,13 @@
 
 ## 4. End-of-Life (EOL) Watch
 
-| Tool                  | Scope                            | Cadence                         | Config                   |
-| --------------------- | -------------------------------- | ------------------------------- | ------------------------ |
-| Dependabot            | npm, pip, docker, github-actions | Weekly (Monday)                 | `.github/dependabot.yml` |
-| OSV-Scanner / depscan | All dependencies                 | CI + weekly cron                | `security-audit.yml`     |
-| GitHub Advisory       | npm + pip                        | Dependabot alerts               | Built-in                 |
-| pnpm audit            | JS dependencies                  | CI + manual                     | `--audit-level=high`     |
-| pip-audit             | Python dependencies              | CI (fix path to `apps/backend`) | `security-audit.yml`     |
+| Tool                  | Scope                            | Cadence                     | Config                   |
+| --------------------- | -------------------------------- | --------------------------- | ------------------------ |
+| Dependabot            | npm, pip, docker, github-actions | Weekly (Monday)             | `.github/dependabot.yml` |
+| OSV-Scanner / depscan | All dependencies                 | CI + weekly cron            | `security-audit.yml`     |
+| GitHub Advisory       | npm + pip                        | Dependabot alerts           | Built-in                 |
+| pnpm audit            | JS dependencies                  | CI + manual                 | `--audit-level=high`     |
+| pip-audit             | Python dependencies              | CI (fix path to `apps/api`) | `security-audit.yml`     |
 
 ## 5. SBOM & Provenance
 

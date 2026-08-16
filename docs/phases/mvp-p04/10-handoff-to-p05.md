@@ -25,10 +25,9 @@
 
 ## 2. P05 focus (per MVP-P05 prompt — Solution Architecture)
 
-1. Reconcile repo reality (Next.js `apps/web` + FastAPI `apps/backend`, 25
-   packages, CI/CD, OTel, RBAC, multi-tenancy) against INT-02 architecture
-   intent; produce ADRs (CF-P04-01/03: no NestJS, no `core-api`/`ai-service`
-   split in repo).
+1. Reconcile repo reality (Next.js `apps/web` + FastAPI `apps/api`, 25 packages,
+   CI/CD, OTel, RBAC, multi-tenancy) against INT-02 architecture intent; produce
+   ADRs (CF-P04-01/03: no NestJS, no `core-api`/`ai-service` split in repo).
 2. Map the 76-row requirements baseline (FR/NFR/hardened) to concrete
    components/services; carry FR-50/51 approval contract, FR-61/62 erasure,
    NFR-15/h15 isolation, NFR-16 OAuth RFC 9700.

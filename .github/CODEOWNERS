@@ -1,9 +1,9 @@
 # Default owners
 * @vaeloom/core
 
-# Backend
-/apps/backend/ @vaeloom/backend
-/apps/backend/tests/ @vaeloom/backend
+# API
+/apps/api/ @vaeloom/backend
+/apps/api/tests/ @vaeloom/backend
 
 # Frontend
 /apps/web/ @vaeloom/frontend

@@ -15,7 +15,7 @@ graph TD
     subgraph Sources["📡 Data Sources"]
         direction TB
         S1["apps/web<br/>Next.js metrics"]
-        S2["apps/backend<br/>FastAPI metrics"]
+        S2["apps/api<br/>FastAPI metrics"]
         S4["PostgreSQL<br/>pg_stat statements"]
         S5["Redis<br/>Queue + cache metrics"]
     end

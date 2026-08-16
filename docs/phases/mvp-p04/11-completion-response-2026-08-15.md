@@ -34,8 +34,8 @@
   13-Nov-2025/13-Nov-2026/13-May-2027 (EXTERNAL_VERIFIED); OWASP GenAI LLM Top
   10 2026 current (published 2026-08-04; supersedes 2025); MCP 2026-07-28;
   OpenAPI 3.2.0; RFC 9700/9728; WCAG 2.2. Conflicts CF-P04-01..04 with
-  resolutions (repo truth; T2/T3 proposals-only; backend host = `apps/backend`;
-  P04 consumes P03 re-run baseline).
+  resolutions (repo truth; T2/T3 proposals-only; backend host = `apps/api`; P04
+  consumes P03 re-run baseline).
 
 ## D. Requirements
 

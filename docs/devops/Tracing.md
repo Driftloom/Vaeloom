@@ -16,7 +16,7 @@ graph TD
         direction TB
         ROOT["🌐 User Request<br/>trace: abc123"]
 
-        subgraph API["apps/backend Spans"]
+        subgraph API["apps/api Spans"]
             A1["auth_check<br/>Validate JWT"]
             A2["permission_check<br/>Check scopes"]
             A3["document_upload<br/>Route handler"]

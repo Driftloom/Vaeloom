@@ -1,10 +1,10 @@
-﻿# Queue (Backend)
+# Queue (Backend)
 
 > **Purpose:** Define queue usage patterns for the Backend API service
-> **Status:** 🆕 New — complements the infra-level Queue Architecture **Honest
+> **Status:** ?? New � complements the infra-level Queue Architecture **Honest
 > Status:** BullMQ is installed but NO consumers are deployed. The actual worker
-> is `apps/backend/queue_worker.py` (Python). TypeScript BullMQ workers shown
-> below are SPEC ONLY — not implemented.
+> is `apps/api/queue_worker.py` (Python). TypeScript BullMQ workers shown below
+> are SPEC ONLY � not implemented.
 
 ## Queue Architecture
 
@@ -15,20 +15,20 @@ graph TD
     classDef worker fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
     classDef monitor fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Sources[\"ðŸ“¤ Queue Producers\"]\n        S1[\"API Controllers<br/>Document uploads,<br/>application submissions\"]\n        S2[\"Connector Syncs<br/>Gmail, GitHub,<br/>calendar imports\"]\n        S3[\"Cron Scheduler<br/>Daily scans,<br/>weekly consolidation\"]\n        S4[\"Agent Runtime<br/>Memory extraction,<br/>organization proposals\"]\n    end
+    subgraph Sources[\"📤 Queue Producers\"]\n        S1[\"API Controllers<br/>Document uploads,<br/>application submissions\"]\n        S2[\"Connector Syncs<br/>Gmail, GitHub,<br/>calendar imports\"]\n        S3[\"Cron Scheduler<br/>Daily scans,<br/>weekly consolidation\"]\n        S4[\"Agent Runtime<br/>Memory extraction,<br/>organization proposals\"]\n    end
 
-    subgraph Queues[\"ðŸ--„ï¸ Queue Types\"]\n        Q1[\"ingestion<br/>Priority: High<br/>Parser + OCR + extraction\"]\n        Q2[\"memory_extraction<br/>Priority: High<br/>Entity + graph updates\"]\n        Q3[\"organization<br/>Priority: Medium<br/>File organization proposals\"]\n        Q4[\"gmail_scan<br/>Priority: Medium<br/>Email classification\"]\n        Q5[\"resume_generation<br/>Priority: Low<br/>Variant generation\"]\n        Q6[\"job_search<br/>Priority: Low<br/>Background opportunity radar\"]\n    end
+    subgraph Queues[\"�--�️ Queue Types\"]\n        Q1[\"ingestion<br/>Priority: High<br/>Parser + OCR + extraction\"]\n        Q2[\"memory_extraction<br/>Priority: High<br/>Entity + graph updates\"]\n        Q3[\"organization<br/>Priority: Medium<br/>File organization proposals\"]\n        Q4[\"gmail_scan<br/>Priority: Medium<br/>Email classification\"]\n        Q5[\"resume_generation<br/>Priority: Low<br/>Variant generation\"]\n        Q6[\"job_search<br/>Priority: Low<br/>Background opportunity radar\"]\n    end
 
-    subgraph Workers[\"âš™ï¸ Worker Pool\"]\n        W1[\"Ingestion Worker x3<br/>Parse --> OCR --> Extract\"]\n        W2[\"Memory Worker x2<br/>Entity extraction --> Graph\"]\n        W3[\"Organization Worker x2<br/>Proposal generation\"]\n        W4[\"Gmail Worker x1<br/>Email scan --> Classify\"]\n        W5[\"Resume Worker x1<br/>Variant generation\"]\n        W6[\"Job Search Worker x1<br/>Opportunity matching\"]\n    end
+    subgraph Workers[\"⚙️ Worker Pool\"]\n        W1[\"Ingestion Worker x3<br/>Parse --> OCR --> Extract\"]\n        W2[\"Memory Worker x2<br/>Entity extraction --> Graph\"]\n        W3[\"Organization Worker x2<br/>Proposal generation\"]\n        W4[\"Gmail Worker x1<br/>Email scan --> Classify\"]\n        W5[\"Resume Worker x1<br/>Variant generation\"]\n        W6[\"Job Search Worker x1<br/>Opportunity matching\"]\n    end
 
     S1 & S2 & S3 & S4 --> Q1 & Q2 & Q3 & Q4 & Q5 & Q6\n    Q1 --> W1\n    Q2 --> W2\n    Q3 --> W3\n    Q4 --> W4\n    Q5 --> W5\n    Q6 --> W6
 
     class S1,S2,S3,S4 source\n    class Q1,Q2,Q3,Q4,Q5,Q6 queue\n    class W1,W2,W3,W4,W5,W6 worker
 ```
 
-> **Diagram:** Backend queue architecture — **4 producer types** (API
+> **Diagram:** Backend queue architecture � **4 producer types** (API
 > controllers, connector syncs, cron scheduler, agent runtime) enqueue jobs into
-> **6 priority-tiered queues** (ingestion high → job search low). **6 worker
+> **6 priority-tiered queues** (ingestion high ? job search low). **6 worker
 > pools** with different concurrency levels consume from their respective
 > queues.
 
@@ -48,10 +48,10 @@ queue architecture and enterprise migration path (Kafka).
 ## Job Lifecycle
 
 Every job follows the lifecycle defined in [`Workers.md`](./Workers.md):
-**Enqueue → Process → Retry (max 3) → Dead Letter**.
+**Enqueue ? Process ? Retry (max 3) ? Dead Letter**.
 
 ```typescript
-# apps/backend/queue_worker.py
+# apps/api/queue_worker.py
 # BullMQ installed but NO consumers deployed yet
 export class IngestionProcessor {
   @Process({ concurrency: 3 })
@@ -85,9 +85,9 @@ export class IngestionProcessor {
 
 To add a new queue:
 
-1. **Define queue** in `apps/backend/queues/`
+1. **Define queue** in `apps/api/queues/`
 2. **Configure** concurrency, retries, backoff, TTL
-3. **Create worker** in `apps/backend/workers/`
+3. **Create worker** in `apps/api/workers/`
 4. **Register** in the worker module
 5. **Add metrics** to monitoring dashboard
 6. **Update** this document with the new queue
@@ -105,10 +105,10 @@ To add a new queue:
 
 | Mistake                                             | Consequence                                                                                                                                                  |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Jobs without TTL that accumulate in the queue       | A stalled producer that keeps enqueuing jobs without a TTL causes queue depth to grow indefinitely — memory pressure, delayed processing of real jobs        |
+| Jobs without TTL that accumulate in the queue       | A stalled producer that keeps enqueuing jobs without a TTL causes queue depth to grow indefinitely � memory pressure, delayed processing of real jobs        |
 | Non-idempotent job handlers                         | If a job is retried (worker crash, network blip) and the handler doesn't check if work was already done, you get duplicate entities, emails, or applications |
-| Poison pills that never go to dead letter           | A job that always fails (invalid payload, bug in handler) without progressing to dead letter retries forever — wasted compute, obscured real failures        |
-| Setting concurrency higher than available resources | 100 concurrent workers with 1 database connection pool kills performance — tune concurrency to match downstream capacity                                     |
+| Poison pills that never go to dead letter           | A job that always fails (invalid payload, bug in handler) without progressing to dead letter retries forever � wasted compute, obscured real failures        |
+| Setting concurrency higher than available resources | 100 concurrent workers with 1 database connection pool kills performance � tune concurrency to match downstream capacity                                     |
 
 ## Best Practices
 
@@ -124,31 +124,31 @@ To add a new queue:
 
 | Concern                                          | Mitigation                                                                                                                                                                                     |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unauthorized queue access allowing job injection | If the queue API is exposed without authentication, an attacker can enqueue malicious jobs — restrict queue management to internal services and authenticate all queue operations              |
-| Payload tampering in transit                     | Jobs containing sensitive data (user IDs, connector tokens) sent without encryption can be intercepted — encrypt job payloads at the producer and decrypt at the consumer for sensitive queues |
-| Poison pill injection via malformed job payloads | A job payload that doesn't match the expected schema can crash the worker — validate every job against a schema before enqueuing and reject jobs that don't match at the consumer level        |
+| Unauthorized queue access allowing job injection | If the queue API is exposed without authentication, an attacker can enqueue malicious jobs � restrict queue management to internal services and authenticate all queue operations              |
+| Payload tampering in transit                     | Jobs containing sensitive data (user IDs, connector tokens) sent without encryption can be intercepted � encrypt job payloads at the producer and decrypt at the consumer for sensitive queues |
+| Poison pill injection via malformed job payloads | A job payload that doesn't match the expected schema can crash the worker � validate every job against a schema before enqueuing and reject jobs that don't match at the consumer level        |
 
 ## Performance
 
 | Concern                                        | Mitigation                                                                                                                                                                                   |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Queue depth growing faster than consumption    | A spike of 10K ingestion jobs with only 3 workers creates hours of backlog — monitor queue depth-to-consumption ratio and auto-scale workers when depth exceeds 5x concurrency               |
-| Job serialization and deserialization overhead | Large job payloads (100KB+) serialize/deserialize on every enqueue and dequeue — store large payloads in object storage and pass only the reference key in the job                           |
-| Job batching inefficiency                      | Processing 100 individual jobs with the same handler takes 100x the overhead of processing them as a batch — implement batch job processing for high-volume queues like email classification |
+| Queue depth growing faster than consumption    | A spike of 10K ingestion jobs with only 3 workers creates hours of backlog � monitor queue depth-to-consumption ratio and auto-scale workers when depth exceeds 5x concurrency               |
+| Job serialization and deserialization overhead | Large job payloads (100KB+) serialize/deserialize on every enqueue and dequeue � store large payloads in object storage and pass only the reference key in the job                           |
+| Job batching inefficiency                      | Processing 100 individual jobs with the same handler takes 100x the overhead of processing them as a batch � implement batch job processing for high-volume queues like email classification |
 
 ---
 
 ## Goals
 
-1. **Reliable async processing** — Decouple time-consuming operations (document
+1. **Reliable async processing** � Decouple time-consuming operations (document
    ingestion, memory extraction, connector sync) from API request/response cycle
    using durable queues
-2. **Priority-aware execution** — Process high-priority jobs (document
+2. **Priority-aware execution** � Process high-priority jobs (document
    ingestion, memory extraction) before low-priority jobs (resume generation,
    job search)
-3. **Graceful failure handling** — Retry transient failures with exponential
+3. **Graceful failure handling** � Retry transient failures with exponential
    backoff; dead-letter persistently failing jobs for manual review
-4. **Observable queue health** — Monitor queue depth, oldest pending job,
+4. **Observable queue health** � Monitor queue depth, oldest pending job,
    failure rate, and worker saturation
 
 ---
@@ -179,7 +179,7 @@ To add a new queue:
 | F-001 | System SHALL support priority-tiered queues with configurable concurrency per queue  | P0       |
 | F-002 | System SHALL retry failed jobs with exponential backoff up to configured max retries | P0       |
 | F-003 | System SHALL move jobs exceeding max retries to a dead letter queue                  | P0       |
-| F-004 | System SHALL enforce job TTL — expired jobs are automatically removed                | P0       |
+| F-004 | System SHALL enforce job TTL � expired jobs are automatically removed                | P0       |
 | F-005 | System SHALL emit queue depth, job age, and failure rate metrics                     | P0       |
 | F-006 | System SHALL support job cancellation by job ID                                      | P1       |
 
@@ -227,7 +227,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Job lifecycle — Producer enqueues job with priority and TTL.
+> **Diagram:** Job lifecycle � Producer enqueues job with priority and TTL.
 > Worker pops, processes, and acknowledges on success or requeues on transient
 > failure. After max retries, job moves to dead letter queue and triggers alert.
 
@@ -239,11 +239,11 @@ sequenceDiagram
 1. Producer (API controller, cron scheduler, agent runtime, connector sync) creates job payload (< 1KB)
 2. Job enqueued to appropriate queue with metadata: priority, TTL, retry config
 3. BullMQ stores job in Redis sorted set by priority and enqueue time
-4. Worker polls queue (blocking pop) — worker selected based on queue subscription
+4. Worker polls queue (blocking pop) � worker selected based on queue subscription
 5. Worker executes job handler:
    a. Validate job payload against schema
    b. Execute business logic (document processing, memory extraction)
-   c. On success: acknowledge job → removed from queue
+   c. On success: acknowledge job ? removed from queue
    d. On error: check attempt count
 6. If attempts < max retries: job requeued with exponential backoff delay
 7. If attempts >= max retries: job moved to dead letter queue
@@ -315,7 +315,7 @@ sequenceDiagram
 | Environment | Method                                        | Trigger                  | Verification                                               |
 | ----------- | --------------------------------------------- | ------------------------ | ---------------------------------------------------------- |
 | Development | BullMQ with Redis in Docker (single instance) | Git push                 | Unit tests with in-memory queue mock                       |
-| Staging     | BullMQ with Redis cluster (3 nodes)           | PR merged to main        | Integration tests: enqueue → process → acknowledge         |
+| Staging     | BullMQ with Redis cluster (3 nodes)           | PR merged to main        | Integration tests: enqueue ? process ? acknowledge         |
 | Production  | BullMQ with Redis cluster (6 nodes)           | Tagged release via CI/CD | Canary: verify queue depth doesn't grow > 100 after deploy |
 
 ---

@@ -13,9 +13,9 @@ NFR-16 requires **no user credentials** in workers/service contexts and
 machine-to-machine auth (queue worker ↔ API, API ↔ connectors) via workload
 identity, not user sessions. Inspection @ `6e8a7b4` (`01-source-register.md` §4,
 Gaps row) found **no service-token/HMAC mechanism** in the backend — grep for
-`service_token` / `service-token` / `X-Service-*` across
-`apps/backend/src/backend` returned zero hits. **Honest: nothing is implemented,
-nothing is verified — design-only gap.**
+`service_token` / `service-token` / `X-Service-*` across `apps/api/src/backend`
+returned zero hits. **Honest: nothing is implemented, nothing is verified —
+design-only gap.**
 
 ## Decision
 

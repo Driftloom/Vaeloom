@@ -82,11 +82,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: |
-            apps/backend/pyproject.toml
+            apps/api/pyproject.toml
             packages/python-common/pyproject.toml
       - run: pip install ruff mypy
-      - run: ruff check apps/backend/src packages/python-common/src
-      - run: mypy apps/backend/src packages/python-common/src --ignore-missing-imports
+      - run: ruff check apps/api/src packages/python-common/src
+      - run: mypy apps/api/src packages/python-common/src --ignore-missing-imports
 
   build:
     name: Build

@@ -41,7 +41,7 @@
 
 ## 3. Conflict log
 
-| ID        | Conflict                                                                                                                     | Resolution                                                                                         | Authority              | Date       |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------- | ---------- |
-| CF-P04-01 | Prompt §3 lists "Next.js, NestJS, FastAPI" architecture; repo has Next.js (`apps/web`) + FastAPI (`apps/backend`), no NestJS | Repo truth outranks prose (carried from CF-P03-02); roadmap/architecture phases target actual repo | REPO > INT-05 > prompt | 2026-08-07 |
-| CF-P04-02 | Prompt track exclusions list "unsupported job-platform automation"                                                           | DEC-P02-05 (user) supersedes: T1 lawful automation in MVP; T2/T3 gated (carried from CF-P03-01)    | User decision          | 2026-08-07 |
+| ID        | Conflict                                                                                                                 | Resolution                                                                                         | Authority              | Date       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | ---------------------- | ---------- |
+| CF-P04-01 | Prompt §3 lists "Next.js, NestJS, FastAPI" architecture; repo has Next.js (`apps/web`) + FastAPI (`apps/api`), no NestJS | Repo truth outranks prose (carried from CF-P03-02); roadmap/architecture phases target actual repo | REPO > INT-05 > prompt | 2026-08-07 |
+| CF-P04-02 | Prompt track exclusions list "unsupported job-platform automation"                                                       | DEC-P02-05 (user) supersedes: T1 lawful automation in MVP; T2/T3 gated (carried from CF-P03-01)    | User decision          | 2026-08-07 |

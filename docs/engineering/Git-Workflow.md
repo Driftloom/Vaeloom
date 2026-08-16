@@ -267,7 +267,7 @@ git checkout develop && git pull
 git checkout -b feature/document-upload develop
 
 # Daily development cycle
-git add apps/backend/src/documents/
+git add apps/api/src/documents/
 git commit -m "feat(api): add document upload endpoint"
 git push origin feature/document-upload
 

@@ -100,14 +100,14 @@
 
 **Trigger:** Cost > $10/month (§5 load trigger) or provider policy change.
 
-| Step                        | Command                                                                           | Effort      | Verification                           |
-| --------------------------- | --------------------------------------------------------------------------------- | ----------- | -------------------------------------- |
-| 1. Identify raw httpx calls | `rg -n "anthropic\|openai\|llm_service" apps/backend/src/`                        | 15min       | Found in `services/llm_service.py`     |
-| 2. Update config defaults   | Edit `backend/config.py` — change `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`      | 30min       | Config reads correctly                 |
-| 3. Set Ollama as primary    | `export LLM_BASE_URL=http://localhost:11434`                                      | 5min        | `curl http://localhost:11434/api/tags` |
-| 4. Run eval suite           | `cd apps/backend && python -m pytest tests/ -q`                                   | 2-5hr       | All tests pass                         |
-| 5. Verify embedding dims    | `python -c "from backend.config import settings; print(settings.EMBEDDING_DIMS)"` | 5min        | Check 1536 vs local dims               |
-| **Total**                   |                                                                                   | **< 1 day** |                                        |
+| Step                        | Command                                                                       | Effort      | Verification                           |
+| --------------------------- | ----------------------------------------------------------------------------- | ----------- | -------------------------------------- |
+| 1. Identify raw httpx calls | `rg -n "anthropic\|openai\|llm_service" apps/api/src/`                        | 15min       | Found in `services/llm_service.py`     |
+| 2. Update config defaults   | Edit `backend/config.py` — change `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`  | 30min       | Config reads correctly                 |
+| 3. Set Ollama as primary    | `export LLM_BASE_URL=http://localhost:11434`                                  | 5min        | `curl http://localhost:11434/api/tags` |
+| 4. Run eval suite           | `cd apps/api && python -m pytest tests/ -q`                                   | 2-5hr       | All tests pass                         |
+| 5. Verify embedding dims    | `python -c "from api.config import settings; print(settings.EMBEDDING_DIMS)"` | 5min        | Check 1536 vs local dims               |
+| **Total**                   |                                                                               | **< 1 day** |                                        |
 
 **Risk:** Embedding dimension change (1536 → local model dims) cascades to
 schema. Mitigation: ADR-024 rebuild; flag P07/P12.
@@ -122,7 +122,7 @@ schema. Mitigation: ADR-024 rebuild; flag P07/P12.
 | 2. Verify dump integrity     | `pg_restore --list vaeloom_backup.dump`                          | 15min        | No errors            |
 | 3. Import to target DB       | `pg_restore -U target -d target_db vaeloom_backup.dump`          | 1-4hr        | Table count matches  |
 | 4. Verify pgvector extension | `psql -c "SELECT * FROM pg_extension WHERE extname = 'vector';"` | 5min         | Extension exists     |
-| 5. Run full test suite       | `cd apps/backend && python -m pytest tests/ -q`                  | 2-5hr        | All tests pass       |
+| 5. Run full test suite       | `cd apps/api && python -m pytest tests/ -q`                      | 2-5hr        | All tests pass       |
 | 6. Verify RLS policies       | `psql -c "SELECT * FROM pg_policies;"`                           | 15min        | All policies present |
 | **Total**                    |                                                                  | **< 2 days** |                      |
 
@@ -139,7 +139,7 @@ pgvector is PG extension; AGE not used.
 | 2. Configure endpoints | `./mc alias set vaeloom $STORAGE_ENDPOINT $STORAGE_ACCESS_KEY $STORAGE_SECRET_KEY` | 5min        | `./mc ls vaeloom/` |
 | 3. Mirror to S3        | `./mc mirror vaeloom/ s3://vaeloom-bucket/`                                        | 1-4hr       | File count matches |
 | 4. Update env vars     | `export STORAGE_ENDPOINT=https://s3.amazonaws.com`                                 | 5min        | Backend connects   |
-| 5. Run tests           | `cd apps/backend && python -m pytest tests/ -q`                                    | 2hr         | All tests pass     |
+| 5. Run tests           | `cd apps/api && python -m pytest tests/ -q`                                        | 2hr         | All tests pass     |
 | **Total**              |                                                                                    | **< 1 day** |                    |
 
 ### 3d. Search Exit (SQL ILIKE → Meilisearch/ES)
@@ -153,7 +153,7 @@ pgvector is PG extension; AGE not used.
 | 3. Create index          | `curl -X POST 'http://localhost:7700/indexes' -H 'Content-Type: application/json' -d '{"uid": "memories", "primaryKey": "id"}'` | 15min        | Index created                       |
 | 4. Import data           | `curl -X POST 'http://localhost:7700/indexes/memories/documents' -H 'Content-Type: application/json' -d @memories.json`         | 1-2hr        | Document count matches              |
 | 5. Update search service | Edit `services/search_service.py` — replace ILIKE with Meilisearch client                                                       | 1-2hr        | Search returns results              |
-| 6. Run tests             | `cd apps/backend && python -m pytest tests/ -q`                                                                                 | 2hr          | All tests pass                      |
+| 6. Run tests             | `cd apps/api && python -m pytest tests/ -q`                                                                                     | 2hr          | All tests pass                      |
 | **Total**                |                                                                                                                                 | **< 2 days** |                                     |
 
 **Current state:** `infrastructure/search.py` has dead code for Meilisearch +
@@ -163,12 +163,12 @@ PostgresFTS fallback; actual = SQL ILIKE.
 
 **Trigger:** Redis unavailable or memory constraint.
 
-| Step                      | Command                                           | Effort       | Verification         |
-| ------------------------- | ------------------------------------------------- | ------------ | -------------------- |
-| 1. Set REDIS__URL empty   | `export REDIS__URL=""`                            | 5min         | Backend starts       |
-| 2. Verify fallback active | `rg "in.memory\|InMemoryCache" apps/backend/src/` | 15min        | Fallback class found |
-| 3. Run tests              | `cd apps/backend && python -m pytest tests/ -q`   | 2hr          | All tests pass       |
-| **Total**                 |                                                   | **< 1 hour** |                      |
+| Step                      | Command                                       | Effort       | Verification         |
+| ------------------------- | --------------------------------------------- | ------------ | -------------------- |
+| 1. Set REDIS__URL empty   | `export REDIS__URL=""`                        | 5min         | Backend starts       |
+| 2. Verify fallback active | `rg "in.memory\|InMemoryCache" apps/api/src/` | 15min        | Fallback class found |
+| 3. Run tests              | `cd apps/api && python -m pytest tests/ -q`   | 2hr          | All tests pass       |
+| **Total**                 |                                               | **< 1 hour** |                      |
 
 ### 3f. Queue Exit (Redis → Other)
 
@@ -182,7 +182,7 @@ deployed. Queue layer is not running. No exit needed.
 | Health checks      | `/health`, `/health/ready`, `/health/startup` | PASS (FIXING compose healthcheck paths) | `curl http://localhost:8000/health`                       |
 | Graceful shutdown  | `async_engine.dispose()` in lifespan          | PASS                                    | `docker stop backend` + logs                              |
 | Rate limiting      | Redis sliding window + in-memory fallback     | PASS                                    | `ab -n 200 -c 10 http://localhost:8000/api/v1/health`     |
-| Circuit breaker    | agent_limits table (IMPLEMENTED_UNVERIFIED)   | Verify P11                              | `rg "circuit" apps/backend/src/`                          |
+| Circuit breaker    | agent_limits table (IMPLEMENTED_UNVERIFIED)   | Verify P11                              | `rg "circuit" apps/api/src/`                              |
 | Dead letter queue  | `dead_letter_events` table                    | PASS (schema exists)                    | `psql -c "SELECT COUNT(*) FROM dead_letter_events;"`      |
 | Correlation IDs    | CorrelationIDMiddleware                       | PASS                                    | `curl -I http://localhost:8000/health` → X-Correlation-ID |
 | Structured logging | structlog + JSON/pretty formatters            | PASS                                    | `docker logs backend` → JSON output                       |

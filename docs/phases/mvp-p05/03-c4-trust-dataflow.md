@@ -14,11 +14,11 @@
 graph LR
     U["P1 'The Fresher' — user<br/>18+, India · BQ-02"]
     W["Web App<br/>Next.js 15 · apps/web"]
-    API["Backend API<br/>FastAPI unified · apps/backend/src/backend/main.py<br/>22 MVP routers under /api/v1<br/>(+8 enterprise routers gated off)"]
+    API["Backend API<br/>FastAPI unified · apps/api/src/backend/main.py<br/>22 MVP routers under /api/v1<br/>(+8 enterprise routers gated off)"]
     GM["Gmail API<br/>draft-only, no send<br/>DEC-P01-03"]
     LLM["LLM Provider<br/>(mock LLM in dev/tests)"]
     JS["Job Sources<br/>T1 lawful only · DEC-P02-05<br/>clients/job_board_client.py"]
-    QW["Queue Worker<br/>apps/backend/src/backend/workers/queue_worker.py"]
+    QW["Queue Worker<br/>apps/api/src/backend/workers/queue_worker.py"]
     U -->|HTTPS · JWT bearer| W
     W -->|"JSON over HTTPS<br/>snake↔camel transform (lib/api.ts)"| API
     API -->|OAuth read + draft create| GM
@@ -31,8 +31,8 @@ graph LR
 ```
 
 **Notes (REPO_VERIFIED):** 30 `include_router` calls in
-`apps/backend/src/backend/main.py:143-173`; 22 are MVP (auth, workspaces,
-memory, agents, events, search, integrations, documents, resumes, applications,
+`apps/api/src/backend/main.py:143-173`; 22 are MVP (auth, workspaces, memory,
+agents, events, search, integrations, documents, resumes, applications,
 notifications, connectors, scheduler, chat, knowledge-graph, gdpr, consent,
 approvals, agent-costs, gmail + `/health` + encryption); 8 (billing, plugins,
 analytics, audit, iam, recommendations, webhooks, admin) are gated behind
@@ -83,10 +83,10 @@ embeddings are the authoritative vector store (ADR-003). PaaS-first MVP target
 
 ## 3. Trust boundaries (B1–B7) mapped to actual middleware
 
-Middleware set (REPO_VERIFIED — `apps/backend/src/backend/middleware/`):
-`auth.py`, `csrf.py`, `tenant.py`, `rate_limit.py`, `ip_filter.py`,
-`security_headers.py`, `prompt_injection.py`, `api_version.py`,
-`idempotency.py`, `exception_handler.py`, `rbac.py`.
+Middleware set (REPO_VERIFIED — `apps/api/src/backend/middleware/`): `auth.py`,
+`csrf.py`, `tenant.py`, `rate_limit.py`, `ip_filter.py`, `security_headers.py`,
+`prompt_injection.py`, `api_version.py`, `idempotency.py`,
+`exception_handler.py`, `rbac.py`.
 
 | B   | Boundary                     | Control(s)                                                                                                                                                                                                                                      | Status                                                                                                                                                                                                                                    |
 | --- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -123,7 +123,7 @@ Middleware set (REPO_VERIFIED — `apps/backend/src/backend/middleware/`):
 ### F1 — Ingest (documents / Gmail / job links)
 
 `parsers.py` (PDF/Markdown/DOCX/Image + `parse_document`, REPO_VERIFIED
-`apps/backend/src/backend/ingestion/parsers.py`) → dedup (`ingestion/dedup.py`,
+`apps/api/src/backend/ingestion/parsers.py`) → dedup (`ingestion/dedup.py`,
 sha256 hash) → **Document authoritative** (`documents` + `document_versions`
 tables) → embeddings projection (`embeddings` table, pgvector ADR-003) → memory
 extraction (`services/memory_service.py`) → QA gate (`agents/qa_validator.py` +

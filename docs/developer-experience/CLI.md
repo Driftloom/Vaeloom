@@ -1,7 +1,7 @@
-﻿# CLI Tools
+# CLI Tools
 
-> **Purpose:** Define CLI tools and usage for Vaeloom development **Status:**
-> ðŸ†• New
+> **Purpose:** Define CLI tools and usage for Vaeloom development **Status:** 🆕
+> New
 
 ## CLI Architecture
 
@@ -11,7 +11,7 @@ graph TD
     classDef planned fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef scripts fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Current["⚡ Current CLI Tools"]
+    subgraph Current["? Current CLI Tools"]
         C1["npm run dev --> Dev server (frontend)"]
         C2["npm run build --> Production build"]
         C3["npm run test --> Run tests"]
@@ -20,7 +20,7 @@ graph TD
         C6["uvicorn --reload --> Backend dev server"]
     end
 
-    subgraph Planned["ðŸš€ Vaeloom CLI (Future)"]
+    subgraph Planned["🚀 Vaeloom CLI (Future)"]
         P1["Auth: Vaeloom login / logout"]
         P2["Workspace: list / switch"]
         P3["Documents: upload / list"]
@@ -30,7 +30,7 @@ graph TD
         P7["Logs: Vaeloom logs &lt;service&gt;"]
     end
 
-    subgraph Scripts["ðŸ“ Scripts/"]
+    subgraph Scripts["📁 Scripts/"]
         S1["setup-dev.sh --> Initial setup"]
         S2["reset-db.sh --> Clean DB state"]
         S3["seed-data.sh --> Dev seed data"]
@@ -44,23 +44,23 @@ graph TD
     class S1,S2,S3,S4 scripts
 ```
 
-> **Diagram:** CLI architecture — **current tools** (npm/pytest/uvicorn) →
+> **Diagram:** CLI architecture � **current tools** (npm/pytest/uvicorn) ?
 > **planned Vaeloom CLI** (auth, workspace, documents, agents, dev, deploy,
-> logs) → **scripts directory** (setup, reset, seed, smoke-test).
+> logs) ? **scripts directory** (setup, reset, seed, smoke-test).
 
 ---
 
 ## Available CLI Tools
 
-| Command                             | Service  | Purpose                  |
-| ----------------------------------- | -------- | ------------------------ |
-| `npm run dev`                       | Frontend | Start development server |
-| `npm run build`                     | Frontend | Production build         |
-| `npm run test`                      | Frontend | Run tests                |
-| `npm run lint`                      | Frontend | Lint code                |
-| `pytest`                            | Backend  | Run Python tests         |
-| `uvicorn backend.main:app --reload` | Backend  | Development server       |
-| `alembic upgrade head`              | Backend  | Run database migrations  |
+| Command                         | Service  | Purpose                  |
+| ------------------------------- | -------- | ------------------------ |
+| `npm run dev`                   | Frontend | Start development server |
+| `npm run build`                 | Frontend | Production build         |
+| `npm run test`                  | Frontend | Run tests                |
+| `npm run lint`                  | Frontend | Lint code                |
+| `pytest`                        | Backend  | Run Python tests         |
+| `uvicorn api.main:app --reload` | Backend  | Development server       |
+| `alembic upgrade head`          | Backend  | Run database migrations  |
 
 ## Vaeloom CLI (Future)
 
@@ -102,26 +102,26 @@ Vaeloom logs <service>     # View logs
 
 | Mistake                                                                               | Consequence                                                                                                                                               |
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Running `npm start` instead of `npm run dev` in development                           | `npm start` runs the production build — changes aren't reflected without rebuild, leading to confusion about why code edits don't take effect             |
-| Forgetting to activate the Python virtual environment before running backend commands | Running `pytest` or `uvicorn` outside the venv uses the system Python — missing dependencies cause import errors that look like setup failures            |
-| Using production environment variables in local CLI commands                          | A `--env production` flag or production `DATABASE_URL` in a local terminal can accidentally modify production data — always verify the active environment |
-| Running destructive commands without a dry-run                                        | Commands like `reset-db.sh` drop all data — running without confirming the target environment causes irreversible data loss in staging or production      |
+| Running `npm start` instead of `npm run dev` in development                           | `npm start` runs the production build � changes aren't reflected without rebuild, leading to confusion about why code edits don't take effect             |
+| Forgetting to activate the Python virtual environment before running backend commands | Running `pytest` or `uvicorn` outside the venv uses the system Python � missing dependencies cause import errors that look like setup failures            |
+| Using production environment variables in local CLI commands                          | A `--env production` flag or production `DATABASE_URL` in a local terminal can accidentally modify production data � always verify the active environment |
+| Running destructive commands without a dry-run                                        | Commands like `reset-db.sh` drop all data � running without confirming the target environment causes irreversible data loss in staging or production      |
 
 ## Best Practices
 
 | Practice                                             | Why                                                                                                                                                            |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use `npm run dev` for all local development          | Dev mode includes hot reload, debug logging, and double rate limits — it's the only mode suitable for active development                                       |
-| Always activate the Python venv before backend work  | `source .venv/bin/activate` should be the first command in any backend terminal session — add it to your shell profile for convenience                         |
-| Prefix environment-specific commands with the target | `STAGING=1 ./scripts/reset-db.sh` or `NODE_ENV=production npm run build` — explicit environment markers prevent cross-environment accidents                    |
-| Add a confirmation prompt to destructive scripts     | Scripts that drop databases or delete resources should require `--confirm` or `--force` flags — never run destructive operations without explicit confirmation |
+| Use `npm run dev` for all local development          | Dev mode includes hot reload, debug logging, and double rate limits � it's the only mode suitable for active development                                       |
+| Always activate the Python venv before backend work  | `source .venv/bin/activate` should be the first command in any backend terminal session � add it to your shell profile for convenience                         |
+| Prefix environment-specific commands with the target | `STAGING=1 ./scripts/reset-db.sh` or `NODE_ENV=production npm run build` � explicit environment markers prevent cross-environment accidents                    |
+| Add a confirmation prompt to destructive scripts     | Scripts that drop databases or delete resources should require `--confirm` or `--force` flags � never run destructive operations without explicit confirmation |
 
 ## Security Considerations
 
 | Consideration                     | Mitigation                                                                                                                                      |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| CLI tool credential storage       | A future Vaeloom CLI will store auth tokens locally — use the system keychain (or encrypted config file), never plaintext config files          |
-| Script secrets in command history | Commands with inline secrets (`ANTHROPIC_API_KEY=sk-... npm run dev`) are stored in shell history — use `.env` files or secrets manager instead |
+| CLI tool credential storage       | A future Vaeloom CLI will store auth tokens locally � use the system keychain (or encrypted config file), never plaintext config files          |
+| Script secrets in command history | Commands with inline secrets (`ANTHROPIC_API_KEY=sk-... npm run dev`) are stored in shell history � use `.env` files or secrets manager instead |
 
 ## Error Handling
 
@@ -150,7 +150,7 @@ Vaeloom logs <service>     # View logs
 ## Overview
 
 The CLI Tools document catalogs all command-line interfaces available for
-Vaeloom development — npm scripts for the frontend, Python/uvicorn commands for
+Vaeloom development � npm scripts for the frontend, Python/uvicorn commands for
 the backend, Alembic for database migrations, shell scripts for operations, and
 the planned Vaeloom CLI tool. It defines conventions for script safety,
 environment-aware execution, and cross-platform compatibility.
@@ -200,8 +200,8 @@ environment-aware execution, and cross-platform compatibility.
 
 | Consideration            | Approach                                                                                                                                               |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| CLI startup time         | The planned Vaeloom CLI should load in under 500ms — lazy-load subcommands and dependencies rather than importing everything at startup                |
-| npm run dev memory usage | Running all services (frontend + backend + Docker) consumes 2-4GB RAM — provide a `--light` flag to start only the services needed for a specific task |
+| CLI startup time         | The planned Vaeloom CLI should load in under 500ms � lazy-load subcommands and dependencies rather than importing everything at startup                |
+| npm run dev memory usage | Running all services (frontend + backend + Docker) consumes 2-4GB RAM � provide a `--light` flag to start only the services needed for a specific task |
 
 ## Examples
 
@@ -212,7 +212,7 @@ environment-aware execution, and cross-platform compatibility.
 docker compose up -d postgres redis
 
 # Start Backend (terminal 1)
-cd apps/backend && source .venv/bin/activate && uvicorn backend.main:app --reload --port 8000
+cd apps/api && source .venv/bin/activate && uvicorn api.main:app --reload --port 8000
 
 # Start Frontend (terminal 2)
 cd apps/web && npm run dev
@@ -225,7 +225,7 @@ cd apps/web && npm run dev
 npm run test -- --testPathPattern=DocumentService
 
 # Backend
-cd apps/backend && source .venv/bin/activate && pytest tests/test_memory_agent.py -v
+cd apps/api && source .venv/bin/activate && pytest tests/test_memory_agent.py -v
 ```
 
 ### Database reset and seed
@@ -245,7 +245,7 @@ alembic heads
 
 ```bash
 # Run all agent evals
-cd apps/backend && source .venv/bin/activate && python -m eval.run_all
+cd apps/api && source .venv/bin/activate && python -m eval.run_all
 
 # Run single agent eval
 python -m eval.run_single memory_agent --document_id=doc_abc123

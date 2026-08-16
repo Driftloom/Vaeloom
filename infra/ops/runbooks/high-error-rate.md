@@ -3,6 +3,7 @@
 **Alert:** `HighErrorRate` — API 5xx rate exceeds 5% for 5 minutes.
 
 ## Severity
+
 - **>10% errors**: SEV1
 - **5-10% errors**: SEV2
 
@@ -19,21 +20,21 @@
 3. **Check application logs** — look for stack traces
    ```
    # Docker
-   docker logs vaeloom-backend --tail 100
+   docker logs vaeloom-api --tail 100
    # CloudWatch
-   aws logs tail /ecs/vaeloom-backend --since 5m
+   aws logs tail /ecs/vaeloom-api --since 5m
    ```
 4. **Check Sentry** — open Sentry dashboard, look for new error spike
 
 ## Common Causes
 
-| Cause | Symptoms | Fix |
-|-------|----------|-----|
-| Bad deploy | Errors started after deploy | Rollback: `make rollback-backend` |
-| DB migration issue | 500 on specific endpoints | `make db-rollback` |
-| LLM provider down | 502 on agent endpoints | Switch provider in env vars |
-| Throttling / rate limit | 429 responses | Scale out or adjust limits |
-| Memory pressure | OOM kills, slow then 503 | `docker stats` — increase memory |
+| Cause                   | Symptoms                    | Fix                               |
+| ----------------------- | --------------------------- | --------------------------------- |
+| Bad deploy              | Errors started after deploy | Rollback: `make rollback-backend` |
+| DB migration issue      | 500 on specific endpoints   | `make db-rollback`                |
+| LLM provider down       | 502 on agent endpoints      | Switch provider in env vars       |
+| Throttling / rate limit | 429 responses               | Scale out or adjust limits        |
+| Memory pressure         | OOM kills, slow then 503    | `docker stats` — increase memory  |
 
 ## Resolution
 
@@ -43,7 +44,7 @@
    ```
 2. **If DB issue**: check migrations, rollback if needed
    ```
-   cd apps/backend && alembic downgrade -1
+   cd apps/api && alembic downgrade -1
    ```
 3. **If provider issue**: switch fallback or queue requests
 4. **If memory leak**: restart service, open bug for leak investigation

@@ -73,14 +73,14 @@ graph TD
 
 ## Scopes
 
-| Scope   | Area                       |
-| ------- | -------------------------- |
-| `web`   | Frontend (apps/web)        |
-| `api`   | Backend API (apps/backend) |
-| `ai`    | AI agents (apps/backend)   |
-| `infra` | Infrastructure (infra/)    |
-| `deps`  | Dependencies               |
-| `docs`  | Documentation              |
+| Scope   | Area                    |
+| ------- | ----------------------- |
+| `web`   | Frontend (apps/web)     |
+| `api`   | Backend API (apps/api)  |
+| `ai`    | AI agents (apps/api)    |
+| `infra` | Infrastructure (infra/) |
+| `deps`  | Dependencies            |
+| `docs`  | Documentation           |
 
 ## Examples
 
@@ -217,7 +217,7 @@ Fixes #89
 ## Overview
 
 This document defines the commit message convention used by every Vaeloom
-engineer across all services — `apps/web` and `apps/backend`. Following the
+engineer across all services — `apps/web` and `apps/api`. Following the
 Conventional Commits specification, each message includes a type (`feat`, `fix`,
 `chore`, etc.), an optional scope (`web`, `api`, `ai`, `infra`, `deps`, `docs`),
 a descriptive subject under 72 characters, and an optional body explaining what

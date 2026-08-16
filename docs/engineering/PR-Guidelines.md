@@ -1,6 +1,6 @@
-﻿# PR Guidelines
+# PR Guidelines
 
-> **Purpose:** Define Pull Request guidelines for Vaeloom **Status:** ðŸ†• New
+> **Purpose:** Define Pull Request guidelines for Vaeloom **Status:** 🆕 New
 
 ## PR Architecture
 
@@ -10,24 +10,24 @@ graph TD
     classDef size fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef etiquette fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Requirements["ðŸ“‹ PR Requirements"]
+    subgraph Requirements["📋 PR Requirements"]
         R1["Title: Conventional commit format"]
         R2["Description: Template with context"]
         R3["Tests: Included for new code"]
         R4["Lint: No errors (CI check)"]
         R5["Build: Passes successfully (CI)"]
-        R6["Review: â‰¥ 1 approval (branch protection)"]
+        R6["Review: ≥ 1 approval (branch protection)"]
         R7["Size: < 500 lines preferred"]
     end
 
-    subgraph Size["ðŸ“ Size Guidelines"]
+    subgraph Size["📏 Size Guidelines"]
         S1["Small: < 100 lines<br/>Single reviewer"]
         S2["Medium: 100-500 lines<br/>Single reviewer"]
         S3["Large: 500+ lines<br/>Split into smaller PRs"]
         S4["Massive: 1000+ lines<br/>Requires lead approval"]
     end
 
-    subgraph Etiquette["ðŸ¤ PR Etiquette"]
+    subgraph Etiquette["🤝 PR Etiquette"]
         E1["Author: Provide context, respond to feedback"]
         E2["Author: Don't merge without approval"]
         E3["Reviewer: Be specific + constructive + timely"]
@@ -43,8 +43,8 @@ graph TD
 ```
 
 > **Diagram:** PR guidelines covering **7 requirements** (conventional title,
-> template description, tests, lint, build, review, size) → **4 size
-> categories** (small through massive) → **5 etiquette rules** for both authors
+> template description, tests, lint, build, review, size) ? **4 size
+> categories** (small through massive) ? **5 etiquette rules** for both authors
 > and reviewers.
 
 ---
@@ -117,33 +117,33 @@ Closes #[issue_number]
 
 | Mistake                                             | Consequence                                                                                                                                              |
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Opening PRs without a description                   | A PR without context forces reviewers to guess the purpose, scope, and testing instructions — 70% of review time is spent understanding what the PR does |
-| Requesting reviews from too many people at once     | 5+ reviewers on a single PR leads to diffusion of responsibility — everyone assumes someone else will review, and the PR sits for days                   |
-| Merging without addressing all reviewer comments    | Unresolved comments that are silently dismissed erode trust in the review process — every comment should have a response (fix or explanation)            |
+| Opening PRs without a description                   | A PR without context forces reviewers to guess the purpose, scope, and testing instructions � 70% of review time is spent understanding what the PR does |
+| Requesting reviews from too many people at once     | 5+ reviewers on a single PR leads to diffusion of responsibility � everyone assumes someone else will review, and the PR sits for days                   |
+| Merging without addressing all reviewer comments    | Unresolved comments that are silently dismissed erode trust in the review process � every comment should have a response (fix or explanation)            |
 | Creating PRs that mix refactoring with feature work | A PR that renames 20 files and adds a new endpoint in the same diff makes it impossible to distinguish the functional change from the noise              |
 
 ## Best Practices
 
 | Practice                                           | Why                                                                                                                                           |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fill out the PR template completely                | A thorough description answers "what", "why", and "how tested" — this single paragraph saves each reviewer 10-15 minutes of context-gathering |
-| Request 1-2 reviewers maximum                      | Code review quality decreases with more reviewers — pick reviewers who know the code area, not everyone on the team                           |
-| Respond to every comment with a fix or explanation | An unresolved comment left dangling means the reviewer's concern wasn't addressed — either make the change or explain why it's unnecessary    |
-| Keep refactoring in separate PRs from feature work | A PR that only restructures code can be reviewed quickly — a PR that restructures AND adds functionality requires two separate mental passes  |
+| Fill out the PR template completely                | A thorough description answers "what", "why", and "how tested" � this single paragraph saves each reviewer 10-15 minutes of context-gathering |
+| Request 1-2 reviewers maximum                      | Code review quality decreases with more reviewers � pick reviewers who know the code area, not everyone on the team                           |
+| Respond to every comment with a fix or explanation | An unresolved comment left dangling means the reviewer's concern wasn't addressed � either make the change or explain why it's unnecessary    |
+| Keep refactoring in separate PRs from feature work | A PR that only restructures code can be reviewed quickly � a PR that restructures AND adds functionality requires two separate mental passes  |
 
 ## Security Considerations
 
 | Consideration                 | Mitigation                                                                                                                                                   |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PR description exposure       | PR descriptions may contain details about security vulnerabilities being fixed — avoid publishing exploit details or affected versions in the PR description |
-| Automated dependency scanning | Require dependency scanning (Dependabot, Snyk) as a CI check — a PR that introduces a vulnerable dependency should be blocked before review                  |
+| PR description exposure       | PR descriptions may contain details about security vulnerabilities being fixed � avoid publishing exploit details or affected versions in the PR description |
+| Automated dependency scanning | Require dependency scanning (Dependabot, Snyk) as a CI check � a PR that introduces a vulnerable dependency should be blocked before review                  |
 
 ## Performance Considerations
 
 | Consideration               | Approach                                                                                                                                                     |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PR size and review velocity | PRs under 100 lines are reviewed 2x faster than PRs under 500 lines — break large features into a stack of smaller, incremental PRs                          |
-| CI check runtime            | A PR with CI checks that take 20+ minutes to complete delays the feedback loop — optimize slow checks (E2E tests, performance benchmarks) to run in parallel |
+| PR size and review velocity | PRs under 100 lines are reviewed 2x faster than PRs under 500 lines � break large features into a stack of smaller, incremental PRs                          |
+| CI check runtime            | A PR with CI checks that take 20+ minutes to complete delays the feedback loop � optimize slow checks (E2E tests, performance benchmarks) to run in parallel |
 
 ## Workflows
 
@@ -154,7 +154,7 @@ Closes #[issue_number]
    testing, checklist)
 5. **CI checks:** Wait for lint, test, build to pass
 6. **Request review:** Tag 1-2 reviewers via GitHub or Slack
-7. **Address feedback:** Respond to every comment — fix or explain
+7. **Address feedback:** Respond to every comment � fix or explain
 8. **Merge:** Squash merge to develop (features) or merge commit to main
    (releases)
 9. **Delete branch:** Auto-delete or manual `git push origin --delete`
@@ -198,7 +198,7 @@ Closes #[issue_number]
 
 | Metric                     | Alert Threshold | Severity | Dashboard            |
 | -------------------------- | --------------- | -------- | -------------------- |
-| PR open → merge time (p95) | > 48 hours      | Warning  | Engineering Velocity |
+| PR open ? merge time (p95) | > 48 hours      | Warning  | Engineering Velocity |
 | PR size > 500 lines count  | > 20% of PRs    | Info     | PR Quality           |
 | Review response time       | > 24 hours      | Warning  | Review SLA           |
 | PR without description     | > 5%            | Info     | PR Quality Dashboard |
@@ -238,7 +238,7 @@ defined in `Release-Process.md`.
 
 ## Goals
 
-- Define clear, enforceable PR requirements — title format, description
+- Define clear, enforceable PR requirements � title format, description
   template, CI gates, reviewer count
 - Reduce review friction by keeping PRs small (< 500 lines) and focused on a
   single logical change
@@ -308,10 +308,10 @@ Closes #184
 # Create a focused, small PR
 git checkout -b fix/merge-threshold develop
 # Make one logical change
-git add apps/backend/agents/memory_agent/merge.py
+git add apps/api/agents/memory_agent/merge.py
 git commit -m "fix(ai): correct entity merge confidence threshold"
 git push origin fix/merge-threshold
-# Open PR (size: ~50 lines → 1 reviewer, < 4 hours SLA)
+# Open PR (size: ~50 lines ? 1 reviewer, < 4 hours SLA)
 
 # Request reviewers
 gh pr create --title "fix(ai): correct entity merge confidence threshold" \

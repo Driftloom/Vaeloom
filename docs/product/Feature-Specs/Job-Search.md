@@ -1,7 +1,7 @@
-﻿## Header
+## Header
 
-> **Purpose:** Detailed specification for Job & Internship Search **Status:**
-> ðŸ†• New **Owner:** Product Team **Last Updated:** 2026-07-13
+> **Purpose:** Detailed specification for Job & Internship Search **Status:** 🆕
+> New **Owner:** Product Team **Last Updated:** 2026-07-13
 
 ## Overview
 
@@ -9,7 +9,7 @@ Job & Internship Search connects the user's career memory graph to live
 opportunity platforms. The Job Search Agent queries configured connector APIs
 (LinkedIn, Indeed, or university career portals where integrations exist) using
 a combination of the user's explicit search parameters and their inferred
-profile from memory — skills, preferred role types, past rejections,
+profile from memory � skills, preferred role types, past rejections,
 compensation expectations, and location preferences. Results are ranked by a
 multi-factor score that combines skill overlap, preference alignment, and the
 user's historical outcome data, producing a shortlist the user can review,
@@ -18,7 +18,7 @@ approve, or reject.
 The feature operates in two modes: explicit (user says "find me backend
 internships") and scheduled background radar (the agent runs a periodic pass and
 surfaces new matches that clear a quality threshold). The scheduled mode is the
-key differentiator — it means the user doesn't need to remember to search; the
+key differentiator � it means the user doesn't need to remember to search; the
 system brings opportunities to them when their profile suggests they'd be a
 strong fit. Rejected roles are remembered to avoid re-surfacing. Applied roles
 are tracked through to outcome, closing the loop so the ranking model learns
@@ -72,7 +72,7 @@ my profile."
 | `applications`            | `id`, `job_external_id`, `platform`, `status`, `outcome` | Outcome history for ranking calibration              |
 | `connectors`              | `id`, `workspace_id`, `type`, `status`                   | Platform connection state                            |
 
-No new tables — leverages existing career memory and entities.
+No new tables � leverages existing career memory and entities.
 
 ## API Endpoints
 
@@ -106,7 +106,7 @@ No new tables — leverages existing career memory and entities.
 | Career      | Yes  | Yes   | New opportunities, rejections, outcomes |
 | Episodic    | Yes  | Yes   | Search events, radar runs logged        |
 | Preference  | Yes  | Yes   | Role type preferences refined over time |
-| Document    | No   | No    | —                                       |
+| Document    | No   | No    | �                                       |
 | Working     | Yes  | No    | Current search session state            |
 
 ## Permission Model
@@ -128,8 +128,8 @@ doesn't auto-apply). **Read-only** for search (user initiates).
 | Platform API rate-limited             | Search delayed or partial         | Results shown from cache if available; partial results with "X platforms unavailable" note | Retry after backoff; user notified when platform is available again |
 | Platform access token expired         | Connector broken                  | Platform shown as "disconnected" with re-authenticate button                               | Background token refresh before expiry (Connector Agent)            |
 | No results matching criteria          | Empty shortlist                   | "No matches found. Try broadening your filters or check your skill profile."               | Suggestion to add skills or adjust location preference              |
-| Radar returns no new matches          | Silent skip                       | No notification; shortlist unchanged                                                       | Logged as "radar pass — 0 new matches" on history page              |
-| Platform ToS blocks automated queries | Search disabled for that platform | Platform shown as "API-limited — manual search only"                                       | User can click through to platform in new tab; deep-link flow       |
+| Radar returns no new matches          | Silent skip                       | No notification; shortlist unchanged                                                       | Logged as "radar pass � 0 new matches" on history page              |
+| Platform ToS blocks automated queries | Search disabled for that platform | Platform shown as "API-limited � manual search only"                                       | User can click through to platform in new tab; deep-link flow       |
 
 ## Performance Budgets
 
@@ -158,11 +158,11 @@ doesn't auto-apply). **Read-only** for search (user initiates).
   your skills." Search refinement panel with sliders for radius, skill filter,
   role type
 - **Error:** Partial results shown with per-platform error banners; full failure
-  shows "Search unavailable — check connector status" with link to Connectors
+  shows "Search unavailable � check connector status" with link to Connectors
   screen
 - **Edge cases:** Duplicate listings across platforms are deduplicated with
   "Also on [platform]" badge; role already applied to shows "Applied" instead of
-  "Approve"; role the user previously rejected shows "Previously rejected — show
+  "Approve"; role the user previously rejected shows "Previously rejected � show
   anyway?" toggle; extremely high-fit roles (>90%) get a "Top match" badge and
   appear at the top with a visual accent
 
@@ -203,18 +203,18 @@ graph TD
     JSA --> RM[Rejection Memory]
 ```
 
-> **Diagram:** Job Search architecture — user query + memory profile → platform
-> queries → ranking → shortlist with rejection memory.
+> **Diagram:** Job Search architecture � user query + memory profile ? platform
+> queries ? ranking ? shortlist with rejection memory.
 
 ## Components
 
-| Component           | Responsibility                                             | Technology                             |
-| ------------------- | ---------------------------------------------------------- | -------------------------------------- |
-| Job Search Agent    | Query platforms, rank results, build shortlist             | FastAPI + Claude API                   |
-| Platform Connectors | Interface with job platform APIs                           | FastAPI (apps/backend) + platform SDKs |
-| Ranking Engine      | Multi-factor fit score (skills Ã— preferences Ã— outcomes) | FastAPI                                |
-| Rejection Memory    | Store and enforce "never re-surface" rules                 | PostgreSQL                             |
-| Radar Engine        | Scheduled background search with threshold                 | Bull queue + FastAPI                   |
+| Component           | Responsibility                                           | Technology                         |
+| ------------------- | -------------------------------------------------------- | ---------------------------------- |
+| Job Search Agent    | Query platforms, rank results, build shortlist           | FastAPI + Claude API               |
+| Platform Connectors | Interface with job platform APIs                         | FastAPI (apps/api) + platform SDKs |
+| Ranking Engine      | Multi-factor fit score (skills × preferences × outcomes) | FastAPI                            |
+| Rejection Memory    | Store and enforce "never re-surface" rules               | PostgreSQL                         |
+| Radar Engine        | Scheduled background search with threshold               | Bull queue + FastAPI               |
 
 ## Workflows
 
@@ -255,14 +255,14 @@ sequenceDiagram
 
 ## Data Flow
 
-1. **Search:** User query + profile context → platform API calls → normalized
+1. **Search:** User query + profile context ? platform API calls ? normalized
    results
-2. **Ranking:** Each result → skill overlap calc + preference alignment +
-   outcome similarity → composite score
-3. **Filter:** Rejection Memory check → remove rejected → deduplicate across
+2. **Ranking:** Each result ? skill overlap calc + preference alignment +
+   outcome similarity ? composite score
+3. **Filter:** Rejection Memory check ? remove rejected ? deduplicate across
    platforms
-4. **Storage:** Approved roles → `applications` (status: shortlisted); Rejected
-   → `memory_records` (rejection)
+4. **Storage:** Approved roles ? `applications` (status: shortlisted); Rejected
+   ? `memory_records` (rejection)
 
 ## Non-Functional Requirements
 
@@ -324,10 +324,10 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/jobs/shortlist/{job_id}/
 
 | Practice                                        | Rationale                                                                                                      |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Keep your skill profile updated in Memory Graph | The ranking engine relies on your skill graph — accurate skills produce better-ranked search results           |
+| Keep your skill profile updated in Memory Graph | The ranking engine relies on your skill graph � accurate skills produce better-ranked search results           |
 | Reject roles you're not interested in           | Every rejection trains the ranking model; rejecting clearly mismatched roles improves future radar suggestions |
 | Set radar threshold based on your search volume | High-volume searchers should set threshold higher (70+); occasional searchers can use default 60               |
-| Review radar results daily                      | The scheduled radar runs daily — checking results every morning keeps you ahead of application deadlines       |
+| Review radar results daily                      | The scheduled radar runs daily � checking results every morning keeps you ahead of application deadlines       |
 
 ## Limitations
 
@@ -335,7 +335,7 @@ curl -X POST https://api.Vaeloom.dev/v1/workspaces/{id}/jobs/shortlist/{job_id}/
 | ------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------- |
 | Only LinkedIn and Indeed connectors in MVP       | Users targeting niche platforms cannot use search                                   | Other platforms accessible via deep-link flow                 | 10+ platform connectors by V2            |
 | No company-specific search                       | Cannot filter by target company list                                                | Manually search company career pages and import via deep-link | Company tracking list with alerts (v1.5) |
-| Fit score does not include real-time market data | Score is profile-relative, not market-relative (competition level, hiring velocity) | —                                                             | Market-aware ranking (V3)                |
+| Fit score does not include real-time market data | Score is profile-relative, not market-relative (competition level, hiring velocity) | �                                                             | Market-aware ranking (V3)                |
 
 ## Future Improvements
 

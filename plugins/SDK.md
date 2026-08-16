@@ -15,16 +15,16 @@ A Vaeloom plugin is a self-contained Python module that:
 
 ### Metadata (required fields)
 
-| Field        | Type     | Description |
-|-------------|----------|-------------|
-| `name`       | string   | Unique plugin name |
-| `version`    | string   | Semver version |
-| `author`     | string   | Author name |
-| `description`| string   | Short description |
-| `license`    | string   | SPDX license identifier |
-| `entry_point`| string   | Module path (e.g. `my_plugin.main`) |
-| `permissions`| object   | Declared permission scopes |
-| `tags`       | string[] | Categorization tags |
+| Field         | Type     | Description                         |
+| ------------- | -------- | ----------------------------------- |
+| `name`        | string   | Unique plugin name                  |
+| `version`     | string   | Semver version                      |
+| `author`      | string   | Author name                         |
+| `description` | string   | Short description                   |
+| `license`     | string   | SPDX license identifier             |
+| `entry_point` | string   | Module path (e.g. `my_plugin.main`) |
+| `permissions` | object   | Declared permission scopes          |
+| `tags`        | string[] | Categorization tags                 |
 
 ### `run()` function
 
@@ -104,7 +104,7 @@ POST /api/v1/plugins
 ### Option 1: Use the sandbox script directly
 
 ```bash
-echo '{"result": "hello"}' | python apps/backend/src/backend/services/plugin_sandbox.py
+echo '{"result": "hello"}' | python apps/api/src/backend/services/plugin_sandbox.py
 ```
 
 Set the `PLUGIN_CONTEXT` environment variable:
@@ -114,7 +114,7 @@ export PLUGIN_CONTEXT='{"input": {"text": "hello world"}, "tenantId": "demo"}'
 echo '
 def run(input, context):
     return {"word_count": len(input.get("text", "").split())}
-' | python apps/backend/src/backend/services/plugin_sandbox.py
+' | python apps/api/src/backend/services/plugin_sandbox.py
 ```
 
 ### Option 2: Use the Vaeloom API
@@ -149,8 +149,8 @@ curl -X POST http://localhost:8000/api/v1/plugins/PLUGIN_ID/execute \
 ### Option 3: Use the test suite
 
 ```python
-from backend.services.plugin_sandbox import main
-# See apps/backend/tests/test_plugin_service.py for examples
+from api.services.plugin_sandbox import main
+# See apps/api/tests/test_plugin_service.py for examples
 ```
 
 ## Publishing a Plugin
@@ -176,25 +176,25 @@ To add a plugin to the Vaeloom plugin registry:
 }
 ```
 
-| Scope     | Actions    | Description |
-|-----------|-----------|-------------|
-| `memory`  | read, write | Access memory store |
+| Scope     | Actions     | Description                 |
+| --------- | ----------- | --------------------------- |
+| `memory`  | read, write | Access memory store         |
 | `agents`  | read, write | Access agent configurations |
-| `events`  | publish     | Publish custom events |
-| `storage` | read, write | Access file storage |
-| `network` | (reserved)  | Network access |
-| `files`   | read, write | File system access |
+| `events`  | publish     | Publish custom events       |
+| `storage` | read, write | Access file storage         |
+| `network` | (reserved)  | Network access              |
+| `files`   | read, write | File system access          |
 
 If a plugin declares permissions it doesn't use during review, it may be
 rejected. Always declare the minimal set of permissions needed.
 
 ## Plugin Lifecycle States
 
-| State        | Description |
-|-------------|-------------|
-| `REGISTERED` | Plugin registered but not yet approved |
-| `ACTIVE`     | Plugin approved and available for use |
-| `DISABLED`   | Plugin disabled by administrator |
+| State        | Description                                     |
+| ------------ | ----------------------------------------------- |
+| `REGISTERED` | Plugin registered but not yet approved          |
+| `ACTIVE`     | Plugin approved and available for use           |
+| `DISABLED`   | Plugin disabled by administrator                |
 | `BANNED`     | Plugin permanently banned for policy violations |
 
 ## Best Practices

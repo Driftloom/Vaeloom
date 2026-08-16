@@ -185,7 +185,7 @@ When all models fail:
 ## Router Implementation
 
 ```python
-# apps/backend/src/backend/llm/model_router.py
+# apps/api/src/backend/llm/model_router.py
 from enum import Enum
 from dataclasses import dataclass
 from typing import List, Optional

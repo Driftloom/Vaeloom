@@ -1,8 +1,10 @@
 # Service Down — Runbook
 
-**Alert:** `ServiceDown` — health/liveness/startup probe fails 3 consecutive times.
+**Alert:** `ServiceDown` — health/liveness/startup probe fails 3 consecutive
+times.
 
 ## Severity
+
 - SEV1 — complete service outage
 
 ## Immediate Triage (5 min)
@@ -17,9 +19,9 @@
    ```
    # Docker
    docker ps | grep vaeloom
-   docker logs vaeloom-backend --tail 50
+   docker logs vaeloom-api --tail 50
    # Systemd
-   systemctl status vaeloom-backend
+   systemctl status vaeloom-api
    # ECS
    aws ecs describe-services --cluster vaeloom-prod --services vaeloom-prod-backend
    ```
@@ -32,21 +34,22 @@
 
 ## Common Causes
 
-| Cause | Symptoms | Fix |
-|-------|----------|-----|
-| Process crashed | No process listening | Restart service |
-| OOM kill | Container exits with 137 | Increase memory limit |
-| Config error | Startup failure in logs | Fix config, redeploy |
-| Port conflict | Address already in use | Kill conflicting process |
-| DB unavailable | "connection refused" startup | Check DB status |
-| Migration failure | Alembic error in logs | Rollback migration |
+| Cause             | Symptoms                     | Fix                      |
+| ----------------- | ---------------------------- | ------------------------ |
+| Process crashed   | No process listening         | Restart service          |
+| OOM kill          | Container exits with 137     | Increase memory limit    |
+| Config error      | Startup failure in logs      | Fix config, redeploy     |
+| Port conflict     | Address already in use       | Kill conflicting process |
+| DB unavailable    | "connection refused" startup | Check DB status          |
+| Migration failure | Alembic error in logs        | Rollback migration       |
 
 ## Resolution
 
 ### Option A: Restart service
+
 ```bash
 # Docker
-docker restart vaeloom-backend
+docker restart vaeloom-api
 
 # ECS — force new deployment
 aws ecs update-service --cluster vaeloom-prod --service vaeloom-prod-backend --force-new-deployment
@@ -56,6 +59,7 @@ make restart-backend
 ```
 
 ### Option B: Rollback to previous version
+
 ```bash
 aws ecs update-service \
   --cluster vaeloom-prod \
@@ -65,13 +69,15 @@ aws ecs update-service \
 ```
 
 ### Option C: Rollback database migration
+
 ```bash
-cd apps/backend
+cd apps/api
 alembic downgrade -1
 # then restart
 ```
 
 ### Option D: Scale from zero
+
 ```bash
 aws ecs update-service \
   --cluster vaeloom-prod \

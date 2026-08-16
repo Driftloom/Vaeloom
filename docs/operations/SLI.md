@@ -1,6 +1,6 @@
-﻿# Service Level Indicators (SLI)
+# Service Level Indicators (SLI)
 
-> **Purpose:** Define Service Level Indicators for Vaeloom **Status:** ðŸ†• New
+> **Purpose:** Define Service Level Indicators for Vaeloom **Status:** 🆕 New
 
 ## SLI Architecture
 
@@ -10,7 +10,7 @@ graph TD
     classDef measure fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
     classDef report fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Indicators["ðŸ“Š SLI Indicators"]
+    subgraph Indicators["📊 SLI Indicators"]
         direction TB
         I1["API Availability<br/>Good: HTTP 200 / Total checks"]
         I2["API Latency<br/>Good: < 500ms / Total requests"]
@@ -20,15 +20,15 @@ graph TD
         I6["DB Availability<br/>Good: Success / Total attempts"]
     end
 
-    subgraph Measurement["ðŸ“ Measurement"]
+    subgraph Measurement["📏 Measurement"]
         M1["api_latency_good counter<br/>api_latency_total counter<hr/>if (duration < 500) increment good<br/>increment total always"]
     end
 
-    subgraph Reporting["ðŸ“‹ SLI Reporting"]
-        R1["API Availability: Real-time Â· Dashboard + Grafana"]
-        R2["API Latency: Real-time Â· Dashboard + Grafana"]
-        R3["AI Latency: Real-time Â· Dashboard + Grafana"]
-        R4["Agent Accuracy: Weekly Â· Report"]
+    subgraph Reporting["📋 SLI Reporting"]
+        R1["API Availability: Real-time · Dashboard + Grafana"]
+        R2["API Latency: Real-time · Dashboard + Grafana"]
+        R3["AI Latency: Real-time · Dashboard + Grafana"]
+        R4["Agent Accuracy: Weekly · Report"]
     end
 
     Indicators --> Measurement --> Reporting
@@ -38,9 +38,9 @@ graph TD
     class R1,R2,R3,R4 report
 ```
 
-> **Diagram:** SLI architecture — **6 indicators** (API availability/latency, AI
+> **Diagram:** SLI architecture � **6 indicators** (API availability/latency, AI
 > latency/accuracy, ingestion speed, DB availability) with good/total event
-> definitions → **measurement** via OpenTelemetry counters → **reporting**
+> definitions ? **measurement** via OpenTelemetry counters ? **reporting**
 > (real-time for latency/availability, weekly for accuracy).
 
 ---
@@ -59,7 +59,7 @@ graph TD
 ## SLI Measurement
 
 ```typescript
-// apps/backend/monitoring/sli.py
+// apps/api/monitoring/sli.py
 class SLIMetrics {
   async recordRequest(
     method: string,
@@ -95,63 +95,63 @@ class SLIMetrics {
 
 | Mistake                                                   | Consequence                                                                                                                                                                                                          |
 | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Defining SLIs that are easy to measure but don't matter   | Measuring API health check success rate (always 100%) is easy, but it doesn't tell you if users are having a good experience — define SLIs that directly reflect user-facing quality (latency, error rate, accuracy) |
-| SLIs without good/total counters for the same time window | If the "good" counter and "total" counter are collected at different intervals, the ratio is meaningless — ensure both counters are incremented atomically in the same request handler                               |
-| Too many SLIs creating measurement overhead               | Tracking 20 SLIs across 5 services generates 100 data points per minute — focus on the 3-5 SLIs per service that directly impact user experience and drop the rest                                                   |
+| Defining SLIs that are easy to measure but don't matter   | Measuring API health check success rate (always 100%) is easy, but it doesn't tell you if users are having a good experience � define SLIs that directly reflect user-facing quality (latency, error rate, accuracy) |
+| SLIs without good/total counters for the same time window | If the "good" counter and "total" counter are collected at different intervals, the ratio is meaningless � ensure both counters are incremented atomically in the same request handler                               |
+| Too many SLIs creating measurement overhead               | Tracking 20 SLIs across 5 services generates 100 data points per minute � focus on the 3-5 SLIs per service that directly impact user experience and drop the rest                                                   |
 
 ## Best Practices
 
 | Practice                                                         | Why                                                                                                                                                             |
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Define SLIs that directly reflect user-facing quality            | Health check pass rate is not useful — measure latency at the 95th and 99th percentile, error rate, and accuracy metrics that users actually experience         |
-| Increment good and total counters atomically in the same handler | If good and total counters are incremented in different code paths, they can diverge — increment both in the same synchronous block after the request completes |
-| Keep to 3-5 SLIs per service — focus on user-impacting metrics   | More SLIs create more noise and measurement overhead — latency (p95/p99), error rate, and throughput are usually sufficient for most services                   |
+| Define SLIs that directly reflect user-facing quality            | Health check pass rate is not useful � measure latency at the 95th and 99th percentile, error rate, and accuracy metrics that users actually experience         |
+| Increment good and total counters atomically in the same handler | If good and total counters are incremented in different code paths, they can diverge � increment both in the same synchronous block after the request completes |
+| Keep to 3-5 SLIs per service � focus on user-impacting metrics   | More SLIs create more noise and measurement overhead � latency (p95/p99), error rate, and throughput are usually sufficient for most services                   |
 
 ## Security
 
 | Concern                                                   | Mitigation                                                                                                                                                                                                  |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SLI data that can be manipulated to hide problems         | If error counters can be reset or modified without audit, a team could hide recurring failures — make SLI counters append-only and immutable after creation                                                 |
-| SLIs revealing application internals in public dashboards | A dashboard showing "agent_error_total by agent_name" reveals which agents exist and their error rates — aggregate SLI labels to service-level granularity for external sharing                             |
-| SLI measurement code introducing vulnerabilities          | The code that measures and reports SLIs runs in the application process — a vulnerability in the SLI reporting library could be exploited. Keep SLI instrumentation minimal and audit third-party libraries |
+| SLI data that can be manipulated to hide problems         | If error counters can be reset or modified without audit, a team could hide recurring failures � make SLI counters append-only and immutable after creation                                                 |
+| SLIs revealing application internals in public dashboards | A dashboard showing "agent_error_total by agent_name" reveals which agents exist and their error rates � aggregate SLI labels to service-level granularity for external sharing                             |
+| SLI measurement code introducing vulnerabilities          | The code that measures and reports SLIs runs in the application process � a vulnerability in the SLI reporting library could be exploited. Keep SLI instrumentation minimal and audit third-party libraries |
 
 ## Performance
 
 | Concern                                              | Mitigation                                                                                                                                                                                   |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SLI counter increment overhead at high request rates | Incrementing two counters (good + total) on every request adds overhead — batch counter increments and flush them periodically rather than writing each increment synchronously              |
-| SLI data storage growing faster than useful          | Storing every SLI data point at 1-second granularity for all services creates terabytes of data — aggregate to 1-minute resolution after 7 days and 1-hour resolution after 30 days          |
-| SLI query latency slowing down dashboards            | A dashboard querying 30 days of SLI data at per-minute granularity can take 10+ seconds — pre-aggregate SLI data for common time windows (1h, 24h, 7d, 30d) to enable fast dashboard loading |
+| SLI counter increment overhead at high request rates | Incrementing two counters (good + total) on every request adds overhead � batch counter increments and flush them periodically rather than writing each increment synchronously              |
+| SLI data storage growing faster than useful          | Storing every SLI data point at 1-second granularity for all services creates terabytes of data � aggregate to 1-minute resolution after 7 days and 1-hour resolution after 30 days          |
+| SLI query latency slowing down dashboards            | A dashboard querying 30 days of SLI data at per-minute granularity can take 10+ seconds � pre-aggregate SLI data for common time windows (1h, 24h, 7d, 30d) to enable fast dashboard loading |
 
 ## Security Considerations
 
 | Concern                                                   | Mitigation                                                                                                                                                                                                  |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SLI data that can be manipulated to hide problems         | If error counters can be reset or modified without audit, a team could hide recurring failures — make SLI counters append-only and immutable after creation                                                 |
-| SLIs revealing application internals in public dashboards | A dashboard showing "agent_error_total by agent_name" reveals which agents exist and their error rates — aggregate SLI labels to service-level granularity for external sharing                             |
-| SLI measurement code introducing vulnerabilities          | The code that measures and reports SLIs runs in the application process — a vulnerability in the SLI reporting library could be exploited. Keep SLI instrumentation minimal and audit third-party libraries |
+| SLI data that can be manipulated to hide problems         | If error counters can be reset or modified without audit, a team could hide recurring failures � make SLI counters append-only and immutable after creation                                                 |
+| SLIs revealing application internals in public dashboards | A dashboard showing "agent_error_total by agent_name" reveals which agents exist and their error rates � aggregate SLI labels to service-level granularity for external sharing                             |
+| SLI measurement code introducing vulnerabilities          | The code that measures and reports SLIs runs in the application process � a vulnerability in the SLI reporting library could be exploited. Keep SLI instrumentation minimal and audit third-party libraries |
 
 ## Performance Considerations
 
 | Concern                                              | Approach                                                                                                                                                                                     |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SLI counter increment overhead at high request rates | Incrementing two counters (good + total) on every request adds overhead — batch counter increments and flush them periodically rather than writing each increment synchronously              |
-| SLI data storage growing faster than useful          | Storing every SLI data point at 1-second granularity for all services creates terabytes of data — aggregate to 1-minute resolution after 7 days and 1-hour resolution after 30 days          |
-| SLI query latency slowing down dashboards            | A dashboard querying 30 days of SLI data at per-minute granularity can take 10+ seconds — pre-aggregate SLI data for common time windows (1h, 24h, 7d, 30d) to enable fast dashboard loading |
+| SLI counter increment overhead at high request rates | Incrementing two counters (good + total) on every request adds overhead � batch counter increments and flush them periodically rather than writing each increment synchronously              |
+| SLI data storage growing faster than useful          | Storing every SLI data point at 1-second granularity for all services creates terabytes of data � aggregate to 1-minute resolution after 7 days and 1-hour resolution after 30 days          |
+| SLI query latency slowing down dashboards            | A dashboard querying 30 days of SLI data at per-minute granularity can take 10+ seconds � pre-aggregate SLI data for common time windows (1h, 24h, 7d, 30d) to enable fast dashboard loading |
 
 ## Workflows
 
-1. **Define a new SLI:** Identify user-facing metric → define good event vs
-   total events → instrument counter → add to dashboard
+1. **Define a new SLI:** Identify user-facing metric ? define good event vs
+   total events ? instrument counter ? add to dashboard
 2. **Collect SLI data:** Increment good/total counters atomically in request
-   handler → export via OpenTelemetry → store in time-series DB
-3. **Calculate SLI ratio:** `good_count / total_count` over time window →
+   handler ? export via OpenTelemetry ? store in time-series DB
+3. **Calculate SLI ratio:** `good_count / total_count` over time window ?
    compare against SLO target
 4. **Report SLI compliance:** Dashboard update (real-time for
-   latency/availability) → weekly report for accuracy metrics
-5. **Review SLI effectiveness:** Monthly review → are we measuring the right
-   thing? → adjust definitions as needed
-6. **Deprecate SLI:** When metric no longer matters → remove instrumentation →
+   latency/availability) ? weekly report for accuracy metrics
+5. **Review SLI effectiveness:** Monthly review ? are we measuring the right
+   thing? ? adjust definitions as needed
+6. **Deprecate SLI:** When metric no longer matters ? remove instrumentation ?
    archive historical data
 
 ---
@@ -215,8 +215,8 @@ class SLIMetrics {
 
 Service Level Indicators (SLIs) are the raw measurements that quantify Vaeloom's
 reliability and performance from the user's perspective. Each SLI defines a
-"good event" versus "total events" ratio — for example, API requests completing
-in under 500 milliseconds versus all API requests — that feeds directly into SLO
+"good event" versus "total events" ratio � for example, API requests completing
+in under 500 milliseconds versus all API requests � that feeds directly into SLO
 compliance calculations and SLA reporting.
 
 This document is intended for all engineers who instrument Vaeloom services, as
@@ -232,7 +232,7 @@ inference latency (how quickly do agents respond to user requests?). These
 AI-specific SLIs directly reflect the quality of the second-brain experience.
 
 The principle of "measure what matters" drives SLI selection. Every SLI in this
-document corresponds to a user-facing quality attribute — if the metric
+document corresponds to a user-facing quality attribute � if the metric
 degrades, users notice. SLIs that are easy to measure but don't reflect user
 experience (like health check pass rate) are explicitly excluded.
 

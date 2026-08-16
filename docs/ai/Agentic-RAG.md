@@ -158,7 +158,7 @@ The Router analyzes the query to determine the optimal strategy:
 ### Router Implementation
 
 ```python
-# apps/backend/src/backend/rag/router.py
+# apps/api/src/backend/rag/router.py
 from enum import Enum
 from dataclasses import dataclass
 from typing import List, Optional
@@ -223,7 +223,7 @@ def plan_retrieval(query: str, context: dict) -> RetrievalPlan:
 ## Hybrid Search Execution
 
 ```python
-# apps/backend/src/backend/rag/executor.py
+# apps/api/src/backend/rag/executor.py
 async def execute_hybrid_search(
     plan: RetrievalPlan,
     workspace_id: str,
@@ -293,7 +293,7 @@ graph LR
 ## Context Assembly
 
 ```python
-# apps/backend/src/backend/rag/assembler.py
+# apps/api/src/backend/rag/assembler.py
 def assemble_context(
     results: List[MemoryResult],
     max_tokens: int = 8000

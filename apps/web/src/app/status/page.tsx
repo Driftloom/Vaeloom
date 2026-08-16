@@ -66,7 +66,9 @@ function ServiceRow({
   return (
     <div className="flex items-center justify-between py-4 border-b border-border/50 last:border-0">
       <div className="flex items-center gap-4">
-        <div className={`w-3 h-3 rounded-full ${indicatorColors[s]} ${s === 'ok' ? 'animate-pulse' : ''}`} />
+        <div
+          className={`w-3 h-3 rounded-full ${indicatorColors[s]} ${s === 'ok' ? 'animate-pulse' : ''}`}
+        />
         <div>
           <span className="font-medium text-text">{name}</span>
           {latency !== undefined && (
@@ -74,11 +76,15 @@ function ServiceRow({
           )}
         </div>
       </div>
-      <span className={`text-sm font-mono px-2.5 py-0.5 rounded-full border ${
-        s === 'ok' ? 'text-green-400 border-green-500/30 bg-green-900/20' :
-        s === 'degraded' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-900/20' :
-        'text-red-400 border-red-500/30 bg-red-900/20'
-      }`}>
+      <span
+        className={`text-sm font-mono px-2.5 py-0.5 rounded-full border ${
+          s === 'ok'
+            ? 'text-green-400 border-green-500/30 bg-green-900/20'
+            : s === 'degraded'
+              ? 'text-yellow-400 border-yellow-500/30 bg-yellow-900/20'
+              : 'text-red-400 border-red-500/30 bg-red-900/20'
+        }`}
+      >
         {statusLabels[s]}
       </span>
     </div>
@@ -86,7 +92,9 @@ function ServiceRow({
 }
 
 export default function StatusPage() {
-  const [health, setHealth] = useState<{ overall: HealthResponse; ready: HealthResponse } | null>(null);
+  const [health, setHealth] = useState<{ overall: HealthResponse; ready: HealthResponse } | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -130,7 +138,13 @@ export default function StatusPage() {
 
   const overallStatus = overall?.status ?? 'down';
   const services = [
-    { name: 'Backend API', key: 'backend', status: deps ? { status: overallStatus as 'ok' | 'degraded' | 'down', latency_ms: 0 } : undefined },
+    {
+      name: 'Backend API',
+      key: 'backend',
+      status: deps
+        ? { status: overallStatus as 'ok' | 'degraded' | 'down', latency_ms: 0 }
+        : undefined,
+    },
     { name: 'Database', key: 'database', status: deps?.['database'] ?? readyDeps?.['database'] },
     { name: 'Redis', key: 'redis', status: deps?.['redis'] ?? readyDeps?.['redis'] },
     { name: 'AI Gateway', key: 'ai-gateway', status: deps?.['ai-gateway'] ?? deps?.['infisical'] },
@@ -141,11 +155,15 @@ export default function StatusPage() {
       <div className="max-w-2xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className={`w-4 h-4 rounded-full ${indicatorColors[overallStatus]} ${overallStatus === 'ok' ? 'animate-pulse' : ''}`} />
+            <div
+              className={`w-4 h-4 rounded-full ${indicatorColors[overallStatus]} ${overallStatus === 'ok' ? 'animate-pulse' : ''}`}
+            />
             <h1 className="text-4xl font-display font-bold text-text">Vaeloom Status</h1>
           </div>
           <p className="text-text-muted text-lg">
-            {overallStatus === 'ok' ? 'All systems operational' : 'Some systems experiencing issues'}
+            {overallStatus === 'ok'
+              ? 'All systems operational'
+              : 'Some systems experiencing issues'}
           </p>
           {overall?.timestamp && (
             <p className="text-text-muted text-sm mt-2 font-mono">
@@ -157,8 +175,13 @@ export default function StatusPage() {
         <div className="card p-6 mb-8">
           <h2 className="text-lg font-display font-medium text-text mb-2">Services</h2>
           <div className="divide-y divide-border/50">
-            {services.map(s => (
-              <ServiceRow key={s.key} name={s.name} status={s.status} latency={s.status?.latency_ms} />
+            {services.map((s) => (
+              <ServiceRow
+                key={s.key}
+                name={s.name}
+                status={s.status}
+                latency={s.status?.latency_ms}
+              />
             ))}
           </div>
         </div>
@@ -168,7 +191,7 @@ export default function StatusPage() {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-text-muted">Service</span>
-              <p className="text-text font-mono">{overall?.service ?? 'vaeloom-backend'}</p>
+              <p className="text-text font-mono">{overall?.service ?? 'vaeloom-api'}</p>
             </div>
             <div>
               <span className="text-text-muted">Version</span>
@@ -176,7 +199,9 @@ export default function StatusPage() {
             </div>
             <div>
               <span className="text-text-muted">Uptime</span>
-              <p className="text-text font-mono">{overall?.timestamp ? formatUptime(overall.timestamp) : '-'}</p>
+              <p className="text-text font-mono">
+                {overall?.timestamp ? formatUptime(overall.timestamp) : '-'}
+              </p>
             </div>
             <div>
               <span className="text-text-muted">Auto-refresh</span>
