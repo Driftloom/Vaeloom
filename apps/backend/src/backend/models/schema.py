@@ -25,6 +25,8 @@ class User(Base):
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
     preferences: Mapped[dict] = mapped_column(JSON, default=dict)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"))
+    consent_version: Mapped[str | None] = mapped_column(String(20))
+    consent_granted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -99,6 +101,8 @@ class Workspace(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+    consent_version: Mapped[str | None] = mapped_column(String(20))
+    consent_granted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -146,6 +150,8 @@ class Connector(Base):
     status: Mapped[str] = mapped_column(String(20), default="DISCONNECTED")
     token_ref: Mapped[str | None] = mapped_column(String(1000))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    oauth_scopes: Mapped[dict | None] = mapped_column(JSON)
+    refresh_token_rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     config: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -169,6 +175,8 @@ class Document(Base):
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     raw_storage_key: Mapped[str | None] = mapped_column(String(1000))
     summary: Mapped[str | None] = mapped_column(Text)
+    retention_policy: Mapped[str] = mapped_column(String(50), default="user_driven")
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -263,6 +271,8 @@ class MemoryRecord(Base):
     importance: Mapped[float] = mapped_column(Float, default=0.5)
     freshness_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     source_document_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id"))
+    supersedes_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("memory_records.id"))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -329,6 +339,8 @@ class Embedding(Base):
     source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     vector = Column(Vector(1536))
     model_version: Mapped[str] = mapped_column(String(100), default="text-embedding-3-small")
+    dimensions: Mapped[int | None] = mapped_column(Integer)
+    source_table: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
@@ -367,6 +379,7 @@ class Application(Base):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     outcome: Mapped[str | None] = mapped_column(String(50))
     outcome_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    idempotency_key: Mapped[str | None] = mapped_column(String(255))
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -466,6 +479,8 @@ class AgentAction(Base):
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     tokens_used: Mapped[int | None] = mapped_column(Integer)
     cost: Mapped[float | None] = mapped_column(Float)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255))
+    approval_request_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="agent_actions")
@@ -516,6 +531,39 @@ class AgentApproval(Base):
         Index("idx_agent_approvals_workspace_status", "workspace_id", "status"),
         Index("idx_agent_approvals_workspace_created", "workspace_id", "created_at"),
     )
+
+
+class ApprovalRequest(Base):
+    __tablename__ = "approval_request"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    action_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    scope_claims: Mapped[dict | None] = mapped_column(JSON)
+    ttl_seconds: Mapped[int] = mapped_column(Integer, default=300)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "idempotency_key", name="uq_approval_workspace_idempotency"),
+        Index("idx_approval_workspace_status_expiry", "workspace_id", "status", "expires_at"),
+    )
+
+
+class ApprovalDecision(Base):
+    __tablename__ = "approval_decision"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    approval_request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("approval_request.id", ondelete="CASCADE"), nullable=False)
+    decision: Mapped[str] = mapped_column(String(20), nullable=False)
+    decided_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    client_context: Mapped[dict | None] = mapped_column(JSON)
 
 
 class Permission(Base):

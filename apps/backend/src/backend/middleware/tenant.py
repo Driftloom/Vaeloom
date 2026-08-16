@@ -3,7 +3,7 @@ from contextvars import ContextVar
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import JSONResponse, Response
@@ -35,6 +35,28 @@ class TenantContext:
     @staticmethod
     def get_workspace_id() -> str | None:
         return tenant_context.get().get("workspace_id")
+
+
+async def set_rls_session_vars(db: AsyncSession) -> None:
+    """Set PostgreSQL session variables for Row Level Security.
+
+    Must be called on each DB session before queries that require RLS isolation.
+    Sets app.tenant_id and app.workspace_id GUCs used by RLS policies.
+    No-op on SQLite (RLS is disabled).
+    """
+    ctx = TenantContext.get()
+    tenant_id = ctx.get("tenant_id")
+    workspace_id = ctx.get("workspace_id")
+
+    if not tenant_id:
+        return
+
+    try:
+        await db.execute(text("SET app.tenant_id = :tid"), {"tid": tenant_id})
+        if workspace_id:
+            await db.execute(text("SET app.workspace_id = :wid"), {"wid": workspace_id})
+    except Exception:
+        pass  # SQLite or non-PostgreSQL — ignore
 
 
 class TenantMiddleware(BaseHTTPMiddleware):
