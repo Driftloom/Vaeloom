@@ -1,7 +1,10 @@
 # Zero-Trust Findings — Phantom Features & Dead Code
 
 **Date:** 2026-08-16 **Audit:** Full codebase re-audit (MVP-P00 intake)
-**Status:** Active findings that affect system behavior
+**Status:** Active findings that affect system behavior **Deep Audit:** See
+`01-deep-audit-2026-08-16.md` for comprehensive 23-section verification of every
+design claim against actual code (957 lines, 5 critical findings, 8 prioritized
+recommendations).
 
 ---
 
