@@ -1,6 +1,6 @@
 # Vaeloom — Agent Notes
 
-## 📜 Source of Truth — 66 Phase Prompts
+## Source of Truth — 66 Phase Prompts
 
 - **The 66 independent end-to-end phase prompts** (3 tracks x 22 phases: MVP,
   MVP-to-Enterprise continuation, Enterprise) are the **governing contract** for
@@ -24,7 +24,7 @@
 | Backend tests         | `cd apps/backend && python -m pytest tests/ -q`   | ~5min    |
 | ALL tests w/ cov      | `cd apps/backend && python -m pytest tests/ --co` | ~10min   |
 
-## 🚨 CRITICAL: Never use `pnpm dev`
+## CRITICAL: Never use `pnpm dev`
 
 `pnpm dev` runs `nx run-many --target=dev --parallel` which spawns Nx across
 **all 25 packages**. Most packages have no `dev` script, so it hangs forever.
@@ -46,37 +46,37 @@
 ## Backend — Test State
 
 - **2333 tests pass, 2 xfailed, 0 failures** (re-measured 2026-08-13 via fresh
-  full-suite run; security suite 172/172; coverage **97% total** — see
+  full-suite run; security suite 172/172; coverage **94% total** — see
   `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`)
-- Python 3.14 (note: `__athrow__` removed from async generators, use `athrow()`)
+- Python 3.12 (per `.python-version`)
 - Tests use SQLite with mock backend; `mock_llm` + `mock_connector_test` autouse
   fixtures in conftest.py
 
 ## Enterprise Hardening — Status
 
-| Phase                     | Status | Details                                                                                                                       |
-| ------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| 0.1 JWT validation        | ✅     | `validate_settings()` fails fast on default secret                                                                            |
-| 0.2 Plugin sandbox        | ✅     | `exec()` → subprocess isolation                                                                                               |
-| 0.3 Infisical secrets     | ✅     | SecretManager protocol, infisical/fallback                                                                                    |
-| 0.5 Rate limiting         | ✅     | Sliding window, per-endpoint decorator, Retry-After                                                                           |
-| 0.6 CORS hardening        | ✅     | Restricted origins/methods/headers, security headers                                                                          |
-| 0.7 Docs consolidation    | ✅     | Documents/ deleted, references fixed                                                                                          |
-| 0.8 Logging               | ✅     | JSON/pretty formatters, correlation IDs, structured fields                                                                    |
-| 1.x CI/CD                 | ✅     | GitHub Actions (backend, frontend, docker, deploy, release)                                                                   |
-| 2.x Frontend API          | ✅     | Typed client + all 16 pages wired                                                                                             |
-| 3.x Next.js pages         | ✅     | loading.tsx, error.tsx, not-found.tsx (global + per-route)                                                                    |
-| 4.x Enterprise auth       | ✅     | SSO (Google/Microsoft), RBAC middleware                                                                                       |
-| 5.x Observability         | ✅     | OpenTelemetry, health checks, Prometheus metrics                                                                              |
-| 6.x Multi-tenancy         | ✅     | Tenant context, tenant-aware DB, audit logging, data isolation                                                                |
-| 7.x Agent hardening       | ✅     | Circuit breaker, fallback policies, per-agent rate limits                                                                     |
-| 8.x Performance           | ✅     | SWR caching, route prefetching, image optimization, bundle analysis                                                           |
-| 9.x Security & Compliance | ✅     | GDPR, API key rotation, IP allowlisting, data retention, compliance docs                                                      |
-| 10.x Testing/QA           | ✅     | Integration tests (32), E2E smoke (Playwright), load test (k6), stress test, security tests, mutation tests, SonarQube config |
-| 11.x Documentation        | ✅     | 20 ADRs, OpenAPI spec, onboarding guide, deployment/DR runbooks, API reference                                                |
-| 12.x Enterprise Polish    | ✅     | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                               |
+| Phase                     | Status | Honest Status | Details                                                                                                                                            |
+| ------------------------- | ------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.1 JWT validation        | DONE   | IMPLEMENTED   | `validate_settings()` fails fast on default secret                                                                                                 |
+| 0.2 Plugin sandbox        | DONE   | IMPLEMENTED   | `exec()` → subprocess isolation                                                                                                                    |
+| 0.3 Infisical secrets     | DONE   | IMPLEMENTED   | SecretManager protocol, infisical/fallback                                                                                                         |
+| 0.5 Rate limiting         | DONE   | IMPLEMENTED   | Sliding window, per-endpoint decorator, Retry-After                                                                                                |
+| 0.6 CORS hardening        | DONE   | IMPLEMENTED   | Restricted origins/methods/headers, security headers                                                                                               |
+| 0.7 Docs consolidation    | DONE   | IMPLEMENTED   | Documents/ deleted, references fixed                                                                                                               |
+| 0.8 Logging               | DONE   | IMPLEMENTED   | JSON/pretty formatters, correlation IDs, structured fields                                                                                         |
+| 1.x CI/CD                 | DONE   | IMPLEMENTED   | GitHub Actions (backend, frontend, docker, deploy) — no release workflow                                                                           |
+| 2.x Frontend API          | DONE   | PARTIAL       | Typed client + 16 pages with real API; 7 pages use hardcoded mock data                                                                             |
+| 3.x Next.js pages         | DONE   | IMPLEMENTED   | loading.tsx, error.tsx, not-found.tsx (global + per-route)                                                                                         |
+| 4.x Enterprise auth       | DONE   | PARTIAL       | SSO (Google/Microsoft) implemented; SAML is STUB (methods return None); RBAC is dependency injection helper, not middleware                        |
+| 5.x Observability         | DONE   | PARTIAL       | OTel setup + correlation IDs work; Prometheus `/metrics` endpoint COMMENTED OUT (main.py:135-136); FastAPI OTel auto-instrumentation COMMENTED OUT |
+| 6.x Multi-tenancy         | DONE   | PARTIAL       | Tenant context via JWT works; TenantMiddleware EXISTS but NOT MOUNTED in main.py; RLS on 4/36 tables only; GUC app.tenant_id never SET             |
+| 7.x Agent hardening       | DONE   | IMPLEMENTED   | Circuit breaker, fallback policies, per-agent rate limits                                                                                          |
+| 8.x Performance           | DONE   | IMPLEMENTED   | SWR caching, route prefetching, image optimization, bundle analysis                                                                                |
+| 9.x Security & Compliance | DONE   | PARTIAL       | GDPR, API key rotation, data retention implemented; IP Allowlist middleware EXISTS but NOT MOUNTED in main.py                                      |
+| 10.x Testing/QA           | DONE   | PARTIAL       | 2335 pytest, 172 security, 37 jest, 39 e2e real; testing/smoke/, security/, chaos/, fuzz/, visual-regression/ are EMPTY                            |
+| 11.x Documentation        | DONE   | IMPLEMENTED   | 26 ADRs, OpenAPI spec, onboarding guide, deployment/DR runbooks, API reference                                                                     |
+| 12.x Enterprise Polish    | DONE   | IMPLEMENTED   | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                                                    |
 
-## 🔴 Critical Config for Agent Sessions
+## Critical Config for Agent Sessions
 
 When starting fresh, **these 4 things WILL break** if not handled:
 

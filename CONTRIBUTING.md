@@ -1,8 +1,8 @@
 # Contributing to Vaeloom
 
-Thank you for your interest in contributing to Vaeloom! We welcome
-contributions from everyone. By participating in this project, you agree to
-abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
+Thank you for your interest in contributing to Vaeloom! We welcome contributions
+from everyone. By participating in this project, you agree to abide by our
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Table of Contents
 
@@ -22,8 +22,9 @@ abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 - **Node.js** >= 20.0.0 (use the version pinned in `.nvmrc`)
 - **pnpm** >= 9.0.0
-- **Docker** & **Docker Compose** — required for local services (PostgreSQL, Redis, Qdrant, etc.)
-- **Python** >= 3.12 — required for the Python SDK and AI service
+- **Docker** & **Docker Compose** — required for local services (PostgreSQL,
+  Redis, etc.)
+- **Python** >= 3.12 — required for the Python backend (FastAPI)
 - **Nx CLI** — installed via pnpm (`pnpm add -g nx` or use `pnpm nx`)
 
 ## Development Setup
@@ -78,60 +79,56 @@ abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
 ```
 vaeloom/
 ├── apps/                   # Application entrypoints
-│   ├── api/               # API Gateway (NestJS)
-│   ├── web/               # Web application (Next.js)
-│   └── ai-service/        # AI service (Python FastAPI)
-├── services/              # Microservices (18 services)
-│   ├── auth-service/
-│   ├── iam-service/
-│   ├── knowledge-graph/
-│   ├── memory-store/
-│   └── ...                # Other microservices
-├── packages/              # Shared libraries
-│   ├── shared-types/      # TypeScript type definitions
-│   ├── ui-kit/            # React component library
-│   ├── eslint-config/     # Shared ESLint configuration
-│   ├── tsconfig/          # Shared TypeScript configuration
-│   ├── python-common/     # Common Python utilities
-│   └── plugin-sdk/        # Plugin development kit
-├── sdk/                   # Client SDKs
-│   ├── typescript/        # TypeScript SDK
-│   ├── python/            # Python SDK
-│   └── rest-api/          # REST API specification (OpenAPI)
-├── infra/                 # Infrastructure
-│   ├── kubernetes/        # K8s manifests
-│   ├── terraform/         # Terraform modules
-│   ├── docker/            # Dockerfiles
-│   └── scripts/           # Utility scripts
-├── database/              # Schema migrations and seeds
-├── connectors/            # Third-party connector adapters
-├── integrations/          # Low-code integration templates
-├── plugins/               # Official plugins
-├── .github/               # GitHub Actions and templates
-└── docs/                  # Documentation
+│   ├── backend/            # FastAPI Python backend (agents, memory, auth, API)
+│   └── web/                # Web application (Next.js 15)
+├── packages/               # Shared libraries
+│   ├── shared-types/       # TypeScript type definitions
+│   ├── ui-kit/             # React component library (hand-written Tailwind primitives)
+│   ├── eslint-config/      # Shared ESLint configuration
+│   ├── tsconfig/           # Shared TypeScript configuration
+│   ├── python-common/      # Common Python utilities
+│   ├── plugin-sdk/         # Plugin development kit
+│   ├── queue/              # Queue abstraction
+│   ├── observability/      # Tracing, metrics, logging
+│   └── service-auth/       # Service-to-service auth
+├── sdk/                    # Client SDKs
+│   ├── typescript/         # TypeScript SDK
+│   ├── python/             # Python SDK
+│   └── rest-api/           # REST API specification (OpenAPI)
+├── infra/                  # Infrastructure
+│   ├── kubernetes/         # K8s manifests
+│   ├── terraform/          # Terraform modules
+│   ├── docker/             # Dockerfiles
+│   └── scripts/            # Utility scripts
+├── connectors/             # Third-party connector adapters (REST, GraphQL, MCP)
+├── integrations/           # Integration packages (calendar, email, github, google-drive, notion, slack)
+├── plugins/                # Official plugins (sentiment, summarizer, translator, word-count, tag-generator)
+├── .github/                # GitHub Actions and templates
+└── docs/                   # Documentation
 ```
 
 ## Coding Standards
 
-### TypeScript / NestJS
+### TypeScript
 
 - **Strict mode** is enabled in `tsconfig.base.json`. Avoid using `any` — prefer
   `unknown` with proper type narrowing.
-- Follow the [NestJS](https://docs.nestjs.com/) conventions for services,
-  controllers, modules, and DTOs.
-- Use dependency injection and decorators consistently.
 - All public APIs must be fully typed with explicit return types.
 
 ### Python
 
-- Follow [PEP 8](https://peps.python.org/pep-0008/) with a 100-character line limit.
+- Follow [PEP 8](https://peps.python.org/pep-0008/) with a 100-character line
+  limit.
 - Use type hints for all function signatures and public methods.
 - Use Pydantic models for data validation and serialization.
+- Follow [FastAPI](https://fastapi.tiangolo.com/) conventions for routers,
+  dependencies, and OpenAPI annotations.
 
 ### Linting & Formatting
 
 - **ESLint** with the project's shared config (`@vaeloom/eslint-config`)
-- **Prettier** for automatic code formatting (run `pnpm format` before committing)
+- **Ruff** for Python linting and formatting
+- **Prettier** for TypeScript formatting (run `pnpm format` before committing)
 - **Husky** pre-commit hooks run lint-staged automatically
 
 Run the linter on your changes:
@@ -155,18 +152,18 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ### Types
 
-| Type       | Usage                                         |
-| ---------- | --------------------------------------------- |
-| `feat`     | A new feature                                 |
-| `fix`      | A bug fix                                     |
-| `chore`    | Build process, tooling, or dependency changes |
-| `docs`     | Documentation only changes                    |
-| `test`     | Adding or updating tests                      |
-| `refactor` | Code change that neither fixes a bug nor adds a feature |
+| Type       | Usage                                                       |
+| ---------- | ----------------------------------------------------------- |
+| `feat`     | A new feature                                               |
+| `fix`      | A bug fix                                                   |
+| `chore`    | Build process, tooling, or dependency changes               |
+| `docs`     | Documentation only changes                                  |
+| `test`     | Adding or updating tests                                    |
+| `refactor` | Code change that neither fixes a bug nor adds a feature     |
 | `style`    | Formatting, missing semicolons, etc. (no production change) |
-| `perf`     | Performance improvement                       |
-| `ci`       | CI/CD configuration changes                   |
-| `security` | Security fix or improvement                   |
+| `perf`     | Performance improvement                                     |
+| `ci`       | CI/CD configuration changes                                 |
+| `security` | Security fix or improvement                                 |
 
 ### Scope
 
@@ -174,7 +171,7 @@ Use the package/service name as the scope:
 
 - `feat(auth): add MFA TOTP support`
 - `fix(knowledge-graph): resolve community detection O(n²) issue`
-- `docs(api): update WebSocket endpoint reference`
+- `docs(backend): update API endpoint reference`
 
 ### Examples
 
@@ -201,7 +198,8 @@ fix(auth): handle token refresh race condition
    <type>/<short-description>
    ```
 
-   Examples: `feat/rbac-policy-engine`, `fix/auth-refresh-race`, `docs/api-websocket`
+   Examples: `feat/rbac-policy-engine`, `fix/auth-refresh-race`,
+   `docs/api-websocket`
 
 3. **Before submitting**, ensure:
 
@@ -215,21 +213,26 @@ fix(auth): handle token refresh race condition
 
    ```markdown
    ## Summary
+
    <!-- Brief description of the change -->
 
    ## Related Issues
+
    <!-- Closes #123, Implements #456 -->
 
    ## Type of Change
+
    - [ ] Bug fix
    - [ ] New feature
    - [ ] Breaking change
    - [ ] Documentation update
 
    ## Testing
+
    <!-- Describe tests you added or updated -->
 
    ## Checklist
+
    - [ ] I have read the CONTRIBUTING document
    - [ ] My code follows the project's coding standards
    - [ ] I have added tests that prove my fix/feature works
@@ -246,25 +249,24 @@ fix(auth): handle token refresh race condition
 
 ## Testing Requirements
 
-- **Unit tests** are **required** for all new code. We use Jest for TypeScript and
-  pytest for Python.
-- **Integration tests** are required for all services and API endpoints. Tests
-  should spin up the service with its dependencies (in Docker) and exercise
-  real HTTP/gRPC flows.
+- **Unit tests** are **required** for all new code. We use Jest for TypeScript
+  and pytest for Python.
+- **Integration tests** are required for API endpoints. Tests use SQLite with
+  mocked LLM and connector backends.
 - **E2E tests** are strongly encouraged for cross-service functionality.
 - Aim for **80%+ line coverage** on new code. Coverage gates are enforced in CI.
 
 Run tests:
 
 ```bash
+# Backend tests
+cd apps/backend && python -m pytest tests/ -q
+
+# Frontend tests
+cd apps/web && pnpm test
+
 # All tests
 pnpm test
-
-# Single service
-pnpm nx test auth-service
-
-# With coverage
-pnpm nx test auth-service --coverage
 ```
 
 ## Documentation Requirements

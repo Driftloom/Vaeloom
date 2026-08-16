@@ -1,7 +1,7 @@
 import type { Config } from 'jest';
 
 const config: Config = {
-  projects: ['<rootDir>/apps/*', '<rootDir>/packages/*', '<rootDir>/services/*'],
+  projects: ['<rootDir>/apps/*', '<rootDir>/packages/*'],
   coverageDirectory: '<rootDir>/coverage',
   collectCoverageFrom: ['**/*.(t|j)s', '!**/*.d.ts', '!**/node_modules/**', '!**/dist/**'],
   coverageReporters: ['lcov', 'text', 'clover'],

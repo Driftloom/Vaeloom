@@ -9,9 +9,6 @@ updates:
     labels:
       - 'dependencies'
     groups:
-      nestjs:
-        patterns:
-          - '@nestjs/*'
       react:
         patterns:
           - 'react'

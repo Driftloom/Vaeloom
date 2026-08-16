@@ -112,6 +112,14 @@ htmlcov/
 docs/openapi.json
 docs/openapi.yaml
 
+# Backup artifacts
+backups/
+*.backup
+*.bak
+
+# Seed output
+seed_output/
+
 # Misc
 *.tsbuildinfo
 .eslintcache

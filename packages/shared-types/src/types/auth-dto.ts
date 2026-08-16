@@ -2,9 +2,9 @@ import type { UUID, ISO8601, Email } from './domain';
 import type { Workspace } from './workspace';
 
 /**
- * Wire contracts shared between apps/web and apps/api for the auth scaffold (file 01).
- * The api implements these with class-validator DTOs; the web imports them for typed calls.
- * Keeping them here satisfies the acceptance criterion: no type duplication between web and api.
+ * Wire contracts shared between apps/web and apps/backend for the auth scaffold (file 01).
+ * The backend implements these with Pydantic models; the web imports them for typed calls.
+ * Keeping them here satisfies the acceptance criterion: no type duplication between web and backend.
  */
 
 /** Public (safe) representation of a user — never includes the password hash. */
