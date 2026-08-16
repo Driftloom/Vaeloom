@@ -1,24 +1,31 @@
 ﻿# MVP-P01 - 11. Value / Risk Hypotheses (DEL-MVP-P01-03)
 
 > **Deliverable:** DEL-MVP-P01-03 - value/risk hypotheses; versioned, owned,
-> reviewed and linked. **Status:** V1.0 - refreshed at the 2026-08-13 re-run at
-> baseline `1def16d`. **Owner:** Product Manager / AI Product Lead / UX
-> Researcher. **Prompt reference:** §1/§2/§3/§12/§18. **Rule:** hypotheses are
-> falsifiable and tied to a validation-backlog experiment
-> (`05-validation-backlog.md`, VB-01..08). No hypothesis has been executed - all
-> experiments require the design-partner cohort (DEC-P01-07, RB-04) or runtime
-> phases (P05+). Status is `NOT_EXECUTED` unless a threshold or cohort decision
-> is needed, in which case it is `REQUIRES_STAKEHOLDER_DECISION` with owner.
+> reviewed and linked. **Status:** V2.0 - upgraded 2026-08-16 to reflect actual
+> codebase reality: 22 memory types (not6), approval gate hardcoded OFF, QA gate
+> exists. **Owner:** Product Manager / AI Product Lead / UX Researcher. **Prompt
+> reference:** §1/§2/§3/§12/§18. **Rule:** hypotheses are falsifiable and tied
+> to a validation-backlog experiment (`05-validation-backlog.md`, VB-01..08). No
+> hypothesis has been executed - all experiments require the design-partner
+> cohort (DEC-P01-07, RB-04) or runtime phases (P05+). Status is `NOT_EXECUTED`
+> unless a threshold or cohort decision is needed, in which case it is
+> `REQUIRES_STAKEHOLDER_DECISION` with owner.
 
 ## Hypothesis register
 
-### H-01 - Memory quality: 6-memory recall removes repeat input (value)
+### H-01 - Memory quality: 22-memory-type recall removes repeat input (value)
 
-- **Hypothesis:** IF the six memory types (Profile, Document, Career, Episodic,
-  Preference, Working; `docs/04-memory-knowledge-graph.md`) record and recall a
-  user's career facts from ingested inputs, THEN the user re-enters the same
-  fact <1x/week after adoption, BECAUSE memory replaces manual re-entry across
-  features that share one spine (spec §7).
+- **Hypothesis:** IF the twenty-two memory types (person, organization, project,
+  skill, achievement, education, experience, certification, publication, patent,
+  award, meeting, task, goal, preference, constraint, insight, connection,
+  location, event, document, conversation; `schemas/memory_types.py`) record and
+  recall a user's career facts from ingested inputs, THEN the user re-enters the
+  same fact <1x/week after adoption, BECAUSE memory replaces manual re-entry
+  across features that share one spine (spec §7). CODEBASE GAP: the MemoryAgent
+  (`memory_agent/handler.py:25-27`) currently reads/writes only `profile` and
+  `document` types — 2 of22. The remaining20 types have extraction prompts and
+  validation rules in the registry but are not wired into the extraction
+  pipeline. This gap must be closed before H-01 can be meaningfully tested.
 - **Why it matters:** memory is the product (spec §3); if it does not remove
   re-entry, the wedge fails (BQ-06b pivot, DEC-P01-05).
 - **Falsification test:** repeat-input rate (duplicate entry events per user per
@@ -54,6 +61,13 @@
   exactly what will happen in plain language, THEN users mis-approve or abandon
   approvals <5% of the time and accept >=80% of proposals, BECAUSE
   suggest-mode-first makes the agent's reach legible (spec §12, prompt §3).
+  CODEBASE GAP: the approval gate described in spec §12 is not implemented in
+  the core loop — `loop.py:83` hardcodes `has_approval=False` for
+  ApplicationAgent. No approval infrastructure (payload binding, expiry,
+  immutable confirmation) exists in the agent loop. The QA gate
+  (`router.py:278-296`) validates agent outputs but does not enforce user
+  approval before consequential actions. H-03 is unfalsifiable until approval
+  infrastructure is built.
 - **Why it matters:** confusing approvals are a named trust failure (prompt
   overlay item 1) and the BQ-06a STOP trigger (DEC-P01-05).
 - **Falsification test:** approval-confusion rate (mis-approval + help-seeking
@@ -136,7 +150,24 @@
   file ops) require immutable payload-bound expiring approval + idempotency
   (prompt §3), THEN zero unauthorized consequential actions occur and users
   report no surprise actions, BECAUSE suggest-mode-first + approval binding
-  bound the agent's reach by construction (spec §3/§12).
+  bound the agent's reach by construction (spec §3/§12). CODEBASE GAP: approval
+  gate not implemented — `loop.py:83` hardcodes `has_approval=False`. The
+  ApplicationAgent runs without user confirmation. H-08 is unfalsifiable until
+  approval infrastructure is built. The QA gate (`router.py:278-296`) is the
+  only runtime quality gate but does not enforce user consent.
+
+### H-09 - QA gate reduces bad outputs before delivery (value)
+
+- **Hypothesis:** IF the QA gate (`router.py:278-296`) validates every agent
+  output and retries up to3x before delivering with a
+  `best_effort_after_retries` flag, THEN bad outputs delivered to the user
+  decline vs. no QA gate, BECAUSE the QA agent catches formatting errors,
+  missing fields, and policy violations before delivery. CODEBASE_VERIFIED:
+  QAAgent is instantiated in `router.py:279` and runs in a loop up to3x
+  (`max_qa_retries = 3`). This is the only runtime quality gate currently
+  implemented. Experiment design: measure QA rejection rate and
+  `best_effort_after_retries` flag frequency in cohort telemetry. Status:
+  NOT_EXECUTED. Owner: AI Product Lead.
 - **Why it matters:** overreach is the hardest trust failure (prompt overlay
   item 1); unapproved action is a hard block (prompt §16).
 - **Falsification test:** any unapproved consequential action in cohort or
@@ -149,20 +180,22 @@
 
 ## Summary
 
-| ID   | Type          | Domain                                       | Status                        | Owner                | Linked experiment   |
-| ---- | ------------- | -------------------------------------------- | ----------------------------- | -------------------- | ------------------- |
-| H-01 | Value         | Memory quality (recall)                      | REQUIRES_STAKEHOLDER_DECISION | Product              | VB-02               |
-| H-02 | Risk/negative | Wrong memory                                 | NOT_EXECUTED                  | AI Product Lead / UX | VB-01, VB-02, RB-01 |
-| H-03 | Value + risk  | Trust/approval UX (confusing approvals)      | REQUIRES_STAKEHOLDER_DECISION | Privacy / UX         | VB-03               |
-| H-04 | Value         | Resume/ATS value                             | NOT_EXECUTED                  | Product              | VB-04, VB-06        |
-| H-05 | Value + risk  | Gmail deadline extraction (missed deadlines) | REQUIRES_STAKEHOLDER_DECISION | AI Product Lead      | VB-01               |
-| H-06 | Value         | Reminders                                    | NOT_EXECUTED                  | Product              | VB-01               |
-| H-07 | Value + risk  | Export/deletion (difficult deletion)         | NOT_EXECUTED                  | Privacy              | VB-05               |
-| H-08 | Risk/negative | Bounded ops (overreach)                      | NOT_EXECUTED                  | Security / AI        | VB-03, P13 tests    |
+| ID   | Type          | Domain                                       | Status                        | Owner                | Linked experiment   | Codebase note                        |
+| ---- | ------------- | -------------------------------------------- | ----------------------------- | -------------------- | ------------------- | ------------------------------------ |
+| H-01 | Value         | Memory quality (recall)                      | REQUIRES_STAKEHOLDER_DECISION | Product              | VB-02               | MemoryAgent scoped to2 of22 types    |
+| H-02 | Risk/negative | Wrong memory                                 | NOT_EXECUTED                  | AI Product Lead / UX | VB-01, VB-02, RB-01 | —                                    |
+| H-03 | Value + risk  | Trust/approval UX (confusing approvals)      | REQUIRES_STAKEHOLDER_DECISION | Privacy / UX         | VB-03               | Approval gate hardcoded OFF          |
+| H-04 | Value         | Resume/ATS value                             | NOT_EXECUTED                  | Product              | VB-04, VB-06        | —                                    |
+| H-05 | Value + risk  | Gmail deadline extraction (missed deadlines) | REQUIRES_STAKEHOLDER_DECISION | AI Product Lead      | VB-01               | —                                    |
+| H-06 | Value         | Reminders                                    | NOT_EXECUTED                  | Product              | VB-01               | —                                    |
+| H-07 | Value + risk  | Export/deletion (difficult deletion)         | NOT_EXECUTED                  | Privacy              | VB-05               | —                                    |
+| H-08 | Risk/negative | Bounded ops (overreach)                      | NOT_EXECUTED                  | Security / AI        | VB-03, P13 tests    | Approval gate hardcoded OFF          |
+| H-09 | Value         | QA gate reduces bad outputs                  | NOT_EXECUTED                  | AI Product Lead      | Telemetry-based     | QA gate exists (`router.py:278-296`) |
 
 Negative/risk hypotheses explicitly covered: wrong memory (H-02), overreach
 (H-08), missed deadlines (H-05), confusing approvals (H-03), difficult deletion
-(H-07) - per the prompt trust-failure-scenarios overlay.
+(H-07) - per the prompt trust-failure-scenarios overlay. H-09 added to reflect
+the QA gate that was not in prior P01 deliverables.
 
 ## References
 
@@ -171,3 +204,7 @@ Negative/risk hypotheses explicitly covered: wrong memory (H-02), overreach
 - `docs/phases/mvp-p01/12-success-metrics.md` (measurement methods)
 - `docs/phases/mvp-p01/13-non-goals-research-backlog.md` (RB-01..05)
 - `docs/phases/mvp-p00/12-future-readiness-backlog.md` (FB-01..05)
+- `apps/backend/src/backend/schemas/memory_types.py` (22 memory types)
+- `apps/backend/src/backend/agents/memory_agent/handler.py` (MemoryAgent scope)
+- `apps/backend/src/backend/orchestrator/loop.py:83` (approval gate OFF)
+- `apps/backend/src/backend/orchestrator/router.py:278-296` (QA gate)
