@@ -204,13 +204,13 @@ deployed. Queue layer is not running. No exit needed.
 
 ## 6. Gaps
 
-| Gap                       | Risk                      | Owner    | Phase   | Remediation              |
-| ------------------------- | ------------------------- | -------- | ------- | ------------------------ |
-| No concrete PaaS selected | Deployment target unclear | Platform | P16/P19 | Decision at P16          |
-| No auto-sleep/idle        | $0 budget at risk         | Platform | P16     | PaaS built-in            |
-| No cost dashboard         | Spend visibility          | FinOps   | P17     | Grafana/OTel             |
-| No load testing results   | Capacity unknown          | QA       | P15     | k6/locust tests          |
-| Prometheus COMMENTED OUT  | No metrics endpoint       | SRE      | P17     | Uncomment in main.py:135 |
+| Gap                         | Risk                      | Owner    | Phase   | Remediation           |
+| --------------------------- | ------------------------- | -------- | ------- | --------------------- |
+| No concrete PaaS selected   | Deployment target unclear | Platform | P16/P19 | Decision at P16       |
+| No auto-sleep/idle          | $0 budget at risk         | Platform | P16     | PaaS built-in         |
+| No cost dashboard           | Spend visibility          | FinOps   | P17     | Grafana/OTel          |
+| No load testing results     | Capacity unknown          | QA       | P15     | k6/locust tests       |
+| Prometheus metrics endpoint | No metrics endpoint       | SRE      | P17     | Verify at main.py:167 |
 
 ## 7. Evidence (EVD)
 

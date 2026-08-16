@@ -34,39 +34,45 @@ the row is invisible to all queries (fail-closed by design).
 
 ---
 
-## 2. Current State (Honest Assessment)
+## 2. Current State — IMPLEMENTED 2026-08-17
 
 ### What actually exists today
 
-| Layer                  | Mechanism                                                                                         | Status                                                         |
-| ---------------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| **Application-level**  | `TenantContext` middleware (reads `X-Tenant-ID` / `X-Workspace-ID` headers, stores in ContextVar) | Implemented                                                    |
-| **Application-level**  | `TenantAwareRepository` base class (adds `tenant_id` filter to queries)                           | Implemented but **unused by most agents/services**             |
-| **Database-level**     | RLS on 4 tables only: `memories`, `events`, `usage_records`, `api_keys`                           | Implemented via `0005_rls.py`                                  |
-| **RLS policy**         | Uses `tenant_id` **only** — no `workspace_id` filter in SQL                                       | Implemented                                                    |
-| **Session GUCs**       | `SET app.tenant_id` / `SET app.workspace_id`                                                      | **Not implemented** — no application code sets these           |
-| **PostgreSQL roles**   | `app`, `migrator`, `reporter`                                                                     | **Not created**                                                |
-| **Composite NOT NULL** | Enforced on new tables                                                                            | **Partial** — only on tables created/modified in P07 migration |
+| Layer                 | Mechanism                                                                                         | Status                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Application-level** | `TenantContext` middleware (reads `X-Tenant-ID` / `X-Workspace-ID` headers, stores in ContextVar) | ✅ Implemented                                                 |
+| **Application-level** | `TenantAwareRepository` base class (adds `tenant_id` filter to queries)                           | ✅ Implemented but **unused by most agents/services**          |
+| **Database-level**    | RLS on **34 tables** (31 from 0005 + 3 from 0007)                                                 | ✅ Implemented                                                 |
+| **RLS policy**        | Composite `workspace_id` + `tenant_id` filter (not just tenant_id)                                | ✅ Implemented                                                 |
+| **Session GUCs**      | `SET LOCAL app.tenant_id` / `SET LOCAL app.workspace_id` (transaction-scoped)                     | ✅ **Implemented** in `middleware/tenant.py` and `database.py` |
+| **PgBouncer safety**  | Uses `SET LOCAL` (not `SET`) — safe with transaction pooling                                      | ✅ **Implemented** — no cross-tenant leak via connection reuse |
+| **FORCE RLS**         | `ALTER TABLE ... FORCE ROW LEVEL SECURITY` on all 34 RLS tables                                   | ✅ **Implemented** via migration 0010                          |
+| **PostgreSQL roles**  | `vaeloom_app` (app), `vaeloom_migrator` (BYPASSRLS), `vaeloom_readonly` (analytics)               | ✅ **Implemented** via migration 0010                          |
+| **CI isolation test** | `tests/test_rls_isolation.py` — 4 tests verifying cross-tenant isolation                          | ✅ **Implemented**                                             |
 
-### Critical gaps
+### Remaining gaps
 
-1. **RLS is effectively inert.** No application code calls `SET app.tenant_id`
-   or `SET app.workspace_id`, so the `current_setting()` calls in RLS policies
-   return NULL. The policies silently exclude all rows — but this only matters
-   if RLS is actually enabled on the table. For the 4 tables with RLS, queries
-   return zero rows unless the session variables are set. For the other ~26
-   tables, no RLS exists at all.
+1. **TenantAwareRepository not widely adopted.** Most agents and services query
+   tables directly without going through the repository layer, bypassing the
+   application-level tenant filter. RLS provides DB-level safety net.
 
-2. **tenant_id-only filter in RLS.** The current RLS policies match on
+2. **Nullable tenant_id on legacy tables.** `Memory`, `Connector`, `Agent`, and
+   `Event` have nullable `tenant_id`. RLS USING clause returns no rows for NULL
+   (correct fail-closed), but existing data in those tables may be invisible
+   once RLS is enforced. if RLS is actually enabled on the table. For the 4
+   tables with RLS, queries return zero rows unless the session variables are
+   set. For the other ~26 tables, no RLS exists at all.
+
+3. **tenant_id-only filter in RLS.** The current RLS policies match on
    `tenant_id` alone. Two workspaces within the same tenant can see each other's
    rows at the database level (application-level filtering may still block this,
    but there is no DB-level enforcement).
 
-3. **TenantAwareRepository is not widely adopted.** Most agents and services
+4. **TenantAwareRepository is not widely adopted.** Most agents and services
    query tables directly without going through the repository layer, bypassing
    the application-level tenant filter.
 
-4. **Nullable tenant_id on legacy tables.** `Memory`, `Connector`, `Agent`, and
+5. **Nullable tenant_id on legacy tables.** `Memory`, `Connector`, `Agent`, and
    `Event` have nullable `tenant_id`. RLS USING clause returns no rows for NULL
    (correct fail-closed), but this means existing data in those tables may be
    invisible once RLS is enforced.

@@ -81,14 +81,15 @@
 
 - No runtime tests executed (standards-only phase)
 - Config edits verified via static analysis (no syntax errors)
-- Prior test baseline carried: 2333 pass, 97% coverage (re-measured 2026-08-13)
+- Prior test baseline carried: 2333 pass, 94% coverage (measured 2026-08-12;
+  fail_under=80%)
 
 ## I. Security/Privacy
 
 - License policy defined (MIT/Apache-2.0/BSD/ISC allowed; AGPL/SSPL/BSL
   prohibited)
 - Vulnerability SLA defined (CRITICAL 24h, HIGH 7d, MEDIUM 30d, LOW 90d)
-- Supply-chain threats mapped (OWASP LLM03)
+- Supply-chain threats mapped (OWASP LLM03 + ASI04)
 - SBOM + cosign keyless configured
 - No compliance claims without legal review
 
@@ -103,7 +104,7 @@
 ## K. Traceability
 
 - Requirements → Design → File → EVD chain complete
-- EVD rows 001–011 with type (REPO_VERIFIED/DESIGN/STAKEHOLDER_DECISION)
+- EVD rows 001–023 with type (REPO_VERIFIED/DESIGN/STAKEHOLDER_DECISION)
 - Conflict log CF-P06-01..08: ALL RESOLVED with evidence
 
 ## L. Risks/Decisions
@@ -118,7 +119,7 @@
 | Gap                                          | Owner    | Phase |
 | -------------------------------------------- | -------- | ----- |
 | No automated license check                   | Security | P16   |
-| /metrics instrumentator COMMENTED OUT        | SRE      | P17   |
+| /metrics instrumentator                      | SRE      | P17   |
 | No release workflow                          | DevOps   | P16   |
 | Backend Dockerfile uses pip, not uv lockfile | Platform | P16   |
 | No dependency-review-action                  | Security | P16   |

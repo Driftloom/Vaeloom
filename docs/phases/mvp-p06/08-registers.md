@@ -39,21 +39,21 @@
 
 ## 4. Deferred ideas (future backlog)
 
-| Idea                                         | Trigger                | Owner       | Notes                                  |
-| -------------------------------------------- | ---------------------- | ----------- | -------------------------------------- |
-| ESLint flat config migration (v8 → v9)       | P16                    | Frontend    | Current legacy .eslintrc works         |
-| eslint-plugin-security                       | P16                    | Security    | —                                      |
-| Pre-commit eslint/ruff (not just prettier)   | P16                    | Platform    | —                                      |
-| /metrics instrumentator uncommented          | P17                    | SRE         | Currently COMMENTED OUT in main.py:135 |
-| gitleaks local config (.gitleaks.toml)       | P16                    | Security    | Action uses defaults                   |
-| pip-audit continue-on-error → blocking       | P16                    | Security    | Currently non-blocking                 |
-| dependency-review-action                     | P16                    | Security    | New deps not auto-reviewed             |
-| osv-scanner                                  | P16                    | Security    | Only implicit via pip-audit            |
-| Backend Dockerfile uv lockfile enforcement   | P16                    | Platform    | Currently uses pip install             |
-| Gmail push (watch → push path)               | >100 users             | Integration | polling first (DEC-P02-01)             |
-| RLS native enforcement (full table coverage) | P07 verify / P14 suite | Security    | currently 4/36 tables                  |
-| k8s/terraform prod                           | enterprise track       | Cloud       | PaaS-first MVP (ADR-026)               |
-| T2 discovery / T3 autopilot                  | legal review + flags   | Product     | AUTO-02/03 OFF                         |
+| Idea                                         | Trigger                | Owner       | Notes                                    |
+| -------------------------------------------- | ---------------------- | ----------- | ---------------------------------------- |
+| ESLint flat config migration (v8 → v9)       | P16                    | Frontend    | Current legacy .eslintrc works           |
+| eslint-plugin-security                       | P16                    | Security    | —                                        |
+| Pre-commit eslint/ruff (not just prettier)   | P16                    | Platform    | —                                        |
+| /metrics instrumentator                      | P17 verify             | SRE         | Re-enabled at main.py:167; verify at P17 |
+| gitleaks local config (.gitleaks.toml)       | P16                    | Security    | Action uses defaults                     |
+| pip-audit continue-on-error → blocking       | P16                    | Security    | Currently non-blocking                   |
+| dependency-review-action                     | P16                    | Security    | New deps not auto-reviewed               |
+| osv-scanner                                  | P16                    | Security    | Only implicit via pip-audit              |
+| Backend Dockerfile uv lockfile enforcement   | P16                    | Platform    | Currently uses pip install               |
+| Gmail push (watch → push path)               | >100 users             | Integration | polling first (DEC-P02-01)               |
+| RLS native enforcement (full table coverage) | P07 verify / P14 suite | Security    | currently 4/36 tables                    |
+| k8s/terraform prod                           | enterprise track       | Cloud       | PaaS-first MVP (ADR-026)                 |
+| T2 discovery / T3 autopilot                  | legal review + flags   | Product     | AUTO-02/03 OFF                           |
 
 ## 5. Evidence (EVD)
 

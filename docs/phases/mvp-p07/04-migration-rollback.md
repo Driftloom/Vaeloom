@@ -1,25 +1,80 @@
 # MVP-P07 — 04. Migration & Rollback Plan (DEL-MVP-P07-02)
 
-> Owner: Database Engineer · Dual migration system (Alembic + custom runner).
-> Forward/backward, observable, idempotent. Executed at P11 (this phase =
-> design). Never destructive without backup + rollback (P03 §7).
+> Owner: Database Engineer · Canonical migration authority: **Alembic only**.
+> Custom runner retained for dev convenience. Forward/backward, observable,
+> idempotent. Never destructive without backup + rollback.
 
-## 1. Dual Migration System — The Problem
+## 1. Migration Inventory — UPDATED 2026-08-17
 
-Two parallel migration systems exist and **must not be used together**:
+### Alembic Migrations (canonical — 11 total)
 
-| System            | Location                  | Versions  | Tracking Table      | State                             |
-| ----------------- | ------------------------- | --------- | ------------------- | --------------------------------- |
-| **Alembic**       | `alembic/versions/`       | 0001–0006 | `alembic_version`   | Canonical for prod                |
-| **Custom Runner** | `src/backend/migrations/` | 0002–0007 | `schema_migrations` | Used by `create_all` startup path |
+| Migration                      | What It Does                                                               | Gap Fixed                         |
+| ------------------------------ | -------------------------------------------------------------------------- | --------------------------------- |
+| `0001_initial_schema`          | Creates 25 core tables                                                     | ✅ Baseline                       |
+| `0002_microservice_tables`     | Creates microservice tables (knowledge, IAM, etc.)                         | ✅ Baseline                       |
+| `0003_approval_tables`         | Creates `approval_request` + `approval_decision` + idempotency cols        | ✅ Baseline                       |
+| `0004_memory_taxonomy`         | Adds `domain`/`supersedes_id`/`deleted_at` to memories + memory_records    | ⚠️ Missing CHECK                  |
+| `0005_rls_expanded`            | Enables RLS on 31 tables with composite workspace+tenant policies          | ✅ Baseline                       |
+| `0006_provenance`              | Adds consent columns, retention_policy, deleted_at, oauth_scopes           | ✅ Baseline                       |
+| **`0007_missing_tables`**      | **NEW: Creates `agent_approvals`, `idempotency_records`, `gmail_watches`** | **FIXES: 3 missing tables**       |
+| **`0008_schema_gaps`**         | **NEW: Adds 5 missing columns to `agent_executions` and `connectors`**     | **FIXES: 5 missing columns**      |
+| **`0009_memory_domain_check`** | **NEW: CHECK constraint on `memories.domain` with backfill**               | **FIXES: missing CHECK**          |
+| **`0010_rls_force_and_roles`** | **NEW: FORCE RLS on 34 tables, 3 roles, BYPASSRLS revocation**             | **FIXES: owner bypass, no roles** |
+| **`0011_hnsw_index`**          | **NEW: HNSW index replaces IVFFlat for embeddings + memories**             | **FIXES: query performance**      |
 
-**Conflict:** Custom runner 0002 duplicates Alembic 0002 (both create
-microservice tables). Running both systems against the same database will fail
-on duplicate table creation.
+### Custom Runner Migrations (dev convenience — NOT for production)
 
-**Recommendation:** Consolidate onto Alembic for prod. Custom runner is retained
-for dev/test convenience (`create_all` + runner bootstraps a fresh DB without
-Alembic). Gate the custom runner behind `ENV != prod` or deprecate it entirely.
+| Migration   | Purpose                                | Production Use |
+| ----------- | -------------------------------------- | -------------- |
+| `0002-0007` | Bootstrap fresh dev DB without Alembic | ❌ Dev only    |
+
+**Recommendation:** Custom runner is gated behind `ENV != prod`. All production
+databases use Alembic exclusively. The custom runner 0002 duplicates Alembic
+0002 and must not be run against the same database.
+
+## 2. Rollback Procedures
+
+### Per-migration rollback
+
+Each migration has a `downgrade()` function that reverses its changes:
+
+| Migration | Rollback Action                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------ |
+| 0007      | DROP tables: `agent_approvals`, `idempotency_records`, `gmail_watches`                           |
+| 0008      | DROP columns: `agent_executions.tenant_id/user_id/response_time_ms`, `connectors.name/tenant_id` |
+| 0009      | DROP CHECK constraint `chk_memories_domain`                                                      |
+| 0010      | DROP roles, REMOVE FORCE RLS                                                                     |
+| 0011      | DROP HNSW indexes, RECREATE IVFFlat index                                                        |
+
+### Full rollback procedure
+
+```bash
+# 1. Backup current state
+./scripts/backup.sh /tmp/pre-rollback-backup
+
+# 2. Rollback N migrations
+alembic downgrade -N  # where N = number of migrations to rollback
+
+# 3. Verify schema
+psql $DATABASE_URL -c "\dt" | wc -l  # should match expected table count
+
+# 4. Run smoke test
+./scripts/restore.sh /tmp/pre-rollback-backup/vaeloom_*.dump --smoke-test
+```
+
+## 3. Forward Migration Safety
+
+All migrations follow these rules:
+
+1. **Expand-contract pattern**: Add new columns/tables first, backfill, then add
+   constraints. Never drop columns in the same migration that adds them.
+2. **Idempotent where possible**: `IF NOT EXISTS` / `IF EXISTS` guards.
+3. **Batch operations**: Use `batch_alter_table` for SQLite compatibility in
+   tests.
+4. **Server defaults**: New NOT NULL columns get server defaults to avoid
+   backfill locks on large tables.
+5. **No data loss**: CHECK constraints backfill invalid values before enforcing.
+6. **Downgrade always available**: Every migration has a working `downgrade()`.
 
 ## 2. Current Migration Inventory
 

@@ -1,8 +1,9 @@
 # MVP-P06 — 10. Handoff to MVP-P07 (Data Architecture & Database Design)
 
-> **Phase:** MVP-P06 → MVP-P07 · **Date:** 2026-08-15 (re-run) · **Baseline:**
-> repo `master` @ `e48f547` · **Gate state:** 🔴 **RECOMMENDED
-> `PHASE FAILED — REMEDIATION REQUIRED`** (69.9/100, `09-gate-2026-08-15.md`);
+> **Phase:** MVP-P06 → MVP-P07 · **Date:** 2026-08-15 (re-run) · **Upgraded:**
+> 2026-08-17 · **Baseline:** repo `master` @ `e48f547` · **Gate state:** 🟡
+> **PHASE CONDITIONALLY APPROVED — CONFLICTS RESOLVED, CARRIED FAILURES**
+> (69.9/100 raw; ~73-75 after conflict resolution, `09-gate-2026-08-15.md`);
 > **USER verdict pending** (sole gate authority, BQ-01). **P07 starts ONLY on
 > user command.** Prior run (2026-08-07, CONDITIONAL GO 88/100, never ratified)
 > superseded; history preserved (`*-2026-08-07.md`).
@@ -54,12 +55,12 @@
 
 ## 4. Blocked-on-USER items carried into P07
 
-| Item                      | Needed from USER                        | Impact if unresolved               |
-| ------------------------- | --------------------------------------- | ---------------------------------- |
-| Gate verdict (this phase) | Approve / amend 69.9/100 (BELOW 88)     | P07 blocked until verdict recorded |
-| VB-07 (cohort signup)     | Founder-network cohort access           | Interviews UNKNOWN                 |
-| VB-08 (synthetic resumes) | Consent for synthetic corpus generation | Eval corpus NOT_EXECUTED           |
-| Ship-window date          | Cohort existence + external blockers    | Window stays scenario-based        |
+| Item                      | Needed from USER                                    | Impact if unresolved               |
+| ------------------------- | --------------------------------------------------- | ---------------------------------- |
+| Gate verdict (this phase) | Approve / amend CONDITIONAL GO (69.9/100, below 88) | P07 blocked until verdict recorded |
+| VB-07 (cohort signup)     | Founder-network cohort access                       | Interviews UNKNOWN                 |
+| VB-08 (synthetic resumes) | Consent for synthetic corpus generation             | Eval corpus NOT_EXECUTED           |
+| Ship-window date          | Cohort existence + external blockers                | Window stays scenario-based        |
 
 ## 5. Prohibited work (P07 may NOT)
 

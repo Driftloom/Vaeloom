@@ -18,7 +18,8 @@
 
 **Current state:** License allowlist is policy-only (this document). No
 automated enforcement exists. GAP → add license-check step in CI (Q&A-2:
-deferred to P16 but policy defined now).
+deferred to P16 but policy defined now). Partial fix: `pip-licenses` can be
+added to pyproject.toml for basic checking.
 
 ## 2. Vulnerability Management
 
@@ -89,16 +90,18 @@ deferred to P16 but policy defined now).
 | License audit         | Manual review                          | All deps           | Policy in this doc   |
 | Security audit        | pnpm audit + trivy                     | JS/TS + containers | CI                   |
 
-## 7. Supply-Chain Threat Map (OWASP LLM03)
+## 7. Supply-Chain Threat Map (OWASP LLM03 + ASI04)
 
-| Threat                     | Mitigation                                              | Status   |
-| -------------------------- | ------------------------------------------------------- | -------- |
-| Compromised dependency     | Frozen lockfiles + Dependabot + pnpm audit              | PARTIAL  |
-| Typosquatting              | pnpm audit + manual review                              | PARTIAL  |
-| Malicious package          | npm provenance (not applicable; private)                | DEFERRED |
-| Build-time injection       | CI pinning + Docker build isolation                     | ACTIVE   |
-| Model supply-chain (LLM)   | Provider choice + eval + mock fallback                  | ACTIVE   |
-| Prompt injection via tools | PromptInjectionMiddleware + untrusted content treatment | ACTIVE   |
+| Threat                     | OWASP ID | Mitigation                                              | Status   |
+| -------------------------- | -------- | ------------------------------------------------------- | -------- |
+| Compromised dependency     | ASI04    | Frozen lockfiles + Dependabot + pnpm audit              | PARTIAL  |
+| Typosquatting              | ASI04    | pnpm audit + manual review                              | PARTIAL  |
+| Malicious package          | ASI04    | npm provenance (not applicable; private)                | DEFERRED |
+| Build-time injection       | ASI04    | CI pinning + Docker build isolation                     | ACTIVE   |
+| Model supply-chain (LLM)   | ASI04    | Provider choice + eval + mock fallback                  | ACTIVE   |
+| Prompt injection via tools | ASI01    | PromptInjectionMiddleware + untrusted content treatment | ACTIVE   |
+| Agent credential abuse     | ASI03    | Workspace isolation + least privilege                   | ACTIVE   |
+| Memory/context poisoning   | ASI06    | Provenance tracking + trust scoring                     | PARTIAL  |
 
 ## 8. Gaps & Remediation
 

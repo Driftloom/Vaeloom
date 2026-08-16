@@ -1,9 +1,10 @@
 # Vaeloom MVP — Independent End-to-End Phase Prompt 06: Technology Stack and Engineering Standards
 
-> **Prompt ID:** `MVP-P06`  
-> **Artifact type:** Standalone generate + audit + execute + verify + gate + remediate + handoff prompt  
-> **Generated:** 2026-08-04  
-> **Truth status:** Design/prompt artifact complete; target repository execution, runtime tests, deployment and certification remain `NOT_EXECUTED` until real evidence is attached.  
+> **Prompt ID:** `MVP-P06`
+> **Artifact type:** Standalone generate + audit + execute + verify + gate + remediate + handoff prompt
+> **Generated:** 2026-08-04
+> **Last upgraded:** 2026-08-17
+> **Truth status:** Prompt updated to reflect actual repository state at HEAD `e48f547`. Execution evidence from 2026-08-15 re-run incorporated. Design artifacts are NOT runtime evidence.
 > **Primary governing source:** `Universal_Enterprise_Phase_Prompt_Generator_and_Gatekeeper.md`
 
 ## How to Use This File
@@ -24,7 +25,7 @@
 - Single-user product experience, but every persisted artifact remains workspace-scoped and isolation-tested.
 - Gmail is draft-only; job submission is allowed only through an approved official integration and payload-bound user approval.
 - Enterprise SSO/SCIM, institution administration, billing, marketplace, multi-region tenant cells and cross-user memory are out of scope.
-- MVP success is evidence of trust, memory quality, user value, safety and bounded operability—not documentation volume or fabricated runtime claims.
+- MVP success is evidence of trust, memory quality, user value, safety and bounded operability — not documentation volume or fabricated runtime claims.
 
 **Future boundary:** Future features remain hypotheses until the MVP evidence gates approve them; do not import enterprise complexity into the MVP merely because it is future-useful.
 
@@ -43,16 +44,26 @@ Use the actual available versions and record hashes/versions. Do not rely only o
 - `00-gap-analysis-report.md`, `00-documentation-completion-report.md` — documentation maturity only, never runtime implementation evidence.
 - Any attached repository, commit history, API/schema artifacts, environment configuration, tests, scans, deployment records, monitoring, incidents and approvals — these outrank design prose for actual implementation state.
 
+## Repo-Reality Truth Rule
 
-## Current Authoritative Standards Overlay — verified 2026-08-04
+**The executing agent MUST inspect the actual repository HEAD before claiming any technology is in use.** Documentation claims that contradict repo evidence are INVALID. Authority chain for truth resolution:
+
+1. **Repository evidence** (manifests, lockfiles, code imports, running services) — HIGHEST
+2. **ADRs** (accepted decisions with evidence) — HIGH
+3. **Phase execution documents** (gate reports, audits with specific evidence) — MEDIUM
+4. **Prompt prose and architecture docs** — LOWEST (may be aspirational)
+
+If a technology is listed in documentation but NOT present in lockfiles, NOT imported in code, or NOT running in docker-compose, it is `NOT_INSTALLED` or `DEAD_CODE` regardless of what any document claims.
+
+## Current Authoritative Standards Overlay — verified 2026-08-17
 
 The executing team must re-check the latest revision and applicability at phase start. These references supplement the Vaeloom source corpus; they do not silently replace approved product decisions.
 
 | Standard / source | Verified snapshot | Required use |
 |---|---|---|
-| Model Context Protocol specification | 2026-07-28 | Version-pinned MCP profile, authorization, tasks/extensions, compatibility and deprecation testing |
-| OWASP Top 10 for Agentic Applications | 2026 edition | Agent goal hijack, tool misuse, identity/privilege abuse, supply chain, unexpected execution, memory/context poisoning, inter-agent and cascading risks |
-| OWASP GenAI/LLM security guidance | Current official project | Prompt injection, unsafe output handling, sensitive disclosure, excessive agency and model/tool supply-chain controls |
+| Model Context Protocol specification | 2026-07-28 (stable, released July 28 2026) | Stateless protocol core, Extensions framework, Tasks, MCP Apps, authorization hardening, formal deprecation policy. SDKs: Python v2.0.0 (`mcp` package), TypeScript v2.0.0 (`@modelcontextprotocol/server` + `@modelcontextprotocol/client`). Prior v1.x SDKs remain supported for 6+ months post-v2. |
+| OWASP Top 10 for Agentic Applications | 2026 edition (published 2025-12-09, updated v2.01 2026-06-01) | ASI01-ASI10: ASI01 Agent Goal Hijack, ASI02 Tool Misuse & Exploitation, ASI03 Identity & Privilege Abuse, ASI04 Agentic Supply Chain Vulnerabilities, ASI05 Unexpected Code Execution (RCE), ASI06 Memory & Context Poisoning, ASI07 Insecure Inter-Agent Communication, ASI08 Cascading Failures, ASI09 Human-Agent Trust Exploitation, ASI10 Rogue Agents |
+| OWASP GenAI LLM Top 10 | 2026 edition (published 2026-08-04) | LLM01:2026 Prompt Injection, LLM02:2026 Sensitive Information Disclosure, LLM03:2026 Excessive Agency, LLM04:2026 Supply Chain, LLM05:2026 Data and Model Poisoning, LLM06:2026 Unbounded Consumption, LLM07:2026 Misinformation, LLM08:2026 Hidden Context Exposure, LLM09:2026 Vector and Embedding Weaknesses, LLM10:2026 Improper Output Handling |
 | NIST AI RMF 1.0 + Generative AI Profile | Official NIST profile | Govern/Map/Measure/Manage, evaluation, documentation, human oversight and residual-risk ownership |
 | WCAG 2.2 | W3C Recommendation | Level AA complete-process accessibility target; automated and manual evidence |
 | OAuth 2.0 Security BCP | RFC 9700 / BCP 240 | Exact redirect matching, PKCE, replay resistance, constrained tokens, least privilege and secure refresh-token handling |
@@ -62,17 +73,16 @@ The executing team must re-check the latest revision and applicability at phase 
 | SLSA | 1.2 current at snapshot | Build/source provenance, artifact integrity and verifiable supply-chain evidence |
 | NIST SSDF | SP 800-218 v1.1 | Secure software-development practices and evidence |
 | EU AI Act official guidance | Transparency obligations applicable from 2026-08-02; other timelines must be re-verified | AI disclosure, use-case classification, documentation, oversight and professional legal review |
-| India DPDP Act 2023 + final DPDP Rules 2025 | Staged commencement; verify provisions in force | Notice/consent, rights, children’s data, security and breach duties for India scope |
+| India DPDP Act 2023 + final DPDP Rules 2025 | Staged commencement; verify provisions in force | Notice/consent, rights, children's data, security and breach duties for India scope |
 | FERPA official guidance | Current | Institution-controlled education-record roles and contracts where applicable |
 | COPPA revised rule and FTC guidance | Current | Under-13 exclusion or separately reviewed child-directed design; age and parental-consent controls |
 | Gmail and GitHub official integration docs | Verify current API versions/scopes | Push-watch renewal/reconciliation, app permissions, quotas and least-privilege connectors |
 
 Record each selected standard, exact version/date, applicability, decision owner, control mapping and verification evidence in the phase source register.
 
-
 ## Mandatory Previous-Phase Forensic Audit and Entry Decision
 
-Do **not** assume `MVP-P05` passed because a document says “complete.” Re-audit its actual artifacts and evidence before executing this phase.
+Do **not** assume `MVP-P05` passed because a document says "complete." Re-audit its actual artifacts and evidence before executing this phase.
 
 ### Predecessor identity
 - **Previous phase:** `MVP-P05 — Solution Architecture`
@@ -135,7 +145,6 @@ On `NO-GO`, switch to `AUDIT_COMPLETED_PHASE` then `REMEDIATE_FAILED_PHASE` for 
 |---|---|---|---|---|---|---|---|
 | PA-MVP-P06-001 | TO_BE_VERIFIED | TO_BE_VERIFIED | TO_BE_VERIFIED | NOT_EXECUTED | TO_BE_VERIFIED | TO_BE_VERIFIED | TO_BE_VERIFIED |
 
-
 ## Phase-Specific Future-Readiness and Missing-Idea Overlay
 
 These are additional enterprise-quality considerations. They become required when relevant to the phase scope or risk; otherwise record them as a governed future backlog with adoption triggers and owner.
@@ -148,6 +157,20 @@ These are additional enterprise-quality considerations. They become required whe
 
 For each deferred idea, record: problem/evidence, target users, dependencies, security/privacy/data implications, cost, compatibility/migration impact, validation experiment, adoption trigger, owner and sunset/rejection condition. Do not expand current scope silently.
 
+## Enterprise Rigor Gaps — Known at Phase Start
+
+These are gaps identified during P06 execution that affect this phase's completeness. They are documented here to prevent false confidence.
+
+| Gap ID | Gap | Severity | Status | Target |
+|---|---|---|---|---|
+| GR-01 | License enforcement is policy-only; no automated `pip-licenses` / `license-checker` in CI | MEDIUM | DOCUMENTED | P16 (partial fix: add basic check) |
+| GR-02 | GitHub Actions use tag refs, not SHA pins — vulnerable to tag mutation | HIGH | DOCUMENTED | P06 (partial fix: document which actions need pins) |
+| GR-03 | Backend Dockerfile uses `pip install`, not `uv lock` — lockfile not enforced in builds | MEDIUM | DOCUMENTED | P06 (document gap) |
+| GR-04 | `pnpm audit` has `continue-on-error: true` — audit failures don't block CI | MEDIUM | DOCUMENTED | P16 |
+| GR-05 | `dependency-review-action` deferred to P16 | MEDIUM | DOCUMENTED | P16 |
+| GR-06 | Coverage measured at 94% (not 97% as some docs claim) | LOW | FIXED | P06 docs corrected |
+| GR-07 | Python runtime 3.14.7 local, CI matrix 3.12 — dual-version gap | LOW | DOCUMENTED | P06 (honest notation) |
+
 ---
 
 ## Copy-Ready Governing Execution Prompt
@@ -157,7 +180,7 @@ The content below is the complete phase execution prompt. The executing agent/te
 # Enterprise Execution Prompt — MVP Phase 06: Technology Stack and Engineering Standards
 
 > **Mode:** `GENERATE_AND_EXECUTE_PHASE` when authorized access exists; otherwise preserve runtime work as `NOT_EXECUTED`.
-> **Track status:** PRE-CODE / DESIGN BASELINE; implementation and runtime evidence remain NOT_EXECUTED
+> **Track status:** EXECUTED WITH CARRIED FAILURES — design + config edits completed 2026-08-15; runtime evidence deferred to P10-P15.
 > **Phase type:** `TECHNOLOGY_SELECTION`
 > **Phase ID:** `MVP-P06`
 
@@ -190,13 +213,17 @@ Solution Architect; Platform Engineer; Backend Lead; Frontend Lead; AI/ML Lead; 
 
 The accountable role owns the gate. Security, privacy, data, accessibility, reliability and operations reviewers retain veto on mandatory blockers.
 
-## 3. Verified Project Context
+## 3. Verified Project Context — Updated from Repo Reality
+
+> **Truth source:** Repository HEAD `e48f547` inspected 2026-08-15. All claims below are verified against actual manifests, lockfiles and code.
+
 - **Context:** Single-user personal intelligence platform for students and early-career professionals; memory-first; eight total runtime agents including Orchestrator; six memory types; suggest-mode-first; approved connectors only.
-- **Architecture:** Next.js, NestJS, FastAPI, PostgreSQL as system of record with vector/graph projections, Redis/BullMQ, object storage and search; PaaS-first; every artifact workspace-scoped.
+- **Architecture (ACTUAL):** Next.js 15 frontend (`apps/web/`), FastAPI unified backend (`apps/api/`), PostgreSQL 16 + pgvector (`docker-compose.yml`), Redis 7 (`docker-compose.yml`), MinIO S3-compatible object storage, Docker Compose for dev/prod; PaaS-first; every artifact workspace-scoped.
+- **Architecture (LEGACY — NOT DEPLOYED):** NestJS packages exist (`packages/service-auth`, `packages/observability`) but contain NO NestJS app bootstrap. BullMQ package exists (`packages/queue`) but has ZERO consumers deployed. These are remnants from an earlier microservices design.
 - **In scope:** Prove ingest → organize → remember → assist, trust/approval UX, memory quality, resume/ATS value, lawful opportunity assistance, Gmail deadline extraction, reminders, export/deletion and bounded operational viability.
 - **Out of scope:** Enterprise SSO/SCIM, institution admin, billing, marketplace, multi-region cells, cross-user memory and unsupported job-platform automation.
-- **Phase-specific rule:** Avoid premature Kubernetes/Kafka/Neo4j/Qdrant/OpenSearch without measured need.
-- **Truth rule:** inspect a real repository/environment before claiming implementation.
+- **Phase-specific rule:** Avoid premature Kubernetes/Kafka/Neo4j/Qdrant/OpenSearch/Meilisearch without measured need.
+- **Truth rule:** Inspect a real repository/environment before claiming implementation. Repo evidence outranks documentation prose.
 
 Track-wide fixed decisions:
 - Eight total agents: Orchestrator, Organization, Memory, Resume, ATS, Job Search & Application, Gmail, Scheduler.
@@ -207,41 +234,43 @@ Track-wide fixed decisions:
 - Model, prompt, tool, retrieval, chunking, embedding and policy versions are recorded.
 
 ## 4. Source Register
-| ID | Source | Owner/authority | Use | Location |
-|---|---|---|---|---|
-| INT-01 | Universal_Enterprise_Phase_Prompt_Generator_and_Gatekeeper.md | Vaeloom source team | Governing 32-section prompt, evidence, DoR/DoD, gate and remediation | uploaded project file |
-| INT-02 | vaeloom-mvp-e2e-enterprise-hardened.md | Vaeloom source team | Authoritative MVP corrections and release evidence | uploaded project file |
-| INT-03 | vaeloom-mvp-e2e.md | Vaeloom source team | MVP 0–21 execution baseline | uploaded project file |
-| INT-04 | vaeloom-enterprise-e2e.md | Vaeloom source team | Enterprise 0–21 execution baseline | uploaded project file |
-| INT-05 | 01-vaeloom-mvp-spec.md | Vaeloom source team | Canonical MVP product scope | uploaded project file |
-| INT-06 | 06-vaeloom-enterprise-paper.md | Vaeloom source team | Canonical enterprise vision | uploaded project file |
-| INT-07 | 02-system-architecture.md | Vaeloom source team | Memory-first architecture | uploaded project file |
-| INT-08 | 03-agent-workflow.md | Vaeloom source team | Agent and approval flow | uploaded project file |
-| INT-09 | 04-memory-knowledge-graph.md | Vaeloom source team | MVP memory and RAG | uploaded project file |
-| INT-10 | gap/completion reports | Vaeloom source team | Documentation maturity; not runtime evidence | uploaded project file |
-| EXT-01 | MCP Specification 2026-07-28 | MCP maintainers | Protocol/security/interoperability | https://modelcontextprotocol.io/specification/2026-07-28 |
-| EXT-02 | OWASP Agentic Applications Top 10 2026 | OWASP | Agent/tool/memory/identity risks | https://owasp.org/ |
-| EXT-03 | OWASP LLM Applications Top 10 2025 | OWASP | Prompt injection, leakage, excessive agency | https://owasp.org/ |
-| EXT-04 | NIST AI RMF + Generative AI Profile | NIST | AI governance and evaluation | https://www.nist.gov/itl/ai-risk-management-framework |
-| EXT-05 | WCAG 2.2 | W3C | AA accessibility | https://www.w3.org/TR/WCAG22/ |
-| EXT-06 | RFC 9700 OAuth Security BCP | IETF | OAuth security | https://www.rfc-editor.org/rfc/rfc9700 |
-| EXT-07 | RFC 9728 Protected Resource Metadata | IETF | OAuth/MCP resource metadata | https://www.rfc-editor.org/rfc/rfc9728 |
-| EXT-08 | OpenAPI Specification 3.2.0 | OpenAPI Initiative | Current API contract | https://spec.openapis.org/oas/latest.html |
-| EXT-09 | OpenTelemetry Specification | CNCF | Telemetry/context propagation | https://opentelemetry.io/docs/specs/ |
-| EXT-10 | SLSA v1.2 and Sigstore | OpenSSF/Sigstore | Provenance and signing | https://slsa.dev/spec/v1.2/ |
-| EXT-11 | NIST SSDF SP 800-218 v1.1 | NIST | Secure development | https://csrc.nist.gov/pubs/sp/800/218/final |
-| EXT-12 | Gmail API Push Notifications | Google | Watch renewal and reconciliation | https://developers.google.com/gmail/api/guides/push |
-| EXT-13 | GitHub App Permissions | GitHub | Fine-grained least privilege | https://docs.github.com/en/apps/ |
-| EXT-14 | GDPR | European Union | Privacy/data rights | https://eur-lex.europa.eu/eli/reg/2016/679/oj |
-| EXT-15 | EU AI Act | European Union | AI use-case classification | https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai |
-| EXT-16 | Digital Personal Data Protection Rules 2025 | Government of India | India privacy/child-data duties | https://www.meity.gov.in/ |
-| EXT-17 | FERPA and COPPA guidance | US ED/FTC | Student and under-13 privacy | https://studentprivacy.ed.gov/ |
+| ID | Source | Owner/authority | Use | Location | Status |
+|---|---|---|---|---|---|
+| INT-01 | Universal_Enterprise_Phase_Prompt_Generator_and_Gatekeeper.md | Vaeloom source team | Governing 32-section prompt, evidence, DoR/DoD, gate and remediation | uploaded project file | CURRENT |
+| INT-02 | vaeloom-mvp-e2e-enterprise-hardened.md | Vaeloom source team | Authoritative MVP corrections and release evidence | uploaded project file | CURRENT |
+| INT-03 | vaeloom-mvp-e2e.md | Vaeloom source team | MVP 0–21 execution baseline | uploaded project file | CURRENT |
+| INT-04 | vaeloom-enterprise-e2e.md | Vaeloom source team | Enterprise 0–21 execution baseline | uploaded project file | CURRENT |
+| INT-05 | 01-vaeloom-mvp-spec.md | Vaeloom source team | Canonical MVP product scope | uploaded project file | CURRENT |
+| INT-06 | 06-vaeloom-enterprise-paper.md | Vaeloom source team | Canonical enterprise vision | uploaded project file | CURRENT |
+| INT-07 | 02-system-architecture.md | Vaeloom source team | Memory-first architecture | uploaded project file | PARTIAL — oversold per audit |
+| INT-08 | 03-agent-workflow.md | Vaeloom source team | Agent and approval flow | uploaded project file | CURRENT |
+| INT-09 | 04-memory-knowledge-graph.md | Vaeloom source team | MVP memory and RAG | uploaded project file | CURRENT |
+| INT-10 | gap/completion reports | Vaeloom source team | Documentation maturity; not runtime evidence | uploaded project file | CURRENT |
+| INT-11 | `docs/phases/mvp-p06/03-technology-decision-matrix.md` | P06 execution | Technology scoring, version pins, conflict resolution | `docs/phases/mvp-p06/` | CURRENT (2026-08-15) |
+| INT-12 | `docs/phases/mvp-p06/07-cost-exit-strategy.md` | P06 execution | Cost model, exit playbooks, load triggers | `docs/phases/mvp-p06/` | CURRENT (2026-08-15) |
+| EXT-01 | MCP Specification 2026-07-28 | MCP maintainers | Protocol/security/interoperability | https://modelcontextprotocol.io/specification/2026-07-28 | VERIFIED 2026-08-17 |
+| EXT-02 | OWASP Agentic Applications Top 10 2026 | OWASP | ASI01-ASI10: agent/tool/memory/identity risks | https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/ | VERIFIED 2026-08-17 |
+| EXT-03 | OWASP GenAI/LLM Top 10 2026 | OWASP | Prompt injection, leakage, excessive agency | https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/ | VERIFIED 2026-08-17 |
+| EXT-04 | NIST AI RMF + Generative AI Profile | NIST | AI governance and evaluation | https://www.nist.gov/itl/ai-risk-management-framework | CURRENT |
+| EXT-05 | WCAG 2.2 | W3C | AA accessibility | https://www.w3.org/TR/WCAG22/ | CURRENT |
+| EXT-06 | RFC 9700 OAuth Security BCP | IETF | OAuth security | https://www.rfc-editor.org/rfc/rfc9700 | CURRENT |
+| EXT-07 | RFC 9728 Protected Resource Metadata | IETF | OAuth/MCP resource metadata | https://www.rfc-editor.org/rfc/rfc9728 | CURRENT |
+| EXT-08 | OpenAPI Specification 3.2.0 | OpenAPI Initiative | Current API contract | https://spec.openapis.org/oas/latest.html | CURRENT |
+| EXT-09 | OpenTelemetry Specification | CNCF | Telemetry/context propagation | https://opentelemetry.io/docs/specs/ | CURRENT |
+| EXT-10 | SLSA v1.2 and Sigstore | OpenSSF/Sigstore | Provenance and signing | https://slsa.dev/spec/v1.2/ | CURRENT |
+| EXT-11 | NIST SSDF SP 800-218 v1.1 | NIST | Secure development | https://csrc.nist.gov/pubs/sp/800/218/final | CURRENT |
+| EXT-12 | Gmail API Push Notifications | Google | Watch renewal and reconciliation | https://developers.google.com/gmail/api/guides/push | CURRENT |
+| EXT-13 | GitHub App Permissions | GitHub | Fine-grained least privilege | https://docs.github.com/en/apps/ | CURRENT |
+| EXT-14 | GDPR | European Union | Privacy/data rights | https://eur-lex.europa.eu/eli/reg/2016/679/oj | CURRENT |
+| EXT-15 | EU AI Act | European Union | AI use-case classification | https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai | CURRENT |
+| EXT-16 | Digital Personal Data Protection Rules 2025 | Government of India | India privacy/child-data duties | https://www.meity.gov.in/ | CURRENT |
+| EXT-17 | FERPA and COPPA guidance | US ED/FTC | Student and under-13 privacy | https://studentprivacy.ed.gov/ | CURRENT |
 
 Verify version/date/applicability at phase start. Record conflicts and approved resolution; secondary sources are contextual only.
 
 ## 5. Phase Scope
 ### In scope
-- Technology evaluation
+- Technology evaluation pinned from repo reality (not documentation claims)
 - Version/support policy
 - Engineering/repository standards
 - Supply-chain governance
@@ -310,19 +339,20 @@ Assess business/product, architecture, data, security, privacy, compliance, UX/a
 5. **WS-06.5: Cost/operability/exit.** Assign owner, inputs, dependencies, acceptance, tests, evidence, risks and handoff.
 
 ## 12. Detailed Tasks and Subtasks
-1. Inventory and pin versions/support windows.
-2. Score frontend/backend/AI/data/queue/search/observability/deployment choices.
+1. Inventory and pin versions/support windows from repo manifests (NOT documentation claims).
+2. Score frontend/backend/AI/data/queue/search/observability/deployment choices with security and agent-specific dimensions.
 3. Run compatibility, performance, security and operability spikes.
 4. Define layout, ownership, style, type/test/migration/update/deprecation policy.
 5. Add license/vulnerability/secrets/SBOM/provenance controls and exit strategy.
-6. Avoid premature Kubernetes/Kafka/Neo4j/Qdrant/OpenSearch without measured need.
+6. Avoid premature Kubernetes/Kafka/Neo4j/Qdrant/OpenSearch/Meilisearch without measured need.
 7. Keep scope bounded and defer enterprise-only work unless needed to avoid irreversible design debt.
 
 Status every task as `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `IMPLEMENTED_UNVERIFIED`, `VERIFIED` or `NOT_APPLICABLE`. Unverified work cannot pass.
 
 ## 13. Technical and Implementation Requirements
-- Preserve approved architecture: Next.js, NestJS, FastAPI, PostgreSQL as system of record with vector/graph projections, Redis/BullMQ, object storage and search; PaaS-first; every artifact workspace-scoped.
-- Apply phase rule: Avoid premature Kubernetes/Kafka/Neo4j/Qdrant/OpenSearch without measured need.
+- Preserve approved architecture: Next.js 15 (`apps/web/`), FastAPI unified backend (`apps/api/`), PostgreSQL 16 + pgvector, Redis 7, MinIO S3-compatible object storage; PaaS-first; every artifact workspace-scoped.
+- Legacy packages (`packages/service-auth`, `packages/observability`, `packages/queue`) are NOT deployed and should NOT be treated as active infrastructure.
+- Apply phase rule: Avoid premature Kubernetes/Kafka/Neo4j/Qdrant/OpenSearch/Meilisearch without measured need.
 - Use typed contracts, least privilege, idempotency, concurrency control, immutable audit and reversible changes.
 - Separate proposal/action, user/workload identity, source-of-truth/projection and business/transport status.
 - Risky behavior needs scoped feature flag/kill switch with owner, default, expiry, audit and removal.
@@ -330,7 +360,7 @@ Status every task as `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `IMPLEMENTED_UNVER
 - Do not weaken constraints or tests to create a pass.
 
 ## 14. Repository and Artifact Inspection
-Inspect: `apps/web`, `apps/core-api`, `apps/ai-service`, `packages/contracts`, `packages/design-system`, `infra`, `docs`, `tests`, `.github/workflows`.
+Inspect: `apps/web`, `apps/api`, `packages/`, `integrations/`, `connectors/`, `plugins/`, `sdk/`, `infra/`, `docs/`, `testing/`, `.github/workflows/`.
 
 ```bash
 git status --short --branch && git rev-parse HEAD && git log -n 20 --oneline
@@ -398,7 +428,12 @@ Evidence must record command, environment, commit, configuration, dataset/versio
 ## 23. Evidence and Traceability
 | Evidence ID | Claim | Requirement | Type | Location | Result | Date | Verified by |
 |---|---|---|---|---|---|---|---|
-| EVD-MVP-P06-001 | Replace with real claim | MVP-P06-R01 | file/log/report/approval | TO_BE_VERIFIED | NOT_EXECUTED | TO_BE_VERIFIED | TO_BE_VERIFIED |
+| EVD-MVP-P06-001 | Backend version pins from uv.lock | MVP-P06-R01/R02 | REPO_VERIFIED | `apps/api/pyproject.toml`, `uv.lock` | PASS | 2026-08-15 | Agent B |
+| EVD-MVP-P06-002 | Frontend version pins from package.json | MVP-P06-R01/R02 | REPO_VERIFIED | `apps/web/package.json` | PASS | 2026-08-15 | Agent B |
+| EVD-MVP-P06-003 | Infrastructure pins from docker-compose | MVP-P06-R01/R02 | REPO_VERIFIED | `docker-compose.yml` | PASS | 2026-08-15 | Agent B |
+| EVD-MVP-P06-004 | Phase prohibitions verified | MVP-P06-R01 | REPO_VERIFIED | grep + uv.lock | PASS | 2026-08-15 | Agent B |
+| EVD-MVP-P06-020 | Compatibility matrix verified | MVP-P06-R01 | REPO_VERIFIED | §6a above | PASS | 2026-08-15 | Agent B |
+| EVD-MVP-P06-021 | Technology scoring completed | MVP-P06-R01 | DESIGN | §1 above | PASS | 2026-08-15 | Agent B |
 
 Trace source → requirement → design → file → test → evidence → risk/exception → gate → handoff. A plan is not evidence it ran.
 

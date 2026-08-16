@@ -31,17 +31,17 @@
 
 ## 3. Entry Decision
 
-| Criterion             | Weight  | Score    | Evidence                                               |
-| --------------------- | ------- | -------- | ------------------------------------------------------ |
-| Deliverables complete | 20      | 18       | All 5 DEL exist, grounded in HEAD                      |
-| Test evidence         | 20      | 16       | 2333 tests pass, 97% coverage (re-measured 2026-08-13) |
-| Security/privacy      | 15      | 13       | OWASP mapped; approval/RLS gaps flagged P07/P11        |
-| Technical correctness | 15      | 13       | Architecture matches repo; dual-migration flagged      |
-| Reliability/rollback  | 10      | 8        | SLOs defined; recovery plans exist                     |
-| Traceability          | 10      | 9        | Full chain with evidence                               |
-| Documentation         | 5       | 5        | Current, owned, reviewed                               |
-| Residual risk         | 5       | 5        | Owned, time-bounded                                    |
-| **Total**             | **100** | **87.3** | **CONDITIONAL GO — NON-DEPENDENT WORK ONLY**           |
+| Criterion             | Weight  | Score    | Evidence                                                            |
+| --------------------- | ------- | -------- | ------------------------------------------------------------------- |
+| Deliverables complete | 20      | 18       | All 5 DEL exist, grounded in HEAD                                   |
+| Test evidence         | 20      | 16       | 2333 tests pass, 94% coverage (measured 2026-08-12; fail_under=80%) |
+| Security/privacy      | 15      | 13       | OWASP mapped; approval/RLS gaps flagged P07/P11                     |
+| Technical correctness | 15      | 13       | Architecture matches repo; dual-migration flagged                   |
+| Reliability/rollback  | 10      | 8        | SLOs defined; recovery plans exist                                  |
+| Traceability          | 10      | 9        | Full chain with evidence                                            |
+| Documentation         | 5       | 5        | Current, owned, reviewed                                            |
+| Residual risk         | 5       | 5        | Owned, time-bounded                                                 |
+| **Total**             | **100** | **87.3** | **CONDITIONAL GO — NON-DEPENDENT WORK ONLY**                        |
 
 ## 4. Regression Check
 

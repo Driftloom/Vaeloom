@@ -1,61 +1,59 @@
 # MVP-P07 — 03. Data Models & Dictionary
 
 > **Owner:** Data Architect · **Source of truth:**
-> `apps/api/src/backend/models/schema.py` **Audit date:** 2026-08-16 · **ORM
-> classes:** 38 · **Unique `__tablename__`:** 35
+> `apps/api/src/api/models/schema.py` **Audit date:** 2026-08-17 · **ORM
+> classes:** 38 · **Unique `__tablename__`:** 34
 >
 > **Migration chain:** 0001 (initial 25) → 0002 (microservice tables) → 0003
 > (approval tables) → 0004 (memory taxonomy) → 0005 (RLS expanded) → 0006
-> (provenance)
+> (provenance) → **0007 (missing tables)** → **0008 (schema gaps)** → **0009
+> (memory domain CHECK)** → **0010 (RLS force + roles)** → **0011 (HNSW index)**
+> → **0012 (fix broken RLS policies)**
 
 ---
 
-## 1. Migration Gap Audit
+## 1. Migration Gap Audit — RESOLVED 2026-08-17
 
-### Tables with ORM model but NO Alembic migration
+### Tables with ORM model but NO Alembic migration — RESOLVED
 
-| Table                 | ORM class           | schema.py line | Status                                       |
-| --------------------- | ------------------- | -------------- | -------------------------------------------- |
-| `agent_approvals`     | `AgentApproval`     | :512           | ORM exists; no CREATE TABLE in any migration |
-| `idempotency_records` | `IdempotencyRecord` | :494           | ORM exists; no CREATE TABLE in any migration |
-| `gmail_watches`       | `GmailWatch`        | :808           | ORM exists; no CREATE TABLE in any migration |
+| Table                 | ORM class           | Resolution                       |
+| --------------------- | ------------------- | -------------------------------- |
+| `agent_approvals`     | `AgentApproval`     | ✅ Created by migration **0007** |
+| `idempotency_records` | `IdempotencyRecord` | ✅ Created by migration **0007** |
+| `gmail_watches`       | `GmailWatch`        | ✅ Created by migration **0007** |
 
-### Columns with ORM but NO Alembic migration
+### Columns with ORM but NO Alembic migration — RESOLVED
 
-| Table              | Column             | schema.py line                            |
-| ------------------ | ------------------ | ----------------------------------------- |
-| `embeddings`       | `model_version`    | :341 (already in 0001 via server_default) |
-| `agent_executions` | `tenant_id`        | :449                                      |
-| `agent_executions` | `user_id`          | :450                                      |
-| `agent_executions` | `response_time_ms` | :458                                      |
-| `connectors`       | `name`             | :147                                      |
-| `connectors`       | `tenant_id`        | :148                                      |
-| `gmail_watches`    | _(all columns)_    | :811–822                                  |
+| Table              | Column             | Resolution                                         |
+| ------------------ | ------------------ | -------------------------------------------------- |
+| `agent_executions` | `tenant_id`        | ✅ Added by migration **0008**                     |
+| `agent_executions` | `user_id`          | ✅ Added by migration **0008**                     |
+| `agent_executions` | `response_time_ms` | ✅ Added by migration **0008**                     |
+| `connectors`       | `name`             | ✅ Added by migration **0008** (NOT NULL, default) |
+| `connectors`       | `tenant_id`        | ✅ Added by migration **0008**                     |
+| `gmail_watches`    | _(all columns)_    | ✅ Created by migration **0007**                   |
 
-### CHECK constraints NOT enforced
+### CHECK constraints — RESOLVED
 
-| Table      | Column   | Expected values                                          | Status                              |
-| ---------- | -------- | -------------------------------------------------------- | ----------------------------------- |
-| `memories` | `domain` | profile, document, career, episodic, preference, working | ORM-only; no CHECK in any migration |
+| Table      | Column   | Expected values                                          | Resolution                                   |
+| ---------- | -------- | -------------------------------------------------------- | -------------------------------------------- |
+| `memories` | `domain` | profile, document, career, episodic, preference, working | ✅ Added by migration **0009** with backfill |
 
-### RLS coverage
+### RLS coverage — HARDENED
 
-**Migration 0005** enables RLS on these 31 tables: `workspaces`,
-`workspace_users`, `documents`, `document_versions`, `memories`,
-`memory_records`, `resumes`, `applications`, `approval_request`,
-`approval_decision`, `schedule_events`, `connectors`, `events`,
-`event_subscriptions`, `dead_letter_events`, `notifications`,
-`agent_executions`, `agent_actions`, `api_keys`, `auth_sessions`,
-`usage_records`, `webhooks`, `webhook_deliveries`, `subscriptions`,
-`integrations`, `plugins`, `plugin_executions`, `agent_schedules`, `embeddings`,
-`entities`, `relationships`
+**Migration 0005** enables RLS on 31 tables. **Migration 0007** extends RLS to 3
+newly created tables (`agent_approvals`, `idempotency_records`,
+`gmail_watches`), bringing total to **34 tables**.
 
-**Tables WITHOUT RLS:** `tenants`, `users`, `agents`, `permissions`,
-`agent_approvals`, `idempotency_records`, `gmail_watches`, `analytics_events`,
-`audit_events`, `iam_users`, `iam_user_roles`, `knowledge_nodes`,
-`knowledge_edges`, `notification_templates`, `notification_subscribers`,
-`notification_device_tokens`, `recommendations`, `recommendation_feedback`,
-`user_preference_vectors`, `scheduled_jobs`, `job_executions`
+**Migration 0010** adds:
+
+- `FORCE ROW LEVEL SECURITY` on all 34 tables (prevents table-owner bypass)
+- `vaeloom_migrator` role with `BYPASSRLS` (for schema migrations)
+- `vaeloom_readonly` role for analytics
+- Revokes `BYPASSRLS` from `vaeloom_app` (application role)
+
+**Tables WITHOUT RLS:** `tenants`, `users`, `agents`, `permissions`
+(self-referential/global tables — no tenant scoping needed)
 
 ---
 

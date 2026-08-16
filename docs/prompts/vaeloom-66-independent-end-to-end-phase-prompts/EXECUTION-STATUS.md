@@ -24,8 +24,8 @@
 | MVP-P03 Requirements Engineering                        | ✅ GO (accepted by USER 2026-08-14) | docs/phases/mvp-p03/ - re-run @ 93164de: gate 09 = **89.7/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY accepted (DEC-P03-01..05); coverage delta + EVD counts reconciled (RISK-MVP-P02-10/11 CLOSED); handoff `10-handoff-to-p04.md` live; P04 starts only on user command |
 | MVP-P04 Project Planning and Delivery Governance        | ✅ GO (accepted by USER 2026-08-15) | docs/phases/mvp-p04/ - re-run @ b1c0e06: gate 09-2026-08-15 = **88.5/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY accepted (DEC-P04-01..08); ship window scenario-based (DEC-P04-02); prior run preserved *-2026-08-07.md; handoff 10-handoff-to-p05.md live; P05 starts only on user command |
 | MVP-P05 Solution Architecture                           | ✅ GO (accepted by USER 2026-08-15) | docs/phases/mvp-p05/ - re-run @ 14a1936: gate 09-2026-08-15 = **87.3/100** + AMEND-2026-08-15 @ 735f431 (critical findings re-verified with file:line evidence, EVD-MVP-P05-011, restriction #2 sharpened), PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY accepted (DEC-P05-01..05); prior run preserved *-2026-08-07.md; handoff 10-handoff-to-p06.md live; P06 starts only on user command |
-| MVP-P06 Technology Stack and Engineering Standards      | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
-| MVP-P07 Data Architecture and Database Design           | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P06 Technology Stack and Engineering Standards      | ✅ GO (accepted by USER 2026-08-17) | docs/phases/mvp-p06/ - re-run @ e48f547: gate 09-2026-08-15 = **69.9/100** raw (~73-75 after conflict resolution), PHASE CONDITIONALLY APPROVED - CONFLICTS RESOLVED, CARRIED FAILURES accepted (all 8 CF-P06-* resolved; zero mandatory blockers); 5 DEL produced + 8 config edits; handoff 10-handoff-to-p07.md live; P07 starts on user command |
+| MVP-P07 Data Architecture and Database Design           | 🔄 IN PROGRESS | docs/phases/mvp-p07/ - re-run + code implementation active; predecessor audit of P06 complete |
 | MVP-P08 API, Integration, and Contract Design           | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
 | MVP-P09 UI/UX and Design System                         | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
 | MVP-P10 Frontend Implementation                         | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
@@ -89,7 +89,12 @@
    P07/P11, RLS coverage P07/P14, dual-migration unify P07, workload identity
    P07/P11, no residency/scale claims until P13, design-only no T2/T3). Handoff
    `10-handoff-to-p06.md` live. Plan archived.
-6. **MVP-P06 starts only on user command** — then each
-   following phase likewise starts only on user command, one at a time.
-7. All other phases (P06–P21, CONT-P00…21, ENT-P00…21): **⬜ NOT STARTED —
+6. **MVP-P06 CLOSED 2026-08-17** — USER accepted the verdict:
+   `PHASE CONDITIONALLY APPROVED - CONFLICTS RESOLVED, CARRIED FAILURES` (gate
+   `09-gate-2026-08-15.md` **69.9/100** raw; all 8 CF-P06-* resolved; zero
+   mandatory blockers; carried failures deferred to P07/P14/P15/P17).
+   Handoff `10-handoff-to-p07.md` live.
+7. **MVP-P07 IN PROGRESS** — started on user command 2026-08-17; docs rewrite
+   + code implementation (migrations, RLS, backup, vector store, ingestion).
+8. All other phases (P08–P21, CONT-P00…21, ENT-P00…21): **⬜ NOT STARTED —
    DO NOT GO** until their predecessor gate passes and the user commands start.

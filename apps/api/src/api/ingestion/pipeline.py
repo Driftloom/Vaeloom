@@ -1,49 +1,150 @@
-import asyncio
-import logging
-from typing import Dict, Any
 import hashlib
+import logging
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
-from .parsers import parse_document, UnsupportedFormatError
+from sqlalchemy import func, select
+
+from api.database import async_session_factory
+from api.models.schema import Document, DocumentVersion
+
 from .dedup import check_dedup
+from .parsers import UnsupportedFormatError, parse_document
 
 logger = logging.getLogger(__name__)
 
-async def run_pipeline(workspace_id: str, filename: str, content: bytes) -> Dict[str, Any]:
-    """
-    Run the ingestion pipeline:
-    Source -> format detection -> parser dispatch -> OCR -> structure extraction -> dedup -> write row -> event
+
+async def run_pipeline(
+    workspace_id: str,
+    filename: str,
+    content: bytes,
+    user_id: Optional[str] = None,
+    connector_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Run the ingestion pipeline.
+
+    Source -> format detection -> parser dispatch -> structure extraction ->
+    dedup -> write to DB -> publish event.
+
+    This is the real pipeline implementation. Writes actual rows to the
+    documents and document_versions tables.
     """
     try:
-        # 1. & 2. & 3. Format detection, parser dispatch, OCR / structure extraction
+        # 1. Parse document (format detection + extraction)
         parsed_doc = await parse_document(filename, content)
-        
-        # 4. Dedup & Version Check
+
+        # 2. Compute content hash for dedup
         content_hash = hashlib.sha256(content).hexdigest()
+
+        # 3. Check for duplicates
         existing_doc_id = await check_dedup(workspace_id, content_hash, filename)
-        
-        # 5. Write to DB (Mocked)
-        document_id = "new_doc_id_456"
-        version_id = "version_1"
-        if existing_doc_id:
-            document_id = existing_doc_id
-            version_id = "version_2"
-            logger.info(f"Writing document_versions row for doc {document_id}")
-        else:
-            logger.info(f"Writing new documents row {document_id}")
-            
-        # 6. Publish Event
+
+        # 4. Write to database
+        async with async_session_factory() as session:
+            async with session.begin():
+                if existing_doc_id:
+                    # Existing document — add new version
+                    document_id = uuid.UUID(existing_doc_id)
+                    doc_result = await session.execute(
+                        select(Document).where(Document.id == document_id)
+                    )
+                    existing_doc = doc_result.scalar_one_or_none()
+
+                    if existing_doc:
+                        # Get next version number
+                        version_result = await session.execute(
+                            select(func.max(DocumentVersion.version_number))
+                            .where(DocumentVersion.document_id == document_id)
+                        )
+                        max_version = version_result.scalar() or 0
+                        next_version = max_version + 1
+
+                        # Create new version
+                        new_version = DocumentVersion(
+                            document_id=document_id,
+                            version_number=next_version,
+                            storage_key=f"storage/{workspace_id}/{document_id}/v{next_version}_{filename}",
+                            checksum=content_hash,
+                            size_bytes=len(content),
+                        )
+                        session.add(new_version)
+
+                        # Update document metadata
+                        existing_doc.updated_at = datetime.now(timezone.utc)
+                        if parsed_doc.metadata:
+                            existing_doc.metadata_ = {**existing_doc.metadata_, **parsed_doc.metadata}
+
+                        logger.info(f"Added version {next_version} to doc {document_id}")
+                        version_id = str(new_version.id)
+                    else:
+                        # Document was deleted but version exists — create fresh
+                        existing_doc_id = None
+
+                if not existing_doc_id:
+                    # New document
+                    document_id = uuid.uuid4()
+                    doc_type = _infer_doc_type(filename)
+
+                    new_doc = Document(
+                        id=document_id,
+                        workspace_id=uuid.UUID(workspace_id),
+                        source_connector_id=uuid.UUID(connector_id) if connector_id else None,
+                        path=filename,
+                        type=doc_type,
+                        summary=parsed_doc.metadata.get("summary") if parsed_doc.metadata else None,
+                        retention_policy="user_driven",
+                        metadata_=parsed_doc.metadata or {},
+                    )
+                    session.add(new_doc)
+
+                    # Create first version
+                    first_version = DocumentVersion(
+                        document_id=document_id,
+                        version_number=1,
+                        storage_key=f"storage/{workspace_id}/{document_id}/v1_{filename}",
+                        checksum=content_hash,
+                        size_bytes=len(content),
+                    )
+                    session.add(first_version)
+
+                    logger.info(f"Created new document {document_id} with version 1")
+                    version_id = str(first_version.id)
+
+        # 5. Publish event (placeholder — real event bus at P12)
         logger.info(f"Published event: ingest.completed for {document_id}")
-        
+
         return {
             "status": "success",
-            "document_id": document_id,
+            "document_id": str(document_id),
             "version_id": version_id,
-            "metadata": parsed_doc.metadata
+            "metadata": parsed_doc.metadata,
         }
 
     except UnsupportedFormatError as e:
-        logger.error(str(e))
+        logger.error(f"Unsupported format: {e}")
         return {"status": "error", "reason": str(e)}
     except Exception as e:
-        logger.error(f"Ingestion failed: {e}")
+        logger.error(f"Ingestion pipeline failed: {e}", exc_info=True)
         return {"status": "error", "reason": str(e)}
+
+
+def _infer_doc_type(filename: str) -> str:
+    """Infer document type from filename extension."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    type_map = {
+        "pdf": "pdf",
+        "docx": "docx",
+        "doc": "docx",
+        "md": "markdown",
+        "markdown": "markdown",
+        "txt": "text",
+        "csv": "text",
+        "json": "text",
+        "png": "image",
+        "jpg": "image",
+        "jpeg": "image",
+        "gif": "image",
+        "webp": "image",
+    }
+    return type_map.get(ext, "unknown")

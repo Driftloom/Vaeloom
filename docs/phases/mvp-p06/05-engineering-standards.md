@@ -9,7 +9,7 @@
 ```
 vaeloom/
 ├── apps/
-│   ├── backend/          # FastAPI (Python 3.12+; pyproject.toml + uv.lock)
+│   ├── api/              # FastAPI (Python 3.12+; pyproject.toml + uv.lock)
 │   └── web/              # Next.js 15 (pnpm workspace; package.json)
 ├── packages/
 │   ├── eslint-config/    # Shared ESLint configs (base.js, nextjs.js)
@@ -68,7 +68,7 @@ refactor, test, ci, perf, build.
 
 | Layer         | Tool                    | Config                                 | Coverage Target     |
 | ------------- | ----------------------- | -------------------------------------- | ------------------- |
-| Unit (Python) | pytest + pytest-asyncio | `pyproject.toml [tool.pytest]`         | 90%+ (current: 97%) |
+| Unit (Python) | pytest + pytest-asyncio | `pyproject.toml [tool.pytest]`         | 90%+ (current: 94%) |
 | Unit (TS/JS)  | Jest + @testing-library | `apps/web/jest.config.js`              | 80%+                |
 | Integration   | pytest + testcontainers | `tests/integration/`                   | Critical paths      |
 | E2E           | Playwright              | `testing/e2e/playwright.config.ts`     | Auth, core flows    |
@@ -123,7 +123,7 @@ refactor, test, ci, perf, build.
 | Signal      | Tool                                          | Endpoint            | Notes                                                         |
 | ----------- | --------------------------------------------- | ------------------- | ------------------------------------------------------------- |
 | Traces      | OpenTelemetry SDK                             | OTLP exporter       | `infrastructure/opentelemetry.py` (OTEL_SDK_DISABLED for dev) |
-| Metrics     | prometheus-fastapi-instrumentator             | `/metrics` (public) | Currently COMMENTED OUT in `main.py:135` — GAP                |
+| Metrics     | prometheus-fastapi-instrumentator             | `/metrics` (public) | Re-enabled at `main.py:167` — VERIFIED 2026-08-17             |
 | Logs        | structlog                                     | stdout              | JSON in prod, pretty in dev                                   |
 | Correlation | CorrelationIDMiddleware                       | X-Correlation-ID    | Propagated to all responses                                   |
 | Health      | `/health`, `/health/ready`, `/health/startup` | `routers/health.py` | PUBLIC path                                                   |
@@ -137,7 +137,31 @@ refactor, test, ci, perf, build.
 | Frontend (`api-client.ts`) | camelCase      | `transformKeys()` on all responses |
 | Shared types               | camelCase (TS) | Hand-written, not generated        |
 
-## 11. Gaps (Q&A-2 minimal config)
+## 11. TypeScript Standards
+
+| Rule                   | Standard                                         | Enforcement        |
+| ---------------------- | ------------------------------------------------ | ------------------ |
+| Strict mode            | `"strict": true` in tsconfig.base.json           | CI typecheck       |
+| Path aliases           | `@/*` → `./src/*` (web), `@vaeloom/*` → packages | tsconfig paths     |
+| No implicit any        | Enabled via strict                               | CI typecheck       |
+| Unused variables       | `noUnusedLocals`, `noUnusedParameters` (strict)  | CI typecheck       |
+| Strict bind call apply | Enabled via strict                               | CI typecheck       |
+| Module resolution      | `"moduleResolution": "bundler"`                  | tsconfig.base.json |
+| Target                 | ES2022                                           | tsconfig.base.json |
+| JSX                    | `"jsx": "preserve"` (Next.js handles)            | nextjs.json        |
+
+## 12. Python Standards
+
+| Rule            | Standard                                  | Enforcement        |
+| --------------- | ----------------------------------------- | ------------------ |
+| Type checking   | mypy strict mode                          | CI ci-backend.yml  |
+| Linting         | ruff (E, F, I, N, W, UP, B, SIM, ARG, C4) | CI ci-backend.yml  |
+| Line length     | 100 characters                            | ruff config        |
+| Target version  | Python 3.12                               | ruff + mypy config |
+| Docstring style | Google style                              | ruff D rules       |
+| Import sorting  | isort via ruff I rules                    | CI                 |
+
+## 13. Gaps (Q&A-2 minimal config)
 
 | Gap                                            | Fix                                                                 | Phase | Status       |
 | ---------------------------------------------- | ------------------------------------------------------------------- | ----- | ------------ |
@@ -150,7 +174,7 @@ refactor, test, ci, perf, build.
 | No eslint flat config (ESLint 8 legacy)        | DEFER to P16; document in standards                                 | P16   | DEFERRED     |
 | No `eslint-plugin-security`                    | DEFER to P16                                                        | P16   | DEFERRED     |
 | Pre-commit runs only prettier (no eslint/ruff) | Consider adding; DEFER to P16                                       | P16   | DEFERRED     |
-| `/metrics` instrumentator COMMENTED OUT        | Document as gap; verify at P17                                      | P17   | DEFERRED     |
+| `/metrics` instrumentator                      | Re-enabled at main.py:167; verify at P17                            | P17   | IMPLEMENTED  |
 
 ## 12. Evidence (EVD)
 

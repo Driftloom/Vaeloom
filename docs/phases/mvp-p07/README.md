@@ -1,33 +1,50 @@
 # MVP-P07 — Data Architecture & Database Design
 
 > **Prompt:** `MVP-P07` (66-prompt pack) — DATA_DESIGN phase **Governing
-> sources:** INT-02 (SHA-256 `2FA8966F…69640`) · INT-05 · INT-09 · gatekeeper ·
-> **Predecessor:** MVP-P06 ✅ CONDITIONAL GO 88/100, ratified 2026-08-07
-> **Status:** ✅ COMPLETE — docs 01–10 written 2026-08-07; gate 88/100
-> CONDITIONAL GO, pending user ratification; handoff to P08 ready
+> sources:** INT-02 · INT-05 · INT-09 · gatekeeper · **Predecessor:** MVP-P06 ✅
+> CONDITIONAL GO (69.9/100, carried failures) **Status:** 🟡 COMPLETE — docs
+> rewritten + code implemented 2026-08-17; gate 91.4/100 CONDITIONAL GO; handoff
+> to P08 ready
 
 ## Blocking questions (prompt §8) — resolved
 
 | ID        | Question                                        | Decision                                                                                                                                                                                                                       | Owner    |
 | --------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| BQ-01..05 | carried                                         | user; `master` @ `0c4f73a`; India 18+; $0 cohort                                                                                                                                                                               | per-item |
+| BQ-01..05 | carried                                         | user; `master` @ HEAD; India 18+; $0 cohort                                                                                                                                                                                    | per-item |
 | BQ-P07-01 | Data owner + classification/retention/residency | **Owner = user (DPDP principal; Vaeloom = processor). Retention: user-driven — data kept until user deletes/closes account; indefinite grace (no auto-purge); backups expire 30 days; legal hold only when lawfully required** | User     |
 | BQ-P07-02 | RPO/RTO                                         | **RPO ≤ 24h (daily backup); RTO ≤ 24h best-effort restore; tested P14/P19**                                                                                                                                                    | User     |
 
+## Code implementation (2026-08-17)
+
+| Artifact                                       | Type      | Description                         |
+| ---------------------------------------------- | --------- | ----------------------------------- |
+| `alembic/versions/0007_missing_tables.py`      | Migration | Creates 3 missing tables            |
+| `alembic/versions/0008_schema_gaps.py`         | Migration | Adds 5 missing columns              |
+| `alembic/versions/0009_memory_domain_check.py` | Migration | CHECK constraint on memories.domain |
+| `alembic/versions/0010_rls_force_and_roles.py` | Migration | FORCE RLS + 3 roles                 |
+| `alembic/versions/0011_hnsw_index.py`          | Migration | HNSW vector index                   |
+| `middleware/tenant.py`                         | Fix       | SET LOCAL for PgBouncer safety      |
+| `database.py`                                  | Fix       | RLS wiring in get_db()              |
+| `infrastructure/vector_store.py`               | Fix       | ORM column alignment                |
+| `ingestion/pipeline.py`                        | Feature   | Real DB persistence                 |
+| `scripts/backup.sh`                            | Script    | Production backup                   |
+| `scripts/restore.sh`                           | Script    | Restore + smoke test                |
+| `tests/test_rls_isolation.py`                  | Test      | 4 RLS isolation tests               |
+
 ## Register index
 
-| #   | Document                              | Purpose                                           |
-| --- | ------------------------------------- | ------------------------------------------------- |
-| 01  | `01-source-register.md`               | Sources + conflicts (CF-P07-01)                   |
-| 02  | `02-predecessor-audit.md`             | Audit of P06 → entry GO                           |
-| 03  | `03-data-models-dictionary.md`        | **DEL-MVP-P07-01** — models + data dictionary     |
-| 04  | `04-migration-rollback.md`            | **DEL-MVP-P07-02** — migration/rollback plan      |
-| 05  | `05-isolation-rules.md`               | **DEL-MVP-P07-03** — isolation/RLS rules          |
-| 06  | `06-provenance-lifecycle-deletion.md` | **DEL-MVP-P07-04** — provenance/lifecycle/erasure |
-| 07  | `07-backup-query-capacity.md`         | **DEL-MVP-P07-05** — backup/query/capacity        |
-| 08  | `08-registers.md`                     | Risks/decisions/assumptions/evidence              |
-| 09  | `09-gate-report.md`                   | End-of-phase gate                                 |
-| 10  | `10-handoff-to-p08.md`                | Next-phase handoff (API & Contract Design)        |
+| #   | Document                              | Purpose                                                   |
+| --- | ------------------------------------- | --------------------------------------------------------- |
+| 01  | `01-source-register.md`               | Sources + conflicts                                       |
+| 02  | `02-predecessor-audit.md`             | Audit of P06 → entry GO                                   |
+| 03  | `03-data-models-dictionary.md`        | **DEL-MVP-P07-01** — models + data dictionary (38 tables) |
+| 04  | `04-migration-rollback.md`            | **DEL-MVP-P07-02** — 11 Alembic migrations                |
+| 05  | `05-isolation-rules.md`               | **DEL-MVP-P07-03** — 34-table RLS + FORCE + roles         |
+| 06  | `06-provenance-lifecycle-deletion.md` | **DEL-MVP-P07-04** — provenance/lifecycle/erasure         |
+| 07  | `07-backup-query-capacity.md`         | **DEL-MVP-P07-05** — backup/query/HNSW                    |
+| 08  | `08-registers.md`                     | Risks/decisions/assumptions/evidence                      |
+| 09  | `09-gate-report.md`                   | Gate: 91.4/100 CONDITIONAL GO                             |
+| 10  | `10-handoff-to-p08.md`                | Next-phase handoff                                        |
 
 ## Workstreams
 
@@ -42,10 +59,8 @@
 ## Scope note
 
 - **In:** models, isolation, provenance, lifecycle, migration, backup, deletion,
-  query/capacity — design only.
-- **Out:** implementation (migrations executed at P11, RLS verified P13/P14),
-  production changes, enterprise features, T2/T3 enablement.
-- **Repo truth:** 33 ORM tables (`models/schema.py`); 2 alembic migrations;
-  `Memory.type` free-form; `MemoryRecord` exists; provenance fields partially
-  present; no approval tables, no RLS, no supersession column. Design =
-  migrations on existing schema (ASP-P05-01), not rewrites.
+  query/capacity — **design + code implementation**.
+- **Out:** production deployment, enterprise features, T2/T3 enablement.
+- **Repo truth:** 38 ORM classes (35 unique tables); 11 Alembic migrations
+  (0001-0011); RLS on 34 tables with FORCE; HNSW vector index; production
+  backup/restore scripts.

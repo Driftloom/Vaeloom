@@ -67,7 +67,7 @@
 | 2.x Frontend API          | DONE   | PARTIAL       | Typed client + 16 pages with real API; 7 pages use hardcoded mock data                                                                               |
 | 3.x Next.js pages         | DONE   | IMPLEMENTED   | loading.tsx, error.tsx, not-found.tsx (global + per-route)                                                                                           |
 | 4.x Enterprise auth       | DONE   | PARTIAL       | SSO (Google/Microsoft) implemented; SAML is STUB (methods return None); RBAC is dependency injection helper, not middleware                          |
-| 5.x Observability         | DONE   | IMPLEMENTED   | OTel setup + correlation IDs work; Prometheus `/metrics` endpoint ACTIVE (main.py:152); FastAPI OTel auto-instrumentation ACTIVE (main.py:153)       |
+| 5.x Observability         | DONE   | IMPLEMENTED   | OTel setup + correlation IDs work; Prometheus `/metrics` endpoint ACTIVE (main.py:167); FastAPI OTel auto-instrumentation ACTIVE (main.py:168)       |
 | 6.x Multi-tenancy         | DONE   | PARTIAL       | TenantMiddleware MOUNTED (main.py:122); set_rls_session_vars wired into get_db(); RLS on 4/36 tables only; GUC app.tenant_id now SET                 |
 | 7.x Agent hardening       | DONE   | IMPLEMENTED   | Circuit breaker, fallback policies, per-agent rate limits; approval gate now wired in orchestrator loop                                              |
 | 8.x Performance           | DONE   | IMPLEMENTED   | SWR caching, route prefetching, image optimization, bundle analysis                                                                                  |

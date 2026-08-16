@@ -42,6 +42,15 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
 
     Must be called on each DB session before queries that require RLS isolation.
     Sets app.tenant_id and app.workspace_id GUCs used by RLS policies.
+
+    Uses SET LOCAL (transaction-scoped) instead of SET (session-scoped).
+    Critical for PgBouncer transaction pooling mode — session-scoped SET
+    would leak tenant context to the next client on a reused connection.
+
+    Fail-closed: if tenant_id is missing or invalid, the function returns
+    without setting GUCs, causing RLS policies to match zero rows (correct
+    behavior for an unset context variable).
+
     No-op on SQLite (RLS is disabled).
     """
     ctx = TenantContext.get()
@@ -52,11 +61,16 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
         return
 
     try:
-        await db.execute(text("SET app.tenant_id = :tid"), {"tid": tenant_id})
+        # SET LOCAL scopes the setting to the current transaction only.
+        # This is safe with PgBouncer transaction pooling.
+        await db.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
         if workspace_id:
-            await db.execute(text("SET app.workspace_id = :wid"), {"wid": workspace_id})
+            await db.execute(text("SET LOCAL app.workspace_id = :wid"), {"wid": workspace_id})
     except Exception:
-        pass  # SQLite or non-PostgreSQL — ignore
+        # SQLite or non-PostgreSQL — RLS not applicable, ignore silently.
+        # On PostgreSQL this should never fail; if it does, queries will
+        # return zero rows due to unset GUCs (fail-closed).
+        pass
 
 
 class TenantMiddleware(BaseHTTPMiddleware):

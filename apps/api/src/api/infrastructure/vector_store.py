@@ -48,10 +48,15 @@ class PGVectorStore(VectorStore):
         async with self._session_factory() as session:
             for rec in embeddings:
                 vector_str = "[" + ",".join(f"{v}" for v in rec.vector) + "]"
+                dims = len(rec.vector) if rec.vector else None
                 stmt = text("""
-                    INSERT INTO embeddings (id, source_type, source_id, vector, model_version, workspace_id)
-                    VALUES (:id, :source_type, :source_id, :vector::vector, :model_version, :workspace_id)
-                    ON CONFLICT (id) DO UPDATE SET vector = :vector::vector
+                    INSERT INTO embeddings (id, source_type, source_id, vector, model_version, workspace_id, dimensions, source_table)
+                    VALUES (:id, :source_type, :source_id, :vector::vector, :model_version, :workspace_id, :dimensions, :source_table)
+                    ON CONFLICT (id) DO UPDATE SET
+                        vector = EXCLUDED.vector,
+                        model_version = EXCLUDED.model_version,
+                        dimensions = EXCLUDED.dimensions,
+                        source_table = EXCLUDED.source_table
                 """)
                 await session.execute(
                     stmt,
@@ -62,6 +67,8 @@ class PGVectorStore(VectorStore):
                         "vector": vector_str,
                         "model_version": rec.metadata.get("model_version", "text-embedding-3-small"),
                         "workspace_id": rec.metadata.get("workspace_id", "00000000-0000-0000-0000-000000000000"),
+                        "dimensions": dims,
+                        "source_table": rec.metadata.get("source_table"),
                     },
                 )
             await session.commit()

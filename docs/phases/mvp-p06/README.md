@@ -5,9 +5,11 @@
 > **Predecessor:** MVP-P05 ✅ CONDITIONAL GO 87.3/100, accepted 2026-08-15
 > **Status:** 🟡 RE-RUN COMPLETE — docs 01–11 written 2026-08-15; gate 69.9/100
 > (BELOW 88 threshold); ALL 8 CONFLICTS RESOLVED; **PHASE CONDITIONALLY APPROVED
-> — CONFLICTS RESOLVED, CARRIED FAILURES**; USER verdict accepted. Prior run
-> (2026-08-07, gate 88/100 CONDITIONAL GO, never ratified) superseded; history
-> preserved (`*-2026-08-07.md`). P07 starts only on user command.
+> — CONFLICTS RESOLVED, CARRIED FAILURES**; USER verdict accepted. Enterprise
+> upgrade 2026-08-17: prompt file + all deliverables updated with MCP/OWASP
+> standards, coverage fix (94%), gate state consistency, SHA pinning docs. Prior
+> run (2026-08-07, gate 88/100 CONDITIONAL GO, never ratified) superseded;
+> history preserved (`*-2026-08-07.md`). P07 starts only on user command.
 
 ## Blocking questions (prompt §8) — resolved
 
@@ -68,3 +70,35 @@ This is a re-run at baseline `e48f547` (P05 close). Prior run (2026-08-07, gate
 re-run refreshes all evidence at the new baseline with zero-trust inspection.
 Config edits (Q&A-2) applied: backend ruff/mypy/coverage, .python-version, CI
 dead-path fixes, docker-compose.prod healthcheck/mount fixes, dependabot pip.
+
+## Enterprise Upgrade (2026-08-17)
+
+Upgraded all 12 files to enterprise grade:
+
+| File                     | Key Changes                                                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Prompt file              | Fixed architecture (removed NestJS), updated MCP/OWASP standards, added repo-reality truth rule, added enterprise rigor gaps |
+| 03-technology-matrix     | Added security/agent scoring dimensions, MCP compatibility, OWASP ASI mapping, EOL risk column                               |
+| 04-version-policy        | Added SHA pinning gap documentation, license enforcement partial fix, reproducibility verification                           |
+| 05-engineering-standards | Fixed `apps/backend/` → `apps/api/`, coverage 97→94%, added TS/Python strict standards, fixed Prometheus status              |
+| 06-dependency-governance | Added OWASP ASI04 mapping, expanded supply-chain threat map                                                                  |
+| 07-cost-exit-strategy    | Minor fixes                                                                                                                  |
+| 09-gate-report           | Formalized recalculation, added blocker definitions, confidence assessment                                                   |
+| 10-handoff               | Fixed gate state (FAILED → CONDITIONAL GO)                                                                                   |
+| 11-completion-response   | Fixed coverage (94%), EVD references (001-023), metrics status                                                               |
+| README                   | Added enterprise upgrade summary                                                                                             |
+
+## Cross-Document Consistency (verified 2026-08-17)
+
+| Value       | Consistent across all docs         |
+| ----------- | ---------------------------------- |
+| Coverage    | 94%                                |
+| Test count  | 2333 pytest                        |
+| Python      | 3.12 (CI) / 3.14 (local via uv)    |
+| Gate state  | CONDITIONAL GO                     |
+| Path        | `apps/api/`                        |
+| NestJS      | LEGACY PACKAGES ONLY, NOT DEPLOYED |
+| BullMQ      | INSTALLED, NO CONSUMERS DEPLOYED   |
+| Meilisearch | NOT_INSTALLED                      |
+| Qdrant      | DEAD CODE                          |
+| Apache AGE  | PROVISIONED, UNUSED                |

@@ -63,11 +63,11 @@ Authority order: REPO reality > INT-02 > gatekeeper > INT-05 > INT-07/08/09.
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
 | Framework  | FastAPI 0.115.14, Python >=3.12, SQLAlchemy 2.0.51, asyncpg 0.31, pydantic 2.13, alembic 1.19, redis 8.1, pgvector 0.5, boto3 1.43, OpenTelemetry 1.44, structlog, anthropic 0.121, openai 2.53 (raw httpx) | `pyproject.toml`, `uv.lock`        |
 | Routers    | 30 `include_router` calls (22 unconditional + 8 enterprise-gated)                                                                                                                                           | `main.py:139-173`                  |
-| Middleware | 11 middleware (auth, csrf, tenant, rate-limit, security-headers, correlation, logging, api-version, prompt-injection, idempotency, metrics)                                                                 | `main.py:93-114`                   |
+| Middleware | 12 middleware (auth, csrf, tenant, rate-limit, security-headers, correlation, logging, api-version, prompt-injection, idempotency, metrics, cors)                                                           | `main.py:122-145`                  |
 | Tables     | 36 `__tablename__` entries                                                                                                                                                                                  | `models/schema.py`                 |
 | Agents     | 22 agent handlers + 4 memory subagents + orchestrator module                                                                                                                                                | `agents/`                          |
 | Migrations | DUAL: alembic (0001-0002) + runtime registry (0002-0007)                                                                                                                                                    | `alembic/versions/`, `migrations/` |
-| Tests      | 130 test files, 2333 pass, 97% coverage, autouse mock_llm + mock_connector_test                                                                                                                             | `tests/`                           |
+| Tests      | 130 test files, 2333 pass, 94% coverage (measured 2026-08-12; fail_under=80%), autouse mock_llm + mock_connector_test                                                                                       | `tests/`                           |
 
 ### Frontend
 
@@ -108,7 +108,7 @@ Authority order: REPO reality > INT-02 > gatekeeper > INT-05 > INT-07/08/09.
 | ESLint          | 8.57 legacy; no flat config                  | `packages/eslint-config/`               |
 | Ruff            | config only in python-common; NOT in backend | `packages/python-common/pyproject.toml` |
 | mypy            | config only in python-common; NOT in backend | `packages/python-common/pyproject.toml` |
-| Prettier        | 3.2.x                                        | root devDeps                            |
+| Prettier        | 3.9.5 (resolved from ^3.2.0)                 | root devDeps                            |
 | Vale            | Vaeloom custom + write-good                  | `.vale.ini`                             |
 | .python-version | MISSING                                      | glob → none                             |
 

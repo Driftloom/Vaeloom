@@ -1,9 +1,13 @@
-# MVP-P06 — 03. Technology Decision Matrix (DEL-MVP-P06-01) — Re-Run 2026-08-15
+# MVP-P06 — 03. Technology Decision Matrix (DEL-MVP-P06-01) — Enterprise Upgrade 2026-08-17
 
 > DEL-MVP-P06-01. Pinned from repo manifests at HEAD `e48f547` (zero-trust,
 > `01-source-register.md` §4 authority). Prior run (2026-08-07) preserved as
-> `*-2026-08-07.md`. Scoring per prompt §12 task 2: "Score frontend/backend/
-> AI/data/queue/search/observability/deployment choices."
+> `*-2026-08-07.md`. Re-run (2026-08-15) preserved as current baseline.
+> Enterprise upgrade (2026-08-17) adds MCP/OWASP/agent scoring, EOL timelines,
+> and reproducibility verification.
+>
+> Scoring per prompt §12 task 2: "Score frontend/backend/AI/data/queue/search/
+> observability/deployment choices."
 
 ## 0. Prompt vs Repo — Architecture Alignment
 
@@ -20,7 +24,7 @@ search." Reality at HEAD:
 | Redis                 | Redis 7-alpine                                                   | ✅ DEPLOYED             |
 | BullMQ                | `packages/queue` — NOT deployed, no consumers                    | ⚠️ LEGACY PACKAGE ONLY  |
 | Object storage        | MinIO (S3-compatible)                                            | ✅ DEPLOYED             |
-| Search (Meilisearch)  | Not installed; SQL ILIKE actual                                  | ❌ NOT PRESENT          |
+| Search (Meilisearch)  | Not installed; SQL ILIKE actual                                  | ❌ NOT_INSTALLED        |
 
 **Conclusion:** The approved architecture is partially implemented. NestJS and
 BullMQ exist as internal packages but are not deployed — they are legacy
@@ -33,124 +37,137 @@ have been resolved with evidence (source register §3, this section §8).
 
 Scoring dimensions (1-5 scale, 5 = best):
 
-| Dimension     | Weight | Definition                                               |
-| ------------- | ------ | -------------------------------------------------------- |
-| Compatibility | 25%    | Fits existing stack, no conflicts, mature ecosystem      |
-| Security      | 20%    | Security track record, vulnerability history, maintainer |
-| Performance   | 20%    | Benchmarks, async support, production use                |
-| Cost          | 15%    | Free/open-source, no licensing risk                      |
-| Support       | 10%    | Documentation, community, LTS guarantees                 |
-| Exit          | 10%    | Low lock-in, alternatives available, standard interfaces |
+| Dimension     | Weight | Definition                                                             |
+| ------------- | ------ | ---------------------------------------------------------------------- |
+| Compatibility | 20%    | Fits existing stack, no conflicts, mature ecosystem                    |
+| Security      | 25%    | Security track record, CVE history, maintainer response, OWASP posture |
+| Performance   | 15%    | Benchmarks, async support, production use at scale                     |
+| Cost          | 15%    | Free/open-source, no licensing risk, operational cost                  |
+| Support       | 10%    | Documentation, community, LTS guarantees                               |
+| Exit          | 10%    | Low lock-in, alternatives available, standard interfaces               |
+| Agent Safety  | 5%     | Isolation, tool sandboxing, prompt injection resistance, auditability  |
+
+> **Weight justification:** Security is weighted 25% (highest) because Vaeloom
+> is an agentic AI system handling PII, credentials, and consequential actions
+> (job applications, email drafts). Agent Safety (5%) captures risks specific to
+> LLM tool-use that standard security dimensions miss.
 
 ### 1a. Backend Stack Scoring
 
-| Component    | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision |
-| ------------ | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | -------- |
-| Python 3.12+ | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED  |
-| FastAPI      | 5      | 4        | 5    | 5    | 4       | 4    | **4.60**     | ADOPTED  |
-| SQLAlchemy 2 | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED  |
-| asyncpg      | 5      | 4        | 5    | 5    | 4       | 4    | **4.60**     | ADOPTED  |
-| Pydantic 2   | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED  |
-| pgvector     | 5      | 4        | 4    | 5    | 3       | 4    | **4.35**     | ADOPTED  |
-| Redis 7      | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED  |
-| boto3        | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED  |
+| Component    | Compat | Security | Perf | Cost | Support | Exit | Agent | **Weighted** | Decision | OWASP/Agent Mapping                                  |
+| ------------ | ------ | -------- | ---- | ---- | ------- | ---- | ----- | ------------ | -------- | ---------------------------------------------------- |
+| Python 3.12+ | 5      | 4        | 4    | 5    | 5       | 5    | 4     | **4.50**     | ADOPTED  | ASI03 (audit trails), ASI05 (output handling)        |
+| FastAPI      | 5      | 4        | 5    | 5    | 4       | 4    | 4     | **4.55**     | ADOPTED  | Auto OpenAPI for tool contracts                      |
+| SQLAlchemy 2 | 5      | 4        | 4    | 5    | 5       | 5    | 4     | **4.50**     | ADOPTED  | Parameterized queries (SQL injection prevention)     |
+| asyncpg      | 5      | 4        | 5    | 5    | 4       | 4    | 3     | **4.45**     | ADOPTED  | Low-level driver; less injection surface             |
+| Pydantic 2   | 5      | 5        | 5    | 5    | 5       | 5    | 5     | **4.95**     | ADOPTED  | ASI01 (input validation), ASI08 (schema enforcement) |
+| pgvector     | 5      | 4        | 4    | 5    | 3       | 4    | 4     | **4.30**     | ADOPTED  | ASI08 (vector weaknesses — ACID mitigates)           |
+| Redis 7      | 5      | 4        | 5    | 5    | 5       | 5    | 3     | **4.50**     | ADOPTED  | In-memory; no persistence guarantees                 |
+| boto3        | 5      | 4        | 4    | 5    | 5       | 5    | 3     | **4.40**     | ADOPTED  | ASI04 (supply chain — AWS-signed SDK)                |
 
 ### 1b. Frontend Stack Scoring
 
-| Component  | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision |
-| ---------- | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | -------- |
-| Next.js 15 | 5      | 4        | 5    | 5    | 5       | 4    | **4.65**     | ADOPTED  |
-| React 18   | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED  |
-| TS 5.9     | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED  |
-| Tailwind 3 | 5      | 3        | 5    | 5    | 4       | 5    | **4.45**     | ADOPTED  |
-| SWR 2      | 5      | 3        | 5    | 5    | 4       | 4    | **4.35**     | ADOPTED  |
-| Zustand 5  | 5      | 3        | 5    | 5    | 4       | 5    | **4.45**     | ADOPTED  |
+| Component  | Compat | Security | Perf | Cost | Support | Exit | Agent | **Weighted** | Decision | OWASP/Agent Mapping                   |
+| ---------- | ------ | -------- | ---- | ---- | ------- | ---- | ----- | ------------ | -------- | ------------------------------------- |
+| Next.js 15 | 5      | 4        | 5    | 5    | 5       | 4    | 3     | **4.50**     | ADOPTED  | CSP headers, middleware auth          |
+| React 18   | 5      | 4        | 5    | 5    | 5       | 5    | 3     | **4.55**     | ADOPTED  | XSS protection via JSX                |
+| TS 5.9     | 5      | 4        | 4    | 5    | 5       | 5    | 4     | **4.50**     | ADOPTED  | Type safety reduces runtime errors    |
+| Tailwind 3 | 5      | 3        | 5    | 5    | 4       | 5    | 2     | **4.30**     | ADOPTED  | No runtime JS; minimal attack surface |
+| SWR 2      | 5      | 3        | 5    | 5    | 4       | 4    | 3     | **4.25**     | ADOPTED  | Cache invalidation for data freshness |
+| Zustand 5  | 5      | 3        | 5    | 5    | 4       | 5    | 3     | **4.35**     | ADOPTED  | Minimal state; no provider nesting    |
 
 ### 1c. Infrastructure Scoring
 
-| Component     | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision |
-| ------------- | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | -------- |
-| PostgreSQL 16 | 5      | 5        | 5    | 5    | 5       | 5    | **5.00**     | ADOPTED  |
-| Redis 7       | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED  |
-| MinIO         | 5      | 4        | 4    | 5    | 4       | 5    | **4.45**     | ADOPTED  |
-| PgBouncer     | 5      | 3        | 5    | 5    | 3       | 4    | **4.25**     | ADOPTED  |
-| Docker        | 5      | 4        | 4    | 5    | 5       | 4    | **4.45**     | ADOPTED  |
+| Component     | Compat | Security | Perf | Cost | Support | Exit | Agent | **Weighted** | Decision | OWASP/Agent Mapping                      |
+| ------------- | ------ | -------- | ---- | ---- | ------- | ---- | ----- | ------------ | -------- | ---------------------------------------- |
+| PostgreSQL 16 | 5      | 5        | 5    | 5    | 5       | 5    | 4     | **4.95**     | ADOPTED  | ASI08 (ACID for vector integrity)        |
+| Redis 7       | 5      | 4        | 5    | 5    | 5       | 5    | 3     | **4.50**     | ADOPTED  | Rate limiting, session cache             |
+| MinIO         | 5      | 4        | 4    | 5    | 4       | 5    | 3     | **4.35**     | ADOPTED  | S3-compatible; exit to AWS S3 trivial    |
+| PgBouncer     | 5      | 3        | 5    | 5    | 3       | 4    | 2     | **4.15**     | ADOPTED  | Connection pooling; no auth layer        |
+| Docker        | 5      | 4        | 4    | 5    | 5       | 4    | 4     | **4.45**     | ADOPTED  | Container isolation for agent sandboxing |
 
 ### 1d. AI/LLM Stack Scoring
 
-| Component     | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision              |
-| ------------- | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | --------------------- |
-| Anthropic SDK | 4      | 4        | 4    | 2    | 4       | 5    | **3.75**     | ADOPTED (fallback)    |
-| OpenAI SDK    | 4      | 4        | 4    | 2    | 5       | 5    | **3.80**     | ADOPTED (fallback)    |
-| raw httpx     | 5      | 4        | 4    | 5    | 3       | 5    | **4.35**     | ACTUAL IMPLEMENTATION |
-| pgvector      | 5      | 4        | 4    | 5    | 3       | 4    | **4.35**     | ADOPTED (embeddings)  |
-| NumPy         | 5      | 4        | 5    | 5    | 5       | 5    | **4.75**     | ADOPTED (cosine sim)  |
+| Component     | Compat | Security | Perf | Cost | Support | Exit | Agent | **Weighted** | Decision              | OWASP/Agent Mapping                 |
+| ------------- | ------ | -------- | ---- | ---- | ------- | ---- | ----- | ------------ | --------------------- | ----------------------------------- |
+| Anthropic SDK | 4      | 4        | 4    | 2    | 4       | 5    | 4     | **3.75**     | ADOPTED (fallback)    | ASI01 (prompt injection via Claude) |
+| OpenAI SDK    | 4      | 4        | 4    | 2    | 5       | 5    | 4     | **3.80**     | ADOPTED (fallback)    | ASI01 (prompt injection via GPT)    |
+| raw httpx     | 5      | 4        | 4    | 5    | 3       | 5    | 4     | **4.30**     | ACTUAL IMPLEMENTATION | Least privilege; no SDK overhead    |
+| pgvector      | 5      | 4        | 4    | 5    | 3       | 4    | 4     | **4.30**     | ADOPTED (embeddings)  | ASI08 (vector weaknesses)           |
+| NumPy         | 5      | 4        | 5    | 5    | 5       | 5    | 3     | **4.50**     | ADOPTED (cosine sim)  | Pure math; no attack surface        |
 
 ### 1e. Observability Stack Scoring
 
-| Component                 | Compat | Security | Perf | Cost | Support | Exit | **Weighted** | Decision            |
-| ------------------------- | ------ | -------- | ---- | ---- | ------- | ---- | ------------ | ------------------- |
-| OpenTelemetry             | 5      | 4        | 4    | 5    | 5       | 5    | **4.55**     | ADOPTED             |
-| structlog                 | 5      | 4        | 5    | 5    | 4       | 5    | **4.55**     | ADOPTED             |
-| Prometheus instrumentator | 5      | 3        | 4    | 5    | 4       | 5    | **4.25**     | COMMENTED OUT (GAP) |
+| Component                 | Compat | Security | Perf | Cost | Support | Exit | Agent | **Weighted** | Decision                 | OWASP/Agent Mapping                                        |
+| ------------------------- | ------ | -------- | ---- | ---- | ------- | ---- | ----- | ------------ | ------------------------ | ---------------------------------------------------------- |
+| OpenTelemetry             | 5      | 4        | 4    | 5    | 5       | 5    | 4     | **4.50**     | ADOPTED                  | ASI03 (audit trails), ASI09 (trust exploitation detection) |
+| structlog                 | 5      | 4        | 5    | 5    | 4       | 5    | 3     | **4.45**     | ADOPTED                  | Structured agent action logging                            |
+| Prometheus instrumentator | 5      | 3        | 4    | 5    | 4       | 5    | 3     | **4.25**     | RE-ENABLED (main.py:167) | LLM06 (unbounded consumption detection)                    |
 
 ## 2. Backend Runtime (Pinned Versions)
 
-| Component                         | Pinned Version                   | Evidence (file:line)                 | Rationale / Exit Notes                                          |
-| --------------------------------- | -------------------------------- | ------------------------------------ | --------------------------------------------------------------- |
-| Python                            | >=3.12 (runtime 3.14.7; CI 3.12) | `pyproject.toml:9` `requires-python` | Version-pinned; CI matrix covers 3.12; exit: PSF-supported      |
-| FastAPI                           | 0.115.14                         | `uv.lock`                            | Web framework; exit: Starlette (direct dep)                     |
-| uvicorn                           | 0.52.1                           | `uv.lock`                            | ASGI server; exit: hypercorn, gunicorn                          |
-| SQLAlchemy                        | 2.0.51                           | `uv.lock`                            | ORM + async; exit: None (SQLAlchemy IS the Python SQL standard) |
-| asyncpg                           | 0.31.0                           | `uv.lock`                            | PG driver; exit: psycopg (sync) or asyncpg (same)               |
-| pydantic                          | 2.13.4                           | `uv.lock`                            | Validation; exit: None (industry standard)                      |
-| pydantic-settings                 | 2.15.0                           | `uv.lock`                            | Config; exit: env-var manual                                    |
-| alembic                           | 1.19.1                           | `uv.lock`                            | Migrations; exit: raw SQL                                       |
-| redis                             | 8.1.0 (+hiredis 3.4.1)           | `uv.lock`                            | Cache/rate-limit; exit: in-memory fallback (exists)             |
-| pgvector                          | 0.5.0                            | `uv.lock`                            | Vector similarity; exit: in-memory cosine (exists)              |
-| boto3                             | 1.43.68                          | `uv.lock`                            | S3/MinIO; exit: aioboto3, requests                              |
-| anthropic                         | 0.121.0                          | `uv.lock`                            | LLM provider (raw httpx in llm_service.py); exit: any HTTP      |
-| openai                            | 2.53.0                           | `uv.lock`                            | LLM/embeddings (raw httpx in llm_service.py); exit: any HTTP    |
-| structlog                         | 26.1.0                           | `uv.lock`                            | Structured logging; exit: stdlib logging                        |
-| tenacity                          | 9.1.4                            | `uv.lock`                            | Retry; exit: manual retry                                       |
-| pyjwt                             | 2.13.0                           | `uv.lock`                            | JWT; exit: python-jose                                          |
-| bcrypt                            | 5.0.0                            | `uv.lock`                            | Password hashing; exit: argon2-cffi                             |
-| pymupdf                           | 1.28.2                           | `uv.lock`                            | PDF parsing; exit: pypdf, pdfplumber                            |
-| python-docx                       | 1.2.0                            | `uv.lock`                            | DOCX parsing; exit: mammoth                                     |
-| opentelemetry-*                   | 1.44.0 / 0.65b0                  | `uv.lock`                            | Observability; exit: drop-in (OTLP standard)                    |
-| prometheus-fastapi-instrumentator | 7.1.0                            | `uv.lock`                            | Metrics; exit: prometheus_client                                |
-| numpy                             | 2.5.2                            | `uv.lock`                            | Numerical; exit: scipy                                          |
+> **⚠ CRITICAL: `uv.lock` Does Not Exist** — The pinned versions below cite
+> `uv.lock` as evidence, but this file was never generated or committed. All
+> precise version numbers (e.g., "FastAPI 0.115.14") are **unverifiable** until
+> `uv lock` is run and the lockfile is committed. The pyproject.toml specifies
+> minimum version ranges (`>=`), not exact pins. Until the lockfile exists,
+> treat these as approximate guidance only.
+
+| Component                         | Pinned Version                      | Evidence (file:line)                 | Rationale / Exit Notes                                             | EOL Risk      |
+| --------------------------------- | ----------------------------------- | ------------------------------------ | ------------------------------------------------------------------ | ------------- |
+| Python                            | >=3.12 (local 3.14 via uv; CI 3.12) | `pyproject.toml:9` `requires-python` | Version-pinned; CI matrix covers 3.12; local dev uses uv with 3.14 | Low (PSF LTS) |
+| FastAPI                           | 0.115.14                            | `uv.lock`                            | Web framework; exit: Starlette (direct dep)                        | Low           |
+| uvicorn                           | 0.52.1                              | `uv.lock`                            | ASGI server; exit: hypercorn, gunicorn                             | Low           |
+| SQLAlchemy                        | 2.0.51                              | `uv.lock`                            | ORM + async; exit: None (SQLAlchemy IS the Python SQL standard)    | None          |
+| asyncpg                           | 0.31.0                              | `uv.lock`                            | PG driver; exit: psycopg (sync) or asyncpg (same)                  | Low           |
+| pydantic                          | 2.13.4                              | `uv.lock`                            | Validation; exit: None (industry standard)                         | None          |
+| pydantic-settings                 | 2.15.0                              | `uv.lock`                            | Config; exit: env-var manual                                       | Low           |
+| alembic                           | 1.19.1                              | `uv.lock`                            | Migrations; exit: raw SQL                                          | Low           |
+| redis                             | 8.1.0 (+hiredis 3.4.1)              | `uv.lock`                            | Cache/rate-limit; exit: in-memory fallback (exists)                | Low           |
+| pgvector                          | 0.5.0                               | `uv.lock`                            | Vector similarity; exit: in-memory cosine (exists)                 | Low           |
+| boto3                             | 1.43.68                             | `uv.lock`                            | S3/MinIO; exit: aioboto3, requests                                 | Low           |
+| anthropic                         | 0.121.0                             | `uv.lock`                            | LLM provider (raw httpx in llm_service.py); exit: any HTTP         | Low           |
+| openai                            | 2.53.0                              | `uv.lock`                            | LLM/embeddings (raw httpx in llm_service.py); exit: any HTTP       | Low           |
+| structlog                         | 26.1.0                              | `uv.lock`                            | Structured logging; exit: stdlib logging                           | Low           |
+| tenacity                          | 9.1.4                               | `uv.lock`                            | Retry; exit: manual retry                                          | Low           |
+| pyjwt                             | 2.13.0                              | `uv.lock`                            | JWT; exit: python-jose                                             | Low           |
+| bcrypt                            | 5.0.0                               | `uv.lock`                            | Password hashing; exit: argon2-cffi                                | Low           |
+| pymupdf                           | 1.28.2                              | `uv.lock`                            | PDF parsing; exit: pypdf, pdfplumber                               | Low           |
+| python-docx                       | 1.2.0                               | `uv.lock`                            | DOCX parsing; exit: mammoth                                        | Low           |
+| opentelemetry-*                   | 1.44.0 / 0.65b0                     | `uv.lock`                            | Observability; exit: drop-in (OTLP standard)                       | Low           |
+| prometheus-fastapi-instrumentator | 7.1.0                               | `uv.lock`                            | Metrics; exit: prometheus_client                                   | Low           |
+| numpy                             | 2.5.2                               | `uv.lock`                            | Numerical; exit: scipy                                             | None          |
 
 ## 3. Frontend Runtime (Pinned Versions)
 
-| Component          | Pinned Version | Evidence (file:line)    | Rationale / Exit Notes                            |
-| ------------------ | -------------- | ----------------------- | ------------------------------------------------- |
-| Next.js            | 15.5.20        | `apps/web/package.json` | SSR/React framework; exit: Remix, Vite            |
-| React              | 18.3.1         | `apps/web/package.json` | UI library; exit: Preact, Solid                   |
-| TypeScript         | 5.9.3          | `apps/web/package.json` | Type system; exit: JSDoc                          |
-| Tailwind CSS       | 3.4.19         | `apps/web/package.json` | Utility-first CSS; exit: CSS Modules, vanilla CSS |
-| SWR                | 2.4.2          | `apps/web/package.json` | Data fetching/caching; exit: TanStack Query       |
-| Zustand            | 5.0.14         | `apps/web/package.json` | State management; exit: Jotai, Redux              |
-| Jest               | 29.7.0         | `apps/web/package.json` | Testing; exit: Vitest, Playwright                 |
-| eslint-config-next | 15.5.20        | `apps/web/package.json` | Linting; exit: manual eslint                      |
+| Component          | Pinned Version | Evidence (file:line)    | Rationale / Exit Notes                            | EOL Risk |
+| ------------------ | -------------- | ----------------------- | ------------------------------------------------- | -------- |
+| Next.js            | 15.5.20        | `apps/web/package.json` | SSR/React framework; exit: Remix, Vite            | Low      |
+| React              | 18.3.1         | `apps/web/package.json` | UI library; exit: Preact, Solid                   | Low      |
+| TypeScript         | 5.9.3          | `apps/web/package.json` | Type system; exit: JSDoc                          | None     |
+| Tailwind CSS       | 3.4.19         | `apps/web/package.json` | Utility-first CSS; exit: CSS Modules, vanilla CSS | Low      |
+| SWR                | 2.4.2          | `apps/web/package.json` | Data fetching/caching; exit: TanStack Query       | Low      |
+| Zustand            | 5.0.14         | `apps/web/package.json` | State management; exit: Jotai, Redux              | Low      |
+| Jest               | 29.7.0         | `apps/web/package.json` | Testing; exit: Vitest, Playwright                 | Low      |
+| eslint-config-next | 15.5.20        | `apps/web/package.json` | Linting; exit: manual eslint                      | Low      |
 
 ## 4. Infrastructure / Services (Pinned Versions)
 
-| Component             | Pinned Version           | Evidence (file:line)                              | Rationale / Exit Notes                                        |
-| --------------------- | ------------------------ | ------------------------------------------------- | ------------------------------------------------------------- |
-| PostgreSQL (pgvector) | pg16                     | `docker-compose.yml` `pgvector/pgvector:pg16`     | System of record + vector; exit: None (standard SQL)          |
-| Redis                 | 7-alpine                 | `docker-compose.yml` `redis:7-alpine`             | Cache/rate-limit; exit: in-memory fallback                    |
-| MinIO                 | latest                   | `docker-compose.yml` `quay.io/minio/minio:latest` | S3-compatible object storage; exit: AWS S3 (boto3 compatible) |
-| PgBouncer             | edoburu/pgbouncer:latest | `docker-compose.yml`                              | Connection pooling; exit: pgbouncer direct, pgcat             |
-| Node.js               | 20.14.0                  | `.nvmrc`                                          | Frontend runtime; exit: LTS Node versions                     |
-| pnpm                  | 9.12.0                   | `package.json` `packageManager`                   | Package manager; exit: npm, yarn                              |
+| Component             | Pinned Version           | Evidence (file:line)                              | Rationale / Exit Notes                                        | EOL Risk |
+| --------------------- | ------------------------ | ------------------------------------------------- | ------------------------------------------------------------- | -------- |
+| PostgreSQL (pgvector) | pg16                     | `docker-compose.yml` `pgvector/pgvector:pg16`     | System of record + vector; exit: None (standard SQL)          | None     |
+| Redis                 | 7-alpine                 | `docker-compose.yml` `redis:7-alpine`             | Cache/rate-limit; exit: in-memory fallback                    | Low      |
+| MinIO                 | latest                   | `docker-compose.yml` `quay.io/minio/minio:latest` | S3-compatible object storage; exit: AWS S3 (boto3 compatible) | Low      |
+| PgBouncer             | edoburu/pgbouncer:latest | `docker-compose.yml`                              | Connection pooling; exit: pgbouncer direct, pgcat             | Low      |
+| Node.js               | 20.14.0                  | `.nvmrc`                                          | Frontend runtime; exit: LTS Node versions                     | Low      |
+| pnpm                  | 9.12.0                   | `package.json` `packageManager`                   | Package manager; exit: npm, yarn                              | Low      |
 
 ## 5. Tools & DevDependencies
 
 | Component  | Pinned Version | Evidence                              | Rationale                           |
 | ---------- | -------------- | ------------------------------------- | ----------------------------------- |
 | ESLint     | 8.57.0         | `package.json` override               | Legacy flat-config migration needed |
-| Prettier   | 3.2.x          | root devDeps                          | Formatting                          |
+| Prettier   | 3.9.5          | root devDeps                          | Formatting                          |
 | Husky      | 9.x            | root devDeps                          | Git hooks                           |
 | Commitlint | 21.2.x         | root devDeps                          | Conventional commits                |
 | Playwright | 1.62.1         | root devDeps                          | E2E + a11y                          |
@@ -175,12 +192,26 @@ Scoring dimensions (1-5 scale, 5 = best):
 
 ### 6b. Known Incompatibilities
 
-| Issue                                  | Status | Mitigation                                   |
-| -------------------------------------- | ------ | -------------------------------------------- |
-| Python 3.14 runtime vs CI 3.12         | ACTIVE | CI matrix covers 3.12; runtime 3.14 untested |
-| ESLint 8 legacy vs flat config         | ACTIVE | DEFERRED to P16                              |
-| NestJS packages (service-auth, observ) | ACTIVE | NOT DEPLOYED; legacy only                    |
-| BullMQ package (queue)                 | ACTIVE | NOT DEPLOYED; no consumers                   |
+| Issue                                  | Status | Mitigation                                           |
+| -------------------------------------- | ------ | ---------------------------------------------------- |
+| Python 3.14 runtime vs CI 3.12         | ACTIVE | CI matrix covers 3.12; runtime 3.14 via uv local dev |
+| ESLint 8 legacy vs flat config         | ACTIVE | DEFERRED to P16                                      |
+| NestJS packages (service-auth, observ) | ACTIVE | NOT DEPLOYED; legacy only                            |
+| BullMQ package (queue)                 | ACTIVE | NOT DEPLOYED; no consumers                           |
+
+### 6c. MCP 2026-07-28 Compatibility
+
+| Component  | MCP Compatible? | Evidence                                          | Notes                                  |
+| ---------- | --------------- | ------------------------------------------------- | -------------------------------------- |
+| FastAPI    | ✅ YES          | Auto-generated OpenAPI 3.1; MCP uses JSON-RPC 2.0 | MCP server can be added alongside REST |
+| Pydantic 2 | ✅ YES          | Schema generation for MCP tool definitions        | Used by MCP Python SDK v2              |
+| PostgreSQL | ✅ YES          | Standard SQL; no MCP dependency                   | N/A                                    |
+| Redis      | ✅ YES          | In-memory; no MCP dependency                      | N/A                                    |
+
+> **MCP adoption note:** MCP 2026-07-28 introduces stateless protocol core,
+> Extensions framework, Tasks, and MCP Apps. The current connector architecture
+> (`connectors/mcp/`) should be evaluated against the 2026-07-28 revision for
+> version negotiation and authorization compliance.
 
 ## 7. Phase Prohibitions (prompt §3)
 
@@ -216,3 +247,5 @@ Scoring dimensions (1-5 scale, 5 = best):
 | EVD-MVP-P06-004 | Phase prohibitions verified             | MVP-P06-R01     | REPO_VERIFIED | grep + uv.lock                       | PASS   | 2026-08-15 | Agent B     |
 | EVD-MVP-P06-020 | Compatibility matrix verified           | MVP-P06-R01     | REPO_VERIFIED | §6a above                            | PASS   | 2026-08-15 | Agent B     |
 | EVD-MVP-P06-021 | Technology scoring completed            | MVP-P06-R01     | DESIGN        | §1 above                             | PASS   | 2026-08-15 | Agent B     |
+| EVD-MVP-P06-022 | MCP compatibility verified              | MVP-P06-R01     | REPO_VERIFIED | §6c above                            | PASS   | 2026-08-17 | Agent B     |
+| EVD-MVP-P06-023 | OWASP Agentic mapping completed         | MVP-P06-R03     | DESIGN        | §1 tables above                      | PASS   | 2026-08-17 | Agent B     |
