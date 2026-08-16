@@ -9,11 +9,13 @@
 > **`CONDITIONAL GO — NON-DEPENDENT WORK ONLY`** (`02-predecessor-audit.md`; P03
 > is requirements/docs = non-dependent; dependent/production work prohibited)
 > **Phase type:** REQUIREMENTS ENGINEERING (docs-only; no production/dependent
-> authorization) **Status:** ✅ COMPLETE — docs 01–11 written 2026-08-14; gate
-> **89.7/100** CONDITIONAL GO (band 88–94, zero mandatory blockers); verdict =
-> USER (sole gate authority, BQ-01); P04 starts only on user command. Supersedes
-> the 2026-08-07 run (gate 88/100 CONDITIONAL GO); prior files preserved
-> untouched via date renames (`*-2026-08-07.md`).
+> authorization) **Status:** ✅ COMPLETE — docs 01–12 written/updated; gate
+> **83.9/100** CONDITIONAL GO (band 88–94, zero mandatory blockers, 7 P0 gaps
+> release-blocking per DEC-P03-07); verdict = USER (sole gate authority, BQ-01);
+> P04 starts only on user command. Supersedes the 2026-08-07 run (gate 88/100
+> CONDITIONAL GO); prior files preserved untouched via date renames
+> (`*-2026-08-07.md`). **Upgraded 2026-08-16:** zero-trust codebase audit → 15
+> gaps → FR-71..FR-85 → gate re-scored 89.7→83.9.
 
 ## Entry criteria
 
@@ -46,19 +48,20 @@
 
 ## Register index
 
-| #   | Document                               | Purpose                                                                                | Status |
-| --- | -------------------------------------- | -------------------------------------------------------------------------------------- | ------ |
-| 01  | `01-source-register.md`                | Phase sources + standards re-verified 2026-08-14 + conflict log CF-P03-01..04          | ✅     |
-| 02  | `02-predecessor-audit.md`              | P02 forensic audit PA-MVP-P03-001..013; entry CONDITIONAL GO — NON-DEPENDENT WORK ONLY | ✅     |
-| 03  | `03-requirements.md`                   | **DEL-MVP-P03-01** — atomic FR/NFR set incl. hardened FR-52–FR-70, NFR-15–NFR-22       | ✅     |
-| 04  | `04-stories-acceptance.md`             | **DEL-MVP-P03-02** — stories + acceptance                                              | ✅     |
-| 05  | `05-traceability-matrix.md`            | **DEL-MVP-P03-03** — source→req→design→test→evidence (incl. coverage delta reconcile)  | ✅     |
-| 06  | `06-priority-release-baseline.md`      | **DEL-MVP-P03-04** — MoSCoW + release baseline                                         | ✅     |
-| 07  | `07-change-control.md`                 | **DEL-MVP-P03-05** — change-control rules                                              | ✅     |
-| 08  | `08-registers.md`                      | Risks/decisions/assumptions (incl. RISK-MVP-P02-10/11 closure)                         | ✅     |
-| 09  | `09-gate-2026-08-14.md`                | End-of-phase gate (89.7/100, zero mandatory blockers, verdict = USER)                  | ✅     |
-| 10  | `10-handoff-to-p04.md`                 | Next-phase handoff                                                                     | ✅     |
-| 11  | `11-completion-response-2026-08-14.md` | §30 completion response (A–P)                                                          | ✅     |
+| #   | Document                                | Purpose                                                                                | Status |
+| --- | --------------------------------------- | -------------------------------------------------------------------------------------- | ------ |
+| 01  | `01-source-register.md`                 | Phase sources + standards re-verified 2026-08-14 + conflict log CF-P03-01..04          | ✅     |
+| 02  | `02-predecessor-audit.md`               | P02 forensic audit PA-MVP-P03-001..013; entry CONDITIONAL GO — NON-DEPENDENT WORK ONLY | ✅     |
+| 03  | `03-requirements.md`                    | **DEL-MVP-P03-01** — atomic FR/NFR set incl. hardened FR-52–FR-70, NFR-15–NFR-22       | ✅     |
+| 04  | `04-stories-acceptance.md`              | **DEL-MVP-P03-02** — stories + acceptance                                              | ✅     |
+| 05  | `05-traceability-matrix.md`             | **DEL-MVP-P03-03** — source→req→design→test→evidence (incl. coverage delta reconcile)  | ✅     |
+| 06  | `06-priority-release-baseline.md`       | **DEL-MVP-P03-04** — MoSCoW + release baseline                                         | ✅     |
+| 07  | `07-change-control.md`                  | **DEL-MVP-P03-05** — change-control rules                                              | ✅     |
+| 08  | `08-registers.md`                       | Risks/decisions/assumptions (incl. RISK-MVP-P02-10/11 closure)                         | ✅     |
+| 09  | `09-gate-2026-08-14.md`                 | End-of-phase gate (83.9/100, re-scored 2026-08-16; 7 P0 gaps release-blocking)         | ✅     |
+| 10  | `10-handoff-to-p04.md`                  | Next-phase handoff                                                                     | ✅     |
+| 11  | `11-completion-response-2026-08-14.md`  | §30 completion response (A–P)                                                          | ✅     |
+| 12  | `12-implementation-gap-requirements.md` | **NEW 2026-08-16** — zero-trust audit: 15 gaps → FR-71..FR-85                          | ✅     |
 
 Historical: prior run (2026-08-07, gate 88/100 CONDITIONAL GO) preserved
 untouched as `01-source-register-2026-08-07.md`,
@@ -82,6 +85,7 @@ untouched)
 | WS-03.4 | Acceptance/traceability               | QA Lead                | `04/05`                   | ✅     |
 | WS-03.5 | Prioritization/change control         | Product Manager        | `06/07`                   | ✅     |
 | —       | Registers / gate / handoff            | Phase owner            | `08`–`11`                 | ✅     |
+| —       | Implementation gap audit (NEW)        | Phase owner            | `12`                      | ✅     |
 
 ## Scope note (CF-P03-01, updated per P02 gate)
 
@@ -115,3 +119,6 @@ default, CF-P03-04 coverage delta resolution path).
 - Interviews/cohort evidence stay UNKNOWN until USER supplies VB-07/08 access
   (design-partner protocol, `../mvp-p02/11-evidence-plan.md` §5) — no
   fabrication.
+- **P0 gap requirements (FR-71..75, FR-82, FR-85) are release-blocking
+  (DEC-P03-07)** — must be fixed before any MVP release claim. Full gap details
+  in `12-implementation-gap-requirements.md`.
