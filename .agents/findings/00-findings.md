@@ -6,6 +6,9 @@
 design claim against actual code (957 lines, 5 critical findings, 8 prioritized
 recommendations). **P02 Audit:** See `02-p02-audit-2026-08-16.md` for
 deliverable-specific verification (32 claims, 9 findings fixed, 23 verified).
+**MVP-P04 Doc Audit:** See `07-mvp-p04-doc-audit.md` for documentation vs repo
+reality verification (26 pkgs vs 25 claimed, 11 workflows vs 4 claimed, test
+count corrections).
 
 ---
 
