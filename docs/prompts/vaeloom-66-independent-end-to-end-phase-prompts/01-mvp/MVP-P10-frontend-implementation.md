@@ -17,7 +17,7 @@
 
 ## Track Mission and Non-Negotiable Context
 
-**Mission:** Prove the memory-first ingest → organize → remember → assist loop with a tightly bounded eight-agent, six-memory, suggest-mode-first product before enterprise expansion.
+**Mission:** Prove the memory-first ingest → organize → remember → assist loop with a tightly bounded eight-agent, memory-first, suggest-mode-first product before enterprise expansion.
 
 - Eight total runtime agents including Orchestrator: Orchestrator, Organization, Memory, Resume, ATS, Job Search & Application, Gmail, Scheduler.
 - Six memory types: Profile, Document, Career, Episodic, Preference, Working.
@@ -191,8 +191,8 @@ Frontend Engineer; UX Lead; Accessibility Specialist; API Engineer; Security Eng
 The accountable role owns the gate. Security, privacy, data, accessibility, reliability and operations reviewers retain veto on mandatory blockers.
 
 ## 3. Verified Project Context
-- **Context:** Single-user personal intelligence platform for students and early-career professionals; memory-first; eight total runtime agents including Orchestrator; six memory types; suggest-mode-first; approved connectors only.
-- **Architecture:** Next.js, NestJS, FastAPI, PostgreSQL as system of record with vector/graph projections, Redis/BullMQ, object storage and search; PaaS-first; every artifact workspace-scoped.
+- **Context:** Single-user personal intelligence platform for students and early-career professionals; memory-first; eight total runtime agents including Orchestrator; 22 memory types; suggest-mode-first; approved connectors only.
+- **Architecture:** Next.js 15 frontend, FastAPI/Python backend, PostgreSQL with pgvector, Redis, MinIO object storage; PaaS-first; every artifact workspace-scoped. No NestJS — single FastAPI monolith (ADR-001). Legacy packages exist (`packages/service-auth`, `packages/observability`, `packages/queue`) but are NOT deployed.
 - **In scope:** Prove ingest → organize → remember → assist, trust/approval UX, memory quality, resume/ATS value, lawful opportunity assistance, Gmail deadline extraction, reminders, export/deletion and bounded operational viability.
 - **Out of scope:** Enterprise SSO/SCIM, institution admin, billing, marketplace, multi-region cells, cross-user memory and unsupported job-platform automation.
 - **Phase-specific rule:** Ship web first; desktop/VS Code are separately scoped clients and releases.
@@ -321,7 +321,7 @@ Assess business/product, architecture, data, security, privacy, compliance, UX/a
 Status every task as `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `IMPLEMENTED_UNVERIFIED`, `VERIFIED` or `NOT_APPLICABLE`. Unverified work cannot pass.
 
 ## 13. Technical and Implementation Requirements
-- Preserve approved architecture: Next.js, NestJS, FastAPI, PostgreSQL as system of record with vector/graph projections, Redis/BullMQ, object storage and search; PaaS-first; every artifact workspace-scoped.
+- Preserve approved architecture: Next.js 15 frontend, FastAPI/Python backend, PostgreSQL with pgvector, Redis, MinIO object storage; PaaS-first; every artifact workspace-scoped. No NestJS — single FastAPI monolith. Legacy packages (`packages/service-auth`, `packages/observability`, `packages/queue`) NOT deployed.
 - Apply phase rule: Ship web first; desktop/VS Code are separately scoped clients and releases.
 - Use typed contracts, least privilege, idempotency, concurrency control, immutable audit and reversible changes.
 - Separate proposal/action, user/workload identity, source-of-truth/projection and business/transport status.
@@ -330,7 +330,7 @@ Status every task as `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `IMPLEMENTED_UNVER
 - Do not weaken constraints or tests to create a pass.
 
 ## 14. Repository and Artifact Inspection
-Inspect: `apps/web`, `apps/core-api`, `apps/ai-service`, `packages/contracts`, `packages/design-system`, `infra`, `docs`, `tests`, `.github/workflows`.
+Inspect: `apps/web`, `apps/api`, `packages/*`, `docs`, `tests`, `.github/workflows`.
 
 ```bash
 git status --short --branch && git rev-parse HEAD && git log -n 20 --oneline
