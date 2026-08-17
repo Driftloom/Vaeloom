@@ -173,13 +173,34 @@ async def act_phase(plan: Dict[str, Any], request: AgentRequest) -> Dict[str, An
 
         if agent_type in ("GmailAgent", "GmailAgentHandler"):
             emails = [{"id": f"email_{request.id}", "subject": message, "sender": "unknown", "body": message}]
-            return await agent.classify_emails(emails=emails)
+            # Approval gate for email sends (draft-only without approval)
+            approval = await lookup_approval(
+                workspace_id=request.workspace_id,
+                agent_name=request.agent_name,
+                action_type="email_send",
+            )
+            has_approval = approval is not None and approval.get("status") == "APPROVED"
+            return await agent.classify_emails(emails=emails, has_approval=has_approval)
 
         if agent_type in ("DriveAgent", "DriveAgentHandler"):
-            return await agent.process(request)
+            # Approval gate for file operations
+            approval = await lookup_approval(
+                workspace_id=request.workspace_id,
+                agent_name=request.agent_name,
+                action_type="file_modify",
+            )
+            has_approval = approval is not None and approval.get("status") == "APPROVED"
+            return await agent.process(request, has_approval=has_approval)
 
         if agent_type == "SchedulerAgent":
-            return await agent.check_conflicts(events=[])
+            # Approval gate for calendar writes
+            approval = await lookup_approval(
+                workspace_id=request.workspace_id,
+                agent_name=request.agent_name,
+                action_type="calendar_write",
+            )
+            has_approval = approval is not None and approval.get("status") == "APPROVED"
+            return await agent.check_conflicts(events=[], has_approval=has_approval)
 
         if agent_type in ("MemoryAgent", "MemoryAgentHandler"):
             return await agent.execute(

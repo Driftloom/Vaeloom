@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -19,6 +19,8 @@ async def dashboard(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
     kpis = await analytics_service.get_metrics(tenant_id=tenant_id, db=db)
     usage = await analytics_service.get_usage(
@@ -35,6 +37,8 @@ async def get_usage(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
     return await analytics_service.get_usage(tenant_id=tenant_id, date_from=date_from, date_to=date_to, interval=interval, db=db)
 
@@ -44,6 +48,8 @@ async def get_metrics(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
     return await analytics_service.get_metrics(tenant_id=tenant_id, db=db)
 
@@ -54,6 +60,8 @@ async def track_event(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
     user_id = current_user.get("sub") or current_user.get("user_id")
     event_id = await analytics_service.track_event(
@@ -68,6 +76,8 @@ async def aggregate(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
     await analytics_service.aggregate(date=dto.date, tenant_id=tenant_id, db=db)
     return {"status": "ok"}

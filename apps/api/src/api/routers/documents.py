@@ -33,6 +33,8 @@ async def upload_document(
 ):
     if not workspace_id:
         raise HTTPException(status_code=400, detail="workspace_id is required")
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub") or current_user.get("user_id")
     await _verify_workspace_access(workspace_id, user_id, db)
     doc = await document_service.upload(file=file, workspace_id=workspace_id, user_id=user_id, db=db)
@@ -49,6 +51,8 @@ async def list_documents(
 ):
     if not workspace_id:
         raise HTTPException(status_code=400, detail="workspace_id is required")
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub") or current_user.get("user_id")
     await _verify_workspace_access(workspace_id, user_id, db)
     docs, total = await document_service.list_for_workspace(workspace_id=workspace_id, page=page, page_size=page_size, db=db)

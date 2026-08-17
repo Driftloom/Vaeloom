@@ -12,6 +12,8 @@ from .extraction import extract, ExtractedFacts
 from .merge import merge_check, MergeResult
 from .retrieval import retrieve, RetrievedMemory
 
+from sqlalchemy import func
+
 logger = logging.getLogger(__name__)
 
 _MEMORY_TYPE_MAP = {
@@ -82,13 +84,73 @@ class MemoryAgentHandler(BaseAgent):
                 "confidence": result.confidence,
             })
 
-        # 3. Persist extracted memories to the database
+        # 3. Persist to database: memories + entities + relationships
         persisted_count = 0
+        entities_created = 0
+        relationships_created = 0
+        entity_id_map: Dict[str, uuid.UUID] = {}  # name -> DB id for relationship resolution
+
         try:
             from ...database import async_session_factory
-            from ...models.schema import Memory
+            from ...models.schema import Memory, Entity, Relationship
 
             async with async_session_factory() as db:
+                # 3a. Create Entity rows (knowledge graph nodes)
+                for i, entity in enumerate(facts.entities):
+                    merge_decision = merge_results[i] if i < len(merge_results) else None
+                    entity_id = None
+
+                    if merge_decision and merge_decision["action"] == "merge" and merge_decision.get("target_id"):
+                        # Merge: update existing entity's aliases
+                        try:
+                            target_uuid = uuid.UUID(merge_decision["target_id"])
+                            from sqlalchemy import select
+                            stmt = select(Entity).where(Entity.id == target_uuid)
+                            result = await db.execute(stmt)
+                            existing = result.scalar_one_or_none()
+                            if existing:
+                                # Merge aliases
+                                new_aliases = list(set((existing.aliases or []) + entity.aliases))
+                                existing.aliases = new_aliases
+                                existing.updated_at = func.now() if hasattr(existing, 'updated_at') else None
+                                entity_id = existing.id
+                                logger.info("Merged entity '%s' into existing %s", entity.name, entity_id)
+                        except (ValueError, Exception) as exc:
+                            logger.warning("Merge failed for entity '%s': %s", entity.name, exc)
+
+                    if entity_id is None:
+                        # Create new entity
+                        new_entity = Entity(
+                            workspace_id=uuid.UUID(workspace_id),
+                            type=entity.entity_type,
+                            canonical_name=entity.name,
+                            aliases=entity.aliases or [],
+                            metadata_={"confidence": entity.confidence, "source": source_type},
+                        )
+                        db.add(new_entity)
+                        await db.flush()  # get the ID
+                        entity_id = new_entity.id
+                        entities_created += 1
+
+                    entity_id_map[entity.name.lower()] = entity_id
+
+                # 3b. Persist relationships (knowledge graph edges)
+                for rel in facts.relationships:
+                    from_entity_id = entity_id_map.get(rel.from_entity.lower())
+                    to_entity_id = entity_id_map.get(rel.to_entity.lower())
+                    if from_entity_id and to_entity_id and from_entity_id != to_entity_id:
+                        relationship = Relationship(
+                            workspace_id=uuid.UUID(workspace_id),
+                            from_entity_id=from_entity_id,
+                            to_entity_id=to_entity_id,
+                            relation_type=rel.relation_type,
+                            confidence=rel.confidence,
+                            metadata_={"source": source_type, "source_id": source_id},
+                        )
+                        db.add(relationship)
+                        relationships_created += 1
+
+                # 3c. Create Memory rows (for API-level retrieval)
                 for entity in facts.entities:
                     content_hash = hashlib.sha256(
                         (entity.name + entity.entity_type).encode()
@@ -112,21 +174,31 @@ class MemoryAgentHandler(BaseAgent):
                     )
                     db.add(memory)
                     persisted_count += 1
+
                 await db.commit()
+
         except Exception as exc:
-            logger.warning("Failed to persist memories to DB: %s", exc)
+            logger.warning("Failed to persist to DB: %s", exc)
 
         return {
             "agent_name": "memory",
             "action": "suggest",
             "confidence": 0.85,
             "result": {
-                "summary": f"Extracted {len(facts.entities)} entities and {len(facts.relationships)} relationships. Persisted {persisted_count} memories.",
+                "summary": (
+                    f"Extracted {len(facts.entities)} entities, "
+                    f"{len(facts.relationships)} relationships. "
+                    f"Persisted {persisted_count} memories, "
+                    f"{entities_created} new entities, "
+                    f"{relationships_created} relationships."
+                ),
                 "details": {
                     "entities": [e.model_dump() for e in facts.entities],
                     "relationships": [r.model_dump() for r in facts.relationships],
                     "merge_decisions": merge_results,
                     "persisted_count": persisted_count,
+                    "entities_created": entities_created,
+                    "relationships_created": relationships_created,
                 },
                 "proposals": [],
                 "questions": [],

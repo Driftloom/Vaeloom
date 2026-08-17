@@ -33,6 +33,8 @@ async def list_applications(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub") or current_user.get("user_id")
     await _verify_workspace_access(workspace_id, user_id, db)
     apps, total = await application_service.find_all(workspace_id, db, page, page_size)
@@ -46,6 +48,8 @@ async def create_application(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub") or current_user.get("user_id")
     await _verify_workspace_access(workspace_id, user_id, db)
     application = await application_service.create(workspace_id, dto, db)
@@ -59,6 +63,8 @@ async def get_application(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub") or current_user.get("user_id")
     await _verify_workspace_access(workspace_id, user_id, db)
     application = await application_service.find_one(workspace_id, application_id, db)
@@ -75,6 +81,8 @@ async def update_application_outcome(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub") or current_user.get("user_id")
     await _verify_workspace_access(workspace_id, user_id, db)
     application = await application_service.update_outcome(workspace_id, application_id, dto.status, db)

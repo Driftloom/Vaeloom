@@ -55,6 +55,7 @@ class TestCSRFMiddleware:
 
     @pytest.mark.asyncio
     async def test_skips_xhr_requests(self):
+        """XHR bypass was removed as security fix (FIND-CSRF-001). XHR now requires CSRF token."""
         app = MagicMock()
         middleware = CSRFMiddleware(app)
         request = MagicMock(spec=Request)
@@ -63,8 +64,9 @@ class TestCSRFMiddleware:
         request.headers = {"X-Requested-With": "XMLHttpRequest"}
         request.cookies = {}
         call_next = AsyncMock(return_value=Response())
-        result = await middleware.dispatch(request, call_next)
-        assert result.status_code == 200
+        with pytest.raises(HTTPException) as exc_info:
+            await middleware.dispatch(request, call_next)
+        assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
     async def test_skips_api_key_requests(self):

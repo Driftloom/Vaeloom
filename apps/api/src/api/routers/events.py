@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -21,6 +21,8 @@ async def publish_event(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
     event = await event_service.publish(dto, user_id, db)
     return EventResponse.model_validate(event)
@@ -31,6 +33,8 @@ async def list_events(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
     events = await event_service.find_all(user_id, db)
     return [EventResponse.model_validate(e) for e in events]
@@ -42,6 +46,8 @@ async def create_subscription(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
     sub = await event_service.create_subscription(dto, user_id, db)
     return SubscriptionResponse.model_validate(sub)
@@ -52,6 +58,8 @@ async def list_subscriptions(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
     subs = await event_service.list_subscriptions(user_id, db)
     return [SubscriptionResponse.model_validate(s) for s in subs]

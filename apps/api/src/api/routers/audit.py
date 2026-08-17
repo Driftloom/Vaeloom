@@ -16,6 +16,8 @@ async def record_event(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
     actor_id = str(current_user.get("sub") or current_user.get("user_id", ""))
     event_id = await audit_service.record_event(
@@ -42,6 +44,8 @@ async def query_events(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
     filters = {
         "actor_id": actor_id,
@@ -62,6 +66,8 @@ async def get_event(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     event = await audit_service.get_event(event_id=event_id, db=db)
     if not event:
         raise HTTPException(status_code=404, detail="Audit event not found")
@@ -76,6 +82,8 @@ async def export_events(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
     content = await audit_service.export_events(date_from=date_from, date_to=date_to, format=format, tenant_id=tenant_id, db=db)
     media_type = "text/csv" if format == "csv" else "application/json"
@@ -89,6 +97,8 @@ async def compliance_report(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
     report = await audit_service.compliance_report(tenant_id=tenant_id, date_from=date_from, date_to=date_to, db=db)
     return ComplianceReport(**report)

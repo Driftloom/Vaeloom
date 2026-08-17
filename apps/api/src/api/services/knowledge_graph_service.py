@@ -305,18 +305,25 @@ class KnowledgeGraphService:
         )
         return enriched, total
 
-    async def list_all_edges(self, page: int, page_size: int, relationship: str | None, db):
+    async def list_all_edges(self, page: int, page_size: int, relationship: str | None, db, tenant_id: str | None = None):
         offset = (page - 1) * page_size
         params: dict[str, Any] = {"limit": page_size, "offset_val": offset}
 
-        where_clause = ""
+        conditions = []
         if relationship:
-            where_clause = "WHERE e.relationship = :rel"
+            conditions.append("e.relationship = :rel")
             params["rel"] = relationship
+        if tenant_id:
+            conditions.append("src.tenant_id = :tenant_id")
+            params["tenant_id"] = tenant_id
+
+        where_clause = ""
+        if conditions:
+            where_clause = "WHERE " + " AND ".join(conditions)
 
         count_result = await db.execute(
-            text(f"SELECT COUNT(*) FROM knowledge_edges e {where_clause}"),
-            params if relationship else {},
+            text(f"SELECT COUNT(*) FROM knowledge_edges e JOIN knowledge_nodes src ON src.id = e.source_id {where_clause}"),
+            params,
         )
         total = count_result.scalar()
 

@@ -18,6 +18,8 @@ async def list_memories(
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     memories, total = await memory_service.list_memories(db, query, tenant_id)
     return {
         "memories": [MemoryResponse.model_validate(m) for m in memories],
@@ -34,7 +36,9 @@ async def create_memory(
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
-    user_id = current_user.get("sub") or current_user.get("user_id") if current_user else None
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub") or current_user.get("user_id")
     memory = await memory_service.create_memory(db, dto, tenant_id, user_id)
     return MemoryResponse.model_validate(memory)
 
@@ -46,6 +50,8 @@ async def get_memory(
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     memory = await memory_service.get_memory(db, memory_id, tenant_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
@@ -60,6 +66,8 @@ async def update_memory(
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     memory = await memory_service.update_memory(db, memory_id, dto, tenant_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
@@ -73,6 +81,8 @@ async def delete_memory(
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     deleted = await memory_service.delete_memory(db, memory_id, tenant_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Memory not found")
@@ -85,6 +95,8 @@ async def search_memories(
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     results = await memory_service.search_memories(db, dto, tenant_id)
     return [
         MemorySearchResult(memory=MemoryResponse.model_validate(mem), score=score)

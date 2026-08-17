@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -17,6 +18,18 @@ from ..schemas.knowledge_graph import (
 from ..services.knowledge_graph_service import kg_service
 
 router = APIRouter()
+
+
+async def _verify_node_tenant(node_id: uuid.UUID, tenant_id: str | None, db: AsyncSession) -> None:
+    """Verify a knowledge_graph node belongs to the current tenant. Raises 404 if not."""
+    if not tenant_id:
+        return
+    result = await db.execute(
+        text("SELECT id FROM knowledge_nodes WHERE id = :id AND tenant_id = :tenant_id"),
+        {"id": node_id, "tenant_id": tenant_id},
+    )
+    if not result.fetchone():
+        raise HTTPException(status_code=404, detail="Node not found")
 
 
 @router.post("/nodes", response_model=NodeResponse, status_code=201)
@@ -76,6 +89,8 @@ async def get_node(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    tenant_id = current_user.get("tenant_id")
+    await _verify_node_tenant(node_id, tenant_id, db)
     row = await kg_service.get_node(node_id, db)
     if not row:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -91,6 +106,8 @@ async def update_node(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    tenant_id = current_user.get("tenant_id")
+    await _verify_node_tenant(node_id, tenant_id, db)
     row = await kg_service.update_node(node_id, dto, db)
     if not row:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -105,6 +122,8 @@ async def delete_node(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    tenant_id = current_user.get("tenant_id")
+    await _verify_node_tenant(node_id, tenant_id, db)
     row = await kg_service.delete_node(node_id, db)
     if not row:
         raise HTTPException(status_code=404, detail="Node not found")
@@ -119,6 +138,8 @@ async def create_edge(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    tenant_id = current_user.get("tenant_id")
+    await _verify_node_tenant(node_id, tenant_id, db)
     row = await kg_service.create_edge(node_id, dto, db)
     if not row:
         raise HTTPException(status_code=409, detail="Edge already exists or source/target not found")
@@ -135,6 +156,8 @@ async def list_node_edges(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    tenant_id = current_user.get("tenant_id")
+    await _verify_node_tenant(node_id, tenant_id, db)
     rows, total = await kg_service.list_edges(node_id, page, page_size, db)
     return {
         "items": [EdgeResponse.model_validate(r._mapping) for r in rows],
@@ -154,7 +177,9 @@ async def list_all_edges(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
-    rows, total = await kg_service.list_all_edges(page, page_size, relationship, db)
+    tenant_id = current_user.get("tenant_id")
+    # Filter edges by tenant through source node's tenant_id
+    rows, total = await kg_service.list_all_edges(page, page_size, relationship, db, tenant_id=tenant_id)
     return {
         "items": [EdgeResponse.model_validate(r._mapping) for r in rows],
         "total": total,
@@ -171,6 +196,16 @@ async def delete_edge(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    tenant_id = current_user.get("tenant_id")
+    # Verify edge's source node belongs to tenant
+    from sqlalchemy import text as sql_text
+    edge_check = await db.execute(
+        sql_text("SELECT e.source_id FROM knowledge_edges e WHERE e.id = :edge_id"),
+        {"edge_id": edge_id},
+    )
+    edge_row = edge_check.fetchone()
+    if edge_row:
+        await _verify_node_tenant(edge_row[0], tenant_id, db)
     row = await kg_service.delete_edge(edge_id, db)
     if not row:
         raise HTTPException(status_code=404, detail="Edge not found")
@@ -184,8 +219,11 @@ async def traverse(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    tenant_id = current_user.get("tenant_id")
+    start_uuid = uuid.UUID(dto.start_id) if isinstance(dto.start_id, str) else dto.start_id
+    await _verify_node_tenant(start_uuid, tenant_id, db)
     rows = await kg_service.traverse(
-        uuid.UUID(dto.start_id) if isinstance(dto.start_id, str) else dto.start_id,
+        start_uuid,
         dto.depth,
         dto.mode,
         db,
@@ -203,9 +241,14 @@ async def find_shortest_path(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    tenant_id = current_user.get("tenant_id")
+    from_id_uuid = uuid.UUID(from_id)
+    to_id_uuid = uuid.UUID(to_id)
+    await _verify_node_tenant(from_id_uuid, tenant_id, db)
+    await _verify_node_tenant(to_id_uuid, tenant_id, db)
     nodes, depth = await kg_service.find_shortest_path(
-        uuid.UUID(from_id),
-        uuid.UUID(to_id),
+        from_id_uuid,
+        to_id_uuid,
         max_depth,
         db,
     )

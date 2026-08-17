@@ -17,6 +17,8 @@ async def list_resumes(
 ):
     if not workspace_id:
         raise HTTPException(status_code=400, detail="workspace_id is required")
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     resumes = await resume_service.list_for_workspace(workspace_id=workspace_id, db=db)
     return [ResumeResponse.model_validate(r) for r in resumes]
 
@@ -27,6 +29,8 @@ async def get_master_resume(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     resume = await resume_service.get_master(workspace_id=workspace_id, db=db)
     if not resume:
         raise HTTPException(status_code=404, detail="Master resume not found")
@@ -40,6 +44,8 @@ async def generate_resume(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub") or current_user.get("user_id")
     resume = await resume_service.generate_variant(resume_id=resume_id, dto=dto, user_id=user_id, db=db)
     return ResumeResponse.model_validate(resume)

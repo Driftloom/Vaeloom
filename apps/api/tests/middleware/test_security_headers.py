@@ -70,7 +70,7 @@ class TestCORSConfiguration:
         import os
 
         main_path = os.path.join(
-            os.path.dirname(__file__), "..", "..", "src", "backend", "main.py"
+            os.path.dirname(__file__), "..", "..", "src", "api", "main.py"
         )
         with open(main_path) as f:
             tree = ast.parse(f.read())

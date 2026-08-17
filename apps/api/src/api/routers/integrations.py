@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -21,6 +21,8 @@ async def create_integration(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
     integration = await integration_service.create(dto, user_id, db)
     return IntegrationResponse.model_validate(integration)
@@ -31,6 +33,8 @@ async def list_integrations(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
     integrations = await integration_service.list_for_user(user_id, db)
     return [IntegrationResponse.model_validate(i) for i in integrations]
@@ -43,6 +47,8 @@ async def update_integration(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
     integration = await integration_service.update(integration_id, dto, user_id, db)
     return IntegrationResponse.model_validate(integration)
@@ -54,6 +60,8 @@ async def delete_integration(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
     await integration_service.delete(integration_id, user_id, db)
 
@@ -64,6 +72,8 @@ async def sync_integration(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
     result = await integration_service.sync(integration_id, user_id, db)
     return result

@@ -89,7 +89,7 @@ class ApprovalManager:
             decided_at=_dt(row[13]),
         )
 
-    async def get_approval(self, approval_id: str, db: AsyncSession) -> ApprovalResponse:
+    async def get_approval(self, approval_id: str, db: AsyncSession, user_workspaces: list[str] | None = None) -> ApprovalResponse:
         await self._expire_stale(db)
         result = await db.execute(
             text("""
@@ -101,6 +101,9 @@ class ApprovalManager:
         )
         row = result.fetchone()
         if not row:
+            raise HTTPException(status_code=404, detail="Approval not found")
+        # Workspace isolation: verify user belongs to the approval's workspace
+        if user_workspaces is not None and str(row[1]) not in user_workspaces:
             raise HTTPException(status_code=404, detail="Approval not found")
         return await self._row_to_response(row)
 
@@ -162,8 +165,9 @@ class ApprovalManager:
         decided_by: str,
         note: str | None,
         db: AsyncSession,
+        user_workspaces: list[str] | None = None,
     ) -> ApprovalResponse:
-        current = await self.get_approval(approval_id, db)
+        current = await self.get_approval(approval_id, db, user_workspaces=user_workspaces)
         if current.status != "PENDING":
             raise HTTPException(status_code=409, detail=f"Approval already {current.status.lower()}")
         now = datetime.now(timezone.utc)
@@ -183,7 +187,7 @@ class ApprovalManager:
                 "updated_at": now,
             },
         )
-        return await self.get_approval(approval_id, db)
+        return await self.get_approval(approval_id, db, user_workspaces=user_workspaces)
 
     async def _expire_stale(self, db: AsyncSession) -> None:
         now = datetime.now(timezone.utc)
@@ -264,7 +268,8 @@ async def get_approval(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await approval_manager.get_approval(approval_id, db)
+    user_ws = getattr(current_user, "_workspace_ids", None)
+    return await approval_manager.get_approval(approval_id, db, user_workspaces=user_ws)
 
 
 @router.post("/approvals/{approval_id}/approve", response_model=ApprovalResponse)
@@ -277,7 +282,8 @@ async def approve_approval(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     actor = str(current_user.get("sub"))
-    approval = await approval_manager.decide(approval_id, "APPROVED", actor, dto.note if dto else None, db)
+    user_ws = getattr(current_user, "_workspace_ids", None)
+    approval = await approval_manager.decide(approval_id, "APPROVED", actor, dto.note if dto else None, db, user_workspaces=user_ws)
     await audit_service.record_event(
         actor_id=actor,
         action="approval.approve",
@@ -301,7 +307,8 @@ async def reject_approval(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     actor = str(current_user.get("sub"))
-    approval = await approval_manager.decide(approval_id, "REJECTED", actor, dto.note if dto else None, db)
+    user_ws = getattr(current_user, "_workspace_ids", None)
+    approval = await approval_manager.decide(approval_id, "REJECTED", actor, dto.note if dto else None, db, user_workspaces=user_ws)
     await audit_service.record_event(
         actor_id=actor,
         action="approval.reject",

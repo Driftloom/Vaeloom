@@ -12,16 +12,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..models.schema import Webhook, WebhookDelivery
+from ..services.encryption import encrypt_value, decrypt_value, is_encrypted
 
 
 class WebhookService:
     async def create(self, tenant_id: str | None, name: str, url: str, secret: str, events: list[str], db: AsyncSession) -> Webhook:
         tid = uuid.UUID(tenant_id) if tenant_id else uuid.uuid4()
+        # Encrypt secret at rest
+        encrypted_secret = encrypt_value(secret)
         webhook = Webhook(
             tenant_id=tid,
             name=name,
             url=url,
-            secret=secret,
+            secret=encrypted_secret,
             events=events,
         )
         db.add(webhook)
@@ -65,7 +68,9 @@ class WebhookService:
         return True
 
     async def _compute_signature(self, payload: bytes, secret: str) -> str:
-        return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+        # Decrypt if encrypted
+        actual_secret = decrypt_value(secret) if is_encrypted(secret) else secret
+        return hmac.new(actual_secret.encode(), payload, hashlib.sha256).hexdigest()
 
     async def dispatch(self, event_type: str, payload: dict, tenant_id: str | None, db: AsyncSession) -> list[WebhookDelivery]:
         query = select(Webhook).where(Webhook.active == True)
