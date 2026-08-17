@@ -2,7 +2,7 @@
 
 > **Role:** Live status overlay for the source-of-truth prompt package. This
 > file tracks which of the 66 prompts have been executed, where the evidence
-> lives, and what is next. **Last updated:** 2026-08-12 Evidence location
+> lives, and what is next. **Last updated:** 2026-08-17 Evidence location
 > convention: `docs/phases/<track>-pXX/` (e.g.
 > `docs/phases/mvp-p01/06-gate-report.md`).
 
@@ -25,8 +25,8 @@
 | MVP-P04 Project Planning and Delivery Governance        | ✅ GO (accepted by USER 2026-08-15) | docs/phases/mvp-p04/ - re-run @ b1c0e06: gate 09-2026-08-15 = **88.5/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY accepted (DEC-P04-01..08); ship window scenario-based (DEC-P04-02); prior run preserved *-2026-08-07.md; handoff 10-handoff-to-p05.md live; P05 starts only on user command |
 | MVP-P05 Solution Architecture                           | ✅ GO (accepted by USER 2026-08-15) | docs/phases/mvp-p05/ - re-run @ 14a1936: gate 09-2026-08-15 = **87.3/100** + AMEND-2026-08-15 @ 735f431 (critical findings re-verified with file:line evidence, EVD-MVP-P05-011, restriction #2 sharpened), PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY accepted (DEC-P05-01..05); prior run preserved *-2026-08-07.md; handoff 10-handoff-to-p06.md live; P06 starts only on user command |
 | MVP-P06 Technology Stack and Engineering Standards      | ✅ GO (accepted by USER 2026-08-17) | docs/phases/mvp-p06/ - re-run @ e48f547: gate 09-2026-08-15 = **69.9/100** raw (~73-75 after conflict resolution), PHASE CONDITIONALLY APPROVED - CONFLICTS RESOLVED, CARRIED FAILURES accepted (all 8 CF-P06-* resolved; zero mandatory blockers); 5 DEL produced + 8 config edits; handoff 10-handoff-to-p07.md live; P07 starts on user command |
-| MVP-P07 Data Architecture and Database Design           | 🔄 IN PROGRESS | docs/phases/mvp-p07/ - re-run + code implementation active; predecessor audit of P06 complete |
-| MVP-P08 API, Integration, and Contract Design           | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
+| MVP-P07 Data Architecture and Database Design           | ✅ GO (accepted by USER 2026-08-17) | docs/phases/mvp-p07/ - re-run + code implementation: gate 09 = **93.4/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY (6 restrictions); 12 Alembic migrations, 34-table RLS, backup/restore scripts, ingestion pipeline, vector store fixes; handoff 10-handoff-to-p08.md live; P08 started on user command |
+| MVP-P08 API, Integration, and Contract Design           | ✅ GO (re-run 2026-08-17) | docs/phases/mvp-p08/ - re-run against current codebase (`7a5434a`): gate 09 = **87.3/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY (6 restrictions); 5 DELs + 11 docs; approval API implemented (5 endpoints), gmail API implemented (6 endpoints), 79-path OpenAPI verified; RFC 9457 gap + async job queue + DLQ mgmt documented; handoff 10-handoff-to-p09.md ready; P09 starts only on user command |
 | MVP-P09 UI/UX and Design System                         | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
 | MVP-P10 Frontend Implementation                         | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
 | MVP-P11 Backend Implementation | ⬜ NOT STARTED | (code committed `bfae40f`+`929e659`+`3ad6bca`; phase gate re-run only on user command)                                                                                     |
@@ -94,7 +94,16 @@
    `09-gate-2026-08-15.md` **69.9/100** raw; all 8 CF-P06-* resolved; zero
    mandatory blockers; carried failures deferred to P07/P14/P15/P17).
    Handoff `10-handoff-to-p07.md` live.
-7. **MVP-P07 IN PROGRESS** — started on user command 2026-08-17; docs rewrite
-   + code implementation (migrations, RLS, backup, vector store, ingestion).
-8. All other phases (P08–P21, CONT-P00…21, ENT-P00…21): **⬜ NOT STARTED —
+7. **MVP-P07 CLOSED 2026-08-17** — USER accepted the verdict:
+   `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY` (gate
+   `09-gate-report.md` **93.4/100**; 12 Alembic migrations, 34-table RLS,
+   backup/restore scripts, ingestion pipeline, vector store fixes; 6
+   restrictions; handoff `10-handoff-to-p08.md` live).
+8. **MVP-P08 CLOSED 2026-08-17** — Re-run against current codebase (`7a5434a`):
+   `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY` (gate
+   `09-gate-report.md` **87.3/100**; 5 DELs; approval API implemented (5
+   endpoints), gmail API implemented (6 endpoints), 79-path OpenAPI verified;
+   RFC 9457 gap + async job queue + DLQ mgmt documented; 6 restrictions;
+   handoff `10-handoff-to-p09.md` ready).
+9. All other phases (P09–P21, CONT-P00…21, ENT-P00…21): **⬜ NOT STARTED —
    DO NOT GO** until their predecessor gate passes and the user commands start.

@@ -1,40 +1,57 @@
 # MVP-P08 — 01. Source Register
 
-> Prompt §4 + §15. OpenAPI dumped live 2026-08-07 (real execution evidence).
+> Prompt §4 + §15. Re-run 2026-08-17. OpenAPI snapshot from static spec (79
+> paths)
+>
+> - live code verification.
 
 ## 1. Internal sources
 
-| ID         | Source                                                              | Use             | Status    |
-| ---------- | ------------------------------------------------------------------- | --------------- | --------- |
-| INT-01..10 | gatekeeper, INT-02 (SHA-256 `2FA8966F…69640`), INT-03/05/07/08/09   | as prior phases | Available |
-| REPO       | `master` @ `7a21a28`; backend app imported + `/openapi.json` dumped | Contract truth  | Available |
+| ID     | Source                                                            | Use                           | Status    |
+| ------ | ----------------------------------------------------------------- | ----------------------------- | --------- |
+| INT-01 | Universal_Enterprise_Phase_Prompt_Generator_and_Gatekeeper.md     | Governing contract            | Available |
+| INT-02 | vaeloom-mvp-e2e-enterprise-hardened.md (SHA-256 `2FA8966F…69640`) | Authoritative MVP corrections | Available |
+| INT-03 | vaeloom-mvp-e2e.md                                                | MVP 0–21 baseline             | Available |
+| INT-05 | 01-vaeloom-mvp-spec.md                                            | Canonical MVP scope           | Available |
+| INT-07 | 02-system-architecture.md                                         | Architecture                  | Available |
+| INT-08 | 03-agent-workflow.md                                              | Agent flow                    | Available |
+| INT-09 | 04-memory-knowledge-graph.md                                      | Memory/RAG                    | Available |
+| REPO   | `master` @ `7a5434a`; 79-path OpenAPI + 38 ORM models verified    | Contract truth                | Available |
 
 ## 2. External standards — verified at phase start
 
-| ID     | Standard                                    | Applicability                            |
-| ------ | ------------------------------------------- | ---------------------------------------- |
-| EXT-06 | RFC 9700 OAuth BCP                          | OAuth connector + token contracts        |
-| EXT-08 | OpenAPI 3.1 (pin; repo serves default spec) | Static contract + compat tests           |
-| EXT-01 | MCP Spec 2026-07-28                         | connector/mcp contract                   |
-| EXT-09 | OpenTelemetry                               | trace context propagation in APIs        |
-| EXT-12 | Gmail API                                   | polling watcher contract                 |
-| EXT-16 | DPDP Rules 2025                             | rights endpoints (export/delete/consent) |
+| ID     | Standard                                    | Version/Date       | Applicability                            |
+| ------ | ------------------------------------------- | ------------------ | ---------------------------------------- |
+| EXT-01 | MCP Specification                           | 2026-07-28         | Connector/MCP contract                   |
+| EXT-02 | OWASP Agentic Applications Top 10           | 2026 edition       | Agent/tool/memory/identity risks         |
+| EXT-03 | OWASP LLM Applications Top 10               | 2025 v2.0          | Prompt injection, leakage, agency        |
+| EXT-05 | WCAG 2.2                                    | W3C Recommendation | AA accessibility target                  |
+| EXT-06 | RFC 9700 OAuth Security BCP                 | IETF               | OAuth connector + token contracts        |
+| EXT-08 | OpenAPI Specification                       | 3.1.0              | Static contract + compat tests           |
+| EXT-09 | OpenTelemetry Specification                 | Current            | Trace context propagation in APIs        |
+| EXT-12 | Gmail API Push Notifications                | Google             | Watcher contract                         |
+| EXT-14 | GDPR                                        | EU                 | Privacy/data rights                      |
+| EXT-16 | Digital Personal Data Protection Rules 2025 | India              | Rights endpoints (export/delete/consent) |
 
 ## 3. OpenAPI snapshot evidence (EVD-MVP-P08-001)
 
-| Fact             | Value                                                                                                                                                                                                                                                                      |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Command          | `python -c "import json; from backend.main import app; spec=app.openapi()"` (env: mock-key, sqlite, OTEL disabled)                                                                                                                                                         |
-| Result           | paths=72, schemas=70, info=`Vaeloom Backend` v0.2.0                                                                                                                                                                                                                        |
-| Full dump        | `C:\Users\Dell\AppData\Local\Temp\opencode\openapi-snapshot.json` (immutable snapshot; path list in README)                                                                                                                                                                |
-| Notable existing | consent grant/me/revoke/scopes · gdpr export/delete · memories CRUD/search · agents execute/schedule · scheduler jobs · applications POST/outcome PATCH · events+subscriptions · notifications · connectors · knowledge-graph · chat · health (liveness/readiness/startup) |
-| Notable absent   | approval endpoints · idempotency headers · memory domains/supersession · Gmail watcher · static OpenAPI file                                                                                                                                                               |
+| Fact             | Value                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| Source           | Static spec at `docs/backend/openapi.yaml` (5630 lines, OpenAPI 3.1.0) + live router verification |
+| Paths            | **79** (up from 72 in prior run 2026-08-07)                                                       |
+| Schemas          | 70+ (auto-generated by FastAPI)                                                                   |
+| Info             | `Vaeloom Backend` v0.2.0                                                                          |
+| Key additions    | Approval API (5 endpoints), Gmail watch/draft/webhook (6 endpoints), consent (4), scheduler (9)   |
+| Verified against | `apps/api/src/api/routers/` (26 router files), `apps/api/src/api/main.py` mounts                  |
 
 ## 4. Conflict log
 
-| ID        | Conflict                                                                                                                   | Resolution                                                                                              | Authority           | Date       |
-| --------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------- | ---------- |
-| CF-P08-01 | Prompt phase rule lists webhooks as part of API scope; repo has webhooks + subscriptions models/routers gated (enterprise) | MVP keeps events/subscriptions; webhook delivery endpoints stay enterprise-gated (out of MVP)           | INT-05 + REPO       | 2026-08-07 |
-| CF-P08-02 | Existing `/api/v1/memories` free-form CRUD vs 6-domain taxonomy (ADR-022)                                                  | Design domain param + supersession semantics on existing endpoints (additive; no breaking change to v1) | ADR-022 + INT-02 §4 | 2026-08-07 |
+| ID        | Conflict                                                                                           | Resolution                                                                                         | Authority        | Date       |
+| --------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------- | ---------- |
+| CF-P08-01 | Prompt lists webhooks as API scope; repo has webhooks gated (enterprise)                           | MVP keeps events/subscriptions; webhook delivery stays enterprise-gated                            | INT-05 + REPO    | 2026-08-17 |
+| CF-P08-02 | Existing `/api/v1/memories` free-form CRUD vs 6-domain taxonomy (ADR-022)                          | Design domain param + supersession as additive deltas on existing endpoints                        | ADR-022 + INT-02 | 2026-08-17 |
+| CF-P08-03 | Prior P08 run (2026-08-07) referenced P07 at 88/100; P07 re-scored to 93.4/100 on 2026-08-17       | Re-run P08 against current P07 (93.4/100); prior docs replaced                                     | This run         | 2026-08-17 |
+| CF-P08-04 | Approval API was "design-only, release-blocking" in prior P08; now fully implemented (5 endpoints) | Acknowledge implementation; design deltas now cover remaining gaps (RFC 9457, DLQ, webhook verify) | REPO             | 2026-08-17 |
+| CF-P08-05 | Gmail was "draft-only" in prior P08; now has 6 endpoints including watch + webhook ingestion       | Gmail endpoints are IMPLEMENTED; no send endpoint exists (draft-only constraint honored)           | REPO             | 2026-08-17 |
 
-Evidence: EVD-MVP-P08-001 (live dump, this register).
+Evidence: EVD-MVP-P08-001 (static spec + live verification, this register).
