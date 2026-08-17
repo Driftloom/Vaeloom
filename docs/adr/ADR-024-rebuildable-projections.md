@@ -15,6 +15,7 @@ duplicate source truth (INT-02 §5). Inspection @ `6e8a7b4`
 (`01-source-register.md` §4) confirms projection infrastructure exists:
 `embeddings` and `relationships` tables, `memory_records`, and
 `infrastructure/search.py` (`SearchIndex` ABC + `MeilisearchIndex`).
+**Meilisearch is NOT installed.** Search falls back to PostgreSQL LIKE/pgvector.
 Implementation is partial.
 
 ## Decision
@@ -24,8 +25,8 @@ from them and **never authoritative**.
 
 - Embeddings (pgvector, ADR-003) and knowledge-graph `relationships` rows are
   projection state with provenance references to source rows.
-- Search indexes source rows via `SearchIndex` / `MeilisearchIndex`
-  (Meilisearch + pgvector both present).
+- Search indexes source rows via `SearchIndex` / `MeilisearchIndex` (Meilisearch
+  is NOT installed; falls back to PostgreSQL LIKE/pgvector).
 - Rebuild jobs reconstruct any projection from relational rows, bounded by
   workspace scope, so a projection can always be discarded and rebuilt.
 
@@ -35,8 +36,8 @@ from them and **never authoritative**.
 projection is not a data-loss event; rebuild cost bounded per workspace.
 
 **Negative:** **Partial** — no verified rebuild-job/orchestration at HEAD;
-Meilisearch vs pgvector roles must be reconciled; provenance columns on
-projection tables UNVERIFIED (P07).
+Meilisearch is NOT installed (search falls back to PostgreSQL LIKE/pgvector);
+provenance columns on projection tables UNVERIFIED (P07).
 
 ## Reversibility / Rollback
 
@@ -46,4 +47,5 @@ Strangler-adapter applies where migration is likely (connectors, search).
 ## Verification (P07)
 
 Verify provenance columns, rebuild-job capability, and the Meilisearch/pgvector
-role split (INT-02 §5; `01-source-register.md` §4).
+role split (INT-02 §5; `01-source-register.md` §4). **Note:** Meilisearch is NOT
+installed; search is PostgreSQL LIKE/pgvector only.

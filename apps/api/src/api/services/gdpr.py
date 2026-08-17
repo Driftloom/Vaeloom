@@ -1,4 +1,3 @@
-import json
 import uuid
 from datetime import datetime, timezone
 
@@ -13,6 +12,48 @@ from ..services.audit_service import audit_service
 
 router = APIRouter()
 
+ALLOWED_TABLES = frozenset({
+    "users", "auth_sessions", "workspaces", "workspace_users",
+    "memories", "agents", "integrations", "notifications",
+    "events", "usage_records", "api_keys", "connectors",
+})
+
+EXPORT_COLUMNS = {
+    "users": "id, email, display_name, avatar_url, status, created_at, updated_at",
+    "auth_sessions": "id, user_id, token, expires_at, created_at",
+    "workspaces": "id, user_id, name, slug, created_at",
+    "workspace_users": "id, workspace_id, user_id, role, created_at",
+    "memories": "id, user_id, workspace_id, content, memory_type, created_at",
+    "agents": "id, user_id, workspace_id, name, agent_type, status, created_at",
+    "integrations": "id, user_id, workspace_id, provider, status, created_at",
+    "notifications": "id, user_id, workspace_id, title, read, created_at",
+    "events": "id, user_id, workspace_id, event_type, created_at",
+    "usage_records": "id, user_id, workspace_id, action, tokens_used, created_at",
+    "api_keys": "id, user_id, name, prefix, scopes, expires_at, created_at",
+    "connectors": "id, workspace_id, provider, status, created_at",
+}
+
+USER_TABLES = [
+    ("users", "id"),
+    ("auth_sessions", "user_id"),
+    ("workspaces", "user_id"),
+    ("workspace_users", "user_id"),
+    ("memories", "user_id"),
+    ("agents", "user_id"),
+    ("integrations", "user_id"),
+    ("notifications", "user_id"),
+    ("events", "user_id"),
+    ("usage_records", "user_id"),
+    ("api_keys", "user_id"),
+    ("connectors", "workspace_id"),
+]
+
+
+def _validate_table(table: str) -> str:
+    if table not in ALLOWED_TABLES:
+        raise ValueError(f"Invalid table name: {table}")
+    return table
+
 
 class DataExportResponse(BaseModel):
     user_id: str
@@ -22,38 +63,21 @@ class DataExportResponse(BaseModel):
 
 
 class GDPRService:
-    USER_TABLES = [
-        ("users", "id"),
-        ("auth_sessions", "user_id"),
-        ("workspaces", "user_id"),
-        ("workspace_users", "user_id"),
-        ("memories", "user_id"),
-        ("agents", "user_id"),
-        ("integrations", "user_id"),
-        ("notifications", "user_id"),
-        ("events", "user_id"),
-        ("usage_records", "user_id"),
-        ("api_keys", "user_id"),
-        ("connectors", "workspace_id"),
-    ]
-
-    ANONYMIZE_COLUMNS = {
-        "users": ["email", "display_name", "avatar_url", "password_hash"],
-    }
-
     async def export_user_data(self, user_id: str, db: AsyncSession) -> DataExportResponse:
         data = {}
         total_records = 0
 
-        for table, fk_col in self.USER_TABLES:
+        for table, fk_col in USER_TABLES:
+            _validate_table(table)
+            columns = EXPORT_COLUMNS.get(table, "*")
             if fk_col == "workspace_id":
                 result = await db.execute(
-                    text(f"SELECT * FROM {table} WHERE {fk_col} IN (SELECT id FROM workspaces WHERE user_id = :uid)"),
+                    text(f"SELECT {columns} FROM {table} WHERE {fk_col} IN (SELECT id FROM workspaces WHERE user_id = :uid)"),
                     {"uid": user_id},
                 )
             else:
                 result = await db.execute(
-                    text(f"SELECT * FROM {table} WHERE {fk_col} = :uid"),
+                    text(f"SELECT {columns} FROM {table} WHERE {fk_col} = :uid"),
                     {"uid": user_id},
                 )
             rows = [dict(row._mapping) for row in result.fetchall()]
@@ -74,7 +98,9 @@ class GDPRService:
     async def delete_user_data(self, user_id: str, db: AsyncSession) -> dict:
         summary = {}
 
-        for table, fk_col in self.USER_TABLES:
+        for table, fk_col in USER_TABLES:
+            _validate_table(table)
+
             if table == "users":
                 result = await db.execute(
                     text("UPDATE users SET email = :anon_email, display_name = :anon_name, password_hash = NULL, avatar_url = NULL, status = 'ANONYMIZED' WHERE id = :uid"),

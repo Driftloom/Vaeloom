@@ -51,6 +51,7 @@ from .infrastructure.metrics import MetricsMiddleware
 from .infrastructure.opentelemetry import setup_opentelemetry, instrumement_fastapi
 from .middleware.auth import AuthMiddleware
 from .middleware.csrf import CSRFMiddleware, create_csrf_token
+from .middleware.ip_filter import IPAllowlistMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.security_headers import SecurityHeadersMiddleware
 from .middleware.tenant import TenantMiddleware
@@ -135,6 +136,8 @@ app.add_middleware(APIVersionMiddleware)
 app.add_middleware(PromptInjectionMiddleware)
 app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(MetricsMiddleware)
+if settings.ip_allowlist:
+    app.add_middleware(IPAllowlistMiddleware, allowlist_raw=settings.ip_allowlist)
 # CORS must be outermost (last added) so OPTIONS preflight is handled first
 app.add_middleware(
     CORSMiddleware,
@@ -164,8 +167,15 @@ async def get_csrf_token():
 
 
 # ── Observability (re-enabled per ADR-011) ──────────────────────────
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-instrumement_fastapi(app)
+try:
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+except Exception as e:
+    logger.warning("Prometheus Instrumentator failed to load: %s", e)
+
+try:
+    instrumement_fastapi(app)
+except Exception as e:
+    logger.warning("OTel FastAPI instrumentation failed to load: %s", e)
 
 
 app.include_router(encryption_router, prefix="/api/v1", tags=["security"])

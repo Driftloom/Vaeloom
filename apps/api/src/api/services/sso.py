@@ -135,14 +135,26 @@ class MicrosoftSSOProvider(SSOProvider):
 
 
 class SAMLSSOProvider(SSOProvider):
+    """SAML SSO provider — NOT IMPLEMENTED.
+
+    Requires python3-saml or similar SAML library.
+    All methods raise NotImplementedError to prevent silent misuse.
+    """
+
     async def validate_token(self, token: str) -> dict[str, Any] | None:
-        pass
+        raise NotImplementedError(
+            "SAML SSO is not implemented. Use Google or Microsoft SSO instead."
+        )
 
     async def get_auth_url(self, redirect_uri: str, state: str) -> str:
-        pass
+        raise NotImplementedError(
+            "SAML SSO is not implemented. Use Google or Microsoft SSO instead."
+        )
 
     async def exchange_code(self, code: str, redirect_uri: str) -> str | None:
-        pass
+        raise NotImplementedError(
+            "SAML SSO is not implemented. Use Google or Microsoft SSO instead."
+        )
 
 
 def get_sso_provider(provider: str, config: SSOConfig) -> SSOProvider:

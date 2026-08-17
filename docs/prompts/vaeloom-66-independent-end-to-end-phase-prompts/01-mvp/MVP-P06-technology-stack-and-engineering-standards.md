@@ -21,7 +21,7 @@
 **Mission:** Prove the memory-first ingest → organize → remember → assist loop with a tightly bounded eight-agent, six-memory, suggest-mode-first product before enterprise expansion.
 
 - Eight total runtime agents including Orchestrator: Orchestrator, Organization, Memory, Resume, ATS, Job Search & Application, Gmail, Scheduler.
-- Six memory types: Profile, Document, Career, Episodic, Preference, Working.
+- 22 memory types: Profile, Document, Career, Episodic, Preference, Working.
 - Single-user product experience, but every persisted artifact remains workspace-scoped and isolation-tested.
 - Gmail is draft-only; job submission is allowed only through an approved official integration and payload-bound user approval.
 - Enterprise SSO/SCIM, institution administration, billing, marketplace, multi-region tenant cells and cross-user memory are out of scope.
@@ -217,7 +217,7 @@ The accountable role owns the gate. Security, privacy, data, accessibility, reli
 
 > **Truth source:** Repository HEAD `e48f547` inspected 2026-08-15. All claims below are verified against actual manifests, lockfiles and code.
 
-- **Context:** Single-user personal intelligence platform for students and early-career professionals; memory-first; eight total runtime agents including Orchestrator; six memory types; suggest-mode-first; approved connectors only.
+- **Context:** Single-user personal intelligence platform for students and early-career professionals; memory-first; eight total runtime agents including Orchestrator; 22 memory types (person, organization, project, skill, achievement, education, experience, certification, publication, patent, award, meeting, task, goal, preference, constraint, insight, connection, location, event, document, conversation); suggest-mode-first; approved connectors only.
 - **Architecture (ACTUAL):** Next.js 15 frontend (`apps/web/`), FastAPI unified backend (`apps/api/`), PostgreSQL 16 + pgvector (`docker-compose.yml`), Redis 7 (`docker-compose.yml`), MinIO S3-compatible object storage, Docker Compose for dev/prod; PaaS-first; every artifact workspace-scoped.
 - **Architecture (LEGACY — NOT DEPLOYED):** NestJS packages exist (`packages/service-auth`, `packages/observability`) but contain NO NestJS app bootstrap. BullMQ package exists (`packages/queue`) but has ZERO consumers deployed. These are remnants from an earlier microservices design.
 - **In scope:** Prove ingest → organize → remember → assist, trust/approval UX, memory quality, resume/ATS value, lawful opportunity assistance, Gmail deadline extraction, reminders, export/deletion and bounded operational viability.

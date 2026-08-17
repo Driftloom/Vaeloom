@@ -73,6 +73,10 @@ async def list_workspace_agents(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub")
+    ws = await workspace_service.find_by_id(workspace_id=workspace_id, user_id=user_id, db=db)
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or access denied")
     from ..models.schema import Agent
     from ..schemas.agent import AgentResponse
     result = await db.execute(
@@ -90,6 +94,10 @@ async def list_workspace_memories(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub")
+    ws = await workspace_service.find_by_id(workspace_id=workspace_id, user_id=user_id, db=db)
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or access denied")
     from ..models.schema import Memory
     from ..schemas.memory import MemoryResponse
     result = await db.execute(
@@ -107,6 +115,10 @@ async def list_workspace_connectors(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub")
+    ws = await workspace_service.find_by_id(workspace_id=workspace_id, user_id=user_id, db=db)
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or access denied")
     from ..models.schema import Connector
     from ..schemas.connector import ConnectorResponse
     result = await db.execute(

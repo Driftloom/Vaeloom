@@ -15,7 +15,7 @@ router = APIRouter()
 async def dashboard(
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
-    interval: str = Query("day"),
+    interval: str = Query("day", pattern="^(hour|day|week|month)$"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -31,7 +31,7 @@ async def dashboard(
 async def get_usage(
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
-    interval: str = Query("day"),
+    interval: str = Query("day", pattern="^(hour|day|week|month)$"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):

@@ -40,8 +40,8 @@ async def list_nodes(
     search: str | None = Query(None),
     min_importance: float | None = Query(None, ge=0, le=1),
     max_importance: float | None = Query(None, ge=0, le=1),
-    sort_by: str | None = Query(None),
-    sort_order: str | None = Query(None),
+    sort_by: str | None = Query(None, pattern="^(name|type|importance|created_at|updated_at)$"),
+    sort_order: str | None = Query(None, pattern="^(asc|desc|ASC|DESC)$"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):

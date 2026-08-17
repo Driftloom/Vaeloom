@@ -34,7 +34,7 @@ graph TD
 
     subgraph Monitoring["📊 Monitoring Layer"]
         OTEL["OpenTelemetry<br/>Traces + Metrics + Logs"]
-        APM["APM / Grafana<br/>Dashboards + Alerts"]
+        APM["APM / Grafana — CONFIGURED: dashboards exist in infra/grafana/ but not deployed to production"]
     end
 
     subgraph External["�-- External Services"]
@@ -68,8 +68,9 @@ graph TD
 > FastAPI (backend), with BullMQ workers (installed, no consumers deployed).
 > **Data** includes PostgreSQL (+ pgvector, Apache AGE provisioned in Docker but
 > unused in code), Redis (cache), and S3 storage. **Monitoring** collects
-> OpenTelemetry traces/metrics/logs into Grafana. **External** services include
-> Claude API, OpenAI, and email providers.
+> OpenTelemetry traces/metrics/logs into Grafana (**CONFIGURED** — dashboards
+> exist in infra/grafana/ but not deployed to production). **External** services
+> include Claude API, OpenAI, and email providers.
 
 ---
 
@@ -87,11 +88,11 @@ graph TD
 
 ## Provisioning
 
-| Tool              | Use Case                               |
-| ----------------- | -------------------------------------- |
-| Docker Compose    | Local development                      |
-| PaaS CLI (flyctl) | Staging deployment                     |
-| Terraform         | Production infrastructure (enterprise) |
+| Tool              | Use Case                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------- |
+| Docker Compose    | Local development                                                                                         |
+| PaaS CLI (flyctl) | Staging deployment                                                                                        |
+| Terraform         | Production infrastructure (enterprise) — **PRESENT** — modules exist in infra/terraform/ but not deployed |
 
 ## Common Mistakes
 

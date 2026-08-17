@@ -36,6 +36,9 @@ async def get_recommendations(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    current_uid = str(current_user.get("sub") or current_user.get("user_id", ""))
+    if user_id != current_uid:
+        raise HTTPException(status_code=403, detail="Cannot access another user's recommendations")
     rows = await recommendation_service.get_by_user(user_id, db)
     return [RecommendationResponse.model_validate(r._mapping) for r in rows]
 

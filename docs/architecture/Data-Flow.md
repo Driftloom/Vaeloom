@@ -67,7 +67,7 @@ graph LR
     INGEST["Ingestion Pipeline<br/>(parse, extract, chunk)"]:::process
     EMBED["Embedding Service<br/>(text --> vectors)"]:::process
     GRAPH["Knowledge Graph<br/>(entity extraction, linking)"]:::process
-    REDACT["PII Redaction<br/>(detect, mask, log)"]:::process
+    REDACT["PII Redaction — NOT IMPLEMENTED (designed in ADR-031 but not built)<br/>(detect, mask, log)"]:::process
     GUARD["Guardrails<br/>(validate, QA)"]:::process
     ENCRYPT["Encryption Layer<br/>(field-level AES-256)"]:::process
     end
@@ -200,14 +200,15 @@ graph TD
     AUDIT["4. Audit Log<br/>Record deletion event<br/>(who, what, when, why)"]:::stage
     RETAIN["5. Retention Hold<br/>Check for legal hold;<br/>if none, start 30-day timer"]:::stage
     HARD["6. Hard Delete<br/>After 30 days:<br/>purge from PG, S3, vector store"]:::stage
-    VERIFY["7. Verification<br/>Automated scan confirms<br/>no residual data"]:::verify
+    VERIFY["7. Verification — NOT IMPLEMENTED (deletion endpoint exists but no verification receipts)<br/>Automated scan confirms<br/>no residual data"]:::verify
 
     REQ --> SCOPE --> SOFT --> AUDIT --> RETAIN --> HARD --> VERIFY
 ```
 
 > **Diagram:** Data deletion flow. Deletions are soft-first (immediate logical
-> delete), retained for 30 days (legal hold check), then hard-deleted with
-> verification.
+> delete), retained for 30 days (legal hold check), then hard-deleted. Note:
+> Verification step is NOT IMPLEMENTED — deletion endpoint exists but no
+> verification receipts.
 
 ## Data Export Flow
 
@@ -234,12 +235,12 @@ User data export (GDPR Article 20 / account closure):
 
 ## Security
 
-| Concern                     | Mitigation                                                                   | Verification                                          |
-| --------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------- |
-| PII in event payloads       | PII fields encrypted at field level before emission                          | Event schema validator rejects unencrypted PII fields |
-| LLM provider sees user data | Prompts sanitized; PII masked before inference; no raw documents sent to LLM | Guardrail check; prompt audit log                     |
-| Data residue after deletion | Hard delete + automated verification scan                                    | Monthly verification scan for orphaned data           |
-| S3 bucket misconfiguration  | Bucket policies deny public access; encryption required                      | AWS Config rule + nightly audit                       |
+| Concern                     | Mitigation                                                                   | Verification                                                      |
+| --------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| PII in event payloads       | PII fields encrypted at field level before emission                          | Event schema validator rejects unencrypted PII fields             |
+| LLM provider sees user data | Prompts sanitized; PII masked before inference; no raw documents sent to LLM | Guardrail check; prompt audit log                                 |
+| Data residue after deletion | Hard delete + automated verification scan — **NOT IMPLEMENTED**              | Monthly verification scan for orphaned data — **NOT IMPLEMENTED** |
+| S3 bucket misconfiguration  | Bucket policies deny public access; encryption required                      | AWS Config rule + nightly audit                                   |
 
 ## Monitoring
 
@@ -257,7 +258,7 @@ User data export (GDPR Article 20 / account closure):
 | --- | ------------------------------------------------------------ | -------------------------------------------------------------- |
 | 1   | Encrypt PII at the field level, not just at storage level    | Field-level encryption survives a database dump or backup leak |
 | 2   | Always soft-delete first, hard-delete after retention period | Enables recovery from accidental deletion and legal hold       |
-| 3   | Verify deletion with an automated scan                       | Manual verification is unreliable at scale                     |
+| 3   | Verify deletion with an automated scan — **NOT IMPLEMENTED** | Manual verification is unreliable at scale                     |
 | 4   | Log every data access, not just mutations                    | Read access logging is required for SOC 2 and GDPR             |
 
 ## Risks
@@ -266,7 +267,7 @@ User data export (GDPR Article 20 / account closure):
 | --------------------------------------------------- | ---------- | --------------------------------- | ----------------------------------------------------------------------------------------- |
 | LLM provider stores user prompts beyond our control | Medium     | High                              | PII masking before inference; DPA with provider; use self-hosted model for sensitive data |
 | Encryption key loss                                 | Low        | Critical (all data unrecoverable) | KMS-managed keys with automatic rotation; key backup in separate region                   |
-| Deletion doesn't reach all replicas                 | Low        | High (compliance violation)       | Verification scan covers primary + replicas + backups                                     |
+| Deletion doesn't reach all replicas                 | Low        | High (compliance violation)       | Verification scan covers primary + replicas + backups — **NOT IMPLEMENTED**               |
 
 ## Limitations
 

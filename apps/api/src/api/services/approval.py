@@ -109,6 +109,7 @@ class ApprovalManager:
         db: AsyncSession,
         status: str | None = None,
         workspace_id: str | None = None,
+        user_workspaces: list[str] | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> ApprovalListResponse:
@@ -116,11 +117,18 @@ class ApprovalManager:
         conditions = ["1=1"]
         params: dict = {}
         if status:
+            if status not in ("PENDING", "APPROVED", "REJECTED", "EXPIRED"):
+                raise ValueError(f"Invalid status filter: {status}")
             conditions.append("status = :status")
             params["status"] = status
         if workspace_id:
             conditions.append("workspace_id = :workspace_id")
             params["workspace_id"] = workspace_id
+        elif user_workspaces is not None:
+            if not user_workspaces:
+                return ApprovalListResponse(items=[], total=0, page=page, page_size=page_size)
+            conditions.append("workspace_id IN :user_ws")
+            params["user_ws"] = tuple(user_workspaces)
         where = " AND ".join(conditions)
 
         total_result = await db.execute(
@@ -237,10 +245,12 @@ async def list_approvals(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    user_ws = getattr(current_user, "_workspace_ids", None)
     return await approval_manager.list_approvals(
         db=db,
         status=status,
         workspace_id=workspace_id,
+        user_workspaces=user_ws,
         page=page,
         page_size=page_size,
     )

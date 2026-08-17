@@ -193,7 +193,7 @@ graph LR
 ## Scope
 
 This document defines the memory system architecture for Vaeloom's AI — covering
-the six memory types, lifecycle stages, storage layers (knowledge graph, vector
+the 22 memory types, lifecycle stages, storage layers (knowledge graph, vector
 store, structured records), and agent consumption patterns. Applies to all user
 workspaces across MVP and Enterprise deployments. Out of scope: graph
 entity/relationship specifics (see [Knowledge-Graph.md](./Knowledge-Graph.md)),

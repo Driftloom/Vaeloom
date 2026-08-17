@@ -13,6 +13,10 @@ from ..database import async_session_factory
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_RETENTION_TABLES = frozenset({
+    "events", "audit_events", "usage_records", "agent_executions", "auth_sessions",
+})
+
 
 class RetentionPolicy(BaseModel):
     tenant_id: str | None = None
@@ -49,6 +53,8 @@ async def apply_retention(policy: RetentionPolicy, db: AsyncSession) -> dict:
     table = resource_map.get(policy.resource_type)
     if not table:
         raise ValueError(f"Unknown resource_type: {policy.resource_type}")
+    if table not in ALLOWED_RETENTION_TABLES:
+        raise ValueError(f"Table not allowed for retention: {table}")
 
     if policy.action == "delete":
         result = await db.execute(
@@ -67,11 +73,7 @@ async def apply_retention(policy: RetentionPolicy, db: AsyncSession) -> dict:
         count = count_result.scalar_one() or 0
 
         await db.execute(
-            text(f"""
-                INSERT INTO {table}_archive
-                SELECT * FROM {table}
-                WHERE created_at < :cutoff{tenant_clause}
-            """),
+            text(f"INSERT INTO {table}_archive SELECT * FROM {table} WHERE created_at < :cutoff{tenant_clause}"),
             params,
         )
         await db.execute(

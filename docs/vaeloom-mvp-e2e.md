@@ -220,7 +220,7 @@ design phases (1–9), four block the release-date line item in Phase 4/19 only.
 | SRC-02 | `05-Vaeloom-MVP-Spec.md`                | Alternative formatting of SRC-01                                          | **Superseded duplicate** — confirmed via internal cross-reference; not used as an independent source             |
 | SRC-03 | `02-System-Architecture.md`             | Six-layer architecture, layer contracts                                   | Current, Draft                                                                                                   |
 | SRC-04 | `03-Agent-Workflow.md`                  | End-to-end 10-step agent trace, permission gates                          | Current, Draft                                                                                                   |
-| SRC-05 | `04-Memory-Knowledge-Graph.md`          | Six memory types, knowledge graph, agentic RAG read/write paths           | Current, Draft                                                                                                   |
+| SRC-05 | `04-Memory-Knowledge-Graph.md`          | 22 memory types, knowledge graph, agentic RAG read/write paths            | Current, Draft                                                                                                   |
 | SRC-06 | `Vaeloom-Complete-Documentation.md`     | Tech stack, DB schema, 7-phase implementation plan, feature/screen tables | Current, "Living document" status                                                                                |
 | SRC-07 | `Vaeloom-Documentation-Site.md`         | Navigable restructuring of SRC-06 — same content, different IA            | Current, redundant with SRC-06 by design (kept as the docs-site view, not treated as an independent fact source) |
 | SRC-08 | `Vaeloom-How-It-Works-Visual.md`        | Visual/narrative restructuring of the same system                         | Current, presentation layer only                                                                                 |
@@ -656,7 +656,7 @@ _Module: Memory System_
 
 | ID    | Requirement                                                                                                                                                           | Priority | Traces to          |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------ |
-| FR-16 | System shall maintain six memory types: Profile, Document, Career, Episodic, Preference, Working                                                                      | Must     | BO-1               |
+| FR-16 | System shall maintain 22 memory types: Profile, Document, Career, Episodic, Preference, Working                                                                       | Must     | BO-1               |
 | FR-17 | System shall extract entities and typed relationships from every ingested item and write them to a knowledge graph                                                    | Must     | BO-1               |
 | FR-18 | System shall deduplicate/merge entities using a confidence threshold; below-threshold candidates are created as new, unmerged, flagged nodes rather than force-merged | Must     | SM-06              |
 | FR-19 | System shall support hybrid retrieval (vector + keyword + graph traversal) with agent-selected strategy per query                                                     | Must     | BO-1               |
@@ -1425,7 +1425,7 @@ DDL in D.2 is the specification artifact for this phase.
 
 ### H. Requirement Traceability
 
-D.2/D.3 implement FR-16 (six memory types → `memory_records.type` CHECK),
+D.2/D.3 implement FR-16 (22 memory types → `memory_records.type` CHECK),
 FR-43/44 (export/delete — every table scoped by `workspace_id`, a single
 deletable unit), NFR-05/06 (encryption at storage-engine level + `token_ref`
 indirection), NFR-11 (`superseded_by` columns, never overwritten).

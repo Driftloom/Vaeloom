@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -11,6 +12,20 @@ from ..dependencies import get_current_user, get_tenant_id
 from ..services.webhook_service import webhook_service
 
 router = APIRouter()
+
+BLOCKED_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "[::1]", "metadata.google.internal", "169.254.169.254"})
+
+
+def _validate_webhook_url(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("https",):
+        raise ValueError("Webhook URL must use HTTPS")
+    hostname = (parsed.hostname or "").lower()
+    if hostname in BLOCKED_HOSTS:
+        raise ValueError(f"Webhook URL cannot target blocked host: {hostname}")
+    if hostname.startswith("10.") or hostname.startswith("192.168.") or hostname.startswith("172."):
+        raise ValueError("Webhook URL cannot target private IP ranges")
+    return url
 
 
 class WebhookCreate(BaseModel):
@@ -22,6 +37,11 @@ class WebhookCreate(BaseModel):
     retry_count: int = Field(default=3, ge=0, le=10)
     timeout_ms: int = Field(default=5000, ge=100, le=30000)
 
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        return _validate_webhook_url(v)
+
 
 class WebhookUpdate(BaseModel):
     name: str | None = Field(None, max_length=255)
@@ -31,6 +51,13 @@ class WebhookUpdate(BaseModel):
     active: bool | None = None
     retry_count: int | None = Field(None, ge=0, le=10)
     timeout_ms: int | None = Field(None, ge=100, le=30000)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_webhook_url(v)
+        return v
 
 
 class WebhookResponse(BaseModel):

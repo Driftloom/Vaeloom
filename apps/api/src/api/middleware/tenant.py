@@ -66,24 +66,41 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
         await db.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
         if workspace_id:
             await db.execute(text("SET LOCAL app.workspace_id = :wid"), {"wid": workspace_id})
-    except Exception:
-        # SQLite or non-PostgreSQL — RLS not applicable, ignore silently.
-        # On PostgreSQL this should never fail; if it does, queries will
-        # return zero rows due to unset GUCs (fail-closed).
-        pass
+    except Exception as exc:
+        # SQLite or non-PostgreSQL — RLS not applicable, ignore.
+        # On PostgreSQL this should never fail; log and continue (fail-closed:
+        # unset GUCs cause RLS policies to match zero rows).
+        import logging as _log
+        _log.getLogger(__name__).debug("set_rls_session_vars skipped: %s", exc)
 
 
 class TenantMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        tenant_id = request.headers.get("X-Tenant-ID", "")
-        workspace_id = request.headers.get("X-Workspace-ID", "")
+        jwt_tenant_id = getattr(request.state, "tenant_id", None)
+        jwt_workspace_id = getattr(request.state, "workspace_id", None)
 
-        if tenant_id:
-            request.state.tenant_id = tenant_id
-        if workspace_id:
-            request.state.workspace_id = workspace_id
+        header_tenant_id = request.headers.get("X-Tenant-ID", "")
+        header_workspace_id = request.headers.get("X-Workspace-ID", "")
 
-        TenantContext.set(tenant_id or None, workspace_id or None)
+        if jwt_tenant_id:
+            tenant_id = str(jwt_tenant_id)
+            if header_tenant_id and header_tenant_id != tenant_id:
+                from ..infrastructure.logging import get_logger
+                get_logger(__name__).warning(
+                    "Tenant header mismatch: JWT=%s header=%s — using JWT value",
+                    tenant_id, header_tenant_id,
+                )
+        else:
+            tenant_id = header_tenant_id or None
+
+        if jwt_workspace_id:
+            workspace_id = str(jwt_workspace_id)
+        else:
+            workspace_id = header_workspace_id or None
+
+        request.state.tenant_id = tenant_id
+        request.state.workspace_id = workspace_id
+        TenantContext.set(tenant_id, workspace_id)
 
         try:
             response = await call_next(request)

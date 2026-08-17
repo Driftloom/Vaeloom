@@ -37,7 +37,11 @@ class ChatMessage(BaseModel):
 
 
 @router.post("/chat", status_code=200)
-async def chat(dto: ChatMessage, request: Request):
+async def chat(
+    dto: ChatMessage,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
     """
     High-level chat endpoint: auto-classifies intent, routes to the right agent,
     runs the agentic loop, and returns the result.
@@ -58,6 +62,7 @@ async def list_agents(
     category: str | None = Query(None),
     search: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
     agents, total = await agent_service.list_agents(
@@ -76,6 +81,7 @@ async def list_agents(
 async def get_agent(
     agent_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
     agent = await agent_service.get_agent(db, agent_id, tenant_id)

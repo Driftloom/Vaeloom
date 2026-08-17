@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     ip_allowlist: str = ""
     retention_policies: str = ""
 
+    db_pool_size: int = 20
+    db_max_overflow: int = 10
+
     agent_timeout_seconds: int = 120
     prompt_injection_check: bool = True
     prompt_dir: str = ""
@@ -101,6 +104,9 @@ def validate_settings() -> dict[str, list[str]]:
     if settings.jwt_secret in ("change-me-in-production", "change-me"):
         errors.append("JWT_SECRET must be changed from the default value")
 
+    if settings.storage_secret_key == "minioadmin" and settings.service_environment != "local":
+        errors.append("STORAGE_SECRET_KEY must be changed from the default 'minioadmin' in non-local environments")
+
     if not settings.database__url:
         errors.append("DATABASE_URL must be set")
 
@@ -132,6 +138,11 @@ def validate_settings() -> dict[str, list[str]]:
 
     if not settings.storage_endpoint or "localhost" in settings.storage_endpoint:
         warnings.append("STORAGE_ENDPOINT is set to localhost — verify this is intentional for non-production")
+
+    if settings.service_environment != "local":
+        localhost_origins = [o for o in settings.allowed_origins if "localhost" in o]
+        if localhost_origins:
+            warnings.append(f"CORS allowed_origins contains localhost in non-local env: {localhost_origins}")
 
     if errors:
         raise RuntimeError(

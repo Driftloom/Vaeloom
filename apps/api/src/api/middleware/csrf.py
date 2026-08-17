@@ -56,10 +56,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if path in SKIP_PATHS or any(path.startswith(p) for p in SKIP_PREFIXES):
             return await call_next(request)
 
-        is_xhr = request.headers.get("X-Requested-With") == "XMLHttpRequest"
         has_api_key = bool(request.headers.get("X-API-Key"))
 
-        if is_xhr or has_api_key:
+        if has_api_key:
             return await call_next(request)
 
         if request.method in MUTATING_METHODS:

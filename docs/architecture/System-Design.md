@@ -64,7 +64,7 @@ graph TB
 
     subgraph Events["06 - Events & Realtime"]
         Bus["Event Bus"]
-        WS["WebSocket"]
+        WS["WebSocket — NOT IMPLEMENTED, REST polling only"]
         Notif["Notifications"]
     end
 
@@ -193,7 +193,7 @@ graph TB
     Web -->|REST · JSON| API
 
     %% API to AI
-    API -->|Internal RPC + mTLS| AISvc
+    API -->|Internal RPC — FICTION: no mTLS configured| AISvc
 
     %% API to Data
     API -->|TLS + Auth| PG
@@ -276,7 +276,7 @@ sequenceDiagram
     AI->>AI: Merge with existing knowledge graph
     Worker->>DB: UPDATE document (completed)
     Worker->>Queue: PUBLISH document.ingested event
-    Queue-->>Web: Push notification (WebSocket)
+    Queue-->>Web: Push notification (REST polling only — WebSocket NOT IMPLEMENTED)
     Web-->>User: "Document organized"
 ```
 
@@ -314,7 +314,7 @@ graph LR
 
     LB -->|TLS 1.3| Web
     Web -->|Auth Token| API
-    API -->|Internal RPC + mTLS| AI
+    API -->|Internal RPC — FICTION: no mTLS configured| AI
     API -->|TLS + Auth| DB
     API -->|TLS + Auth| Redis
     AI -->|TLS + API Key| Claude
@@ -348,7 +348,8 @@ graph LR
 
 - Every internal call is authenticated (no implicit trust)
 - Secrets manager for all credentials (never in env files in production)
-- mTLS between API and AI service for Enterprise deployment
+- mTLS between API and AI service for Enterprise deployment — **FICTION** — no
+  mTLS configured
 - Audit log for every agent action (append-only)
 
 ## Goals
@@ -418,7 +419,7 @@ graph LR
    vector embeddings into pgvector
 5. Worker marks the document as "completed", publishes a `document.ingested`
    event to the event bus, and a WebSocket push notifies the Web App to update
-   the UI
+   the UI (Note: WebSocket NOT IMPLEMENTED — REST polling only)
 
 ## Scalability
 
@@ -460,12 +461,12 @@ graph LR
 
 ## Risks
 
-| Risk                                                    | Likelihood | Impact   | Mitigation                                                             |
-| ------------------------------------------------------- | ---------- | -------- | ---------------------------------------------------------------------- |
-| Model API dependency causing system-wide outage         | Medium     | High     | Circuit breakers on all model calls; cached fallback responses         |
-| Data breach via intercepted inter-service communication | Low        | Critical | mTLS between all services; network isolation per zone                  |
-| Ingestion pipeline backpressure blocking new uploads    | Medium     | Medium   | Dead letter queue with alerting; auto-scale workers on queue depth     |
-| Knowledge graph inconsistency from concurrent writes    | Low        | Medium   | Optimistic locking on entities; periodic consistency verification jobs |
+| Risk                                                    | Likelihood | Impact   | Mitigation                                                                               |
+| ------------------------------------------------------- | ---------- | -------- | ---------------------------------------------------------------------------------------- |
+| Model API dependency causing system-wide outage         | Medium     | High     | Circuit breakers on all model calls; cached fallback responses                           |
+| Data breach via intercepted inter-service communication | Low        | Critical | mTLS between all services — **FICTION** — no mTLS configured; network isolation per zone |
+| Ingestion pipeline backpressure blocking new uploads    | Medium     | Medium   | Dead letter queue with alerting; auto-scale workers on queue depth                       |
+| Knowledge graph inconsistency from concurrent writes    | Low        | Medium   | Optimistic locking on entities; periodic consistency verification jobs                   |
 
 ## Limitations
 

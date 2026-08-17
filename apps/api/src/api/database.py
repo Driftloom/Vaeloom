@@ -8,8 +8,8 @@ from .config import settings
 engine = create_async_engine(
     settings.database__url,
     pool_pre_ping=True,
-    pool_size=20,
-    max_overflow=10,
+    pool_size=getattr(settings, "db_pool_size", 20),
+    max_overflow=getattr(settings, "db_max_overflow", 10),
     echo=settings.service_environment == "local",
 )
 

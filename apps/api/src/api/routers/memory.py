@@ -15,6 +15,7 @@ router = APIRouter()
 async def list_memories(
     query: MemoryQuery = Depends(),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
     memories, total = await memory_service.list_memories(db, query, tenant_id)
@@ -42,6 +43,7 @@ async def create_memory(
 async def get_memory(
     memory_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
     memory = await memory_service.get_memory(db, memory_id, tenant_id)
@@ -55,6 +57,7 @@ async def update_memory(
     memory_id: uuid.UUID,
     dto: MemoryUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
     memory = await memory_service.update_memory(db, memory_id, dto, tenant_id)
@@ -67,6 +70,7 @@ async def update_memory(
 async def delete_memory(
     memory_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
     deleted = await memory_service.delete_memory(db, memory_id, tenant_id)
@@ -78,6 +82,7 @@ async def delete_memory(
 async def search_memories(
     dto: MemorySearch,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
     results = await memory_service.search_memories(db, dto, tenant_id)

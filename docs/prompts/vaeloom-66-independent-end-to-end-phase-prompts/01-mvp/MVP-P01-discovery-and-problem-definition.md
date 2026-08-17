@@ -20,7 +20,7 @@
 **Mission:** Prove the memory-first ingest → organize → remember → assist loop with a tightly bounded eight-agent, six-memory, suggest-mode-first product before enterprise expansion.
 
 - Eight total runtime agents including Orchestrator: Orchestrator, Organization, Memory, Resume, ATS, Job Search & Application, Gmail, Scheduler.
-- Six memory types: Profile, Document, Career, Episodic, Preference, Working.
+- 22 memory types: Profile, Document, Career, Episodic, Preference, Working.
 - Single-user product experience, but every persisted artifact remains workspace-scoped and isolation-tested.
 - Gmail is draft-only; job submission is allowed only through an approved official integration and payload-bound user approval.
 - Enterprise SSO/SCIM, institution administration, billing, marketplace, multi-region tenant cells and cross-user memory are out of scope.
@@ -191,7 +191,7 @@ Product Manager; Business Analyst; Domain Specialist; UX Researcher; Privacy Eng
 The accountable role owns the gate. Security, privacy, data, accessibility, reliability and operations reviewers retain veto on mandatory blockers.
 
 ## 3. Verified Project Context
-- **Context:** Single-user personal intelligence platform for students and early-career professionals; memory-first; eight total runtime agents including Orchestrator; six memory types; suggest-mode-first; approved connectors only.
+- **Context:** Single-user personal intelligence platform for students and early-career professionals; memory-first; eight total runtime agents including Orchestrator; 22 memory types (person, organization, project, skill, achievement, education, experience, certification, publication, patent, award, meeting, task, goal, preference, constraint, insight, connection, location, event, document, conversation); suggest-mode-first; approved connectors only.
 - **Architecture:** Next.js 15 frontend, FastAPI/Python backend, PostgreSQL with pgvector, Redis, MinIO object storage; PaaS-first; every artifact workspace-scoped. No NestJS — single FastAPI monolith (ADR-001).
 - **In scope:** Prove ingest → organize → remember → assist, trust/approval UX, memory quality, resume/ATS value, lawful opportunity assistance, Gmail deadline extraction, reminders, export/deletion and bounded operational viability.
 - **Out of scope:** Enterprise SSO/SCIM, institution admin, billing, marketplace, multi-region cells, cross-user memory and unsupported job-platform automation.

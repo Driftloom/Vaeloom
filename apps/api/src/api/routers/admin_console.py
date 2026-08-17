@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field, EmailStr
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +9,12 @@ from ..services.tenant_provisioning import tenant_provisioner, ProvisioningError
 from ..services.tenant_settings import TenantSettings, tenant_settings_manager, TenantSettingsError
 
 router = APIRouter()
+
+
+class TenantProvisionRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    domain: str = Field(..., min_length=1, max_length=255)
+    admin_email: str = Field(..., min_length=5, max_length=320)
 
 
 @router.get("/admin/users")
@@ -112,18 +119,13 @@ async def admin_activate_user(
 
 @router.post("/admin/tenants", status_code=201)
 async def admin_provision_tenant(
-    body: dict,
+    dto: TenantProvisionRequest,
     db: AsyncSession = Depends(get_db),
     _admin=Depends(require_role("admin")),
 ):
-    name = body.get("name")
-    domain = body.get("domain")
-    admin_email = body.get("admin_email")
-    if not all([name, domain, admin_email]):
-        raise HTTPException(status_code=400, detail="name, domain, and admin_email are required")
     try:
         result = await tenant_provisioner.provision_tenant(
-            name=name, domain=domain, admin_email=admin_email, db=db,
+            name=dto.name, domain=dto.domain, admin_email=dto.admin_email, db=db,
         )
         return result
     except ProvisioningError as e:

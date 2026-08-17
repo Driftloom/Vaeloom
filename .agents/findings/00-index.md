@@ -1,26 +1,28 @@
 # Vaeloom Findings Index
 
-**Last Updated:** 2026-08-17 **Total Findings:** 54 **Fixed in This Session:**
-40 **Remaining Open:** 14
+**Last Updated:** 2026-08-17 (deep zero-trust audit + final sweep complete)
+
+## Structure
+
+- **`archive/`** — 30 fully-fixed findings (all issues resolved, no open items)
+- **Main directory** — 27 files with open/partially-open findings (active work)
+
+## Summary
+
+| Category        | Total  | Fixed (Archived) | Open (Active)             |
+| --------------- | ------ | ---------------- | ------------------------- |
+| Middleware/Main | 7      | 5                | 2                         |
+| Doc Fiction     | 14     | 14               | 0                         |
+| Router Auth     | 7      | 2                | 5 (orchestrator deferred) |
+| RLS             | 5      | 2                | 3                         |
+| Phase Reports   | 4      | 3                | 1                         |
+| Legacy Audits   | 8      | 1                | 7                         |
+| Phase Prompts   | 4      | 4                | 0                         |
+| **TOTAL**       | **49** | **31**           | **18**                    |
 
 ---
 
-## Summary by Source
-
-| Source                  | Total  | Fixed  | Open   |
-| ----------------------- | ------ | ------ | ------ |
-| Orchestrator Loop Audit | 5      | 3      | 2      |
-| main.py Audit           | 7      | 3      | 4      |
-| RLS Audit               | 6      | 1      | 5      |
-| Documentation Audit     | 15     | 0      | 15     |
-| MVP-P04 Doc Audit       | 7      | 7      | 0      |
-| CI/CD Audit             | 7      | 7      | 0      |
-| Phase Prompt Audit      | 13     | 13     | 0      |
-| **TOTAL**               | **60** | **40** | **20** |
-
----
-
-## Fixed Findings (Applied in This Session)
+## Active Findings (Main Directory)
 
 | ID  | Finding                                      | File                      | Fix                         |
 | --- | -------------------------------------------- | ------------------------- | --------------------------- |
@@ -31,13 +33,40 @@
 | —   | CORS innermost                               | `main.py:108-130`         | Moved to outermost          |
 | —   | Prometheus commented out                     | `main.py:135-136`         | Uncommented                 |
 | —   | OTel commented out                           | `main.py:136`             | Uncommented                 |
-| —   | P00, P03, P04, P05, P07 NestJS architecture  | 5 prompts                 | Updated to FastAPI monolith |
-| —   | P00, P03, P04, P05, P07 directory paths      | 5 prompts                 | Updated to `apps/api`       |
-| —   | P00, P03, P04, P05, P07 memory types         | 5 prompts                 | Updated to 22 types         |
+| —   | P00-P07 NestJS architecture                  | 5 prompts                 | Updated to FastAPI monolith |
+| —   | P00-P07 directory paths                      | 5 prompts                 | Updated to `apps/api`       |
+| —   | P00-P07 memory types                         | 5 prompts                 | Updated to 22 types         |
 
 ---
 
-## Open Findings — Orchestrator Loop
+## Fixed Findings — This Session (2026-08-17 Sweep)
+
+| ID               | Severity    | Finding                                                    | File                                    | Fix                                                                         |
+| ---------------- | ----------- | ---------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------- |
+| FIND-MAIN-001    | P0-CRITICAL | TenantMiddleware trusts client-supplied headers            | `middleware/tenant.py:76-92`            | JWT tenant_id preferred over headers; mismatch logged                       |
+| FIND-GDPR-001    | P0-CRITICAL | SQL injection via f-string in GDPR export/delete           | `services/gdpr.py:48-57`                | Added `_validate_table()` whitelist + `EXPORT_COLUMNS` per-table            |
+| FIND-GDPR-002    | P0-CRITICAL | GDPR export uses `SELECT *` exposing password_hash, tokens | `services/gdpr.py:44-72`                | Replaced with per-table column whitelists                                   |
+| FIND-RET-001     | P0-CRITICAL | SQL injection via f-string in retention service            | `services/retention.py:53-80`           | Added `ALLOWED_RETENTION_TABLES` whitelist                                  |
+| FIND-APPR-001    | P1-HIGH     | SQL injection pattern in approval list query               | `services/approval.py:126-141`          | Validated status filter against enum; kept parameterized                    |
+| FIND-APPR-002    | P1-HIGH     | Approval endpoint missing workspace isolation              | `services/approval.py:107-148`          | Added `user_workspaces` filter param                                        |
+| FIND-MAIN-002    | P1-HIGH     | IP Allowlist middleware not mounted                        | `main.py:122-137`                       | Added `IPAllowlistMiddleware` conditional mount                             |
+| FIND-MAIN-003    | P1-HIGH     | Prometheus import has no guard                             | `main.py:166-168`                       | Wrapped in try/except with logger.warning                                   |
+| FIND-CSRF-001    | P1-HIGH     | CSRF bypass via X-Requested-With header                    | `middleware/csrf.py:59-63`              | Removed XHR bypass; API key bypass kept                                     |
+| FIND-AUTH-001    | P1-HIGH     | No session logout endpoint                                 | `routers/auth.py`                       | Added `POST /auth/logout` (revokes session)                                 |
+| FIND-AUTH-002    | P2-MEDIUM   | Auth endpoints use default 100 req/60s limit               | `routers/auth.py:20-36`                 | Added `@rate_limit(5, 3600)` signup, `@rate_limit(10, 60)` login            |
+| FIND-MAIN-004    | P2-MEDIUM   | Dual Prometheus instrumentation                            | `main.py:166-168`                       | Guarded both Instrumentator and OTel with try/except                        |
+| FIND-MAIN-007    | P2-MEDIUM   | OPTIONS requests rate-limited                              | `middleware/rate_limit.py:140-142`      | Skip OPTIONS method from rate limiting                                      |
+| FIND-EXC-001     | MEDIUM      | Generic exception handler swallows errors (no log)         | `middleware/exception_handler.py:20-31` | Added `logger.exception()` + correlation_id in response                     |
+| FIND-SECRET-001  | MEDIUM      | Hardcoded `minioadmin` storage secret not validated        | `config.py:97-101`                      | Added validation for non-local environments                                 |
+| FIND-CORS-001    | LOW         | CORS allows localhost in all environments                  | `config.py:133-136`                     | Added warning when localhost in non-local env                               |
+| FIND-DB-001      | LOW         | Database pool size hardcoded                               | `database.py:8-14`                      | Made configurable via `db_pool_size`/`db_max_overflow` settings             |
+| FIND-GMAIL-001   | MEDIUM      | Gmail webhook has no signature verification                | `routers/gmail.py:97-112`               | Added `X-Goog-Channel-Token` verification against DB                        |
+| FIND-APPR-003    | MEDIUM      | CSRF token store is in-memory only                         | `middleware/csrf.py:27-46`              | **ACCEPTED** — single-worker only; Redis store deferred to P13+             |
+| FIND-STARTUP-001 | MEDIUM      | `create_all` + Alembic both run on startup                 | `main.py:78-99`                         | **ACCEPTED** — safe for dev; production deployment should skip `create_all` |
+
+---
+
+## Open Findings — Orchestrator Loop (Deferred to P12)
 
 | ID            | Severity  | Finding                                                  | File              |
 | ------------- | --------- | -------------------------------------------------------- | ----------------- |
@@ -49,25 +78,11 @@
 
 ---
 
-## Open Findings — main.py
-
-| ID            | Severity    | Finding                                         | File            |
-| ------------- | ----------- | ----------------------------------------------- | --------------- |
-| FIND-MAIN-001 | P0-CRITICAL | TenantMiddleware trusts client-supplied headers | `tenant.py:63`  |
-| FIND-MAIN-002 | P1-HIGH     | IP Allowlist middleware not mounted             | `ip_filter.py`  |
-| FIND-MAIN-003 | P1-HIGH     | Prometheus import has no guard                  | `main.py:7`     |
-| FIND-MAIN-004 | P2-MEDIUM   | Dual Prometheus instrumentation                 | `main.py:152`   |
-| FIND-MAIN-005 | P2-MEDIUM   | 25+ routers imported eagerly                    | `main.py:61`    |
-| FIND-MAIN-006 | P3-LOW      | Duplicate logging/formatter classes             | `logging.py`    |
-| FIND-MAIN-007 | P2-MEDIUM   | OPTIONS requests can be rate-limited            | `rate_limit.py` |
-
----
-
-## Open Findings — RLS
+## Open Findings — RLS (Deferred to P13/P14)
 
 | ID           | Severity    | Finding                                             | File                   |
 | ------------ | ----------- | --------------------------------------------------- | ---------------------- |
-| FIND-001     | P0-CRITICAL | RLS only covers 4/36 tables                         | `0005_rls*.py`         |
+| FIND-001     | P0-CRITICAL | RLS only covers 4/34 tables                         | `0005_rls*.py`         |
 | FIND-RLS-002 | P0-CRITICAL | Alembic migration references non-existent columns   | `0005_rls_expanded.py` |
 | FIND-RLS-003 | P1-HIGH     | No FORCE ROW LEVEL SECURITY                         | `0005_rls_expanded.py` |
 | FIND-RLS-004 | P2-MEDIUM   | Zero RLS integration tests                          | `test_tenant.py`       |
@@ -76,92 +91,110 @@
 
 ---
 
-## Open Findings — Documentation
+## Open Findings — main.py (Deferred to P15+)
 
-| ID           | Severity    | Finding                                             | File                                 |
-| ------------ | ----------- | --------------------------------------------------- | ------------------------------------ |
-| FIND-DOC-001 | P1-HIGH     | Desktop Companion and VS Code Extension don't exist | `02-system-architecture.md`          |
-| FIND-DOC-002 | P1-HIGH     | OCR Engine is a stub                                | `02-system-architecture.md`          |
-| FIND-DOC-003 | P1-HIGH     | mTLS between API and AI Service is fiction          | `System-Design.md`                   |
-| FIND-DOC-004 | P1-HIGH     | WebSocket not implemented                           | `System-Design.md`                   |
-| FIND-DOC-005 | P0-CRITICAL | Encryption at rest not implemented                  | `02-system-architecture.md`          |
-| FIND-DOC-006 | P1-HIGH     | Secrets Manager does not exist                      | `02-system-architecture.md`          |
-| FIND-DOC-007 | P1-HIGH     | Consolidation/compression is dead code              | `02-system-architecture.md`          |
-| FIND-DOC-008 | P1-HIGH     | Permission Engine is a local check                  | `02-system-architecture.md`          |
-| FIND-DOC-009 | P1-HIGH     | No infrastructure-as-code (Terraform)               | `Infrastructure.md`                  |
-| FIND-DOC-010 | P1-HIGH     | Grafana dashboards not deployed                     | `Infrastructure.md`                  |
-| FIND-DOC-011 | P1-HIGH     | PII Redaction not implemented                       | `Data-Flow.md`                       |
-| FIND-DOC-012 | P2-MEDIUM   | Data deletion verification not implemented          | `Data-Flow.md`                       |
-| FIND-DOC-013 | P1-HIGH     | ADR-013 claims all queries filter by tenant_id      | `ADR-013-multi-tenancy.md`           |
-| FIND-DOC-014 | P2-MEDIUM   | ADR-024 claims Meilisearch is present               | `ADR-024-rebuildable-projections.md` |
+| ID            | Severity  | Finding                             | File         |
+| ------------- | --------- | ----------------------------------- | ------------ |
+| FIND-MAIN-005 | P2-MEDIUM | 25+ routers imported eagerly        | `main.py:61` |
+| FIND-MAIN-006 | P3-LOW    | Duplicate logging/formatter classes | `logging.py` |
 
 ---
 
-## Open Findings — Phase Prompt Audit (MVP-P00 through MVP-P07)
+## Fixed Findings — Deep Zero-Trust Audit (This Session, Round 2)
 
-| ID              | Severity  | Finding                                                                                                           | File                                       |
-| --------------- | --------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| FIND-PROMPT-001 | P1-HIGH   | P00, P03, P04, P05, P07 claim "NestJS" but architecture is FastAPI monolith                                       | `FINDINGS-architecture-inconsistencies.md` |
-| FIND-PROMPT-002 | P1-HIGH   | 20 prompts (P00-P21) have copy-paste NestJS error at 2 locations each (40 edits needed)                           | `FINDINGS-architecture-inconsistencies.md` |
-| FIND-PROMPT-003 | P1-HIGH   | P00, P01, P03-P07 claim "six memory types" but codebase has 22                                                    | `FINDINGS-scope-count-mismatches.md`       |
-| FIND-PROMPT-004 | P1-HIGH   | Memory type names (Profile, Career, Episodic, Working) don't match actual enum (Person, Skill, Achievement, etc.) | `FINDINGS-scope-count-mismatches.md`       |
-| FIND-PROMPT-005 | P2-MEDIUM | "Eight total agents" is defensible but misleading; 21 registered, 8 MVP-canonical                                 | `FINDINGS-scope-count-mismatches.md`       |
-| FIND-PROMPT-006 | P2-MEDIUM | P00, P03-P07 reference "Redis/BullMQ" but BullMQ has zero consumers                                               | `FINDINGS-dead-dependencies.md`            |
-| FIND-PROMPT-007 | P2-MEDIUM | NestJS packages (`service-auth`, `observability`) are legacy remnants, not active                                 | `FINDINGS-dead-dependencies.md`            |
-| FIND-PROMPT-008 | P2-MEDIUM | Redis described as queue (BullMQ) but actually used for caching/rate-limiting only                                | `FINDINGS-dead-dependencies.md`            |
-| FIND-PROMPT-009 | P3-LOW    | Only P01, P02, P06 were upgraded to repo-reality; P00, P03-P07 still have template text                           | `FINDINGS-architecture-inconsistencies.md` |
-| FIND-PROMPT-010 | P1-HIGH   | P00, P03, P04, P05, P07 reference `apps/core-api` but actual is `apps/api`                                        | `FINDINGS-directory-path-mismatches.md`    |
-| FIND-PROMPT-011 | P1-HIGH   | P00, P03, P04, P05, P07 reference `apps/ai-service` which does not exist                                          | `FINDINGS-directory-path-mismatches.md`    |
-| FIND-PROMPT-012 | P2-MEDIUM | P00, P03, P04, P05, P07 reference `packages/contracts` which does not exist                                       | `FINDINGS-directory-path-mismatches.md`    |
-| FIND-PROMPT-013 | P2-MEDIUM | P00, P03, P04, P05, P07 reference `packages/design-system` which does not exist                                   | `FINDINGS-directory-path-mismatches.md`    |
+| ID              | Severity | Finding                                                  | File                                | Fix                                                                 |
+| --------------- | -------- | -------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------- |
+| FIND-FRESH-001  | CRITICAL | memory.py: 5/6 endpoints unauthenticated                 | `routers/memory.py:14,41,53,66,77`  | Added `get_current_user` to all 5                                   |
+| FIND-FRESH-002  | CRITICAL | agents.py: chat/list/get unauthenticated                 | `routers/agents.py:39,54,75`        | Added `get_current_user` to all 3                                   |
+| FIND-FRESH-003  | CRITICAL | search.py: endpoint unauthenticated                      | `routers/search.py:12`              | Added `get_current_user`                                            |
+| FIND-FRESH-004  | CRITICAL | iam.py: no role checks = privilege escalation            | `routers/iam.py:12-97`              | Changed all 7 endpoints to `require_role("admin")`                  |
+| FIND-FRESH-005  | CRITICAL | gmail.py: webhook token check bypassed when None         | `routers/gmail.py:110`              | Made channel token mandatory                                        |
+| FIND-FRESH-006  | HIGH     | notifications.py: no tenant_id in service calls          | `routers/notifications.py:33,70`    | Added `get_tenant_id` dependency                                    |
+| FIND-FRESH-007  | HIGH     | scheduler.py: no tenant isolation on sub-resources       | `routers/scheduler.py:49-129`       | Verified service layer handles it; added tenant_id to list endpoint |
+| FIND-FRESH-008  | HIGH     | recommendations.py: IDOR on user_id                      | `routers/recommendations.py:31`     | Added ownership check (current_user == user_id)                     |
+| FIND-FRESH-009  | HIGH     | workspaces.py: IDOR on sub-resources                     | `routers/workspaces.py:68,85,102`   | Added workspace ownership verification via `find_by_id`             |
+| FIND-FRESH-010  | HIGH     | audit.py: actor_id forgery via user input                | `routers/audit.py:21`               | Overwrite with current_user's sub/user_id                           |
+| FIND-FRESH-012  | MEDIUM   | admin_console.py: raw dict input on provisioning         | `routers/admin_console.py:114`      | Replaced with `TenantProvisionRequest` Pydantic model               |
+| FIND-FRESH-013  | MEDIUM   | knowledge_graph.py: sort_by/sort_order injection risk    | `routers/knowledge_graph.py:43-44`  | Added regex pattern validation                                      |
+| FIND-FRESH-014  | MEDIUM   | webhooks.py: SSRF risk on url field                      | `routers/webhooks.py:18`            | Added HTTPS-only, blocked hosts, private IP validation              |
+| FIND-FRESH-015  | MEDIUM   | analytics.py: unconstrained interval param               | `routers/analytics.py:18,34`        | Added regex pattern validation                                      |
+| FIND-FRESH-019  | LOW      | auth.py: SSO state race condition                        | `routers/auth.py:135`               | Per-state dict instead of app.state                                 |
+| FIND-GMAIL-002  | HIGH     | gmail.py: webhook completely unauthenticated             | `routers/gmail.py:97`               | Fixed in first sweep (channel token verification)                   |
+| FIND-FRESH-016  | MEDIUM   | documents.py: IDOR on workspace_id                       | `routers/documents.py`              | Added `_verify_workspace_access()` ownership check                  |
+| FIND-FRESH-017  | MEDIUM   | applications.py: IDOR on workspace_id                    | `routers/applications.py`           | Added `_verify_workspace_access()` ownership check                  |
+| FIND-FRESH-018  | MEDIUM   | chat.py: no input length limit on LLM prompt             | `routers/chat.py:25`                | Added `Field(max_length=10000)`                                     |
+| FIND-MEM-001    | CRITICAL | memory_agent handler.py: extraction never persists to DB | `agents/memory_agent/handler.py:72` | Added DB INSERT loop with `async_session_factory`                   |
+| FIND-ENC-001    | CRITICAL | encryption.py: no actual encryption (status check only)  | `services/encryption.py`            | Implemented `encrypt_value()`/`decrypt_value()` with Fernet         |
+| FIND-SAML-001   | HIGH     | SAML SSO stub silently returns None/pass                 | `services/sso.py:137-145`           | Raises `NotImplementedError` with clear message                     |
+| FIND-TLS-001    | MEDIUM   | tenant.py: silent exception in `set_rls_session_vars`    | `middleware/tenant.py:69-73`        | Added debug logging instead of bare `pass`                          |
+| FIND-PROMPT-001 | MEDIUM   | "Six memory types" in 21 MVP prompts + 5 docs            | 26 files                            | Replaced "six memory types" with "22 memory types"                  |
+
+---
+
+## Open Findings — Deferred
+
+| ID                | Severity    | Finding                                              | File                    | Deferred To              |
+| ----------------- | ----------- | ---------------------------------------------------- | ----------------------- | ------------------------ |
+| FIND-ORCH-001     | P1-HIGH     | Agent dispatch fragile string class names            | `loop.py:119`           | P12                      |
+| FIND-ORCH-002-005 | P2-MEDIUM   | Orchestrator case sensitivity, approval, disk writes | `loop.py`               | P12                      |
+| FIND-001          | P0-CRITICAL | RLS only covers 4/34 tables                          | `0005_rls*.py`          | P13/P14                  |
+| FIND-RLS-002-006  | P1-HIGH     | RLS wrong columns, no FORCE, no tests                | various                 | P13/P14                  |
+| FIND-MAIN-005     | P2-MEDIUM   | 25+ routers imported eagerly                         | `main.py:61`            | P15                      |
+| FIND-MAIN-006     | P3-LOW      | Duplicate logging classes                            | `logging.py`            | P15                      |
+| FIND-009          | MEDIUM      | create_all + Alembic both run on startup             | `main.py:78-99`         | Production deploy config |
+| CSRF-STORE        | MEDIUM      | CSRF token store in-memory only                      | `middleware/csrf.py`    | P13+ (needs Redis)       |
+| FIND-020          | MEDIUM      | Retention auto-deletes vs user-driven policy         | `services/retention.py` | P13                      |
 
 ---
 
 ## Files
 
-| File                                       | Source             | Count                            |
-| ------------------------------------------ | ------------------ | -------------------------------- |
-| `00-index.md`                              | —                  | This file                        |
-| `01-comprehensive-audit-2026-08-16.md`     | Full audit         | 23 fixes + 15 gaps               |
-| `02-rls-coverage-gap.md`                   | RLS Audit          | P0                               |
-| `03-encryption-not-implemented.md`         | Security Audit     | P0                               |
-| `04-memory-write-path-broken.md`           | AI Audit           | P0                               |
-| `05-documentation-reality-gaps.md`         | Doc Audit          | P1                               |
-| `06-missing-infrastructure.md`             | Infra Audit        | P1                               |
-| `10-orch-fragile-dispatch.md`              | Orchestrator Audit | P1                               |
-| `11-orch-ats-case-sensitivity.md`          | Orchestrator Audit | P2                               |
-| `12-orch-drive-no-approval.md`             | Orchestrator Audit | P2                               |
-| `13-orch-sync-disk-writes.md`              | Orchestrator Audit | P2                               |
-| `14-orch-wasted-iterations.md`             | Orchestrator Audit | P3                               |
-| `20-main-tenant-spoofing.md`               | main.py Audit      | P0                               |
-| `21-main-ip-allowlist-not-mounted.md`      | main.py Audit      | P1                               |
-| `22-main-prometheus-no-guard.md`           | main.py Audit      | P1                               |
-| `23-main-dual-prometheus.md`               | main.py Audit      | P2                               |
-| `24-main-eager-router-imports.md`          | main.py Audit      | P2                               |
-| `25-main-duplicate-logging.md`             | main.py Audit      | P3                               |
-| `26-main-options-rate-limited.md`          | main.py Audit      | P2                               |
-| `30-rls-alembic-wrong-columns.md`          | RLS Audit          | P0                               |
-| `31-rls-no-force.md`                       | RLS Audit          | P1                               |
-| `32-rls-no-integration-tests.md`           | RLS Audit          | P2                               |
-| `33-rls-silent-exception.md`               | RLS Audit          | P2                               |
-| `34-rls-dead-code.md`                      | RLS Audit          | P2                               |
-| `40-doc-desktop-vscode-fake.md`            | Doc Audit          | P1                               |
-| `41-doc-ocr-stub.md`                       | Doc Audit          | P1                               |
-| `42-doc-mtls-fiction.md`                   | Doc Audit          | P1                               |
-| `43-doc-websocket-missing.md`              | Doc Audit          | P1                               |
-| `44-doc-encryption-fake.md`                | Doc Audit          | P0                               |
-| `45-doc-secrets-manager-fake.md`           | Doc Audit          | P1                               |
-| `46-doc-consolidation-dead.md`             | Doc Audit          | P1                               |
-| `47-doc-permission-engine-fake.md`         | Doc Audit          | P1                               |
-| `48-doc-no-terraform.md`                   | Doc Audit          | P1                               |
-| `49-doc-grafana-missing.md`                | Doc Audit          | P1                               |
-| `50-doc-pii-redaction-fake.md`             | Doc Audit          | P1                               |
-| `51-doc-deletion-verification-fake.md`     | Doc Audit          | P2                               |
-| `52-doc-adr013-false-claim.md`             | Doc Audit          | P1                               |
-| `53-doc-adr024-meilisearch-fake.md`        | Doc Audit          | P2                               |
-| `07-mvp-p04-doc-audit.md`                  | MVP-P04 Doc Audit  | 7 findings                       |
-| `08-ci-cd-workflow-fixes.md`               | CI/CD Audit        | 7 fixes applied                  |
-| `FINDINGS-architecture-inconsistencies.md` | Phase Prompt Audit | 3 findings (P1-HIGH)             |
-| `FINDINGS-scope-count-mismatches.md`       | Phase Prompt Audit | 3 findings (P1-HIGH + P2-MEDIUM) |
-| `FINDINGS-dead-dependencies.md`            | Phase Prompt Audit | 3 findings (P2-MEDIUM)           |
-| `FINDINGS-directory-path-mismatches.md`    | Phase Prompt Audit | 4 findings (P1-HIGH + P2-MEDIUM) |
+| File                                       | Source             | Status              |
+| ------------------------------------------ | ------------------ | ------------------- |
+| `00-index.md`                              | —                  | This file (updated) |
+| `01-comprehensive-audit-2026-08-16.md`     | Full audit         | 23 fixes + 15 gaps  |
+| `02-rls-coverage-gap.md`                   | RLS Audit          | OPEN                |
+| `03-encryption-not-implemented.md`         | Security Audit     | OPEN                |
+| `04-memory-write-path-broken.md`           | AI Audit           | OPEN                |
+| `05-documentation-reality-gaps.md`         | Doc Audit          | FIXED               |
+| `06-missing-infrastructure.md`             | Infra Audit        | FIXED               |
+| `10-orch-fragile-dispatch.md`              | Orchestrator Audit | DEFERRED            |
+| `11-orch-ats-case-sensitivity.md`          | Orchestrator Audit | DEFERRED            |
+| `12-orch-drive-no-approval.md`             | Orchestrator Audit | DEFERRED            |
+| `13-orch-sync-disk-writes.md`              | Orchestrator Audit | DEFERRED            |
+| `14-orch-wasted-iterations.md`             | Orchestrator Audit | DEFERRED            |
+| `20-main-tenant-spoofing.md`               | main.py Audit      | FIXED               |
+| `21-main-ip-allowlist-not-mounted.md`      | main.py Audit      | FIXED               |
+| `22-main-prometheus-no-guard.md`           | main.py Audit      | FIXED               |
+| `23-main-dual-prometheus.md`               | main.py Audit      | FIXED               |
+| `24-main-eager-router-imports.md`          | main.py Audit      | DEFERRED            |
+| `25-main-duplicate-logging.md`             | main.py Audit      | DEFERRED            |
+| `26-main-options-rate-limited.md`          | main.py Audit      | FIXED               |
+| `30-rls-alembic-wrong-columns.md`          | RLS Audit          | OPEN                |
+| `31-rls-no-force.md`                       | RLS Audit          | OPEN                |
+| `32-rls-no-integration-tests.md`           | RLS Audit          | OPEN                |
+| `33-rls-silent-exception.md`               | RLS Audit          | OPEN                |
+| `34-rls-dead-code.md`                      | RLS Audit          | OPEN                |
+| `40-doc-desktop-vscode-fake.md`            | Doc Audit          | FIXED               |
+| `41-doc-ocr-stub.md`                       | Doc Audit          | FIXED               |
+| `42-doc-mtls-fiction.md`                   | Doc Audit          | FIXED               |
+| `43-doc-websocket-missing.md`              | Doc Audit          | FIXED               |
+| `44-doc-encryption-fake.md`                | Doc Audit          | FIXED               |
+| `45-doc-secrets-manager-fake.md`           | Doc Audit          | FIXED               |
+| `46-doc-consolidation-dead.md`             | Doc Audit          | FIXED               |
+| `47-doc-permission-engine-fake.md`         | Doc Audit          | FIXED               |
+| `48-doc-no-terraform.md`                   | Doc Audit          | FIXED               |
+| `49-doc-grafana-missing.md`                | Doc Audit          | FIXED               |
+| `50-doc-pii-redaction-fake.md`             | Doc Audit          | FIXED               |
+| `51-doc-deletion-verification-fake.md`     | Doc Audit          | FIXED               |
+| `52-doc-adr013-false-claim.md`             | Doc Audit          | FIXED               |
+| `53-doc-adr024-meilisearch-fake.md`        | Doc Audit          | FIXED               |
+| `07-mvp-p04-doc-audit.md`                  | MVP-P04 Doc Audit  | FIXED               |
+| `08-ci-cd-workflow-fixes.md`               | CI/CD Audit        | FIXED               |
+| `FINDINGS-architecture-inconsistencies.md` | Phase Prompt Audit | FIXED               |
+| `FINDINGS-scope-count-mismatches.md`       | Phase Prompt Audit | FIXED               |
+| `FINDINGS-dead-dependencies.md`            | Phase Prompt Audit | FIXED               |
+| `FINDINGS-directory-path-mismatches.md`    | Phase Prompt Audit | FIXED               |
+| `2026-08-17-zero-trust-audit.md`           | Zero-Trust Audit   | 14/20 FIXED         |
+| `P07-deep-audit-2026-08-17.md`             | P07 Deep Audit     | 5/14 FIXED          |
+| `DEEP-ZERO-TRUST-AUDIT-2026-08-17.md`      | Fresh Deep Audit   | 18/21 FIXED         |

@@ -17,8 +17,9 @@ async def record_event(
     current_user: dict = Depends(get_current_user),
 ):
     tenant_id = current_user.get("tenant_id")
+    actor_id = str(current_user.get("sub") or current_user.get("user_id", ""))
     event_id = await audit_service.record_event(
-        actor_id=dto.actor_id,
+        actor_id=actor_id,
         action=dto.action,
         resource=dto.resource,
         resource_id=dto.resource_id,

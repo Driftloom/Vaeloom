@@ -1,4 +1,6 @@
 import secrets
+import hashlib
+import hmac
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import settings
 from ..database import get_db
 from ..dependencies import get_current_user
+from ..middleware.rate_limit import rate_limit
 from ..schemas.auth import (
     SignupRequest, LoginRequest, RefreshRequest, AuthResponse, MeResponse,
 )
@@ -16,8 +19,11 @@ from ..services.workspace_service import workspace_service
 
 router = APIRouter()
 
+_sso_states: dict[str, str] = {}
+
 
 @router.post("/signup", response_model=AuthResponse, status_code=201)
+@rate_limit(max_requests=5, window_seconds=3600)
 async def signup(dto: SignupRequest, db: AsyncSession = Depends(get_db)):
     return await auth_service.signup(
         email=dto.email,
@@ -28,12 +34,29 @@ async def signup(dto: SignupRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=AuthResponse)
+@rate_limit(max_requests=10, window_seconds=60)
 async def login(dto: LoginRequest, db: AsyncSession = Depends(get_db)):
     return await auth_service.login(
         email=dto.email,
         password=dto.password,
         db=db,
     )
+
+
+@router.post("/logout", status_code=204)
+async def logout(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    user_id = current_user.get("sub")
+    if user_id:
+        await db.execute(
+            text("UPDATE auth_sessions SET status = 'REVOKED' WHERE user_id = :uid AND status = 'ACTIVE'"),
+            {"uid": user_id},
+        )
+        await db.commit()
+    return None
 
 
 @router.get("/me", response_model=MeResponse)
@@ -132,7 +155,7 @@ async def sso_login(provider: str, redirect_uri: str = Query(...), request: Requ
 
     sso = get_sso_provider(provider, SSOConfig(**provider_config))
     state = secrets.token_urlsafe(32)
-    request.app.state._sso_state = state
+    _sso_states[state] = provider
     auth_url = await sso.get_auth_url(redirect_uri, state)
     return {"auth_url": auth_url, "state": state}
 
@@ -150,9 +173,11 @@ async def sso_callback(
     from ..models.schema import User
     from ..schemas.auth import AuthResponse as AuthResp, PublicUser
 
-    expected_state = getattr(request.app.state, "_sso_state", None)
-    if expected_state is not None and state != expected_state:
-        raise HTTPException(status_code=400, detail="State mismatch")
+    expected_provider = _sso_states.pop(state, None)
+    if expected_provider is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired SSO state")
+    if expected_provider != provider:
+        raise HTTPException(status_code=400, detail="Provider mismatch in SSO state")
 
     provider_config = settings.sso_providers.get(provider)
     if not provider_config:

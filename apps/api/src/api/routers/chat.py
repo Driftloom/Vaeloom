@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..dependencies import get_current_user
 from ..services.llm_service import llm_service
@@ -8,7 +8,7 @@ router = APIRouter()
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=10000, description="User message (max 10000 chars)")
     agent_name: str | None = None
 
 

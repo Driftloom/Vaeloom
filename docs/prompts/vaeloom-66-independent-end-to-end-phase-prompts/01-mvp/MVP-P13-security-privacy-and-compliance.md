@@ -20,7 +20,7 @@
 **Mission:** Prove the memory-first ingest → organize → remember → assist loop with a tightly bounded eight-agent, memory-first, suggest-mode-first product before enterprise expansion.
 
 - Eight total runtime agents including Orchestrator: Orchestrator, Organization, Memory, Resume, ATS, Job Search & Application, Gmail, Scheduler.
-- Six memory types: Profile, Document, Career, Episodic, Preference, Working.
+- 22 memory types: Profile, Document, Career, Episodic, Preference, Working.
 - Single-user product experience, but every persisted artifact remains workspace-scoped and isolation-tested.
 - Gmail is draft-only; job submission is allowed only through an approved official integration and payload-bound user approval.
 - Enterprise SSO/SCIM, institution administration, billing, marketplace, multi-region tenant cells and cross-user memory are out of scope.

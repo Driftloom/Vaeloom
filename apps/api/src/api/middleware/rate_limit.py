@@ -141,6 +141,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if request.url.path in SKIP_PATHS:
             return await call_next(request)
 
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         api_key = request.headers.get(API_KEY_HEADER)
         if api_key:
             allowed, retry_after = await self._api_key_limiter.check(api_key)

@@ -1,26 +1,37 @@
 ﻿Vaeloom Â· System Architecture
 
-| Metadata         | Value                                                                |
-|------------------|----------------------------------------------------------------------|
+| Metadata         | Value                                                  |
+| ---------------- | ------------------------------------------------------ |
 | **Purpose**      | Document the six-layer system architecture for Vaeloom |
-| **Status**       | Draft |
-| **Owner**        | Engineering Team |
-| **Last Updated** | 2026-07-13 |
+| **Status**       | Draft                                                  |
+| **Owner**        | Engineering Team                                       |
+| **Last Updated** | 2026-07-13                                             |
 
 ## Overview
 
-Vaeloom's architecture is organized into six layers: Interface, Connectors & Plugins, Ingestion Engine, Agent Orchestration, Memory & Knowledge Layer (the core), and Storage & Security. Every layer exists to feed the memory layer in the middle — interfaces and connectors bring data in, agents act on it, and everything that happens gets written back to memory, which is what every feature ultimately reads from.
+Vaeloom's architecture is organized into six layers: Interface, Connectors &
+Plugins, Ingestion Engine, Agent Orchestration, Memory & Knowledge Layer (the
+core), and Storage & Security. Every layer exists to feed the memory layer in
+the middle — interfaces and connectors bring data in, agents act on it, and
+everything that happens gets written back to memory, which is what every feature
+ultimately reads from.
 
 ## Goals
 
-- **Define the six-layer architecture** — clearly delineate each layer's responsibility and interfaces
-- **Establish memory as the architectural spine** — show how all layers feed and read from the core memory layer
-- **Document connector and agent boundaries** — permission scopes, data flow, and isolation between components
-- **Provide unambiguous layer contracts** — what each layer guarantees to the layers above and below
+- **Define the six-layer architecture** — clearly delineate each layer's
+  responsibility and interfaces
+- **Establish memory as the architectural spine** — show how all layers feed and
+  read from the core memory layer
+- **Document connector and agent boundaries** — permission scopes, data flow,
+  and isolation between components
+- **Provide unambiguous layer contracts** — what each layer guarantees to the
+  layers above and below
 
 # Six layers, one spine of memory
 
-Every layer exists to feed the one in the middle. Interfaces and connectors bring data in; agents act on it; everything that happens gets written back to memory — which is what every feature above ultimately reads from.
+Every layer exists to feed the one in the middle. Interfaces and connectors
+bring data in; agents act on it; everything that happens gets written back to
+memory — which is what every feature above ultimately reads from.
 
 ```mermaid
 graph TD
@@ -83,7 +94,14 @@ graph TD
     class S1,S2,S3,S4 storage
 ```
 
-> **Diagram:** Six-layer system architecture. **Interface Layer** (web, desktop, VS Code, mobile) feeds **Connectors & Plugins** (Gmail, GitHub, Drive, local folders, SDK) which feed the **Ingestion Engine** (parsers, OCR, semantic extraction, dedup). **Agent Orchestration** routes requests to specialized agents. **Memory & Knowledge Layer** (the CORE — knowledge graph, vector store, structured memory, RAG, consolidation) is the spine everything reads from and writes to. **Storage & Security** provides encryption, secrets management, permissions, and audit logging.
+> **Diagram:** Six-layer system architecture. **Interface Layer** (web, desktop,
+> VS Code, mobile) feeds **Connectors & Plugins** (Gmail, GitHub, Drive, local
+> folders, SDK) which feed the **Ingestion Engine** (parsers, OCR, semantic
+> extraction, dedup). **Agent Orchestration** routes requests to specialized
+> agents. **Memory & Knowledge Layer** (the CORE — knowledge graph, vector
+> store, structured memory, RAG, consolidation) is the spine everything reads
+> from and writes to. **Storage & Security** provides encryption, secrets
+> management, permissions, and audit logging.
 
 ---
 
@@ -95,9 +113,9 @@ Where the person actually touches the product.
 
 Web AppPrimary surface — all pages live here
 
-Desktop CompanionScoped local-folder access, file watcher
+Desktop Companion — **NOT IMPLEMENTED** — planned only
 
-VS Code ExtensionWorkspace + git activity, on-demand summaries
+VS Code Extension — **NOT IMPLEMENTED** — planned only
 
 Mobile (future)Push notifications, quick capture
 
@@ -125,7 +143,7 @@ Turns raw files into something agents can reason about.
 
 Document ParserPDF, DOCX, PPT, XLSX, CSV
 
-OCRScanned certificates, transcripts
+OCR — **STUB** — not functional
 
 Code UnderstandingRepo structure, README, language detection
 
@@ -157,7 +175,8 @@ Scheduler AgentDeadlines, reminders, conflict checks
 
 ## Memory & Knowledge Layer — CORE
 
-Everything above reads from and writes to this layer. This is the actual product.
+Everything above reads from and writes to this layer. This is the actual
+product.
 
 Knowledge GraphEntities + typed relationships
 
@@ -167,7 +186,7 @@ Structured MemoryProfile / Career / Episodic / Preference
 
 Agentic RAGHybrid retrieval + relevance re-ranking
 
-ConsolidationCompresses & archives stale memory over time
+Consolidation — **DEAD CODE** — not wired into any pipeline
 
 06
 
@@ -175,11 +194,14 @@ ConsolidationCompresses & archives stale memory over time
 
 The floor every other layer stands on.
 
-Encrypted StorageDocuments & memory at rest
+Encrypted Storage — **NOT IMPLEMENTED** — encryption_key is used for token
+signing only
 
-Secrets ManagerOAuth tokens, never in plaintext
+Secrets Manager — **IMPLEMENTED** — SecretManager protocol with
+infisical/fallback provider
 
-Permission EnginePer-connector, per-agent scopes
+Permission Engine — **PARTIAL** — role-based checks via DI helpers, not a
+standalone engine
 
 Audit LogEvery agent action, reversible
 
@@ -193,9 +215,11 @@ Read access is default Â· Write access is always a separate, explicit grant
 
 ### In Scope
 
-- Six-layer architecture design: Interface, Connectors, Ingestion, Agent Orchestration, Memory & Knowledge (core), Storage & Security
+- Six-layer architecture design: Interface, Connectors, Ingestion, Agent
+  Orchestration, Memory & Knowledge (core), Storage & Security
 - Layer contracts — what each layer guarantees to layers above and below
-- Web app, desktop companion, VS Code extension, and future mobile interface points
+- Web app, desktop companion, VS Code extension, and future mobile interface
+  points
 - Connector architecture using MCP-shaped tool definitions
 - Agent orchestration with Orchestrator + 7 specialist agents
 - Memory layer: knowledge graph, vector store, structured memory, agentic RAG
@@ -216,8 +240,8 @@ Read access is default Â· Write access is always a separate, explicit grant
 
 ```typescript
 const response = await Vaeloom.orchestrator.invoke({
-  agent: "resume-agent",
-  payload: { action: "update", files: ["resume.pdf"] }
+  agent: 'resume-agent',
+  payload: { action: 'update', files: ['resume.pdf'] },
 });
 ```
 
@@ -225,10 +249,10 @@ const response = await Vaeloom.orchestrator.invoke({
 
 ```typescript
 Vaeloom.connectors.register({
-  name: "gmail",
-  auth: "oauth2",
-  scopes: ["read", "draft"],
-  suggestMode: true
+  name: 'gmail',
+  auth: 'oauth2',
+  scopes: ['read', 'draft'],
+  suggestMode: true,
 });
 ```
 
@@ -236,25 +260,25 @@ Vaeloom.connectors.register({
 
 ```typescript
 const result = await Vaeloom.layers.execute({
-  from: "interface",
-  to: "memory",
-  data: { query: "find my latest resume" }
+  from: 'interface',
+  to: 'memory',
+  data: { query: 'find my latest resume' },
 });
 ```
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| Service mesh for inter-layer communication | High | High | Q2 2027 |
-| Layer-level observability instrumentation | Medium | Medium | Q1 2027 |
-| Event-driven architecture for layer decoupling | Medium | High | Q3 2027 |
+| Improvement                                    | Priority | Complexity | Timeline |
+| ---------------------------------------------- | -------- | ---------- | -------- |
+| Service mesh for inter-layer communication     | High     | High       | Q2 2027  |
+| Layer-level observability instrumentation      | Medium   | Medium     | Q1 2027  |
+| Event-driven architecture for layer decoupling | Medium   | High       | Q3 2027  |
 
 ## Related Documents
 
-| Document | Description |
-|----------|-------------|
-| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1/MVP product specification |
-| [Agent Workflow](03-agent-workflow.md) | How agents interact across the six layers |
-| [Memory & Knowledge Graph](04-memory-knowledge-graph.md) | Deep dive into the core memory layer |
-| [Enterprise Architecture](06-Vaeloom-Enterprise-Paper.md) | Enterprise-scale architecture vision |
+| Document                                                  | Description                               |
+| --------------------------------------------------------- | ----------------------------------------- |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md)                | v1/MVP product specification              |
+| [Agent Workflow](03-agent-workflow.md)                    | How agents interact across the six layers |
+| [Memory & Knowledge Graph](04-memory-knowledge-graph.md)  | Deep dive into the core memory layer      |
+| [Enterprise Architecture](06-Vaeloom-Enterprise-Paper.md) | Enterprise-scale architecture vision      |

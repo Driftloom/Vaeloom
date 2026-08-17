@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, require_role
 from ..schemas.iam import AssignRolesRequest, CreateUserRequest, UpdateUserRequest, UserResponse
 from ..services.iam_service import iam_service
 
@@ -13,7 +13,7 @@ router = APIRouter()
 async def create_user(
     dto: CreateUserRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("admin")),
 ):
     user = await iam_service.create_user(dto=dto, db=db)
     return UserResponse(**user)
@@ -24,7 +24,7 @@ async def list_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("admin")),
 ):
     tenant_id = current_user.get("tenant_id")
     if not tenant_id:
@@ -37,7 +37,7 @@ async def list_users(
 async def get_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("admin")),
 ):
     user = await iam_service.get_user(user_id=user_id, db=db)
     if not user:
@@ -50,7 +50,7 @@ async def update_user(
     user_id: str,
     dto: UpdateUserRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("admin")),
 ):
     user = await iam_service.update_user(user_id=user_id, dto=dto, db=db)
     if not user:
@@ -62,7 +62,7 @@ async def update_user(
 async def deactivate_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("admin")),
 ):
     await iam_service.deactivate_user(user_id=user_id, db=db)
 
@@ -72,7 +72,7 @@ async def assign_roles(
     user_id: str,
     dto: AssignRolesRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("admin")),
 ):
     await iam_service.assign_roles(user_id=user_id, role_ids=dto.role_ids, db=db)
     return {"status": "ok"}
@@ -83,7 +83,7 @@ async def remove_role(
     user_id: str,
     role_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("admin")),
 ):
     await iam_service.remove_role(user_id=user_id, role_id=role_id, db=db)
 
@@ -92,6 +92,6 @@ async def remove_role(
 async def get_permissions(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_role("admin")),
 ):
     return await iam_service.get_permissions(user_id=user_id, db=db)
