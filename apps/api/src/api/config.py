@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     database__url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom"
     redis__url: str = "redis://localhost:6379/0"
 
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_token_ttl: int = 3600
     jwt_refresh_token_ttl: int = 2592000
@@ -55,8 +55,8 @@ class Settings(BaseSettings):
     api_key_rate_limit: int = 1000
 
     storage_endpoint: str = "http://localhost:9000"
-    storage_access_key: str = "minioadmin"
-    storage_secret_key: str = "minioadmin"
+    storage_access_key: str = ""
+    storage_secret_key: str = ""
     storage_bucket: str = "vaeloom"
     storage_region: str = "us-east-1"
 
@@ -101,11 +101,11 @@ def validate_settings() -> dict[str, list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
 
-    if settings.jwt_secret in ("change-me-in-production", "change-me"):
-        errors.append("JWT_SECRET must be changed from the default value")
+    if not settings.jwt_secret:
+        errors.append("JWT_SECRET must be set — refusing to start with empty/missing secret")
 
-    if settings.storage_secret_key == "minioadmin" and settings.service_environment != "local":
-        errors.append("STORAGE_SECRET_KEY must be changed from the default 'minioadmin' in non-local environments")
+    if not settings.storage_secret_key and settings.service_environment != "local":
+        errors.append("STORAGE_SECRET_KEY must be set in non-local environments")
 
     if not settings.database__url:
         errors.append("DATABASE_URL must be set")

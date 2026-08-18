@@ -38,7 +38,7 @@ automated checks; P14 audit).
 | --------------------------------------------------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- |
 | Button (4 variants, focus ring)                                                                                 | keep               | toast, diff-viewer, provenance-badge, confidence-meter, consent-toggle-group, expiry-timer, skip-link, tablist |
 | Card, Input, Modal (add focus trap), Spinner                                                                    | keep (+Modal a11y) |                                                                                                                |
-| EmptyState, ErrorState, ProgressBar, SearchInput, StatusBadge, Table, Toggle, ProposalCard (evolve per §04.2.1) | keep/evolve        |                                                                                                                |
+| EmptyState, ErrorState, ProgressBar, SearchInput, StatusBadge, Table, Toggle, ApprovalCard (evolve per §04.2.1) | keep/evolve        | **Note:** Re-audit 2026-08-18: renamed from ProposalCard to ApprovalCard (actual component name)               |
 | Sidebar, TopNav, ThemeToggle                                                                                    | keep (grouped IA)  |                                                                                                                |
 
 New components go in `packages/ui-kit` (reusable) + web `shared/` when

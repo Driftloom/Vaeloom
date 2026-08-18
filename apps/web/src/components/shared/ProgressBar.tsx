@@ -16,7 +16,14 @@ const colorStyles: Record<string, string> = {
   warning: 'bg-yellow-500',
 };
 
-export function ProgressBar({ value, max, label, color = 'primary', showValue = true, className = '' }: ProgressBarProps) {
+export function ProgressBar({
+  value,
+  max,
+  label,
+  color = 'primary',
+  showValue = true,
+  className = '',
+}: ProgressBarProps) {
   const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
 
   return (
@@ -27,7 +34,14 @@ export function ProgressBar({ value, max, label, color = 'primary', showValue = 
           {showValue && <span className="font-mono text-text-muted">{pct}%</span>}
         </div>
       )}
-      <div className="h-2 bg-surface-active rounded-full overflow-hidden">
+      <div
+        className="h-2 bg-surface-active rounded-full overflow-hidden"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label ?? `Progress: ${pct}%`}
+      >
         <div
           className={`h-full rounded-full transition-all duration-300 ${colorStyles[color]}`}
           style={{ width: `${pct}%` }}

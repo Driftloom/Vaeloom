@@ -3,11 +3,12 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user
+from ..models.schema import Workspace, WorkspaceUser
 from ..schemas.approval import (
     ApprovalDecision,
     ApprovalListResponse,
@@ -15,6 +16,21 @@ from ..schemas.approval import (
     ApprovalResponse,
 )
 from ..services.audit_service import audit_service
+
+
+async def _get_user_workspace_ids(user_id: str, db: AsyncSession) -> list[str]:
+    """Look up all workspace IDs the user has access to (owned + member)."""
+    try:
+        uid = uuid.UUID(user_id)
+    except (ValueError, TypeError):
+        return []
+
+    owned = await db.execute(select(Workspace.id).where(Workspace.user_id == uid))
+    member = await db.execute(
+        select(WorkspaceUser.workspace_id).where(WorkspaceUser.user_id == uid)
+    )
+    ids = {str(row[0]) for row in owned.all()} | {str(row[0]) for row in member.all()}
+    return sorted(ids)
 
 
 class ApprovalManager:
@@ -247,14 +263,12 @@ async def list_approvals(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    user_ws = getattr(current_user, "_workspace_ids", None)
+    user_ws = await _get_user_workspace_ids(current_user.get("sub", ""), db)
     return await approval_manager.list_approvals(
         db=db,
         status=status,
         workspace_id=workspace_id,
-        user_workspaces=user_ws,
+        user_workspaces=user_ws or None,
         page=page,
         page_size=page_size,
     )
@@ -266,10 +280,8 @@ async def get_approval(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    user_ws = getattr(current_user, "_workspace_ids", None)
-    return await approval_manager.get_approval(approval_id, db, user_workspaces=user_ws)
+    user_ws = await _get_user_workspace_ids(current_user.get("sub", ""), db)
+    return await approval_manager.get_approval(approval_id, db, user_workspaces=user_ws or None)
 
 
 @router.post("/approvals/{approval_id}/approve", response_model=ApprovalResponse)
@@ -279,11 +291,9 @@ async def approve_approval(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
     actor = str(current_user.get("sub"))
-    user_ws = getattr(current_user, "_workspace_ids", None)
-    approval = await approval_manager.decide(approval_id, "APPROVED", actor, dto.note if dto else None, db, user_workspaces=user_ws)
+    user_ws = await _get_user_workspace_ids(actor, db)
+    approval = await approval_manager.decide(approval_id, "APPROVED", actor, dto.note if dto else None, db, user_workspaces=user_ws or None)
     await audit_service.record_event(
         actor_id=actor,
         action="approval.approve",
@@ -304,11 +314,9 @@ async def reject_approval(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
     actor = str(current_user.get("sub"))
-    user_ws = getattr(current_user, "_workspace_ids", None)
-    approval = await approval_manager.decide(approval_id, "REJECTED", actor, dto.note if dto else None, db, user_workspaces=user_ws)
+    user_ws = await _get_user_workspace_ids(actor, db)
+    approval = await approval_manager.decide(approval_id, "REJECTED", actor, dto.note if dto else None, db, user_workspaces=user_ws or None)
     await audit_service.record_event(
         actor_id=actor,
         action="approval.reject",

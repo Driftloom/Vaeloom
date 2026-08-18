@@ -31,7 +31,7 @@ export function Table<T>({ columns, data, keyExtractor, onRowClick, emptyMessage
         <thead>
           <tr className="border-b border-border text-text-muted font-mono text-sm uppercase">
             {columns.map((col) => (
-              <th key={col.key} className={`pb-3 font-normal ${col.className || ''}`}>
+              <th key={col.key} scope="col" className={`pb-3 font-normal ${col.className || ''}`}>
                 {col.header}
               </th>
             ))}
@@ -43,10 +43,24 @@ export function Table<T>({ columns, data, keyExtractor, onRowClick, emptyMessage
               key={keyExtractor(item)}
               className={`border-b border-border/50 hover:bg-background/50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
               onClick={() => onRowClick?.(item)}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onRowClick(item);
+                      }
+                    }
+                  : undefined
+              }
+              tabIndex={onRowClick ? 0 : undefined}
+              role={onRowClick ? 'button' : undefined}
             >
               {columns.map((col) => (
                 <td key={col.key} className={`py-3 text-text ${col.className || ''}`}>
-                  {col.render ? col.render(item) : (item as Record<string, unknown>)[col.key] as React.ReactNode}
+                  {col.render
+                    ? col.render(item)
+                    : ((item as Record<string, unknown>)[col.key] as React.ReactNode)}
                 </td>
               ))}
             </tr>

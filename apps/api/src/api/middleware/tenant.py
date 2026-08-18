@@ -79,11 +79,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
         jwt_tenant_id = getattr(request.state, "tenant_id", None)
         jwt_workspace_id = getattr(request.state, "workspace_id", None)
 
-        header_tenant_id = request.headers.get("X-Tenant-ID", "")
-        header_workspace_id = request.headers.get("X-Workspace-ID", "")
-
         if jwt_tenant_id:
             tenant_id = str(jwt_tenant_id)
+            header_tenant_id = request.headers.get("X-Tenant-ID", "")
             if header_tenant_id and header_tenant_id != tenant_id:
                 from ..infrastructure.logging import get_logger
                 get_logger(__name__).warning(
@@ -91,12 +89,14 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     tenant_id, header_tenant_id,
                 )
         else:
-            tenant_id = header_tenant_id or None
+            # Never trust user-supplied headers for tenant context.
+            # If JWT has no tenant_id, leave tenant_id as None (RLS will match zero rows).
+            tenant_id = None
 
         if jwt_workspace_id:
             workspace_id = str(jwt_workspace_id)
         else:
-            workspace_id = header_workspace_id or None
+            workspace_id = None
 
         request.state.tenant_id = tenant_id
         request.state.workspace_id = workspace_id

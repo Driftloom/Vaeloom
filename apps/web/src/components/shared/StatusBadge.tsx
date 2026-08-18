@@ -18,7 +18,10 @@ const variantStyles: Record<StatusVariant, string> = {
 
 export function StatusBadge({ variant, label, className = '' }: StatusBadgeProps) {
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono border ${variantStyles[variant]} ${className}`}>
+    <span
+      role="status"
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono border ${variantStyles[variant]} ${className}`}
+    >
       {label}
     </span>
   );

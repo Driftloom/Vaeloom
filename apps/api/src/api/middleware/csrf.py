@@ -56,11 +56,6 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if path in SKIP_PATHS or any(path.startswith(p) for p in SKIP_PREFIXES):
             return await call_next(request)
 
-        has_api_key = bool(request.headers.get("X-API-Key"))
-
-        if has_api_key:
-            return await call_next(request)
-
         if request.method in MUTATING_METHODS:
             csrf_header = request.headers.get("X-CSRF-Token", "")
             csrf_cookie = request.cookies.get("csrf_token", "")

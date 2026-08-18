@@ -2,8 +2,9 @@
 
 ## Status
 
-DESIGN BASELINE — executed as design phase against live web app (no runtime
-changes; implementation at P10, testing at P14). Gate: see `09-gate-report.md`.
+DESIGN BASELINE — re-audited 2026-08-18. Original gate 88/100 (2026-08-10);
+re-audit ~88/100 (2 minor corrections applied). Implementation at P10; testing
+at P14. Gate: see `09-gate-report.md`.
 
 ## Deliverables
 
@@ -18,12 +19,15 @@ changes; implementation at P10, testing at P14). Gate: see `09-gate-report.md`.
 | Gate report                                 | `09-gate-report.md`                                |
 | Handoff                                     | `10-handoff-to-p10.md`                             |
 | Source register + entry audit               | `01-source-register.md`, `02-predecessor-audit.md` |
+| Re-audit evidence                           | `reaudit-2026-08-18.md`                            |
+| Research evidence register                  | `research-register.md`                             |
 
-## Evidence snapshot (EVD-MVP-P09-001)
+## Evidence snapshot (EVD-MVP-P09-001 + RA-001)
 
-Repo `master` @ `305ebfb` (P08). Web surface inventoried (live file listing):
+Repo `master` @ `a0b9f26` (re-audit). Web surface inventoried (live file
+listing):
 
-- **Routes (27 pages):** login, signup, status + 18 workspace pages (dashboard,
+- **Routes (23 pages):** login, signup, status + 18 workspace pages (dashboard,
   files, memory, resume, jobs, applications, chat, schedule, connectors,
   history, settings, admin, billing, organizations, feature-flags, marketplace,
   developer, developer/webhooks, notifications)
@@ -34,17 +38,28 @@ Repo `master` @ `305ebfb` (P08). Web surface inventoried (live file listing):
   WebVitals, ErrorTrackingBoundary.
 - **ui-kit:** Button (primary/secondary/ghost/danger, focus rings), Card, Input,
   Modal, Spinner.
-- **Web shared:** EmptyState, ErrorState, ProgressBar, ProposalCard
-  (approve/reject only — no diff/expiry), SearchInput, StatusBadge, Table,
-  Toggle (focus ring).
+- **Web shared:** EmptyState, ErrorState, ProgressBar, **ApprovalCard**
+  (approve/reject + expiry + T3 warnings — re-audit: renamed from ProposalCard),
+  SearchInput, StatusBadge, Table, Toggle (focus ring), ConfidenceMeter,
+  DiffViewer, ExpiryTimer, ProvenanceBadge, SkipLink, Toast.
 - **Tokens:** tailwind theme — dark-first (`#0a0a0f` bg, `#8b9af0` periwinkle
   primary, `#ff7b72` coral accent, `#e2e8f0` text), `l-*` light palette,
   `class`-based dark mode.
 - **A11y present:** focus-visible rings on interactive components, kbd shortcuts
-  (`g d|m|j|r|s|c`, `/`, `n`, `?`, `Esc`), aria-labels/roles in parts.
-- **A11y gaps found (design targets):** no skip link, emoji-only icons
-  (aria-hidden needed), no focus trap in Modal, no reduced-motion handling, no
-  focus management on route change, ErrorBoundary fallback a11y unverified.
+  (`g d|m|j|r|s|c`, `/`, `n`, `?`, `Esc`), aria-labels/roles in parts,
+  skip-link, reduced-motion.
+- **A11y gaps found (design targets):** emoji-only icons (aria-hidden needed),
+  no focus trap in Modal, no focus management on route change, ErrorBoundary
+  fallback a11y unverified.
+- **Tests:** 32/32 pass (Toast, Modal, ApprovalCard, Sidebar, Connectors,
+  useWorkspace).
+
+## Re-audit corrections (2026-08-18)
+
+| Item           | Original     | Corrected               | Evidence                                          |
+| -------------- | ------------ | ----------------------- | ------------------------------------------------- |
+| Route count    | 27           | **23** `page.tsx` files | `apps/web/src/app/**/page.tsx`                    |
+| Component name | ProposalCard | **ApprovalCard**        | `apps/web/src/components/shared/ApprovalCard.tsx` |
 
 ## Decisions this phase
 
@@ -54,3 +69,5 @@ Repo `master` @ `305ebfb` (P08). Web surface inventoried (live file listing):
   (Chrome/Edge/Firefox/Safari). User-approved 2026-08-10.
 - Design targets: approval diff + expiry, provenance/confidence/correction,
   scopes, data-right states (phase rule §13).
+- **DEC-P09-RA-001:** Route count corrected to 23; ProposalCard renamed to
+  ApprovalCard (re-audit 2026-08-18).
