@@ -268,7 +268,7 @@ class TestBullMQWorkerExtended:
 
     def test_main_block_import(self):
         import api.workers.queue_worker
-        assert backend.workers.queue_worker.__name__ == "api.workers.queue_worker"
+        assert api.workers.queue_worker.__name__ == "api.workers.queue_worker"
 
     # ── run_worker — covers lines 189-216 ──────────────────────────────
 

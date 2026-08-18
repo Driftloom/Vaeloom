@@ -132,7 +132,12 @@ class TestRecommendationsRouter:
             id=uuid.uuid4(), user_id="u1", tenant_id="default",
             items="[]", model_version="v1", created_at=now,
         )]
-        res = await client.get(f"/api/v1/recommendations/{uuid.uuid4()}", headers=headers)
+        from api.config import settings
+        import jwt as pyjwt
+        token = headers["Authorization"].replace("Bearer ", "")
+        payload = pyjwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        user_id = payload["sub"]
+        res = await client.get(f"/api/v1/recommendations/{user_id}", headers=headers)
         assert res.status_code == 200
         assert isinstance(res.json(), list)
 

@@ -29,7 +29,7 @@ class TestServicesInit:
     def test_unknown_attr_raises_attribute_error(self):
         import api.services
         with pytest.raises(AttributeError, match="has no attribute"):
-            backend.services.NonExistentService
+            api.services.NonExistentService
 
     def test_all_list(self):
         from api.services import __all__

@@ -1,6 +1,9 @@
 import uuid
+import jwt
 import pytest
 from httpx import AsyncClient, ASGITransport
+
+from api.config import settings
 
 pytestmark = pytest.mark.asyncio
 
@@ -11,6 +14,15 @@ class TestIAM:
             "email": "iam@test.com", "password": "Test1234!",
         })
         token = res.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+
+    def _admin_headers(self) -> dict:
+        """Create a JWT with admin role for IAM endpoints."""
+        token = jwt.encode(
+            {"sub": str(uuid.uuid4()), "email": "admin@test.com", "roles": ["admin"]},
+            settings.jwt_secret,
+            algorithm=settings.jwt_algorithm,
+        )
         return {"Authorization": f"Bearer {token}"}
 
     async def _client_with_tenant(self, db_session, tenant_id="test-tenant"):
@@ -80,7 +92,7 @@ class TestIAM:
         return None
 
     async def test_list_users(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         res = await client.get("/api/v1/iam/users", headers=headers)
         assert res.status_code in (200, 400)
 
@@ -89,8 +101,6 @@ class TestIAM:
         from fastapi import FastAPI
         from api.database import get_db
         from api.routers import iam
-        from starlette.responses import JSONResponse
-        from fastapi import Request
 
         test_app = FastAPI()
         test_app.include_router(iam.router, prefix="/api/v1/iam")
@@ -99,9 +109,9 @@ class TestIAM:
             yield db_session
         test_app.dependency_overrides[get_db] = override_get_db
 
-        async def auth_user():
-            return {"sub": "test-user", "tenant_id": "test-tenant"}
-        test_app.dependency_overrides[get_current_user] = auth_user
+        async def auth_admin():
+            return {"sub": "test-user", "tenant_id": "test-tenant", "roles": ["admin"]}
+        test_app.dependency_overrides[get_current_user] = auth_admin
 
         from httpx import AsyncClient, ASGITransport
         transport = ASGITransport(app=test_app)
@@ -111,14 +121,14 @@ class TestIAM:
             assert "items" in res.json()
 
     async def test_update_user_not_found(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         res = await client.put(f"/api/v1/iam/users/{uuid.uuid4()}", json={
             "display_name": "Nope",
         }, headers=headers)
         assert res.status_code == 404
 
     async def test_get_user(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         created = await client.post("/api/v1/iam/users", json={
             "email": "iam-existing@test.com",
             "display_name": "IAM User",
@@ -131,19 +141,19 @@ class TestIAM:
         assert res.json()["email"] == "iam-existing@test.com"
 
     async def test_get_user_not_found(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         res = await client.get(f"/api/v1/iam/users/{uuid.uuid4()}", headers=headers)
         assert res.status_code == 404
 
     async def test_create_user(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         user = await self._create_user(client, headers, email="create-test@test.com")
         assert "id" in user
         assert user["email"] == "create-test@test.com"
         assert user["active"] is True
 
     async def test_update_user(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         user = await self._create_user(client, headers)
         uid = user["id"]
         res = await client.put(f"/api/v1/iam/users/{uid}", json={
@@ -153,14 +163,14 @@ class TestIAM:
         assert res.json()["display_name"] == "Updated Name"
 
     async def test_deactivate_user(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         user = await self._create_user(client, headers)
         uid = user["id"]
         res = await client.delete(f"/api/v1/iam/users/{uid}", headers=headers)
         assert res.status_code == 204
 
     async def test_deactivate_nonexistent_user(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         res = await client.delete(f"/api/v1/iam/users/{uuid.uuid4()}", headers=headers)
         assert res.status_code == 404
 
@@ -169,7 +179,7 @@ class TestIAM:
         assert res.status_code == 401
 
     async def test_assign_roles(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         user = await self._create_user(client, headers)
         uid = user["id"]
         role_id = "00000000-0000-0000-0000-000000000001"
@@ -179,14 +189,14 @@ class TestIAM:
         assert res.status_code == 200
 
     async def test_assign_roles_nonexistent_user(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         res = await client.post(f"/api/v1/iam/users/{uuid.uuid4()}/roles", json={
             "role_ids": ["00000000-0000-0000-0000-000000000001"],
         }, headers=headers)
         assert res.status_code == 404
 
     async def test_remove_role(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         user = await self._create_user(client, headers)
         uid = user["id"]
         role_id = "00000000-0000-0000-0000-000000000001"
@@ -195,14 +205,14 @@ class TestIAM:
         assert res.status_code == 204
 
     async def test_remove_role_not_found(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         user = await self._create_user(client, headers)
         uid = user["id"]
         res = await client.delete(f"/api/v1/iam/users/{uid}/roles/fake-role-id", headers=headers)
         assert res.status_code == 404
 
     async def test_get_permissions(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         user = await self._create_user(client, headers)
         uid = user["id"]
         res = await client.get(f"/api/v1/iam/users/{uid}/permissions", headers=headers)
@@ -214,7 +224,7 @@ class TestIAM:
         async def fake_update(user_id, dto, db=None):
             return None
         monkeypatch.setattr(iam_service, "update_user", fake_update)
-        headers = await self._auth_header(client)
+        headers = self._admin_headers()
         res = await client.put(f"/api/v1/iam/users/{uuid.uuid4()}", json={
             "display_name": "Nope",
         }, headers=headers)

@@ -1,7 +1,11 @@
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+# Ensure ENCRYPTION_KEY is set for tests that trigger encrypt_value()
+os.environ.setdefault("ENCRYPTION_KEY", "test-encryption-key-must-be-at-least-32-chars!!")
 
 import sqlalchemy.types as sa_types
 from sqlalchemy.dialects.sqlite import TEXT, JSON
