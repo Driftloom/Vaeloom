@@ -9,7 +9,7 @@ description = "Vaeloom Unified API - API Gateway + AI Service"
 requires-python = ">=3.12"
 license = {text = "MIT"}
 dependencies = [
-    "fastapi>=0.115.0,<0.116.0",
+    "fastapi>=0.115.0,<0.142.0",
     "uvicorn[standard]>=0.29.0",
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
