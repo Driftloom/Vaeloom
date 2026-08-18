@@ -19,18 +19,18 @@ ALLOWED_TABLES = frozenset({
 })
 
 EXPORT_COLUMNS = {
-    "users": "id, email, display_name, avatar_url, status, created_at, updated_at",
-    "auth_sessions": "id, user_id, token, expires_at, created_at",
-    "workspaces": "id, user_id, name, slug, created_at",
-    "workspace_users": "id, workspace_id, user_id, role, created_at",
-    "memories": "id, user_id, workspace_id, content, memory_type, created_at",
-    "agents": "id, user_id, workspace_id, name, agent_type, status, created_at",
-    "integrations": "id, user_id, workspace_id, provider, status, created_at",
-    "notifications": "id, user_id, workspace_id, title, read, created_at",
-    "events": "id, user_id, workspace_id, event_type, created_at",
-    "usage_records": "id, user_id, workspace_id, action, tokens_used, created_at",
-    "api_keys": "id, user_id, name, prefix, scopes, expires_at, created_at",
-    "connectors": "id, workspace_id, provider, status, created_at",
+    "users": "*",
+    "auth_sessions": "*",
+    "workspaces": "*",
+    "workspace_users": "*",
+    "memories": "*",
+    "agents": "*",
+    "integrations": "*",
+    "notifications": "*",
+    "events": "*",
+    "usage_records": "*",
+    "api_keys": "*",
+    "connectors": "*",
 }
 
 USER_TABLES = [
