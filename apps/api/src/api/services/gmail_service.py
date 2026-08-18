@@ -34,6 +34,7 @@ class GmailService:
         self, topic: str, workspace_id: str, user_id: str, db: AsyncSession,
         client: GmailClient | None = None,
     ) -> WatchStatusResponse:
+        import secrets
         gmail = self._client_for(client)
         if not gmail._configured:
             return WatchStatusResponse(active=False, message="Gmail API not configured")
@@ -45,6 +46,7 @@ class GmailService:
         now = datetime.now(timezone.utc)
         expiration = now + timedelta(days=7)
         history_id = str(result.get("historyId", "")) or None
+        channel_token = secrets.token_urlsafe(32)
 
         existing = await db.execute(
             select(GmailWatch).where(GmailWatch.workspace_id == str(workspace_id))
@@ -52,6 +54,7 @@ class GmailService:
         watch = existing.scalar_one_or_none()
         if watch:
             watch.channel_id = result["id"]
+            watch.channel_token = channel_token
             watch.resource_id = result.get("resourceId")
             watch.history_id = history_id
             watch.expiration = expiration
@@ -64,6 +67,7 @@ class GmailService:
                 user_id=str(user_id),
                 topic=topic,
                 channel_id=result["id"],
+                channel_token=channel_token,
                 resource_id=result.get("resourceId"),
                 history_id=history_id,
                 expiration=expiration,

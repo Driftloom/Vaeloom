@@ -161,9 +161,10 @@ def get_sso_provider(provider: str, config: SSOConfig) -> SSOProvider:
     providers = {
         "google": GoogleSSOProvider,
         "microsoft": MicrosoftSSOProvider,
-        "saml": SAMLSSOProvider,
     }
+    # SAML is not implemented — omit from provider map to prevent runtime crash.
+    # Re-enable when python3-saml or equivalent is integrated.
     cls = providers.get(provider)
     if not cls:
-        raise ValueError(f"Unsupported SSO provider: {provider}")
+        raise ValueError(f"Unsupported SSO provider: {provider}. Use 'google' or 'microsoft'.")
     return cls(config)

@@ -73,7 +73,7 @@ class SchedulerAgent(BaseAgent):
         return await client.list_events(time_min=time_min, time_max=time_max)
 
     async def check_conflicts(
-        self, events: List[Dict[str, Any]]
+        self, events: List[Dict[str, Any]], has_approval: bool = False
     ) -> Dict[str, Any]:
         if not events:
             api_events = await self.fetch_events()

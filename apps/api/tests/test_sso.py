@@ -66,9 +66,10 @@ class TestSSO:
                 params={"code": "authcode", "state": "wrong-state"},
             )
             assert res.status_code == 400, f"Got {res.status_code}: {res.text}"
-            assert "State mismatch" in res.json()["detail"]
+            assert "Invalid or expired SSO state" in res.json()["detail"]
 
     async def test_sso_callback_bad_code(self, db_session):
+        from unittest.mock import AsyncMock, patch
         from api.config import settings
         from api.database import get_db
         from api.routers import auth
@@ -83,18 +84,23 @@ class TestSSO:
 
         app = FastAPI()
         app.include_router(auth.router, prefix="/api/v1/auth")
-        app.state._sso_state = "test-state"
+        auth._sso_states["test-state"] = "google"
 
         async def override_get_db():
             yield db_session
         app.dependency_overrides[get_db] = override_get_db
 
+        mock_resp = AsyncMock()
+        mock_resp.status_code = 400
+        mock_resp.text = "invalid_grant"
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            res = await ac.get(
-                "/api/v1/auth/sso/google/callback",
-                params={"code": "authcode", "state": "test-state"},
-            )
+            with patch("api.services.sso.httpx.AsyncClient.post", new_callable=AsyncMock, return_value=mock_resp):
+                res = await ac.get(
+                    "/api/v1/auth/sso/google/callback",
+                    params={"code": "authcode", "state": "test-state"},
+                )
             assert res.status_code == 401, f"Got {res.status_code}: {res.text}"
             assert "Failed to exchange" in res.json()["detail"]
 
@@ -134,12 +140,10 @@ class TestSSO:
         assert result is None
 
     async def test_saml_provider(self):
-        from api.services.sso import SAMLSSOProvider, SSOConfig
+        from api.services.sso import SSOConfig, get_sso_provider
         config = SSOConfig(issuer="saml-issuer", client_id="id", client_secret="secret")
-        provider = SAMLSSOProvider(config)
-        assert await provider.validate_token("token") is None
-        assert await provider.get_auth_url("http://redirect", "state") is None
-        assert await provider.exchange_code("code", "http://redirect") is None
+        with pytest.raises(ValueError, match="Unsupported SSO provider.*saml"):
+            get_sso_provider("saml", config)
 
     async def test_get_sso_provider_unsupported(self):
         from api.services.sso import SSOConfig, get_sso_provider
@@ -148,17 +152,24 @@ class TestSSO:
             get_sso_provider("unknown", config)
 
     async def test_sso_callback_no_provider_config(self, client: AsyncClient):
+        from api.routers import auth
+        auth._sso_states["test-state-unknown"] = "unknown"
         res = await client.get(
             "/api/v1/auth/sso/unknown/callback",
-            params={"code": "authcode", "state": "state"},
+            params={"code": "authcode", "state": "test-state-unknown"},
         )
         body = res.json()
         assert res.status_code == 400, f"Got {res.status_code}: {res.text}"
         assert "Unsupported" in body.get("detail", str(body))
 
     async def test_sso_microsoft_exchange_code_bad(self):
+        from unittest.mock import AsyncMock, patch
         from api.services.sso import MicrosoftSSOProvider, SSOConfig
         config = SSOConfig(issuer="common", client_id="id", client_secret="secret")
         provider = MicrosoftSSOProvider(config)
-        result = await provider.exchange_code("bad-code", "http://redirect")
+        mock_resp = AsyncMock()
+        mock_resp.status_code = 400
+        mock_resp.text = "invalid_grant"
+        with patch("api.services.sso.httpx.AsyncClient.post", new_callable=AsyncMock, return_value=mock_resp):
+            result = await provider.exchange_code("bad-code", "http://redirect")
         assert result is None

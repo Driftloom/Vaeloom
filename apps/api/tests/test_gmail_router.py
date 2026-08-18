@@ -230,10 +230,14 @@ class TestGmailWebhook:
         app = _build_app(db_session)
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             await ac.post("/api/v1/gmail/watch", json={"topic": "t"})
+            row = await _watch_row(db_session)
             res = await ac.post(
                 "/api/v1/gmail/webhook",
                 json={"historyId": 777},
-                headers={"X-Goog-Channel-ID": "channel-1"},
+                headers={
+                    "X-Goog-Channel-ID": "channel-1",
+                    "X-Goog-Channel-Token": row.channel_token or "",
+                },
             )
         assert res.status_code == 200
         row = await _watch_row(db_session)
@@ -247,9 +251,12 @@ class TestGmailWebhook:
             res = await ac.post(
                 "/api/v1/gmail/webhook",
                 json={"historyId": 1},
-                headers={"X-Goog-Channel-ID": "unknown-channel"},
+                headers={
+                    "X-Goog-Channel-ID": "unknown-channel",
+                    "X-Goog-Channel-Token": "bogus-token",
+                },
             )
-        assert res.status_code == 404
+        assert res.status_code == 403
 
     async def test_webhook_missing_channel_header(self, db_session, monkeypatch):
         app = _build_app(db_session)

@@ -813,6 +813,7 @@ class GmailWatch(Base):
     user_id: Mapped[str] = mapped_column(String(36), nullable=False)
     topic: Mapped[str] = mapped_column(String(512), nullable=False)
     channel_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    channel_token: Mapped[str | None] = mapped_column(String(255))
     resource_id: Mapped[str | None] = mapped_column(String(255))
     history_id: Mapped[str | None] = mapped_column(String(64))
     expiration: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
