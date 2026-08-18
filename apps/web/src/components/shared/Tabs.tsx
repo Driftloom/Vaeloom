@@ -16,8 +16,9 @@ interface TabsProps {
 export function Tabs({ tabs, activeTab, onChange, className = '' }: TabsProps) {
   const tabRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
-  function handleKeyDown(e: React.KeyboardEvent, index: number) {
+  function handleKeyDown(e: React.KeyboardEvent, _index: number) {
     const enabledTabs = tabs.filter((t) => !t.disabled);
+    if (enabledTabs.length === 0) return;
     const currentEnabledIndex = enabledTabs.findIndex((t) => t.id === activeTab);
     let nextIndex: number;
 
@@ -26,21 +27,21 @@ export function Tabs({ tabs, activeTab, onChange, className = '' }: TabsProps) {
       case 'ArrowDown':
         e.preventDefault();
         nextIndex = (currentEnabledIndex + 1) % enabledTabs.length;
-        onChange(enabledTabs[nextIndex].id);
+        onChange(enabledTabs[nextIndex]!.id);
         break;
       case 'ArrowLeft':
       case 'ArrowUp':
         e.preventDefault();
         nextIndex = (currentEnabledIndex - 1 + enabledTabs.length) % enabledTabs.length;
-        onChange(enabledTabs[nextIndex].id);
+        onChange(enabledTabs[nextIndex]!.id);
         break;
       case 'Home':
         e.preventDefault();
-        onChange(enabledTabs[0].id);
+        onChange(enabledTabs[0]!.id);
         break;
       case 'End':
         e.preventDefault();
-        onChange(enabledTabs[enabledTabs.length - 1].id);
+        onChange(enabledTabs[enabledTabs.length - 1]!.id);
         break;
     }
   }
