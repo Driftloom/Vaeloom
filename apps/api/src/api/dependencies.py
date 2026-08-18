@@ -33,6 +33,8 @@ async def get_user_id(request: Request) -> str | None:
 
 def require_role(role: str):
     async def role_checker(current_user: dict = Depends(get_current_user)):
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Not authenticated")
         user_roles = current_user.get("roles", []) or current_user.get("realm_access", {}).get("roles", [])
         if role not in user_roles:
             raise HTTPException(status_code=403, detail=f"Requires role: {role}")

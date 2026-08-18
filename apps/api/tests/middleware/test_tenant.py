@@ -42,7 +42,7 @@ class TestTenantContext:
 
 
 class TestTenantMiddleware:
-    async def test_sets_tenant_from_header(self):
+    async def test_ignores_user_supplied_headers(self):
         app = FastAPI()
 
         @app.get("/test")
@@ -58,8 +58,8 @@ class TestTenantMiddleware:
             res = await ac.get("/test", headers={"X-Tenant-ID": "t-1", "X-Workspace-ID": "w-1"})
             assert res.status_code == 200
             data = res.json()
-            assert data["tenant_id"] == "t-1"
-            assert data["workspace_id"] == "w-1"
+            assert data["tenant_id"] is None
+            assert data["workspace_id"] is None
 
     async def test_missing_headers(self):
         app = FastAPI()

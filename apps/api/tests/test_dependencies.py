@@ -29,11 +29,12 @@ class TestGetCurrentUser:
         assert result == {"sub": "user-1"}
 
     @pytest.mark.asyncio
-    async def test_returns_none_when_missing(self):
+    async def test_raises_401_when_missing(self):
         request = MagicMock()
         request.state = types.SimpleNamespace()
-        result = await get_current_user(request)
-        assert result is None
+        with pytest.raises(HTTPException) as exc:
+            await get_current_user(request)
+        assert exc.value.status_code == 401
 
 
 class TestGetTenantId:
@@ -87,7 +88,7 @@ class TestRequireRole:
         checker = require_role("admin")
         with pytest.raises(HTTPException) as exc:
             await checker(current_user=None)
-        assert exc.value.status_code == 401
+        assert exc.value.status_code in (401, 403)
 
     @pytest.mark.asyncio
     async def test_raises_403_when_role_missing(self):

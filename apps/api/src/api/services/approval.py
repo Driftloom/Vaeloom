@@ -118,8 +118,9 @@ class ApprovalManager:
         row = result.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Approval not found")
-        # Workspace isolation: verify user belongs to the approval's workspace
-        if user_workspaces is not None and str(row[1]) not in user_workspaces:
+        # Workspace isolation: verify user belongs to the approval's workspace.
+        # NULL workspace_id approvals are visible to all users (unscoped).
+        if user_workspaces is not None and row[1] is not None and str(row[1]) not in user_workspaces:
             raise HTTPException(status_code=404, detail="Approval not found")
         return await self._row_to_response(row)
 
@@ -146,8 +147,10 @@ class ApprovalManager:
         elif user_workspaces is not None:
             if not user_workspaces:
                 return ApprovalListResponse(items=[], total=0, page=page, page_size=page_size)
-            conditions.append("workspace_id IN :user_ws")
-            params["user_ws"] = tuple(user_workspaces)
+            ws_params = {f"ws_{i}": ws for i, ws in enumerate(user_workspaces)}
+            ws_placeholders = ", ".join(f":ws_{i}" for i in range(len(user_workspaces)))
+            conditions.append(f"(workspace_id IN ({ws_placeholders}) OR workspace_id IS NULL)")
+            params.update(ws_params)
         where = " AND ".join(conditions)
 
         total_result = await db.execute(
