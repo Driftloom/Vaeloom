@@ -3,6 +3,9 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ci-test-secret-not-for-production
+      ENCRYPTION_KEY: ci-test-encryption-key-must-be-at-least-32-chars!!
     defaults:
       run:
         working-directory: apps/api
