@@ -1,20 +1,22 @@
 # MVP-P09 — 01. Source Register
 
-> Prompt §4 + §15. Live repo inspection 2026-08-10 (real evidence).
+> Prompt §4 + §15. Live repo inspection 2026-08-10 (real evidence). **Re-audited
+> 2026-08-18 against `master` @ `a0b9f26`.**
 
 ## 1. Internal sources
 
 | ID         | Source                                                              | Use                      | Status    |
 | ---------- | ------------------------------------------------------------------- | ------------------------ | --------- |
 | INT-01..10 | gatekeeper, INT-02 (SHA-256 `2FA8966F…69640`), INT-05, INT-07/08/09 | as prior phases          | Available |
-| REPO       | `master` @ `305ebfb`                                                | Web surface ground truth | Available |
+| REPO       | `master` @ `a0b9f26` (re-audit)                                     | Web surface ground truth | Available |
 | HANDOFF    | `../mvp-p08/10-handoff-to-p09.md`                                   | Scope + restrictions     | Available |
 
 ## 2. Standards — applicability for UX
 
 | ID        | Standard                                        | Verified use                                                        |
 | --------- | ----------------------------------------------- | ------------------------------------------------------------------- |
-| EXT-05    | WCAG 2.2 (W3C Rec)                              | AA target for all new/changed UI; P14 audit                         |
+| EXT-05    | WCAG 2.2 (W3C Rec, 12 Dec 2024)                 | AA target for all new/changed UI; P14 audit                         |
+| EXT-05a   | WAI-ARIA Authoring Practices Guide (APG)        | Design patterns for modal, dialog, tablist, menu; keyboard support  |
 | EXT-15    | EU AI Act transparency (2026-08-02 obligations) | AI disclosure surfaced in UI (chat, suggestions, agents)            |
 | EXT-16    | DPDP Rules 2025                                 | Consent + data-right journeys (export/delete/correction) as core UX |
 | EXT-06    | RFC 9700                                        | Connector OAuth UX (exact redirect, scope explainer)                |

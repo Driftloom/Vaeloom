@@ -1,11 +1,14 @@
 # MVP-P09 → MVP-P10 Handoff
 
+> **Re-audited:** 2026-08-18 · **Baseline:** `master` @ `a0b9f26`
+
 ## Phase Summary
 
 Designed accessible journeys, trust/approval/consent states, failure recovery,
 design-system governance and usability evidence — grounded in the live web
-surface (27 routes, ui-kit + shared components, tailwind tokens, keyboard
-shortcuts, i18n en).
+surface (23 routes, ui-kit + shared components, tailwind tokens, keyboard
+shortcuts, i18n en). **Re-audited 2026-08-18: route count corrected to 23,
+ProposalCard renamed to ApprovalCard.**
 
 ## Evidence
 
@@ -13,16 +16,19 @@ shortcuts, i18n en).
 | -------------------- | ----------- | ----------------------------------- |
 | EVD-MVP-P09-001..004 | R01/R02/R04 | README + `05`–`07` (repo-grounding) |
 | EVD-MVP-P09-005      | R03         | DEC-P09-01 question-tool record     |
-| EVD-MVP-P09-006      | R08         | PENDING user ratification           |
+| EVD-MVP-P09-006      | R08         | User ratification (re-audit)        |
+| EVD-MVP-P09-RA-001   | R01-R08     | `reaudit-2026-08-18.md`             |
 
-## Gate: CONDITIONAL APPROVED — RESTRICTIONS APPLY (88/100)
+## Gate: CONDITIONAL APPROVED — RESTRICTIONS APPLY (~88/100)
 
 | Restriction                                                           | Target phase |
 | --------------------------------------------------------------------- | ------------ |
-| 1. Approval card w/ diff + expiry + provenance (release-blocking)     | P10          |
+| 1. ApprovalCard w/ diff + expiry + provenance (release-blocking)      | P10          |
 | 2. Skip link, modal focus trap, focus mgmt, accessible icons          | P10          |
 | 3. WCAG 2.2 AA + usability targets (≥80% task success, SUS ≥70)       | P10/P14      |
 | 4. Enterprise nav visible-but-gated; no new routes beyond IA proposal | P10          |
+| 5. Route count corrected to 23 in all docs                            | P10          |
+| 6. ProposalCard references updated to ApprovalCard                    | P10          |
 
 ## Open issues carried
 
@@ -34,7 +40,7 @@ shortcuts, i18n en).
 ## Scope for MVP-P10 (Frontend Implementation)
 
 - Implement the P09 design: nav regrouping (6 spaces, enterprise gated),
-  approval card evolution, memory correction + history, data-rights journeys,
+  ApprovalCard evolution, memory correction + history, data-rights journeys,
   consent scope UI, Gmail draft-only states, AI disclosure in chat, async job
   progress, full state taxonomy.
 - Build design-system additions into `packages/ui-kit` (tokens + new components:
@@ -54,3 +60,5 @@ shortcuts, i18n en).
 - Follow existing conventions (AGENTS.md: transformKeys, no `pnpm dev`, CSP
   unchanged).
 - Restriction 3 (P08, carried): CSRF list untouched.
+- **Re-audit corrections:** Use 23 routes (not 27); use ApprovalCard (not
+  ProposalCard).

@@ -1,7 +1,7 @@
 # MVP-P09 — 03. IA & Journeys (DEL-MVP-P09-01)
 
-> Owner: UX Lead + Product Designer. Grounded in live route inventory (27
-> pages).
+> Owner: UX Lead + Product Designer. Grounded in live route inventory (23
+> pages). **Re-audited 2026-08-18: corrected from 27 to 23 page.tsx files.**
 
 ## 1. IA model
 

@@ -17,7 +17,14 @@ export function ConfidenceMeter({ value, label = 'Confidence' }: ConfidenceMeter
 
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-hover" role="presentation">
+      <div
+        className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-hover"
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${label}: ${percent}%`}
+      >
         <div
           className={`h-full rounded-full ${meterTone(clamped)}`}
           style={{ width: `${percent}%` }}

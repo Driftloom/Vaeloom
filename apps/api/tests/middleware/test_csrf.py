@@ -69,7 +69,7 @@ class TestCSRFMiddleware:
         assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_skips_api_key_requests(self):
+    async def test_api_key_requests_still_require_csrf(self):
         app = MagicMock()
         middleware = CSRFMiddleware(app)
         request = MagicMock(spec=Request)
@@ -78,8 +78,9 @@ class TestCSRFMiddleware:
         request.headers = {"X-API-Key": "some-api-key"}
         request.cookies = {}
         call_next = AsyncMock(return_value=Response())
-        result = await middleware.dispatch(request, call_next)
-        assert result.status_code == 200
+        with pytest.raises(HTTPException) as exc:
+            await middleware.dispatch(request, call_next)
+        assert exc.value.status_code == 403
 
     @pytest.mark.asyncio
     async def test_raises_403_when_token_missing(self):

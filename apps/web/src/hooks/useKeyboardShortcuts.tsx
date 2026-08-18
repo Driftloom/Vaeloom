@@ -43,9 +43,7 @@ export function KeyboardShortcutProvider({ children }: { children: React.ReactNo
   );
 
   return (
-    <KeyboardShortcutContext.Provider value={value}>
-      {children}
-    </KeyboardShortcutContext.Provider>
+    <KeyboardShortcutContext.Provider value={value}>{children}</KeyboardShortcutContext.Provider>
   );
 }
 
@@ -57,6 +55,44 @@ export function useKeyboardShortcuts() {
 
 export function KeyboardShortcutsModal() {
   const { shortcuts, showModal, setShowModal } = useKeyboardShortcuts();
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (showModal) {
+      closeRef.current?.focus();
+    }
+  }, [showModal]);
+
+  React.useEffect(() => {
+    if (!showModal) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setShowModal(false);
+        return;
+      }
+      if (e.key === 'Tab') {
+        const modal = document.querySelector('[role="dialog"]');
+        if (!modal) return;
+        const focusable = modal.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showModal, setShowModal]);
 
   if (!showModal) return null;
 
@@ -66,6 +102,9 @@ export function KeyboardShortcutsModal() {
       onClick={() => setShowModal(false)}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Keyboard shortcuts"
         className="bg-surface border border-border rounded-lg shadow-xl p-6 w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
@@ -80,7 +119,20 @@ export function KeyboardShortcutsModal() {
             </div>
           ))}
         </div>
-        <p className="mt-4 text-xs text-text-muted">Press <kbd className="px-1 py-0.5 bg-surface-hover border border-border rounded font-mono">?</kbd> to toggle this modal</p>
+        <p className="mt-4 text-xs text-text-muted">
+          Press{' '}
+          <kbd className="px-1 py-0.5 bg-surface-hover border border-border rounded font-mono">
+            ?
+          </kbd>{' '}
+          to toggle this modal
+        </p>
+        <button
+          ref={closeRef}
+          onClick={() => setShowModal(false)}
+          className="mt-4 w-full px-3 py-1.5 text-sm text-text bg-surface-hover border border-border rounded hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background"
+        >
+          Close
+        </button>
       </div>
     </div>
   );
@@ -147,7 +199,11 @@ export function KeyboardShortcutListener() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
         if (e.key === 'Escape' && showModal) {
           setShowModal(false);
           return;

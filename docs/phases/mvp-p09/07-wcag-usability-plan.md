@@ -8,7 +8,7 @@
 | Area           | Current evidence                                        | Gap (design targets)                                                        |
 | -------------- | ------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Keyboard       | shortcuts (g*, /, n, ?, Esc); focus rings on components | skip link; modal focus trap; focus mgmt on route change                     |
-| Semantics      | aria-labels/roles in parts (ProposalCard, Toggle)       | audit all interactive components; heading order; landmark regions           |
+| Semantics      | aria-labels/roles in parts (ApprovalCard, Toggle)       | audit all interactive components; heading order; landmark regions           |
 | Contrast       | tokens contrast-verified by design (§05.2)              | automated + manual P14                                                      |
 | Icons          | emoji-only nav (CF-P09-03)                              | aria-hidden emoji / SVG with labels                                         |
 | Motion         | none handled                                            | `prefers-reduced-motion` respect                                            |
@@ -18,7 +18,7 @@
 
 ## 2. Automated audit (P14 — axe-core + jest-axe)
 
-- CI job: axe on every rendered route (27 pages), WCAG 2.2 AA ruleset, zero
+- CI job: axe on every rendered route (23 pages), WCAG 2.2 AA ruleset, zero
   critical/serious violations.
 - Contrast + `aria` + focus checks in component tests (jest-axe in web jest
   config — jest.config.js exists).

@@ -26,7 +26,7 @@ retry · cancelled · success · failure · undo/rollback.
 
 ## 2. Key screen specs (trust & approval — phase rule)
 
-### 2.1 Approval card (evolve `ProposalCard`)
+### 2.1 Approval card (evolve `ApprovalCard`)
 
 Current: approve/reject buttons only. **Design target:**
 
@@ -73,3 +73,47 @@ Current: approve/reject buttons only. **Design target:**
 Desktop-first (BQ-P09-01): ≥1024px full IA; 768–1023 tablet (sidebar
 collapsible); <768 mobile web (bottom nav for primary 5 spaces, hamburger for
 rest). No horizontal scroll on mobile; touch targets ≥44px.
+
+## 4. Optimistic UI Pattern (§15A.2 — RES-MVP-P09-006/007)
+
+> Research: SWR `mutate` with `optimisticData` + `rollbackOnError` (Vaeloom uses
+> SWR 2.x). Pattern: predict → render → reconcile.
+
+| Action Type          | Optimistic? | Pattern                                                     | Rationale                                               |
+| -------------------- | ----------- | ----------------------------------------------------------- | ------------------------------------------------------- |
+| Status badge toggle  | YES         | SWR `mutate` with `optimisticData`, `rollbackOnError: true` | Low-stakes; instant feedback; rollback on failure       |
+| Approval/rejection   | NO          | Pessimistic (explicit confirm)                              | Consequential; requires server confirmation (§04.2.1)   |
+| Gmail draft creation | YES         | SWR `mutate` with `optimisticData`                          | Draft-only; no send; rollback on failure                |
+| Data deletion        | NO          | Typed confirmation ("DELETE")                               | Irreversible; requires explicit user intent             |
+| Memory correction    | YES         | SWR `mutate` with `optimisticData`                          | Correction visible immediately; supersession in history |
+| Job application      | NO          | Pessimistic (approval gate)                                 | Consequential; requires approval (P08 G4)               |
+
+**Rules:**
+
+- Never use optimistic UI for financial transactions or irreversible destructive
+  actions
+- Every optimistic change must be revertible (rollback on error)
+- Show subtle pending state (opacity 0.7) for unconfirmed items
+- Toast notification on rollback with retry option
+- Server is source of truth; cache is eventually consistent
+
+## 5. EU AI Act Article 50 Compliance (§15A.2 — RES-MVP-P09-004/005)
+
+> Article 50 applies from 2 August 2026. Vaeloom is a "directly interactive AI
+> system" — chatbot disclosure is mandatory.
+
+| Obligation                                  | Vaeloom Surface   | Design Pattern                                                                                               |
+| ------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| Chatbot interaction disclosure (Art. 50(1)) | Chat page         | Persistent header: "You are chatting with an AI assistant. It can make mistakes." + first-message disclosure |
+| Generative AI output marking (Art. 50(2))   | All agent outputs | "AI-generated suggestion — verify facts before acting" label on every output                                 |
+| Pre-processing notification                 | Memory ingestion  | Consent explainer at onboarding (J1) + connector consent                                                     |
+| Purpose disclosure                          | Settings/consent  | Per-connector purpose explanation in plain language                                                          |
+
+**Defensible UX properties (per EU AI Act guidance):**
+
+1. Visible at first interaction (chat header persists throughout session)
+2. Plain language ("AI assistant", not "powered by GPT-5")
+3. Persistent or recurrent (visible in header; recurs on session resume)
+4. Linked to substantive disclosure (settings/about page explains capabilities)
+5. Auditable (disclosure event logged with timestamp)
+6. Updateable (change-control process tied to deployment updates)
