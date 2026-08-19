@@ -23,7 +23,7 @@ jobs:
       run:
         working-directory: infra/terraform
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.0
@@ -53,7 +53,7 @@ jobs:
           - web
           - api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-push]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run k6 smoke test
         uses: grafana/k6-action@v0.3.1
         with:
@@ -128,7 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [terraform-plan, build-and-push, load-test-gate]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
