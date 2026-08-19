@@ -27,13 +27,10 @@
 
 @layer components {
   .btn-primary {
-    @apply relative overflow-hidden bg-gradient-to-r from-primary-500 to-primary-600 
-           text-white font-semibold px-6 py-3 rounded-xl
-           hover:from-primary-400 hover:to-primary-500
-           active:from-primary-600 active:to-primary-700
-           transition-all duration-200 ease-out
-           shadow-glow hover:shadow-glow-lg
-           focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply bg-white text-black font-semibold px-6 py-3 rounded-lg
+           hover:bg-neutral-200 active:bg-neutral-300
+           transition-all duration-150 ease-out
+           focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black;
   }
 
   .btn-primary:active {
@@ -41,82 +38,78 @@
   }
 
   .btn-secondary {
-    @apply bg-surface-200 text-text font-medium px-6 py-3 rounded-xl
-           hover:bg-surface-300 hover:text-text
-           active:bg-surface-400
-           transition-all duration-200 ease-out
-           border border-border
-           focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply bg-transparent text-white font-medium px-6 py-3 rounded-lg
+           hover:bg-neutral-900
+           active:bg-neutral-800
+           transition-all duration-150 ease-out
+           border border-neutral-800
+           focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black;
   }
 
   .btn-ghost {
-    @apply text-text-muted font-medium px-4 py-2 rounded-lg
-           hover:bg-surface-200 hover:text-text
-           active:bg-surface-300
+    @apply text-neutral-400 font-medium px-4 py-2 rounded-lg
+           hover:bg-neutral-900 hover:text-white
+           active:bg-neutral-800
            transition-all duration-150 ease-out;
   }
 
   .btn-accent {
-    @apply bg-gradient-to-r from-accent-400 to-accent-500
-           text-white font-semibold px-6 py-3 rounded-xl
-           hover:from-accent-300 hover:to-accent-400
-           active:from-accent-500 active:to-accent-600
-           transition-all duration-200 ease-out
-           focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply bg-white text-black font-semibold px-6 py-3 rounded-lg
+           hover:bg-neutral-200 active:bg-neutral-300
+           transition-all duration-150 ease-out
+           focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black;
   }
 
   .card {
-    @apply bg-surface-100 rounded-2xl border border-border p-6 
-           shadow-card transition-all duration-200;
+    @apply bg-[#0a0a0a] rounded-xl border border-[#141414] p-6;
   }
 
   .card-hover {
-    @apply card hover:shadow-card-hover hover:border-primary/20 hover:-translate-y-0.5;
+    @apply card hover:border-[#262626] transition-all duration-150;
   }
 
   .glass {
-    @apply bg-surface-50/80 backdrop-blur-xl border border-white/5;
+    @apply bg-black/80 backdrop-blur-xl border border-[#141414];
   }
 
   .glass-strong {
-    @apply bg-surface-100/90 backdrop-blur-2xl border border-white/10;
+    @apply bg-black/90 backdrop-blur-2xl border border-[#141414];
   }
 
   .input-field {
-    @apply w-full bg-surface-50 border border-border rounded-xl px-4 py-3
-           text-text placeholder:text-text-dim
-           transition-all duration-200 ease-out
-           focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none
-           hover:border-border-focus;
+    @apply w-full bg-black border border-[#1a1a1a] rounded-lg px-4 py-3
+           text-white placeholder-neutral-600
+           transition-all duration-150 ease-out
+           focus:border-neutral-600 focus:ring-1 focus:ring-neutral-800 focus:outline-none
+           hover:border-[#262626];
   }
 
   .input-field:disabled {
-    @apply opacity-50 cursor-not-allowed;
+    @apply opacity-40 cursor-not-allowed;
   }
 
   .input-label {
-    @apply block text-sm font-medium text-text-300 mb-2;
+    @apply block text-sm font-medium text-neutral-400 mb-1.5;
   }
 
   .input-error {
-    @apply border-error focus:border-error focus:ring-error/20;
+    @apply border-red-500 focus:border-red-500 focus:ring-red-500/20;
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-primary-400 via-primary-300 to-accent-400 
+    @apply bg-gradient-to-r from-white via-neutral-400 to-neutral-600 
            bg-clip-text text-transparent;
   }
 
   .gradient-border {
-    @apply relative before:absolute before:inset-0 before:rounded-2xl before:p-[1px]
-           before:bg-gradient-to-r before:from-primary/50 before:via-accent/30 before:to-primary/50
+    @apply relative before:absolute before:inset-0 before:rounded-xl before:p-[1px]
+           before:bg-gradient-to-r before:from-neutral-700 before:to-neutral-900
            before:-z-10;
   }
 
   .skip-link {
     @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100]
-           focus:px-4 focus:py-2 focus:rounded-xl focus:bg-primary focus:text-white focus:font-medium
-           focus:shadow-glow;
+           focus:px-4 focus:py-2 focus:rounded-lg focus:bg-white focus:text-black focus:font-medium;
   }
 
   .toast-enter {
@@ -127,10 +120,10 @@
     animation: page-enter 400ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .stagger-1 { animation-delay: 50ms; }
-  .stagger-2 { animation-delay: 100ms; }
-  .stagger-3 { animation-delay: 150ms; }
-  .stagger-4 { animation-delay: 200ms; }
+  .stagger-1 { animation-delay: 75ms; }
+  .stagger-2 { animation-delay: 150ms; }
+  .stagger-3 { animation-delay: 225ms; }
+  .stagger-4 { animation-delay: 300ms; }
 }
 
 @layer utilities {
@@ -160,8 +153,8 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -169,9 +162,9 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-surface-400 rounded-full;
+  @apply bg-neutral-800 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-surface-300;
+  @apply bg-neutral-700;
 }
