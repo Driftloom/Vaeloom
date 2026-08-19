@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { chatApi } from '@/lib/api-client';
 
 interface ChatMessage {
@@ -15,6 +15,11 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages, loading]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -53,6 +58,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
 
       <div className="flex-1 card flex flex-col p-0 overflow-hidden">
         <div
+          ref={scrollRef}
           className="flex-1 overflow-y-auto p-6 space-y-6"
           role="log"
           aria-live="polite"

@@ -9,6 +9,7 @@ export interface Workspace {
   id: UUID;
   userId: UUID;
   name: string;
+  description?: string;
   createdAt: ISO8601;
   updatedAt: ISO8601;
 }

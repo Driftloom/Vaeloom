@@ -1,6 +1,7 @@
 import type { BaseEntity, UUID, ISO8601 } from './domain';
 
-export type MemoryType = 'document' | 'email' | 'code' | 'note' | 'conversation' | 'webpage' | 'structured';
+export type MemoryType =
+  'document' | 'email' | 'code' | 'note' | 'conversation' | 'webpage' | 'structured';
 
 export type MemoryStatus = 'processing' | 'indexed' | 'failed' | 'archived' | 'deleted';
 
@@ -30,12 +31,12 @@ export interface KnowledgeGraphNode extends BaseEntity {
   label: string;
   type: NodeType;
   properties: Record<string, unknown>;
-  embedding: number[];
-  description: string;
+  description?: string;
   importance: number;
 }
 
-export type NodeType = 'concept' | 'entity' | 'document' | 'topic' | 'person' | 'organization' | 'event' | 'project';
+export type NodeType =
+  'concept' | 'entity' | 'document' | 'topic' | 'person' | 'organization' | 'event' | 'project';
 
 export interface KnowledgeGraphEdge {
   id: UUID;

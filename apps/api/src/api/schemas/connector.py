@@ -8,6 +8,7 @@ from pydantic import BaseModel
 class ConnectorResponse(BaseModel):
     id: uuid.UUID
     workspace_id: uuid.UUID
+    name: str = ""
     type: str
     scopes: list[str] | None = None
     status: str

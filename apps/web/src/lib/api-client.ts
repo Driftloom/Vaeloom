@@ -266,6 +266,7 @@ export const workspaceApi = {
 
 export interface MemoryCreateRequest {
   type: string;
+  domain?: string;
   title?: string;
   summary?: string;
   content?: string;
@@ -276,16 +277,19 @@ export interface MemoryCreateRequest {
   source_uri?: string;
   source_label?: string;
   connector_id?: string;
+  supersedes_id?: string;
 }
 
 export interface MemoryUpdateRequest {
   type?: string;
+  domain?: string;
   title?: string;
   summary?: string;
   content?: string;
   metadata?: Record<string, unknown>;
   tags?: string[];
   status?: string;
+  supersedes_id?: string;
 }
 
 export interface MemorySearchRequest {

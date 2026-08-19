@@ -12,6 +12,7 @@ import { I18nProvider } from '../i18n';
 import { ErrorTrackingBoundary } from '../lib/error-tracking-boundary';
 import { WebVitals } from '../lib/web-vitals-client';
 import { ToastProvider } from '../components/shared/Toast';
+import { SkipLink } from '../components/shared/SkipLink';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -114,9 +115,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <KeyboardShortcutListener />
                   <KeyboardShortcutsModal />
                   <WebVitals />
-                  <a href="#main-content" className="skip-link">
-                    Skip to main content
-                  </a>
+                  <SkipLink />
                   {children}
                 </KeyboardShortcutProvider>
               </ToastProvider>

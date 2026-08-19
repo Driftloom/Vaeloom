@@ -53,6 +53,7 @@ class ExecutionResponse(BaseModel):
     tokens_used: int | None = None
     cost: float | None = None
     duration_ms: int | None = None
+    duration: int | None = Field(None, validation_alias="duration_ms")
     started_at: datetime | None = None
     completed_at: datetime | None = None
     created_at: datetime
