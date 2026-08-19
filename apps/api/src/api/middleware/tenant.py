@@ -113,9 +113,9 @@ async def get_current_tenant(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    tenant_id = request.headers.get("X-Tenant-ID") or getattr(request.state, "tenant_id", None)
+    tenant_id = getattr(request.state, "tenant_id", None)
     if not tenant_id:
-        raise HTTPException(status_code=400, detail="X-Tenant-ID header is required")
+        raise HTTPException(status_code=400, detail="Tenant context is required")
 
     try:
         tid = uuid.UUID(tenant_id)

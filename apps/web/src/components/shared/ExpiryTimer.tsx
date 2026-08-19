@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface ExpiryTimerProps {
   expiresAt: string; // ISO-8601
@@ -20,19 +20,29 @@ function remaining(expiresAt: string): { total: number; label: string; expired: 
 
 export function ExpiryTimer({ expiresAt, onExpire }: ExpiryTimerProps) {
   const [state, setState] = useState(() => remaining(expiresAt));
-  const [expired, setExpired] = useState(false);
+  const expiredRef = useRef(false);
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
 
   useEffect(() => {
+    const initial = remaining(expiresAt);
+    setState(initial);
+    if (initial.expired && !expiredRef.current) {
+      expiredRef.current = true;
+      onExpireRef.current?.();
+      return;
+    }
+
     const timer = window.setInterval(() => {
       const next = remaining(expiresAt);
       setState(next);
-      if (next.expired && !expired) {
-        setExpired(true);
-        onExpire?.();
+      if (next.expired && !expiredRef.current) {
+        expiredRef.current = true;
+        onExpireRef.current?.();
       }
     }, 30000);
     return () => window.clearInterval(timer);
-  }, [expiresAt, expired, onExpire]);
+  }, [expiresAt]);
 
   return (
     <span

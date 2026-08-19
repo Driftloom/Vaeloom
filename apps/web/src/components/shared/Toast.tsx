@@ -1,6 +1,14 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 type ToastTone = 'success' | 'error' | 'info' | 'warning';
 
@@ -38,21 +46,63 @@ const TONE_LABELS: Record<ToastTone, string> = {
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const counter = useRef(0);
+  const timersRef = useRef<Map<string, number>>(new Map());
 
   const dismiss = useCallback((id: string) => {
+    const timerId = timersRef.current.get(id);
+    if (timerId) {
+      window.clearTimeout(timerId);
+      timersRef.current.delete(id);
+    }
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const pauseTimer = useCallback((id: string) => {
+    const timerId = timersRef.current.get(id);
+    if (timerId) {
+      window.clearTimeout(timerId);
+      timersRef.current.delete(id);
+    }
+  }, []);
+
+  const resumeTimer = useCallback(
+    (id: string) => {
+      const timerId = window.setTimeout(() => dismiss(id), 6000);
+      timersRef.current.set(id, timerId);
+    },
+    [dismiss],
+  );
 
   const toast = useCallback(
     (t: Omit<Toast, 'id'>) => {
       const id = `toast-${++counter.current}`;
       setToasts((prev) => [...prev, { ...t, id }]);
-      window.setTimeout(() => dismiss(id), 6000);
+      const timerId = window.setTimeout(() => dismiss(id), 6000);
+      timersRef.current.set(id, timerId);
     },
     [dismiss],
   );
 
   const value = useMemo(() => ({ toast }), [toast]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setToasts((prev) => {
+          if (prev.length === 0) return prev;
+          const last = prev[prev.length - 1]!;
+          const timerId = timersRef.current.get(last.id);
+          if (timerId) {
+            window.clearTimeout(timerId);
+            timersRef.current.delete(last.id);
+          }
+          return prev.slice(0, -1);
+        });
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <ToastContext.Provider value={value}>
@@ -67,6 +117,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={t.id}
             className={`toast-enter card flex items-start justify-between gap-3 border-l-4 ${TONE_STYLES[t.tone]}`}
+            onMouseEnter={() => pauseTimer(t.id)}
+            onMouseLeave={() => resumeTimer(t.id)}
           >
             <div>
               <p className="text-sm font-medium text-text">

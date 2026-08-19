@@ -159,8 +159,8 @@ async def get_csrf_token():
         key="csrf_token",
         value=cookie_value,
         max_age=3600,
-        secure=False,
-        httponly=False,
+        secure=settings.service_environment != "local",
+        httponly=True,
         samesite="lax",
     )
     return response

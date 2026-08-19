@@ -95,7 +95,7 @@ class TestTenantMiddleware:
 
 
 class TestGetCurrentTenant:
-    async def test_missing_header_returns_400(self):
+    async def test_missing_tenant_context_returns_400(self):
         app = FastAPI()
 
         @app.get("/test")
@@ -106,22 +106,10 @@ class TestGetCurrentTenant:
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             res = await ac.get("/test")
             assert res.status_code == 400
-            assert "X-Tenant-ID" in res.json()["detail"]
+            assert "Tenant context is required" in res.json()["detail"]
 
-    async def test_invalid_uuid_returns_400(self):
+    async def test_no_header_no_state_returns_400(self):
         app = FastAPI()
-        from api.database import get_db as _get_db
-
-        async def override_db():
-            class FakeSession:
-                async def execute(self, stmt):
-                    class FakeResult:
-                        def scalar_one_or_none(self):
-                            return None
-                    return FakeResult()
-            yield FakeSession()
-
-        app.dependency_overrides[_get_db] = override_db
 
         @app.get("/test")
         async def test_endpoint(tenant=Depends(get_current_tenant)):
@@ -129,6 +117,6 @@ class TestGetCurrentTenant:
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            res = await ac.get("/test", headers={"X-Tenant-ID": "not-a-uuid"})
+            res = await ac.get("/test", headers={"X-Tenant-ID": "evil-tenant"})
             assert res.status_code == 400
-            assert "Invalid tenant ID format" in res.json()["detail"]
+            assert "Tenant context is required" in res.json()["detail"]

@@ -74,6 +74,14 @@ export class ApiClient {
     });
   }
 
+  async postQuery<T>(
+    path: string,
+    params?: Record<string, string | number | boolean | undefined | null>,
+  ): Promise<T> {
+    const qs = params ? '?' + this.encodeParams(params) : '';
+    return this.request<T>(`${path}${qs}`, { method: 'POST' });
+  }
+
   async put<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>(path, {
       method: 'PUT',
@@ -1209,7 +1217,10 @@ export const auditApi = {
     return apiClient.get<AuditEventResponse>(`/audit/events/${eventId}`);
   },
   export(params?: { date_from?: string; date_to?: string; format?: string }): Promise<string> {
-    return apiClient.post<string>('/audit/export', params);
+    return apiClient.postQuery<string>(
+      '/audit/export',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
   },
   complianceReport(params?: { date_from?: string; date_to?: string }): Promise<ComplianceReport> {
     return apiClient.get<ComplianceReport>(
