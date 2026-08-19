@@ -1,6 +1,8 @@
 # MVP-P10 — 01. Source Register
 
-> Prompt §4 + §15. Baseline `master` @ `0e75bdf` (P09, ratified 2026-08-10).
+> Prompt §4 + §15. Baseline `master` @ `47a3844` (post-fix deep audit,
+> 2026-08-19). Original P09 baseline: `0e75bdf` (2026-08-10). Re-execution:
+> `2a8fa809`.
 
 ## 1. Internal sources
 

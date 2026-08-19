@@ -1,64 +1,50 @@
-# MVP-P10 → MVP-P11 Handoff
+# MVP-P10 — 10. Handoff to P11
 
-## Phase Summary
+> Generated 2026-08-19 (post-fix deep audit)
 
-Frontend implemented against P09 design, verified by real runs:
+## What P11 receives
 
-- A11y: skip link + landmarks, Modal focus trap/restore, global focus-visible,
-  reduced-motion kill switch, aria-current/aria-live/role=log, emoji aria-hidden
-- Trust/approval: ApprovalCard (diff/expiry/provenance/confidence/risk/scopes/
-  T3 warning/kbd a-r) — UI complete vs P08 contract; **not wired (P11)**
-- Rights: typed-confirm erasure + backup-expiry receipt; Consent Scopes section
-  (T3 toggle disabled-gated); consentApi + gdprApi wrappers
-- Memory: MemoryCorrectionPanel with supersession copy (live memoryApi.update)
-- Chat: AI disclosure on agent messages; role="log"
-- Shell: Sidebar → 6 IA spaces, enterprise gated, aria-current
-- Tokens: success/warning/info added; Toast system added
+### Frontend code (all verified, tests passing)
 
-## Evidence
+- 12 P10 components in `apps/web/src/components/shared/`
+- ChatWindow with AI disclosure + auto-scroll
+- Settings page with typed-confirm delete + T3 gated toggle
+- Applications page wired to real API (paginated, case-normalized)
+- MemoryCorrectionPanel wired to live memoryApi.update
+- Modal with focus trap + inert backdrop
+- Toast with timer leak fix + pause-on-hover + Escape
+- SkipLink imported in layout.tsx
 
-| ID                   | Claim                       | Artifact                         |
-| -------------------- | --------------------------- | -------------------------------- |
-| EVD-MVP-P10-001..009 | code/test/security evidence | `07-evidence.md` (all real runs) |
-| EVD-MVP-P10-010      | ratification                | PENDING user                     |
+### Typed client
 
-## Gate: CONDITIONAL APPROVED — RESTRICTIONS APPLY (88/100)
+- `api-client.ts` with all P10 interfaces
+- `postQuery()` method for POST with query params
+- `applicationApi`, `consentApi`, `gdprApi` typed wrappers
 
-| Restriction                                                                                     | Target phase |
-| ----------------------------------------------------------------------------------------------- | ------------ |
-| 1. Wire ApprovalCard + consent state to live backend; supersession semantics must match UI copy | P11          |
-| 2. Contract tests: generated client vs OpenAPI; verify consent/gdpr paths                       | P11          |
-| 3. Full WCAG 2.2 AA audit + usability sessions (≥80% task success, SUS ≥70)                     | P14          |
-| 4. No new routes/deps without change control; enterprise gated                                  | ongoing      |
+### What P11 must wire
 
-## Open issues carried
+1. **ApprovalCard → live approval API** — UI designed, backend endpoints exist,
+   no wiring yet
+2. **Consent scope toggles → backend** — currently cosmetic only
+3. **Connector permissions → backend** — currently local state only
 
-- RISK-P10-01..04 (register §1)
-- RISK-P09-01..05 (carried)
-- Full E2E/a11y/UX evidence → P14 · cohort usability → P14 (VB-07)
-- UNK-02 creds → P19 · UNK-P03-01 legal → P13
+### What P11 must verify
 
-## Scope for MVP-P11 (Backend Implementation)
+1. **Contract tests** — generated client vs OpenAPI spec
+2. **API error handling** — all typed wrappers handle 4xx/5xx gracefully
 
-- Implement approval API per P08 §03.2 (propose/decide/execute/revoke,
-  payload_hash, expiry, idempotency) — release-blocking for send paths
-- Implement P07 migrations 0003–0007 (approval tables, memory taxonomy CHECK +
-  supersedes_id + deleted_at, RLS + composite keys, provenance/consent/
-  retention columns) with rollback; gate `Base.metadata.create_all` behind
-  `ENV != prod`
-- Wire consent endpoints + GDPR export/delete per P08 §03.5; Gmail watcher
-  endpoints per P08 §03.4 (draft-only, kill-switch pause)
-- Static OpenAPI 3.1 at `docs/contracts/openapi.yaml` + CI openapi-diff
-- Contract tests for approval flows (payload-bound, expiry, replay 409,
-  idempotent execute)
+### Restrictions carried from P10
 
-## Constraints for successor
+- No new routes/deps without change control
+- Enterprise surfaces stay gated
+- Gmail stays draft-only
+- T3 toggle stays disabled until consent wiring
 
-- Backend: FastAPI unified app `apps/api`; `models/schema.py` 33 tables; alembic
-  0001/0002 exist — 0003..0007 on top; 1626 tests must stay green (SQLite tests
-  use `Base.metadata.create_all` — keep behind ENV check)
-- CSRF `SKIP_PREFIXES` must remain `/api/v1/auth` only (AGENTS.md item 4)
-- transformKeys snake↔camel contract (AGENTS.md item 3) — response shapes must
-  match what the frontend expects
-- Python 3.14 note: `__athrow__` removed — use `athrow()`
-- Frontend changed files list in `04-code-config.md` — do not regress
+### Deep audit findings for P11 awareness
+
+- Shared types (Memory, Agent, Connector) diverge from backend models — P11 may
+  need to reconcile
+- Inline interfaces in api-client.ts use snake_case (transformKeys handles at
+  runtime)
+- Settings consent scope revocation needs API wiring
+- Applications Kanban is read-only (no drag-and-drop)
