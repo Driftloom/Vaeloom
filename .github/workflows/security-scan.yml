@@ -13,7 +13,7 @@ jobs:
     name: Secret Scan (Gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
@@ -32,7 +32,7 @@ jobs:
       matrix:
         language: [javascript-typescript, python]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
@@ -47,7 +47,7 @@ jobs:
       security-events: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run Trivy on filesystem
         uses: aquasecurity/trivy-action@master
         with:
@@ -66,7 +66,7 @@ jobs:
     name: Generate SBOM
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Generate SBOM with Syft
         uses: anchore/sbom-action@v0
         with:
@@ -95,7 +95,7 @@ jobs:
             context: apps/api
             dockerfile: apps/api/Dockerfile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build Docker image
         run: docker build -t vaeloom/${{ matrix.service.name }}:latest -f ${{ matrix.service.dockerfile }} ${{ matrix.service.context }}
       - name: Scan image with Trivy
