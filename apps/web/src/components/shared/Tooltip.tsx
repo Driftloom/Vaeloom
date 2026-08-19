@@ -26,7 +26,7 @@ export function Tooltip({ content, children, side = 'top', className = '' }: Too
       onFocus={() => setVisible(true)}
       onBlur={() => setVisible(false)}
     >
-      {React.cloneElement(children, { 'aria-describedby': id })}
+      {React.cloneElement(children, { 'aria-describedby': id } as React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>)}
       {visible && (
         <span
           id={id}
