@@ -37,7 +37,7 @@ export function FormField({
         'aria-describedby': descriptionIds || undefined,
         'aria-invalid': error ? true : undefined,
         'aria-required': required,
-      })}
+      } as React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>)}
       {hint && !error && (
         <p id={hintId} className="text-xs text-text-muted">
           {hint}
