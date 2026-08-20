@@ -20,7 +20,12 @@ class MemoryService:
         embedding = None
         if content_for_embedding.strip():
             try:
-                embedding = await llm_service.generate_embedding(content_for_embedding)
+                embedding = await llm_service.generate_embedding(
+                    content_for_embedding,
+                    user_id=user_id,
+                    workspace_id=str(dto.workspace_id) if dto.workspace_id else None,
+                    db=db,
+                )
             except LLMProviderError:
                 embedding = None
 
@@ -56,13 +61,30 @@ class MemoryService:
         stmt = select(Memory)
         count_stmt = select(func.count(Memory.id))
 
-        conditions = [Memory.status == (query.status or "active")]
+        # Status handling: default "active" means exclude superseded/deleted unless requested
+        conditions: list[Any] = []
+        if query.status and query.status != "all":
+            if query.include_superseded and query.status == "active":
+                conditions.append(Memory.status.in_(["READY", "active", "superseded"]))
+            else:
+                conditions.append(Memory.status == query.status)
+        elif query.status == "all":
+            pass
+        else:
+            conditions.append(Memory.status == (query.status or "active"))
+
         if query.type:
             conditions.append(Memory.type == query.type)
         if query.domain:
             conditions.append(Memory.domain == query.domain)
         if tenant_id:
             conditions.append(Memory.tenant_id == tenant_id)
+        if query.workspace_id:
+            try:
+                ws_uuid = uuid.UUID(query.workspace_id)
+                conditions.append(Memory.workspace_id == ws_uuid)
+            except (ValueError, TypeError):
+                pass
         if query.tags:
             conditions.append(Memory.tags.overlap(query.tags))
 
@@ -109,7 +131,12 @@ class MemoryService:
             content_for_embedding = update_data.get("content") or memory.content or ""
             if content_for_embedding.strip():
                 try:
-                    update_data["embedding"] = await llm_service.generate_embedding(content_for_embedding)
+                    update_data["embedding"] = await llm_service.generate_embedding(
+                        content_for_embedding,
+                        user_id=str(memory.user_id) if memory.user_id else None,
+                        workspace_id=str(memory.workspace_id) if memory.workspace_id else None,
+                        db=db,
+                    )
                 except LLMProviderError:
                     pass
                 update_data["content_hash"] = llm_service.compute_content_hash(content_for_embedding)

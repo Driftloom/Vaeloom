@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '../../../../lib/api';
 import { consentApi } from '../../../../lib/api-client';
+import { ProviderKeysSection } from '@/components/settings/ProviderKeysSection';
 import { ErrorState } from '@/components/shared/ErrorState';
 import type { Agent, PaginatedResponse } from '@vaeloom/shared-types';
 
@@ -377,6 +378,13 @@ export default function SettingsPage() {
               />
             </label>
           </div>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
+            API Keys — Bring Your Own Key
+          </h2>
+          <ProviderKeysSection workspaceId={workspaceId} />
         </section>
 
         <section>

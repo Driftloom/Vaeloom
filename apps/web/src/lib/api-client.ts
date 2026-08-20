@@ -1517,3 +1517,165 @@ export const billingApi = {
     return apiClient.post<SubscriptionResponse>('/billing/subscription', { plan });
   },
 };
+
+// ─── BYOK Provider Keys (Bring Your Own Key) ─────────────────────────────
+
+export interface ProviderKeyResponse {
+  id: string;
+  provider: string;
+  keyHint: string;
+  keyPrefix: string;
+  isActive: boolean;
+  isValid: boolean | null;
+  lastValidatedAt: string | null;
+  lastUsedAt: string | null;
+  validationError: string | null;
+  workspaceId: string | null;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProviderKeyListResponse {
+  keys: ProviderKeyResponse[];
+  total: number;
+}
+
+export interface EffectiveKeyResponse {
+  provider: string;
+  hasCustomKey: boolean;
+  source: 'workspace' | 'user' | 'system' | 'none';
+  keyHint: string | null;
+  isValid: boolean | null;
+  lastValidatedAt: string | null;
+}
+
+export const providerKeysApi = {
+  list(params?: { workspace_id?: string }): Promise<ProviderKeyListResponse> {
+    return apiClient.get<ProviderKeyListResponse>(
+      '/provider-keys',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
+  },
+  effective(params: { provider: string; workspace_id?: string }): Promise<EffectiveKeyResponse> {
+    return apiClient.get<EffectiveKeyResponse>(
+      '/provider-keys/effective',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
+  },
+  create(body: {
+    provider: string;
+    api_key: string;
+    workspace_id?: string | null;
+  }): Promise<ProviderKeyResponse> {
+    return apiClient.post<ProviderKeyResponse>('/provider-keys', body);
+  },
+  delete(id: string): Promise<void> {
+    return apiClient.delete(`/provider-keys/${id}`);
+  },
+  validate(
+    id: string,
+  ): Promise<{ isValid: boolean; provider: string; message: string; latencyMs: number }> {
+    return apiClient.post<{
+      isValid: boolean;
+      provider: string;
+      message: string;
+      latencyMs: number;
+    }>(`/provider-keys/${id}/validate`);
+  },
+  update(
+    id: string,
+    body: { api_key?: string; is_active?: boolean },
+  ): Promise<ProviderKeyResponse> {
+    return apiClient.patch<ProviderKeyResponse>(`/provider-keys/${id}`, body);
+  },
+};
+
+// ─── Agents Catalog ───────────────────────────────────────────────────────
+
+export interface CatalogToolDef {
+  name: string;
+  description: string;
+  requiredScope: string;
+  category: string;
+}
+
+export interface CatalogAgent {
+  name: string;
+  mission: string;
+  tools: CatalogToolDef[];
+  toolNames: string[];
+  memoryScopes: { readTypes: string[]; writeTypes: string[] };
+  defaultAutonomy: string;
+  isCanonical: boolean;
+  skills: string[];
+  category: string;
+}
+
+export interface AgentCatalogResponse {
+  agents: CatalogAgent[];
+  total: number;
+  canonicalCount: number;
+  toolDefinitions: Record<string, { description: string; category: string; requiredScope: string }>;
+}
+
+export const agentCatalogApi = {
+  get(): Promise<AgentCatalogResponse> {
+    return apiClient.get<AgentCatalogResponse>('/agents/catalog');
+  },
+};
+
+// ─── Memory Feed / Lineage ────────────────────────────────────────────────
+
+export interface MemoryFeedItem {
+  kind: string;
+  memory: Memory | null;
+  agentName: string | null;
+  action: {
+    id: string;
+    actionType: string;
+    status: string;
+    createdAt: string | null;
+    inputRef?: string | null;
+    outputRef?: string | null;
+  } | null;
+  timestamp: string | null;
+}
+
+export interface MemoryFeedResponse {
+  feed: MemoryFeedItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  stats: { totalMemories: number; superseded: number; agentCreated: number; recentActions: number };
+}
+
+export interface MemoryLineageResponse {
+  memory: Memory;
+  chainBackwards: Memory[];
+  chainForwards: Memory[];
+  provenance: Array<{ table: string; id: string; type: string; detail: string }>;
+  agentActions: Array<{
+    id: string;
+    agentName: string;
+    actionType: string;
+    status: string;
+    createdAt: string | null;
+  }>;
+}
+
+export const memoryFeedApi = {
+  feed(params?: {
+    workspace_id?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<MemoryFeedResponse> {
+    return apiClient.get<MemoryFeedResponse>(
+      '/memories/feed',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
+  },
+  lineage(memoryId: string): Promise<MemoryLineageResponse> {
+    return apiClient.get<MemoryLineageResponse>(`/memories/${memoryId}/lineage`);
+  },
+};

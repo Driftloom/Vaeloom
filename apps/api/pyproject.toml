@@ -43,6 +43,7 @@ dependencies = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-n auto"
 
 [tool.ruff]
 target-version = "py312"
@@ -83,4 +84,5 @@ dev = [
     "pytest-cov>=5.0.0",
     "freezegun>=1.4.0",
     "responses>=0.25.0",
+    "pytest-xdist>=3.6.0",
 ]

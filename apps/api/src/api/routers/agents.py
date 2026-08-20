@@ -18,6 +18,113 @@ from ..orchestrator.router import handle, UserRequest
 router = APIRouter()
 
 
+# ── Canonical catalog + skills/tools mapping ───────────────────────
+@router.get("/catalog", response_model=dict)
+async def get_agent_catalog(
+    current_user: dict = Depends(get_current_user),
+):
+    """Return enriched canonical agent catalog: agents + skills + tools used.
+
+    Data is derived from orchestrator registry and tool definitions - not just DB rows.
+    Works even when no agents have been persisted yet.
+    """
+    from ..orchestrator.router import AGENT_REGISTRY, MVP_CANONICAL_AGENTS
+    from ..tools.definitions import ALL_TOOLS
+
+    catalog = []
+    for name, cls in AGENT_REGISTRY.items():
+        inst = None
+        try:
+            inst = cls()
+        except Exception:
+            inst = None
+
+        # Extract mission, tools, memory scopes, autonomy
+        mission = getattr(inst or cls, "mission", "") or getattr(cls, "__doc__", "") or ""
+        tools_declared = getattr(inst or cls, "tools", []) or []
+        # tools may be Tool pydantic or plain; normalize to names
+        tool_names: list[str] = []
+        for t in tools_declared:
+            if isinstance(t, dict):
+                tool_names.append(t.get("name", str(t)))
+            elif hasattr(t, "name"):
+                tool_names.append(getattr(t, "name"))
+            else:
+                tool_names.append(str(t))
+
+        # Resolve full tool definitions
+        tool_defs = []
+        for tn in tool_names:
+            td = ALL_TOOLS.get(tn)
+            if td:
+                tool_defs.append({
+                    "name": td.name,
+                    "description": td.description,
+                    "required_scope": td.required_scope,
+                    "category": td.category,
+                    "input_schema": td.input_schema,
+                })
+            else:
+                tool_defs.append({"name": tn, "description": "", "required_scope": "unknown", "category": "unknown"})
+
+        memory_scopes = getattr(inst or cls, "memory_scopes", None)
+        if memory_scopes is not None and hasattr(memory_scopes, "model_dump"):
+            memory_scopes_dict = memory_scopes.model_dump()
+        elif memory_scopes is not None:
+            memory_scopes_dict = {"read_types": getattr(memory_scopes, "read_types", []), "write_types": getattr(memory_scopes, "write_types", [])}
+        else:
+            memory_scopes_dict = {"read_types": [], "write_types": []}
+
+        default_autonomy = getattr(inst or cls, "default_autonomy", "suggest")
+        is_canonical = name in MVP_CANONICAL_AGENTS
+
+        # Derive skills from category + tools (human readable)
+        # Skills are capability labels shown in UI
+        skills = []
+        # Core skill from mission / name
+        if name == "organization":
+            skills = ["Document Organization", "Deduplication", "Folder Routing"]
+        elif name == "memory":
+            skills = ["Entity Extraction", "Knowledge Graph", "Memory Consolidation"]
+        elif name == "resume":
+            skills = ["Resume Generation", "Template Filling", "Variant Tailoring"]
+        elif name == "ats":
+            skills = ["ATS Scoring", "Keyword Gap", "Resume Audit"]
+        elif name == "job_search":
+            skills = ["Job Discovery", "Ranking", "Opportunity Match"]
+        elif name == "application":
+            skills = ["Application Draft", "Cover Letter", "Submission (Approval-Gated)"]
+        elif name == "gmail":
+            skills = ["Inbox Watch", "Deadline Extraction", "Draft-Only Email"]
+        elif name == "scheduler":
+            skills = ["Calendar Merge", "Conflict Check", "Reminder Dispatch"]
+        else:
+            # Enterprise extras: derive from tools
+            skills = [td["name"].replace("_", " ").title() for td in tool_defs[:3]] or [name.title()]
+
+        catalog.append({
+            "name": name,
+            "mission": mission.strip() if isinstance(mission, str) else str(mission),
+            "tools": tool_defs,
+            "tool_names": tool_names,
+            "memory_scopes": memory_scopes_dict,
+            "default_autonomy": default_autonomy,
+            "is_canonical": is_canonical,
+            "skills": skills,
+            "category": "canonical" if is_canonical else "enterprise",
+        })
+
+    # Sort canonical first
+    catalog.sort(key=lambda x: (0 if x["is_canonical"] else 1, x["name"]))
+
+    return {
+        "agents": catalog,
+        "total": len(catalog),
+        "canonical_count": sum(1 for c in catalog if c["is_canonical"]),
+        "tool_definitions": {k: {"description": v.description, "category": v.category, "required_scope": v.required_scope} for k, v in ALL_TOOLS.items()},
+    }
+
+
 @router.post("", response_model=AgentResponse, status_code=201)
 async def create_agent(
     dto: AgentCreate,
@@ -44,12 +151,14 @@ async def chat(
 ):
     """
     High-level chat endpoint: auto-classifies intent, routes to the right agent,
-    runs the agentic loop, and returns the result.
+    runs the agentic loop, and returns the result. If dto.agentName is provided
+    (enterprise explicit routing), honors it with high confidence.
     """
     req = UserRequest(
         request_id=str(uuid.uuid4()),
         message=dto.message,
         workspace_id=dto.workspaceId,
+        preferred_agent=dto.agentName.strip().lower() if dto.agentName else None,
     )
     result = await handle(req)
     return result

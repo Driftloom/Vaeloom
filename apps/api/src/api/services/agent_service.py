@@ -141,14 +141,23 @@ class AgentService:
             start = time.monotonic()
             model = config.get("model")
             temperature = config.get("temperature", 0.7)
+            # Resolve workspace_id for BYOK: prefer agent.workspace_id, then dto.input
+            workspace_id_ctx = None
+            if agent.workspace_id:
+                workspace_id_ctx = str(agent.workspace_id)
+            else:
+                workspace_id_ctx = dto.input.get("workspace_id") or dto.input.get("workspaceId")
 
             if tools:
                 response = await llm_service.generate_completion_with_tools(
-                    messages=messages, tools=tools, model=model, temperature=temperature
+                    messages=messages, tools=tools, model=model, temperature=temperature,
+                    user_id=user_id, workspace_id=workspace_id_ctx, db=db
                 )
             else:
                 response = await llm_service.generate_completion(
-                    messages=messages, model=model, temperature=temperature
+                    messages=messages, model=model, temperature=temperature,
+                    user_id=user_id, workspace_id=workspace_id_ctx, db=db,
+                    agent_name=agent.name, task_type=config.get("task_type", "general")
                 )
 
             duration = int((time.monotonic() - start) * 1000)
@@ -201,10 +210,16 @@ class AgentService:
 
         model = config.get("model")
         temperature = config.get("temperature", 0.7)
+        workspace_id_ctx = None
+        if agent.workspace_id:
+            workspace_id_ctx = str(agent.workspace_id)
+        else:
+            workspace_id_ctx = dto.input.get("workspace_id") or dto.input.get("workspaceId")
 
         full_content = ""
         async for chunk in llm_service.generate_completion_stream(
-            messages=messages, model=model, temperature=temperature
+            messages=messages, model=model, temperature=temperature,
+            user_id=user_id, workspace_id=workspace_id_ctx, db=db
         ):
             if chunk["type"] == "content":
                 full_content += chunk["text"]

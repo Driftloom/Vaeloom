@@ -56,6 +56,23 @@ export default function SignupPage() {
     setErrors({});
     try {
       await signup(email, password, displayName || undefined);
+      // New users get auto-created workspace in backend; navigate directly
+      try {
+        const { api } = await import('../../../lib/api');
+        const workspaces = await api.listWorkspaces();
+        if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.id) {
+          router.push(`/workspace/${workspaces[0].id}`);
+          return;
+        }
+        const me = await api.me();
+        const ws = (me as unknown as { workspaces?: Array<{ id: string }> })?.workspaces;
+        if (ws && ws.length > 0 && ws[0]?.id) {
+          router.push(`/workspace/${ws[0].id}`);
+          return;
+        }
+      } catch {
+        // fall through
+      }
       router.push('/');
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Something went wrong';

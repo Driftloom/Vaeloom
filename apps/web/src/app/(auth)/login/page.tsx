@@ -36,7 +36,29 @@ function LoginForm() {
     setErrors({});
     try {
       await login(email, password);
-      router.push(redirect || '/');
+      if (redirect) {
+        router.push(redirect);
+        return;
+      }
+      // Resolve workspace for post-login navigation: / -> /workspace/{id}
+      try {
+        const { api } = await import('../../../lib/api');
+        const workspaces = await api.listWorkspaces();
+        if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.id) {
+          router.push(`/workspace/${workspaces[0].id}`);
+          return;
+        }
+        // Fallback: try /auth/me which also returns workspaces
+        const me = await api.me();
+        const ws = (me as unknown as { workspaces?: Array<{ id: string }> })?.workspaces;
+        if (ws && ws.length > 0 && ws[0]?.id) {
+          router.push(`/workspace/${ws[0].id}`);
+          return;
+        }
+      } catch {
+        // ignore, fall through to /
+      }
+      router.push('/');
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Invalid credentials';
       setErrors({ form: message });

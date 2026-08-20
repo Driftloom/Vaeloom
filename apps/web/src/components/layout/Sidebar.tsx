@@ -44,6 +44,25 @@ function groupLinks(workspaceId: string): NavGroup[] {
           ),
         },
         {
+          name: 'Agents',
+          path: ws('/agents'),
+          icon: (
+            <svg
+              className={iconClass}
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.25 12L17 14.25l-1.25-2.25L13.5 10.75l2.25-1.25L17 7.25l1.25 2.25L20.5 10.75l-2.25 1.25z"
+              />
+            </svg>
+          ),
+        },
+        {
           name: 'Chat',
           path: ws('/chat'),
           icon: (

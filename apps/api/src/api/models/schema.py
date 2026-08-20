@@ -827,3 +827,37 @@ class GmailWatch(Base):
         Index("idx_gmail_watches_channel_id", "channel_id"),
         Index("idx_gmail_watches_status_expiration", "status", "expiration"),
     )
+
+
+class ProviderKey(Base):
+    """Bring-Your-Own-Key: encrypted per-user / per-workspace LLM provider credentials.
+
+    Resolution priority:
+      1. workspace-scoped key (user_id + workspace_id + provider)
+      2. user-global key (user_id + workspace_id IS NULL + provider)
+      3. system env fallback (settings.llm_api_key)
+    """
+
+    __tablename__ = "provider_keys"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)  # openai | anthropic | google | mistral | etc.
+    encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)
+    key_hint: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g. sk-...abcd  (last 4)
+    key_prefix: Mapped[str] = mapped_column(String(12), nullable=False)  # e.g. sk-proj
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_valid: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    last_validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    validation_error: Mapped[str | None] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "workspace_id", "provider", name="uq_provider_keys_user_ws_provider"),
+        Index("idx_provider_keys_user_provider", "user_id", "provider"),
+        Index("idx_provider_keys_workspace_provider", "workspace_id", "provider"),
+        Index("idx_provider_keys_user_ws", "user_id", "workspace_id"),
+    )

@@ -64,8 +64,10 @@ class MemoryQuery(BaseModel):
     domain: str | None = None
     status: str | None = "active"
     tags: list[str] | None = None
+    workspace_id: str | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
+    include_superseded: bool = Field(default=False, description="If true, includes superseded memories in list")
 
 
 class MemorySearch(BaseModel):

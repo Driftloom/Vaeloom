@@ -1,7 +1,5 @@
 'use client';
 
-'use client';
-
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -215,6 +213,7 @@ export function KeyboardShortcutListener() {
         return;
       }
 
+      if (typeof e.key !== 'string' || !e.key) return;
       const key = e.key.toLowerCase();
       const newHeld = new Set(heldKeys);
       newHeld.add(key);
@@ -246,6 +245,7 @@ export function KeyboardShortcutListener() {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (typeof e.key !== 'string' || !e.key) return;
       const newHeld = new Set(heldKeys);
       newHeld.delete(e.key.toLowerCase());
       setHeldKeys(newHeld);

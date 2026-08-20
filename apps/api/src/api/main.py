@@ -59,7 +59,7 @@ from .middleware.api_version import APIVersionMiddleware
 from .middleware.prompt_injection import PromptInjectionMiddleware
 from .middleware.idempotency import IdempotencyMiddleware
 from .middleware.exception_handler import unified_exception_handler, generic_exception_handler
-from .routers import health, auth, workspaces, memory, agents, events, search, integrations, billing, documents, resumes, applications, plugins, chat, notifications, connectors, scheduler, analytics, audit, iam, knowledge_graph, recommendations, webhooks, admin_console, gmail
+from .routers import health, auth, workspaces, memory, agents, events, search, integrations, billing, documents, resumes, applications, plugins, chat, notifications, connectors, scheduler, analytics, audit, iam, knowledge_graph, recommendations, webhooks, admin_console, gmail, provider_keys
 from .services.encryption import router as encryption_router
 from .services.gdpr import router as gdpr_router
 from .services.consent import router as consent_router
@@ -200,6 +200,7 @@ app.include_router(consent_router, prefix="/api/v1", tags=["consent"])
 app.include_router(approval_router, prefix="/api/v1", tags=["approvals"])
 app.include_router(agent_costs_router, prefix="/api/v1", tags=["agents"])
 app.include_router(gmail.router, prefix="/api/v1", tags=["gmail"])
+app.include_router(provider_keys.router, prefix="/api/v1/provider-keys", tags=["provider-keys"])
 
 # ── Enterprise routes (CF-06 / R6) ──────────────────────────────────
 # Out of MVP scope. Mounted only when explicitly enabled via

@@ -21,6 +21,7 @@ from api.agents.qa_agent.handler import QAAgent, QAValidationResult
 from api.agents.career_agent.handler import CareerAgent  # G1
 from api.agents.learning_agent.handler import LearningAgent  # G2
 from api.agents.research_agent.handler import ResearchAgent  # G3
+from api.agents.memory.planning_agent import PlanningAgent  # Planning - roadmap
 from api.agents.github_agent.handler import GitHubAgent  # G4
 from api.agents.coding_agent.handler import CodingAgent  # G5
 from api.agents.reminder_agent.handler import ReminderAgent  # G6
@@ -48,9 +49,10 @@ AGENT_REGISTRY: Dict[str, type] = {
     "application": ApplicationAgent,
     "gmail": GmailAgent,
     "scheduler": SchedulerAgent,
+    "planning": PlanningAgent,
+    "research": ResearchAgent,
     "career": CareerAgent,
     "learning": LearningAgent,
-    "research": ResearchAgent,
     "github": GitHubAgent,
     "coding": CodingAgent,
     "reminder": ReminderAgent,
@@ -72,6 +74,7 @@ CATEGORY_AGENT_MAP = {
     "communication": ["gmail"],
     "schedule_time": ["scheduler"],
     "memory_extraction": ["memory"],
+    "planning_research": ["planning", "research"],
     "career_development": ["career", "learning"],
     "research_github": ["research", "github"],
     "coding_interview": ["coding"],
@@ -90,22 +93,24 @@ CATEGORY_KEYWORDS = {
     "communication": ["email", "gmail", "inbox", "draft", "reply", "mail"],
     "schedule_time": ["schedule", "deadline", "calendar", "reminder", "conflict", "event"],
     "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember"],
+    "planning_research": ["plan", "planning", "roadmap", "research", "strategy", "milestone", "goal", "research"],
     "career_development": ["career", "path", "skill", "course", "learn", "training", "certification"],
-    "research_github": ["research", "company", "industry", "trend", "github", "repository", "profile"],
+    "research_github": ["company", "industry", "trend", "github", "repository", "profile"],
     "coding_interview": ["coding", "challenge", "leetcode", "algorithm", "code review", "interview prep"],
     "reminders_analytics": ["deadline", "remind", "follow up", "analytics", "metrics", "report", "trend"],
     "recommendations": ["recommend", "suggest", "match", "curate", "similar"],
-    "reflection": ["weekly", "monthly", "summary", "digest", "review", "goal", "progress"],
+    "reflection": ["weekly", "monthly", "summary", "digest", "review", "progress"],
     "security_monitoring": ["security", "pii", "monitor", "alert", "access", "suspicious"],
     "integrations": ["connector", "plugin", "integration", "extension", "setup", "configure", "install", "drive", "google drive", "sync"],
 }
 
 
 class UserRequest:
-    def __init__(self, request_id: str, message: str, workspace_id: str):
+    def __init__(self, request_id: str, message: str, workspace_id: str, preferred_agent: str | None = None):
         self.id = request_id
         self.message = message
         self.workspace_id = workspace_id
+        self.preferred_agent = preferred_agent
 
 
 async def classify_intent(message: str) -> tuple[str, float]:
@@ -159,6 +164,11 @@ async def classify_intent(message: str) -> tuple[str, float]:
             return "github", confidence
         return "research", confidence
 
+    if best_category == "planning_research":
+        if any(kw in msg_lower for kw in ["plan", "roadmap", "milestone", "goal", "strategy"]):
+            return "planning", confidence
+        return "research", confidence
+
     if best_category == "reminders_analytics":
         if any(kw in msg_lower for kw in ["deadline", "remind", "follow up", "task", "todo"]):
             return "reminder", confidence
@@ -181,7 +191,7 @@ async def classify_intent(message: str) -> tuple[str, float]:
 
 MVP_CANONICAL_AGENTS = frozenset({
     "organization", "memory", "resume", "ats", "job_search",
-    "application", "gmail", "scheduler",
+    "application", "gmail", "scheduler", "planning", "research",
 })
 
 # Categories that map only to canonical agents
@@ -192,6 +202,7 @@ MVP_CATEGORY_AGENT_MAP = {
     "communication": ["gmail"],
     "schedule_time": ["scheduler"],
     "memory_extraction": ["memory"],
+    "planning_research": ["planning", "research"],
 }
 
 
@@ -204,8 +215,8 @@ def _handle_out_of_scope(agent_name: str, confidence: float) -> Dict[str, Any]:
         "result": {
             "summary": (
                 f"'{agent_name}' is outside the MVP scope. "
-                "Only organization, memory, resume, ATS, job search & application, "
-                "gmail, and scheduler agents are available."
+                "Available: organization, memory, resume, ATS, job search & application, "
+                "gmail, scheduler, planning and research."
             ),
             "details": None,
             "proposals": [],
@@ -225,11 +236,16 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
     """
     from ..config import settings
 
-    logger.info(f"Handling request {request.id}: {request.message}")
+    logger.info(f"Handling request {request.id}: {request.message} (preferred={getattr(request, 'preferred_agent', None)})")
 
-    # ── 1. Intent Classification ───────────────────────────────────
-    agent_name, confidence = await classify_intent(request.message)
-    logger.info(f"Classified: agent={agent_name}, confidence={confidence}")
+    # ── 1. Intent Classification (explicit agent override for enterprise chat) ──
+    preferred = getattr(request, 'preferred_agent', None)
+    if preferred and preferred in AGENT_REGISTRY:
+        agent_name, confidence = preferred, 0.98
+        logger.info(f"Explicit agent override: {agent_name} (confidence={confidence})")
+    else:
+        agent_name, confidence = await classify_intent(request.message)
+        logger.info(f"Classified: agent={agent_name}, confidence={confidence}")
 
     # ── 1b. MVP scope lock ─────────────────────────────────────────
     if settings.mvp_scope_enforced and agent_name not in MVP_CANONICAL_AGENTS:
@@ -248,7 +264,7 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
                 "proposals": [],
                 "questions": [
                     "Could you clarify what you'd like help with? "
-                    "Options: organize files, build/score resume, career guidance, "
+                    "Options: organize files, build roadmap/plan, research, build/score resume, career guidance, "
                     "learning courses, company research, GitHub analysis, coding prep, "
                     "reminders, analytics, recommendations, weekly reflection, "
                     "security scan, integrations, plugins, email, schedule."

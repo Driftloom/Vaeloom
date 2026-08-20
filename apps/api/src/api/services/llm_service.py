@@ -1,12 +1,35 @@
 import hashlib
 import time
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from ..config import settings
 from .model_router import model_router, ModelConfig, MODEL_CATALOG
+
+
+def _infer_provider_from_model(model: str | None) -> str:
+    if not model:
+        return settings.llm_provider
+    m = model.strip().lower()
+    if m.startswith("gpt") or m.startswith("text-embedding") or m.startswith("o1") or m.startswith("o3"):
+        return "openai"
+    if m.startswith("claude"):
+        return "anthropic"
+    if m.startswith("gemini") or m.startswith("google"):
+        return "google"
+    if m.startswith("mistral"):
+        return "mistral"
+    if m.startswith("cohere") or m.startswith("command"):
+        return "cohere"
+    if "groq" in m:
+        return "groq"
+    # fallback to catalog
+    cfg = MODEL_CATALOG.get(model)
+    if cfg:
+        return cfg.provider
+    return settings.llm_provider
 
 
 class LLMProviderError(Exception):
@@ -20,24 +43,99 @@ class LLMService:
         self.model = settings.llm_model
         self.embedding_model = settings.embedding_model
 
+    async def _resolve_api_key(
+        self,
+        provider: str | None = None,
+        *,
+        user_id: str | None = None,
+        workspace_id: str | None = None,
+        db=None,
+        explicit_key: str | None = None,
+    ) -> tuple[str, str]:
+        """Resolve effective (provider, api_key) with BYOK priority: explicit > workspace > user > system.
+
+        Returns (provider, api_key). If no key found, returns (provider, "") and caller should handle.
+        """
+        # Explicit override wins
+        if explicit_key:
+            prov = provider or settings.llm_provider
+            return prov, explicit_key
+
+        # Infer provider if not given
+        prov = provider or settings.llm_provider
+
+        # If DB context provided, try BYOK resolution
+        if db is not None and user_id:
+            try:
+                # Lazy import to avoid circular
+                from .provider_key_service import provider_key_service
+                effective = await provider_key_service.resolve_effective(
+                    db, user_id, prov, workspace_id
+                )
+                if effective.get("key"):
+                    row = effective.get("row")
+                    if row is not None:
+                        await provider_key_service.mark_used(db, row)
+                    return prov, effective["key"]
+            except Exception:
+                # Fall through to system key on BYOK lookup failure
+                pass
+
+        # System fallback
+        inferred_prov = _infer_provider_from_model(prov) if prov else settings.llm_provider
+        # For embedding case, provider is inferred as openai regardless of llm_provider
+        # Use system key if matches
+        system_key = settings.llm_api_key
+        # If provider mismatch but we still have system key, use it only if provider matches llm_provider
+        if inferred_prov == settings.llm_provider and system_key:
+            return inferred_prov, system_key
+        # If provider is openai and llm_provider is openai, return same
+        if prov == "openai" and system_key and settings.llm_provider == "openai":
+            return prov, system_key
+        # Fallback still returns system key if available, else empty
+        return prov, system_key or self.api_key
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=30),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
     )
-    async def generate_embedding(self, text: str) -> list[float]:
+    async def generate_embedding(
+        self,
+        text: str,
+        *,
+        user_id: str | None = None,
+        workspace_id: str | None = None,
+        db=None,
+        provider_override: str | None = None,
+        api_key_override: str | None = None,
+    ) -> list[float]:
         if not text.strip():
             raise LLMProviderError("Cannot generate embedding for empty text")
 
-        if self.provider == "openai":
-            return await self._openai_embedding(text)
-        return await self._anthropic_embedding(text)
+        # Embedding currently supports openai only; BYOK for openai embedding key
+        prov, key = await self._resolve_api_key(
+            provider_override or "openai",
+            user_id=user_id,
+            workspace_id=workspace_id,
+            db=db,
+            explicit_key=api_key_override,
+        )
+        # If provider is not openai, anthropic can't embed - still try openai fallback for embeddings
+        if prov == "openai":
+            return await self._openai_embedding(text, api_key=key)
+        raise LLMProviderError(
+            f"Provider '{prov}' does not support standalone embeddings; use OpenAI for embeddings. Configure BYOK openai key in Settings."
+        )
 
-    async def _openai_embedding(self, text: str) -> list[float]:
+    async def _openai_embedding(self, text: str, api_key: str | None = None) -> list[float]:
+        key = api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing OpenAI API key — configure in Settings > API Keys (BYOK) or set LLM_API_KEY")
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
                 "https://api.openai.com/v1/embeddings",
-                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"input": text, "model": self.embedding_model},
             )
             if resp.status_code != 200:
@@ -61,12 +159,24 @@ class LLMService:
         max_tokens: int = 4096,
         task_type: str = "general",
         agent_name: str = "unknown",
+        *,
+        user_id: str | None = None,
+        workspace_id: str | None = None,
+        db=None,
+        api_key_override: str | None = None,
+        provider_override: str | None = None,
     ) -> dict[str, Any]:
         start = time.monotonic()
-        if self.provider == "openai":
-            result = await self._openai_completion(messages, model or self.model, temperature, max_tokens)
+        # Resolve BYOK key for this completion
+        effective_model = model or self.model
+        inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+        _prov, effective_key = await self._resolve_api_key(
+            inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
+        )
+        if inferred_provider == "openai":
+            result = await self._openai_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key)
         else:
-            result = await self._anthropic_completion(messages, model or self.model, temperature, max_tokens)
+            result = await self._anthropic_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key)
 
         # Track cost
         latency_ms = (time.monotonic() - start) * 1000
@@ -87,12 +197,15 @@ class LLMService:
         return result
 
     async def _openai_completion(
-        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int
+        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None
     ) -> dict[str, Any]:
+        key = api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing OpenAI API key — configure in Settings > API Keys (BYOK)")
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
                 "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens},
             )
             if resp.status_code != 200:
@@ -107,7 +220,7 @@ class LLMService:
             }
 
     async def _anthropic_completion(
-        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int
+        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None
     ) -> dict[str, Any]:
         system = None
         anthropic_messages = []
@@ -126,8 +239,12 @@ class LLMService:
         if system:
             body["system"] = system
 
+        key = api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing Anthropic API key — configure in Settings > API Keys (BYOK)")
+
         headers = {
-            "x-api-key": self.api_key,
+            "x-api-key": key,
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
         }
@@ -164,18 +281,32 @@ class LLMService:
         tools: list[dict[str, Any]],
         model: str | None = None,
         temperature: float = 0.7,
+        *,
+        user_id: str | None = None,
+        workspace_id: str | None = None,
+        db=None,
+        api_key_override: str | None = None,
+        provider_override: str | None = None,
     ) -> dict[str, Any]:
-        if self.provider == "openai":
-            return await self._openai_tool_completion(messages, tools, model or self.model, temperature)
-        return await self._anthropic_tool_completion(messages, tools, model or self.model, temperature)
+        effective_model = model or self.model
+        inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+        _prov, effective_key = await self._resolve_api_key(
+            inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
+        )
+        if inferred_provider == "openai":
+            return await self._openai_tool_completion(messages, tools, effective_model, temperature, api_key=effective_key)
+        return await self._anthropic_tool_completion(messages, tools, effective_model, temperature, api_key=effective_key)
 
     async def _openai_tool_completion(
-        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None
     ) -> dict[str, Any]:
+        key = api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing OpenAI API key — configure BYOK")
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
                 "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"model": model, "messages": messages, "tools": tools, "temperature": temperature},
             )
             if resp.status_code != 200:
@@ -192,7 +323,7 @@ class LLMService:
             }
 
     async def _anthropic_tool_completion(
-        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None
     ) -> dict[str, Any]:
         system = None
         anthropic_messages = []
@@ -212,8 +343,11 @@ class LLMService:
         if system:
             body["system"] = system
 
+        key = api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing Anthropic API key — configure BYOK")
         headers = {
-            "x-api-key": self.api_key,
+            "x-api-key": key,
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
         }
@@ -253,21 +387,35 @@ class LLMService:
         model: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
+        *,
+        user_id: str | None = None,
+        workspace_id: str | None = None,
+        db=None,
+        api_key_override: str | None = None,
+        provider_override: str | None = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
-        if self.provider == "openai":
-            async for chunk in self._openai_completion_stream(messages, model or self.model, temperature, max_tokens):
+        effective_model = model or self.model
+        inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+        _prov, effective_key = await self._resolve_api_key(
+            inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
+        )
+        if inferred_provider == "openai":
+            async for chunk in self._openai_completion_stream(messages, effective_model, temperature, max_tokens, api_key=effective_key):
                 yield chunk
         else:
-            async for chunk in self._anthropic_completion_stream(messages, model or self.model, temperature, max_tokens):
+            async for chunk in self._anthropic_completion_stream(messages, effective_model, temperature, max_tokens, api_key=effective_key):
                 yield chunk
 
     async def _openai_completion_stream(
-        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int
+        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None
     ) -> AsyncGenerator[dict[str, Any], None]:
+        key = api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing OpenAI API key — configure BYOK")
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
                 "POST", "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens, "stream": True},
             ) as resp:
                 if resp.status_code != 200:
@@ -288,7 +436,7 @@ class LLMService:
                         yield {"type": "done", "finish_reason": choice["finish_reason"]}
 
     async def _anthropic_completion_stream(
-        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int
+        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None
     ) -> AsyncGenerator[dict[str, Any], None]:
         system = None
         anthropic_messages = []
@@ -308,8 +456,11 @@ class LLMService:
         if system:
             body["system"] = system
 
+        key = api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing Anthropic API key — configure BYOK")
         headers = {
-            "x-api-key": self.api_key,
+            "x-api-key": key,
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
         }
