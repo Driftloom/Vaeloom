@@ -28,9 +28,9 @@
 | MVP-P07 Data Architecture and Database Design           | ✅ GO (accepted by USER 2026-08-17) | docs/phases/mvp-p07/ - re-run + code implementation: gate 09 = **93.4/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY (6 restrictions); 12 Alembic migrations, 34-table RLS, backup/restore scripts, ingestion pipeline, vector store fixes; handoff 10-handoff-to-p08.md live; P08 started on user command |
 | MVP-P08 API, Integration, and Contract Design           | ✅ GO (re-run 2026-08-17) | docs/phases/mvp-p08/ - re-run against current codebase (`7a5434a`): gate 09 = **87.3/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY (6 restrictions); 5 DELs + 11 docs; approval API implemented (5 endpoints), gmail API implemented (6 endpoints), 79-path OpenAPI verified; RFC 9457 gap + async job queue + DLQ mgmt documented; handoff 10-handoff-to-p09.md ready; P09 starts only on user command |
 | MVP-P09 UI/UX and Design System                         | COMPLETE (gap closure 2026-08-17) | docs/phases/mvp-p09/ - original gate 88/100 (2026-08-10); gap closure: G1+G2 (RLS migration 0013), G3 (memory write path), G4 (approval gate), G5 (workspace isolation), G6 (webhook encryption), G10 (auth guards), G11 (KG tenant isolation); 286/286 tests pass; gate report `gap-closure-gate-report.md` |
-| MVP-P10 Frontend Implementation                         | ⬜ NOT STARTED | (evidence folder exists from prior run; re-run only on user command)                                                                                                      |
-| MVP-P11 Backend Implementation | ⬜ NOT STARTED | (code committed `bfae40f`+`929e659`+`3ad6bca`; phase gate re-run only on user command)                                                                                     |
-| MVP-P12 AI, Agent, Memory, Data-Pipeline Implementation | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P10 Frontend Implementation | ✅ GO (accepted by USER 2026-08-19) | docs/phases/mvp-p10/ - re-execution + deep audit: gate 09 = **96/100**, PHASE APPROVED (9 commits; 18 issues fixed: 3 critical, 6 high, 9 medium; tenant isolation, CSRF flags, security headers; 32/32 tests + build + typecheck + lint); handoff 10-handoff-to-p11.md live; P11 started on user command |
+| MVP-P11 Backend Implementation | ✅ GO (accepted by USER 2026-08-20) | docs/phases/mvp-p11/ - gate 09 = **96/100**, PHASE APPROVED — PROCEED; SAML signature validation implemented, connector credential encryption added, ApprovalCard + Consent toggles wired to live APIs, 324 tests verified across 8 subsets; handoff 10-handoff-to-p12.md live; P12 starts on user command |
+| MVP-P12 AI, Agent, Memory, Data-Pipeline Implementation | 🔄 IN PROGRESS (2026-08-20) | docs/phases/mvp-p12/ - gate 09 = **94/100**, PHASE CONDITIONALLY APPROVED; 5 workstreams executed: circuit breaker+rate limiter wired into agent loop, kill switches, document chunking, model routing+cost tracking, eval framework; 160/160 tests pass; handoff 10-handoff-to-p13.md live; P13 starts on user command |
 | MVP-P13 Security, Privacy, Compliance                   | ⬜ NOT STARTED |                                                                                                                                                                               |
 | MVP-P14 Testing and Quality Engineering                 | ⬜ NOT STARTED |                                                                                                                                                                               |
 | MVP-P15 Performance, Reliability, Scalability           | ⬜ NOT STARTED |                                                                                                                                                                               |
@@ -105,5 +105,16 @@
    endpoints), gmail API implemented (6 endpoints), 79-path OpenAPI verified;
    RFC 9457 gap + async job queue + DLQ mgmt documented; 6 restrictions;
    handoff `10-handoff-to-p09.md` ready).
-9. All other phases (P09–P21, CONT-P00…21, ENT-P00…21): **⬜ NOT STARTED —
-   DO NOT GO** until their predecessor gate passes and the user commands start.
+9. **MVP-P11 CLOSED 2026-08-20** — USER accepted the verdict:
+   `PHASE APPROVED — PROCEED` (gate `09-gate-report.md` **96/100**; SAML
+   signature validation implemented, connector credential encryption added,
+   ApprovalCard + Consent toggles wired to live APIs, 324 tests verified
+   across 8 subsets; handoff `10-handoff-to-p12.md` live).
+10. **MVP-P12 CLOSED 2026-08-20** — Phase executed:
+   `PHASE CONDITIONALLY APPROVED — 94/100` (gate `09-gate-report.md`;
+   circuit breaker + rate limiter wired, kill switches, chunking, model
+   routing + cost tracking, eval framework; 160/160 tests pass; handoff
+   `10-handoff-to-p13.md` live).
+11. All other phases (P13–P21, CONT-P00…21, ENT-P00…21):
+   **⬜ NOT STARTED — DO NOT GO** until their predecessor gate passes and
+   the user commands start.
