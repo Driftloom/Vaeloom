@@ -3,25 +3,26 @@
 > **Phase:** MVP-P11 — Backend Implementation · **Date:** 2026-08-20
 > **Baseline:** `master` @ `024151d` (P11 closure commit; P11 feature commit
 > `5c9049d`) · **Gate authority:** USER **Re-audit:** 2026-08-20 · **Post-fix
-> score:** 96/100 PASSED
+> score:** 90.5/100 CONDITIONALLY APPROVED — RESTRICTIONS APPLY (arithmetic
+> corrected from claimed 96.0; §28: 88–94 = CONDITIONAL)
 
 ## Scoring (prompt §28)
 
-| Category                 |  Weight | Score | Weighted | Basis                                                                      |
-| ------------------------ | ------: | ----: | -------: | -------------------------------------------------------------------------- |
-| Scope and acceptance     |      12 |    12 |     14.4 | All 5 workstreams complete; P10 handoff items addressed; config encrypted  |
-| Technical correctness    |      12 |    11 |     13.2 | SAML signxml enforced; config encrypted; decrypt raises on failure         |
-| Architecture/integration |       8 |     8 |      6.4 | Approval/consent/connector APIs wired; fallback logging added              |
-| Data quality/lifecycle   |       8 |     8 |      6.4 | Fernet encryption for connector credentials + config; webhook re-encrypted |
-| Security/privacy         |      12 |    12 |     14.4 | SAML enforced, signxml pinned, config encrypted, decrypt raises            |
-| Testing/validation       |      12 |    12 |     14.4 | 287 tests verified across 20 subsets; SAML crypto-path tests added         |
-| Reliability/resilience   |       8 |     6 |      4.8 | Circuit breaker, rate limiting verified; infra in-memory (P12 scope)       |
-| Performance/capacity     |       6 |     6 |      3.6 | No new deps; existing performance baseline maintained                      |
-| Evidence/traceability    |       8 |     8 |      6.4 | EVD-P11-001..010 mapped to real file changes and test runs                 |
-| Documentation/handoff    |       6 |     6 |      3.6 | 2 READMEs updated; gate report + handoff produced                          |
-| Operations/support       |       5 |     4 |      2.0 | In-memory infra (P12 scope); no runbooks                                   |
-| Maintainability/cost     |       3 |     3 |      0.9 | Minimal changes; existing patterns; no new dependencies                    |
-| **TOTAL**                | **100** |     — | **96.0** |                                                                            |
+| Category                 |  Weight | Score | Weighted | Basis                                                                                                                                       |
+| ------------------------ | ------: | ----: | -------: | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope and acceptance     |      12 |    12 |     14.4 | All 5 workstreams complete; P10 handoff items addressed; config encrypted                                                                   |
+| Technical correctness    |      12 |    11 |     13.2 | SAML signxml enforced; config encrypted; decrypt raises on failure                                                                          |
+| Architecture/integration |       8 |     8 |      6.4 | Approval/consent/connector APIs wired; fallback logging added                                                                               |
+| Data quality/lifecycle   |       8 |     8 |      6.4 | Fernet encryption for connector credentials + config; webhook re-encrypted                                                                  |
+| Security/privacy         |      12 |    12 |     14.4 | SAML enforced, signxml pinned, config encrypted, decrypt raises                                                                             |
+| Testing/validation       |      12 |    12 |     14.4 | 287 tests verified across 20 subsets; SAML crypto-path tests added                                                                          |
+| Reliability/resilience   |       8 |     6 |      4.8 | Circuit breaker, rate limiting verified; infra in-memory (P12 scope)                                                                        |
+| Performance/capacity     |       6 |     6 |      3.6 | No new deps; existing performance baseline maintained                                                                                       |
+| Evidence/traceability    |       8 |     8 |      6.4 | EVD-P11-001..016 mapped to real file changes and test runs (287 tests)                                                                      |
+| Documentation/handoff    |       6 |     6 |      3.6 | 2 READMEs updated; gate report + handoff produced                                                                                           |
+| Operations/support       |       5 |     4 |      2.0 | In-memory infra (P12 scope); no runbooks                                                                                                    |
+| Maintainability/cost     |       3 |     3 |      0.9 | Minimal changes; existing patterns; no new dependencies                                                                                     |
+| **TOTAL**                | **100** |     — | **90.5** | Σ(Score/10 × Weight) = 14.4+13.2+6.4+6.4+14.4+14.4+4.8+3.6+6.4+3.6+2.0+0.9; previous 96.0 was Σ(Score) — corrected per §28 weighted formula |
 
 ## Mandatory blockers
 
@@ -96,7 +97,10 @@
 
 ## Gate decision
 
-**PHASE APPROVED — 96/100 (post-fix)**
+**PHASE CONDITIONALLY APPROVED — 90.5/100 (post-fix)** — per §28 scoring formula
+Σ(Score/10×Weight). Falls in 88–94 CONDITIONAL band (not 95–100 APPROVED). Zero
+mandatory blockers; proceeds with restrictions: in-memory infra (P12), SAML
+replay (P13), tenant cleanup (P14).
 
 - All 5 workstreams complete with verified evidence
 - SAML signature validation enforced (was structural-only)

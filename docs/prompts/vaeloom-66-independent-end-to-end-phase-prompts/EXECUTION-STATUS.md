@@ -29,7 +29,7 @@
 | MVP-P08 API, Integration, and Contract Design           | ✅ GO (re-run 2026-08-17) | docs/phases/mvp-p08/ - re-run against current codebase (`7a5434a`): gate 09 = **87.3/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY (6 restrictions); 5 DELs + 11 docs; approval API implemented (5 endpoints), gmail API implemented (6 endpoints), 79-path OpenAPI verified; RFC 9457 gap + async job queue + DLQ mgmt documented; handoff 10-handoff-to-p09.md ready; P09 starts only on user command |
 | MVP-P09 UI/UX and Design System                         | COMPLETE (gap closure 2026-08-17) | docs/phases/mvp-p09/ - original gate 88/100 (2026-08-10); gap closure: G1+G2 (RLS migration 0013), G3 (memory write path), G4 (approval gate), G5 (workspace isolation), G6 (webhook encryption), G10 (auth guards), G11 (KG tenant isolation); 286/286 tests pass; gate report `gap-closure-gate-report.md` |
 | MVP-P10 Frontend Implementation | ✅ GO (accepted by USER 2026-08-19) | docs/phases/mvp-p10/ - re-execution + deep audit: gate 09 = **96/100**, PHASE APPROVED (9 commits; 18 issues fixed: 3 critical, 6 high, 9 medium; tenant isolation, CSRF flags, security headers; 32/32 tests + build + typecheck + lint); handoff 10-handoff-to-p11.md live; P11 started on user command |
-| MVP-P11 Backend Implementation | ✅ GO (accepted by USER 2026-08-20) | docs/phases/mvp-p11/ - gate 09 = **96/100**, PHASE APPROVED — PROCEED; SAML signature validation enforced + crypto-verified (lxml fix), connector credential encryption added, ApprovalCard + Consent toggles wired to live APIs, 287 tests verified across 20 subsets; handoff 10-handoff-to-p12.md live; P12 starts on user command |
+| MVP-P11 Backend Implementation | ✅ GO (accepted by USER 2026-08-20; corrected 2026-08-20) | docs/phases/mvp-p11/ - gate 09 = **90.5/100**, PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY (arithmetic corrected from 96.0 Σ Score → 90.5 Σ(Score/10×Weight) per §28; SAML signature validation enforced + crypto-verified (lxml fix), connector credential encryption added, ApprovalCard + Consent toggles wired to live APIs, 287 tests verified across 20 subsets, 11-file evidence, 2343 collected; handoff 10-handoff-to-p12.md live; P12 starts on user command with restrictions) |
 | MVP-P12 AI, Agent, Memory, Data-Pipeline Implementation | 🔄 IN PROGRESS (2026-08-20) | docs/phases/mvp-p12/ - gate 09 = **94/100**, PHASE CONDITIONALLY APPROVED; 5 workstreams executed: circuit breaker+rate limiter wired into agent loop, kill switches, document chunking, model routing+cost tracking, eval framework; 160/160 tests pass; handoff 10-handoff-to-p13.md live; P13 starts on user command |
 | MVP-P13 Security, Privacy, Compliance                   | ⬜ NOT STARTED |                                                                                                                                                                               |
 | MVP-P14 Testing and Quality Engineering                 | ⬜ NOT STARTED |                                                                                                                                                                               |
@@ -105,12 +105,15 @@
    endpoints), gmail API implemented (6 endpoints), 79-path OpenAPI verified;
    RFC 9457 gap + async job queue + DLQ mgmt documented; 6 restrictions;
    handoff `10-handoff-to-p09.md` ready).
-9. **MVP-P11 CLOSED 2026-08-20** — USER accepted the verdict:
-   `PHASE APPROVED — PROCEED` (gate `09-gate-report.md` **96/100**; SAML
-   signature validation enforced + crypto-verified end-to-end (lxml namespace
-   fix), connector credential encryption added, ApprovalCard + Consent toggles
-   wired to live APIs, 287 tests verified across 20 subsets; handoff
-   `10-handoff-to-p12.md` live).
+9. **MVP-P11 CLOSED 2026-08-20** — USER accepted the verdict, corrected
+   2026-08-20 to `PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY` (gate
+   `09-gate-report.md` **90.5/100** [was claimed 96.0 Σ Score, corrected to
+   Σ(Score/10×Weight)=90.5 per §28 → 88–94 band]; SAML signature validation
+   enforced + crypto-verified end-to-end (lxml namespace fix), connector
+   credential encryption added, ApprovalCard + Consent toggles wired to live
+   APIs, 287 tests verified across 20 subsets, 11-file evidence package,
+   2343 collected; handoff `10-handoff-to-p12.md` live; P12 proceeds with
+   restrictions: in-memory infra, SAML replay P13, tenant cleanup P14).
 10. **MVP-P12 CLOSED 2026-08-20** — Phase executed:
    `PHASE CONDITIONALLY APPROVED — 94/100` (gate `09-gate-report.md`;
    circuit breaker + rate limiter wired, kill switches, chunking, model

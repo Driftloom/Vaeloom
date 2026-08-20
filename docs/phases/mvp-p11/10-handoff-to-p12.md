@@ -150,10 +150,13 @@ failures.
 
 ## N. Gate Result
 
-**PHASE APPROVED — 96/100**
+**PHASE CONDITIONALLY APPROVED — 90.5/100** — per §28 weighted formula
+(previously claimed 96.0 = Σ Score, corrected to Σ(Score/10×Weight)=90.5 → 88–94
+CONDITIONAL band per user fix 2026-08-20).
 
 Zero mandatory blockers. All requirements satisfied. Evidence reproducible
-(287/287 tests re-run independently).
+(287/287 tests re-run independently). Restrictions: in-memory infra (P12), SAML
+replay (P13), tenant cleanup (P14).
 
 ## O. Handoff
 
@@ -164,4 +167,5 @@ Zero mandatory blockers. All requirements satisfied. Evidence reproducible
 
 ## P. Final Statement
 
-**PHASE APPROVED — PROCEED**
+**PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY — PROCEED WITH
+RESTRICTIONS** (weighted 90.5/100; Zero blockers; restrictions as in §N)

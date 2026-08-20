@@ -3,8 +3,9 @@
 ## Status
 
 **BACKEND_IMPLEMENTATION — RE-AUDITED + CLOSED** against P11 commit + post-fix
-working tree (2026-08-20). Gate: **96/100 PHASE APPROVED — PROCEED**
-(`09-gate-report.md`).
+working tree (2026-08-20). Gate: **90.5/100 PHASE CONDITIONALLY APPROVED —
+RESTRICTIONS APPLY** (`09-gate-report.md` — weighted Σ(Score/10×Weight)=90.5,
+corrected from claimed 96.0 Σ Score; §28 band 88–94).
 
 Audit trail: original gate 96/100 → independent re-audit 82/100
 (`.agents/findings/P11-deep-audit-2026-08-20.md`) → fixes applied → second
