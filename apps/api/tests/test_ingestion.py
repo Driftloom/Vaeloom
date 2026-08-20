@@ -440,6 +440,7 @@ class TestPipeline:
         monkeypatch.setattr("api.ingestion.pipeline.parse_document", mock_parse)
         monkeypatch.setattr("api.ingestion.pipeline.check_dedup", mock_dedup)
         monkeypatch.setattr("api.ingestion.pipeline.async_session_factory", mock_factory)
+        monkeypatch.setattr("api.ingestion.pipeline.chunk_text", lambda **kwargs: [])
 
         result = await run_pipeline("00000000-0000-0000-0000-000000000001", "new.md", b"# New")
         assert result["status"] == "success"
@@ -490,6 +491,7 @@ class TestPipeline:
         monkeypatch.setattr("api.ingestion.pipeline.parse_document", mock_parse)
         monkeypatch.setattr("api.ingestion.pipeline.check_dedup", mock_dedup)
         monkeypatch.setattr("api.ingestion.pipeline.async_session_factory", mock_factory)
+        monkeypatch.setattr("api.ingestion.pipeline.chunk_text", lambda **kwargs: [])
 
         result = await run_pipeline("00000000-0000-0000-0000-000000000001", "existing.pdf", b"data")
         assert result["status"] == "success"
