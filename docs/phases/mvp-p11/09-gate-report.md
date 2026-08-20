@@ -1,8 +1,9 @@
 # MVP-P11 — 09. Gate Report
 
 > **Phase:** MVP-P11 — Backend Implementation · **Date:** 2026-08-20
-> **Baseline:** `master` @ commit below · **Gate authority:** USER **Re-audit:**
-> 2026-08-20 · **Post-fix score:** 96/100 PASSED
+> **Baseline:** `master` @ `024151d` (P11 closure commit; P11 feature commit
+> `5c9049d`) · **Gate authority:** USER **Re-audit:** 2026-08-20 · **Post-fix
+> score:** 96/100 PASSED
 
 ## Scoring (prompt §28)
 
