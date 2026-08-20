@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+import logging
 
 import httpx
 from fastapi import HTTPException
@@ -7,6 +8,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..models.schema import Connector, Workspace
 from .encryption import encrypt_value, decrypt_value, is_encrypted
+
+logger = logging.getLogger(__name__)
+
+# Config fields that may contain embedded credentials per connector type
+_SENSITIVE_CONFIG_FIELDS: dict[str, list[str]] = {
+    "database": ["connectionString"],
+    "rest": ["authToken", "apiKey"],
+    "graphql": ["authToken", "apiKey"],
+    "file": [],
+}
 
 
 class ConnectorExtService:
@@ -29,11 +40,15 @@ class ConnectorExtService:
         if hasattr(dto, "token_ref") and dto.token_ref:
             token_ref = self._encrypt_credential(dto.token_ref)
 
+        # Encrypt sensitive config fields
+        config = dict(dto.config) if dto.config else {}
+        self._encrypt_config(config, dto.type.value)
+
         connector = Connector(
             workspace_id=workspace_id,
             name=dto.name,
             type=dto.type.value,
-            config=dto.config,
+            config=config,
             status="disconnected",
             tenant_id=uuid.UUID(tenant_id) if tenant_id else None,
             token_ref=token_ref,
@@ -72,14 +87,17 @@ class ConnectorExtService:
         return connector
 
     async def get_decrypted(self, connector_id: uuid.UUID, tenant_id: str | None, db: AsyncSession = None) -> dict:
-        """Get connector with decrypted token_ref for internal use."""
+        """Get connector with decrypted token_ref and config for internal use."""
         connector = await self.get(connector_id, tenant_id, db)
+        # Decrypt sensitive config fields
+        config = dict(connector.config) if connector.config else {}
+        self._decrypt_config(config, connector.type)
         data = {
             "id": connector.id,
             "workspace_id": connector.workspace_id,
             "name": connector.name,
             "type": connector.type,
-            "config": connector.config,
+            "config": config,
             "status": connector.status,
             "tenant_id": connector.tenant_id,
             "token_ref": self._decrypt_credential(connector.token_ref) if connector.token_ref else None,
@@ -94,7 +112,9 @@ class ConnectorExtService:
         if dto.name is not None:
             connector.name = dto.name
         if dto.config is not None:
-            connector.config = dto.config
+            config = dict(dto.config)
+            self._encrypt_config(config, connector.type)
+            connector.config = config
         if hasattr(dto, "token_ref") and dto.token_ref is not None:
             connector.token_ref = self._encrypt_credential(dto.token_ref)
         await db.commit()
@@ -112,16 +132,31 @@ class ConnectorExtService:
 
     @staticmethod
     def _decrypt_credential(ciphertext: str) -> str:
-        """Decrypt a stored credential value."""
+        """Decrypt a stored credential value.
+
+        Raises:
+            ValueError: If decryption fails (corrupted/tampered data).
+        """
         if not ciphertext:
             return ciphertext
         if not is_encrypted(ciphertext):
             return ciphertext
-        try:
-            return decrypt_value(ciphertext)
-        except Exception:
-            # If decryption fails, return as-is (may be legacy unencrypted)
-            return ciphertext
+        return decrypt_value(ciphertext)
+
+    def _encrypt_config(self, config: dict, conn_type: str) -> None:
+        """Encrypt sensitive fields in the config dict in-place."""
+        sensitive_fields = _SENSITIVE_CONFIG_FIELDS.get(conn_type, [])
+        for field in sensitive_fields:
+            if field in config and config[field] and isinstance(config[field], str):
+                config[field] = self._encrypt_credential(config[field])
+
+    def _decrypt_config(self, config: dict, conn_type: str) -> None:
+        """Decrypt sensitive fields in the config dict in-place."""
+        sensitive_fields = _SENSITIVE_CONFIG_FIELDS.get(conn_type, [])
+        for field in sensitive_fields:
+            if field in config and config[field] and isinstance(config[field], str):
+                if is_encrypted(config[field]):
+                    config[field] = self._decrypt_credential(config[field])
 
     async def remove(self, connector_id: uuid.UUID, tenant_id: str | None, db: AsyncSession = None):
         connector = await self.get(connector_id, tenant_id, db)
@@ -130,13 +165,22 @@ class ConnectorExtService:
         return True
 
     async def trigger_sync(self, connector_id: uuid.UUID, tenant_id: str | None, db: AsyncSession = None):
+        """Mark connector as synced.
+
+        NOTE: This is a structural stub — it updates status and timestamp only.
+        Actual data synchronization via connector-specific clients (Gmail, Notion, etc.)
+        is not yet wired. Real sync should call the connector's sync method, handle
+        pagination, and persist fetched records to the memory store.
+        """
         connector = await self.get(connector_id, tenant_id, db)
         now = datetime.now(timezone.utc)
         try:
             connector.last_synced_at = now
             connector.status = "synced"
+            logger.info("connector_sync_trigger", extra={"connector_id": str(connector_id), "connector_type": connector.type})
         except Exception:
             connector.status = "error"
+            logger.exception("connector_sync_trigger_failed", extra={"connector_id": str(connector_id)})
         await db.commit()
         await db.refresh(connector)
         return {
@@ -157,8 +201,11 @@ class ConnectorExtService:
 
     async def test_connection(self, connector_id: uuid.UUID, tenant_id: str | None, db: AsyncSession = None):
         connector = await self.get(connector_id, tenant_id, db)
-        self._validate_config(connector.type, connector.config)
-        url = connector.config.get("url", "")
+        # Decrypt config for connection test
+        config = dict(connector.config) if connector.config else {}
+        self._decrypt_config(config, connector.type)
+        self._validate_config(connector.type, config)
+        url = config.get("url", "")
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(url, timeout=5.0)

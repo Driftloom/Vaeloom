@@ -9,10 +9,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import settings
 from ..models.schema import Webhook, WebhookDelivery
 from ..services.encryption import encrypt_value, decrypt_value, is_encrypted
 
@@ -49,13 +48,19 @@ class WebhookService:
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
+    _ALLOWED_UPDATE_FIELDS = frozenset({"name", "url", "secret", "events", "active", "retry_count", "timeout_ms"})
+
     async def update(self, webhook_id: uuid.UUID, tenant_id: str | None, updates: dict, db: AsyncSession) -> Webhook | None:
         webhook = await self.get(webhook_id, tenant_id, db)
         if not webhook:
             return None
         for key, value in updates.items():
-            if hasattr(webhook, key):
-                setattr(webhook, key, value)
+            if key not in self._ALLOWED_UPDATE_FIELDS:
+                continue
+            # Re-encrypt secret if it's being updated with a new plaintext value
+            if key == "secret" and isinstance(value, str) and not is_encrypted(value):
+                value = encrypt_value(value)
+            setattr(webhook, key, value)
         webhook.updated_at = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(webhook)

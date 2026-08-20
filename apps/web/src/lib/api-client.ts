@@ -794,12 +794,20 @@ export interface ConsentScope {
 
 export interface ConsentGrantRequest {
   scope: string;
-  consent_version: string;
 }
 
 export interface ConsentState {
-  scopes: ConsentScope[];
-  consent_version: string;
+  items: ConsentRecord[];
+}
+
+export interface ConsentRecord {
+  id: string;
+  user_id: string;
+  tenant_id: string | null;
+  scope: string;
+  granted_at: string | null;
+  revoked_at: string | null;
+  ip_address: string | null;
 }
 
 export interface GdprExportResponse {

@@ -64,9 +64,7 @@ export default function SettingsPage() {
       .me()
       .then((res) => {
         const granted: Record<string, boolean> = {};
-        const items =
-          (res as unknown as { items?: Array<{ scope: string; revoked_at: string | null }> })
-            .items ?? [];
+        const items = res?.items ?? [];
         for (const item of items) {
           granted[item.scope] = item.revoked_at === null;
         }
@@ -162,7 +160,7 @@ export default function SettingsPage() {
     setConsentLoading(true);
     try {
       if (grant) {
-        await consentApi.grant({ scope, consent_version: '1.0' });
+        await consentApi.grant({ scope });
       } else {
         await consentApi.revoke(scope);
       }

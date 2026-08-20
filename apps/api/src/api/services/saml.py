@@ -1,10 +1,10 @@
 import base64
 import logging
-import xml.etree.ElementTree as ET
+import os
 from datetime import datetime, timezone
 from typing import Any
 
-from xml.etree.ElementTree import ParseError as XMLParseError
+from lxml import etree as ET
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +144,7 @@ class SAMLProvider:
         try:
             raw = base64.b64decode(saml_response)
             root = ET.fromstring(raw)
-        except (Exception, XMLParseError) as exc:
+        except ET.XMLSyntaxError as exc:
             raise SAMLValidationError(f"Failed to parse SAML response: {exc}") from exc
         if root.tag != f"{{{SAML_PROTOCOL}}}Response":
             raise SAMLValidationError("Root element is not a SAML Response")
@@ -190,9 +190,11 @@ class SAMLProvider:
     def _validate_signature(self, assertion: ET.Element) -> None:
         """Validate the XML digital signature on the SAML assertion.
 
-        Uses signxml if available for cryptographic verification.
-        Falls back to structural validation if signxml is not installed.
-        Raises SAMLValidationError if validation fails or is required but unavailable.
+        Uses signxml for cryptographic verification (required in production).
+        Falls back to structural validation only when SAML_ALLOW Structural_FALLBACK=1
+        is set (development/testing only).
+
+        Raises SAMLValidationError if validation fails or required config is missing.
         """
         sig_el = assertion.find(f".//{{{DSIG_NS}}}Signature")
         if sig_el is None:
@@ -205,9 +207,18 @@ class SAMLProvider:
 
         if self.idp_certificate and _signxml_available():
             _verify_signature_with_signxml(assertion, self.idp_certificate)
-        else:
-            # Structural validation only — no cryptographic verification
+        elif os.environ.get("SAML_ALLOW_STRUCTURAL_FALLBACK") == "1":
+            logger.warning(
+                "SAML structural-only validation in use — NOT cryptographically secure. "
+                "Set signxml in dependencies and provide idp_certificate for production."
+            )
             _verify_signature_manual(assertion, self.idp_certificate or "")
+        else:
+            raise SAMLValidationError(
+                "SAML signature verification requires signxml library and idp_certificate. "
+                "Install signxml>=4.0.4 and set idp_certificate on SAMLProvider. "
+                "Set SAML_ALLOW_STRUCTURAL_FALLBACK=1 only for development/testing."
+            )
 
     def extract_user_info(self, assertion: ET.Element) -> dict[str, Any]:
         result: dict[str, Any] = {}

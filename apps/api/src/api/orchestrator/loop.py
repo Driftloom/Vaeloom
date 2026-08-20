@@ -270,6 +270,10 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
             workspace_id=request.workspace_id,
         )
 
+    logger.warning(
+        "dispatch_unknown_agent",
+        extra={"agent_type": agent_type, "request_id": str(request.id), "action": "fallback"},
+    )
     return agent.fallback()
 
 
