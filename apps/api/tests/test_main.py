@@ -51,6 +51,7 @@ def _patch_prometheus():
     with patch("prometheus_fastapi_instrumentator.Instrumentator") as m:
         m.return_value.instrument.return_value.expose.return_value = None
         yield
+    sys.modules.pop("api.main", None)
 
 
 @pytest.fixture(autouse=True)

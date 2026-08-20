@@ -225,17 +225,26 @@ async def mock_llm(monkeypatch):
 
     fake_embedding = [0.1] * 1536
 
-    async def fake_generate_embedding(self, text: str) -> list[float]:
+    async def fake_generate_embedding(self, text: str, *args, **kwargs) -> list[float]:
         return fake_embedding
 
     async def fake_generate_completion(
         self, messages: list[dict], model: str | None = None,
-        temperature: float = 0.7, max_tokens: int = 4096,
+        temperature: float = 0.7, max_tokens: int = 4096, *args, **kwargs,
     ) -> dict:
         return {"content": "Mock reply", "role": "assistant"}
 
+    async def fake_generate_completion_with_tools(self, messages: list[dict], tools: list[dict], model: str | None = None, temperature: float = 0.7, *args, **kwargs) -> dict:
+        return {"content": "Mock tool reply", "role": "assistant", "tool_calls": [], "usage": {"input_tokens": 10, "output_tokens": 10}}
+
+    async def fake_generate_completion_stream(self, messages: list[dict], model: str | None = None, temperature: float = 0.7, max_tokens: int = 4096, *args, **kwargs):
+        yield {"type": "content", "text": "Mock stream"}
+        yield {"type": "done", "finish_reason": "stop"}
+
     monkeypatch.setattr(LLMService, "generate_embedding", fake_generate_embedding)
     monkeypatch.setattr(LLMService, "generate_completion", fake_generate_completion)
+    monkeypatch.setattr(LLMService, "generate_completion_with_tools", fake_generate_completion_with_tools)
+    monkeypatch.setattr(LLMService, "generate_completion_stream", fake_generate_completion_stream)
 
 
 @pytest_asyncio.fixture(autouse=True)

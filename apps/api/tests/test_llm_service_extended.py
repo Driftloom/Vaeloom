@@ -15,6 +15,8 @@ from api.services.llm_service import LLMService as _LLMService, LLMProviderError
 
 _ORIG_GENERATE_EMBEDDING = _LLMService.generate_embedding
 _ORIG_GENERATE_COMPLETION = _LLMService.generate_completion
+_ORIG_GENERATE_COMPLETION_WITH_TOOLS = _LLMService.generate_completion_with_tools
+_ORIG_GENERATE_COMPLETION_STREAM = _LLMService.generate_completion_stream
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +273,7 @@ class TestGenerateEmbedding:
         monkeypatch.setattr(LLMService, "generate_embedding", _ORIG_GENERATE_EMBEDDING)
 
         svc = LLMService()
-        with pytest.raises(LLMProviderError, match="Anthropic does not support standalone embeddings"):
+        with pytest.raises(LLMProviderError, match="does not support standalone embeddings"):
             await svc.generate_embedding("some text")
 
 
@@ -507,6 +509,7 @@ class TestGenerateCompletionWithTools:
 
         from api.services.llm_service import LLMService
 
+        monkeypatch.setattr(LLMService, "generate_completion_with_tools", _ORIG_GENERATE_COMPLETION_WITH_TOOLS)
         monkeypatch.setattr(httpx, "AsyncClient", _client_cls(post_return=_openai_tool_resp()))
 
         svc = LLMService()
@@ -529,6 +532,7 @@ class TestGenerateCompletionWithTools:
 
         from api.services.llm_service import LLMService
 
+        monkeypatch.setattr(LLMService, "generate_completion_with_tools", _ORIG_GENERATE_COMPLETION_WITH_TOOLS)
         monkeypatch.setattr(httpx, "AsyncClient", _client_cls(post_return=_anthropic_tool_resp()))
 
         svc = LLMService()
@@ -714,6 +718,7 @@ class TestGenerateCompletionStream:
             'data: {"choices":[{"delta":{},"finish_reason":"stop","index":0}]}',
             "data: [DONE]",
         ]
+        monkeypatch.setattr(LLMService, "generate_completion_stream", _ORIG_GENERATE_COMPLETION_STREAM)
         monkeypatch.setattr(httpx, "AsyncClient", _client_cls(stream_lines=lines))
 
         svc = LLMService()
@@ -739,6 +744,7 @@ class TestGenerateCompletionStream:
             'data: {"type":"content_block_delta","delta":{"text":" world"}}',
             'data: {"type":"message_stop"}',
         ]
+        monkeypatch.setattr(LLMService, "generate_completion_stream", _ORIG_GENERATE_COMPLETION_STREAM)
         monkeypatch.setattr(httpx, "AsyncClient", _client_cls(stream_lines=lines))
 
         svc = LLMService()
@@ -755,6 +761,7 @@ class TestGenerateCompletionStream:
         from api.services.llm_service import LLMService
 
         svc = LLMService()
+        svc.api_key = "sk-test"
         lines = [
             'data: {"choices":[{"delta":{"role":"assistant"},"index":0}]}',
             'data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":null,"index":0}]}',
@@ -777,6 +784,7 @@ class TestGenerateCompletionStream:
         from api.services.llm_service import LLMService
 
         svc = LLMService()
+        svc.api_key = "sk-test"
         lines = [
             ": keep-alive comment",
             'data: {"choices":[{"delta":{"content":"A"},"finish_reason":null,"index":0}]}',
@@ -796,6 +804,7 @@ class TestGenerateCompletionStream:
         from api.services.llm_service import LLMService, LLMProviderError
 
         svc = LLMService()
+        svc.api_key = "sk-test"
         monkeypatch.setattr(httpx, "AsyncClient", _client_cls(
             stream_lines=["data: ignored"], stream_status=400,
         ))
@@ -811,6 +820,7 @@ class TestGenerateCompletionStream:
         from api.services.llm_service import LLMService
 
         svc = LLMService()
+        svc.api_key = "sk-ant-test"
         lines = [
             'data: {"type":"content_block_delta","delta":{"text":"Hello"}}',
             'data: {"type":"content_block_delta","delta":{"text":" world"}}',
@@ -832,6 +842,7 @@ class TestGenerateCompletionStream:
         from api.services.llm_service import LLMService
 
         svc = LLMService()
+        svc.api_key = "sk-ant-test"
         lines = [
             'data: {"type":"content_block_delta","delta":{"text":"Answer"}}',
             'data: {"type":"message_stop"}',
@@ -863,6 +874,7 @@ class TestGenerateCompletionStream:
         from api.services.llm_service import LLMService
 
         svc = LLMService()
+        svc.api_key = "sk-ant-test"
         lines = [
             ": keepalive",
             'data: {"type":"content_block_delta","delta":{"text":"Hi"}}',
@@ -881,6 +893,7 @@ class TestGenerateCompletionStream:
         from api.services.llm_service import LLMService, LLMProviderError
 
         svc = LLMService()
+        svc.api_key = "sk-ant-test"
         monkeypatch.setattr(httpx, "AsyncClient", _client_cls(
             stream_lines=["data: ignored"], stream_status=500,
         ))
