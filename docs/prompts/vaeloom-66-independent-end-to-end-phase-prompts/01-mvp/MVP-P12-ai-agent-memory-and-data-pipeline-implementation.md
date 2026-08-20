@@ -70,6 +70,135 @@ The executing team must re-check the latest revision and applicability at phase 
 Record each selected standard, exact version/date, applicability, decision owner, control mapping and verification evidence in the phase source register.
 
 
+## Mandatory AI Research + Model Selection Protocol
+
+MVP-P12 MUST treat model selection as an evidence-backed engineering
+decision.
+
+The executor MUST NOT select a model solely from benchmark reputation,
+model memory, marketing claims or personal preference.
+
+For every production model/provider considered, evaluate:
+
+- capability
+- context window
+- reasoning
+- coding
+- tool calling
+- structured output
+- long-horizon agent behavior
+- retrieval quality
+- factuality
+- safety
+- prompt-injection resistance
+- tool-use safety
+- latency
+- throughput
+- cost
+- rate limits
+- availability
+- data-use policy
+- retention policy
+- privacy implications
+- deployment options
+- fallback options
+- version stability
+- deprecation policy
+- observability
+- evaluation reproducibility
+
+Record the result in the AI Model Decision Register.
+
+### AI Model Decision Register
+
+| Model | Version | Role | Capability | Safety | Cost | Latency |
+|---|---|---|---|---|---|---|
+| ... | ... | ... | ... | ... | ... | ... |
+
+Every production model MUST have:
+
+- owner
+- version
+- provider
+- model identifier
+- intended task
+- allowed tools
+- allowed data
+- evaluation threshold
+- fallback model
+- kill switch
+- cost budget
+- latency target
+- safety threshold
+- retirement condition
+
+## Mandatory Web Search and Deep Research
+
+P12 MUST perform external research before making any material
+AI, agent, memory, retrieval, security, privacy, model, evaluation,
+provider or data-pipeline decision.
+
+### Research Level 1 — Targeted
+
+Use official documentation to verify:
+
+- current API behavior
+- model capabilities
+- SDK behavior
+- protocol versions
+- dependency behavior
+- current security guidance
+
+### Research Level 2 — Comparative
+
+Required when selecting:
+
+- model
+- provider
+- vector database
+- graph database
+- embedding model
+- reranker
+- evaluation framework
+- agent framework
+- queue/pipeline strategy
+
+Compare multiple credible sources and alternatives.
+
+### Research Level 3 — Deep Research
+
+Mandatory for:
+
+- model selection
+- agent autonomy
+- memory architecture
+- retrieval security
+- prompt injection
+- memory poisoning
+- tool authorization
+- sensitive-data handling
+- model/provider data policies
+- AI governance
+- privacy/compliance
+- production fallback
+- consequential actions
+
+Deep research MUST:
+
+1. Define the question.
+2. Define the decision.
+3. Search multiple sources.
+4. Prefer primary sources.
+5. Cross-check claims.
+6. Identify conflicts.
+7. Evaluate Vaeloom applicability.
+8. Compare alternatives.
+9. Document recommendation.
+10. Document rejected alternatives.
+11. Define risks.
+12. Define verification tests.
+13. Record evidence.
+
 ## Mandatory Previous-Phase Forensic Audit and Entry Decision
 
 Do **not** assume `MVP-P11` passed because a document says “complete.” Re-audit its actual artifacts and evidence before executing this phase.

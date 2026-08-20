@@ -30,7 +30,7 @@
 | MVP-P09 UI/UX and Design System                         | COMPLETE (gap closure 2026-08-17) | docs/phases/mvp-p09/ - original gate 88/100 (2026-08-10); gap closure: G1+G2 (RLS migration 0013), G3 (memory write path), G4 (approval gate), G5 (workspace isolation), G6 (webhook encryption), G10 (auth guards), G11 (KG tenant isolation); 286/286 tests pass; gate report `gap-closure-gate-report.md` |
 | MVP-P10 Frontend Implementation | ✅ GO (accepted by USER 2026-08-19) | docs/phases/mvp-p10/ - re-execution + deep audit: gate 09 = **96/100**, PHASE APPROVED (9 commits; 18 issues fixed: 3 critical, 6 high, 9 medium; tenant isolation, CSRF flags, security headers; 32/32 tests + build + typecheck + lint); handoff 10-handoff-to-p11.md live; P11 started on user command |
 | MVP-P11 Backend Implementation | ✅ GO (accepted by USER 2026-08-20; corrected 2026-08-20) | docs/phases/mvp-p11/ - gate 09 = **90.5/100**, PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY (arithmetic corrected from 96.0 Σ Score → 90.5 Σ(Score/10×Weight) per §28; SAML signature validation enforced + crypto-verified (lxml fix), connector credential encryption added, ApprovalCard + Consent toggles wired to live APIs, 287 tests verified across 20 subsets, 11-file evidence, 2343 collected; handoff 10-handoff-to-p12.md live; P12 starts on user command with restrictions) |
-| MVP-P12 AI, Agent, Memory, Data-Pipeline Implementation | 🔄 IN PROGRESS (2026-08-20) | docs/phases/mvp-p12/ - gate 09 = **94/100**, PHASE CONDITIONALLY APPROVED; 5 workstreams executed: circuit breaker+rate limiter wired into agent loop, kill switches, document chunking, model routing+cost tracking, eval framework; 160/160 tests pass; handoff 10-handoff-to-p13.md live; P13 starts on user command |
+| MVP-P12 AI, Agent, Memory, Data-Pipeline Implementation | ⚠️ GO (re-scored 2026-08-20) | docs/phases/mvp-p12/ - gate 09 = **88.4/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY (arithmetic corrected from claimed 94.6; remediation: 25 failures→0, 68 new tests, eval executed through orchestrator, BYOK provider keys, OpenAPI 88 paths; full suite 2405 passed/0 failed; handoff 10-handoff-to-p13.md live; P13 starts on user command) |
 | MVP-P13 Security, Privacy, Compliance                   | ⬜ NOT STARTED |                                                                                                                                                                               |
 | MVP-P14 Testing and Quality Engineering                 | ⬜ NOT STARTED |                                                                                                                                                                               |
 | MVP-P15 Performance, Reliability, Scalability           | ⬜ NOT STARTED |                                                                                                                                                                               |
@@ -114,11 +114,14 @@
    APIs, 287 tests verified across 20 subsets, 11-file evidence package,
    2343 collected; handoff `10-handoff-to-p12.md` live; P12 proceeds with
    restrictions: in-memory infra, SAML replay P13, tenant cleanup P14).
-10. **MVP-P12 CLOSED 2026-08-20** — Phase executed:
-   `PHASE CONDITIONALLY APPROVED — 94/100` (gate `09-gate-report.md`;
-   circuit breaker + rate limiter wired, kill switches, chunking, model
-   routing + cost tracking, eval framework; 160/160 tests pass; handoff
-   `10-handoff-to-p13.md` live).
+10. **MVP-P12 CLOSED 2026-08-20** — Phase executed (re-scored after zero-trust
+   audit): gate `09-gate-report.md` **88.4/100** — PHASE CONDITIONALLY APPROVED -
+   RESTRICTIONS APPLY (arithmetic corrected from claimed 94.6 → real Σ(Score/10xWeight)
+   was 85.6; remediation: 25 full-suite failures → 0, 68 new tests, eval framework
+   EXECUTED through orchestrator (12 cases), BYOK provider keys delivered,
+   OpenAPI regenerated 88 paths, test-pollution leak fixed; full suite
+   2405 passed / 4 skipped / 2 xfailed / 0 failed; handoff `10-handoff-to-p13.md`
+   live; P13 starts on user command).
 11. All other phases (P13–P21, CONT-P00…21, ENT-P00…21):
    **⬜ NOT STARTED — DO NOT GO** until their predecessor gate passes and
    the user commands start.
