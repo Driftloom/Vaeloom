@@ -840,6 +840,53 @@ export const gdprApi = {
   },
 };
 
+// ─── Approval ───────────────────────────────────────────────────────────────
+
+export interface ApprovalItem {
+  id: string;
+  workspace_id: string | null;
+  agent_name: string;
+  action_type: string;
+  payload: Record<string, unknown>;
+  reason: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+  requested_by: string | null;
+  decided_by: string | null;
+  decision_note: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  decided_at: string | null;
+}
+
+export interface ApprovalListResponse {
+  items: ApprovalItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export const approvalApi = {
+  list(params?: {
+    status?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<ApprovalListResponse> {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.page_size) query.set('page_size', String(params.page_size));
+    const qs = query.toString();
+    return apiClient.get<ApprovalListResponse>(`/approvals${qs ? `?${qs}` : ''}`);
+  },
+  approve(id: string, note?: string): Promise<ApprovalItem> {
+    return apiClient.post<ApprovalItem>(`/approvals/${encodeURIComponent(id)}/approve`, { note });
+  },
+  reject(id: string, note?: string): Promise<ApprovalItem> {
+    return apiClient.post<ApprovalItem>(`/approvals/${encodeURIComponent(id)}/reject`, { note });
+  },
+};
+
 // ─── Notification ────────────────────────────────────────────────────────────
 
 export interface SendNotificationRequest {

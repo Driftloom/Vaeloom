@@ -1,8 +1,9 @@
 'use client';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '../../../../lib/api';
+import { consentApi } from '../../../../lib/api-client';
 import { ErrorState } from '@/components/shared/ErrorState';
 import type { Agent, PaginatedResponse } from '@vaeloom/shared-types';
 
@@ -54,6 +55,25 @@ export default function SettingsPage() {
   >({});
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteReceipt, setDeleteReceipt] = useState<string | null>(null);
+
+  const [consentState, setConsentState] = useState<Record<string, boolean>>({});
+  const [consentLoading, setConsentLoading] = useState(false);
+
+  useEffect(() => {
+    consentApi
+      .me()
+      .then((res) => {
+        const granted: Record<string, boolean> = {};
+        const items =
+          (res as unknown as { items?: Array<{ scope: string; revoked_at: string | null }> })
+            .items ?? [];
+        for (const item of items) {
+          granted[item.scope] = item.revoked_at === null;
+        }
+        setConsentState(granted);
+      })
+      .catch(() => {});
+  }, []);
 
   const getAutonomy = useCallback(
     (agent: Agent): string => {
@@ -136,6 +156,24 @@ export default function SettingsPage() {
 
   const getConnectorPerm = (id: string, perm: 'read' | 'write'): boolean => {
     return connectorPerms[id]?.[perm] ?? true;
+  };
+
+  const handleConsentToggle = async (scope: string, grant: boolean) => {
+    setConsentLoading(true);
+    try {
+      if (grant) {
+        await consentApi.grant({ scope, consent_version: '1.0' });
+      } else {
+        await consentApi.revoke(scope);
+      }
+      setConsentState((prev) => ({ ...prev, [scope]: grant }));
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : `Failed to ${grant ? 'grant' : 'revoke'} consent`,
+      );
+    } finally {
+      setConsentLoading(false);
+    }
   };
 
   if (agentsError) {
@@ -302,7 +340,9 @@ export default function SettingsPage() {
               </div>
               <input
                 type="checkbox"
-                defaultChecked
+                checked={consentState['data_processing'] ?? true}
+                disabled={consentLoading}
+                onChange={(e) => handleConsentToggle('data_processing', e.target.checked)}
                 className="rounded border-border text-primary focus:ring-primary"
                 aria-label="Gmail read consent"
               />
@@ -316,7 +356,9 @@ export default function SettingsPage() {
               </div>
               <input
                 type="checkbox"
-                defaultChecked
+                checked={consentState['agent_access'] ?? true}
+                disabled={consentLoading}
+                onChange={(e) => handleConsentToggle('agent_access', e.target.checked)}
                 className="rounded border-border text-primary focus:ring-primary"
                 aria-label="Resume data consent"
               />

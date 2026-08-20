@@ -41,6 +41,7 @@ def _make_connector(**overrides):
     c.status = overrides.get("status", "disconnected")
     c.tenant_id = overrides.get("tenant_id")
     c.last_synced_at = overrides.get("last_synced_at")
+    c.token_ref = overrides.get("token_ref")
     return c
 
 
@@ -61,6 +62,7 @@ class TestConnectorExtService:
         dto.type = MagicMock()
         dto.type.value = "rest"
         dto.config = {"url": "https://api.example.com"}
+        dto.token_ref = None
         return dto
 
     # ── create ───────────────────────────────────────────────────────
@@ -195,6 +197,7 @@ class TestConnectorExtService:
         dto = MagicMock()
         dto.name = "Updated"
         dto.config = {"new": "config"}
+        dto.token_ref = None
         with patch.object(service, 'get', new=AsyncMock()) as mock_get:
             mock_get.return_value = conn
             result = await service.update(conn.id, dto, None, mock_db)
@@ -208,6 +211,7 @@ class TestConnectorExtService:
         dto = MagicMock()
         dto.name = "Renamed"
         dto.config = None
+        dto.token_ref = None
         with patch.object(service, 'get', new=AsyncMock()) as mock_get:
             mock_get.return_value = conn
             result = await service.update(conn.id, dto, None, mock_db)
@@ -218,6 +222,7 @@ class TestConnectorExtService:
         dto = MagicMock()
         dto.name = None
         dto.config = {"url": "https://new.url"}
+        dto.token_ref = None
         with patch.object(service, 'get', new=AsyncMock()) as mock_get:
             mock_get.return_value = conn
             result = await service.update(conn.id, dto, None, mock_db)
@@ -228,6 +233,7 @@ class TestConnectorExtService:
         dto = MagicMock()
         dto.name = None
         dto.config = None
+        dto.token_ref = None
         with patch.object(service, 'get', new=AsyncMock()) as mock_get:
             mock_get.return_value = conn
             result = await service.update(conn.id, dto, None, mock_db)

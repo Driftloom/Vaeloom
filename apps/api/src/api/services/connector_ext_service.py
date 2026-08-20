@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..models.schema import Connector, Workspace
+from .encryption import encrypt_value, decrypt_value, is_encrypted
 
 
 class ConnectorExtService:
@@ -24,6 +25,10 @@ class ConnectorExtService:
         if not workspace_id:
             workspace_id = uuid.uuid4()
 
+        token_ref = None
+        if hasattr(dto, "token_ref") and dto.token_ref:
+            token_ref = self._encrypt_credential(dto.token_ref)
+
         connector = Connector(
             workspace_id=workspace_id,
             name=dto.name,
@@ -31,6 +36,7 @@ class ConnectorExtService:
             config=dto.config,
             status="disconnected",
             tenant_id=uuid.UUID(tenant_id) if tenant_id else None,
+            token_ref=token_ref,
         )
         db.add(connector)
         await db.commit()
@@ -65,15 +71,57 @@ class ConnectorExtService:
             raise HTTPException(404, "Connector not found")
         return connector
 
+    async def get_decrypted(self, connector_id: uuid.UUID, tenant_id: str | None, db: AsyncSession = None) -> dict:
+        """Get connector with decrypted token_ref for internal use."""
+        connector = await self.get(connector_id, tenant_id, db)
+        data = {
+            "id": connector.id,
+            "workspace_id": connector.workspace_id,
+            "name": connector.name,
+            "type": connector.type,
+            "config": connector.config,
+            "status": connector.status,
+            "tenant_id": connector.tenant_id,
+            "token_ref": self._decrypt_credential(connector.token_ref) if connector.token_ref else None,
+            "last_synced_at": connector.last_synced_at,
+            "created_at": connector.created_at,
+            "updated_at": connector.updated_at,
+        }
+        return data
+
     async def update(self, connector_id: uuid.UUID, dto, tenant_id: str | None, db: AsyncSession = None):
         connector = await self.get(connector_id, tenant_id, db)
         if dto.name is not None:
             connector.name = dto.name
         if dto.config is not None:
             connector.config = dto.config
+        if hasattr(dto, "token_ref") and dto.token_ref is not None:
+            connector.token_ref = self._encrypt_credential(dto.token_ref)
         await db.commit()
         await db.refresh(connector)
         return connector
+
+    @staticmethod
+    def _encrypt_credential(plaintext: str) -> str:
+        """Encrypt a credential value before storage."""
+        if not plaintext:
+            return plaintext
+        if is_encrypted(plaintext):
+            return plaintext
+        return encrypt_value(plaintext)
+
+    @staticmethod
+    def _decrypt_credential(ciphertext: str) -> str:
+        """Decrypt a stored credential value."""
+        if not ciphertext:
+            return ciphertext
+        if not is_encrypted(ciphertext):
+            return ciphertext
+        try:
+            return decrypt_value(ciphertext)
+        except Exception:
+            # If decryption fails, return as-is (may be legacy unencrypted)
+            return ciphertext
 
     async def remove(self, connector_id: uuid.UUID, tenant_id: str | None, db: AsyncSession = None):
         connector = await self.get(connector_id, tenant_id, db)

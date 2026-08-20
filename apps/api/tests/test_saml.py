@@ -84,6 +84,7 @@ class TestValidateAssertion:
         provider = SAMLProvider(
             expected_issuer="https://idp.example.com",
             allowed_audiences=["https://sp.example.com"],
+            require_signature=False,
         )
         encoded = _build_saml_response()
         assertion = provider.parse_saml_response(encoded)
@@ -93,14 +94,14 @@ class TestValidateAssertion:
         assert "Admins" in info["groups"]
 
     def test_rejects_issuer_mismatch(self):
-        provider = SAMLProvider(expected_issuer="https://wrong-issuer.com")
+        provider = SAMLProvider(expected_issuer="https://wrong-issuer.com", require_signature=False)
         encoded = _build_saml_response()
         assertion = provider.parse_saml_response(encoded)
         with pytest.raises(SAMLValidationError, match="Issuer mismatch"):
             provider.validate_assertion(assertion)
 
     def test_rejects_expired_assertion(self):
-        provider = SAMLProvider(expected_issuer="https://idp.example.com")
+        provider = SAMLProvider(expected_issuer="https://idp.example.com", require_signature=False)
         past = datetime.now(timezone.utc) - timedelta(hours=2)
         encoded = _build_saml_response(
             not_before=(past - timedelta(hours=1)).isoformat(),
@@ -111,7 +112,7 @@ class TestValidateAssertion:
             provider.validate_assertion(assertion)
 
     def test_rejects_future_assertion(self):
-        provider = SAMLProvider(expected_issuer="https://idp.example.com")
+        provider = SAMLProvider(expected_issuer="https://idp.example.com", require_signature=False)
         future = datetime.now(timezone.utc) + timedelta(hours=2)
         encoded = _build_saml_response(
             not_before=future.isoformat(),
@@ -125,10 +126,21 @@ class TestValidateAssertion:
         provider = SAMLProvider(
             expected_issuer="https://idp.example.com",
             allowed_audiences=["https://other-sp.com"],
+            require_signature=False,
         )
         encoded = _build_saml_response(audience="https://sp.example.com")
         assertion = provider.parse_saml_response(encoded)
         with pytest.raises(SAMLValidationError, match="Audience"):
+            provider.validate_assertion(assertion)
+
+    def test_rejects_missing_signature_when_required(self):
+        provider = SAMLProvider(
+            expected_issuer="https://idp.example.com",
+            require_signature=True,
+        )
+        encoded = _build_saml_response()
+        assertion = provider.parse_saml_response(encoded)
+        with pytest.raises(SAMLValidationError, match="no ds:Signature"):
             provider.validate_assertion(assertion)
 
 
