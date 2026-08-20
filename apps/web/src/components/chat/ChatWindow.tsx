@@ -522,42 +522,11 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             ＋ New
           </button>
         </div>
-        <div className="px-3 py-3 border-b border-border/40">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-mono tracking-widest text-text-dim">ORCHESTRATED SKILLS</p>
-            <span className="text-xs font-mono text-text-dim">{canonical.length} specialists</span>
-          </div>
-          <p className="text-xs text-text-dim mb-2 leading-relaxed">
-            Single chat. Orchestrator auto-routes to the right specialist — planning, research & 8
-            more. No separate chat per agent.
+        <div className="px-3 py-2 border-b border-border/40">
+          <p className="text-xs text-text-dim">
+            Single agentic chat — just ask. Orchestrator routes to planning, research & 8
+            specialists behind the scenes.
           </p>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              onClick={() => setSelected('auto')}
-              className={`rounded-full px-3 py-1 text-xs border ${selected === 'auto' ? 'bg-white text-black border-white' : 'bg-surface hover:bg-surface-hover border-border/50 text-text-muted'}`}
-            >
-              ◈ Auto
-            </button>
-            {canonical.map((a) => (
-              <button
-                key={a.name}
-                onClick={() => {
-                  setSelected(a.name);
-                  inputRef.current?.focus();
-                }}
-                className={`rounded-full px-3 py-1 text-xs border capitalize ${selected === a.name ? 'bg-white text-black border-white' : 'bg-surface hover:bg-surface-hover border-border/50 text-text-muted'}`}
-              >
-                {a.name.replace('_', ' ')}
-              </button>
-            ))}
-          </div>
-          <div className="mt-3 rounded-lg bg-surface/50 border border-border/30 px-2.5 py-2">
-            <p className="text-xs font-medium text-text">Featured: Planning & Research</p>
-            <p className="text-xs text-text-dim mt-0.5">
-              Build roadmaps, milestones, research synthesis — orchestrator picks them
-              automatically, or @mention.
-            </p>
-          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {threads.length === 0 ? (
