@@ -11,6 +11,7 @@ from api.models.schema import Document, DocumentVersion
 
 from .dedup import check_dedup
 from .parsers import UnsupportedFormatError, parse_document
+from .chunking import chunk_text, TextChunk
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,17 @@ async def run_pipeline(
                     logger.info(f"Created new document {document_id} with version 1")
                     version_id = str(first_version.id)
 
-        # 5. Publish event (placeholder — real event bus at P12)
+        # 5. Chunk document text for embedding/retrieval
+        chunks: list[TextChunk] = []
+        if parsed_doc.content:
+            chunks = chunk_text(
+                text=parsed_doc.content,
+                source_document_id=str(document_id),
+                source_version_id=version_id,
+            )
+            logger.info("Chunked document into %d chunks", len(chunks))
+
+        # 6. Publish event (placeholder — real event bus at P12)
         logger.info(f"Published event: ingest.completed for {document_id}")
 
         return {

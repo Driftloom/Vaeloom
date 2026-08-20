@@ -5,6 +5,12 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+# Context window defaults
+DEFAULT_MAX_CONTEXT_TOKENS = 8000
+SYSTEM_PROMPT_TOKENS = 500
+RESPONSE_TOKENS = 1000
+
+
 class RetrievedMemory(BaseModel):
     id: str
     content: str
@@ -247,20 +253,50 @@ async def rerank(results: List[RetrievedMemory], query: str, limit: int) -> List
     sorted_results = sorted(deduped, key=lambda x: x.relevance_score, reverse=True)
     return sorted_results[:limit]
 
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate (4 chars per token for English)."""
+    return len(text) // 4
+
+
+def fit_to_context_window(
+    results: List[RetrievedMemory],
+    max_context_tokens: int = DEFAULT_MAX_CONTEXT_TOKENS,
+) -> List[RetrievedMemory]:
+    """Filter results to fit within LLM context window.
+
+    Keeps highest-relevance items first, then re-sorts by original order
+    for coherence.
+    """
+    available = max_context_tokens - SYSTEM_PROMPT_TOKENS - RESPONSE_TOKENS
+    if available <= 0:
+        return []
+
+    selected = []
+    used_tokens = 0
+    for r in results:
+        chunk_tokens = _estimate_tokens(r.content)
+        if used_tokens + chunk_tokens <= available:
+            selected.append(r)
+            used_tokens += chunk_tokens
+    return selected
+
+
 async def retrieve(
     query: str,
     workspace_id: str,
     strategy: Literal["vector", "keyword", "graph", "hybrid"] = "hybrid",
     limit: int = 10,
+    max_context_tokens: int = DEFAULT_MAX_CONTEXT_TOKENS,
 ) -> List[RetrievedMemory]:
     logger.info(f"Retrieving memories for '{query}' using '{strategy}' strategy")
 
     if strategy == "vector":
-        return await vector_search(query, workspace_id, limit)
+        results = await vector_search(query, workspace_id, limit)
     elif strategy == "keyword":
-        return await keyword_search(query, workspace_id, limit)
+        results = await keyword_search(query, workspace_id, limit)
     elif strategy == "graph":
-        return await graph_traversal(query, workspace_id, limit)
+        results = await graph_traversal(query, workspace_id, limit)
     elif strategy == "hybrid":
         vector_results = await vector_search(query, workspace_id, limit)
         keyword_results = await keyword_search(query, workspace_id, limit)
@@ -272,6 +308,9 @@ async def retrieve(
             if r.id not in seen:
                 seen.add(r.id)
                 combined.append(r)
-        return await rerank(combined, query, limit=limit)
+        results = await rerank(combined, query, limit=limit)
+    else:
+        results = []
 
-    return []
+    # Fit results to context window
+    return fit_to_context_window(results, max_context_tokens)

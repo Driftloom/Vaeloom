@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import time
 import uuid
 from typing import Any, Dict, Optional
 
@@ -6,8 +8,26 @@ from sqlalchemy import text
 
 from .state import LoopState, load_or_create_state, save_checkpoint
 from .base import BaseAgent
+from ..infrastructure.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
+from ..infrastructure.agent_limits import AgentRateLimiter, AgentRateLimitError
+from ..config import settings
 
 logger = logging.getLogger(__name__)
+
+# ── Shared Infrastructure ──────────────────────────────────────────
+
+_circuit_breakers: dict[str, CircuitBreaker] = {}
+_rate_limiter = AgentRateLimiter()
+
+
+def _get_circuit_breaker(agent_name: str) -> CircuitBreaker:
+    if agent_name not in _circuit_breakers:
+        _circuit_breakers[agent_name] = CircuitBreaker(
+            failure_threshold=3,
+            recovery_timeout=30.0,
+            name=agent_name,
+        )
+    return _circuit_breakers[agent_name]
 
 
 # ── Approval Lookup ────────────────────────────────────────────────
@@ -128,98 +148,147 @@ async def act_phase(plan: Dict[str, Any], request: AgentRequest) -> Dict[str, An
     agent = request.agent
     message = plan.get("message", request.message)
     agent_type = type(agent).__name__
+    agent_name = request.agent_name
 
     logger.info(f"ACT: dispatching to {agent_type}")
 
+    # ── Rate limit check ────────────────────────────────────────
+    if not await _rate_limiter.acquire(agent_name):
+        return {
+            "agent_name": agent_name,
+            "action": "error",
+            "confidence": 0.0,
+            "result": {
+                "summary": f"Rate limit exceeded for agent '{agent_name}'",
+                "details": None,
+                "proposals": [],
+                "questions": [],
+            },
+        }
+
+    # ── Circuit breaker + timeout ────────────────────────────────
+    cb = _get_circuit_breaker(agent_name)
+    timeout = settings.agent_timeout_seconds
+
     try:
-        if agent_type == "OrganizationAgent":
-            docs = [{"id": f"doc_{request.id}", "filename": message}]
-            return await agent.execute(docs)
-
-        if agent_type == "ResumeAgent":
-            profile = {
-                "name": "User",
-                "email": "user@example.com",
-                "education": [],
-                "experience": [],
-                "skills": [message] if message else [],
-            }
-            return await agent.execute(profile)
-
-        if agent_type == "ATSAgent":
-            parts = message.split(" vs ", 1) if " vs " in message.lower() else (message, "")
-            return await agent.score(parts[0].strip(), parts[1].strip() if len(parts) > 1 else "")
-
-        if agent_type == "JobSearchAgent":
-            keywords = [w for w in message.split() if len(w) > 2]
-            return await agent.search(keywords=keywords, user_skills=[], rejected_job_ids=[])
-
-        if agent_type == "ApplicationAgent":
-            job = {"id": f"job_{request.id}", "title": message, "company": "Target Company"}
-            # CRITICAL FIX: Look up approval decision using request.agent_name
-            approval = await lookup_approval(
-                workspace_id=request.workspace_id,
-                agent_name=request.agent_name,
-                action_type="job_application",
-            )
-            has_approval = approval is not None and approval.get("status") == "APPROVED"
-            if has_approval:
-                logger.info(f"APPROVAL FOUND: {approval['id']} for job {job['id']}")
-            else:
-                logger.info("NO APPROVAL: Application will require user approval")
-            return await agent.prepare(
-                job=job, resume_text="", user_profile={"name": "User", "skills": []}, has_approval=has_approval
-            )
-
-        if agent_type in ("GmailAgent", "GmailAgentHandler"):
-            emails = [{"id": f"email_{request.id}", "subject": message, "sender": "unknown", "body": message}]
-            # Approval gate for email sends (draft-only without approval)
-            approval = await lookup_approval(
-                workspace_id=request.workspace_id,
-                agent_name=request.agent_name,
-                action_type="email_send",
-            )
-            has_approval = approval is not None and approval.get("status") == "APPROVED"
-            return await agent.classify_emails(emails=emails, has_approval=has_approval)
-
-        if agent_type in ("DriveAgent", "DriveAgentHandler"):
-            # Approval gate for file operations
-            approval = await lookup_approval(
-                workspace_id=request.workspace_id,
-                agent_name=request.agent_name,
-                action_type="file_modify",
-            )
-            has_approval = approval is not None and approval.get("status") == "APPROVED"
-            return await agent.process(request, has_approval=has_approval)
-
-        if agent_type == "SchedulerAgent":
-            # Approval gate for calendar writes
-            approval = await lookup_approval(
-                workspace_id=request.workspace_id,
-                agent_name=request.agent_name,
-                action_type="calendar_write",
-            )
-            has_approval = approval is not None and approval.get("status") == "APPROVED"
-            return await agent.check_conflicts(events=[], has_approval=has_approval)
-
-        if agent_type in ("MemoryAgent", "MemoryAgentHandler"):
-            return await agent.execute(
-                content=message,
-                source_type="user_input",
-                source_id=f"input_{request.id}",
-                workspace_id=request.workspace_id,
-            )
-
+        result = await asyncio.wait_for(
+            cb.call(_dispatch_agent(agent_type, agent, message, request)),
+            timeout=timeout,
+        )
+        return result
+    except CircuitBreakerOpenError:
+        logger.warning(f"Circuit breaker OPEN for {agent_name}, using fallback")
         return await agent.fallback()
-
+    except asyncio.TimeoutError:
+        logger.error(f"Agent {agent_name} timed out after {timeout}s")
+        return {
+            "agent_name": agent_name,
+            "action": "error",
+            "confidence": 0.0,
+            "result": {
+                "summary": f"Agent '{agent_name}' timed out after {timeout}s",
+                "details": None,
+                "proposals": [],
+                "questions": [],
+            },
+        }
+    except AgentRateLimitError:
+        return {
+            "agent_name": agent_name,
+            "action": "error",
+            "confidence": 0.0,
+            "result": {
+                "summary": f"Rate limit exceeded for agent '{agent_name}'",
+                "details": None,
+                "proposals": [],
+                "questions": [],
+            },
+        }
     except Exception as exc:
         logger.exception(f"ACT phase failed: {exc}")
         return {
-            "agent_name": request.agent_name,
+            "agent_name": agent_name,
             "action": "error",
             "confidence": 0.0,
             "result": {"summary": f"Execution error: {exc}", "details": None, "proposals": [], "questions": []},
         }
+    finally:
+        await _rate_limiter.release(agent_name)
+
+
+def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: AgentRequest):
+    """Return a coroutine for the given agent type (used by circuit breaker)."""
+    if agent_type == "OrganizationAgent":
+        docs = [{"id": f"doc_{request.id}", "filename": message}]
+        return agent.execute(docs)
+
+    if agent_type == "ResumeAgent":
+        profile = {
+            "name": "User",
+            "email": "user@example.com",
+            "education": [],
+            "experience": [],
+            "skills": [message] if message else [],
+        }
+        return agent.execute(profile)
+
+    if agent_type == "ATSAgent":
+        parts = message.split(" vs ", 1) if " vs " in message.lower() else (message, "")
+        return agent.score(parts[0].strip(), parts[1].strip() if len(parts) > 1 else "")
+
+    if agent_type == "JobSearchAgent":
+        keywords = [w for w in message.split() if len(w) > 2]
+        return agent.search(keywords=keywords, user_skills=[], rejected_job_ids=[])
+
+    if agent_type == "ApplicationAgent":
+        job = {"id": f"job_{request.id}", "title": message, "company": "Target Company"}
+        return _dispatch_with_approval(request, agent, "job_application", lambda has_approval: agent.prepare(
+            job=job, resume_text="", user_profile={"name": "User", "skills": []}, has_approval=has_approval
+        ))
+
+    if agent_type in ("GmailAgent", "GmailAgentHandler"):
+        emails = [{"id": f"email_{request.id}", "subject": message, "sender": "unknown", "body": message}]
+        return _dispatch_with_approval(request, agent, "email_send", lambda has_approval: agent.classify_emails(
+            emails=emails, has_approval=has_approval
+        ))
+
+    if agent_type in ("DriveAgent", "DriveAgentHandler"):
+        return _dispatch_with_approval(request, agent, "file_modify", lambda has_approval: agent.process(
+            request, has_approval=has_approval
+        ))
+
+    if agent_type == "SchedulerAgent":
+        return _dispatch_with_approval(request, agent, "calendar_write", lambda has_approval: agent.check_conflicts(
+            events=[], has_approval=has_approval
+        ))
+
+    if agent_type in ("MemoryAgent", "MemoryAgentHandler"):
+        return agent.execute(
+            content=message,
+            source_type="user_input",
+            source_id=f"input_{request.id}",
+            workspace_id=request.workspace_id,
+        )
+
+    return agent.fallback()
+
+
+async def _dispatch_with_approval(
+    request: AgentRequest,
+    agent: BaseAgent,
+    action_type: str,
+    handler,
+):
+    """Dispatch an agent action that requires approval lookup."""
+    approval = await lookup_approval(
+        workspace_id=request.workspace_id,
+        agent_name=request.agent_name,
+        action_type=action_type,
+    )
+    has_approval = approval is not None and approval.get("status") == "APPROVED"
+    if has_approval:
+        logger.info(f"APPROVAL FOUND: {approval['id']} for action {action_type}")
+    return await handler(has_approval)
 
 
 # ── Observe ─────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ Orchestrator Router — upgraded to wire all specialist agents + QA gate.
 Two-stage intent classification: coarse category -> specific agent.
 """
 import logging
+import time
 from typing import Any, Dict, Optional
 
 from .base import BaseAgent, Tool, MemoryScopes
@@ -30,6 +31,9 @@ from api.agents.security_agent.handler import SecurityAgent  # G10
 from api.agents.connector_agent.handler import ConnectorAgent  # G11
 from api.agents.plugin_agent.handler import PluginAgent  # G12
 from api.agents.drive_agent.handler import DriveAgent  # G13
+
+from api.infrastructure.agent_observability import kill_switch, metrics_collector, AgentMetric
+from api.infrastructure.agent_eval import detect_adversarial_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -253,6 +257,40 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
         }
 
     # ── 3. Instantiate agent and run loop ──────────────────────────
+
+    # Kill switch check
+    if not kill_switch.is_enabled(agent_name):
+        logger.warning("Agent '%s' is disabled by kill switch", agent_name)
+        return {
+            "agent_name": agent_name,
+            "action": "error",
+            "confidence": 0.0,
+            "result": {
+                "summary": f"Agent '{agent_name}' is temporarily disabled",
+                "details": None,
+                "proposals": [],
+                "questions": ["Please try again later or contact support."],
+            },
+        }
+
+    # Adversarial prompt detection
+    adversarial = detect_adversarial_prompt(request.message)
+    if adversarial:
+        critical = [d for d in adversarial if d["severity"] == "critical"]
+        if critical:
+            logger.warning("Adversarial prompt detected: %s", critical)
+            return {
+                "agent_name": agent_name,
+                "action": "error",
+                "confidence": 0.0,
+                "result": {
+                    "summary": "Your input was flagged for potential security concerns. Please rephrase.",
+                    "details": None,
+                    "proposals": [],
+                    "questions": [],
+                },
+            }
+
     agent_cls = AGENT_REGISTRY.get(agent_name)
     if not agent_cls:
         logger.error(f"No agent registered for '{agent_name}'")
@@ -273,7 +311,18 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
         workspace_id=request.workspace_id,
         agent_name=agent_name,
     )
+    loop_start = time.monotonic()
     loop_response = await run_agent_loop(agent_request)
+    loop_latency_ms = (time.monotonic() - loop_start) * 1000
+
+    # Record agent metrics
+    metrics_collector.record(AgentMetric(
+        timestamp=time.time(),
+        agent_name=agent_name,
+        success=loop_response.status == "success",
+        latency_ms=loop_latency_ms,
+        confidence=confidence,
+    ))
 
     # ── 4. QA Gate (mandatory) ─────────────────────────────────────
     qa = QAAgent()

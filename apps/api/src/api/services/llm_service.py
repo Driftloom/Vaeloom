@@ -6,6 +6,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from ..config import settings
+from .model_router import model_router, ModelConfig, MODEL_CATALOG
 
 
 class LLMProviderError(Exception):
@@ -58,10 +59,32 @@ class LLMService:
         model: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
+        task_type: str = "general",
+        agent_name: str = "unknown",
     ) -> dict[str, Any]:
+        start = time.monotonic()
         if self.provider == "openai":
-            return await self._openai_completion(messages, model or self.model, temperature, max_tokens)
-        return await self._anthropic_completion(messages, model or self.model, temperature, max_tokens)
+            result = await self._openai_completion(messages, model or self.model, temperature, max_tokens)
+        else:
+            result = await self._anthropic_completion(messages, model or self.model, temperature, max_tokens)
+
+        # Track cost
+        latency_ms = (time.monotonic() - start) * 1000
+        usage = result.get("usage", {})
+        input_tokens = usage.get("prompt_tokens", usage.get("input_tokens", 0))
+        output_tokens = usage.get("completion_tokens", usage.get("output_tokens", 0))
+        model_config = MODEL_CATALOG.get(model or self.model)
+        if model_config:
+            model_router.record_usage(
+                agent_name=agent_name,
+                task_type=task_type,
+                model=model_config,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                latency_ms=latency_ms,
+            )
+
+        return result
 
     async def _openai_completion(
         self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int

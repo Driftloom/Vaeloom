@@ -7,6 +7,8 @@ import re
 from typing import Any
 from pydantic import BaseModel, Field
 
+from api.infrastructure.agent_eval import detect_adversarial_prompt
+
 logger = logging.getLogger(__name__)
 
 INJECTION_PATTERNS: list[re.Pattern] = [
@@ -40,6 +42,15 @@ class LLMResponseValidator:
     async def validate(self, output: Any) -> ValidationResult:
         errors: list[str] = []
         warnings: list[str] = []
+
+        # Adversarial prompt detection (enhanced from eval module)
+        text = str(output) if not isinstance(output, dict) else output.get("content", str(output))
+        adversarial = detect_adversarial_prompt(text)
+        for detection in adversarial:
+            if detection["severity"] == "critical":
+                errors.append(f"Adversarial prompt detected: {detection['category']}")
+            else:
+                warnings.append(f"Suspicious pattern: {detection['category']}")
 
         if isinstance(output, str):
             json_errors = self._check_is_json(output)
