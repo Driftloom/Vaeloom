@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { agentApi, agentCatalogApi, type CatalogAgent } from '@/lib/api-client';
+import { agentApi, agentCatalogApi, approvalApi, type CatalogAgent } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
+
+type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'error';
 
 interface ChatMessage {
   id: string;
@@ -13,7 +15,13 @@ interface ChatMessage {
   confidence?: number;
   toolCalls?: Array<{ name: string; status: 'running' | 'done' | 'error'; latencyMs?: number }>;
   citations?: Array<{ title: string; uri?: string; score?: number }>;
-  proposals?: Array<{ title: string; detail?: string; requiresApproval?: boolean }>;
+  proposals?: Array<{
+    title: string;
+    detail?: string;
+    requiresApproval?: boolean;
+    approvalId?: string;
+    status?: ProposalStatus;
+  }>;
   questions?: string[];
   error?: boolean;
   latencyMs?: number;
@@ -284,6 +292,85 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     [],
   );
 
+  type ProposalPatch = Partial<{
+    title: string;
+    detail?: string;
+    requiresApproval?: boolean;
+    approvalId?: string;
+    status?: ProposalStatus;
+  }>;
+
+  const patchProposal = useCallback(
+    (messageId: string, proposalIndex: number, patch: ProposalPatch) => {
+      setMessages((p) =>
+        p.map((m) =>
+          m.id === messageId
+            ? {
+                ...m,
+                proposals: m.proposals?.map((pr, i) =>
+                  i === proposalIndex ? { ...pr, ...patch } : pr,
+                ),
+              }
+            : m,
+        ),
+      );
+      updateThread(activeId ?? '', (t) => ({
+        ...t,
+        messages: t.messages.map((m) =>
+          m.id === messageId
+            ? {
+                ...m,
+                proposals: m.proposals?.map((pr, i) =>
+                  i === proposalIndex ? { ...pr, ...patch } : pr,
+                ),
+              }
+            : m,
+        ),
+      }));
+    },
+    [activeId, updateThread],
+  );
+
+  const handleProposalDecision = useCallback(
+    async (messageId: string, proposalIndex: number, decision: 'approve' | 'reject') => {
+      const proposal = messages.find((m) => m.id === messageId)?.proposals?.[proposalIndex];
+      if (!proposal) return;
+      if (!proposal.approvalId) {
+        patchProposal(messageId, proposalIndex, { status: 'error' });
+        toast({
+          tone: 'error',
+          title: 'No approval record',
+          detail:
+            'This proposal is not linked to a backend approval. Review pending approvals in Notifications.',
+        });
+        return;
+      }
+      try {
+        const result =
+          decision === 'approve'
+            ? await approvalApi.approve(proposal.approvalId)
+            : await approvalApi.reject(proposal.approvalId);
+        const nextStatus: ProposalStatus = (
+          ((result?.status ?? decision === 'approve') ? 'approved' : 'rejected') as string
+        ).toLowerCase() as ProposalStatus;
+        patchProposal(messageId, proposalIndex, { status: nextStatus });
+        toast({
+          tone: 'success',
+          title: decision === 'approve' ? 'Approved' : 'Rejected',
+          detail: proposal.title,
+        });
+      } catch (err) {
+        patchProposal(messageId, proposalIndex, { status: 'error' });
+        toast({
+          tone: 'error',
+          title: decision === 'approve' ? 'Approval failed' : 'Rejection failed',
+          detail: err instanceof Error ? err.message : 'Please try again.',
+        });
+      }
+    },
+    [messages, patchProposal, toast],
+  );
+
   const filteredSlash = useMemo(() => {
     const f = slashF.toLowerCase();
     return !f
@@ -433,10 +520,16 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           reply = (o?.summary as string) || '';
           proposals = (o?.proposals as unknown[])?.map((p) => {
             const q = p as Record<string, unknown>;
+            const approvalId =
+              typeof q['approval_id'] === 'string' || typeof q['approvalId'] === 'string'
+                ? String(q['approval_id'] || q['approvalId'])
+                : undefined;
             return {
               title: String(q['title'] || q['action'] || 'Proposal'),
               detail: String(q['detail'] || q['description'] || ''),
-              requiresApproval: true,
+              requiresApproval: q['requires_approval'] === true || Boolean(approvalId),
+              approvalId,
+              status: approvalId ? ('pending' as const) : undefined,
             };
           }) as ChatMessage['proposals'];
           questions = o?.questions as string[];
@@ -703,31 +796,55 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                           )}
                           {m.proposals && m.proposals.length > 0 && (
                             <div className="mt-3 space-y-2">
-                              {m.proposals.map((p, i) => (
-                                <div
-                                  key={i}
-                                  className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"
-                                >
-                                  <p className="text-sm font-medium text-text">{p.title}</p>
-                                  {p.detail && (
-                                    <p className="text-xs text-text-muted mt-1">{p.detail}</p>
-                                  )}
-                                  <div className="mt-2 flex gap-2">
-                                    <button
-                                      onClick={() => toast({ tone: 'success', title: 'Approved' })}
-                                      className="flex-1 rounded-full bg-white text-black text-xs py-1.5"
-                                    >
-                                      Approve
-                                    </button>
-                                    <button
-                                      onClick={() => toast({ tone: 'info', title: 'Rejected' })}
-                                      className="flex-1 rounded-full border border-border text-xs py-1.5"
-                                    >
-                                      Reject
-                                    </button>
+                              {m.proposals.map((p, i) => {
+                                const resolved =
+                                  p.status === 'approved' ||
+                                  p.status === 'rejected' ||
+                                  p.status === 'expired';
+                                return (
+                                  <div
+                                    key={i}
+                                    className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"
+                                  >
+                                    <p className="text-sm font-medium text-text">{p.title}</p>
+                                    {p.detail && (
+                                      <p className="text-xs text-text-muted mt-1">{p.detail}</p>
+                                    )}
+                                    <div className="mt-2 flex gap-2">
+                                      <button
+                                        disabled={resolved}
+                                        onClick={() => handleProposalDecision(m.id, i, 'approve')}
+                                        className={`flex-1 rounded-full text-xs py-1.5 ${
+                                          p.status === 'approved'
+                                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 cursor-default'
+                                            : 'bg-white text-black hover:opacity-90 disabled:opacity-40 disabled:cursor-default'
+                                        }`}
+                                      >
+                                        {p.status === 'approved' ? 'Approved' : 'Approve'}
+                                      </button>
+                                      <button
+                                        disabled={resolved}
+                                        onClick={() => handleProposalDecision(m.id, i, 'reject')}
+                                        className={`flex-1 rounded-full text-xs py-1.5 disabled:opacity-40 disabled:cursor-default ${
+                                          p.status === 'rejected'
+                                            ? 'bg-red-500/15 text-red-300 border border-red-500/30 cursor-default'
+                                            : 'border border-border'
+                                        }`}
+                                      >
+                                        {p.status === 'rejected' ? 'Rejected' : 'Reject'}
+                                      </button>
+                                    </div>
+                                    {p.status === 'expired' && (
+                                      <p className="text-xs text-text-dim mt-2">Expired</p>
+                                    )}
+                                    {p.status === 'error' && (
+                                      <p className="text-xs text-red-400 mt-2">
+                                        Action failed — pending approvals live in Notifications
+                                      </p>
+                                    )}
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
                           {m.questions && m.questions.length > 0 && (
@@ -853,9 +970,13 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 if (f) setAttached(f);
               }}
             >
-              <label className="w-8 h-8 rounded-full hover:bg-background border border-transparent hover:border-border/50 flex items-center justify-center shrink-0 cursor-pointer text-text-dim">
+              <label
+                className="w-8 h-8 rounded-full hover:bg-background border border-transparent hover:border-border/50 flex items-center justify-center shrink-0 cursor-pointer text-text-dim"
+                aria-label="Attach file"
+              >
                 <input
                   type="file"
+                  aria-label="Attach file"
                   className="hidden"
                   onChange={(e) => setAttached(e.target.files?.[0] || null)}
                 />
@@ -863,6 +984,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               </label>
               <textarea
                 ref={inputRef}
+                aria-label="Chat message"
                 value={input}
                 onChange={(e) => handleInput(e.target.value)}
                 onKeyDown={onKey}
@@ -876,6 +998,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 }}
               />
               <button
+                aria-label="Send message"
                 onClick={() => void handleSend()}
                 disabled={loading || !input.trim()}
                 className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-zinc-200"

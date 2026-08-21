@@ -53,26 +53,43 @@ class TestGDPRService:
 class TestGDPREndpoints:
     async def test_gdpr_export_requires_auth(self, client: AsyncClient):
         res = await client.get("/api/v1/gdpr/export")
-        assert res.status_code in (401, 403)
+        assert res.status_code == 401
 
-    async def test_gdpr_export_requires_admin(self, client: AsyncClient):
+    async def test_gdpr_export_self_service(self, client: AsyncClient):
         res = await client.post("/api/v1/auth/signup", json={
             "email": "gdpr-user@test.com", "password": "Test1234!",
         })
         token = res.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
         res = await client.get("/api/v1/gdpr/export", headers=headers)
-        assert res.status_code == 403
+        assert res.status_code == 200
+        body = res.json()
+        assert "user_id" in body
+        assert "data" in body
+        assert "total_records" in body
 
     async def test_gdpr_delete_requires_auth(self, client: AsyncClient):
         res = await client.post("/api/v1/gdpr/delete")
-        assert res.status_code in (401, 403)
+        assert res.status_code == 401
 
-    async def test_gdpr_delete_requires_admin(self, client: AsyncClient):
+    async def test_gdpr_delete_self_service(self, client: AsyncClient):
         res = await client.post("/api/v1/auth/signup", json={
             "email": "gdpr-del@test.com", "password": "Test1234!",
         })
         token = res.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
         res = await client.post("/api/v1/gdpr/delete", headers=headers)
+        assert res.status_code == 200
+        body = res.json()
+        assert body["action"] == "anonymized"
+        assert "tables" in body
+
+    async def test_gdpr_delete_other_user_forbidden(self, client: AsyncClient):
+        res = await client.post("/api/v1/auth/signup", json={
+            "email": "gdpr-other@test.com", "password": "Test1234!",
+        })
+        token = res.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        target = str(uuid.uuid4())
+        res = await client.post(f"/api/v1/gdpr/delete?user_id={target}", headers=headers)
         assert res.status_code == 403

@@ -43,7 +43,9 @@ dependencies = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-n auto"
+# Memory-friendly: 4 workers (each ~300MB, total ~1.2GB). -n auto (16) ≈ 4-5GB and can OOM on 16GB laptops.
+# Use --dist loadfile only for large suites if you want file-level grouping; for 2-file small runs it can be slower.
+addopts = "-n 4"
 
 [tool.ruff]
 target-version = "py312"
@@ -75,8 +77,8 @@ where = ["src"]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
+    "pytest>=8.0.0,<9",
+    "pytest-asyncio>=0.23.0,<1.0",
     "httpx>=0.27.0",
     "aiosqlite>=0.20.0",
     "email-validator>=2.0.0",

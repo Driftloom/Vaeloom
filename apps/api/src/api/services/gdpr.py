@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user, require_role
+from ..dependencies import get_current_user
 from ..services.audit_service import audit_service
 
 router = APIRouter()
@@ -130,7 +130,7 @@ gdpr_service = GDPRService()
 @router.get("/gdpr/export")
 async def gdpr_export(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role("admin")),
+    current_user: dict = Depends(get_current_user),
 ):
     user_id = str(current_user.get("sub"))
     result = await gdpr_service.export_user_data(user_id, db)
@@ -151,12 +151,17 @@ async def gdpr_export(
 async def gdpr_delete(
     user_id: str | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_role("admin")),
+    current_user: dict = Depends(get_current_user),
 ):
-    target_id = user_id or str(current_user.get("sub"))
+    caller_id = str(current_user.get("sub"))
+    target_id = user_id or caller_id
+    if target_id != caller_id:
+        user_roles = current_user.get("roles", []) or current_user.get("realm_access", {}).get("roles", [])
+        if "admin" not in user_roles:
+            raise HTTPException(status_code=403, detail="Requires role: admin")
     result = await gdpr_service.delete_user_data(target_id, db)
     await audit_service.record_event(
-        actor_id=str(current_user.get("sub")),
+        actor_id=caller_id,
         action="gdpr.delete",
         resource="gdpr",
         resource_id=target_id,

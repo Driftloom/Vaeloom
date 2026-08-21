@@ -1,3 +1,5 @@
+import { CSRF_HEADER, getCsrfToken, isMutatingMethod, resetCsrfToken } from './csrf';
+
 import type {
   AuthResponse,
   CreateWorkspaceRequest,
@@ -95,6 +97,7 @@ async function refreshToken(): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refresh_token: refresh }),
+    credentials: 'include',
   });
   if (!res.ok) {
     throw new ApiError(res.status, 'Failed to refresh token');
@@ -107,14 +110,32 @@ async function refreshToken(): Promise<string> {
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
+  const mutating = isMutatingMethod(init.method);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
     ...(init.headers as Record<string, string> | undefined),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (mutating) {
+    const csrf = await getCsrfToken();
+    if (csrf) headers[CSRF_HEADER] = csrf;
+  }
 
-  let res = await fetch(`${API_BASE}${API_PREFIX}${path}`, { ...init, headers });
+  const fetchWith = () =>
+    fetch(`${API_BASE}${API_PREFIX}${path}`, { ...init, credentials: 'include', headers });
+
+  let res = await fetchWith();
+
+  // CSRF token may have expired server-side (1h TTL) — refresh and retry once.
+  if (res.status === 403 && mutating && headers[CSRF_HEADER]) {
+    resetCsrfToken();
+    const fresh = await getCsrfToken();
+    if (fresh) {
+      headers[CSRF_HEADER] = fresh;
+      res = await fetchWith();
+    }
+  }
 
   if (res.status === 401 && token) {
     if (!isRefreshing) {
@@ -126,7 +147,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
         refreshQueue.forEach((q) => q.resolve(newToken));
         refreshQueue = [];
         headers['Authorization'] = `Bearer ${newToken}`;
-        res = await fetch(`${API_BASE}${API_PREFIX}${path}`, { ...init, headers });
+        res = await fetchWith();
       } catch (err) {
         isRefreshing = false;
         refreshQueue.forEach((q) => q.reject(err));
@@ -142,7 +163,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
         refreshQueue.push({ resolve, reject });
       });
       headers['Authorization'] = `Bearer ${newToken}`;
-      res = await fetch(`${API_BASE}${API_PREFIX}${path}`, { ...init, headers });
+      res = await fetchWith();
     }
   }
 
@@ -150,7 +171,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     let message = `Request failed (${res.status})`;
     let code: string | undefined;
     try {
-      const body = (await res.json()) as { error?: { message?: string; code?: string }; message?: string | string[] };
+      const body = (await res.json()) as {
+        error?: { message?: string; code?: string };
+        message?: string | string[];
+      };
       if (body.error) {
         message = body.error.message ?? message;
         code = body.error.code;
@@ -201,41 +225,66 @@ export const api = {
 
   // Memories
   memories: {
-    create(body: { title: string; type: string; summary?: string; content?: string; tags?: string[]; metadata?: Record<string, unknown> }): Promise<Memory> {
+    create(body: {
+      title: string;
+      type: string;
+      summary?: string;
+      content?: string;
+      tags?: string[];
+      metadata?: Record<string, unknown>;
+    }): Promise<Memory> {
       return request<Memory>('/memories', { method: 'POST', body: JSON.stringify(body) });
     },
     list(params?: Record<string, unknown>): Promise<PaginatedResponse<Memory>> {
-      const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+      const qs = params
+        ? '?' + new URLSearchParams(params as Record<string, string>).toString()
+        : '';
       return request<PaginatedResponse<Memory>>(`/memories${qs}`);
     },
     get(id: string): Promise<Memory> {
       return request<Memory>(`/memories/${id}`);
     },
-    update(id: string, body: Partial<{ title: string; summary: string; content: string; tags: string[] }>): Promise<Memory> {
+    update(
+      id: string,
+      body: Partial<{ title: string; summary: string; content: string; tags: string[] }>,
+    ): Promise<Memory> {
       return request<Memory>(`/memories/${id}`, { method: 'PUT', body: JSON.stringify(body) });
     },
     delete(id: string): Promise<void> {
       return request<void>(`/memories/${id}`, { method: 'DELETE' });
     },
     search(query: string, filters?: Record<string, unknown>): Promise<PaginatedResponse<Memory>> {
-      return request<PaginatedResponse<Memory>>('/memories/search', { method: 'POST', body: JSON.stringify({ query, ...filters }) });
+      return request<PaginatedResponse<Memory>>('/memories/search', {
+        method: 'POST',
+        body: JSON.stringify({ query, ...filters }),
+      });
     },
   },
 
   // Agents
   agents: {
-    create(body: { name: string; category: string; description?: string; config?: Record<string, unknown> }): Promise<Agent> {
+    create(body: {
+      name: string;
+      category: string;
+      description?: string;
+      config?: Record<string, unknown>;
+    }): Promise<Agent> {
       return request<Agent>('/agents', { method: 'POST', body: JSON.stringify(body) });
     },
     list(params?: Record<string, unknown>): Promise<PaginatedResponse<Agent>> {
-      const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+      const qs = params
+        ? '?' + new URLSearchParams(params as Record<string, string>).toString()
+        : '';
       return request<PaginatedResponse<Agent>>(`/agents${qs}`);
     },
     get(id: string): Promise<Agent> {
       return request<Agent>(`/agents/${id}`);
     },
     execute(id: string, input: Record<string, unknown>): Promise<AgentExecution> {
-      return request<AgentExecution>(`/agents/${id}/execute`, { method: 'POST', body: JSON.stringify({ input }) });
+      return request<AgentExecution>(`/agents/${id}/execute`, {
+        method: 'POST',
+        body: JSON.stringify({ input }),
+      });
     },
     executions(agentId: string): Promise<PaginatedResponse<AgentExecution>> {
       return request<PaginatedResponse<AgentExecution>>(`/agents/${agentId}/executions`);
@@ -244,14 +293,28 @@ export const api = {
 
   // Events
   events: {
-    publish(body: { type: string; source: string; category: string; payload: Record<string, unknown>; priority?: string }): Promise<Event> {
+    publish(body: {
+      type: string;
+      source: string;
+      category: string;
+      payload: Record<string, unknown>;
+      priority?: string;
+    }): Promise<Event> {
       return request<Event>('/events', { method: 'POST', body: JSON.stringify(body) });
     },
     list(): Promise<PaginatedResponse<Event>> {
       return request<PaginatedResponse<Event>>('/events');
     },
-    createSubscription(body: { eventType: string; handlerId: string; handlerType: string; config?: Record<string, unknown> }): Promise<EventSubscription> {
-      return request<EventSubscription>('/events/subscriptions', { method: 'POST', body: JSON.stringify(body) });
+    createSubscription(body: {
+      eventType: string;
+      handlerId: string;
+      handlerType: string;
+      config?: Record<string, unknown>;
+    }): Promise<EventSubscription> {
+      return request<EventSubscription>('/events/subscriptions', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
     },
     listSubscriptions(): Promise<PaginatedResponse<EventSubscription>> {
       return request<PaginatedResponse<EventSubscription>>('/events/subscriptions');
@@ -259,19 +322,35 @@ export const api = {
   },
 
   // Search
-  search(body: { query: string; sources?: string[]; limit?: number; offset?: number }): Promise<{ results: Array<{ id: string; text: string; score: number; source: string; metadata: Record<string, unknown> }>; total: number }> {
+  search(body: { query: string; sources?: string[]; limit?: number; offset?: number }): Promise<{
+    results: Array<{
+      id: string;
+      text: string;
+      score: number;
+      source: string;
+      metadata: Record<string, unknown>;
+    }>;
+    total: number;
+  }> {
     return request('/search', { method: 'POST', body: JSON.stringify(body) });
   },
 
   // Integrations
   integrations: {
-    create(body: { name: string; provider: string; config?: Record<string, unknown> }): Promise<unknown> {
+    create(body: {
+      name: string;
+      provider: string;
+      config?: Record<string, unknown>;
+    }): Promise<unknown> {
       return request('/integrations', { method: 'POST', body: JSON.stringify(body) });
     },
     list(): Promise<PaginatedResponse<unknown>> {
       return request<PaginatedResponse<unknown>>('/integrations');
     },
-    update(id: string, body: { name?: string; config?: Record<string, unknown> }): Promise<unknown> {
+    update(
+      id: string,
+      body: { name?: string; config?: Record<string, unknown> },
+    ): Promise<unknown> {
       return request(`/integrations/${id}`, { method: 'PUT', body: JSON.stringify(body) });
     },
     delete(id: string): Promise<void> {
@@ -285,7 +364,9 @@ export const api = {
   // Billing
   billing: {
     usage(params?: { metric?: string; from?: string; to?: string }): Promise<any[]> {
-      const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+      const qs = params
+        ? '?' + new URLSearchParams(params as Record<string, string>).toString()
+        : '';
       return request<any[]>(`/billing/usage${qs}`);
     },
     subscription(): Promise<unknown> {

@@ -51,6 +51,105 @@ class TestBaseAgent:
             asyncio.run(agent.fallback())
 
 
+class TestFetchPendingApprovals:
+    async def test_returns_pending_cards_for_workspace(self, db_session, monkeypatch):
+        from datetime import datetime, timedelta, timezone
+        from uuid import uuid4
+        from sqlalchemy import text
+        from sqlalchemy.ext.asyncio import async_sessionmaker
+        from api.orchestrator.loop import fetch_pending_approvals
+
+        ws = str(uuid4())
+        aid = str(uuid4())
+        now = datetime.now(timezone.utc)
+        await db_session.execute(
+            text(
+                "INSERT INTO agent_approvals "
+                "(id, workspace_id, agent_name, action_type, payload, reason, status, expires_at, created_at, updated_at) "
+                "VALUES (:id, :ws, :agent, :action, :payload, :reason, 'PENDING', :exp, :created, :created)"
+            ),
+            {
+                "id": aid,
+                "ws": ws,
+                "agent": "gmail",
+                "action": "send_email",
+                "payload": '{"to": "x@y.com"}',
+                "reason": "Send follow-up email",
+                "exp": now + timedelta(minutes=30),
+                "created": now,
+            },
+        )
+        await db_session.commit()
+
+        monkeypatch.setattr(
+            "api.database.async_session_factory",
+            lambda: async_sessionmaker(db_session.bind, expire_on_commit=False)(),
+        )
+
+        cards = await fetch_pending_approvals(ws)
+        assert len(cards) == 1
+        assert cards[0]["approval_id"] == aid
+        assert cards[0]["title"] == "gmail: send_email"
+        assert cards[0]["detail"] == "Send follow-up email"
+        assert cards[0]["requires_approval"] is True
+
+    async def test_excludes_other_workspaces_and_resolved(self, db_session, monkeypatch):
+        from datetime import datetime, timedelta, timezone
+        from uuid import uuid4
+        from sqlalchemy import text
+        from sqlalchemy.ext.asyncio import async_sessionmaker
+        from api.orchestrator.loop import fetch_pending_approvals
+
+        ws = str(uuid4())
+        now = datetime.now(timezone.utc)
+        for status in ("PENDING", "APPROVED", "REJECTED", "EXPIRED"):
+            await db_session.execute(
+                text(
+                    "INSERT INTO agent_approvals "
+                    "(id, workspace_id, agent_name, action_type, payload, reason, status, expires_at, created_at, updated_at) "
+                    "VALUES (:id, :ws, :agent, :action, :payload, :reason, :status, :exp, :created, :created)"
+                ),
+                {
+                    "id": str(uuid4()),
+                    "ws": ws,
+                    "agent": "a",
+                    "action": f"run_{status.lower()}",
+                    "payload": "{}",
+                    "reason": None,
+                    "status": status,
+                    "exp": now + timedelta(minutes=30),
+                    "created": now,
+                },
+            )
+        await db_session.execute(
+            text(
+                "INSERT INTO agent_approvals "
+                "(id, workspace_id, agent_name, action_type, payload, reason, status, expires_at, created_at, updated_at) "
+                "VALUES (:id, :ws, :agent, :action, :payload, :reason, 'PENDING', :exp, :created, :created)"
+            ),
+            {
+                "id": str(uuid4()),
+                "ws": str(uuid4()),
+                "agent": "other",
+                "action": "run",
+                "payload": "{}",
+                "reason": None,
+                "exp": now + timedelta(minutes=30),
+                "created": now,
+            },
+        )
+        await db_session.commit()
+
+        monkeypatch.setattr(
+            "api.database.async_session_factory",
+            lambda: async_sessionmaker(db_session.bind, expire_on_commit=False)(),
+        )
+
+        cards = await fetch_pending_approvals(ws)
+        assert len(cards) == 1
+        assert cards[0]["title"] == "a: run_pending"
+
+
 class TestAgentRequest:
     def test_construction_with_explicit_name(self):
         from api.orchestrator.loop import AgentRequest
@@ -314,11 +413,17 @@ class TestLoopState:
         assert state.updated_at == state.created_at
 
     def test_add_phase(self):
+        import time
+
         from api.orchestrator.state import LoopState
+
         state = LoopState("req-1")
+        # Ensure clock ticks past created_at (isoformat has microsecond res but can be equal if called too fast)
+        time.sleep(0.01)
         state.add_phase("plan_0", {"key": "val"})
         assert state.phases["plan_0"] == {"key": "val"}
         assert state.updated_at != state.created_at
+        assert state.updated_at > state.created_at
 
     def test_to_dict(self):
         from api.orchestrator.state import LoopState

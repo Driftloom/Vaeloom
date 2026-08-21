@@ -1,4 +1,5 @@
 'use client';
+import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import React, { useState } from 'react';
 import { Button, Card, Input, Modal } from '@vaeloom/ui-kit';
 import { Table, type Column } from '@/components/shared/Table';
@@ -25,9 +26,33 @@ interface WebhookDelivery {
 }
 
 const initialApiKeys: ApiKey[] = [
-  { id: 'ak1', name: 'Production', key: 'vlm_prod_8a7d...3f2b', createdAt: '2026-06-01', lastUsed: '2 min ago', status: 'active', permissions: 'Full Access' },
-  { id: 'ak2', name: 'Development', key: 'vlm_dev_c4e1...9a8d', createdAt: '2026-07-10', lastUsed: '1 hour ago', status: 'active', permissions: 'Read Only' },
-  { id: 'ak3', name: 'CI/CD Pipeline', key: 'vlm_ci_5b2f...1e4c', createdAt: '2026-05-15', lastUsed: '3 days ago', status: 'revoked', permissions: 'Limited' },
+  {
+    id: 'ak1',
+    name: 'Production',
+    key: 'vlm_prod_8a7d...3f2b',
+    createdAt: '2026-06-01',
+    lastUsed: '2 min ago',
+    status: 'active',
+    permissions: 'Full Access',
+  },
+  {
+    id: 'ak2',
+    name: 'Development',
+    key: 'vlm_dev_c4e1...9a8d',
+    createdAt: '2026-07-10',
+    lastUsed: '1 hour ago',
+    status: 'active',
+    permissions: 'Read Only',
+  },
+  {
+    id: 'ak3',
+    name: 'CI/CD Pipeline',
+    key: 'vlm_ci_5b2f...1e4c',
+    createdAt: '2026-05-15',
+    lastUsed: '3 days ago',
+    status: 'revoked',
+    permissions: 'Limited',
+  },
 ];
 
 const rateLimits = [
@@ -58,6 +83,7 @@ const keyStatusColors: Record<string, StatusVariant> = { active: 'success', revo
 const keyColor = (s: string): StatusVariant => keyStatusColors[s] ?? 'neutral';
 
 export default function DeveloperPage() {
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Developer Portal" />;
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(initialApiKeys);
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
@@ -68,7 +94,7 @@ export default function DeveloperPage() {
   const [showTestConsole, setShowTestConsole] = useState(false);
 
   const revokeKey = (id: string) => {
-    setApiKeys(apiKeys.map(k => k.id === id ? { ...k, status: 'revoked' as const } : k));
+    setApiKeys(apiKeys.map((k) => (k.id === id ? { ...k, status: 'revoked' as const } : k)));
   };
 
   const sendTestWebhook = () => {
@@ -84,12 +110,34 @@ export default function DeveloperPage() {
 
   const keyColumns: Column<ApiKey>[] = [
     { key: 'name', header: 'Name', render: (k) => <span className="font-medium">{k.name}</span> },
-    { key: 'key', header: 'Key', render: (k) => <code className="text-xs font-mono bg-background px-2 py-1 rounded text-text-muted">{k.key}</code> },
+    {
+      key: 'key',
+      header: 'Key',
+      render: (k) => (
+        <code className="text-xs font-mono bg-background px-2 py-1 rounded text-text-muted">
+          {k.key}
+        </code>
+      ),
+    },
     { key: 'createdAt', header: 'Created', className: 'text-text-muted text-sm' },
     { key: 'lastUsed', header: 'Last Used', className: 'text-text-muted text-sm' },
-    { key: 'status', header: 'Status', render: (k) => <StatusBadge variant={keyColor(k.status)} label={k.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (k) => <StatusBadge variant={keyColor(k.status)} label={k.status} />,
+    },
     { key: 'permissions', header: 'Permissions', className: 'text-text-muted text-sm' },
-    { key: 'id', header: '', render: (k) => k.status === 'active' ? <Button variant="ghost" size="sm" onClick={() => revokeKey(k.id)}>Revoke</Button> : null, className: 'text-right' },
+    {
+      key: 'id',
+      header: '',
+      render: (k) =>
+        k.status === 'active' ? (
+          <Button variant="ghost" size="sm" onClick={() => revokeKey(k.id)}>
+            Revoke
+          </Button>
+        ) : null,
+      className: 'text-right',
+    },
   ];
 
   return (
@@ -105,7 +153,10 @@ export default function DeveloperPage() {
           <Button onClick={() => setShowCreateKey(true)}>Create Key</Button>
         </div>
         {apiKeys.length === 0 ? (
-          <EmptyState title="No API keys" description="Create an API key to start building with Vaeloom." />
+          <EmptyState
+            title="No API keys"
+            description="Create an API key to start building with Vaeloom."
+          />
         ) : (
           <Table columns={keyColumns} data={apiKeys} keyExtractor={(k) => k.id} />
         )}
@@ -122,7 +173,9 @@ export default function DeveloperPage() {
               <div className="mt-2 h-1.5 bg-surface-active rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full"
-                  style={{ width: `${Math.min((rl.current / parseInt(rl.limit.replace(/,/g, '').split(' ')[0] ?? '1')) * 100, 100)}%` }}
+                  style={{
+                    width: `${Math.min((rl.current / parseInt(rl.limit.replace(/,/g, '').split(' ')[0] ?? '1')) * 100, 100)}%`,
+                  }}
                 />
               </div>
             </div>
@@ -140,7 +193,11 @@ export default function DeveloperPage() {
         {showTestConsole && (
           <div className="space-y-4 p-4 bg-background rounded-lg border border-border">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input label="Webhook URL" value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} />
+              <Input
+                label="Webhook URL"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+              />
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-text">Event Type</label>
                 <select
@@ -158,13 +215,18 @@ export default function DeveloperPage() {
             </div>
             <div className="flex gap-2">
               <Button onClick={sendTestWebhook}>Send Test Event</Button>
-              <Button variant="secondary" onClick={() => setWebhookResult(null)}>Clear</Button>
+              <Button variant="secondary" onClick={() => setWebhookResult(null)}>
+                Clear
+              </Button>
             </div>
             {webhookResult && (
               <div className="p-4 bg-surface rounded-lg border border-border">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span className="text-text-muted">Status</span>
-                  <StatusBadge variant={webhookResult.status === 'success' ? 'success' : 'error'} label={webhookResult.status} />
+                  <StatusBadge
+                    variant={webhookResult.status === 'success' ? 'success' : 'error'}
+                    label={webhookResult.status}
+                  />
                   <span className="text-text-muted">Event</span>
                   <span className="font-mono text-text">{webhookResult.event}</span>
                   <span className="text-text-muted">Duration</span>
@@ -183,7 +245,10 @@ export default function DeveloperPage() {
           <h2 className="text-lg font-display font-medium text-text mb-4">SDK Downloads</h2>
           <div className="space-y-4">
             {sdkItems.map((sdk) => (
-              <div key={sdk.name} className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+              <div
+                key={sdk.name}
+                className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
+              >
                 <div>
                   <p className="font-medium text-text">{sdk.name}</p>
                   <p className="text-xs text-text-muted font-mono">v{sdk.version}</p>
@@ -205,8 +270,18 @@ export default function DeveloperPage() {
                 href={link.url}
                 className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border hover:border-primary/50 transition-colors text-text hover:text-primary"
               >
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg
+                  className="w-4 h-4 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
                 <span className="text-sm font-medium">{link.name}</span>
               </a>
@@ -217,7 +292,12 @@ export default function DeveloperPage() {
 
       <Modal isOpen={showCreateKey} onClose={() => setShowCreateKey(false)} title="Create API Key">
         <div className="space-y-4">
-          <Input label="Key Name" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} placeholder="e.g. Production CI" />
+          <Input
+            label="Key Name"
+            value={newKeyName}
+            onChange={(e) => setNewKeyName(e.target.value)}
+            placeholder="e.g. Production CI"
+          />
           <div className="space-y-1">
             <label className="block text-sm font-medium text-text">Permissions</label>
             <select className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary">
@@ -227,12 +307,31 @@ export default function DeveloperPage() {
             </select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowCreateKey(false)}>Cancel</Button>
-            <Button onClick={() => {
-              setApiKeys([...apiKeys, { id: 'ak' + Date.now(), name: newKeyName || 'New Key', key: 'vlm_' + Math.random().toString(36).slice(2, 10) + '...' + Math.random().toString(36).slice(2, 6), createdAt: new Date().toISOString().slice(0, 10), lastUsed: 'Never', status: 'active', permissions: 'Full Access' }]);
-              setShowCreateKey(false);
-              setNewKeyName('');
-            }}>
+            <Button variant="secondary" onClick={() => setShowCreateKey(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setApiKeys([
+                  ...apiKeys,
+                  {
+                    id: 'ak' + Date.now(),
+                    name: newKeyName || 'New Key',
+                    key:
+                      'vlm_' +
+                      Math.random().toString(36).slice(2, 10) +
+                      '...' +
+                      Math.random().toString(36).slice(2, 6),
+                    createdAt: new Date().toISOString().slice(0, 10),
+                    lastUsed: 'Never',
+                    status: 'active',
+                    permissions: 'Full Access',
+                  },
+                ]);
+                setShowCreateKey(false);
+                setNewKeyName('');
+              }}
+            >
               Generate Key
             </Button>
           </div>

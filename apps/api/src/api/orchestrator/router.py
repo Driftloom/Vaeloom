@@ -354,9 +354,31 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
         qa_result: QAValidationResult = await qa.validate(agent_output)
         if qa_result.decision == "approved":
             logger.info("QA APPROVED (attempt %d)", attempt + 1)
+            await _attach_pending_approvals(agent_output, request.workspace_id)
             return agent_output
         logger.warning("QA REJECTED (attempt %d): %s", attempt + 1, qa_result.issues)
 
     logger.warning("QA retries exhausted — delivering best-effort with flag")
     agent_output["qa_flag"] = "best_effort_after_retries"
+    await _attach_pending_approvals(agent_output, request.workspace_id)
     return agent_output
+
+
+async def _attach_pending_approvals(agent_output: Dict[str, Any], workspace_id: str) -> None:
+    """Surface actionable pending approvals as proposal cards in chat output.
+
+    Each card carries `approval_id` so the frontend can call the approve/reject
+    endpoints directly instead of faking a decision locally.
+    """
+    if not workspace_id:
+        return
+    try:
+        from .loop import fetch_pending_approvals
+
+        pending = await fetch_pending_approvals(workspace_id)
+        if pending:
+            result = agent_output.get("result") or {}
+            result["proposals"] = pending
+            agent_output["result"] = result
+    except Exception as exc:
+        logger.warning(f"Failed to attach pending approvals (non-blocking): {exc}")

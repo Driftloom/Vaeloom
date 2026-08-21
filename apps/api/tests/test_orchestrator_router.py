@@ -247,3 +247,68 @@ class TestHandle:
         assert result["action"] == "suggest"
         assert result["result"]["summary"] == "Task complete"
         assert "qa_flag" not in result
+
+    async def test_pending_approvals_attached_to_successful_chat(self, monkeypatch):
+        from api.orchestrator.router import handle, UserRequest, AGENT_REGISTRY, run_agent_loop, QAAgent
+        from api.orchestrator.loop import AgentResponse
+        from api.agents.qa_agent.handler import QAValidationResult
+
+        class MockAgent:
+            pass
+
+        async def fake_classify(message):
+            return "test_agent", 0.85
+
+        async def fake_loop(request):
+            return AgentResponse(status="success", final_result="Task complete")
+
+        async def fake_validate(self, output):
+            return QAValidationResult(decision="approved", issues=[])
+
+        async def fake_fetch(workspace_id):
+            assert workspace_id == "ws1"
+            return [
+                {
+                    "title": "gmail: send_email",
+                    "detail": "Send follow-up email",
+                    "requires_approval": True,
+                    "approval_id": "11111111-1111-1111-1111-111111111111",
+                }
+            ]
+
+        monkeypatch.setattr("api.orchestrator.router.classify_intent", fake_classify)
+        monkeypatch.setitem(AGENT_REGISTRY, "test_agent", MockAgent)
+        monkeypatch.setattr("api.orchestrator.router.run_agent_loop", fake_loop)
+        monkeypatch.setattr(QAAgent, "validate", fake_validate)
+        monkeypatch.setattr("api.orchestrator.loop.fetch_pending_approvals", fake_fetch)
+
+        request = UserRequest("r1", "organize files", "ws1")
+        result = await handle(request)
+        proposals = result["result"]["proposals"]
+        assert len(proposals) == 1
+        assert proposals[0]["approval_id"] == "11111111-1111-1111-1111-111111111111"
+        assert proposals[0]["requires_approval"] is True
+
+    async def test_attach_pending_approvals_skips_without_workspace(self, monkeypatch):
+        from api.orchestrator.router import _attach_pending_approvals
+
+        async def fake_fetch(workspace_id):
+            raise AssertionError("should not be called without workspace")
+
+        monkeypatch.setattr("api.orchestrator.loop.fetch_pending_approvals", fake_fetch)
+
+        output = {"result": {"proposals": []}}
+        await _attach_pending_approvals(output, "")
+        assert output["result"]["proposals"] == []
+
+    async def test_attach_pending_approvals_handles_fetch_failure(self, monkeypatch):
+        from api.orchestrator.router import _attach_pending_approvals
+
+        async def fake_fetch(workspace_id):
+            raise RuntimeError("db down")
+
+        monkeypatch.setattr("api.orchestrator.loop.fetch_pending_approvals", fake_fetch)
+
+        output = {"result": {"proposals": []}}
+        await _attach_pending_approvals(output, "ws1")
+        assert output["result"]["proposals"] == []

@@ -25,6 +25,15 @@ build: ## Build all packages
 test: ## Run all tests
 	pnpm test
 
+test-api: ## Run API tests (uv + xdist, parallel by default)
+	cd apps/api && uv run --project apps/api python -m pytest -q
+
+test-api-serial: ## Run API tests serially (debug, no xdist)
+	cd apps/api && uv run --project apps/api python -m pytest -q -o addopts=""
+
+test-api-cov: ## Run API tests with coverage
+	cd apps/api && uv run --project apps/api python -m pytest --cov=api --cov-report=term -q
+
 lint: ## Lint all packages
 	pnpm lint
 

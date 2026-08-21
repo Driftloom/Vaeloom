@@ -32,6 +32,52 @@ def _get_circuit_breaker(agent_name: str) -> CircuitBreaker:
 
 # ── Approval Lookup ────────────────────────────────────────────────
 
+async def fetch_pending_approvals(workspace_id: str) -> list[Dict[str, Any]]:
+    """Return fresh PENDING approval records for a workspace, oldest first.
+
+    Used by the orchestrator to surface actionable approval cards in chat
+    responses (each card carries the approval_id for the decide endpoints).
+    """
+    from ..database import async_session_factory
+
+    try:
+        async with async_session_factory() as db:
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            await db.execute(
+                text("""
+                    UPDATE agent_approvals
+                    SET status = 'EXPIRED', updated_at = :now
+                    WHERE status = 'PENDING' AND expires_at IS NOT NULL AND expires_at < :now
+                """),
+                {"now": now},
+            )
+            await db.commit()
+            result = await db.execute(
+                text("""
+                    SELECT id, agent_name, action_type, reason, expires_at
+                    FROM agent_approvals
+                    WHERE workspace_id = :workspace_id AND status = 'PENDING'
+                    ORDER BY created_at ASC
+                    LIMIT 20
+                """),
+                {"workspace_id": workspace_id},
+            )
+            rows = result.fetchall()
+            return [
+                {
+                    "title": f"{row[1]}: {row[2]}",
+                    "detail": row[3] or None,
+                    "requires_approval": True,
+                    "approval_id": str(row[0]),
+                }
+                for row in rows
+            ]
+    except Exception as exc:
+        logger.warning(f"Pending approval fetch failed (non-blocking): {exc}")
+        return []
+
+
 async def lookup_approval(
     workspace_id: str,
     agent_name: str,

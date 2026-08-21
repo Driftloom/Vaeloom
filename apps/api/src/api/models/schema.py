@@ -4,7 +4,7 @@ from datetime import datetime
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean, Column, DateTime, Float, ForeignKey, Index, Integer,
-    String, Text, UniqueConstraint, func,
+    LargeBinary, String, Text, UniqueConstraint, func,
 )
 from sqlalchemy import JSON
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
@@ -174,6 +174,7 @@ class Document(Base):
     path: Mapped[str] = mapped_column(String(1000), nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     raw_storage_key: Mapped[str | None] = mapped_column(String(1000))
+    content: Mapped[bytes | None] = mapped_column(LargeBinary)
     summary: Mapped[str | None] = mapped_column(Text)
     retention_policy: Mapped[str] = mapped_column(String(50), default="user_driven")
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -184,6 +185,7 @@ class Document(Base):
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="documents")
     connector: Mapped["Connector | None"] = relationship("Connector", back_populates="documents")
     versions: Mapped[list["DocumentVersion"]] = relationship("DocumentVersion", back_populates="document", cascade="all, delete-orphan")
+    actions: Mapped[list["DocumentAction"]] = relationship("DocumentAction", back_populates="document", cascade="all, delete-orphan")
     memory_records: Mapped[list["MemoryRecord"]] = relationship("MemoryRecord", back_populates="source_document")
 
     __table_args__ = (
@@ -207,6 +209,28 @@ class DocumentVersion(Base):
     document: Mapped["Document"] = relationship("Document", back_populates="versions")
 
     __table_args__ = (UniqueConstraint("document_id", "version_number"),)
+
+
+class DocumentAction(Base):
+    __tablename__ = "document_actions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    action_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    old_path: Mapped[str | None] = mapped_column(String(1000))
+    new_path: Mapped[str | None] = mapped_column(String(1000))
+    old_deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    new_deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    undone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    document: Mapped["Document"] = relationship("Document", back_populates="actions")
+
+    __table_args__ = (
+        Index("idx_document_actions_document", "document_id", "created_at"),
+        Index("idx_document_actions_workspace", "workspace_id", "created_at"),
+    )
 
 
 class Memory(Base):

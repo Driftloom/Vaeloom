@@ -1,4 +1,5 @@
 'use client';
+import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import React, { useState } from 'react';
 import { Button, Card, Modal } from '@vaeloom/ui-kit';
 import { Table, type Column } from '@/components/shared/Table';
@@ -14,24 +15,90 @@ interface Invoice {
 }
 
 const plans = [
-  { id: 'starter', name: 'Starter', price: '$29/mo', features: ['5 agents', '1 GB storage', '1,000 API calls/mo', 'Community support'], popular: false },
-  { id: 'pro', name: 'Professional', price: '$99/mo', features: ['25 agents', '10 GB storage', '10,000 API calls/mo', 'Priority support', 'Custom integrations'], popular: true },
-  { id: 'enterprise', name: 'Enterprise', price: '$299/mo', features: ['Unlimited agents', '100 GB storage', 'Unlimited API calls', 'Dedicated support', 'On-premise option', 'SLA guarantee'], popular: false },
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: '$29/mo',
+    features: ['5 agents', '1 GB storage', '1,000 API calls/mo', 'Community support'],
+    popular: false,
+  },
+  {
+    id: 'pro',
+    name: 'Professional',
+    price: '$99/mo',
+    features: [
+      '25 agents',
+      '10 GB storage',
+      '10,000 API calls/mo',
+      'Priority support',
+      'Custom integrations',
+    ],
+    popular: true,
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: '$299/mo',
+    features: [
+      'Unlimited agents',
+      '100 GB storage',
+      'Unlimited API calls',
+      'Dedicated support',
+      'On-premise option',
+      'SLA guarantee',
+    ],
+    popular: false,
+  },
 ];
 
 const invoices: Invoice[] = [
-  { id: 'inv_001', date: 'Jul 1, 2026', amount: '$99.00', status: 'paid', description: 'Professional Plan - Monthly' },
-  { id: 'inv_002', date: 'Jun 1, 2026', amount: '$99.00', status: 'paid', description: 'Professional Plan - Monthly' },
-  { id: 'inv_003', date: 'May 1, 2026', amount: '$99.00', status: 'paid', description: 'Professional Plan - Monthly' },
-  { id: 'inv_004', date: 'Apr 1, 2026', amount: '$29.00', status: 'paid', description: 'Starter Plan - Monthly' },
-  { id: 'inv_005', date: 'Mar 1, 2026', amount: '$29.00', status: 'pending', description: 'Starter Plan - Monthly' },
+  {
+    id: 'inv_001',
+    date: 'Jul 1, 2026',
+    amount: '$99.00',
+    status: 'paid',
+    description: 'Professional Plan - Monthly',
+  },
+  {
+    id: 'inv_002',
+    date: 'Jun 1, 2026',
+    amount: '$99.00',
+    status: 'paid',
+    description: 'Professional Plan - Monthly',
+  },
+  {
+    id: 'inv_003',
+    date: 'May 1, 2026',
+    amount: '$99.00',
+    status: 'paid',
+    description: 'Professional Plan - Monthly',
+  },
+  {
+    id: 'inv_004',
+    date: 'Apr 1, 2026',
+    amount: '$29.00',
+    status: 'paid',
+    description: 'Starter Plan - Monthly',
+  },
+  {
+    id: 'inv_005',
+    date: 'Mar 1, 2026',
+    amount: '$29.00',
+    status: 'pending',
+    description: 'Starter Plan - Monthly',
+  },
 ];
 
-const invoiceColors: Record<string, StatusVariant> = { paid: 'success', pending: 'warning', failed: 'error' };
+const invoiceColors: Record<string, StatusVariant> = {
+  paid: 'success',
+  pending: 'warning',
+  failed: 'error',
+};
 
 const invColor = (s: string): StatusVariant => invoiceColors[s] ?? 'neutral';
 
 export default function BillingPage() {
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Billing" />;
   const [selectedPlan, setSelectedPlan] = useState('pro');
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [pendingPlan, setPendingPlan] = useState('pro');
@@ -41,8 +108,21 @@ export default function BillingPage() {
     { key: 'date', header: 'Date', className: 'text-text-muted' },
     { key: 'description', header: 'Description' },
     { key: 'amount', header: 'Amount', className: 'font-mono' },
-    { key: 'status', header: 'Status', render: (inv) => <StatusBadge variant={invColor(inv.status)} label={inv.status} /> },
-    { key: 'id', header: '', render: (inv) => <Button variant="ghost" size="sm" onClick={() => window.open('#')}>Download</Button>, className: 'text-right' },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (inv) => <StatusBadge variant={invColor(inv.status)} label={inv.status} />,
+    },
+    {
+      key: 'id',
+      header: '',
+      render: (inv) => (
+        <Button variant="ghost" size="sm" onClick={() => window.open('#')}>
+          Download
+        </Button>
+      ),
+      className: 'text-right',
+    },
   ];
 
   return (
@@ -55,17 +135,43 @@ export default function BillingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card padding="lg">
           <h2 className="text-lg font-display font-medium text-text mb-2">Current Plan</h2>
-          <div className="text-3xl font-display text-primary mt-2">{plans.find(p => p.id === selectedPlan)?.name}</div>
-          <div className="text-text-muted text-sm mt-1">{plans.find(p => p.id === selectedPlan)?.price}</div>
+          <div className="text-3xl font-display text-primary mt-2">
+            {plans.find((p) => p.id === selectedPlan)?.name}
+          </div>
+          <div className="text-text-muted text-sm mt-1">
+            {plans.find((p) => p.id === selectedPlan)?.price}
+          </div>
           <ul className="mt-4 space-y-2">
-            {plans.find(p => p.id === selectedPlan)?.features.map((f, i) => (
-              <li key={i} className="flex items-center gap-2 text-sm text-text">
-                <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                {f}
-              </li>
-            ))}
+            {plans
+              .find((p) => p.id === selectedPlan)
+              ?.features.map((f, i) => (
+                <li key={i} className="flex items-center gap-2 text-sm text-text">
+                  <svg
+                    className="w-4 h-4 text-primary shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  {f}
+                </li>
+              ))}
           </ul>
-          <Button variant="secondary" fullWidth className="mt-6" onClick={() => { setPendingPlan(selectedPlan); setShowChangeModal(true); }}>
+          <Button
+            variant="secondary"
+            fullWidth
+            className="mt-6"
+            onClick={() => {
+              setPendingPlan(selectedPlan);
+              setShowChangeModal(true);
+            }}
+          >
             Change Plan
           </Button>
         </Card>
@@ -89,20 +195,34 @@ export default function BillingPage() {
       <Card padding="lg">
         <h2 className="text-lg font-display font-medium text-text mb-4">Payment Method</h2>
         <div className="flex items-center gap-4 p-4 bg-background rounded-lg border border-border">
-          <div className="w-12 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">VISA</div>
+          <div className="w-12 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">
+            VISA
+          </div>
           <div>
             <p className="text-text">Visa ending in 4242</p>
             <p className="text-text-muted text-sm">Expires 12/2027</p>
           </div>
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setShowPaymentModal(true)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto"
+            onClick={() => setShowPaymentModal(true)}
+          >
             Update
           </Button>
         </div>
       </Card>
 
-      <Modal isOpen={showChangeModal} onClose={() => setShowChangeModal(false)} title="Change Plan" size="lg">
+      <Modal
+        isOpen={showChangeModal}
+        onClose={() => setShowChangeModal(false)}
+        title="Change Plan"
+        size="lg"
+      >
         <div className="space-y-4">
-          <p className="text-text-muted text-sm">Select a new plan. Changes take effect next billing cycle.</p>
+          <p className="text-text-muted text-sm">
+            Select a new plan. Changes take effect next billing cycle.
+          </p>
           <div className="grid grid-cols-1 gap-4">
             {plans.map((plan) => (
               <button
@@ -113,7 +233,11 @@ export default function BillingPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <span className="font-medium text-text">{plan.name}</span>
-                    {plan.popular && <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Most Popular</span>}
+                    {plan.popular && (
+                      <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                        Most Popular
+                      </span>
+                    )}
                   </div>
                   <span className="text-text-muted font-mono">{plan.price}</span>
                 </div>
@@ -128,19 +252,34 @@ export default function BillingPage() {
             ))}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowChangeModal(false)}>Cancel</Button>
-            <Button onClick={() => { setSelectedPlan(pendingPlan); setShowChangeModal(false); }}>Confirm Change</Button>
+            <Button variant="secondary" onClick={() => setShowChangeModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setSelectedPlan(pendingPlan);
+                setShowChangeModal(false);
+              }}
+            >
+              Confirm Change
+            </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Update Payment Method">
+      <Modal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        title="Update Payment Method"
+      >
         <div className="space-y-4">
           <div className="p-4 bg-background rounded-lg border border-border text-text-muted text-sm text-center">
             Payment method integration would open here (Stripe Elements, etc.)
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
+              Cancel
+            </Button>
             <Button onClick={() => setShowPaymentModal(false)}>Save</Button>
           </div>
         </div>

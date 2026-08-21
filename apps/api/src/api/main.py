@@ -144,7 +144,7 @@ app.add_middleware(
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Correlation-ID", "X-Requested-With", "X-Tenant-ID", "X-Workspace-ID"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Correlation-ID", "X-Requested-With", "X-Tenant-ID", "X-Workspace-ID", "X-CSRF-Token"],
 )
 
 app.add_exception_handler(StarletteHTTPException, unified_exception_handler)

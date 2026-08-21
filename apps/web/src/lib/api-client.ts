@@ -25,6 +25,7 @@ export {
   setRefreshToken,
   clearRefreshToken,
 } from './api';
+import { CSRF_HEADER, getCsrfToken, isMutatingMethod, resetCsrfToken } from './csrf';
 
 const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000';
 const API_PREFIX = '/api/v1';
@@ -114,20 +115,38 @@ export class ApiClient {
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {
     const token = this.getToken();
+    const mutating = isMutatingMethod(init.method);
     const headers: Record<string, string> = {
       'X-Requested-With': 'XMLHttpRequest',
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
       ...(init.headers as Record<string, string> | undefined),
     };
     if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (mutating) {
+      const csrf = await getCsrfToken();
+      if (csrf) headers[CSRF_HEADER] = csrf;
+    }
 
-    let res = await fetch(`${this.baseUrl}${path}`, { ...init, headers });
+    const fetchWith = () =>
+      fetch(`${this.baseUrl}${path}`, { ...init, credentials: 'include', headers });
+
+    let res = await fetchWith();
+
+    // CSRF token may have expired server-side (1h TTL) — refresh and retry once.
+    if (res.status === 403 && mutating && headers[CSRF_HEADER]) {
+      resetCsrfToken();
+      const fresh = await getCsrfToken();
+      if (fresh) {
+        headers[CSRF_HEADER] = fresh;
+        res = await fetchWith();
+      }
+    }
 
     if (res.status === 401 && token) {
       const newToken = await this.tryRefresh();
       if (newToken) {
         headers['Authorization'] = `Bearer ${newToken}`;
-        res = await fetch(`${this.baseUrl}${path}`, { ...init, headers });
+        res = await fetchWith();
       }
     }
 
@@ -161,6 +180,7 @@ export class ApiClient {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refresh }),
+        credentials: 'include',
       });
       if (!res.ok) {
         this.clearTokens();
@@ -584,6 +604,7 @@ export interface DocumentResponse {
   type: string;
   summary?: string;
   metadata?: Record<string, unknown>;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -595,35 +616,209 @@ export interface DocumentListResponse {
   page_size: number;
 }
 
+export interface DocumentAction {
+  id: string;
+  document_id: string;
+  workspace_id: string;
+  action_type: 'document_rename' | 'document_archive' | 'document_restore';
+  old_path?: string | null;
+  new_path?: string | null;
+  old_deleted_at?: string | null;
+  new_deleted_at?: string | null;
+  undone_at?: string | null;
+  created_at: string;
+}
+
+export interface DocumentActionListResponse {
+  actions: DocumentAction[];
+  total: number;
+}
+
+function contentUrl(documentId: string, workspaceId: string): string {
+  return `${API_BASE}${API_PREFIX}/documents/${encodeURIComponent(documentId)}/content?workspace_id=${encodeURIComponent(workspaceId)}`;
+}
+
 export const documentApi = {
   upload(file: File, workspaceId: string): Promise<DocumentResponse> {
     const formData = new FormData();
     formData.append('file', file);
     const token =
       typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
-    return fetch(
-      `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`,
-      {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      },
-    ).then(async (res) => {
+    return getCsrfToken().then(async (csrf) => {
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      if (csrf) headers[CSRF_HEADER] = csrf;
+      const url = `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`;
+      const doFetch = () =>
+        fetch(url, {
+          method: 'POST',
+          headers,
+          body: formData,
+          credentials: 'include',
+        });
+      let res = await doFetch();
+      if (res.status === 403 && csrf) {
+        resetCsrfToken();
+        const fresh = await getCsrfToken();
+        if (fresh) {
+          headers[CSRF_HEADER] = fresh;
+          res = await doFetch();
+        }
+      }
       if (!res.ok) throw new ApiClientError(res.status, 'Upload failed');
-      return res.json() as Promise<DocumentResponse>;
+      return (res.json() as Promise<Record<string, unknown>>).then(
+        (j) => apiClient['transformKeys'](j) as DocumentResponse,
+      );
+    });
+  },
+  uploadWithProgress(
+    file: File,
+    workspaceId: string,
+    onProgress: (percent: number) => void,
+  ): Promise<DocumentResponse> {
+    return new Promise((resolve, reject) => {
+      getCsrfToken().then((csrf) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(
+          'POST',
+          `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`,
+        );
+        xhr.withCredentials = true;
+        const token =
+          typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        if (csrf) xhr.setRequestHeader(CSRF_HEADER, csrf);
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        const parseDoc = (text: string): DocumentResponse =>
+          apiClient['transformKeys'](
+            JSON.parse(text) as Record<string, unknown>,
+          ) as DocumentResponse;
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(parseDoc(xhr.responseText));
+            } catch {
+              reject(new ApiClientError(xhr.status, 'Upload failed'));
+            }
+          } else if (xhr.status === 403 && csrf) {
+            resetCsrfToken();
+            getCsrfToken().then((fresh) => {
+              if (fresh) {
+                const retry = new XMLHttpRequest();
+                retry.open(
+                  'POST',
+                  `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`,
+                );
+                retry.withCredentials = true;
+                if (token) retry.setRequestHeader('Authorization', `Bearer ${token}`);
+                retry.setRequestHeader(CSRF_HEADER, fresh);
+                const form = new FormData();
+                form.append('file', file);
+                retry.upload.onprogress = xhr.upload.onprogress;
+                retry.onload = () => {
+                  if (retry.status >= 200 && retry.status < 300) {
+                    try {
+                      resolve(parseDoc(retry.responseText));
+                    } catch {
+                      reject(new ApiClientError(retry.status, 'Upload failed'));
+                    }
+                  } else {
+                    reject(new ApiClientError(retry.status, 'Upload failed'));
+                  }
+                };
+                retry.onerror = () => reject(new ApiClientError(0, 'Network error during upload'));
+                retry.send(form);
+              } else {
+                reject(new ApiClientError(xhr.status, 'Upload failed'));
+              }
+            });
+          } else {
+            reject(new ApiClientError(xhr.status, 'Upload failed'));
+          }
+        };
+        xhr.onerror = () => reject(new ApiClientError(0, 'Network error during upload'));
+        const form = new FormData();
+        form.append('file', file);
+        xhr.send(form);
+      });
     });
   },
   list(params?: {
     workspace_id?: string;
     page?: number;
     page_size?: number;
+    include_archived?: boolean;
   }): Promise<DocumentListResponse> {
     return apiClient.get<DocumentListResponse>(
       '/documents',
       params as Record<string, string | number | boolean | undefined | null>,
     );
   },
+  rename(id: string, workspaceId: string, path: string): Promise<DocumentResponse> {
+    return apiClient.patch<DocumentResponse>(
+      `/documents/${encodeURIComponent(id)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+      { path },
+    );
+  },
+  archive(id: string, workspaceId: string): Promise<DocumentResponse> {
+    return apiClient.postQuery<DocumentResponse>(`/documents/${encodeURIComponent(id)}/archive`, {
+      workspace_id: workspaceId,
+    });
+  },
+  restore(id: string, workspaceId: string): Promise<DocumentResponse> {
+    return apiClient.postQuery<DocumentResponse>(`/documents/${encodeURIComponent(id)}/restore`, {
+      workspace_id: workspaceId,
+    });
+  },
+  actions(id: string, workspaceId: string): Promise<DocumentActionListResponse> {
+    return apiClient.get<DocumentActionListResponse>(
+      `/documents/${encodeURIComponent(id)}/actions`,
+      { workspace_id: workspaceId },
+    );
+  },
+  undo(actionId: string, workspaceId: string): Promise<DocumentResponse> {
+    return apiClient.postQuery<DocumentResponse>(
+      `/documents/actions/${encodeURIComponent(actionId)}/undo`,
+      { workspace_id: workspaceId },
+    );
+  },
+  async getContent(id: string, workspaceId: string): Promise<Blob> {
+    const token =
+      typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch(contentUrl(id, workspaceId), {
+      headers,
+      credentials: 'include',
+    });
+    if (!res.ok) throw new ApiClientError(res.status, 'Failed to load document content');
+    return res.blob();
+  },
+  workspaceActions(workspaceId: string): Promise<DocumentActionListResponse> {
+    return apiClient.get<DocumentActionListResponse>(
+      `/workspaces/${encodeURIComponent(workspaceId)}/document-actions`,
+    );
+  },
+  workspaceAgentActions(workspaceId: string): Promise<AgentActionHistory[]> {
+    return apiClient.get<AgentActionHistory[]>(
+      `/workspaces/${encodeURIComponent(workspaceId)}/agent-actions`,
+    );
+  },
 };
+
+export interface AgentActionHistory {
+  id: string;
+  workspaceId: string;
+  agentName: string;
+  actionType: string;
+  inputRef?: string | null;
+  outputRef?: string | null;
+  status: string;
+  error?: string | null;
+  durationMs?: number | null;
+  approvalRequestId?: string | null;
+  createdAt: string | null;
+}
 
 // ─── Resume ──────────────────────────────────────────────────────────────────
 
@@ -811,17 +1006,16 @@ export interface ConsentRecord {
 }
 
 export interface GdprExportResponse {
-  job_id?: string;
-  status?: string;
-  download_url?: string;
-  expires_at?: string;
+  user_id: string;
+  exported_at: string;
+  data: Record<string, unknown[]>;
+  total_records: number;
 }
 
 export interface GdprDeleteResponse {
-  request_id: string;
-  status: string;
-  primary_deletion: string;
-  backup_expiry: string;
+  user_id: string;
+  action: string;
+  tables: Record<string, number>;
 }
 
 export const consentApi = {
@@ -841,7 +1035,7 @@ export const consentApi = {
 
 export const gdprApi = {
   export(): Promise<GdprExportResponse> {
-    return apiClient.post<GdprExportResponse>('/gdpr/export');
+    return apiClient.get<GdprExportResponse>('/gdpr/export');
   },
   delete(): Promise<GdprDeleteResponse> {
     return apiClient.post<GdprDeleteResponse>('/gdpr/delete');

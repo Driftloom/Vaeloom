@@ -14,8 +14,8 @@ class TestMvpScopeLock:
     """
 
     CANONICAL = ["organization", "memory", "resume", "ats", "job_search",
-                 "application", "gmail", "scheduler"]
-    ENTERPRISE = ["career", "learning", "research", "github", "coding",
+                 "application", "gmail", "scheduler", "planning", "research"]
+    ENTERPRISE = ["career", "learning", "github", "coding",
                   "reminder", "analytics", "recommendation", "reflection",
                   "security", "connector", "plugin", "drive"]
 
@@ -81,6 +81,6 @@ class TestMvpScopeLock:
         from api.orchestrator.router import MVP_CANONICAL_AGENTS
         assert MVP_CANONICAL_AGENTS == frozenset({
             "organization", "memory", "resume", "ats", "job_search",
-            "application", "gmail", "scheduler",
+            "application", "gmail", "scheduler", "planning", "research",
         })
-        assert len(MVP_CANONICAL_AGENTS) == 8
+        assert len(MVP_CANONICAL_AGENTS) == 10

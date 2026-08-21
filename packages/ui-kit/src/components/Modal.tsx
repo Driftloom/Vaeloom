@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useCallback, useRef, useId } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -72,14 +73,9 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
 
   if (!isOpen) return null;
 
-  return (
+  const content = (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="fixed inset-0 bg-black/60"
-        onClick={onClose}
-        aria-hidden="true"
-        {...{ inert: true }}
-      />
+      <div className="fixed inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
         ref={dialogRef}
         className={`relative w-full ${sizes[size]} mx-4 bg-surface rounded-lg border border-border shadow-xl`}
@@ -117,4 +113,9 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 };

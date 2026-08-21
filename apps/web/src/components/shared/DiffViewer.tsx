@@ -104,20 +104,35 @@ export function DiffViewer({ oldText, newText }: DiffViewerProps) {
         {added ? `${added.trim().split(/\s+/).length} word(s) added` : 'no wording changes'}
       </p>
       <p>
-        {parts.map((part, idx) => (
-          <span
-            key={idx}
-            className={
-              part.kind === 'removed'
-                ? 'bg-accent/20 text-accent-hover line-through'
-                : part.kind === 'added'
-                  ? 'bg-success/20 text-success-muted'
-                  : 'text-text'
-            }
-          >
-            {part.value}
-          </span>
-        ))}
+        {parts.map((part, idx) => {
+          if (part.kind === 'removed') {
+            return (
+              <del
+                key={idx}
+                aria-label={`removed: ${part.value.trim()}`}
+                className="bg-accent/20 text-accent-hover no-underline"
+              >
+                {part.value}
+              </del>
+            );
+          }
+          if (part.kind === 'added') {
+            return (
+              <ins
+                key={idx}
+                aria-label={`added: ${part.value.trim()}`}
+                className="bg-success/20 text-success-muted no-underline"
+              >
+                {part.value}
+              </ins>
+            );
+          }
+          return (
+            <span key={idx} className="text-text">
+              {part.value}
+            </span>
+          );
+        })}
       </p>
     </div>
   );

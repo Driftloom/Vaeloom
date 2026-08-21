@@ -5,9 +5,11 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { Modal } from '@vaeloom/ui-kit';
 import { applicationApi } from '@/lib/api-client';
 import type { ApplicationResponse, ApplicationUpdateOutcomeRequest } from '@/lib/api-client';
 import type { StatusVariant } from '@/components/shared/StatusBadge';
+import { useToast } from '@/components/shared/Toast';
 
 const columns = [
   { id: 'draft', title: 'Draft' },
@@ -52,10 +54,15 @@ function getAppCompany(app: ApplicationResponse): string {
 export default function ApplicationsPage() {
   const params = useParams();
   const workspaceId = params?.['workspaceId'] as string | undefined;
+  const { toast } = useToast();
 
   const [applications, setApplications] = useState<ApplicationResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ApplicationResponse | null>(null);
+  const [editStatus, setEditStatus] = useState('');
+  const [editOutcome, setEditOutcome] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const fetchApplications = useCallback(async () => {
     if (!workspaceId) return;
@@ -82,6 +89,32 @@ export default function ApplicationsPage() {
   useEffect(() => {
     fetchApplications();
   }, [fetchApplications]);
+
+  const openDetail = useCallback((app: ApplicationResponse) => {
+    setSelected(app);
+    setEditStatus(app.status ?? 'draft');
+    setEditOutcome(app.outcome ?? '');
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!workspaceId || !selected) return;
+    setSaving(true);
+    try {
+      const body: ApplicationUpdateOutcomeRequest = { status: editStatus };
+      const updated = await applicationApi.updateOutcome(workspaceId, selected.id, body);
+      setApplications((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      setSelected(null);
+      toast({ tone: 'success', title: 'Application updated', detail: getAppTitle(updated) });
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Update failed',
+        detail: err instanceof Error ? err.message : 'Please try again.',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [workspaceId, selected, editStatus, editOutcome, toast]);
 
   if (loading) {
     return (
@@ -165,9 +198,10 @@ export default function ApplicationsPage() {
 
               <div className="flex-1 space-y-3 overflow-y-auto">
                 {colApps.map((app) => (
-                  <div
+                  <button
                     key={app.id}
-                    className="card hover:border-primary/50 transition-colors cursor-pointer"
+                    onClick={() => openDetail(app)}
+                    className="card w-full text-left hover:border-primary/50 transition-colors"
                   >
                     <h3 className="font-medium text-text">{getAppTitle(app)}</h3>
                     {getAppCompany(app) && (
@@ -193,13 +227,93 @@ export default function ApplicationsPage() {
                     <div className="text-xs text-text-muted mt-2 font-mono">
                       Created {formatDate(app.created_at)}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           );
         })}
       </div>
+
+      <Modal
+        isOpen={Boolean(selected)}
+        onClose={() => setSelected(null)}
+        title={selected ? getAppTitle(selected) : 'Application'}
+      >
+        {selected && (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="font-mono text-text-dim">Company</span>
+                <p className="text-text">{getAppCompany(selected) || '—'}</p>
+              </div>
+              <div>
+                <span className="font-mono text-text-dim">Platform</span>
+                <p className="text-text">{selected.platform ?? '—'}</p>
+              </div>
+              <div>
+                <span className="font-mono text-text-dim">Job ID</span>
+                <p className="font-mono text-text">{selected.job_external_id ?? '—'}</p>
+              </div>
+              <div>
+                <span className="font-mono text-text-dim">Created</span>
+                <p className="text-text">{formatDate(selected.created_at)}</p>
+              </div>
+            </div>
+            {selected.metadata && Object.keys(selected.metadata).length > 0 && (
+              <pre className="max-h-40 overflow-auto rounded bg-surface-hover border border-border p-2 font-mono text-xs">
+                {JSON.stringify(selected.metadata, null, 2)}
+              </pre>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                Status
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="draft">draft</option>
+                  <option value="shortlisted">shortlisted</option>
+                  <option value="tailoring">tailoring</option>
+                  <option value="submitted">submitted</option>
+                  <option value="interviewing">interviewing</option>
+                  <option value="resolved">resolved</option>
+                  <option value="rejected">rejected</option>
+                </select>
+              </label>
+              <label className="block">
+                Outcome
+                <select
+                  value={editOutcome}
+                  onChange={(e) => setEditOutcome(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">—</option>
+                  <option value="offer">offer</option>
+                  <option value="rejected">rejected</option>
+                  <option value="withdrawn">withdrawn</option>
+                </select>
+              </label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setSelected(null)}
+                className="rounded-full border border-border px-4 py-1.5 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="rounded-full bg-white px-4 py-1.5 text-sm text-black disabled:opacity-40"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

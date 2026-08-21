@@ -463,6 +463,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_id}/document-actions:
+    get:
+      tags:
+        - workspaces
+      summary: List Workspace Document Actions
+      operationId: list_workspace_document_actions_api_v1_workspaces__workspace_id__document_actions_get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/workspaces/{workspace_id}/agent-actions:
+    get:
+      tags:
+        - workspaces
+      summary: List Workspace Agent Actions
+      operationId: list_workspace_agent_actions_api_v1_workspaces__workspace_id__agent_actions_get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/memories:
     get:
       tags:
@@ -1426,6 +1476,13 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: include_archived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+            title: Include Archived
       responses:
         '200':
           description: Successful Response
@@ -1433,6 +1490,203 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/documents/{document_id}/content:
+    get:
+      tags:
+        - documents
+      summary: Get Document Content
+      operationId: get_document_content_api_v1_documents__document_id__content_get
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/documents/{document_id}:
+    patch:
+      tags:
+        - documents
+      summary: Rename Document
+      operationId: rename_document_api_v1_documents__document_id__patch
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentRenameRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/documents/{document_id}/archive:
+    post:
+      tags:
+        - documents
+      summary: Archive Document
+      operationId: archive_document_api_v1_documents__document_id__archive_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/documents/{document_id}/restore:
+    post:
+      tags:
+        - documents
+      summary: Restore Document
+      operationId: restore_document_api_v1_documents__document_id__restore_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/documents/{document_id}/actions:
+    get:
+      tags:
+        - documents
+      summary: List Document Actions
+      operationId: list_document_actions_api_v1_documents__document_id__actions_get
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentActionListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/documents/actions/{action_id}/undo:
+    post:
+      tags:
+        - documents
+      summary: Undo Document Action
+      operationId: undo_document_action_api_v1_documents_actions__action_id__undo_post
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Action Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
         '422':
           description: Validation Error
           content:
@@ -4214,6 +4468,78 @@ components:
           title: Name
       type: object
       title: CreateWorkspaceRequest
+    DocumentActionListResponse:
+      properties:
+        actions:
+          items:
+            $ref: '#/components/schemas/DocumentActionResponse'
+          type: array
+          title: Actions
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+        - actions
+        - total
+      title: DocumentActionListResponse
+    DocumentActionResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        document_id:
+          type: string
+          format: uuid
+          title: Document Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        action_type:
+          type: string
+          title: Action Type
+        old_path:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Old Path
+        new_path:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: New Path
+        old_deleted_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Old Deleted At
+        new_deleted_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: New Deleted At
+        undone_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Undone At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - document_id
+        - workspace_id
+        - action_type
+        - created_at
+      title: DocumentActionResponse
     DocumentListResponse:
       properties:
         documents:
@@ -4237,6 +4563,17 @@ components:
         - documents
         - total
       title: DocumentListResponse
+    DocumentRenameRequest:
+      properties:
+        path:
+          type: string
+          maxLength: 1000
+          minLength: 1
+          title: Path
+      type: object
+      required:
+        - path
+      title: DocumentRenameRequest
     DocumentResponse:
       properties:
         id:
@@ -4264,6 +4601,12 @@ components:
               type: object
             - type: 'null'
           title: Metadata
+        deleted_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Deleted At
         created_at:
           type: string
           format: date-time

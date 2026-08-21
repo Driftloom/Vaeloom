@@ -1,9 +1,9 @@
 'use client';
 import React, { useState, useCallback, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { api } from '../../../../lib/api';
-import { consentApi } from '../../../../lib/api-client';
+import { api, clearToken, clearRefreshToken } from '../../../../lib/api';
+import { consentApi, gdprApi } from '../../../../lib/api-client';
 import { ProviderKeysSection } from '@/components/settings/ProviderKeysSection';
 import { ErrorState } from '@/components/shared/ErrorState';
 import type { Agent, PaginatedResponse } from '@vaeloom/shared-types';
@@ -24,6 +24,7 @@ const AUTONOMY_OPTIONS = [
 export default function SettingsPage() {
   const params = useParams();
   const workspaceId = params?.['workspaceId'] as string | undefined;
+  const router = useRouter();
 
   const {
     data: agentsRes,
@@ -87,7 +88,7 @@ export default function SettingsPage() {
     setSaveError(null);
     try {
       await api.request(`/agents/${agentId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         body: JSON.stringify({ autonomy: newValue }),
       });
     } catch (err) {
@@ -104,22 +105,24 @@ export default function SettingsPage() {
 
   const handleExport = async () => {
     setExporting(true);
+    setSaveError(null);
     try {
-      await api.request(`/workspaces/${workspaceId}/export`, { method: 'POST' });
-    } catch {
-      const events = await api.events.list();
+      const data = await gdprApi.export();
       const payload = {
         workspaceId,
-        exportedAt: new Date().toISOString(),
-        events: events.data,
+        exportedAt: data.exported_at,
+        totalRecords: data.total_records,
+        data: data.data,
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `workspace-${workspaceId}-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `vaeloom-export-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to export data');
     } finally {
       setExporting(false);
     }
@@ -134,11 +137,18 @@ export default function SettingsPage() {
     setSaveError(null);
     setDeleteReceipt(null);
     try {
-      await api.request(`/workspaces/${workspaceId}/data`, { method: 'DELETE' });
+      const result = await gdprApi.delete();
+      const tables = Object.entries(result.tables ?? {})
+        .filter(([, count]) => (count as number) > 0)
+        .map(([table, count]) => `${table}: ${count}`)
+        .join(', ');
       setDeleteReceipt(
-        `Erasure request received. Your data is being removed (primary deletion). Backups expire within 30 days (backup expiry); nothing is kept longer unless legally required.`,
+        `Erasure completed. Your account has been anonymized and your data removed (${tables || 'nothing to remove'}). Backups expire within 30 days; nothing is kept longer unless legally required.`,
       );
       setDeleteConfirmText('');
+      clearToken();
+      clearRefreshToken();
+      setTimeout(() => router.replace('/login'), 2500);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to delete workspace data');
     } finally {

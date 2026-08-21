@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { useWorkspace } from '../../../hooks/useWorkspace';
 import { useApi } from '../../../hooks/useApi';
 import { api } from '../../../lib/api';
+import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist';
 import type { Agent, Memory, PaginatedResponse, Event } from '@vaeloom/shared-types';
 
 function formatRelativeTime(iso: string): string {
@@ -46,23 +47,32 @@ export default function DashboardPage() {
   const workspaceId = params?.['workspaceId'] as string | undefined;
 
   const { workspace, isLoading: wsLoading } = useWorkspace(workspaceId);
-  const { data: agentsRes } = useSWR<PaginatedResponse<Agent>>(
+  const { data: agents, error: agentsError } = useSWR<Agent[]>(
     workspaceId ? `/workspaces/${workspaceId}/agents` : null,
-    () => api.agents.list({ workspaceId }),
+    () => api.request<Agent[]>(`/workspaces/${workspaceId}/agents`),
   );
-  const { data: memoriesRes } = useSWR<PaginatedResponse<Memory>>(
+  const { data: memories, error: memoriesError } = useSWR<Memory[]>(
     workspaceId ? `/workspaces/${workspaceId}/memories` : null,
-    () => api.memories.list({ workspaceId }),
+    () => api.request<Memory[]>(`/workspaces/${workspaceId}/memories`),
   );
   const {
     data: eventsRes,
     loading: eventsLoading,
     error: eventsError,
-  } = useApi<PaginatedResponse<Event>>(() => api.events.list(), { enabled: !!workspaceId });
+  } = useApi<Event[] | PaginatedResponse<Event>>(
+    () => api.request<Event[] | PaginatedResponse<Event>>('/events'),
+    { enabled: !!workspaceId },
+  );
 
-  const events = eventsRes?.data ?? [];
+  const events: Event[] = Array.isArray(eventsRes)
+    ? eventsRes
+    : ((eventsRes as PaginatedResponse<Event>)?.data ?? []);
   const activityEvents = events.slice(0, 10);
   const deadlineEvents = events.filter(isDeadlineEvent).slice(0, 5);
+  const agentCount = agents?.length ?? 0;
+  const memoryCount = memories?.length ?? 0;
+  const agentsFailed = Boolean(agentsError);
+  const memoriesFailed = Boolean(memoriesError);
 
   if (wsLoading) {
     return (
@@ -92,25 +102,48 @@ export default function DashboardPage() {
           {workspace?.name ?? 'Dashboard'}
         </h1>
         <p className="text-text-muted">
-          Welcome back. Here&apos;s what your {(agentsRes?.data ?? []).length} agents have been up
-          to.
+          {agentsFailed || memoriesFailed ? (
+            'Could not load workspace stats — see cards below.'
+          ) : agentCount === 0 && memoryCount === 0 ? (
+            <>
+              No agents or memories yet —{' '}
+              <a href={`/workspace/${workspaceId}/files`} className="text-primary underline">
+                upload a file
+              </a>{' '}
+              or{' '}
+              <a href={`/workspace/${workspaceId}/agents`} className="text-primary underline">
+                create an agent
+              </a>{' '}
+              to get started.
+            </>
+          ) : (
+            <>Welcome back. Here&apos;s what your {agentCount} agents have been up to.</>
+          )}
         </p>
       </header>
+
+      {(agentCount === 0 || memoryCount === 0) && <OnboardingChecklist workspaceId={workspaceId} />}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">
           <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">
             Active Agents
           </h2>
-          <div className="text-4xl font-display text-primary">{(agentsRes?.data ?? []).length}</div>
+          {agentsFailed ? (
+            <p className="text-sm text-red-400">Failed to load</p>
+          ) : (
+            <div className="text-4xl font-display text-primary">{agentCount}</div>
+          )}
         </div>
         <div className="card">
           <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">
             Memory Nodes
           </h2>
-          <div className="text-4xl font-display text-accent">
-            {(memoriesRes?.data ?? []).length}
-          </div>
+          {memoriesFailed ? (
+            <p className="text-sm text-red-400">Failed to load</p>
+          ) : (
+            <div className="text-4xl font-display text-accent">{memoryCount}</div>
+          )}
         </div>
         <div className="card">
           <h2 className="font-mono text-sm text-text-muted mb-4 uppercase tracking-wider">

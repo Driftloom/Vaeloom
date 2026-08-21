@@ -15,14 +15,16 @@
 
 ## Quick Commands
 
-| Action                | Command                                       | Time     |
-| --------------------- | --------------------------------------------- | -------- |
-| **Frontend dev**      | **`pnpm dev:web`**                            | **2-5s** |
-| Frontend dev (direct) | `make dev-web`                                | **2-5s** |
-| API dev               | `pnpm dev:be`                                 | instant  |
-| Install deps          | `pnpm install`                                | **2.2s** |
-| Backend tests         | `cd apps/api && python -m pytest tests/ -q`   | ~5min    |
-| ALL tests w/ cov      | `cd apps/api && python -m pytest tests/ --co` | ~10min   |
+| Action                 | Command                                                                                             | Time                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Frontend dev**       | **`pnpm dev:web`**                                                                                  | **2-5s**                                                           |
+| Frontend dev (direct)  | `make dev-web`                                                                                      | **2-5s**                                                           |
+| API dev                | `pnpm dev:be`                                                                                       | instant                                                            |
+| Install deps           | `pnpm install`                                                                                      | **2.2s**                                                           |
+| Backend tests          | `cd apps/api && uv run --project apps/api python -m pytest -q`                                      | ~3-5min (xdist 4 workers, mem-friendly; 16 workers ≈ 4-5GB)        |
+| Backend tests (fast)   | `cd apps/api && uv run --project apps/api python -m pytest -q -o addopts="-n auto --dist loadfile"` | ~2-3min (16 workers, needs 32GB; `--dist loadfile` groups by file) |
+| Backend tests (serial) | `cd apps/api && uv run --project apps/api python -m pytest -q -o addopts=""`                        | ~8-10min                                                           |
+| ALL tests w/ cov       | `cd apps/api && uv run --project apps/api python -m pytest --cov=api --cov-report=term -q`          | ~4-6min                                                            |
 
 ## CRITICAL: Never use `pnpm dev`
 
@@ -45,12 +47,22 @@
 
 ## API — Test State
 
-- **2333 tests pass, 2 xfailed, 0 failures** (re-measured 2026-08-13 via fresh
-  full-suite run; security suite 172/172; coverage **94% total** — see
-  `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`)
-- Python 3.12 (per `.python-version`)
-- Tests use SQLite with mock backend; `mock_llm` + `mock_connector_test` autouse
-  fixtures in conftest.py
+- **2425 tests collected (2417 pass, 4 skipped, 2 xfailed, 1 pre-existing
+  failure fixed on 2026-08-21)** — security suite 172/172; coverage **94%
+  total** — see `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`
+- Python 3.12.13 (per `apps/api/.python-version` pinned via
+  `uv python pin 3.12`; `.venv` managed by `uv`)
+- Tests use SQLite with mock backend (`tmp_path` per-test DB via `NullPool`);
+  `mock_llm` + `mock_connector_test` autouse fixtures in
+  `apps/api/tests/conftest.py:215,251`
+- **Runner: `uv` + `pytest-xdist`** (`pyproject.toml:46` `addopts = "-n 4"` → 4
+  workers, ~1.2GB; 16 workers ≈ 4-5GB). Fast:
+  `uv run --project apps/api python -m pytest -q -o addopts="-n auto --dist loadfile"`
+  (~2-3min, needs 32GB). Serial:
+  `uv run --project apps/api python -m pytest -q -o addopts=""` (~8-10min).
+  Determinism fix: `test_noauth_private.py:90` now `sorted(PUBLIC_PATHS)` to
+  avoid xdist collection mismatch (`frozenset` → `list` was non-deterministic)
+- `.venv` is 3.12.13 (managed by `uv`); old `3.14` venv removed 2026-08-21
 
 ## Enterprise Hardening — Status
 
@@ -72,7 +84,7 @@
 | 7.x Agent hardening       | DONE   | IMPLEMENTED   | Circuit breaker, fallback policies, per-agent rate limits; approval gate now wired in orchestrator loop                                              |
 | 8.x Performance           | DONE   | IMPLEMENTED   | SWR caching, route prefetching, image optimization, bundle analysis                                                                                  |
 | 9.x Security & Compliance | DONE   | PARTIAL       | GDPR, API key rotation, data retention implemented; IP Allowlist middleware EXISTS but NOT MOUNTED in main.py; input sanitization designed (ADR-031) |
-| 10.x Testing/QA           | DONE   | PARTIAL       | 2335 pytest, 172 security, 37 jest, 39 e2e real; testing/smoke/, security/, chaos/, fuzz/, visual-regression/ are EMPTY                              |
+| 10.x Testing/QA           | DONE   | PARTIAL       | 2425 pytest, 172 security, 37 jest, 39 e2e real; testing/smoke/, security/, chaos/, fuzz/, visual-regression/ are EMPTY                              |
 | 11.x Documentation        | DONE   | IMPLEMENTED   | 32 ADRs (ADR-001 through ADR-032), OpenAPI spec, onboarding guide, deployment/DR runbooks, API reference                                             |
 | 12.x Enterprise Polish    | DONE   | IMPLEMENTED   | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                                                      |
 
@@ -96,9 +108,9 @@ When starting fresh, **these 4 things WILL break** if not handled:
 ### Server Startup
 
 ```
-# Terminal 1: API (set vars BEFORE python)
+# Terminal 1: API (set vars BEFORE python; use uv so correct venv + Python 3.12 is used)
 $env:JWT_SECRET="super-secret-key-12345-dev-only"; $env:ENCRYPTION_KEY="MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="; $env:DATABASE__URL="sqlite+aiosqlite:///./dev.db"; $env:LLM_API_KEY="mock-key"; $env:OTEL_SDK_DISABLED="true"
-python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+uv run --project apps/api python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 
 # Terminal 2: Frontend
 pnpm dev:web

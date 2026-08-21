@@ -87,7 +87,7 @@ class TestNoAuthPrivate:
         res = await client.get("/api/v1/workspaces", headers=headers)
         assert res.status_code == 200
 
-    @pytest.mark.parametrize("path", list(PUBLIC_PATHS))
+    @pytest.mark.parametrize("path", sorted(PUBLIC_PATHS))
     async def test_public_paths_are_accessible(
         self, client: AsyncClient, path: str,
     ):

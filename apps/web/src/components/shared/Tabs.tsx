@@ -20,29 +20,36 @@ export function Tabs({ tabs, activeTab, onChange, className = '' }: TabsProps) {
     const enabledTabs = tabs.filter((t) => !t.disabled);
     if (enabledTabs.length === 0) return;
     const currentEnabledIndex = enabledTabs.findIndex((t) => t.id === activeTab);
-    let nextIndex: number;
+    let nextId: string | undefined;
 
     switch (e.key) {
       case 'ArrowRight':
       case 'ArrowDown':
         e.preventDefault();
-        nextIndex = (currentEnabledIndex + 1) % enabledTabs.length;
-        onChange(enabledTabs[nextIndex]!.id);
+        nextId = enabledTabs[(currentEnabledIndex + 1) % enabledTabs.length]!.id;
         break;
       case 'ArrowLeft':
       case 'ArrowUp':
         e.preventDefault();
-        nextIndex = (currentEnabledIndex - 1 + enabledTabs.length) % enabledTabs.length;
-        onChange(enabledTabs[nextIndex]!.id);
+        nextId =
+          enabledTabs[(currentEnabledIndex - 1 + enabledTabs.length) % enabledTabs.length]!.id;
         break;
       case 'Home':
         e.preventDefault();
-        onChange(enabledTabs[0]!.id);
+        nextId = enabledTabs[0]!.id;
         break;
       case 'End':
         e.preventDefault();
-        onChange(enabledTabs[enabledTabs.length - 1]!.id);
+        nextId = enabledTabs[enabledTabs.length - 1]!.id;
         break;
+      default:
+        return;
+    }
+    if (nextId) {
+      onChange(nextId);
+      // Focus the newly active tab after state updates
+      const nextIndex = tabs.findIndex((t) => t.id === nextId);
+      requestAnimationFrame(() => tabRefs.current[nextIndex]?.focus());
     }
   }
 

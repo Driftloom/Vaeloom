@@ -126,3 +126,69 @@ async def list_workspace_connectors(
     )
     connectors = result.scalars().all()
     return [ConnectorResponse.model_validate(c) for c in connectors]
+
+
+@router.get("/{workspace_id}/document-actions")
+async def list_workspace_document_actions(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub")
+    ws = await workspace_service.find_by_id(workspace_id=workspace_id, user_id=user_id, db=db)
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or access denied")
+    from ..models.schema import DocumentAction
+    from ..schemas.document import DocumentActionResponse, DocumentActionListResponse
+    result = await db.execute(
+        select(DocumentAction)
+        .where(DocumentAction.workspace_id == uuid.UUID(workspace_id))
+        .order_by(DocumentAction.created_at.desc())
+        .limit(100)
+    )
+    actions = result.scalars().all()
+    return DocumentActionListResponse(
+        actions=[DocumentActionResponse.model_validate(a) for a in actions],
+        total=len(actions),
+    )
+
+
+@router.get("/{workspace_id}/agent-actions")
+async def list_workspace_agent_actions(
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub")
+    ws = await workspace_service.find_by_id(workspace_id=workspace_id, user_id=user_id, db=db)
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or access denied")
+    from ..models.schema import AgentAction
+    from sqlalchemy import desc
+    result = await db.execute(
+        select(AgentAction)
+        .where(AgentAction.workspace_id == uuid.UUID(workspace_id))
+        .order_by(desc(AgentAction.created_at))
+        .limit(100)
+    )
+    actions = result.scalars().all()
+    return [
+        {
+            "id": str(a.id),
+            "workspaceId": str(a.workspace_id),
+            "agentName": a.agent_name,
+            "actionType": a.action_type,
+            "inputRef": a.input_ref,
+            "outputRef": a.output_ref,
+            "status": a.status,
+            "error": a.error,
+            "durationMs": a.duration_ms,
+            "approvalRequestId": str(a.approval_request_id) if a.approval_request_id else None,
+            "createdAt": a.created_at.isoformat() if a.created_at else None,
+        }
+        for a in actions
+    ]

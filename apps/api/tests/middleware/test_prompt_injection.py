@@ -2,6 +2,7 @@ import json
 import os
 
 import pytest
+import pytest_asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from httpx import AsyncClient, ASGITransport
@@ -25,7 +26,7 @@ def app():
     return application
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

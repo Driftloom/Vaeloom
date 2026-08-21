@@ -1,4 +1,5 @@
 'use client';
+import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import React, { useState } from 'react';
 import { Button, Modal } from '@vaeloom/ui-kit';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -34,11 +35,46 @@ interface AuditEvent {
 }
 
 const mockUsers: User[] = [
-  { id: '1', name: 'Alice Chen', email: 'alice@example.com', role: 'admin', status: 'active', lastActive: '2 min ago' },
-  { id: '2', name: 'Bob Martinez', email: 'bob@example.com', role: 'member', status: 'active', lastActive: '1 hour ago' },
-  { id: '3', name: 'Carol Smith', email: 'carol@example.com', role: 'member', status: 'invited', lastActive: 'Never' },
-  { id: '4', name: 'Dave Johnson', email: 'dave@example.com', role: 'viewer', status: 'suspended', lastActive: '3 days ago' },
-  { id: '5', name: 'Eve Williams', email: 'eve@example.com', role: 'admin', status: 'active', lastActive: '5 min ago' },
+  {
+    id: '1',
+    name: 'Alice Chen',
+    email: 'alice@example.com',
+    role: 'admin',
+    status: 'active',
+    lastActive: '2 min ago',
+  },
+  {
+    id: '2',
+    name: 'Bob Martinez',
+    email: 'bob@example.com',
+    role: 'member',
+    status: 'active',
+    lastActive: '1 hour ago',
+  },
+  {
+    id: '3',
+    name: 'Carol Smith',
+    email: 'carol@example.com',
+    role: 'member',
+    status: 'invited',
+    lastActive: 'Never',
+  },
+  {
+    id: '4',
+    name: 'Dave Johnson',
+    email: 'dave@example.com',
+    role: 'viewer',
+    status: 'suspended',
+    lastActive: '3 days ago',
+  },
+  {
+    id: '5',
+    name: 'Eve Williams',
+    email: 'eve@example.com',
+    role: 'admin',
+    status: 'active',
+    lastActive: '5 min ago',
+  },
 ];
 
 const mockServices: Service[] = [
@@ -51,21 +87,77 @@ const mockServices: Service[] = [
 ];
 
 const mockAuditLog: AuditEvent[] = [
-  { id: 'a1', user: 'Alice Chen', action: 'workspace.delete', resource: 'Workspace "Dev"', timestamp: '2026-07-18 19:23:04', ip: '192.168.1.10' },
-  { id: 'a2', user: 'Bob Martinez', action: 'user.invite', resource: 'carol@example.com', timestamp: '2026-07-18 18:15:22', ip: '192.168.1.11' },
-  { id: 'a3', user: 'Eve Williams', action: 'settings.update', resource: 'Agent Autonomy', timestamp: '2026-07-18 17:00:01', ip: '10.0.0.5' },
-  { id: 'a4', user: 'System', action: 'backup.complete', resource: 'Daily Backup', timestamp: '2026-07-18 03:00:00', ip: '127.0.0.1' },
-  { id: 'a5', user: 'Alice Chen', action: 'role.update', resource: 'Dave Johnson -> viewer', timestamp: '2026-07-17 14:30:00', ip: '192.168.1.10' },
-  { id: 'a6', user: 'System', action: 'cache.cleared', resource: 'Redis Cache', timestamp: '2026-07-17 03:00:00', ip: '127.0.0.1' },
+  {
+    id: 'a1',
+    user: 'Alice Chen',
+    action: 'workspace.delete',
+    resource: 'Workspace "Dev"',
+    timestamp: '2026-07-18 19:23:04',
+    ip: '192.168.1.10',
+  },
+  {
+    id: 'a2',
+    user: 'Bob Martinez',
+    action: 'user.invite',
+    resource: 'carol@example.com',
+    timestamp: '2026-07-18 18:15:22',
+    ip: '192.168.1.11',
+  },
+  {
+    id: 'a3',
+    user: 'Eve Williams',
+    action: 'settings.update',
+    resource: 'Agent Autonomy',
+    timestamp: '2026-07-18 17:00:01',
+    ip: '10.0.0.5',
+  },
+  {
+    id: 'a4',
+    user: 'System',
+    action: 'backup.complete',
+    resource: 'Daily Backup',
+    timestamp: '2026-07-18 03:00:00',
+    ip: '127.0.0.1',
+  },
+  {
+    id: 'a5',
+    user: 'Alice Chen',
+    action: 'role.update',
+    resource: 'Dave Johnson -> viewer',
+    timestamp: '2026-07-17 14:30:00',
+    ip: '192.168.1.10',
+  },
+  {
+    id: 'a6',
+    user: 'System',
+    action: 'cache.cleared',
+    resource: 'Redis Cache',
+    timestamp: '2026-07-17 03:00:00',
+    ip: '127.0.0.1',
+  },
 ];
 
-const roleColors: Record<UserRole, StatusVariant> = { admin: 'info', member: 'success', viewer: 'neutral' };
-const statusColors: Record<UserStatus, StatusVariant> = { active: 'success', invited: 'warning', suspended: 'error' };
-const serviceColors: Record<string, StatusVariant> = { operational: 'success', degraded: 'warning', down: 'error', maintenance: 'neutral' };
+const roleColors: Record<UserRole, StatusVariant> = {
+  admin: 'info',
+  member: 'success',
+  viewer: 'neutral',
+};
+const statusColors: Record<UserStatus, StatusVariant> = {
+  active: 'success',
+  invited: 'warning',
+  suspended: 'error',
+};
+const serviceColors: Record<string, StatusVariant> = {
+  operational: 'success',
+  degraded: 'warning',
+  down: 'error',
+  maintenance: 'neutral',
+};
 
 const svcColor = (s: string): StatusVariant => serviceColors[s] ?? 'neutral';
 
 export default function AdminPage() {
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Admin" />;
   const [users] = useState<User[]>(mockUsers);
   const [services] = useState<Service[]>(mockServices);
   const [auditLog] = useState<AuditEvent[]>(mockAuditLog);
@@ -84,14 +176,26 @@ export default function AdminPage() {
   const userColumns: Column<User>[] = [
     { key: 'name', header: 'Name' },
     { key: 'email', header: 'Email' },
-    { key: 'role', header: 'Role', render: (u) => <StatusBadge variant={roleColors[u.role]} label={u.role} /> },
-    { key: 'status', header: 'Status', render: (u) => <StatusBadge variant={statusColors[u.status]} label={u.status} /> },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (u) => <StatusBadge variant={roleColors[u.role]} label={u.role} />,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (u) => <StatusBadge variant={statusColors[u.status]} label={u.status} />,
+    },
     { key: 'lastActive', header: 'Last Active', className: 'text-text-muted text-sm' },
   ];
 
   const auditColumns: Column<AuditEvent>[] = [
     { key: 'user', header: 'User' },
-    { key: 'action', header: 'Action', render: (e) => <span className="font-mono text-sm">{e.action}</span> },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (e) => <span className="font-mono text-sm">{e.action}</span>,
+    },
     { key: 'resource', header: 'Resource', className: 'text-text-muted' },
     { key: 'timestamp', header: 'Timestamp', className: 'text-text-muted font-mono text-sm' },
     { key: 'ip', header: 'IP', className: 'text-text-muted font-mono text-sm' },
@@ -100,25 +204,34 @@ export default function AdminPage() {
   return (
     <div className="space-y-8">
       {toast && (
-        <div role="alert" className="fixed top-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-xl text-text text-sm animate-in">
+        <div
+          role="alert"
+          className="fixed top-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-xl text-text text-sm animate-in"
+        >
           {toast}
         </div>
       )}
 
       <header>
         <h1 className="text-3xl font-display font-medium text-text mb-2">Admin Dashboard</h1>
-        <p className="text-text-muted">System administration, user management, and audit controls.</p>
+        <p className="text-text-muted">
+          System administration, user management, and audit controls.
+        </p>
       </header>
 
       <section>
-        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">User Management</h2>
+        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
+          User Management
+        </h2>
         <div className="card overflow-hidden">
           <Table columns={userColumns} data={users} keyExtractor={(u) => u.id} />
         </div>
       </section>
 
       <section>
-        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">System Health</h2>
+        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
+          System Health
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {services.map((svc) => (
             <div key={svc.id} className="card flex items-center justify-between">
@@ -133,7 +246,9 @@ export default function AdminPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">Audit Log</h2>
+        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
+          Audit Log
+        </h2>
         <div className="card overflow-hidden">
           <Table columns={auditColumns} data={paginatedAudit} keyExtractor={(e) => e.id} />
           <div className="flex items-center justify-between p-4 border-t border-border">
@@ -141,20 +256,37 @@ export default function AdminPage() {
               Page {auditPage} of {totalPages}
             </span>
             <div className="flex gap-2">
-              <button className="btn-secondary" disabled={auditPage <= 1} onClick={() => setAuditPage(auditPage - 1)}>Previous</button>
-              <button className="btn-secondary" disabled={auditPage >= totalPages} onClick={() => setAuditPage(auditPage + 1)}>Next</button>
+              <button
+                className="btn-secondary"
+                disabled={auditPage <= 1}
+                onClick={() => setAuditPage(auditPage - 1)}
+              >
+                Previous
+              </button>
+              <button
+                className="btn-secondary"
+                disabled={auditPage >= totalPages}
+                onClick={() => setAuditPage(auditPage + 1)}
+              >
+                Next
+              </button>
             </div>
           </div>
         </div>
       </section>
 
       <section>
-        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">Quick Actions</h2>
+        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
+          Quick Actions
+        </h2>
         <div className="flex flex-wrap gap-4">
           <Button variant="secondary" onClick={() => showToast('Cache cleared successfully.')}>
             Clear Cache
           </Button>
-          <Button variant="secondary" onClick={() => showToast('Backup triggered. This may take a few minutes.')}>
+          <Button
+            variant="secondary"
+            onClick={() => showToast('Backup triggered. This may take a few minutes.')}
+          >
             Trigger Backup
           </Button>
           <Button variant="secondary" onClick={() => showToast('System health check started.')}>

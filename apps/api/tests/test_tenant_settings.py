@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 
 from api.models.schema import Tenant
@@ -18,7 +19,7 @@ from api.services.tenant_settings import (
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def seeded_tenant(db_session):
     tenant = Tenant(name="Test Inc", slug="test-inc", domain="test.com")
     db_session.add(tenant)

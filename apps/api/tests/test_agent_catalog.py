@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 pytestmark = pytest.mark.asyncio
 
-CANONICAL = {"organization", "memory", "resume", "ats", "job_search", "application", "gmail", "scheduler"}
+CANONICAL = {"organization", "memory", "resume", "ats", "job_search", "application", "gmail", "scheduler", "planning", "research"}
 
 
 async def _auth(client: AsyncClient) -> dict:
@@ -26,7 +26,7 @@ class TestAgentCatalog:
         res = await client.get("/api/v1/agents/catalog", headers=headers)
         assert res.status_code == 200, res.text
         body = res.json()
-        assert body["canonical_count"] == 8
+        assert body["canonical_count"] == 10
         names = {a["name"] for a in body["agents"]}
         assert CANONICAL <= names
         assert body["total"] == len(body["agents"])

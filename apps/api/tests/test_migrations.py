@@ -8,7 +8,7 @@ from api.migrations import MIGRATIONS, downgrade_to, run_migrations
 
 pytestmark = pytest.mark.asyncio
 
-EXPECTED_VERSIONS = {"0002_microservice_tables", "0003_approvals", "0004_memory_taxonomy", "0005_rls", "0006_idempotency", "0007_gmail_watch"}
+EXPECTED_VERSIONS = {"0002_microservice_tables", "0003_approvals", "0004_memory_taxonomy", "0005_rls", "0006_idempotency", "0007_gmail_watch", "0008_document_content"}
 
 
 @pytest_asyncio.fixture
@@ -72,7 +72,7 @@ class TestMigrationRunner:
     async def test_downgrade_partial(self, migration_engine):
         await run_migrations(migration_engine)
         rolled_back = await downgrade_to(migration_engine, "0004_memory_taxonomy")
-        assert set(rolled_back) == {"0007_gmail_watch", "0006_idempotency", "0005_rls"}
+        assert set(rolled_back) == {"0008_document_content", "0007_gmail_watch", "0006_idempotency", "0005_rls"}
 
         async with migration_engine.begin() as conn:
             result = await conn.execute(text("SELECT version FROM schema_migrations ORDER BY version"))

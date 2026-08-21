@@ -4,7 +4,8 @@ import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
-import { ApiError } from '../../../lib/api';
+import { ApiError, api as apiClient } from '../../../lib/api';
+import { useToast } from '@/components/shared/Toast';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -13,12 +14,49 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams?.get('redirect') ?? null;
   const { login } = useAuth();
+  const { toast } = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  async function handleSSO(provider: 'google' | 'microsoft') {
+    try {
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      const res = await apiClient.request<{ auth_url?: string; authUrl?: string }>(
+        `/auth/sso/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`,
+      );
+      const url =
+        (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
+      if (url) {
+        window.location.href = url;
+        return;
+      }
+      toast({
+        tone: 'info',
+        title: `${provider} SSO`,
+        detail: 'No auth URL returned — check SSO provider configuration.',
+      });
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'SSO not configured';
+      if (msg.includes('Unsupported SSO provider') || msg.includes('not configured')) {
+        toast({
+          tone: 'info',
+          title: 'SSO not enabled',
+          detail: `${provider} SSO requires sso_providers config. Use email/password for now.`,
+        });
+      } else {
+        toast({ tone: 'error', title: 'SSO failed', detail: msg });
+      }
+    }
+  }
 
   function validate(): boolean {
     const e: typeof errors = {};
@@ -296,7 +334,9 @@ function LoginForm() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
+                onClick={() => handleSSO('google')}
                 className="btn-secondary flex items-center justify-center gap-2 py-2.5"
+                aria-label="Continue with Google"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                   <path
@@ -320,14 +360,19 @@ function LoginForm() {
               </button>
               <button
                 type="button"
+                onClick={() => handleSSO('microsoft')}
                 className="btn-secondary flex items-center justify-center gap-2 py-2.5"
+                aria-label="Continue with Microsoft"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                  <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z" />
                 </svg>
-                GitHub
+                Microsoft
               </button>
             </div>
+            <p className="text-xs text-text-dim text-center mt-2">
+              SSO requires provider config (Google/Microsoft). SAML is not implemented.
+            </p>
           </div>
 
           {/* Sign up link */}

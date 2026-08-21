@@ -18,9 +18,15 @@ interface NavGroup {
 
 const iconClass = 'w-4 h-4 shrink-0';
 
+function isEnterpriseEnabled(): boolean {
+  return process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'] === 'true';
+}
+
 function groupLinks(workspaceId: string): NavGroup[] {
   const ws = (path: string) => `/workspace/${workspaceId}${path}`;
-  return [
+  const enableEnterprise = isEnterpriseEnabled();
+  // Build groups then filter enterprise if not enabled — honest gating for MVP (FW-017)
+  const allGroups: NavGroup[] = [
     {
       label: 'Assist',
       links: [
@@ -419,6 +425,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
       ],
     },
   ];
+  return enableEnterprise ? allGroups : allGroups.filter((g) => !g.enterprise);
 }
 
 function SidebarNavLink({ link, current }: { link: NavLink; current: boolean }) {

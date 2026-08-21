@@ -7,43 +7,33 @@ interface ErrorContext {
 type EventName = string;
 type EventProperties = Record<string, unknown>;
 
+/**
+ * MVP error tracking — console-only.
+ * Enable Sentry by: `pnpm add @sentry/nextjs` and setting NEXT_PUBLIC_SENTRY_DSN,
+ * then replace the console calls below with `Sentry.captureException` etc.
+ * Keeping this honest (no fake Sentry) satisfies FW-022.
+ */
 class ErrorTrackerImpl {
-  private enabled: boolean;
-
-  constructor() {
-    this.enabled = !!SENTRY_DSN;
-  }
-
   captureError(error: Error, context?: ErrorContext): void {
-    if (this.enabled && typeof window !== 'undefined') {
-      // Sentry integration: captureException would go here
-      // window.Sentry?.captureException(error, { extra: context });
-    }
     console.error('[ErrorTracker]', error.message, context ?? '');
     if (error.stack) {
       console.debug('[ErrorTracker] Stack:', error.stack);
     }
+    if (SENTRY_DSN && typeof window !== 'undefined') {
+      console.info('[ErrorTracker] Sentry DSN set but SDK not installed — console fallback');
+    }
   }
 
   captureEvent(name: EventName, properties?: EventProperties): void {
-    if (this.enabled && typeof window !== 'undefined') {
-      // Sentry integration: captureEvent would go here
-      // window.Sentry?.captureEvent({ message: name, extra: properties });
-    }
     console.info('[EventTracker]', name, properties ?? '');
   }
 
   setUser(userId: string, traits?: { email?: string; name?: string }): void {
-    if (this.enabled && typeof window !== 'undefined') {
-      // window.Sentry?.setUser({ id: userId, email: traits?.email, username: traits?.name });
-    }
     console.info('[ErrorTracker] User set:', userId, traits ?? '');
   }
 
   clearUser(): void {
-    if (this.enabled && typeof window !== 'undefined') {
-      // window.Sentry?.setUser(null);
-    }
+    console.info('[ErrorTracker] User cleared');
   }
 }
 

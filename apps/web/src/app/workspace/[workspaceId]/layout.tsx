@@ -65,6 +65,8 @@ export default function WorkspaceLayout({
             id="main-content"
             tabIndex={-1}
             className="flex-1 overflow-y-auto p-6 focus:outline-none"
+            aria-hidden={sidebarOpen ? true : undefined}
+            {...(sidebarOpen ? { inert: true } : {})}
           >
             <ErrorBoundary>{children}</ErrorBoundary>
           </main>

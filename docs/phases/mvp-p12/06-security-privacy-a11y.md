@@ -10,18 +10,18 @@
 Taxonomy verified 2026-08-20: identifiers are **ASI01–ASI10** (published
 2025-12-09). The wave-1 report used incorrect A1–A8 labels; corrected below.
 
-| #     | Risk                       | P12 Mitigation                                                                                                                        | Status                                      |
-| ----- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| ASI01 | Unbounded Agency           | Approval gate for consequential actions; suggest-mode-first autonomy; per-agent + global kill switches                                | ✅ IMPLEMENTED                              |
-| ASI02 | Insecure Input Handling    | Adversarial prompt detection (4 categories, 14 patterns) wired into LLM validator and orchestrator router; executed via 12-case eval  | ✅ IMPLEMENTED                              |
-| ASI03 | Broken Tooling             | Rate limiter + timeout bound tool execution; circuit breaker stops cascading tool failures                                            | ✅ IMPLEMENTED                              |
-| ASI04 | Agent Identity Confusion   | Orchestrator routes only to canonical 8 agents; non-canonical agent types logged as warnings                                          | ✅ IMPLEMENTED                              |
-| ASI05 | Unbounded Memory Access    | Workspace-scoped isolation (ADR-013 RLS); memory list filters (workspace_id); superseded/deleted status handling; provenance metadata | ✅ IMPLEMENTED                              |
-| ASI06 | Insecure Communication     | TLS at transport layer (existing); provider keys never leave encrypted at rest; no plaintext in logs or API responses                 | ✅ IMPLEMENTED                              |
-| ASI07 | Prompt Injection           | `PromptInjectionMiddleware` (existing) + adversarial detection in eval module + LLM validator integration                             | ✅ ENHANCED                                 |
-| ASI08 | Unbounded System Awareness | Context window management truncates oversized retrieval; chunking metadata preserves provenance; no new system-information surface    | ✅ IMPLEMENTED                              |
-| ASI09 | Agent-to-Agent Collusion   | Canonical agent set only; kill switches per agent; metrics recorded per agent invocation                                              | ✅ IMPLEMENTED                              |
-| ASI10 | Unbounded Adaptation       | Model catalog uses pinned model IDs (no floating aliases); no fine-tuning; versioning to be DB-backed in P14                          | ⚠️ PARTIAL — adaptation versioning deferred |
+| #     | Risk                                 | P12 Mitigation                                                                                                                        | Status                                      |
+| ----- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| ASI01 | Agent Goal Hijack                    | Approval gate for consequential actions; suggest-mode-first autonomy; per-agent + global kill switches                                | ✅ IMPLEMENTED                              |
+| ASI02 | Tool Misuse and Exploitation         | Rate limiter + timeout bound tool execution; circuit breaker stops cascading tool failures; adversarial prompt detection              | ✅ IMPLEMENTED                              |
+| ASI03 | Identity and Privilege Abuse         | Orchestrator routes only to canonical agents; non-canonical agent types logged as warnings; workspace-scoped isolation                | ✅ IMPLEMENTED                              |
+| ASI04 | Agentic Supply Chain Vulnerabilities | Model catalog uses pinned model IDs (no floating aliases); provider key validation; no fine-tuning                                    | ✅ IMPLEMENTED                              |
+| ASI05 | Unexpected Code Execution            | Plugin sandbox (ADR-008); exec() replaced with subprocess isolation; no arbitrary code paths                                          | ✅ IMPLEMENTED                              |
+| ASI06 | Memory and Context Poisoning         | Workspace-scoped isolation (ADR-013 RLS); memory list filters (workspace_id); superseded/deleted status handling; provenance metadata | ✅ IMPLEMENTED                              |
+| ASI07 | Insecure Inter-Agent Communication   | TLS at transport layer (existing); provider keys never leave encrypted at rest; no plaintext in logs or API responses                 | ✅ IMPLEMENTED                              |
+| ASI08 | Cascading Agent Failures             | Circuit breaker (3 failures → 30s open → half-open probe); per-agent rate limits; kill switches; timeout enforcement                  | ✅ IMPLEMENTED                              |
+| ASI09 | Human-Agent Trust Exploitation       | Suggest-mode-first preserved; approval gate enforced; kill switches added; no silent escalation                                       | ✅ ENHANCED                                 |
+| ASI10 | Rogue Agents                         | Canonical agent set only; metrics recorded per agent invocation; model versioning with pinned IDs; versioning to be DB-backed in P14  | ⚠️ PARTIAL — adaptation versioning deferred |
 
 ### OWASP LLM Top 10 (2025) Coverage
 

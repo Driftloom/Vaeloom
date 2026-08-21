@@ -8,12 +8,16 @@ interface ToggleProps {
 }
 
 export function Toggle({ enabled, onChange, label, disabled = false }: ToggleProps) {
+  const id = React.useId();
   return (
-    <label className="inline-flex items-center gap-2 cursor-pointer">
+    <span className="inline-flex items-center gap-2">
       <button
         type="button"
         role="switch"
         aria-checked={enabled}
+        aria-label={label}
+        aria-labelledby={label ? `${id}-label` : undefined}
+        id={id}
         disabled={disabled}
         onClick={() => onChange(!enabled)}
         className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -26,7 +30,11 @@ export function Toggle({ enabled, onChange, label, disabled = false }: TogglePro
           }`}
         />
       </button>
-      {label && <span className="text-sm text-text">{label}</span>}
-    </label>
+      {label && (
+        <label htmlFor={id} id={`${id}-label`} className="text-sm text-text cursor-pointer">
+          {label}
+        </label>
+      )}
+    </span>
   );
 }
