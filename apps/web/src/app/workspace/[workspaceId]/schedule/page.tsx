@@ -104,16 +104,8 @@ export default function SchedulePage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await eventApi.list();
-      // Workspace scoping: backend is user-scoped; filter client-side if payload.workspaceId matches, otherwise show all but badge workspace filter note
-      const wsFiltered = data.filter((e) => {
-        const pw =
-          (e.payload as Record<string, unknown>)?.['workspaceId'] ??
-          (e.payload as Record<string, unknown>)?.['workspace_id'];
-        if (!pw) return true;
-        return String(pw) === workspaceId;
-      });
-      setEvents(wsFiltered);
+      const data = await eventApi.list({ workspace_id: workspaceId });
+      setEvents(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load events');
     } finally {
@@ -160,6 +152,7 @@ export default function SchedulePage() {
         category: createCategory as Event['category'],
         payload,
         priority: createPriority as Event['priority'],
+        workspace_id: workspaceId,
       });
       toast({ tone: 'success', title: 'Event created', detail: createTitle.trim() });
       setShowCreate(false);
@@ -642,7 +635,7 @@ export default function SchedulePage() {
       </Modal>
 
       <p className="text-xs text-text-dim mt-3">
-        Workspace filter is client-side: events without a workspaceId are shown for all workspaces;
+        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) — migrated 2026-08-21;
         Gmail-extracted events are read via Gmail connector, agent-proposed events via the
         scheduler/gmail agents.
       </p>

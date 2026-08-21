@@ -108,10 +108,10 @@ const audits = [
 ];
 
 export default function FeatureFlagsPage() {
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Feature Flags" />;
   const [flags, setFlags] = useState<FeatureFlag[]>(initialFlags);
   const [expandedFlag, setExpandedFlag] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'flags' | 'abtest' | 'audit'>('flags');
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Feature Flags" />;
 
   const handleToggle = (id: string) => {
     setFlags(

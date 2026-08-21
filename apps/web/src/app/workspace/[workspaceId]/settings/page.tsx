@@ -44,8 +44,8 @@ export default function SettingsPage() {
     () => api.integrations.list() as Promise<PaginatedResponse<IntegrationData>>,
   );
 
-  const agents = agentsRes?.data ?? [];
-  const integrations = integrationsRes?.data ?? [];
+  const agents = React.useMemo(() => agentsRes?.data ?? [], [agentsRes?.data]);
+  const integrations = React.useMemo(() => integrationsRes?.data ?? [], [integrationsRes?.data]);
 
   const [autonomyMap, setAutonomyMap] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -74,6 +74,21 @@ export default function SettingsPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (integrations.length === 0) return;
+    const perms: Record<string, { read: boolean; write: boolean }> = {};
+    for (const integration of integrations) {
+      const id = integration['id'];
+      const config = (integration as Record<string, unknown>)['config'] as Record<string, unknown> | undefined;
+      const permissions = config?.['permissions'] as Record<string, unknown> | undefined;
+      perms[id] = {
+        read: (permissions?.['read'] as boolean) ?? true,
+        write: (permissions?.['write'] as boolean) ?? true,
+      };
+    }
+    setConnectorPerms(perms);
+  }, [integrations]);
 
   const getAutonomy = useCallback(
     (agent: Agent): string => {
@@ -156,11 +171,22 @@ export default function SettingsPage() {
     }
   };
 
-  const toggleConnectorPerm = (id: string, perm: 'read' | 'write') => {
-    setConnectorPerms((prev) => {
-      const current = prev[id] ?? { read: true, write: true };
-      return { ...prev, [id]: { ...current, [perm]: !current[perm] } };
-    });
+  const toggleConnectorPerm = async (id: string, perm: 'read' | 'write') => {
+    const current = connectorPerms[id] ?? { read: true, write: true };
+    const next = { ...current, [perm]: !current[perm] };
+    setConnectorPerms((prev) => ({ ...prev, [id]: next }));
+    setSaveError(null);
+    try {
+      await api.request(`/integrations/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ config: { permissions: next } }),
+      });
+      await mutateIntegrations();
+    } catch (err) {
+      // revert on failure
+      setConnectorPerms((prev) => ({ ...prev, [id]: current }));
+      setSaveError(err instanceof Error ? err.message : 'Failed to update permission — reverted');
+    }
   };
 
   const getConnectorPerm = (id: string, perm: 'read' | 'write'): boolean => {

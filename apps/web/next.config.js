@@ -22,6 +22,9 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'http', hostname: 'localhost' },
       { protocol: 'https', hostname: 'vaeloom.app' },
+      { protocol: 'https', hostname: '**.googleusercontent.com' },
+      { protocol: 'https', hostname: '**.githubusercontent.com' },
+      { protocol: 'https', hostname: '**.slack.com' },
     ],
   },
   async headers() {
@@ -43,7 +46,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vaeloom.app",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://vaeloom.app",
+              "img-src 'self' data: blob: https: https://vaeloom.app",
               `connect-src ${cspConnectSrc}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",

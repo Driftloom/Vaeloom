@@ -40,7 +40,26 @@ export default function JobsPage() {
     proposals?: Array<{ title: string; detail?: string }>;
     questions?: string[];
   } | null>(null);
-  const [saved, setSaved] = useState<Array<{ title: string; detail?: string }>>([]);
+  const [saved, setSaved] = useState<Array<{ title: string; detail?: string }>>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(`vaeloom.savedJobs.${workspaceId ?? 'default'}`);
+      return raw ? (JSON.parse(raw) as Array<{ title: string; detail?: string }>) : [];
+    } catch { return []; }
+  });
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    try {
+      const raw = localStorage.getItem(`vaeloom.savedJobs.${workspaceId}`);
+      if (raw) setSaved(JSON.parse(raw) as Array<{ title: string; detail?: string }>);
+    } catch {}
+  }, [workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    try { localStorage.setItem(`vaeloom.savedJobs.${workspaceId}`, JSON.stringify(saved)); } catch {}
+  }, [saved, workspaceId]);
 
   const fetchJobs = useCallback(async () => {
     if (!workspaceId) return;
@@ -136,7 +155,7 @@ export default function JobsPage() {
         toast({
           tone: 'success',
           title: 'Application started',
-          detail: `${title} — check Notifications for approval`,
+          detail: `${title} — check Approvals for approval or Applications for status`,
         });
       } catch (err) {
         toast({
@@ -148,6 +167,22 @@ export default function JobsPage() {
     },
     [workspaceId, toast],
   );
+
+  const handleJobAction = useCallback(async (job: JobResponse, action: 'pause' | 'resume' | 'trigger' | 'delete') => {
+    try {
+      if (action === 'pause') await schedulerApi.pauseJob(job.id);
+      if (action === 'resume') await schedulerApi.resumeJob(job.id);
+      if (action === 'trigger') await schedulerApi.triggerJob(job.id);
+      if (action === 'delete') {
+        if (!window.confirm(`Delete job ${job.name}?`)) return;
+        await schedulerApi.deleteJob(job.id);
+      }
+      toast({ tone: 'success', title: action === 'delete' ? 'Deleted' : action === 'trigger' ? 'Triggered' : action === 'pause' ? 'Paused' : 'Resumed', detail: job.name });
+      await fetchJobs();
+    } catch (err) {
+      toast({ tone: 'error', title: `${action} failed`, detail: err instanceof Error ? err.message : 'Please try again.' });
+    }
+  }, [fetchJobs, toast]);
 
   const tabs = [
     { id: 'search', label: 'Job Search' },
@@ -316,6 +351,11 @@ export default function JobsPage() {
                       Next: {formatDate(job.next_run_at)}
                     </span>
                   )}
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {job.status === 'active' ? <button onClick={() => handleJobAction(job, 'pause')} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover">Pause</button> : <button onClick={() => handleJobAction(job, 'resume')} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover">Resume</button>}
+                  <button onClick={() => handleJobAction(job, 'trigger')} className="rounded-full border border-primary/30 px-3 py-1 text-xs text-primary hover:bg-primary/10">Trigger now</button>
+                  <button onClick={() => handleJobAction(job, 'delete')} className="rounded-full border border-red-500/20 px-3 py-1 text-xs text-red-400 hover:bg-red-500/10">Delete</button>
                 </div>
               </div>
             ))}

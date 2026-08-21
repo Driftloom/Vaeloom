@@ -1304,11 +1304,11 @@ export interface CreateSubscriptionRequest {
 }
 
 export const eventApi = {
-  publish(body: PublishEventRequest): Promise<Event> {
+  publish(body: PublishEventRequest & { workspace_id?: string }): Promise<Event> {
     return apiClient.post<Event>('/events', body);
   },
-  list(): Promise<Event[]> {
-    return apiClient.get<Event[]>('/events');
+  list(params?: { workspace_id?: string }): Promise<Event[]> {
+    return apiClient.get<Event[]>('/events', params as Record<string, string | undefined>);
   },
   createSubscription(body: CreateSubscriptionRequest): Promise<EventSubscription> {
     return apiClient.post<EventSubscription>('/events/subscriptions', body);

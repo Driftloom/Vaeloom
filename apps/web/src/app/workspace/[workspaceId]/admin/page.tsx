@@ -157,12 +157,12 @@ const serviceColors: Record<string, StatusVariant> = {
 const svcColor = (s: string): StatusVariant => serviceColors[s] ?? 'neutral';
 
 export default function AdminPage() {
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Admin" />;
   const [users] = useState<User[]>(mockUsers);
   const [services] = useState<Service[]>(mockServices);
   const [auditLog] = useState<AuditEvent[]>(mockAuditLog);
   const [auditPage, setAuditPage] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Admin" />;
   const pageSize = 3;
 
   const paginatedAudit = auditLog.slice((auditPage - 1) * pageSize, auditPage * pageSize);

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const PROTECTED_PREFIXES = ['/workspace'];
-const PUBLIC_PATHS = ['/login', '/signup', '/', '/manifest.json', '/favicon.ico'];
+const PUBLIC_PATHS = ['/login', '/signup', '/', '/forgot-password', '/status', '/terms', '/privacy', '/manifest.json', '/favicon.ico'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -40,7 +40,7 @@ export function middleware(request: NextRequest) {
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vaeloom.app",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://vaeloom.app",
+      "img-src 'self' data: blob: https: https://vaeloom.app",
       `connect-src 'self'${process.env.NODE_ENV === 'development' || process.env['ALLOW_LOCAL_API'] === 'true' ? ' http://localhost:8000 ws://localhost:8000' : ' https://vaeloom.app'}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",

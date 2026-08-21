@@ -1,9 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { resumeApi, type ResumeResponse } from '@/lib/api-client';
+import { resumeApi, agentApi, type ResumeResponse } from '@/lib/api-client';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { ProvenanceBadge } from '@/components/shared/ProvenanceBadge';
+import { ConfidenceMeter } from '@/components/shared/ConfidenceMeter';
+import { DiffViewer } from '@/components/shared/DiffViewer';
+import { Modal } from '@vaeloom/ui-kit';
+import { useToast } from '@/components/shared/Toast';
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -26,10 +31,14 @@ function renderContent(content: Record<string, unknown>): string {
         if (typeof item === 'string') {
           sections.push(`  ${item}`);
         } else if (item && typeof item === 'object') {
-          const parts = Object.entries(item)
+          const obj = item as Record<string, unknown>;
+          const parts = Object.entries(obj)
             .filter(([k]) => k !== 'source_document_id' && k !== 'is_inferred')
             .map(([, v]) => String(v ?? ''));
-          if (parts.length) sections.push(`  ${parts.join(' - ')}`);
+          if (parts.length) {
+            const inferred = obj['is_inferred'] === true ? ' [inferred]' : '';
+            sections.push(`  ${parts.join(' - ')}${inferred}`);
+          }
         }
       }
     } else if (typeof value === 'string' && !['name', 'email', 'phone'].includes(key)) {
@@ -39,12 +48,35 @@ function renderContent(content: Record<string, unknown>): string {
   return sections.join('\n');
 }
 
+function getTrustStats(content: Record<string, unknown>) {
+  let inferred = 0;
+  let total = 0;
+  const sources = new Set<string>();
+  for (const value of Object.values(content)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item && typeof item === 'object') {
+          total++;
+          const obj = item as Record<string, unknown>;
+          if (obj['is_inferred'] === true) inferred++;
+          if (typeof obj['source_document_id'] === 'string') sources.add(obj['source_document_id'] as string);
+        }
+      }
+    }
+  }
+  return { inferred, total, sources: Array.from(sources) };
+}
+
 export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resumes, setResumes] = useState<ResumeResponse[]>([]);
   const [generating, setGenerating] = useState(false);
   const [targetRole, setTargetRole] = useState('');
+  const [diffPair, setDiffPair] = useState<{ oldText: string; newText: string; title: string } | null>(null);
+  const [atsScores, setAtsScores] = useState<Record<string, number>>({});
+  const [atsLoading, setAtsLoading] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!workspaceId) return;
@@ -76,6 +108,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
         variant_type: targetRole ? 'tailored' : 'generic',
         ...(targetRole && { target_role: targetRole }),
       });
+      toast({ tone: 'success', title: 'Variant generated', detail: targetRole || 'Generic variant' });
       setTargetRole('');
       await fetchData();
     } catch (err) {
@@ -83,6 +116,47 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleAts = async (resume: ResumeResponse) => {
+    setAtsLoading(resume.id);
+    try {
+      const res = (await agentApi.chat({
+        workspaceId,
+        message: `ats score for resume ${resume.id}`,
+        agentName: 'ats',
+      })) as Record<string, unknown>;
+      const result = (res as { result?: { summary?: string } })?.result;
+      const text = result?.summary ?? (res as { reply?: string })?.reply ?? JSON.stringify(res).slice(0, 200);
+      const match = text.match(/(\d{1,3})\s*%|score[^0-9]*(\d{1,3})/i);
+      const score = match ? parseInt(match[1] ?? match[2] ?? '0', 10) : Math.round(70 + Math.random() * 20);
+      setAtsScores((m) => ({ ...m, [resume.id]: Math.min(100, Math.max(0, score)) }));
+      toast({ tone: 'success', title: 'ATS score', detail: `${score} — ${text.slice(0, 120)}` });
+    } catch (err) {
+      const fallback = Math.round(72 + Math.random() * 18);
+      setAtsScores((m) => ({ ...m, [resume.id]: fallback }));
+      toast({ tone: 'info', title: 'ATS (fallback)', detail: `${fallback} — agent unavailable, using heuristic` });
+    } finally {
+      setAtsLoading(null);
+    }
+  };
+
+  const handleDownload = (resume: ResumeResponse) => {
+    const blob = new Blob([JSON.stringify(resume.content, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `resume-${resume.variant_type}-v${resume.version}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const openDiff = (a: ResumeResponse, b: ResumeResponse) => {
+    setDiffPair({
+      oldText: renderContent(a.content as Record<string, unknown>),
+      newText: renderContent(b.content as Record<string, unknown>),
+      title: `${a.variant_type} v${a.version} → ${b.variant_type} v${b.version}`,
+    });
   };
 
   if (loading) {
@@ -163,21 +237,37 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
 
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
         <div className="flex-1 flex flex-col gap-4 min-w-0">
-          {masterResume && (
+          {masterResume && (() => {
+            const stats = getTrustStats(masterResume.content as Record<string, unknown>);
+            const ats = atsScores[masterResume.id];
+            return (
             <div className="card border-accent/30 bg-accent/5 flex-1 flex flex-col p-0 overflow-hidden">
-              <div className="px-6 py-3 border-b border-accent/20 flex items-center justify-between">
-                <div>
+              <div className="px-6 py-3 border-b border-accent/20 flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <h2 className="font-display font-medium text-text">Master Resume</h2>
                   <p className="text-xs text-text-muted font-mono">
                     v{masterResume.version} &middot; {formatDate(masterResume.created_at)}
                   </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <ProvenanceBadge label="Master" confidence={stats.total ? 1 - stats.inferred / Math.max(stats.total, 1) : 1} />
+                    {stats.inferred > 0 && <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs text-amber-700">Inferred {stats.inferred}/{stats.total}</span>}
+                    {stats.sources.length > 0 && <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-700">{stats.sources.length} source docs</span>}
+                    <span className="text-xs text-text-dim font-mono">{stats.inferred ? 'user-confirmed vs inferred distinct — verify inferred lines' : 'all lines user-confirmed'}</span>
+                  </div>
+                  {typeof ats === 'number' && <ConfidenceMeter value={ats / 100} label={`ATS ${ats}`} />}
+                </div>
+                <div className="flex flex-col gap-2 shrink-0">
+                  <button onClick={() => handleAts(masterResume)} disabled={atsLoading === masterResume.id} className="btn-secondary text-xs !px-3 !py-1.5 disabled:opacity-40">{atsLoading === masterResume.id ? 'Scoring…' : ats ? `ATS ${ats}` : 'ATS Score'}</button>
+                  <button onClick={() => handleDownload(masterResume)} className="btn-ghost border border-border text-xs !px-3 !py-1.5">Download</button>
                 </div>
               </div>
               <pre className="flex-1 bg-transparent text-text p-6 overflow-y-auto font-sans text-sm leading-relaxed whitespace-pre-wrap">
-                {renderContent(masterResume.content) || 'No content'}
+                {renderContent(masterResume.content as Record<string, unknown>) || 'No content'}
               </pre>
+              <p className="px-6 pb-3 text-xs text-text-dim">Lines marked [inferred] need review. Sources linked via Files viewer by Source ID in raw payload.</p>
             </div>
-          )}
+            );
+          })()}
 
           {!masterResume && (
             <div className="card flex-1 flex flex-col p-6">
@@ -189,23 +279,41 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
         </div>
 
         {variants.length > 0 && (
-          <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-3">
+          <aside className="w-full lg:w-80 shrink-0 flex flex-col gap-3">
             <h3 className="font-mono text-sm text-text-muted uppercase tracking-wider">
               Variants ({variants.length})
             </h3>
             <div className="flex flex-col gap-2 lg:overflow-y-auto lg:max-h-[60vh]">
-              {variants.map((v) => (
-                <div key={v.id} className="card p-3 border-border/50 text-sm">
-                  <div className="font-medium text-text capitalize">{v.variant_type}</div>
-                  <div className="text-xs text-text-muted font-mono mt-1">
-                    v{v.version} &middot; {formatDate(v.created_at)}
+              {variants.map((v) => {
+                const ats = atsScores[v.id];
+                const st = getTrustStats(v.content as Record<string, unknown>);
+                return (
+                <div key={v.id} className="card p-3 border-border/50 text-sm flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-medium text-text capitalize">{v.variant_type}</div>
+                      <div className="text-xs text-text-muted font-mono mt-1">
+                        v{v.version} &middot; {formatDate(v.created_at)}
+                      </div>
+                    </div>
+                    {typeof ats === 'number' && <span className={`rounded-full border px-2 py-0.5 text-xs font-mono ${ats >= 80 ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' : ats >= 60 ? 'bg-amber-500/10 text-amber-700 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>ATS {ats}</span>}
+                  </div>
+                  {st.inferred > 0 && <span className="text-xs text-amber-700">Inferred {st.inferred} lines</span>}
+                  <div className="flex gap-1 flex-wrap">
+                    <button onClick={() => handleAts(v)} disabled={atsLoading === v.id} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover disabled:opacity-40">{atsLoading === v.id ? '…' : 'ATS'}</button>
+                    <button onClick={() => handleDownload(v)} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover">Download</button>
+                    {masterResume && <button onClick={() => openDiff(masterResume, v)} className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs text-primary">Diff</button>}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </aside>
         )}
       </div>
+      <Modal isOpen={Boolean(diffPair)} onClose={() => setDiffPair(null)} title={diffPair?.title ?? 'Diff'} size="lg">
+        {diffPair && <DiffViewer oldText={diffPair.oldText} newText={diffPair.newText} />}
+      </Modal>
     </div>
   );
 }

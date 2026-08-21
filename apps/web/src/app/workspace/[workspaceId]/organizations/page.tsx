@@ -179,11 +179,11 @@ const memberStatusColors: Record<string, StatusVariant> = {
 const mStatusColor = (s: string): StatusVariant => memberStatusColors[s] ?? 'neutral';
 
 export default function OrganizationsPage() {
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Organizations" />;
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('Editor');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState<string | null>(null);
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Organizations" />;
 
   return (
     <div className="space-y-8">

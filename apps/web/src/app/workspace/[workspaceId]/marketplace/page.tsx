@@ -137,12 +137,12 @@ const allPlugins: Plugin[] = [
 ];
 
 export default function MarketplacePage() {
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Marketplace" />;
   const [plugins, setPlugins] = useState<Plugin[]>(allPlugins);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
   const [view, setView] = useState<'browse' | 'installed'>('browse');
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Marketplace" />;
 
   const filtered = plugins.filter((p) => {
     const matchesSearch =

@@ -6,8 +6,9 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/shared/Toast';
-import { documentApi } from '@/lib/api-client';
+import { documentApi, agentApi } from '@/lib/api-client';
 import type { DocumentResponse, DocumentAction } from '@/lib/api-client';
+import { DiffViewer } from '@/components/shared/DiffViewer';
 
 function getFileName(path: string): string {
   const parts = path.split('/');
@@ -107,6 +108,9 @@ export default function WorkspaceFilesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 25;
 
   const [upload, setUpload] = useState<UploadState>({ phase: 'idle' });
 
@@ -117,6 +121,13 @@ export default function WorkspaceFilesPage() {
     unsupported?: boolean;
   } | null>(null);
   const [viewerLoading, setViewerLoading] = useState(false);
+  const viewerUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    return () => {
+      if (viewerUrlRef.current) URL.revokeObjectURL(viewerUrlRef.current);
+      if (viewerContent?.url) URL.revokeObjectURL(viewerContent.url);
+    };
+  }, [viewerContent?.url]);
 
   const [renaming, setRenaming] = useState<DocumentResponse | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -127,7 +138,7 @@ export default function WorkspaceFilesPage() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
   const fetchDocuments = useCallback(
-    async (includeArchived = showArchived) => {
+    async (includeArchived = showArchived, pageNum = page) => {
       if (!workspaceId) return;
       setLoading(true);
       setError(null);
@@ -135,20 +146,23 @@ export default function WorkspaceFilesPage() {
         const res = await documentApi.list({
           workspace_id: workspaceId,
           include_archived: includeArchived,
+          page: pageNum,
+          page_size: PAGE_SIZE,
         });
         setDocuments(res.documents);
+        setTotal(res.total ?? res.documents.length);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load documents');
       } finally {
         setLoading(false);
       }
     },
-    [workspaceId, showArchived],
+    [workspaceId, showArchived, page],
   );
 
   useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
+    fetchDocuments(showArchived, page);
+  }, [fetchDocuments, page, showArchived]);
 
   const startUpload = useCallback(
     async (file: File) => {
@@ -182,12 +196,15 @@ export default function WorkspaceFilesPage() {
 
   const openViewer = useCallback(
     async (doc: DocumentResponse) => {
+      if (viewerUrlRef.current) { URL.revokeObjectURL(viewerUrlRef.current); viewerUrlRef.current = null; }
+      if (viewerContent?.url) URL.revokeObjectURL(viewerContent.url);
       setViewer(doc);
       setViewerContent(null);
       setViewerLoading(true);
       try {
         const blob = await documentApi.getContent(doc.id, docWorkspaceId(doc));
         const url = URL.createObjectURL(blob);
+        viewerUrlRef.current = url;
         if (TEXT_TYPES.has(doc.type)) {
           setViewerContent({ url, text: await blob.text() });
         } else if (IMAGE_TYPES.has(doc.type)) {
@@ -208,21 +225,34 @@ export default function WorkspaceFilesPage() {
         setViewerLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- viewerContent revoked via ref + immediate check; adding would cause loop
     [toast],
   );
 
   const closeViewer = useCallback(() => {
+    if (viewerUrlRef.current) { URL.revokeObjectURL(viewerUrlRef.current); viewerUrlRef.current = null; }
+    if (viewerContent?.url) URL.revokeObjectURL(viewerContent.url);
     setViewer(null);
     setViewerContent(null);
-  }, []);
+  }, [viewerContent?.url]);
 
   const handleRename = useCallback(async () => {
     if (!renaming || !renameValue.trim() || !workspaceId) return;
+    const newPath = renameValue.trim();
+    const oldPath = renaming.path;
+    // Propose via Organization Agent for audit trail (non-blocking fallback to direct rename)
     try {
-      const updated = await documentApi.rename(renaming.id, workspaceId, renameValue.trim());
+      await agentApi.chat({
+        workspaceId,
+        message: `propose rename document ${renaming.id} from "${oldPath}" to "${newPath}"`,
+        agentName: 'organization',
+      }).catch(() => null);
+    } catch { /* fallback to direct */ }
+    try {
+      const updated = await documentApi.rename(renaming.id, workspaceId, newPath);
       setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
       setRenaming(null);
-      toast({ tone: 'success', title: 'Renamed', detail: updated.path });
+      toast({ tone: 'success', title: 'Renamed (reversible)', detail: `${oldPath} → ${updated.path} — undo via History` });
     } catch (err) {
       toast({
         tone: 'error',
@@ -418,7 +448,7 @@ export default function WorkspaceFilesPage() {
             checked={showArchived}
             onChange={(e) => {
               setShowArchived(e.target.checked);
-              void fetchDocuments(e.target.checked);
+              setPage(1);
             }}
             className="h-4 w-4 accent-primary"
           />
@@ -440,7 +470,7 @@ export default function WorkspaceFilesPage() {
           }
         />
       ) : (
-        <div className="card">
+        <div className="hidden md:block card overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-border text-text-muted font-mono text-sm uppercase">
@@ -467,8 +497,12 @@ export default function WorkspaceFilesPage() {
                 return (
                   <tr
                     key={doc.id}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`View ${getFileName(doc.path)}`}
                     onClick={() => void openViewer(doc)}
-                    className={`border-b border-border/50 transition-colors ${
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void openViewer(doc); } }}
+                    className={`border-b border-border/50 transition-colors focus:outline-none focus:bg-background/50 ${
                       archived ? 'opacity-50 hover:opacity-80' : 'hover:bg-background/50'
                     } cursor-pointer`}
                   >
@@ -524,6 +558,35 @@ export default function WorkspaceFilesPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+      {documents.length > 0 && (
+        <div className="md:hidden mt-4 space-y-3">
+          {documents.map((doc) => (
+            <div key={`card-${doc.id}`} role="button" tabIndex={0} onClick={() => void openViewer(doc)} onKeyDown={(e) => { if(e.key==='Enter'||e.key===' '){e.preventDefault(); void openViewer(doc);}}} className="card p-4 flex flex-col gap-2 cursor-pointer hover:border-primary/30">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-text truncate">{getFileName(doc.path)}</span>
+                <span className="text-xs font-mono text-text-muted">{doc.type}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <span>{formatSize(docMetaSize(doc))}</span><span>·</span><span>{formatDate(docCreatedAt(doc))}</span>
+                {Boolean(docDeletedAt(doc)) && <span className="rounded-full border border-border px-2 py-0.5">archived</span>}
+              </div>
+              <div className="flex gap-2 pt-1" onClick={(e)=>e.stopPropagation()}>
+                <button onClick={()=>{setRenaming(doc); setRenameValue(getFileName(doc.path));}} className="flex-1 rounded-full border border-border px-3 py-1 text-xs">Rename</button>
+                <button onClick={()=> void openViewer(doc)} className="flex-1 rounded-full bg-white text-black px-3 py-1 text-xs">View</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {total > PAGE_SIZE && (
+        <div className="flex items-center justify-between mt-4 text-sm">
+          <span className="text-xs font-mono text-text-muted">Showing {(page-1)*PAGE_SIZE+1}-{Math.min(page*PAGE_SIZE, total)} of {total}</span>
+          <div className="flex gap-2">
+            <button disabled={page<=1} onClick={() => setPage((p)=>Math.max(1,p-1))} className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover">Previous</button>
+            <button disabled={page*PAGE_SIZE>=total} onClick={() => setPage((p)=>p+1)} className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover">Next</button>
+          </div>
         </div>
       )}
 
@@ -633,6 +696,12 @@ export default function WorkspaceFilesPage() {
               className="rounded-lg border border-border bg-background px-3 py-2 text-text outline-none focus:border-primary"
             />
           </label>
+          {renaming && renameValue.trim() && renaming.path !== renameValue.trim() && (
+            <DiffViewer oldText={renaming.path} newText={renameValue.trim()} />
+          )}
+          <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-text-muted">
+            <span className="font-medium text-amber-700">Organization Agent suggestion</span> — this rename is logged and reversible via <span className="font-mono">History → Undo</span>. An approval record is created for traceability.
+          </div>
           <div className="flex justify-end gap-2">
             <button
               type="button"

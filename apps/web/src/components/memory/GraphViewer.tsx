@@ -34,6 +34,13 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
   const dragging = useRef(false);
   const last = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const prefersReduced = useRef(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      prefersReduced.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+  }, []);
 
   const fetchGraph = useCallback(async () => {
     setLoading(true);
@@ -105,6 +112,23 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
 
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
+  // Odissian polish: viewport culling for large graphs (>80 nodes) + label declutter
+  const visibleNodes = useMemo(() => {
+    if (filteredNodes.length <= 80) return filteredNodes;
+    return filteredNodes.filter((n) => {
+      const p = layout.get(n.id);
+      if (!p) return false;
+      const sx = p.x * transform.k + transform.x;
+      const sy = p.y * transform.k + transform.y;
+      return sx > -120 && sx < 920 && sy > -120 && sy < 640;
+    });
+  }, [filteredNodes, layout, transform]);
+
+  const visibleEdges = useMemo(() => {
+    const visIds = new Set(visibleNodes.map((n) => n.id));
+    return filteredEdges.filter((e) => visIds.has(e.sourceId) && visIds.has(e.targetId));
+  }, [filteredEdges, visibleNodes]);
+
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     dragging.current = true;
     last.current = { x: e.clientX, y: e.clientY };
@@ -114,17 +138,25 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
     const dx = e.clientX - last.current.x;
     const dy = e.clientY - last.current.y;
     last.current = { x: e.clientX, y: e.clientY };
-    setTransform((t) => ({ ...t, x: t.x + dx, y: t.y + dy }));
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      setTransform((t) => ({ ...t, x: t.x + dx, y: t.y + dy }));
+    });
   }, []);
   const onMouseUp = useCallback(() => {
     dragging.current = false;
   }, []);
   const onWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = -e.deltaY * 0.001;
-    setTransform((t) => {
-      const nk = Math.min(3, Math.max(0.25, t.k + delta));
-      return { ...t, k: nk };
+    const delta = -e.deltaY * 0.001 * (prefersReduced.current ? 0.5 : 1);
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      setTransform((t) => {
+        const nk = Math.min(3, Math.max(0.25, t.k + delta));
+        return { ...t, k: nk };
+      });
     });
   }, []);
   const onTouchStart = useCallback((e: React.TouchEvent) => {
@@ -138,7 +170,11 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
     const dx = e.touches[0]!.clientX - last.current.x;
     const dy = e.touches[0]!.clientY - last.current.y;
     last.current = { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY };
-    setTransform((t) => ({ ...t, x: t.x + dx, y: t.y + dy }));
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      setTransform((t) => ({ ...t, x: t.x + dx, y: t.y + dy }));
+    });
   }, []);
   const onTouchEnd = useCallback(() => {
     dragging.current = false;
@@ -295,10 +331,11 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               </marker>
             </defs>
             <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.k})`}>
-              {filteredEdges.map((edge) => {
+              {visibleEdges.map((edge) => {
                 const s = layout.get(edge.sourceId);
                 const t = layout.get(edge.targetId);
                 if (!s || !t) return null;
+                const showLabel = !(filteredNodes.length > 60 && transform.k < 0.7);
                 return (
                   <g key={edge.id}>
                     <line
@@ -312,21 +349,23 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                       opacity={0.6}
                       markerEnd="url(#arrow)"
                     />
-                    <text
-                      x={(s.x + t.x) / 2}
-                      y={(s.y + t.y) / 2 - 6}
-                      textAnchor="middle"
-                      className="fill-text-dim text-[9px] font-mono"
-                    >
-                      {edge.relationship}
-                    </text>
+                    {showLabel && (
+                      <text
+                        x={(s.x + t.x) / 2}
+                        y={(s.y + t.y) / 2 - 6}
+                        textAnchor="middle"
+                        className="fill-text-dim text-[9px] font-mono"
+                      >
+                        {edge.relationship}
+                      </text>
+                    )}
                   </g>
                 );
               })}
-              {filteredNodes.map((node) => {
+              {visibleNodes.map((node) => {
                 const p = layout.get(node.id)!;
                 const isSelected = selected?.id === node.id;
-                const connected = filteredEdges.some(
+                const connected = visibleEdges.some(
                   (e) => e.sourceId === node.id || e.targetId === node.id,
                 );
                 return (
@@ -373,7 +412,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-1 text-xs text-text-dim">
             <span>{Math.round(transform.k * 100)}%</span>
             <span>·</span>
-            <span>{filteredNodes.length} nodes</span>
+            <span>{visibleNodes.length === filteredNodes.length ? `${filteredNodes.length} nodes` : `${visibleNodes.length}/${filteredNodes.length} visible`}</span>
           </div>
         </div>
       )}

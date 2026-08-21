@@ -114,7 +114,7 @@ export default function ApplicationsPage() {
     } finally {
       setSaving(false);
     }
-  }, [workspaceId, selected, editStatus, editOutcome, toast]);
+  }, [workspaceId, selected, editStatus, toast]);
 
   if (loading) {
     return (

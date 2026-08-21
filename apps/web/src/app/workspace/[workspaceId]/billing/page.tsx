@@ -98,11 +98,11 @@ const invoiceColors: Record<string, StatusVariant> = {
 const invColor = (s: string): StatusVariant => invoiceColors[s] ?? 'neutral';
 
 export default function BillingPage() {
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Billing" />;
   const [selectedPlan, setSelectedPlan] = useState('pro');
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [pendingPlan, setPendingPlan] = useState('pro');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Billing" />;
 
   const invoiceColumns: Column<Invoice>[] = [
     { key: 'date', header: 'Date', className: 'text-text-muted' },

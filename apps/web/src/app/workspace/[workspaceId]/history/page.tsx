@@ -41,6 +41,11 @@ export default function HistoryPage() {
   const { toast } = useToast();
   const [active, setActive] = useState('documents');
   const [busyUndo, setBusyUndo] = useState<string | null>(null);
+  // Odissian polish: paginated history — avoids rendering 100+ cards at once
+  const PAGE_SIZE = 15;
+  const [docPage, setDocPage] = useState(1);
+  const [agentPage, setAgentPage] = useState(1);
+  const [notifPage, setNotifPage] = useState(1);
 
   const {
     data: docActionsRes,
@@ -109,6 +114,10 @@ export default function HistoryPage() {
   }, [workspaceId, docActionsRes, agentActions, notifications]);
 
   const docActions = docActionsRes?.actions ?? [];
+  // derived pagination slices (virtualization hint — only visible slice rendered)
+  const pagedDocs = docActions.slice((docPage - 1) * PAGE_SIZE, docPage * PAGE_SIZE);
+  const pagedAgents = (agentActions ?? []).slice((agentPage - 1) * PAGE_SIZE, agentPage * PAGE_SIZE);
+  const pagedNotifs = (notifications ?? []).slice((notifPage - 1) * PAGE_SIZE, notifPage * PAGE_SIZE);
   const tabs = [
     { id: 'documents', label: `Documents${docActions.length ? ` (${docActions.length})` : ''}` },
     { id: 'agents', label: `Agents${agentActions?.length ? ` (${agentActions.length})` : ''}` },
@@ -153,8 +162,9 @@ export default function HistoryPage() {
             description="Rename or archive a file from the Files page — changes appear here with before/after diffs and undo."
           />
         ) : (
-          <div className="space-y-3">
-            {docActions.map((a) => {
+          <>
+            <div className="space-y-3">
+              {pagedDocs.map((a) => {
               const actionType = getActionField<string>(a, 'action_type', 'actionType') ?? '';
               const oldPath = getActionField<string>(a, 'old_path', 'oldPath');
               const newPath = getActionField<string>(a, 'new_path', 'newPath');
@@ -207,7 +217,17 @@ export default function HistoryPage() {
                 </div>
               );
             })}
-          </div>
+            </div>
+            {docActions.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between mt-4 text-xs font-mono text-text-muted border-t border-border pt-3">
+                <span>Showing {(docPage - 1) * PAGE_SIZE + 1}-{Math.min(docPage * PAGE_SIZE, docActions.length)} of {docActions.length}</span>
+                <div className="flex gap-2">
+                  <button disabled={docPage <= 1} onClick={() => setDocPage((p) => Math.max(1, p - 1))} className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover">Prev</button>
+                  <button disabled={docPage * PAGE_SIZE >= docActions.length} onClick={() => setDocPage((p) => p + 1)} className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover">Next</button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </TabPanel>
 
@@ -226,8 +246,9 @@ export default function HistoryPage() {
             description="Run an agent from the workspace — executions appear here with input/output, approval state and duration."
           />
         ) : (
-          <div className="space-y-3">
-            {agentActions.map((a) => (
+          <>
+            <div className="space-y-3">
+              {pagedAgents.map((a) => (
               <div key={a.id} className="card">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="rounded-full bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 font-mono text-violet-700">
@@ -270,7 +291,17 @@ export default function HistoryPage() {
                 )}
               </div>
             ))}
-          </div>
+            </div>
+            {(agentActions?.length ?? 0) > PAGE_SIZE && (
+              <div className="flex items-center justify-between mt-4 text-xs font-mono text-text-muted border-t border-border pt-3">
+                <span>Showing {(agentPage - 1) * PAGE_SIZE + 1}-{Math.min(agentPage * PAGE_SIZE, agentActions?.length ?? 0)} of {agentActions?.length ?? 0}</span>
+                <div className="flex gap-2">
+                  <button disabled={agentPage <= 1} onClick={() => setAgentPage((p) => Math.max(1, p - 1))} className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover">Prev</button>
+                  <button disabled={agentPage * PAGE_SIZE >= (agentActions?.length ?? 0)} onClick={() => setAgentPage((p) => p + 1)} className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover">Next</button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </TabPanel>
 
@@ -308,7 +339,7 @@ export default function HistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {notifications.map((n) => (
+                {pagedNotifs.map((n) => (
                   <tr key={n.id} className="border-b border-border/50 hover:bg-background/50">
                     <td
                       className="py-3 text-text-muted text-sm"
@@ -332,6 +363,15 @@ export default function HistoryPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {(notifications?.length ?? 0) > PAGE_SIZE && (
+          <div className="flex items-center justify-between mt-3 text-xs font-mono text-text-muted">
+            <span>Showing {(notifPage - 1) * PAGE_SIZE + 1}-{Math.min(notifPage * PAGE_SIZE, notifications?.length ?? 0)} of {notifications?.length ?? 0}</span>
+            <div className="flex gap-2">
+              <button disabled={notifPage <= 1} onClick={() => setNotifPage((p) => Math.max(1, p - 1))} className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover">Prev</button>
+              <button disabled={notifPage * PAGE_SIZE >= (notifications?.length ?? 0)} onClick={() => setNotifPage((p) => p + 1)} className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover">Next</button>
+            </div>
           </div>
         )}
       </TabPanel>

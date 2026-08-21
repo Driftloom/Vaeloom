@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { agentApi, agentCatalogApi, approvalApi, type CatalogAgent } from '@/lib/api-client';
+import { agentApi, agentCatalogApi, approvalApi, documentApi, type CatalogAgent } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'error';
@@ -446,12 +446,30 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
 
   const handleSend = useCallback(
     async (override?: string) => {
-      const raw = (override ?? input).trim();
-      if (!raw || loading) return;
+      const rawBase = (override ?? input).trim();
+      if ((!rawBase && !attached) || loading) return;
+      // If file attached, upload first and append to message context
+      let raw = rawBase;
+      let fileContext: string | undefined;
+      if (attached) {
+        const toUpload = attached;
+        setAttached(null);
+        raw = rawBase ? `${rawBase}\n\n[Attached file: ${toUpload.name}]` : `[Attached file: ${toUpload.name}]`;
+        fileContext = toUpload.name;
+        // fire upload non-blocking but provide toast; chat includes filename context even if upload fails
+        try {
+          const doc = await documentApi.upload(toUpload, workspaceId);
+          toast({ tone: 'success', title: 'File attached', detail: `${doc.path} — referenced in message` });
+          fileContext = `${toUpload.name} (stored as ${doc.path})`;
+          raw = rawBase ? `${rawBase}\n\n[File stored: ${doc.path}]` : `[File stored: ${doc.path}]`;
+        } catch {
+          toast({ tone: 'error', title: 'Attach failed', detail: `${toUpload.name} not stored — message sent with name only` });
+        }
+      }
       const userMsg: ChatMessage = {
         id: Date.now().toString(),
         role: 'user',
-        text: raw,
+        text: fileContext && !rawBase ? raw : rawBase ? raw : raw,
         timestamp: nowIso(),
       };
       const next = [...messages, userMsg];
@@ -582,7 +600,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         setLoading(false);
       }
     },
-    [input, loading, messages, workspaceId, selected, activeId, updateThread, toast, streamText],
+    [input, loading, messages, workspaceId, selected, activeId, updateThread, toast, streamText, attached],
   );
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1000,7 +1018,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               <button
                 aria-label="Send message"
                 onClick={() => void handleSend()}
-                disabled={loading || !input.trim()}
+                disabled={loading || (!input.trim() && !attached)}
                 className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-zinc-200"
               >
                 ↑

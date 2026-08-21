@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -38,10 +39,13 @@ export function Avatar({ src, alt, size = 'md', fallback, className = '' }: Avat
       aria-label={alt}
     >
       {showImg ? (
-        <img
+        <Image
           src={src}
           alt={alt}
-          className="h-full w-full rounded-full object-cover"
+          fill
+          sizes="40px"
+          unoptimized
+          className="rounded-full object-cover"
           onError={() => setImgError(true)}
         />
       ) : (

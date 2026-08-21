@@ -83,7 +83,6 @@ const keyStatusColors: Record<string, StatusVariant> = { active: 'success', revo
 const keyColor = (s: string): StatusVariant => keyStatusColors[s] ?? 'neutral';
 
 export default function DeveloperPage() {
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Developer Portal" />;
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(initialApiKeys);
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
@@ -92,6 +91,7 @@ export default function DeveloperPage() {
   const [webhookEvent, setWebhookEvent] = useState('job.match');
   const [webhookResult, setWebhookResult] = useState<WebhookDelivery | null>(null);
   const [showTestConsole, setShowTestConsole] = useState(false);
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Developer Portal" />;
 
   const revokeKey = (id: string) => {
     setApiKeys(apiKeys.map((k) => (k.id === id ? { ...k, status: 'revoked' as const } : k)));

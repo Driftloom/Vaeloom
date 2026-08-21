@@ -6,6 +6,8 @@ import useSWR from 'swr';
 import { useWorkspace } from '../../../hooks/useWorkspace';
 import { useApi } from '../../../hooks/useApi';
 import { api } from '../../../lib/api';
+import { approvalApi } from '@/lib/api-client';
+import Link from 'next/link';
 import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist';
 import type { Agent, Memory, PaginatedResponse, Event } from '@vaeloom/shared-types';
 
@@ -60,10 +62,12 @@ export default function DashboardPage() {
     loading: eventsLoading,
     error: eventsError,
   } = useApi<Event[] | PaginatedResponse<Event>>(
-    () => api.request<Event[] | PaginatedResponse<Event>>('/events'),
+    () => api.request<Event[] | PaginatedResponse<Event>>(`/events?workspace_id=${workspaceId}`),
     { enabled: !!workspaceId },
   );
 
+  const { data: approvalsRes } = useSWR(workspaceId ? `approvals-pending-${workspaceId}` : null, () => approvalApi.list({ status: 'PENDING', page: 1, page_size: 5 }));
+  const pendingCount = approvalsRes?.total ?? approvalsRes?.items?.length ?? 0;
   const events: Event[] = Array.isArray(eventsRes)
     ? eventsRes
     : ((eventsRes as PaginatedResponse<Event>)?.data ?? []);
@@ -123,6 +127,19 @@ export default function DashboardPage() {
       </header>
 
       {(agentCount === 0 || memoryCount === 0) && <OnboardingChecklist workspaceId={workspaceId} />}
+
+      {pendingCount > 0 && (
+        <Link href={`/workspace/${workspaceId}/approvals`} className="card border-amber-500/30 bg-amber-500/5 flex items-center justify-between hover:border-amber-500/50 transition-colors">
+          <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/20 text-amber-700 font-mono text-sm">{pendingCount}</span>
+            <div>
+              <p className="font-medium text-text">Pending approvals</p>
+              <p className="text-xs text-text-muted">Agent suggestions require your review — Files, Gmail, Schedule, Applications</p>
+            </div>
+          </div>
+          <span className="text-sm text-amber-700 font-medium">Review →</span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card">

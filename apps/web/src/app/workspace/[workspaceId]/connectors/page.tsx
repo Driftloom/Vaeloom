@@ -84,6 +84,20 @@ export default function ConnectorsPage() {
     const meta = PROVIDER_META[provider];
     setBusy(`connect-${provider}`);
     try {
+      // Try real OAuth redirect first for providers that support SSO
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      try {
+        const res = await api.request<{ auth_url?: string; authUrl?: string }>(
+          `/auth/sso/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`,
+        );
+        const url = (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      } catch {
+        // fallback to legacy integration create if SSO not configured for this provider
+      }
       await api.integrations.create({ name: meta?.name ?? provider, provider });
       await mutate();
       toast({
@@ -98,6 +112,21 @@ export default function ConnectorsPage() {
         title: 'Connect failed',
         detail: err instanceof Error ? err.message : 'Please try again.',
       });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleRevoke = async (connector: Connector) => {
+    const proceed = window.confirm(`Revoke ${PROVIDER_META[connector.provider]?.name ?? connector.provider}? This will remove the connection and stop future syncs. You can reconnect anytime.`);
+    if (!proceed) return;
+    setBusy(`revoke-${connector.id}`);
+    try {
+      await api.request(`/integrations/${connector.id}`, { method: 'DELETE' });
+      await mutate();
+      toast({ tone: 'success', title: 'Revoked', detail: `${connector.provider} disconnected` });
+    } catch (err) {
+      toast({ tone: 'error', title: 'Revoke failed', detail: err instanceof Error ? err.message : 'Please try again.' });
     } finally {
       setBusy(null);
     }
@@ -218,14 +247,23 @@ export default function ConnectorsPage() {
                       {String((conn as unknown as Record<string, unknown>)['errorDetail'])}
                     </p>
                   ) : null}
-                  <button
-                    data-testid="sync-button"
-                    className="btn-secondary w-full text-sm"
-                    disabled={isBusy}
-                    onClick={() => handleSync(conn)}
-                  >
-                    {isBusy ? 'Syncing…' : 'Sync Now'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      data-testid="sync-button"
+                      className="btn-secondary flex-1 text-sm"
+                      disabled={isBusy}
+                      onClick={() => handleSync(conn)}
+                    >
+                      {isBusy ? 'Syncing…' : 'Sync Now'}
+                    </button>
+                    <button
+                      className="btn-ghost border border-border flex-1 text-sm"
+                      disabled={busy === `revoke-${conn.id}`}
+                      onClick={() => handleRevoke(conn)}
+                    >
+                      {busy === `revoke-${conn.id}` ? 'Revoking…' : 'Revoke'}
+                    </button>
+                  </div>
                 </div>
               );
             })}
