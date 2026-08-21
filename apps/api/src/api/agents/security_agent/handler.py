@@ -18,6 +18,9 @@ class SecurityAgent(BaseAgent):
         Tool(name="monitor_activity", description="Monitor user activity for suspicious patterns"),
         Tool(name="scan_for_pii", description="Scan content for potential PII leaks"),
         Tool(name="analyze_access_logs", description="Analyze access logs for anomalies"),
+        Tool(name="parse_document_ocr", description="Extract and scan documents for sensitive data"),
+        Tool(name="query_graph", description="Query knowledge graph for security events"),
+        Tool(name="web_search", description="Real-time web search for threat intelligence"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["activity", "access_logs", "security_events"],

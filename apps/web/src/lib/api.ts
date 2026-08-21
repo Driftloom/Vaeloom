@@ -15,8 +15,8 @@ import type {
   PaginatedResponse,
 } from '@vaeloom/shared-types';
 
-const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000';
-const API_PREFIX = '/api/v1';
+export const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000';
+export const API_PREFIX = '/api/v1';
 
 const TOKEN_KEY = 'vaeloom.accessToken';
 
@@ -24,7 +24,7 @@ function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 }
 
-function transformKeys<T>(obj: unknown): T {
+export function transformKeys<T>(obj: unknown): T {
   if (obj === null || obj === undefined) return obj as T;
   if (Array.isArray(obj)) return obj.map(transformKeys) as T;
   if (typeof obj === 'object') {

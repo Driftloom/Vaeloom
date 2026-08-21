@@ -133,7 +133,20 @@ async def lifespan(app: FastAPI):
         # For real migration errors, still try custom runner but log loudly
         await _run_custom_migrations()
     logger.info("Database tables verified and migrations applied")
+    # ── Start background daemon (cron + daily watchers) ──────────────
+    try:
+        from .infrastructure.background_daemon import start_background_daemon, stop_background_daemon
+        start_background_daemon()
+        logger.info("Background daemon started")
+    except Exception as e:
+        logger.warning(f"Background daemon failed to start (non-fatal): {e}")
     yield
+    # ── Stop background daemon ──────────────────────────────────────
+    try:
+        from .infrastructure.background_daemon import stop_background_daemon
+        stop_background_daemon()
+    except Exception:
+        pass
     await engine.dispose()
     logger.info("Backend shutdown complete")
 
@@ -171,8 +184,8 @@ app.add_middleware(APIVersionMiddleware)
 app.add_middleware(PromptInjectionMiddleware)
 app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(MetricsMiddleware)
-if settings.ip_allowlist:
-    app.add_middleware(IPAllowlistMiddleware, allowlist_raw=settings.ip_allowlist)
+# IP allowlist always mounted (ADR-031) — no-op when empty, enforce when configured
+app.add_middleware(IPAllowlistMiddleware, allowlist_raw=settings.ip_allowlist or "")
 # CORS must be outermost (last added) so OPTIONS preflight is handled first
 app.add_middleware(
     CORSMiddleware,

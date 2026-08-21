@@ -897,3 +897,63 @@ class ProviderKey(Base):
         Index("idx_provider_keys_workspace_provider", "workspace_id", "provider"),
         Index("idx_provider_keys_user_ws", "user_id", "workspace_id"),
     )
+
+
+class MemoryVersion(Base):
+    """Durable version history for Memory rows — fixes EXC-P12-03 (in-memory only).
+
+    Each update to a Memory snapshots the diff (changes) + full new snapshot.
+    Supersession via Memory.supersedes_id handles logical chain; this table
+    handles field-level audit/history across restarts.
+    """
+
+    __tablename__ = "memory_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    memory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("memories.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True)
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    changes: Mapped[dict] = mapped_column(JSON, nullable=False)
+    snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("memory_id", "version_number", name="uq_memory_version_number"),
+        Index("idx_memory_versions_memory_id", "memory_id"),
+        Index("idx_memory_versions_workspace_id", "workspace_id"),
+        Index("idx_memory_versions_created_at", "created_at"),
+    )
+
+
+class DocumentChunk(Base):
+    """Persisted chunk provenance — fixes EXC-P12-04 (chunk->embedding not wired).
+
+    Ingestion pipeline's chunk_text() output is persisted here with offsets,
+    token_count, and linkage to embeddings table (source_type=document_chunk).
+    Enables hybrid vector+keyword+graph retrieval over actual chunk vectors.
+    """
+
+    __tablename__ = "document_chunks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    document_version_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("document_versions.id", ondelete="CASCADE"), nullable=True)
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    start_offset: Mapped[int] = mapped_column(Integer, nullable=False)
+    end_offset: Mapped[int] = mapped_column(Integer, nullable=False)
+    token_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    embedding_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("embeddings.id", ondelete="SET NULL"), nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("document_version_id", "chunk_index", name="uq_chunk_version_index"),
+        Index("idx_document_chunks_workspace", "workspace_id"),
+        Index("idx_document_chunks_document", "document_id"),
+        Index("idx_document_chunks_version", "document_version_id"),
+        Index("idx_document_chunks_embedding", "embedding_id"),
+    )

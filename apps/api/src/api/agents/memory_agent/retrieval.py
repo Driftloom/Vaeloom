@@ -47,7 +47,7 @@ async def vector_search(query: str, workspace_id: str, limit: int) -> list[Retri
     try:
         async with async_session_factory() as session:
             try:
-                stmt = text(
+                stmt = text(  # nosec B608 — parameterized vector query, not injection
                     "SELECT e.id, e.source_type, e.source_id, e.vector, "
                     "e.vector <=> :query_vec AS distance "
                     "FROM embeddings e "
@@ -89,6 +89,35 @@ async def vector_search(query: str, workspace_id: str, limit: int) -> list[Retri
                     if mr:
                         content = str(mr.content)
                         doc_id = str(mr.source_document_id) if mr.source_document_id else None
+                elif source_type == "document_chunk":
+                    # EXC-P12-04: resolve chunk provenance for obsidian-style retrieval
+                    try:
+                        from api.models.schema import DocumentChunk
+                        chunk_res = await session.execute(select(DocumentChunk).where(DocumentChunk.id == source_id))
+                        chunk = chunk_res.scalar_one_or_none()
+                        if chunk:
+                            content = chunk.content[:500]
+                            doc_id = str(chunk.document_id)
+                        else:
+                            # Fallback: try Memory with same label
+                            from api.models.schema import Memory as MemRow
+                            mem_res = await session.execute(select(MemRow).where(MemRow.id == source_id))
+                            mem = mem_res.scalar_one_or_none()
+                            if mem and mem.content:
+                                content = mem.content[:500]
+                                doc_id = str(mem.workspace_id) if mem.workspace_id else None
+                    except Exception:
+                        pass
+                elif source_type == "memory":
+                    try:
+                        from api.models.schema import Memory as MemRow2
+                        mem2 = await session.execute(select(MemRow2).where(MemRow2.id == source_id))
+                        m = mem2.scalar_one_or_none()
+                        if m and m.content:
+                            content = (m.content or m.summary or m.title)[:500]
+                            doc_id = str(m.workspace_id) if m.workspace_id else None
+                    except Exception:
+                        pass
 
                 if content:
                     memories.append(RetrievedMemory(
@@ -97,6 +126,13 @@ async def vector_search(query: str, workspace_id: str, limit: int) -> list[Retri
                         source_document_id=doc_id,
                         relevance_score=score,
                     ))
+            # If embeddings exist but source resolution yielded nothing (e.g. SQLite mock vectors),
+            # fall through to hybrid fallback search so chunks/documents still surface
+            if not memories and rows:
+                logger.info("Vector rows had no resolvable content, falling back to hybrid keyword+graph for query '%s'", query)
+                kw = await keyword_search(query, workspace_id, limit)
+                if kw:
+                    return kw
             return memories
     except Exception as e:
         logger.warning(f"Vector search DB failed: {e}, using in-memory fallback")
@@ -183,6 +219,27 @@ async def keyword_search(query: str, workspace_id: str, limit: int) -> list[Retr
                         relevance_score=0.65,
                     ))
 
+            # DocumentChunk keyword search — obsidian chunk retrieval
+            if len(memories) < limit:
+                try:
+                    from api.models.schema import DocumentChunk
+                    chunk_stmt = (
+                        select(DocumentChunk)
+                        .where(DocumentChunk.workspace_id == workspace_id)
+                        .where(DocumentChunk.content.ilike(pattern))
+                        .limit(limit - len(memories))
+                    )
+                    chunk_result = await session.execute(chunk_stmt)
+                    for ch in chunk_result.scalars().all():
+                        memories.append(RetrievedMemory(
+                            id=f"chunk_{ch.id}",
+                            content=ch.content[:400],
+                            source_document_id=str(ch.document_id),
+                            relevance_score=0.68,
+                        ))
+                except Exception:
+                    pass
+
             return memories
     except Exception as e:
         logger.warning(f"Keyword search failed: {e}")
@@ -249,6 +306,7 @@ async def graph_traversal(query: str, workspace_id: str, limit: int) -> list[Ret
         return []
 
 async def rerank(results: list[RetrievedMemory], query: str, limit: int) -> list[RetrievedMemory]:
+    # ID dedup + overlap dedup (RISK-P12-08 fix: chunk overlap inflates context)
     seen = set()
     deduped = []
     for r in results:
@@ -256,8 +314,34 @@ async def rerank(results: list[RetrievedMemory], query: str, limit: int) -> list
         if key not in seen:
             seen.add(key)
             deduped.append(r)
-    sorted_results = sorted(deduped, key=lambda x: x.relevance_score, reverse=True)
-    return sorted_results[:limit]
+    # Sort by relevance first
+    deduped.sort(key=lambda x: x.relevance_score, reverse=True)
+    # Overlap/content dedup: if a lower-ranked chunk is substring of higher-ranked kept chunk, drop it
+    final: list[RetrievedMemory] = []
+    kept_contents: list[str] = []
+    for r in deduped:
+        c = (r.content or "").strip()
+        # skip if c is substring of already kept higher-relevance content, or near-duplicate via hash
+        is_overlap = False
+        for kept in kept_contents:
+            if c and (c in kept or kept in c):
+                # For very short chunks (<80 chars) require stronger check; for longer, substring indicates overlap
+                if len(c) < 80:
+                    # short: only drop if near-identical
+                    if c == kept:
+                        is_overlap = True
+                        break
+                else:
+                    # if 70%+ of content already covered, drop
+                    if len(c) < len(kept) * 0.9 and c[:120] in kept:
+                        is_overlap = True
+                        break
+        if not is_overlap:
+            final.append(r)
+            kept_contents.append(c)
+        if len(final) >= limit:
+            break
+    return final
 
 
 def _estimate_tokens(text: str) -> int:

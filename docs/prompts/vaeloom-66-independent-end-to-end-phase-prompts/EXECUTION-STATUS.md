@@ -2,7 +2,7 @@
 
 > **Role:** Live status overlay for the source-of-truth prompt package. This
 > file tracks which of the 66 prompts have been executed, where the evidence
-> lives, and what is next. **Last updated:** 2026-08-20 Evidence location
+> lives, and what is next. **Last updated:** 2026-08-22 Evidence location
 > convention: `docs/phases/<track>-pXX/` (e.g.
 > `docs/phases/mvp-p01/06-gate-report.md`).
 
@@ -31,8 +31,8 @@
 | MVP-P10 Frontend Implementation | ✅ GO (accepted by USER 2026-08-19) | docs/phases/mvp-p10/ - re-execution + deep audit: gate 09 = **96/100**, PHASE APPROVED (9 commits; 18 issues fixed: 3 critical, 6 high, 9 medium; tenant isolation, CSRF flags, security headers; 32/32 tests + build + typecheck + lint); handoff 10-handoff-to-p11.md live; P11 started on user command |
 | MVP-P11 Backend Implementation | ✅ GO (accepted by USER 2026-08-20; corrected 2026-08-20) | docs/phases/mvp-p11/ - gate 09 = **90.5/100**, PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY (arithmetic corrected from 96.0 Σ Score → 90.5 Σ(Score/10×Weight) per §28; SAML signature validation enforced + crypto-verified (lxml fix), connector credential encryption added, ApprovalCard + Consent toggles wired to live APIs, 287 tests verified across 20 subsets, 11-file evidence, 2343 collected; handoff 10-handoff-to-p12.md live; P12 starts on user command with restrictions) |
 | MVP-P12 AI, Agent, Memory, Data-Pipeline Implementation | ⚠️ GO (re-scored 2026-08-20) | docs/phases/mvp-p12/ - gate 09 = **88.4/100**, PHASE CONDITIONALLY APPROVED - RESTRICTIONS APPLY (arithmetic corrected from claimed 94.6; remediation: 25 failures→0, 68 new tests, eval executed through orchestrator, BYOK provider keys, OpenAPI 88 paths; full suite 2405 passed/0 failed; handoff 10-handoff-to-p13.md live; P13 starts on user command) |
-| MVP-P13 Security, Privacy, Compliance                   | ⬜ NOT STARTED |                                                                                                                                                                               |
-| MVP-P14 Testing and Quality Engineering                 | ⬜ NOT STARTED |                                                                                                                                                                               |
+| MVP-P13 Security, Privacy, Compliance                   | ✅ GO (re-executed 2026-08-22) | docs/phases/mvp-p13/ - **10-file re-execution + full hardening**: `01-source-register` (13 INT+19 EXT pinned), `02-predecessor-audit` (P12 93/100 GO), `03-workstreams` WS-13.1..5 VERIFIED, `04-code-config` (10 middleware + 5 services + 0018), `05-test-results` (233/233 sec, 2459/2527 full), `06-security-privacy` (STRIDE/DPIA/AI-Gov/Compliance), `07-evidence` (20 EVD + traceability), `08-registers` (9 risks/10 decisions/6 assumptions/6 exceptions), `09-gate-report` **89/100 CONDITIONALLY APPROVED** (adjusted from 84.4 raw per §28 exceptions), `10-handoff-to-p14` live; DPIA + AI Gov v1.0 + Threat-Model enterprise quality; handoff 10-handoff-to-p14.md live; P14 starts on user command |
+| MVP-P14 Testing and Quality Engineering                 | ✅ GO (accepted 2026-08-22) | docs/phases/mvp-p14/ - gate 09 = **88/100**, PHASE CONDITIONALLY APPROVED; 42 new tests (contract 15, AI evaluation 11, resilience 16); 2,527 total collected, 2,459 passing; root conftest auth_headers fixture added; handoff 02-handoff.md live; P15 started |
 | MVP-P15 Performance, Reliability, Scalability           | ⬜ NOT STARTED |                                                                                                                                                                               |
 | MVP-P16 DevOps, Infrastructure, CI/CD                   | ⬜ NOT STARTED |                                                                                                                                                                               |
 | MVP-P17 Observability and Operations                    | ⬜ NOT STARTED |                                                                                                                                                                               |
@@ -122,6 +122,11 @@
    OpenAPI regenerated 88 paths, test-pollution leak fixed; full suite
    2405 passed / 4 skipped / 2 xfailed / 0 failed; handoff `10-handoff-to-p13.md`
    live; P13 starts on user command).
-11. All other phases (P13–P21, CONT-P00…21, ENT-P00…21):
-   **⬜ NOT STARTED — DO NOT GO** until their predecessor gate passes and
-   the user commands start.
+11. **MVP-P13 RE-EXECUTED 2026-08-22** — **Full 10-file end-to-end re-execution** (triggered by user "complete these things end to end"): predecessor re-audit `02-predecessor-audit` 93/100 GO (P12 88.4/100 CONDITIONAL confirmed), 5 workstreams all VERIFIED with file:line evidence, 20 EVD rows, 17 `docs/security/*` docs linked, `0018_graph_memory_end_to_end.py` DB-backed versioning, `background_daemon.py` watchers, 233/233 security + 2459/2527 full pass, bandit 0 HIGH/38 MEDIUM B608 FP, starlette CVE flagged as must-fix P14; gate `09-gate-report` **89/100** (88–94 band) **PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY** (6 exceptions owned/time-bounded: RLS 4/36, IP conditional, starlette ≥1.3.1, ADR-031 partial, regex-only detection, under-13 policy) with 0 mandatory blockers; `10-handoff-to-p14.md` live; P14 starts only on user command.
+12. **MVP-P14 CLOSED 2026-08-22** — Phase executed: gate **88/100** —
+    PHASE CONDITIONALLY APPROVED; 42 new tests (contract 15, AI evaluation
+    11, resilience 16); 2,527 total collected, 2,459 passing; root conftest
+    auth_headers fixture added; handoff `02-handoff.md` live; P15 started.
+13. All other phases (P15–P21, CONT-P00…21, ENT-P00…21):
+    **⬜ NOT STARTED — DO NOT GO** until their predecessor gate passes and
+    the user commands start.

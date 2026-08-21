@@ -98,6 +98,22 @@ export default function SchedulePage() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  const [reminders, setReminders] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(localStorage.getItem('vaeloom-reminders') ?? '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleReminder = (eventId: string) => {
+    setReminders((prev) => {
+      const next = { ...prev, [eventId]: !prev[eventId] };
+      localStorage.setItem('vaeloom-reminders', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const fetchEvents = useCallback(async () => {
     if (!workspaceId) return;
@@ -134,6 +150,24 @@ export default function SchedulePage() {
       return true;
     });
   }, [events, filterSource, filterCategory, search]);
+
+  const conflicts = useMemo(() => {
+    const conflictMap = new Set<string>();
+    for (let i = 0; i < filtered.length; i++) {
+      for (let j = i + 1; j < filtered.length; j++) {
+        const a = filtered[i];
+        const b = filtered[j];
+        if (!a || !b) continue;
+        const aDate = new Date(getEventDate(a) ?? a.createdAt).toDateString();
+        const bDate = new Date(getEventDate(b) ?? b.createdAt).toDateString();
+        if (aDate === bDate) {
+          conflictMap.add(a.id);
+          conflictMap.add(b.id);
+        }
+      }
+    }
+    return conflictMap;
+  }, [filtered]);
 
   const handleCreate = useCallback(async () => {
     if (!createTitle.trim() || !createDate) {
@@ -283,6 +317,9 @@ export default function SchedulePage() {
             Workspace-scoped · calendar + list · Gmail vs agent vs you · proposed events need
             approval
           </p>
+          <p className="text-xs text-text-dim font-mono">
+            {Intl.DateTimeFormat().resolvedOptions().timeZone}
+          </p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
@@ -385,7 +422,7 @@ export default function SchedulePage() {
             {calDays.map((cell, i) => (
               <div
                 key={i}
-                className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''}`}
+                className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''} ${cell.date && cell.events.some((e) => conflicts.has(e.id)) ? 'bg-amber-500/5' : ''}`}
               >
                 {cell.date && (
                   <>
@@ -401,9 +438,14 @@ export default function SchedulePage() {
                           <button
                             key={e.id}
                             onClick={() => setSelected(e)}
-                            className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''}`}
+                            className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''} ${conflicts.has(e.id) ? 'ring-1 ring-amber-500/30' : ''}`}
                           >
-                            {title.slice(0, 18)}
+                            {title.slice(0, 16)}
+                            {conflicts.has(e.id) && ' ⚠'}
+                            {Boolean(
+                              (e.payload as Record<string, unknown>)?.['recurrence'] ||
+                              (e.payload as Record<string, unknown>)?.['rrule'],
+                            ) && ' 🔁'}
                           </button>
                         );
                       })}
@@ -458,6 +500,22 @@ export default function SchedulePage() {
                         {event.priority}
                       </span>
                     )}
+                    {conflicts.has(event.id) && (
+                      <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs text-amber-700">
+                        ⚠ Conflict
+                      </span>
+                    )}
+                    {Boolean(
+                      (event.payload as Record<string, unknown>)?.['recurrence'] ||
+                      (event.payload as Record<string, unknown>)?.['rrule'],
+                    ) && (
+                      <span
+                        className="rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs text-blue-700"
+                        title="Recurring event"
+                      >
+                        🔁
+                      </span>
+                    )}
                     {urgency && (
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-mono ${urgency === 'Overdue' ? 'bg-red-500 text-white' : urgency === 'Today' ? 'bg-amber-500 text-white' : 'bg-surface-hover text-text-muted border border-border'}`}
@@ -484,6 +542,13 @@ export default function SchedulePage() {
                       className="shrink-0 rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover"
                     >
                       Details
+                    </button>
+                    <button
+                      onClick={() => toggleReminder(event.id)}
+                      aria-label="Toggle reminder"
+                      className={`shrink-0 rounded-full border px-2 py-1 text-xs hover:bg-surface-hover ${reminders[event.id] ? 'border-amber-500/30 text-amber-600' : 'border-border text-text-muted'}`}
+                    >
+                      {reminders[event.id] ? '🔔' : '🔕'}
                     </button>
                   </div>
                   {proposed && (
@@ -635,9 +700,9 @@ export default function SchedulePage() {
       </Modal>
 
       <p className="text-xs text-text-dim mt-3">
-        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) — migrated 2026-08-21;
-        Gmail-extracted events are read via Gmail connector, agent-proposed events via the
-        scheduler/gmail agents.
+        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) —
+        migrated 2026-08-21; Gmail-extracted events are read via Gmail connector, agent-proposed
+        events via the scheduler/gmail agents.
       </p>
     </div>
   );

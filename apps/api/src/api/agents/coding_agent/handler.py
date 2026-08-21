@@ -18,6 +18,9 @@ class CodingAgent(BaseAgent):
         Tool(name="solve_challenge", description="Solve a coding challenge with explanation"),
         Tool(name="review_code", description="Review code for correctness, style, and optimization"),
         Tool(name="generate_practice", description="Generate practice problems for interview prep"),
+        Tool(name="execute_code_sandbox", description="Safe sandboxed Python/JS execution for coding problems"),
+        Tool(name="fetch_github_repo", description="Fetch repository context for code review"),
+        Tool(name="web_search", description="Real-time web search for coding docs and solutions"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["coding", "challenges", "skills", "progress"],

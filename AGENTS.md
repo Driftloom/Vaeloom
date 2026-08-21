@@ -47,9 +47,11 @@
 
 ## API — Test State
 
-- **2425 tests collected (2417 pass, 4 skipped, 2 xfailed, 1 pre-existing
-  failure fixed on 2026-08-21)** — security suite 172/172; coverage **94%
-  total** — see `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`
+- **2555 tests collected (2459 pass, 4 skipped, 2 xfailed, 1 pre-existing
+  failure fixed on 2026-08-21 + debug_test removed)** — security suite 233/233
+  (170 unique de-duplicated; middleware/test_csrf duplicates security/test_csrf
+  per zero-trust audit 2026-08-22 F-02); coverage **94% total** — see
+  `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`
 - Python 3.12.13 (per `apps/api/.python-version` pinned via
   `uv python pin 3.12`; `.venv` managed by `uv`)
 - Tests use SQLite with mock backend (`tmp_path` per-test DB via `NullPool`);
@@ -66,27 +68,27 @@
 
 ## Enterprise Hardening — Status
 
-| Phase                     | Status | Honest Status | Details                                                                                                                                              |
-| ------------------------- | ------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.1 JWT validation        | DONE   | IMPLEMENTED   | `validate_settings()` fails fast on default secret                                                                                                   |
-| 0.2 Plugin sandbox        | DONE   | IMPLEMENTED   | `exec()` → subprocess isolation                                                                                                                      |
-| 0.3 Infisical secrets     | DONE   | IMPLEMENTED   | SecretManager protocol, infisical/fallback                                                                                                           |
-| 0.5 Rate limiting         | DONE   | IMPLEMENTED   | Sliding window, per-endpoint decorator, Retry-After                                                                                                  |
-| 0.6 CORS hardening        | DONE   | IMPLEMENTED   | Restricted origins/methods/headers, security headers; CORS now outermost middleware                                                                  |
-| 0.7 Docs consolidation    | DONE   | IMPLEMENTED   | Documents/ deleted, references fixed                                                                                                                 |
-| 0.8 Logging               | DONE   | IMPLEMENTED   | JSON/pretty formatters, correlation IDs, structured fields                                                                                           |
-| 1.x CI/CD                 | DONE   | IMPLEMENTED   | GitHub Actions (api, frontend, docker, deploy) — no release workflow                                                                                 |
-| 2.x Frontend API          | DONE   | PARTIAL       | Typed client + 16 pages with real API; 7 pages use hardcoded mock data                                                                               |
-| 3.x Next.js pages         | DONE   | IMPLEMENTED   | loading.tsx, error.tsx, not-found.tsx (global + per-route)                                                                                           |
-| 4.x Enterprise auth       | DONE   | PARTIAL       | SSO (Google/Microsoft) implemented; SAML is STUB (methods return None); RBAC is dependency injection helper, not middleware                          |
-| 5.x Observability         | DONE   | IMPLEMENTED   | OTel setup + correlation IDs work; Prometheus `/metrics` endpoint ACTIVE (main.py:167); FastAPI OTel auto-instrumentation ACTIVE (main.py:168)       |
-| 6.x Multi-tenancy         | DONE   | PARTIAL       | TenantMiddleware MOUNTED (main.py:122); set_rls_session_vars wired into get_db(); RLS on 4/36 tables only; GUC app.tenant_id now SET                 |
-| 7.x Agent hardening       | DONE   | IMPLEMENTED   | Circuit breaker, fallback policies, per-agent rate limits; approval gate now wired in orchestrator loop                                              |
-| 8.x Performance           | DONE   | IMPLEMENTED   | SWR caching, route prefetching, image optimization, bundle analysis                                                                                  |
-| 9.x Security & Compliance | DONE   | PARTIAL       | GDPR, API key rotation, data retention implemented; IP Allowlist middleware EXISTS but NOT MOUNTED in main.py; input sanitization designed (ADR-031) |
-| 10.x Testing/QA           | DONE   | PARTIAL       | 2425 pytest, 172 security, 37 jest, 39 e2e real; testing/smoke/, security/, chaos/, fuzz/, visual-regression/ are EMPTY                              |
-| 11.x Documentation        | DONE   | IMPLEMENTED   | 32 ADRs (ADR-001 through ADR-032), OpenAPI spec, onboarding guide, deployment/DR runbooks, API reference                                             |
-| 12.x Enterprise Polish    | DONE   | IMPLEMENTED   | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                                                      |
+| Phase                     | Status | Honest Status | Details                                                                                                                                                                                                                                                |
+| ------------------------- | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0.1 JWT validation        | DONE   | IMPLEMENTED   | `validate_settings()` fails fast on default secret                                                                                                                                                                                                     |
+| 0.2 Plugin sandbox        | DONE   | IMPLEMENTED   | `exec()` → subprocess isolation                                                                                                                                                                                                                        |
+| 0.3 Infisical secrets     | DONE   | IMPLEMENTED   | SecretManager protocol, infisical/fallback                                                                                                                                                                                                             |
+| 0.5 Rate limiting         | DONE   | IMPLEMENTED   | Sliding window, per-endpoint decorator, Retry-After                                                                                                                                                                                                    |
+| 0.6 CORS hardening        | DONE   | IMPLEMENTED   | Restricted origins/methods/headers, security headers; CORS now outermost middleware                                                                                                                                                                    |
+| 0.7 Docs consolidation    | DONE   | IMPLEMENTED   | Documents/ deleted, references fixed                                                                                                                                                                                                                   |
+| 0.8 Logging               | DONE   | IMPLEMENTED   | JSON/pretty formatters, correlation IDs, structured fields                                                                                                                                                                                             |
+| 1.x CI/CD                 | DONE   | IMPLEMENTED   | GitHub Actions (api, frontend, docker, deploy) — no release workflow                                                                                                                                                                                   |
+| 2.x Frontend API          | DONE   | PARTIAL       | Typed client + 16 pages with real API; 7 pages use hardcoded mock data                                                                                                                                                                                 |
+| 3.x Next.js pages         | DONE   | IMPLEMENTED   | loading.tsx, error.tsx, not-found.tsx (global + per-route)                                                                                                                                                                                             |
+| 4.x Enterprise auth       | DONE   | PARTIAL       | SSO (Google/Microsoft) implemented; SAML is STUB (methods return None); RBAC is dependency injection helper, not middleware                                                                                                                            |
+| 5.x Observability         | DONE   | IMPLEMENTED   | OTel setup + correlation IDs work; Prometheus `/metrics` endpoint ACTIVE (main.py:167); FastAPI OTel auto-instrumentation ACTIVE (main.py:168)                                                                                                         |
+| 6.x Multi-tenancy         | DONE   | PARTIAL       | TenantMiddleware MOUNTED (main.py:122) + ALWAYS mounted IPAllowlist (no-op when empty); set_rls_session_vars wired into get_db(); RLS on 37/42 tables (34 via 0010 +3 via 0019; was stale 4/36 claim fixed 2026-08-22 F-04); GUC app.tenant_id now SET |
+| 7.x Agent hardening       | DONE   | IMPLEMENTED   | Circuit breaker, fallback policies, per-agent rate limits; approval gate now wired in orchestrator loop                                                                                                                                                |
+| 8.x Performance           | DONE   | IMPLEMENTED   | SWR caching, route prefetching, image optimization, bundle analysis                                                                                                                                                                                    |
+| 9.x Security & Compliance | DONE   | PARTIAL       | GDPR, API key rotation, data retention implemented; IP Allowlist middleware ALWAYS MOUNTED (main.py:188 no-op when empty) — was stale NOT MOUNTED claim fixed 2026-08-22 F-18; input sanitization designed (ADR-031)                                   |
+| 10.x Testing/QA           | DONE   | PARTIAL       | 2555 pytest, 233 security (170 unique), 37 jest, 39 e2e real; testing/smoke/, security/, chaos/, fuzz/, visual-regression/ are EMPTY                                                                                                                   |
+| 11.x Documentation        | DONE   | IMPLEMENTED   | 32 ADRs (ADR-001 through ADR-032), OpenAPI spec, onboarding guide, deployment/DR runbooks, API reference                                                                                                                                               |
+| 12.x Enterprise Polish    | DONE   | IMPLEMENTED   | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                                                                                                                                                        |
 
 ## Critical Config for Agent Sessions
 

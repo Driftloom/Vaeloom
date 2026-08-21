@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import useSWR from 'swr';
 import { agentCatalogApi, type CatalogAgent } from '@/lib/api-client';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -47,7 +48,7 @@ function ScopePills({ scopes }: { scopes: { readTypes: string[]; writeTypes: str
   );
 }
 
-function AgentCard({ agent }: { agent: CatalogAgent }) {
+function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div
@@ -93,9 +94,23 @@ function AgentCard({ agent }: { agent: CatalogAgent }) {
           <span className="font-mono">{agent.tools.length}</span> tools •{' '}
           <span className="font-mono">{agent.toolNames.length}</span> declared
         </p>
-        <button onClick={() => setOpen((v) => !v)} className="text-xs text-primary hover:underline">
-          {open ? 'Hide tools' : 'Show tools'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="text-xs text-primary hover:underline"
+          >
+            {open ? 'Hide tools' : 'Show tools'}
+          </button>
+          {workspaceId && (
+            <Link
+              href={`/workspace/${workspaceId}/agents/${agent.name}`}
+              className="text-xs text-text-muted hover:text-text transition-colors"
+              aria-label={`View details for ${agent.name}`}
+            >
+              Details →
+            </Link>
+          )}
+        </div>
       </div>
 
       {open && (
@@ -245,7 +260,7 @@ export default function AgentsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((a) => (
-          <AgentCard key={a.name} agent={a} />
+          <AgentCard key={a.name} agent={a} workspaceId={workspaceId} />
         ))}
       </div>
       {filtered.length === 0 && (

@@ -1,8 +1,9 @@
 'use client';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, Input, Modal } from '@vaeloom/ui-kit';
 import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
+import { ApiClientError } from '@/lib/api-client';
 
 interface OrgNode {
   id: string;
@@ -27,101 +28,6 @@ interface Role {
   description: string;
   permissions: string[];
 }
-
-const orgTree: OrgNode = {
-  id: 'root',
-  name: 'Acme Corp',
-  type: 'organization',
-  members: 0,
-  children: [
-    {
-      id: 'eng',
-      name: 'Engineering',
-      type: 'department',
-      members: 12,
-      children: [
-        { id: 'frontend', name: 'Frontend Team', type: 'team', members: 5 },
-        { id: 'backend', name: 'Backend Team', type: 'team', members: 4 },
-        { id: 'ml', name: 'ML Team', type: 'team', members: 3 },
-      ],
-    },
-    {
-      id: 'product',
-      name: 'Product',
-      type: 'department',
-      members: 4,
-      children: [
-        { id: 'design', name: 'Design Team', type: 'team', members: 2 },
-        { id: 'pm', name: 'PM Team', type: 'team', members: 2 },
-      ],
-    },
-    { id: 'hr', name: 'Human Resources', type: 'department', members: 3 },
-  ],
-};
-
-const members: Member[] = [
-  {
-    id: 'm1',
-    name: 'Alice Chen',
-    email: 'alice@acme.com',
-    role: 'Admin',
-    status: 'active',
-    department: 'Engineering',
-  },
-  {
-    id: 'm2',
-    name: 'Bob Martinez',
-    email: 'bob@acme.com',
-    role: 'Editor',
-    status: 'active',
-    department: 'Engineering',
-  },
-  {
-    id: 'm3',
-    name: 'Carol Smith',
-    email: 'carol@acme.com',
-    role: 'Viewer',
-    status: 'invited',
-    department: 'Product',
-  },
-  {
-    id: 'm4',
-    name: 'Dave Johnson',
-    email: 'dave@acme.com',
-    role: 'Editor',
-    status: 'active',
-    department: 'Design',
-  },
-  {
-    id: 'm5',
-    name: 'Eve Williams',
-    email: 'eve@acme.com',
-    role: 'Admin',
-    status: 'active',
-    department: 'HR',
-  },
-];
-
-const roles: Role[] = [
-  {
-    id: 'r1',
-    name: 'Admin',
-    description: 'Full access to all resources and settings.',
-    permissions: ['read', 'write', 'delete', 'manage_members', 'manage_billing'],
-  },
-  {
-    id: 'r2',
-    name: 'Editor',
-    description: 'Can create and edit resources.',
-    permissions: ['read', 'write'],
-  },
-  {
-    id: 'r3',
-    name: 'Viewer',
-    description: 'Read-only access to resources.',
-    permissions: ['read'],
-  },
-];
 
 function OrgTreeNode({ node, depth = 0 }: { node: OrgNode; depth?: number }) {
   const [expanded, setExpanded] = useState(true);
@@ -183,7 +89,67 @@ export default function OrganizationsPage() {
   const [inviteRole, setInviteRole] = useState('Editor');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [orgTree, setOrgTree] = useState<OrgNode | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+
+  useEffect(() => {
+    const fetchOrgData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const { api } = await import('@/lib/api');
+        const data = await api.request<{ members: Member[]; roles: Role[]; org_tree?: OrgNode }>(
+          '/iam/organizations',
+          { method: 'GET' },
+        );
+        if (data.org_tree) setOrgTree(data.org_tree);
+        if (data.members) setMembers(data.members);
+        if (data.roles) setRoles(data.roles);
+      } catch (e) {
+        if (e instanceof ApiClientError && (e.status === 403 || e.status === 404)) {
+          setError('This feature requires an Enterprise license. Contact sales@vaeloom.app.');
+        } else {
+          setError('Failed to load organization data. Please try again later.');
+        }
+        console.error('Organization data fetch error:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrgData();
+  }, []);
+
   if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Organizations" />;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-text-muted">Loading organization data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono uppercase tracking-widest text-text-dim mb-4">
+          Enterprise — Gated
+        </div>
+        <h1 className="text-2xl font-display font-medium text-text mb-2">Organizations</h1>
+        <p className="text-text-muted max-w-lg">{error}</p>
+        <div className="mt-6 flex gap-3">
+          <a href="mailto:sales@vaeloom.app" className="btn-secondary">
+            Contact sales
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -199,7 +165,11 @@ export default function OrganizationsPage() {
         <div className="lg:col-span-1">
           <Card padding="lg">
             <h2 className="text-lg font-display font-medium text-text mb-4">Organization Tree</h2>
-            <OrgTreeNode node={orgTree} />
+            {orgTree ? (
+              <OrgTreeNode node={orgTree} />
+            ) : (
+              <div className="text-text-muted text-sm">No organization structure available.</div>
+            )}
           </Card>
         </div>
 
@@ -213,52 +183,60 @@ export default function OrganizationsPage() {
                 <span>Role</span>
                 <span>Status</span>
               </div>
-              {members.map((m) => (
-                <div
-                  key={m.id}
-                  className="grid grid-cols-4 gap-4 py-2 text-sm text-text hover:bg-background/50 rounded px-2 -mx-2 transition-colors"
-                >
-                  <span className="font-medium">{m.name}</span>
-                  <span className="text-text-muted">{m.email}</span>
-                  <span className="font-mono text-xs">{m.role}</span>
-                  <StatusBadge variant={mStatusColor(m.status)} label={m.status} />
-                </div>
-              ))}
+              {members.length === 0 ? (
+                <div className="text-text-muted text-sm py-4">No members found.</div>
+              ) : (
+                members.map((m) => (
+                  <div
+                    key={m.id}
+                    className="grid grid-cols-4 gap-4 py-2 text-sm text-text hover:bg-background/50 rounded px-2 -mx-2 transition-colors"
+                  >
+                    <span className="font-medium">{m.name}</span>
+                    <span className="text-text-muted">{m.email}</span>
+                    <span className="font-mono text-xs">{m.role}</span>
+                    <StatusBadge variant={mStatusColor(m.status)} label={m.status} />
+                  </div>
+                ))
+              )}
             </div>
           </Card>
 
           <Card padding="lg">
             <h2 className="text-lg font-display font-medium text-text mb-4">Role Management</h2>
             <div className="space-y-4">
-              {roles.map((role) => (
-                <div key={role.id} className="p-4 bg-background rounded-lg border border-border">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium text-text">{role.name}</h3>
-                      <p className="text-sm text-text-muted mt-1">{role.description}</p>
+              {roles.length === 0 ? (
+                <div className="text-text-muted text-sm">No roles defined.</div>
+              ) : (
+                roles.map((role) => (
+                  <div key={role.id} className="p-4 bg-background rounded-lg border border-border">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-text">{role.name}</h3>
+                        <p className="text-sm text-text-muted mt-1">{role.description}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowRoleModal(role.id === showRoleModal ? null : role.id)}
+                      >
+                        {showRoleModal === role.id ? 'Hide' : 'View Permissions'}
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowRoleModal(role.id === showRoleModal ? null : role.id)}
-                    >
-                      {showRoleModal === role.id ? 'Hide' : 'View Permissions'}
-                    </Button>
+                    {showRoleModal === role.id && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {role.permissions.map((p) => (
+                          <span
+                            key={p}
+                            className="text-xs bg-surface-active text-text-muted px-2 py-1 rounded font-mono"
+                          >
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {showRoleModal === role.id && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {role.permissions.map((p) => (
-                        <span
-                          key={p}
-                          className="text-xs bg-surface-active text-text-muted px-2 py-1 rounded font-mono"
-                        >
-                          {p}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>

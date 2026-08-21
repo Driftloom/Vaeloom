@@ -18,6 +18,9 @@ class GitHubAgent(BaseAgent):
         Tool(name="analyze_profile", description="Analyze a GitHub user's profile for skills and activity"),
         Tool(name="get_repo_stats", description="Get statistics and analysis for a repository"),
         Tool(name="assess_skills", description="Assess technical skills based on GitHub activity"),
+        Tool(name="fetch_github_repo", description="Fetch commits, PRs, repos, issues from GitHub API"),
+        Tool(name="create_github_issue", description="Create GitHub issues/PRs (approval-gated)"),
+        Tool(name="web_search", description="Real-time web search for GitHub and tech trends"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["github", "skills", "repositories", "contributions"],

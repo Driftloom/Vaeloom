@@ -291,12 +291,20 @@ export default function MemoryGraphPage() {
                     <p className="font-medium text-text truncate mt-1">{title}</p>
                     <p className="text-xs text-text-muted truncate">{summary || 'No summary'}</p>
                   </div>
-                  <button
-                    onClick={() => openLineage(id)}
-                    className="btn-secondary shrink-0 text-xs !px-3 !py-1"
-                  >
-                    Lineage
-                  </button>
+                  <div className="flex shrink-0 gap-2">
+                    <a
+                      href={`/workspace/${workspaceId}/memory/${id}`}
+                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover transition-colors"
+                    >
+                      Details
+                    </a>
+                    <button
+                      onClick={() => openLineage(id)}
+                      className="btn-secondary text-xs !px-3 !py-1"
+                    >
+                      Lineage
+                    </button>
+                  </div>
                 </div>
               );
             })}

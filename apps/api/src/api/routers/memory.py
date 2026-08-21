@@ -300,6 +300,85 @@ async def delete_memory(
         raise HTTPException(status_code=404, detail="Memory not found")
 
 
+@router.get("/{memory_id}/history", response_model=dict)
+async def get_memory_history(
+    memory_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+):
+    """DB-backed version history for a memory — EXC-P12-03 durable history."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    memory = await memory_service.get_memory(db, memory_id, tenant_id)
+    if not memory:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    try:
+        from ..services.memory_versioning import get_history_db
+
+        versions = await get_history_db(memory_id, db)
+        return {
+            "memory_id": str(memory_id),
+            "total": len(versions),
+            "versions": [v.model_dump(mode="json") for v in versions],
+        }
+    except Exception as e:
+        # Fallback to in-memory
+        from ..services.memory_versioning import get_history
+
+        versions = get_history(memory_id)
+        return {
+            "memory_id": str(memory_id),
+            "total": len(versions),
+            "versions": [v.model_dump(mode="json") for v in versions],
+            "fallback": str(e)[:200],
+        }
+
+
+@router.get("/{memory_id}/chunks", response_model=dict)
+async def get_memory_chunks(
+    memory_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+):
+    """Chunk-level provenance for a memory's source document — obsidian chunk view."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    memory = await memory_service.get_memory(db, memory_id, tenant_id)
+    if not memory:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    if not memory.source_uri:
+        return {"memory_id": str(memory_id), "chunks": [], "total": 0}
+    try:
+        from ..models.schema import DocumentChunk
+
+        doc_uuid = uuid.UUID(memory.source_uri)
+        stmt = select(DocumentChunk).where(DocumentChunk.document_id == doc_uuid).order_by(DocumentChunk.chunk_index)
+        result = await db.execute(stmt)
+        chunks = list(result.scalars().all())
+        return {
+            "memory_id": str(memory_id),
+            "document_id": str(doc_uuid),
+            "total": len(chunks),
+            "chunks": [
+                {
+                    "id": str(ch.id),
+                    "index": ch.chunk_index,
+                    "content": ch.content[:800],
+                    "start_offset": ch.start_offset,
+                    "end_offset": ch.end_offset,
+                    "token_count": ch.token_count,
+                    "embedding_id": str(ch.embedding_id) if ch.embedding_id else None,
+                    "created_at": ch.created_at.isoformat() if ch.created_at else None,
+                }
+                for ch in chunks
+            ],
+        }
+    except Exception as e:
+        return {"memory_id": str(memory_id), "chunks": [], "total": 0, "error": str(e)[:300]}
+
+
 @router.post("/search", response_model=list[MemorySearchResult])
 async def search_memories(
     dto: MemorySearch,

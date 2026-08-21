@@ -67,6 +67,36 @@ class ProvenanceService:
                 ProvenanceNode("embeddings", str(emb.id), emb.model_version)
             )
 
+        # DocumentChunk provenance — obsidian-style chunk lineage (EXC-P12-04)
+        try:
+            from ..models.schema import DocumentChunk
+
+            chunk_result = await db.execute(select(DocumentChunk).where(DocumentChunk.content.contains(memory.content[:50]) if memory.content else False))
+            # More robust: look for chunks linked to same source document
+            if memory.source_uri:
+                try:
+                    doc_uuid = uuid.UUID(memory.source_uri)
+                    chunk_q = await db.execute(select(DocumentChunk).where(DocumentChunk.document_id == doc_uuid).limit(5))
+                    for ch in chunk_q.scalars():
+                        chain.nodes.append(ProvenanceNode("document_chunks", str(ch.id), f"chunk_{ch.chunk_index}", ch.content[:80]))
+                except Exception:
+                    pass
+            else:
+                for ch in chunk_result.scalars():
+                    chain.nodes.append(ProvenanceNode("document_chunks", str(ch.id), f"chunk_{ch.chunk_index}", ch.content[:80]))
+        except Exception:
+            pass
+
+        # MemoryVersion durability chain
+        try:
+            from ..models.schema import MemoryVersion
+
+            ver_result = await db.execute(select(MemoryVersion).where(MemoryVersion.memory_id == memory_id).order_by(MemoryVersion.version_number))
+            for ver in ver_result.scalars():
+                chain.nodes.append(ProvenanceNode("memory_versions", str(ver.id), f"v{ver.version_number}", str(list(ver.changes.keys())[:3])))
+        except Exception:
+            pass
+
         action_result = await db.execute(
             select(AgentAction).where(AgentAction.output_ref.contains(str(memory_id)))
         )

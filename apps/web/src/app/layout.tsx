@@ -116,7 +116,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <KeyboardShortcutsModal />
                   <WebVitals />
                   <SkipLink />
-                  {children}
+                  <main id="main-content" tabIndex={-1} className="focus:outline-none">
+                    {children}
+                  </main>
                 </KeyboardShortcutProvider>
               </ToastProvider>
             </I18nProvider>

@@ -18,6 +18,9 @@ class ReflectionAgent(BaseAgent):
         Tool(name="generate_weekly_digest", description="Generate a weekly summary of activity and progress"),
         Tool(name="monthly_review", description="Generate a comprehensive monthly review"),
         Tool(name="track_goals", description="Track progress toward career and personal goals"),
+        Tool(name="query_graph", description="Query knowledge graph for activity and goals"),
+        Tool(name="search_documents", description="Search reflection documents with semantic search"),
+        Tool(name="web_search", description="Real-time web search for growth insights"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["activity", "goals", "progress", "achievements", "timeline"],

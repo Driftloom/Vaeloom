@@ -18,6 +18,9 @@ class ResearchAgent(BaseAgent):
         Tool(name="research_company", description="Research a company's background, products, culture, and recent news"),
         Tool(name="analyze_industry", description="Analyze industry trends, key players, and market dynamics"),
         Tool(name="spot_trends", description="Identify emerging trends in a given domain or sector"),
+        Tool(name="web_search", description="Real-time web search for companies and industry news"),
+        Tool(name="query_graph", description="Query knowledge graph for research entities"),
+        Tool(name="search_documents", description="Search research documents with semantic search"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["research", "companies", "industries", "trends"],

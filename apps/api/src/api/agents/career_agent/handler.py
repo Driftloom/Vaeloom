@@ -22,6 +22,9 @@ class CareerAgent(BaseAgent):
         Tool(name="analyze_career_path", description="Analyze possible career paths based on user profile"),
         Tool(name="identify_skill_gaps", description="Identify gaps between current skills and target role requirements"),
         Tool(name="recommend_courses", description="Recommend learning resources to close skill gaps"),
+        Tool(name="web_search", description="Real-time web search for company news, salaries, industry trends"),
+        Tool(name="query_graph", description="Query knowledge graph for career entities"),
+        Tool(name="search_documents", description="Search career documents with semantic search"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["career", "skills", "education", "experience"],

@@ -110,7 +110,7 @@ async def gmail_push_webhook(
     if x_goog_channel_token:
         from sqlalchemy import text
         result = await db.execute(
-            text("SELECT id FROM gmail_watches WHERE channel_id = :cid AND channel_token = :token AND status = 'ACTIVE'"),
+            text("SELECT id FROM gmail_watches WHERE channel_id = :cid AND channel_token = :token AND status = 'ACTIVE'"),  # nosec B608
             {"cid": x_goog_channel_id, "token": x_goog_channel_token},
         )
         if not result.fetchone():

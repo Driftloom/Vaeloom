@@ -36,6 +36,15 @@ from .loop import AgentRequest, run_agent_loop
 
 logger = logging.getLogger(__name__)
 
+# ── Light multi-agent heuristic (imported here to avoid circular at supervisor import time) ──
+def _is_complex_multi_agent(message: str) -> bool:
+    """Quick check without importing supervisor (avoids circular)."""
+    if len(message.split()) < 8:
+        return False
+    msg_lower = message.lower()
+    cats = sum(1 for kws in CATEGORY_KEYWORDS.values() if any(kw in msg_lower for kw in kws))
+    return cats >= 2
+
 # ── Agent Registry ─────────────────────────────────────────────────
 
 AGENT_REGISTRY: dict[str, type] = {
@@ -270,7 +279,44 @@ async def handle(request: UserRequest) -> dict[str, Any]:
             },
         }
 
-    # ── 3. Instantiate agent and run loop ──────────────────────────
+    # ── 3. Multi-agent supervisor check (before single-agent guards) ───
+    # If the message spans 2+ intent categories and no explicit agent was forced,
+    # run the hierarchical supervisor DAG instead of single-agent loop.
+    # Supervisor respects MVP scope lock internally (filters to canonical agents when enforced).
+    if not preferred and _is_complex_multi_agent(request.message):
+        try:
+            from .supervisor import run_supervisor
+            logger.info(f"SUPERVISOR triggered for multi-intent request: {request.message[:80]}")
+            sup_start = time.monotonic()
+            supervisor_output = await run_supervisor(request.message, request.workspace_id, request.id)
+            sup_latency = (time.monotonic() - sup_start) * 1000
+            # Record metrics for supervisor
+            metrics_collector.record(AgentMetric(
+                timestamp=time.time(), agent_name="supervisor", success=True, latency_ms=sup_latency, confidence=confidence,
+            ))
+            # ── QA Gate for supervisor output ─────────────────────
+            qa = QAAgent()
+            # If supervisor already produced merged summary, use it; else wrap
+            agent_output = supervisor_output if supervisor_output.get("supervisor") else {
+                "agent_name": supervisor_output.get("agent_name", "supervisor"),
+                "action": supervisor_output.get("action", "suggest"),
+                "confidence": supervisor_output.get("confidence", 0.87),
+                "result": supervisor_output.get("result", {"summary": str(supervisor_output), "details": None, "proposals": [], "questions": []}),
+            }
+            for attempt in range(3):
+                qa_result: QAValidationResult = await qa.validate(agent_output)
+                if qa_result.decision == "approved":
+                    logger.info(f"SUPERVISOR QA APPROVED (attempt {attempt+1})")
+                    await _attach_pending_approvals(agent_output, request.workspace_id)
+                    return agent_output
+                logger.warning(f"SUPERVISOR QA REJECTED (attempt {attempt+1}): {qa_result.issues}")
+            agent_output["qa_flag"] = "best_effort_after_retries"
+            await _attach_pending_approvals(agent_output, request.workspace_id)
+            return agent_output
+        except Exception as e:
+            logger.warning(f"SUPERVISOR failed, falling back to single-agent: {e}")
+
+    # ── 3b. Instantiate agent and run loop ─────────────────────────
 
     # Kill switch check
     if not kill_switch.is_enabled(agent_name):

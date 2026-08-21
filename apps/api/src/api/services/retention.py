@@ -58,7 +58,7 @@ async def apply_retention(policy: RetentionPolicy, db: AsyncSession) -> dict:
 
     if policy.action == "delete":
         result = await db.execute(
-            text(f"DELETE FROM {table} WHERE created_at < :cutoff{tenant_clause}"),
+            text(f"DELETE FROM {table} WHERE created_at < :cutoff{tenant_clause}"),  # nosec B608
             params,
         )
         count = result.rowcount
@@ -67,17 +67,17 @@ async def apply_retention(policy: RetentionPolicy, db: AsyncSession) -> dict:
 
     if policy.action == "archive":
         count_result = await db.execute(
-            text(f"SELECT COUNT(*) FROM {table} WHERE created_at < :cutoff{tenant_clause}"),
+            text(f"SELECT COUNT(*) FROM {table} WHERE created_at < :cutoff{tenant_clause}"),  # nosec B608
             params,
         )
         count = count_result.scalar_one() or 0
 
         await db.execute(
-            text(f"INSERT INTO {table}_archive SELECT * FROM {table} WHERE created_at < :cutoff{tenant_clause}"),
+            text(f"INSERT INTO {table}_archive SELECT * FROM {table} WHERE created_at < :cutoff{tenant_clause}"),  # nosec B608
             params,
         )
         await db.execute(
-            text(f"DELETE FROM {table} WHERE created_at < :cutoff{tenant_clause}"),
+            text(f"DELETE FROM {table} WHERE created_at < :cutoff{tenant_clause}"),  # nosec B608
             params,
         )
         logger.info("Retention archived %d records from %s (age > %dd)", count, table, policy.max_age_days)

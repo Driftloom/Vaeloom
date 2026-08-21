@@ -220,6 +220,98 @@ class ApprovalManager:
         )
 
 
+async def _ingest_feedback_preference(
+    workspace_id: str | None,
+    agent_name: str,
+    action_type: str,
+    decision: str,
+    note: str | None,
+    requested_by: str | None,
+    db: AsyncSession,
+    decided_by: str | None = None,
+) -> None:
+    """Persist human feedback as a preference entity + vector so future runs avoid repeating rejected patterns (P2)."""
+    if not workspace_id:
+        return
+    try:
+        import uuid
+        from api.models.schema import Entity
+
+        polarity = "approved" if decision == "APPROVED" else "rejected"
+        base_name = note.strip()[:120] if note and note.strip() else f"User {polarity} {agent_name}:{action_type}"
+        canonical_name = base_name if base_name else f"Preference {polarity} {action_type}"
+        metadata = {
+            "agent_name": agent_name,
+            "action_type": action_type,
+            "decision": decision,
+            "note": note,
+            "requested_by": requested_by,
+            "decided_by": decided_by,
+            "polarity": polarity,
+            "source": "approval_feedback",
+        }
+        existing = await db.execute(
+            text("SELECT id FROM entities WHERE workspace_id = :wid AND type = 'preference' AND canonical_name = :name LIMIT 1"),
+            {"wid": workspace_id, "name": canonical_name},
+        )
+        if existing.fetchone():
+            return
+        entity = Entity(
+            id=uuid.uuid4(),
+            workspace_id=uuid.UUID(workspace_id) if isinstance(workspace_id, str) else workspace_id,
+            type="preference",
+            canonical_name=canonical_name,
+            aliases=[],
+            metadata_=metadata,
+        )
+        db.add(entity)
+        try:
+            from api.config import settings
+            if settings.llm_api_key:
+                from api.services.llm_service import llm_service
+                pref_user_id = decided_by or requested_by
+                if pref_user_id:
+                    tenant_id = workspace_id
+                    try:
+                        ws_row = await db.execute(text("SELECT tenant_id FROM workspaces WHERE id = :wid"), {"wid": workspace_id})
+                        r = ws_row.fetchone()
+                        if r and r[0]:
+                            tenant_id = str(r[0])
+                    except Exception:
+                        pass
+                    text_for_vec = f"{canonical_name} {note or ''} {agent_name} {action_type}".strip()[:2000]
+                    vec = await llm_service.generate_embedding(text_for_vec)
+                    vec_str = "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
+                    try:
+                        await db.execute(
+                            text("""
+                                INSERT INTO user_preference_vectors (user_id, tenant_id, preference_vector, updated_at)
+                                VALUES (:uid, :tid, :vec::vector, now())
+                                ON CONFLICT (user_id, tenant_id) DO UPDATE
+                                SET preference_vector = :vec::vector, updated_at = now()
+                            """),
+                            {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str},
+                        )
+                    except Exception:
+                        try:
+                            await db.execute(
+                                text("""
+                                    INSERT INTO user_preference_vectors (user_id, tenant_id, preference_vector, updated_at)
+                                    VALUES (:uid, :tid, :vec, :now)
+                                    ON CONFLICT(user_id, tenant_id) DO UPDATE SET preference_vector=:vec, updated_at=:now
+                                """),
+                                {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str, "now": datetime.now(UTC)},
+                            )
+                        except Exception:
+                            pass
+        except Exception as ve:
+            import logging
+            logging.getLogger(__name__).debug(f"Preference vector upsert skipped (non-blocking): {ve}")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Preference ingestion failed (non-blocking): {e}")
+
+
 approval_manager = ApprovalManager()
 
 router = APIRouter()
@@ -306,6 +398,19 @@ async def approve_approval(
         metadata={"agent_name": approval.agent_name, "action_type": approval.action_type},
         db=db,
     )
+    try:
+        await _ingest_feedback_preference(
+            workspace_id=str(approval.workspace_id) if approval.workspace_id else None,
+            agent_name=approval.agent_name,
+            action_type=approval.action_type,
+            decision="APPROVED",
+            note=dto.note if dto else None,
+            requested_by=str(approval.requested_by) if approval.requested_by else None,
+            db=db,
+            decided_by=actor,
+        )
+    except Exception:
+        pass
     await db.commit()
     return approval
 
@@ -329,5 +434,18 @@ async def reject_approval(
         metadata={"agent_name": approval.agent_name, "action_type": approval.action_type},
         db=db,
     )
+    try:
+        await _ingest_feedback_preference(
+            workspace_id=str(approval.workspace_id) if approval.workspace_id else None,
+            agent_name=approval.agent_name,
+            action_type=approval.action_type,
+            decision="REJECTED",
+            note=dto.note if dto else None,
+            requested_by=str(approval.requested_by) if approval.requested_by else None,
+            db=db,
+            decided_by=actor,
+        )
+    except Exception:
+        pass
     await db.commit()
     return approval

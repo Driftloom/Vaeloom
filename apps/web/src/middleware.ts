@@ -2,7 +2,21 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const PROTECTED_PREFIXES = ['/workspace'];
-const PUBLIC_PATHS = ['/login', '/signup', '/', '/forgot-password', '/status', '/terms', '/privacy', '/manifest.json', '/favicon.ico'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/signup',
+  '/',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/forbidden',
+  '/session-expired',
+  '/status',
+  '/terms',
+  '/privacy',
+  '/manifest.json',
+  '/favicon.ico',
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

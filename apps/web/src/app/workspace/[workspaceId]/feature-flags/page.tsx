@@ -1,9 +1,10 @@
 'use client';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, Input } from '@vaeloom/ui-kit';
 import { Toggle } from '@/components/shared/Toggle';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { ApiClientError } from '@/lib/api-client';
 
 interface FeatureFlag {
   id: string;
@@ -22,63 +23,6 @@ interface ABTest {
   variants: { label: string; percentage: number }[];
   status: 'running' | 'paused' | 'completed';
 }
-
-const initialFlags: FeatureFlag[] = [
-  {
-    id: 'f1',
-    name: 'new-agent-ui',
-    description: 'Enable the redesigned agent configuration interface',
-    enabled: true,
-    rolloutPercentage: 100,
-    category: 'ui',
-    updatedAt: '2026-07-15',
-  },
-  {
-    id: 'f2',
-    name: 'advanced-search',
-    description: 'Enable semantic search across all workspace documents',
-    enabled: true,
-    rolloutPercentage: 50,
-    category: 'features',
-    updatedAt: '2026-07-14',
-  },
-  {
-    id: 'f3',
-    name: 'batch-operations',
-    description: 'Allow batch operations on files and memories',
-    enabled: false,
-    rolloutPercentage: 0,
-    category: 'features',
-    updatedAt: '2026-07-10',
-  },
-  {
-    id: 'f4',
-    name: 'dark-mode-v2',
-    description: 'Enable enhanced dark mode theming with new color palette',
-    enabled: true,
-    rolloutPercentage: 25,
-    category: 'ui',
-    updatedAt: '2026-07-18',
-  },
-  {
-    id: 'f5',
-    name: 'ai-suggestions',
-    description: 'Show AI-powered suggestions in the editor',
-    enabled: false,
-    rolloutPercentage: 0,
-    category: 'ai',
-    updatedAt: '2026-07-12',
-  },
-  {
-    id: 'f6',
-    name: 'webhook-integrations',
-    description: 'Allow third-party webhook connections',
-    enabled: true,
-    rolloutPercentage: 100,
-    category: 'integrations',
-    updatedAt: '2026-07-01',
-  },
-];
 
 const audits = [
   {
@@ -108,9 +52,36 @@ const audits = [
 ];
 
 export default function FeatureFlagsPage() {
-  const [flags, setFlags] = useState<FeatureFlag[]>(initialFlags);
+  const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [expandedFlag, setExpandedFlag] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'flags' | 'abtest' | 'audit'>('flags');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchFlags = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const { api } = await import('@/lib/api');
+        const data = await api.request<{ flags: FeatureFlag[] }>('/feature-flags', {
+          method: 'GET',
+        });
+        if (data.flags) setFlags(data.flags);
+      } catch (e) {
+        if (e instanceof ApiClientError && (e.status === 403 || e.status === 404)) {
+          setError('This feature requires an Enterprise license. Contact sales@vaeloom.app.');
+        } else {
+          setError('Failed to load feature flags. Please try again later.');
+        }
+        console.error('Feature flags fetch error:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFlags();
+  }, []);
+
   if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Feature Flags" />;
 
   const handleToggle = (id: string) => {
@@ -130,6 +101,31 @@ export default function FeatureFlagsPage() {
       ),
     );
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-text-muted">Loading feature flags...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono uppercase tracking-widest text-text-dim mb-4">
+          Enterprise — Gated
+        </div>
+        <h1 className="text-2xl font-display font-medium text-text mb-2">Feature Flags</h1>
+        <p className="text-text-muted max-w-lg">{error}</p>
+        <div className="mt-6 flex gap-3">
+          <a href="mailto:sales@vaeloom.app" className="btn-secondary">
+            Contact sales
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

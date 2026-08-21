@@ -117,7 +117,8 @@ class TestResearchAgent:
     async def test_instantiation(self):
         agent = ResearchAgent()
         assert agent.mission == "Conduct web research on companies, industries, market trends"
-        assert len(agent.tools) == 3
+        assert len(agent.tools) >= 3
+        assert {t.name for t in agent.tools} >= {"research_company", "web_search"}
         assert agent.default_autonomy == "full"
 
     @pytest.mark.asyncio
@@ -196,7 +197,8 @@ class TestCareerAgent:
     async def test_instantiation(self):
         agent = CareerAgent()
         assert agent.mission == "Guide users on career paths and skill development"
-        assert len(agent.tools) == 3
+        assert len(agent.tools) >= 3
+        assert {t.name for t in agent.tools} >= {"analyze_career_path", "web_search"}
         assert agent.default_autonomy == "full"
 
     @pytest.mark.asyncio

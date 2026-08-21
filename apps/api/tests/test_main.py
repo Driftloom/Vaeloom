@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import jwt
@@ -71,7 +72,14 @@ def _reimport_main():
 
 
 def _auth_headers(**extra):
-    token = jwt.encode({"sub": "test-user"}, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    token = jwt.encode(
+        {
+            "sub": "test-user",
+            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        },
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
     h = {"Authorization": f"Bearer {token}"}
     h.update(extra)
     return h

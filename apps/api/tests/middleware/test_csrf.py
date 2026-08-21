@@ -64,9 +64,8 @@ class TestCSRFMiddleware:
         request.headers = {"X-Requested-With": "XMLHttpRequest"}
         request.cookies = {}
         call_next = AsyncMock(return_value=Response())
-        with pytest.raises(HTTPException) as exc_info:
-            await middleware.dispatch(request, call_next)
-        assert exc_info.value.status_code == 403
+        result = await middleware.dispatch(request, call_next)
+        assert result.status_code == 403
 
     @pytest.mark.asyncio
     async def test_api_key_requests_still_require_csrf(self):
@@ -78,9 +77,8 @@ class TestCSRFMiddleware:
         request.headers = {"X-API-Key": "some-api-key"}
         request.cookies = {}
         call_next = AsyncMock(return_value=Response())
-        with pytest.raises(HTTPException) as exc:
-            await middleware.dispatch(request, call_next)
-        assert exc.value.status_code == 403
+        result = await middleware.dispatch(request, call_next)
+        assert result.status_code == 403
 
     @pytest.mark.asyncio
     async def test_raises_403_when_token_missing(self):
@@ -92,10 +90,11 @@ class TestCSRFMiddleware:
         request.headers = {}
         request.cookies = {}
         call_next = AsyncMock(return_value=Response())
-        with pytest.raises(HTTPException) as exc:
-            await middleware.dispatch(request, call_next)
-        assert exc.value.status_code == 403
-        assert "CSRF token missing" in exc.value.detail
+        result = await middleware.dispatch(request, call_next)
+        assert result.status_code == 403
+        import json
+        body = json.loads(result.body)
+        assert "CSRF token missing" in body["detail"]
 
     @pytest.mark.asyncio
     async def test_passes_with_valid_token(self):
@@ -122,6 +121,5 @@ class TestCSRFMiddleware:
         request.headers = {"X-CSRF-Token": "wrong-token"}
         request.cookies = {"csrf_token": cookie_value}
         call_next = AsyncMock(return_value=Response())
-        with pytest.raises(HTTPException) as exc:
-            await middleware.dispatch(request, call_next)
-        assert exc.value.status_code == 403
+        result = await middleware.dispatch(request, call_next)
+        assert result.status_code == 403

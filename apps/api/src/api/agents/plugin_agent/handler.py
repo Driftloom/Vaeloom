@@ -18,6 +18,9 @@ class PluginAgent(BaseAgent):
         Tool(name="browse_plugins", description="Browse available plugins and extensions"),
         Tool(name="check_compatibility", description="Check plugin compatibility with current system"),
         Tool(name="manage_updates", description="Manage plugin updates and version tracking"),
+        Tool(name="web_search", description="Real-time web search for plugin info"),
+        Tool(name="query_graph", description="Query knowledge graph for plugins and versions"),
+        Tool(name="fetch_github_repo", description="Fetch plugin repository for compatibility check"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["plugins", "extensions", "versions", "compatibility"],

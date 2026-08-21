@@ -18,6 +18,9 @@ class ReminderAgent(BaseAgent):
         Tool(name="check_deadlines", description="Check upcoming deadlines and alert user"),
         Tool(name="schedule_followup", description="Schedule follow-up reminders for tasks"),
         Tool(name="sort_by_priority", description="Sort and prioritize pending items"),
+        Tool(name="list_calendar_events", description="List calendar events in a date range"),
+        Tool(name="create_calendar_event", description="Create calendar events (approval-gated)"),
+        Tool(name="search_gmail", description="Search Gmail for deadline-related emails"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["tasks", "deadlines", "schedule", "priorities"],

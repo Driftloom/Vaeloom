@@ -24,7 +24,7 @@ async def _verify_node_tenant(node_id: uuid.UUID, tenant_id: str | None, db: Asy
     if not tenant_id:
         return
     result = await db.execute(
-        text("SELECT id FROM knowledge_nodes WHERE id = :id AND tenant_id = :tenant_id"),
+        text("SELECT id FROM knowledge_nodes WHERE id = :id AND tenant_id = :tenant_id"),  # nosec B608
         {"id": node_id, "tenant_id": tenant_id},
     )
     if not result.fetchone():
@@ -199,7 +199,7 @@ async def delete_edge(
     # Verify edge's source node belongs to tenant
     from sqlalchemy import text as sql_text
     edge_check = await db.execute(
-        sql_text("SELECT e.source_id FROM knowledge_edges e WHERE e.id = :edge_id"),
+        sql_text("SELECT e.source_id FROM knowledge_edges e WHERE e.id = :edge_id"),  # nosec B608
         {"edge_id": edge_id},
     )
     edge_row = edge_check.fetchone()

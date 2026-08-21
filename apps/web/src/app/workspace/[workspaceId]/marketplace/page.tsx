@@ -1,9 +1,10 @@
 'use client';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, Modal } from '@vaeloom/ui-kit';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { pluginApi, ApiClientError } from '@/lib/api-client';
 
 interface Plugin {
   id: string;
@@ -20,129 +21,74 @@ interface Plugin {
 
 const categories = ['All', 'Analytics', 'Integration', 'Productivity', 'AI', 'Data', 'Security'];
 
-const allPlugins: Plugin[] = [
-  {
-    id: 'p1',
-    name: 'Slack Connector',
-    description:
-      'Sync messages and files with Slack workspaces. Enable automated notifications and cross-platform collaboration.',
-    category: 'Integration',
-    author: 'Vaeloom',
-    version: '2.1.0',
-    installed: true,
-    rating: 4.8,
-    installs: 1240,
-    price: 'Free',
-  },
-  {
-    id: 'p2',
-    name: 'Analytics Dashboard',
-    description:
-      'Advanced analytics and reporting dashboard with customizable widgets and export capabilities.',
-    category: 'Analytics',
-    author: 'DataFlow',
-    version: '1.3.2',
-    installed: false,
-    rating: 4.5,
-    installs: 890,
-    price: '$19/mo',
-  },
-  {
-    id: 'p3',
-    name: 'GPT-4 Vision',
-    description:
-      'Enable visual recognition and image analysis workflows using GPT-4 Vision capabilities.',
-    category: 'AI',
-    author: 'OpenAI',
-    version: '3.0.0',
-    installed: true,
-    rating: 4.9,
-    installs: 3200,
-    price: 'Usage-based',
-  },
-  {
-    id: 'p4',
-    name: 'GitHub Sync',
-    description:
-      'Bi-directional sync between your workspace and GitHub repositories. Automate commit tracking.',
-    category: 'Integration',
-    author: 'Vaeloom',
-    version: '1.0.5',
-    installed: false,
-    rating: 4.6,
-    installs: 2100,
-    price: 'Free',
-  },
-  {
-    id: 'p5',
-    name: 'Calendar Pro',
-    description:
-      'Advanced calendar integration with smart scheduling, availability detection, and meeting notes.',
-    category: 'Productivity',
-    author: 'Calendly',
-    version: '2.0.1',
-    installed: false,
-    rating: 4.3,
-    installs: 650,
-    price: '$9/mo',
-  },
-  {
-    id: 'p6',
-    name: 'Data Pipeline',
-    description: 'ETL pipeline builder for processing and transforming workspace data at scale.',
-    category: 'Data',
-    author: 'DataFlow',
-    version: '1.1.0',
-    installed: false,
-    rating: 4.2,
-    installs: 340,
-    price: '$49/mo',
-  },
-  {
-    id: 'p7',
-    name: 'Security Scanner',
-    description: 'Automated security scanning for documents and code snippets in your workspace.',
-    category: 'Security',
-    author: 'SecureAI',
-    version: '1.5.0',
-    installed: false,
-    rating: 4.7,
-    installs: 520,
-    price: '$29/mo',
-  },
-  {
-    id: 'p8',
-    name: 'Notion Export',
-    description: 'Export and sync workspace content to Notion databases and pages.',
-    category: 'Productivity',
-    author: 'Notion Labs',
-    version: '1.0.0',
-    installed: false,
-    rating: 4.0,
-    installs: 180,
-    price: 'Free',
-  },
-  {
-    id: 'p9',
-    name: 'Sentiment Analysis',
-    description: 'Analyze text sentiment across messages, documents, and agent conversations.',
-    category: 'AI',
-    author: 'HuggingFace',
-    version: '2.3.0',
-    installed: false,
-    rating: 4.4,
-    installs: 780,
-    price: 'Free',
-  },
-];
-
 export default function MarketplacePage() {
-  const [plugins, setPlugins] = useState<Plugin[]>(allPlugins);
+  const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
   const [view, setView] = useState<'browse' | 'installed'>('browse');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPlugins = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await pluginApi.list({ page: 1, page_size: 100 });
+        const mapped: Plugin[] = response.plugins.map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description ?? '',
+          category: p.tags?.[0] ?? 'General',
+          author: p.author ?? 'Unknown',
+          version: p.version ?? '1.0.0',
+          installed: p.status === 'active',
+          rating: 0,
+          installs: 0,
+          price: 'Free',
+        }));
+        setPlugins(mapped);
+      } catch (e) {
+        if (e instanceof ApiClientError && (e.status === 403 || e.status === 404)) {
+          setError('This feature requires an Enterprise license. Contact sales@vaeloom.app.');
+        } else {
+          setError('Failed to load plugins. Please try again later.');
+        }
+        console.error('Plugin fetch error:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPlugins();
+  }, []);
+
   if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Marketplace" />;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-text-muted">Loading marketplace...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono uppercase tracking-widest text-text-dim mb-4">
+          Enterprise — Gated
+        </div>
+        <h1 className="text-2xl font-display font-medium text-text mb-2">Marketplace</h1>
+        <p className="text-text-muted max-w-lg">{error}</p>
+        <div className="mt-6 flex gap-3">
+          <a href="mailto:sales@vaeloom.app" className="btn-secondary">
+            Contact sales
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   const filtered = plugins.filter((p) => {
     const matchesSearch =

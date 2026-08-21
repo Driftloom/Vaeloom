@@ -40,7 +40,7 @@ class IamService:
         offset = (page - 1) * page_size
 
         count_result = await db.execute(
-            text("SELECT COUNT(*) FROM iam_users WHERE tenant_id = :tenant_id"),
+            text("SELECT COUNT(*) FROM iam_users WHERE tenant_id = :tenant_id"),  # nosec B608
             {"tenant_id": tenant_id},
         )
         total = count_result.scalar_one() or 0
@@ -117,7 +117,7 @@ class IamService:
             sets.append("updated_at = :now")
             params["now"] = datetime.now(UTC)
             await db.execute(
-                text(f"UPDATE iam_users SET {', '.join(sets)} WHERE id = :id"),
+                text(f"UPDATE iam_users SET {', '.join(sets)} WHERE id = :id"),  # nosec B608
                 params,
             )
 
@@ -125,7 +125,7 @@ class IamService:
 
     async def deactivate_user(self, user_id: str, db=None):
         result = await db.execute(
-            text("UPDATE iam_users SET active = FALSE, updated_at = :now WHERE id = :id"),
+            text("UPDATE iam_users SET active = FALSE, updated_at = :now WHERE id = :id"),  # nosec B608
             {"id": user_id, "now": datetime.now(UTC)},
         )
         if result.rowcount == 0:
@@ -148,7 +148,7 @@ class IamService:
 
     async def remove_role(self, user_id: str, role_id: str, db=None):
         result = await db.execute(
-            text("DELETE FROM iam_user_roles WHERE user_id = :user_id AND role_id = :role_id"),
+            text("DELETE FROM iam_user_roles WHERE user_id = :user_id AND role_id = :role_id"),  # nosec B608
             {"user_id": user_id, "role_id": role_id},
         )
         if result.rowcount == 0:

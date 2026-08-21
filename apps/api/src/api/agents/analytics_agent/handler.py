@@ -18,6 +18,9 @@ class AnalyticsAgent(BaseAgent):
         Tool(name="get_activity_trends", description="Get user activity trends over time"),
         Tool(name="analyze_applications", description="Analyze job application metrics and funnel"),
         Tool(name="generate_report", description="Generate analytics report on platform usage"),
+        Tool(name="query_graph", description="Query knowledge graph for analytics entities"),
+        Tool(name="search_documents", description="Search analytics documents with semantic search"),
+        Tool(name="web_search", description="Real-time web search for industry benchmarks"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["analytics", "activity", "applications", "metrics"],

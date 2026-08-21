@@ -169,6 +169,144 @@ async def chat(
     return result
 
 
+@router.post("/chat/stream", status_code=200)
+async def chat_stream(
+    dto: ChatMessage,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Streaming orchestrator chat — phase-by-phase SSE.
+
+    Events:
+      intent → plan → act → tool_start/tool_result → observe → reflect → token* → approval_required? → done
+    Uses the full 5-phase loop (not the simple execute path) with QA gate.
+    """
+    from ..orchestrator.loop import AgentRequest, run_agent_loop_stream
+    from ..orchestrator.router import AGENT_REGISTRY, classify_intent
+    from ..agents.qa_agent.handler import QAAgent
+    from ..config import settings
+    from ..infrastructure.agent_eval import detect_adversarial_prompt
+    from ..infrastructure.agent_observability import kill_switch
+
+    req_id = str(uuid.uuid4())
+    preferred = dto.agentName.strip().lower() if dto.agentName else None
+
+    async def event_gen():
+        try:
+            # ── Supervisor multi-agent fast-path (before single-agent classification) ──
+            # If message looks like a multi-intent complex goal and no explicit agent forced,
+            # delegate to the supervisor streaming DAG instead of single-agent loop.
+            if not preferred:
+                try:
+                    from ..orchestrator.supervisor import is_multi_agent_request as _is_multi, run_supervisor_stream
+                    if _is_multi(dto.message):
+                        yield f"event: supervisor_start\ndata: {json.dumps({'message': 'Complex multi-step goal detected — delegating to specialist team'})}\n\n"
+                        async for sup_evt in run_supervisor_stream(dto.message, dto.workspaceId, req_id):
+                            yield f"event: {sup_evt.get('event','data')}\ndata: {json.dumps(sup_evt.get('data', {}))}\n\n"
+                            if sup_evt.get("event") == "done":
+                                # QA gate for supervisor output
+                                final = sup_evt.get("data", {})
+                                summary = final.get("result", {}).get("summary", "") if isinstance(final.get("result"), dict) else str(final.get("result", ""))
+                                qa = QAAgent()
+                                agent_output = {"agent_name": "supervisor", "action": "suggest", "confidence": 0.87, "result": {"summary": summary, "details": None, "proposals": [], "questions": []}}
+                                for attempt in range(3):
+                                    qa_res = await qa.validate(agent_output)
+                                    yield f"event: qa\ndata: {json.dumps({'attempt': attempt+1, 'decision': qa_res.decision, 'issues': qa_res.issues})}\n\n"
+                                    if qa_res.decision == "approved":
+                                        break
+                                return
+                        return
+                except Exception as e:
+                    # Fall through to single-agent on supervisor error
+                    yield f"event: supervisor_error\ndata: {json.dumps({'message': str(e), 'fallback': 'single-agent'})}\n\n"
+
+            # ── 1. Intent classification ──────────────────────────
+            if preferred and preferred in AGENT_REGISTRY:
+                agent_name, confidence = preferred, 0.98
+            else:
+                agent_name, confidence = await classify_intent(dto.message)
+            yield f"event: intent\ndata: {json.dumps({'agent': agent_name, 'confidence': confidence, 'request_id': req_id})}\n\n"
+
+            # ── MVP scope lock ──────────────────────────────────
+            if settings.mvp_scope_enforced and agent_name not in __import__('api.orchestrator.router', fromlist=['MVP_CANONICAL_AGENTS']).MVP_CANONICAL_AGENTS:
+                yield f"event: out_of_scope\ndata: {json.dumps({'agent': agent_name, 'message': f'{agent_name} is outside MVP scope'})}\n\n"
+                yield f"event: done\ndata: {json.dumps({'status': 'out_of_scope'})}\n\n"
+                return
+
+            # ── 2. Low confidence ────────────────────────────────
+            if confidence < 0.7:
+                yield f"event: ask_clarification\ndata: {json.dumps({'confidence': confidence, 'questions': ['Could you clarify what you need help with?']})}\n\n"
+                yield f"event: done\ndata: {json.dumps({'status': 'needs_clarification'})}\n\n"
+                return
+
+            # ── 3. Guards ───────────────────────────────────────
+            if not kill_switch.is_enabled(agent_name):
+                _msg = f"Agent '{agent_name}' is disabled"
+                yield f"event: error\ndata: {json.dumps({'message': _msg})}\n\n"
+                yield f"event: done\ndata: {{}}\n\n"
+                return
+            adversarial = detect_adversarial_prompt(dto.message)
+            if adversarial and any(d.get("severity") == "critical" for d in adversarial):
+                yield f"event: error\ndata: {json.dumps({'message': 'Input flagged by security filter'})}\n\n"
+                yield f"event: done\ndata: {{}}\n\n"
+                return
+
+            # ── 4. Instantiate & stream loop ─────────────────────
+            agent_cls = AGENT_REGISTRY.get(agent_name)
+            if not agent_cls:
+                yield f"event: error\ndata: {json.dumps({'message': f'No agent for {agent_name}'})}\n\n"
+                yield f"event: done\ndata: {{}}\n\n"
+                return
+            agent = agent_cls()
+            agent_req = AgentRequest(agent=agent, request_id=req_id, message=dto.message, workspace_id=dto.workspaceId, agent_name=agent_name)
+
+            final_summary = ""
+            async for evt in run_agent_loop_stream(agent_req):
+                ev_type = evt.get("event", "data")
+                ev_data = evt.get("data", {})
+                # Capture final summary for QA gate
+                if ev_type == "done":
+                    final_summary = ev_data.get("result", "") if isinstance(ev_data, dict) else str(ev_data)
+                    # ── QA Gate (streamed) ──────────────────────
+                    qa = QAAgent()
+                    agent_output = {"agent_name": agent_name, "action": "suggest", "confidence": confidence, "result": {"summary": final_summary, "details": None, "proposals": [], "questions": []}}
+                    for attempt in range(3):
+                        qa_res = await qa.validate(agent_output)
+                        yield f"event: qa\ndata: {json.dumps({'attempt': attempt+1, 'decision': qa_res.decision, 'issues': qa_res.issues})}\n\n"
+                        if qa_res.decision == "approved":
+                            break
+                    # Surface pending approvals
+                    try:
+                        from ..orchestrator.loop import fetch_pending_approvals
+                        pending = await fetch_pending_approvals(dto.workspaceId)
+                        for p in pending:
+                            yield f"event: approval_required\ndata: {json.dumps(p)}\n\n"
+                    except Exception:
+                        pass
+                    yield f"event: {ev_type}\ndata: {json.dumps(ev_data)}\n\n"
+                    return
+                # Forward with SSE framing — split token events individually already handled in loop_stream
+                yield f"event: {ev_type}\ndata: {json.dumps(ev_data)}\n\n"
+
+            # Fallback done if loop didn't emit it
+            yield f"event: done\ndata: {json.dumps({'status': 'completed', 'result': final_summary})}\n\n"
+
+        except Exception as e:
+            yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+            yield f"event: done\ndata: {{}}\n\n"
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @router.get("", response_model=dict)
 async def list_agents(
     page: int = Query(default=1, ge=1),

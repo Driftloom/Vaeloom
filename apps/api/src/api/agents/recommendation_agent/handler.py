@@ -18,6 +18,9 @@ class RecommendationAgent(BaseAgent):
         Tool(name="match_jobs", description="Match user profile to relevant job openings"),
         Tool(name="suggest_connections", description="Suggest professional connections based on network and goals"),
         Tool(name="curate_content", description="Curate relevant articles, posts, and resources"),
+        Tool(name="search_jobs", description="Search job platforms for matching roles"),
+        Tool(name="query_graph", description="Query knowledge graph for profile and preferences"),
+        Tool(name="web_search", description="Real-time web search for curated content"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["profile", "skills", "experience", "preferences", "network"],

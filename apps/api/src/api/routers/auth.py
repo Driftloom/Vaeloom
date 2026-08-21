@@ -53,7 +53,7 @@ async def logout(
     user_id = current_user.get("sub")
     if user_id:
         await db.execute(
-            text("UPDATE auth_sessions SET status = 'REVOKED' WHERE user_id = :uid AND status = 'ACTIVE'"),
+            text("UPDATE auth_sessions SET status = 'REVOKED' WHERE user_id = :uid AND status = 'ACTIVE'"),  # nosec B608
             {"uid": user_id},
         )
         await db.commit()

@@ -212,6 +212,17 @@ async def client(db_session):
         yield ac
 
 
+@pytest_asyncio.fixture
+async def auth_headers(client: AsyncClient) -> dict:
+    res = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": "test-auth@vaeloom.test", "password": "TestAuth1234!"},
+    )
+    assert res.status_code == 201
+    token = res.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def mock_llm(monkeypatch):
     """Return fake LLM responses — no real API calls."""

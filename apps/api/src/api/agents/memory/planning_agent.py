@@ -14,6 +14,10 @@ class PlanningAgent(BaseAgent):
         Tool(name="build_roadmap", description="Build a structured learning or career roadmap from profile + goals"),
         Tool(name="suggest_milestones", description="Suggest milestones and checkpoints for a given roadmap"),
         Tool(name="recommend_resources", description="Recommend learning resources for a roadmap step"),
+        Tool(name="web_search", description="Real-time web search for planning resources and roadmaps"),
+        Tool(name="search_documents", description="Search planning documents with semantic search"),
+        Tool(name="query_graph", description="Query knowledge graph for skills and goals"),
+        Tool(name="calculate_ats_diff", description="Calculate ATS diff for career roadmap tailoring"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["person", "skill", "experience", "education", "goal", "achievement", "certification"],

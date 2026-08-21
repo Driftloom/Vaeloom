@@ -64,6 +64,7 @@ from api.config import Settings
 from api.database import Base, get_db
 from api.middleware.auth import AuthMiddleware
 from api.middleware.exception_handler import unified_exception_handler, generic_exception_handler
+from api.middleware.prompt_injection import PromptInjectionMiddleware
 from api.middleware.rate_limit import RateLimitMiddleware
 
 
@@ -75,6 +76,9 @@ def _build_test_app(db_session, enable_rate_limit=False):
         plugins, chat, notifications, connectors, scheduler,
         analytics, audit, iam, knowledge_graph, recommendations,
     )
+    from api.services.consent import router as consent_router
+    from api.services.gdpr import router as gdpr_router
+    from api.middleware.csrf import CSRFMiddleware, create_csrf_token
 
     test_app = FastAPI()
 
@@ -88,6 +92,7 @@ def _build_test_app(db_session, enable_rate_limit=False):
     if enable_rate_limit:
         test_app.add_middleware(RateLimitMiddleware, requests_per_minute=5, window_seconds=60)
 
+    test_app.add_middleware(PromptInjectionMiddleware)
     test_app.add_middleware(AuthMiddleware)
 
     test_app.include_router(health.router, prefix="/health")
@@ -112,6 +117,48 @@ def _build_test_app(db_session, enable_rate_limit=False):
     test_app.include_router(chat.router, prefix="/api/v1/chat")
     test_app.include_router(knowledge_graph.router, prefix="/api/v1/knowledge-graph")
     test_app.include_router(recommendations.router, prefix="/api/v1/recommendations")
+    test_app.include_router(consent_router, prefix="/api/v1")
+    test_app.include_router(gdpr_router, prefix="/api/v1")
+
+    async def override_get_db():
+        yield db_session
+    test_app.dependency_overrides[get_db] = override_get_db
+
+    return test_app
+
+
+def _build_csrf_test_app(db_session):
+    from api.services.consent import router as consent_router
+    from api.services.gdpr import router as gdpr_router
+    from api.middleware.csrf import CSRFMiddleware, create_csrf_token
+    from api.routers import (
+        health, auth, workspaces, memory, agents, events, search,
+        integrations, billing, documents, resumes, applications,
+        plugins, chat, notifications, connectors, scheduler,
+        analytics, audit, iam, knowledge_graph, recommendations,
+    )
+
+    test_app = FastAPI()
+    test_app.add_middleware(CSRFMiddleware)
+    test_app.add_middleware(AuthMiddleware)
+
+    test_app.include_router(health.router, prefix="/health")
+    test_app.include_router(auth.router, prefix="/api/v1/auth")
+    test_app.include_router(workspaces.router, prefix="/api/v1/workspaces")
+    test_app.include_router(memory.router, prefix="/api/v1/memories")
+    test_app.include_router(agents.router, prefix="/api/v1/agents")
+    test_app.include_router(events.router, prefix="/api/v1/events")
+    test_app.include_router(search.router, prefix="/api/v1/search")
+    test_app.include_router(consent_router, prefix="/api/v1")
+    test_app.include_router(gdpr_router, prefix="/api/v1")
+
+    @test_app.get("/csrf-token", tags=["security"])
+    async def csrf_token_endpoint():
+        token, cookie_value = create_csrf_token()
+        from starlette.responses import JSONResponse
+        resp = JSONResponse({"csrf_token": token})
+        resp.set_cookie("csrf_token", cookie_value, httponly=False, samesite="lax")
+        return resp
 
     async def override_get_db():
         yield db_session
@@ -145,6 +192,7 @@ async def db_session(db_path):
             "CREATE TABLE IF NOT EXISTS iam_users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, tenant_id TEXT NOT NULL, active INTEGER DEFAULT 1, created_at TIMESTAMP, updated_at TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS iam_user_roles (user_id TEXT NOT NULL, role_id TEXT NOT NULL, PRIMARY KEY (user_id, role_id))",
             "CREATE TABLE IF NOT EXISTS rbac_roles (id TEXT PRIMARY KEY, name TEXT NOT NULL, permissions TEXT DEFAULT '[]')",
+            "CREATE TABLE IF NOT EXISTS consent_records (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, tenant_id TEXT, scope TEXT NOT NULL, granted_at TIMESTAMP, revoked_at TIMESTAMP, ip_address TEXT)",
             "DROP TABLE IF EXISTS usage_records",
             "CREATE TABLE IF NOT EXISTS usage_records (id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, metric TEXT, value REAL, timestamp TIMESTAMP, recorded_at TEXT, memories_created INTEGER DEFAULT 0, agents_run INTEGER DEFAULT 0, tokens_used INTEGER DEFAULT 0)",
         ]
@@ -174,6 +222,25 @@ async def rate_limited_client(db_session):
     transport = ASGITransport(app=test_app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest_asyncio.fixture
+async def csrf_client(db_session):
+    test_app = _build_csrf_test_app(db_session)
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+
+@pytest_asyncio.fixture
+async def csrf_auth_headers(csrf_client: AsyncClient) -> dict:
+    res = await csrf_client.post(
+        "/api/v1/auth/signup",
+        json={"email": "csrf-test@vaeloom.test", "password": "CsrfTest1234!"},
+    )
+    assert res.status_code == 201
+    token = res.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest_asyncio.fixture

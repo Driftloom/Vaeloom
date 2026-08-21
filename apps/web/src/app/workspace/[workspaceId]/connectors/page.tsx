@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
 import { api } from '../../../../lib/api';
 import { useToast } from '@/components/shared/Toast';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Modal } from '@vaeloom/ui-kit';
 import type { Connector, ConnectorProvider } from '@vaeloom/shared-types';
 
@@ -74,6 +75,7 @@ export default function ConnectorsPage() {
   const { connectors, isLoading, isError, mutate } = useWorkspaceConnectors(workspaceId);
   const { toast } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
+  const [connectorToRevoke, setConnectorToRevoke] = useState<Connector | null>(null);
   const [pendingProvider, setPendingProvider] = useState<ConnectorProvider | null>(null);
 
   const byProvider = useMemo(() => new Map(connectors.map((c) => [c.provider, c])), [connectors]);
@@ -90,7 +92,8 @@ export default function ConnectorsPage() {
         const res = await api.request<{ auth_url?: string; authUrl?: string }>(
           `/auth/sso/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`,
         );
-        const url = (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
+        const url =
+          (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
         if (url) {
           window.location.href = url;
           return;
@@ -118,15 +121,17 @@ export default function ConnectorsPage() {
   };
 
   const handleRevoke = async (connector: Connector) => {
-    const proceed = window.confirm(`Revoke ${PROVIDER_META[connector.provider]?.name ?? connector.provider}? This will remove the connection and stop future syncs. You can reconnect anytime.`);
-    if (!proceed) return;
     setBusy(`revoke-${connector.id}`);
     try {
       await api.request(`/integrations/${connector.id}`, { method: 'DELETE' });
       await mutate();
       toast({ tone: 'success', title: 'Revoked', detail: `${connector.provider} disconnected` });
     } catch (err) {
-      toast({ tone: 'error', title: 'Revoke failed', detail: err instanceof Error ? err.message : 'Please try again.' });
+      toast({
+        tone: 'error',
+        title: 'Revoke failed',
+        detail: err instanceof Error ? err.message : 'Please try again.',
+      });
     } finally {
       setBusy(null);
     }
@@ -259,7 +264,7 @@ export default function ConnectorsPage() {
                     <button
                       className="btn-ghost border border-border flex-1 text-sm"
                       disabled={busy === `revoke-${conn.id}`}
-                      onClick={() => handleRevoke(conn)}
+                      onClick={() => setConnectorToRevoke(conn)}
                     >
                       {busy === `revoke-${conn.id}` ? 'Revoking…' : 'Revoke'}
                     </button>
@@ -366,6 +371,18 @@ export default function ConnectorsPage() {
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!connectorToRevoke}
+        onClose={() => setConnectorToRevoke(null)}
+        onConfirm={() => {
+          if (connectorToRevoke) handleRevoke(connectorToRevoke);
+        }}
+        title={`Revoke ${connectorToRevoke ? (PROVIDER_META[connectorToRevoke.provider]?.name ?? connectorToRevoke.provider) : ''}?`}
+        message="This will remove the connection and stop future syncs. You can reconnect anytime."
+        confirmLabel="Revoke"
+        variant="danger"
+      />
     </div>
   );
 }

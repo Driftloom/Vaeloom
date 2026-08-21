@@ -16,8 +16,9 @@ import type {
   KnowledgeGraphEdge,
 } from '@vaeloom/shared-types';
 
-export { ApiError } from './api';
+import { api, ApiError, getToken, transformKeys, API_BASE, API_PREFIX } from './api';
 export {
+  ApiError,
   getToken,
   setToken,
   clearToken,
@@ -25,46 +26,32 @@ export {
   setRefreshToken,
   clearRefreshToken,
 } from './api';
-import { CSRF_HEADER, getCsrfToken, isMutatingMethod, resetCsrfToken } from './csrf';
+import { CSRF_HEADER, getCsrfToken, resetCsrfToken } from './csrf';
 
-const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000';
-const API_PREFIX = '/api/v1';
+export const ApiClientError = ApiError;
 
-export class ApiClient {
-  private baseUrl: string;
-
-  constructor(baseUrl = `${API_BASE}${API_PREFIX}`) {
-    this.baseUrl = baseUrl;
-  }
-
-  protected transformKeys<T>(obj: unknown): T {
-    if (obj === null || obj === undefined) return obj as T;
-    if (Array.isArray(obj)) return obj.map((v) => this.transformKeys(v)) as T;
-    if (typeof obj === 'object') {
-      return Object.fromEntries(
-        Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
-          k.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()),
-          this.transformKeys(v),
-        ]),
-      ) as T;
+function encodeParams(
+  params: Record<string, string | number | boolean | undefined | null>,
+): string {
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(params)) {
+    if (v != null) {
+      parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
     }
-    return obj as T;
   }
+  return parts.join('&');
+}
 
-  private getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return window.localStorage.getItem('vaeloom.accessToken');
-  }
-
-  get baseURL(): string {
-    return this.baseUrl;
+class ApiClient {
+  private async request<T>(path: string, init: RequestInit): Promise<T> {
+    return api.request<T>(path, init);
   }
 
   async get<T>(
     path: string,
     params?: Record<string, string | number | boolean | undefined | null>,
   ): Promise<T> {
-    const qs = params ? '?' + this.encodeParams(params) : '';
+    const qs = params ? '?' + encodeParams(params) : '';
     return this.request<T>(`${path}${qs}`, { method: 'GET' });
   }
 
@@ -79,7 +66,7 @@ export class ApiClient {
     path: string,
     params?: Record<string, string | number | boolean | undefined | null>,
   ): Promise<T> {
-    const qs = params ? '?' + this.encodeParams(params) : '';
+    const qs = params ? '?' + encodeParams(params) : '';
     return this.request<T>(`${path}${qs}`, { method: 'POST' });
   }
 
@@ -99,122 +86,6 @@ export class ApiClient {
 
   async delete<T = void>(path: string): Promise<T> {
     return this.request<T>(path, { method: 'DELETE' });
-  }
-
-  private encodeParams(
-    params: Record<string, string | number | boolean | undefined | null>,
-  ): string {
-    const parts: string[] = [];
-    for (const [k, v] of Object.entries(params)) {
-      if (v != null) {
-        parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
-      }
-    }
-    return parts.join('&');
-  }
-
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
-    const token = this.getToken();
-    const mutating = isMutatingMethod(init.method);
-    const headers: Record<string, string> = {
-      'X-Requested-With': 'XMLHttpRequest',
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init.headers as Record<string, string> | undefined),
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (mutating) {
-      const csrf = await getCsrfToken();
-      if (csrf) headers[CSRF_HEADER] = csrf;
-    }
-
-    const fetchWith = () =>
-      fetch(`${this.baseUrl}${path}`, { ...init, credentials: 'include', headers });
-
-    let res = await fetchWith();
-
-    // CSRF token may have expired server-side (1h TTL) — refresh and retry once.
-    if (res.status === 403 && mutating && headers[CSRF_HEADER]) {
-      resetCsrfToken();
-      const fresh = await getCsrfToken();
-      if (fresh) {
-        headers[CSRF_HEADER] = fresh;
-        res = await fetchWith();
-      }
-    }
-
-    if (res.status === 401 && token) {
-      const newToken = await this.tryRefresh();
-      if (newToken) {
-        headers['Authorization'] = `Bearer ${newToken}`;
-        res = await fetchWith();
-      }
-    }
-
-    if (!res.ok) {
-      let message = `Request failed (${res.status})`;
-      let code: string | undefined;
-      try {
-        const body = (await res.json()) as {
-          error?: { message?: string; code?: string };
-          detail?: string;
-        };
-        if (body.error) {
-          message = body.error.message ?? message;
-          code = body.error.code;
-        } else if ((body as { detail?: string }).detail) {
-          message = (body as { detail: string }).detail;
-        }
-      } catch {}
-      throw new ApiClientError(res.status, message, code);
-    }
-
-    return res.status === 204 ? (undefined as unknown as T) : this.transformKeys(await res.json());
-  }
-
-  private async tryRefresh(): Promise<string | null> {
-    const refresh =
-      typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.refreshToken') : null;
-    if (!refresh) return null;
-    try {
-      const res = await fetch(`${this.baseUrl}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refresh }),
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        this.clearTokens();
-        return null;
-      }
-      const data = this.transformKeys<AuthResponse>(await res.json());
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('vaeloom.accessToken', data.accessToken);
-        if (data.refreshToken)
-          window.localStorage.setItem('vaeloom.refreshToken', data.refreshToken);
-      }
-      return data.accessToken;
-    } catch {
-      this.clearTokens();
-      return null;
-    }
-  }
-
-  private clearTokens(): void {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem('vaeloom.accessToken');
-      window.localStorage.removeItem('vaeloom.refreshToken');
-    }
-  }
-}
-
-export class ApiClientError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-    public readonly code?: string,
-  ) {
-    super(message);
-    this.name = 'ApiClientError';
   }
 }
 
@@ -464,6 +335,72 @@ export const agentApi = {
   chat(body: ChatMessage): Promise<{ reply?: string } & Record<string, unknown>> {
     return apiClient.post('/agents/chat', body);
   },
+  async chatStream(
+    body: ChatMessage,
+    onEvent: (event: string, data: Record<string, unknown>) => void,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const token = getToken();
+    const csrf = await getCsrfToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      'X-Requested-With': 'XMLHttpRequest',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (csrf) headers[CSRF_HEADER] = csrf;
+    const res = await fetch(`${API_BASE}${API_PREFIX}/agents/chat/stream`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      credentials: 'include',
+      signal,
+    });
+    if (!res.ok) {
+      let msg = `Stream failed (${res.status})`;
+      try {
+        const j = (await res.json()) as { message?: string; error?: { message?: string } };
+        msg =
+          (j as { error?: { message?: string } }).error?.message ||
+          (j as { message?: string }).message ||
+          msg;
+      } catch {}
+      throw new ApiError(res.status, msg);
+    }
+    if (!res.body) throw new ApiError(500, 'No stream body');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    const emit = (raw: string) => {
+      if (!raw.trim()) return;
+      const lines = raw.split('\n');
+      let ev = 'message';
+      let dataStr = '';
+      for (const line of lines) {
+        if (line.startsWith('event:')) ev = line.slice(6).trim();
+        else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
+      }
+      if (!dataStr) return;
+      try {
+        const data = JSON.parse(dataStr) as Record<string, unknown>;
+        onEvent(ev, data);
+      } catch {
+        onEvent(ev, { raw: dataStr });
+      }
+    };
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const chunk = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        emit(chunk);
+      }
+    }
+    if (buf.trim()) emit(buf);
+  },
 };
 
 // ─── Knowledge Graph ─────────────────────────────────────────────────────────
@@ -642,8 +579,7 @@ export const documentApi = {
   upload(file: File, workspaceId: string): Promise<DocumentResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    const token =
-      typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
+    const token = getToken();
     return getCsrfToken().then(async (csrf) => {
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       if (csrf) headers[CSRF_HEADER] = csrf;
@@ -666,7 +602,7 @@ export const documentApi = {
       }
       if (!res.ok) throw new ApiClientError(res.status, 'Upload failed');
       return (res.json() as Promise<Record<string, unknown>>).then(
-        (j) => apiClient['transformKeys'](j) as DocumentResponse,
+        (j) => transformKeys(j) as DocumentResponse,
       );
     });
   },
@@ -683,17 +619,14 @@ export const documentApi = {
           `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`,
         );
         xhr.withCredentials = true;
-        const token =
-          typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
+        const token = getToken();
         if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         if (csrf) xhr.setRequestHeader(CSRF_HEADER, csrf);
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
         };
         const parseDoc = (text: string): DocumentResponse =>
-          apiClient['transformKeys'](
-            JSON.parse(text) as Record<string, unknown>,
-          ) as DocumentResponse;
+          transformKeys(JSON.parse(text) as Record<string, unknown>) as DocumentResponse;
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
@@ -784,8 +717,7 @@ export const documentApi = {
     );
   },
   async getContent(id: string, workspaceId: string): Promise<Blob> {
-    const token =
-      typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
+    const token = getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const res = await fetch(contentUrl(id, workspaceId), {
       headers,

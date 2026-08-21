@@ -18,6 +18,10 @@ class ConnectorAgent(BaseAgent):
         Tool(name="discover_connectors", description="Discover available integrations and connectors"),
         Tool(name="guide_setup", description="Guide users through connector setup step by step"),
         Tool(name="monitor_health", description="Monitor health status of connected integrations"),
+        Tool(name="sync_notion_pages", description="Read and write Notion workspace databases"),
+        Tool(name="send_slack_message", description="Send Slack alerts and notifications"),
+        Tool(name="fetch_github_repo", description="Fetch repository context for integrations"),
+        Tool(name="web_search", description="Real-time web search for integration docs"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["connectors", "integrations", "configurations"],

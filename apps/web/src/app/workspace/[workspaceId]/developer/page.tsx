@@ -1,10 +1,11 @@
 'use client';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, Input, Modal } from '@vaeloom/ui-kit';
 import { Table, type Column } from '@/components/shared/Table';
 import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ApiClientError } from '@/lib/api-client';
 
 interface ApiKey {
   id: string;
@@ -25,65 +26,12 @@ interface WebhookDelivery {
   duration: string;
 }
 
-const initialApiKeys: ApiKey[] = [
-  {
-    id: 'ak1',
-    name: 'Production',
-    key: 'vlm_prod_8a7d...3f2b',
-    createdAt: '2026-06-01',
-    lastUsed: '2 min ago',
-    status: 'active',
-    permissions: 'Full Access',
-  },
-  {
-    id: 'ak2',
-    name: 'Development',
-    key: 'vlm_dev_c4e1...9a8d',
-    createdAt: '2026-07-10',
-    lastUsed: '1 hour ago',
-    status: 'active',
-    permissions: 'Read Only',
-  },
-  {
-    id: 'ak3',
-    name: 'CI/CD Pipeline',
-    key: 'vlm_ci_5b2f...1e4c',
-    createdAt: '2026-05-15',
-    lastUsed: '3 days ago',
-    status: 'revoked',
-    permissions: 'Limited',
-  },
-];
-
-const rateLimits = [
-  { name: 'REST API', limit: '1,000 / hour', current: 342, color: 'success' as StatusVariant },
-  { name: 'GraphQL API', limit: '500 / hour', current: 89, color: 'success' as StatusVariant },
-  { name: 'Streaming API', limit: '100 / min', current: 23, color: 'success' as StatusVariant },
-  { name: 'Webhook Delivery', limit: '500 / hour', current: 12, color: 'success' as StatusVariant },
-];
-
-const sdkItems = [
-  { name: 'TypeScript SDK', version: '2.4.1', npm: 'npm install @vaeloom/sdk' },
-  { name: 'Python SDK', version: '1.8.0', pip: 'pip install vaeloom-sdk' },
-  { name: 'Go SDK', version: '0.9.2', go: 'go get github.com/vaeloom/go-sdk' },
-  { name: 'REST API', version: 'v2', doc: '/api/v2/docs' },
-];
-
-const apiDocLinks = [
-  { name: 'Authentication', url: '#' },
-  { name: 'Agents API', url: '#' },
-  { name: 'Memories API', url: '#' },
-  { name: 'Files API', url: '#' },
-  { name: 'Webhook API', url: '#' },
-  { name: 'Rate Limits', url: '#' },
-];
-
 const keyStatusColors: Record<string, StatusVariant> = { active: 'success', revoked: 'error' };
 
 const keyColor = (s: string): StatusVariant => keyStatusColors[s] ?? 'neutral';
 
 export default function DeveloperPage() {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>(initialApiKeys);
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [showWebhookModal, setShowWebhookModal] = useState(false);
@@ -91,11 +39,89 @@ export default function DeveloperPage() {
   const [webhookEvent, setWebhookEvent] = useState('job.match');
   const [webhookResult, setWebhookResult] = useState<WebhookDelivery | null>(null);
   const [showTestConsole, setShowTestConsole] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchApiKeys = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const { api } = await import('@/lib/api');
+        const data = await api.request<{ api_keys: ApiKey[] }>('/api-keys', { method: 'GET' });
+        if (data.api_keys) setApiKeys(data.api_keys);
+      } catch (e) {
+        if (e instanceof ApiClientError && (e.status === 403 || e.status === 404)) {
+          setError('This feature requires an Enterprise license. Contact sales@vaeloom.app.');
+        } else {
+          setError('Failed to load API keys. Please try again later.');
+        }
+        console.error('API keys fetch error:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApiKeys();
+  }, []);
+
   if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Developer Portal" />;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-text-muted">Loading developer portal...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono uppercase tracking-widest text-text-dim mb-4">
+          Enterprise — Gated
+        </div>
+        <h1 className="text-2xl font-display font-medium text-text mb-2">Developer Portal</h1>
+        <p className="text-text-muted max-w-lg">{error}</p>
+        <div className="mt-6 flex gap-3">
+          <a href="mailto:sales@vaeloom.app" className="btn-secondary">
+            Contact sales
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   const revokeKey = (id: string) => {
     setApiKeys(apiKeys.map((k) => (k.id === id ? { ...k, status: 'revoked' as const } : k)));
   };
+
+  const rateLimits = [
+    { name: 'REST API', limit: '1,000 / hour', current: 342, color: 'success' as StatusVariant },
+    { name: 'GraphQL API', limit: '500 / hour', current: 89, color: 'success' as StatusVariant },
+    { name: 'Streaming API', limit: '100 / min', current: 23, color: 'success' as StatusVariant },
+    {
+      name: 'Webhook Delivery',
+      limit: '500 / hour',
+      current: 12,
+      color: 'success' as StatusVariant,
+    },
+  ];
+
+  const sdkItems = [
+    { name: 'TypeScript SDK', version: '2.4.1', npm: 'npm install @vaeloom/sdk' },
+    { name: 'Python SDK', version: '1.8.0', pip: 'pip install vaeloom-sdk' },
+    { name: 'Go SDK', version: '0.9.2', go: 'go get github.com/vaeloom/go-sdk' },
+    { name: 'REST API', version: 'v2', doc: '/api/v2/docs' },
+  ];
+
+  const apiDocLinks = [
+    { name: 'Authentication', url: '#' },
+    { name: 'Agents API', url: '#' },
+    { name: 'Memories API', url: '#' },
+    { name: 'Files API', url: '#' },
+    { name: 'Webhook API', url: '#' },
+    { name: 'Rate Limits', url: '#' },
+  ];
 
   const sendTestWebhook = () => {
     setWebhookResult({

@@ -72,12 +72,12 @@ class GDPRService:
             columns = EXPORT_COLUMNS.get(table, "*")
             if fk_col == "workspace_id":
                 result = await db.execute(
-                    text(f"SELECT {columns} FROM {table} WHERE {fk_col} IN (SELECT id FROM workspaces WHERE user_id = :uid)"),
+                    text(f"SELECT {columns} FROM {table} WHERE {fk_col} IN (SELECT id FROM workspaces WHERE user_id = :uid)"),  # nosec B608
                     {"uid": user_id},
                 )
             else:
                 result = await db.execute(
-                    text(f"SELECT {columns} FROM {table} WHERE {fk_col} = :uid"),
+                    text(f"SELECT {columns} FROM {table} WHERE {fk_col} = :uid"),  # nosec B608
                     {"uid": user_id},
                 )
             rows = [dict(row._mapping) for row in result.fetchall()]
@@ -103,7 +103,7 @@ class GDPRService:
 
             if table == "users":
                 result = await db.execute(
-                    text("UPDATE users SET email = :anon_email, display_name = :anon_name, password_hash = NULL, avatar_url = NULL, status = 'ANONYMIZED' WHERE id = :uid"),
+                    text("UPDATE users SET email = :anon_email, display_name = :anon_name, password_hash = NULL, avatar_url = NULL, status = 'ANONYMIZED' WHERE id = :uid"),  # nosec B608
                     {"uid": user_id, "anon_email": f"deleted-{uuid.uuid4()}@vaeloom.local", "anon_name": "Deleted User"},
                 )
                 summary[table] = result.rowcount
@@ -111,12 +111,12 @@ class GDPRService:
 
             if fk_col == "workspace_id":
                 result = await db.execute(
-                    text(f"DELETE FROM {table} WHERE {fk_col} IN (SELECT id FROM workspaces WHERE user_id = :uid)"),
+                    text(f"DELETE FROM {table} WHERE {fk_col} IN (SELECT id FROM workspaces WHERE user_id = :uid)"),  # nosec B608
                     {"uid": user_id},
                 )
             else:
                 result = await db.execute(
-                    text(f"DELETE FROM {table} WHERE {fk_col} = :uid"),
+                    text(f"DELETE FROM {table} WHERE {fk_col} = :uid"),  # nosec B608
                     {"uid": user_id},
                 )
             summary[table] = result.rowcount

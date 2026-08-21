@@ -59,19 +59,19 @@ class AnalyticsService:
 
     async def get_metrics(self, tenant_id: str, db=None) -> KpiSummary:
         count_memories = await db.execute(
-            text("SELECT COUNT(*) FROM memories WHERE tenant_id = :tenant_id"),
+            text("SELECT COUNT(*) FROM memories WHERE tenant_id = :tenant_id"),  # nosec B608
             {"tenant_id": tenant_id},
         )
         count_agents = await db.execute(
-            text("SELECT COUNT(*) FROM agents WHERE tenant_id = :tenant_id"),
+            text("SELECT COUNT(*) FROM agents WHERE tenant_id = :tenant_id"),  # nosec B608
             {"tenant_id": tenant_id},
         )
         count_active_users = await db.execute(
-            text("SELECT COUNT(DISTINCT user_id) FROM agent_executions WHERE tenant_id = :tenant_id"),
+            text("SELECT COUNT(DISTINCT user_id) FROM agent_executions WHERE tenant_id = :tenant_id"),  # nosec B608
             {"tenant_id": tenant_id},
         )
         avg_response_time = await db.execute(
-            text("SELECT COALESCE(AVG(response_time_ms), 0) FROM agent_executions WHERE tenant_id = :tenant_id"),
+            text("SELECT COALESCE(AVG(response_time_ms), 0) FROM agent_executions WHERE tenant_id = :tenant_id"),  # nosec B608
             {"tenant_id": tenant_id},
         )
 
@@ -112,16 +112,16 @@ class AnalyticsService:
         target_date = date or datetime.now(UTC).strftime("%Y-%m-%d")
         if tenant_id:
             memories_r = await db.execute(
-                text("SELECT COUNT(*) FROM memories WHERE tenant_id = :tenant_id AND DATE(created_at) = :date"),
+                text("SELECT COUNT(*) FROM memories WHERE tenant_id = :tenant_id AND DATE(created_at) = :date"),  # nosec B608
                 {"tenant_id": tenant_id, "date": target_date},
             )
             agents_r = await db.execute(
-                text("SELECT COUNT(*) FROM agents WHERE tenant_id = :tenant_id AND DATE(created_at) = :date"),
+                text("SELECT COUNT(*) FROM agents WHERE tenant_id = :tenant_id AND DATE(created_at) = :date"),  # nosec B608
                 {"tenant_id": tenant_id, "date": target_date},
             )
             tokens_r = await db.execute(
                 text("""
-                    SELECT COALESCE(SUM(total_tokens), 0) FROM agent_executions
+                    SELECT COALESCE(SUM(tokens_used), 0) FROM agent_executions
                     WHERE tenant_id = :tenant_id AND DATE(created_at) = :date
                 """),
                 {"tenant_id": tenant_id, "date": target_date},
@@ -130,34 +130,27 @@ class AnalyticsService:
             agents = agents_r.scalar_one() or 0
             tokens = tokens_r.scalar_one() or 0
 
-            await db.execute(
-                text("""
-                    INSERT INTO usage_records (id, tenant_id, recorded_at, memories_created, agents_run, tokens_used)
-                    VALUES (:id, :tenant_id, :recorded_at, :memories, :agents, :tokens)
-                    ON CONFLICT (tenant_id, recorded_at) DO UPDATE SET
-                        memories_created = EXCLUDED.memories_created,
-                        agents_run = EXCLUDED.agents_run,
-                        tokens_used = EXCLUDED.tokens_used
-                """),
-                {
-                    "id": str(uuid.uuid4()),
-                    "tenant_id": tenant_id,
-                    "recorded_at": target_date,
-                    "memories": memories,
-                    "agents": agents,
-                    "tokens": tokens,
-                },
-            )
+            for metric, value in [("memories_created", memories), ("agents_run", agents), ("tokens_used", tokens)]:
+                await db.execute(
+                    text("""
+                        INSERT INTO usage_records (id, tenant_id, metric, value)
+                        VALUES (:id, :tenant_id, :metric, :value)
+                    """),  # nosec B608
+                    {
+                        "id": str(uuid.uuid4()),
+                        "tenant_id": tenant_id,
+                        "metric": metric,
+                        "value": value,
+                    },
+                )
         else:
             await db.execute(
                 text("""
-                    INSERT INTO usage_records (id, tenant_id, recorded_at, memories_created, agents_run, tokens_used)
-                    SELECT :id, tenant_id, :recorded_at,
-                           SUM(CASE WHEN DATE(created_at) = :recorded_at THEN 1 ELSE 0 END),
-                           0, 0
+                    INSERT INTO usage_records (id, tenant_id, metric, value)
+                    SELECT :id, tenant_id, 'memories_created', COUNT(*)
                     FROM memories GROUP BY tenant_id
-                """),
-                {"id": str(uuid.uuid4()), "recorded_at": target_date},
+                """),  # nosec B608
+                {"id": str(uuid.uuid4()), "metric": target_date},
             )
 
 

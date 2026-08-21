@@ -244,6 +244,152 @@ CREATE_CALENDAR_EVENT = ToolDefinition(
 )
 
 
+# ── Web / Research Tools ─────────────────────────────────────────
+
+WEB_SEARCH = ToolDefinition(
+    name="web_search",
+    description="Real-time web search for company news, salaries, and industry trends",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query"},
+            "limit": {"type": "integer", "default": 10},
+            "domain": {"type": "string", "description": "Optional domain filter e.g. linkedin.com"},
+        },
+        "required": ["query"],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="system.web_search",
+    category="system",
+)
+
+PARSE_DOCUMENT_OCR = ToolDefinition(
+    name="parse_document_ocr",
+    description="Extract structured text from PDFs, DOCX, scanned images, certificates",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string"},
+            "filename": {"type": "string"},
+            "extract_tables": {"type": "boolean", "default": False},
+        },
+        "required": ["document_id"],
+    },
+    output_schema={"type": "object", "properties": {"text": {"type": "string"}, "tables": {"type": "array"}}},
+    required_scope="memory.read",
+    category="memory_read",
+)
+
+CALCULATE_ATS_DIFF = ToolDefinition(
+    name="calculate_ats_diff",
+    description="Compute granular diffs between master resume and target job descriptions",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "resume_text": {"type": "string"},
+            "job_description": {"type": "string"},
+            "keywords": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["resume_text", "job_description"],
+    },
+    output_schema={"type": "object"},
+    required_scope="memory.read",
+    category="memory_read",
+)
+
+# ── GitHub / Slack / Notion / Sandbox Tools ──────────────────────────
+
+FETCH_GITHUB_REPO = ToolDefinition(
+    name="fetch_github_repo",
+    description="Fetch commits, PRs, repos, and issues from GitHub API",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "repo": {"type": "string", "description": "owner/repo"},
+            "resource": {"type": "string", "enum": ["repo", "commits", "pulls", "issues", "profile"], "default": "repo"},
+            "username": {"type": "string", "description": "GitHub username for profile resource"},
+            "limit": {"type": "integer", "default": 20},
+        },
+        "required": ["repo"],
+    },
+    output_schema={"type": "object"},
+    required_scope="connector.github.read",
+    category="connector_read",
+)
+
+CREATE_GITHUB_ISSUE = ToolDefinition(
+    name="create_github_issue",
+    description="Create GitHub issues/PRs (approval-gated)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "repo": {"type": "string", "description": "owner/repo"},
+            "title": {"type": "string"},
+            "body": {"type": "string"},
+            "labels": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["repo", "title"],
+    },
+    output_schema={"type": "object", "properties": {"issue_id": {"type": "string"}, "url": {"type": "string"}}},
+    required_scope="connector.github.write",
+    category="connector_write",
+)
+
+SEND_SLACK_MESSAGE = ToolDefinition(
+    name="send_slack_message",
+    description="Send Slack alerts and notifications to workspaces",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "channel": {"type": "string"},
+            "text": {"type": "string"},
+            "blocks": {"type": "array", "items": {"type": "object"}},
+        },
+        "required": ["channel", "text"],
+    },
+    output_schema={"type": "object", "properties": {"ts": {"type": "string"}, "ok": {"type": "boolean"}}},
+    required_scope="connector.slack.write",
+    category="connector_write",
+)
+
+SYNC_NOTION_PAGES = ToolDefinition(
+    name="sync_notion_pages",
+    description="Read and write Notion workspace databases",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "database_id": {"type": "string"},
+            "query": {"type": "string"},
+            "page_id": {"type": "string"},
+            "properties": {"type": "object"},
+            "operation": {"type": "string", "enum": ["query", "create", "update"], "default": "query"},
+        },
+        "required": ["database_id"],
+    },
+    output_schema={"type": "array"},
+    required_scope="connector.notion.read_write",
+    category="connector_read",
+)
+
+EXECUTE_CODE_SANDBOX = ToolDefinition(
+    name="execute_code_sandbox",
+    description="Safe sandboxed Python/JavaScript execution for coding problems",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "code": {"type": "string"},
+            "language": {"type": "string", "enum": ["python", "javascript"], "default": "python"},
+            "input_data": {"type": "string"},
+            "timeout": {"type": "integer", "default": 5},
+        },
+        "required": ["code"],
+    },
+    output_schema={"type": "object", "properties": {"stdout": {"type": "string"}, "stderr": {"type": "string"}, "exit_code": {"type": "integer"}}},
+    required_scope="system.sandbox_exec",
+    category="system",
+)
+
+
 # ── System Tools ───────────────────────────────────────────────────
 
 NOTIFY_USER = ToolDefinition(
@@ -273,6 +419,9 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
         SEARCH_GMAIL, SEARCH_JOBS, LIST_CALENDAR_EVENTS,
         RENAME_FILE, MOVE_FILE, DRAFT_EMAIL, CREATE_CALENDAR_EVENT,
         NOTIFY_USER,
+        WEB_SEARCH, PARSE_DOCUMENT_OCR, CALCULATE_ATS_DIFF,
+        FETCH_GITHUB_REPO, CREATE_GITHUB_ISSUE, SEND_SLACK_MESSAGE,
+        SYNC_NOTION_PAGES, EXECUTE_CODE_SANDBOX,
     ]
 }
 

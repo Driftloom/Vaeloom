@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime, timedelta, timezone
+
 import jwt
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -19,7 +21,12 @@ class TestIAM:
     def _admin_headers(self) -> dict:
         """Create a JWT with admin role for IAM endpoints."""
         token = jwt.encode(
-            {"sub": str(uuid.uuid4()), "email": "admin@test.com", "roles": ["admin"]},
+            {
+                "sub": str(uuid.uuid4()),
+                "email": "admin@test.com",
+                "roles": ["admin"],
+                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            },
             settings.jwt_secret,
             algorithm=settings.jwt_algorithm,
         )

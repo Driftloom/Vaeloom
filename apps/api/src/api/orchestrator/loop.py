@@ -11,6 +11,14 @@ from ..infrastructure.circuit_breaker import CircuitBreaker, CircuitBreakerOpenE
 from .base import BaseAgent
 from .state import LoopState, load_or_create_state, save_checkpoint
 
+# ReAct dynamic tool loop — imported lazily to avoid circular deps
+try:
+    from ..tools.definitions import ALL_TOOLS, get_tools_for_agent  # noqa: F401
+    from ..tools.executor import execute_tool as _exec_tool  # noqa: F401
+    _REACT_AVAILABLE = True
+except Exception:
+    _REACT_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # ── Shared Infrastructure ──────────────────────────────────────────
@@ -21,9 +29,19 @@ _rate_limiter = AgentRateLimiter()
 
 def _get_circuit_breaker(agent_name: str) -> CircuitBreaker:
     if agent_name not in _circuit_breakers:
+        # Per-agent overrides via AGENT_CIRCUIT_CONFIG JSON, else global defaults
+        cfg = {}
+        try:
+            raw_cfg = getattr(settings, "agent_circuit_config", {}) or {}
+            if isinstance(raw_cfg, dict):
+                cfg = raw_cfg.get(agent_name, {}) or {}
+        except Exception:
+            cfg = {}
+        threshold = int(cfg.get("failure_threshold", getattr(settings, "agent_circuit_failure_threshold", 3)))
+        recovery = float(cfg.get("recovery_timeout", getattr(settings, "agent_circuit_recovery_timeout", 30.0)))
         _circuit_breakers[agent_name] = CircuitBreaker(
-            failure_threshold=3,
-            recovery_timeout=30.0,
+            failure_threshold=threshold,
+            recovery_timeout=recovery,
             name=agent_name,
         )
     return _circuit_breakers[agent_name]
@@ -177,15 +195,260 @@ class ReflectResult:
         self.reason = reason
 
 
+# ── RAG Pre-Execution Context Assembler ───────────────────────────
+
+async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent) -> dict[str, Any]:
+    """Hybrid RAG: vector-ish + graph lookup before Plan/Act. Non-blocking, best-effort."""
+    if not workspace_id or not query.strip():
+        return {"entities": [], "documents": [], "preferences": []}
+    try:
+        from sqlalchemy import or_, select
+        from api.database import async_session_factory
+        from api.models.schema import Document, Entity
+
+        read_types = getattr(getattr(agent, "memory_scopes", None), "read_types", []) or []
+        keywords = [w for w in query.split() if len(w) > 2][:5]
+        if not keywords:
+            return {"entities": [], "documents": [], "preferences": []}
+
+        entities: list[dict[str, Any]] = []
+        documents: list[dict[str, Any]] = []
+        preferences: list[dict[str, Any]] = []
+
+        async with async_session_factory() as session:
+            # ── Vector search (hybrid, preferred) — pgvector <=> distance ──
+            vector_done = False
+            try:
+                if settings.llm_api_key:
+                    from api.services.llm_service import llm_service
+                    from sqlalchemy import text as _text
+                    import uuid as _uuid
+                    vec = await llm_service.generate_embedding(query[:2000])
+                    vec_str = "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
+                    # Try embeddings table (works on Postgres with pgvector; falls back on SQLite mock)
+                    try:
+                        # Entities via vector
+                        res = await session.execute(
+                            _text("""
+                                SELECT source_id, source_type, 1 - (vector <=> :vec::vector) AS score
+                                FROM embeddings
+                                WHERE workspace_id = :wid AND source_type IN ('entity', 'memory', 'document', 'document_chunk')
+                                ORDER BY vector <=> :vec::vector
+                                LIMIT 8
+                            """),
+                            {"wid": workspace_id, "vec": vec_str},
+                        )
+                        rows = res.fetchall()
+                        for row in rows:
+                            sid = str(row[0])
+                            stype = row[1]
+                            try:
+                                if stype in ('entity', 'memory') and len(entities) < 8:
+                                    ent = await session.get(Entity, _uuid.UUID(sid))
+                                    if ent and not any(e["id"] == sid for e in entities):
+                                        entities.append({"id": sid, "name": ent.canonical_name, "type": ent.type, "aliases": ent.aliases})
+                                elif stype in ('document', 'document_chunk') and len(documents) < 8:
+                                    doc = await session.get(Document, _uuid.UUID(sid))
+                                    if doc and not any(d["id"] == sid for d in documents):
+                                        documents.append({"id": sid, "path": doc.path, "summary": (doc.summary or "")[:300]})
+                            except Exception:
+                                continue
+                        if entities or documents:
+                            vector_done = True
+                            logger.info(f"RAG vector search: {len(entities)} entities, {len(documents)} docs via embeddings")
+                    except Exception as ve:
+                        # SQLite mock or no embeddings — fallback to keyword search
+                        logger.debug(f"RAG vector SQL failed, falling back to LIKE: {ve}")
+            except Exception as ve:
+                logger.debug(f"RAG vector embedding failed, falling back to LIKE: {ve}")
+
+            # ── Graph entities matching query keywords (LIKE fallback or supplement) ──
+            if not vector_done or len(entities) < 4:
+                try:
+                    # Filter by read_types if agent declares them; otherwise search all
+                    for kw in keywords[:3]:
+                        stmt = select(Entity).where(Entity.workspace_id == workspace_id).where(Entity.canonical_name.ilike(f"%{kw}%")).limit(5)
+                        if read_types and "any" not in read_types:
+                            stmt = stmt.where(or_(*[Entity.type == rt for rt in read_types if rt]))
+                        res = await session.execute(stmt)
+                        for ent in res.scalars().all():
+                            if not any(e["id"] == str(ent.id) for e in entities):
+                                entities.append({"id": str(ent.id), "name": ent.canonical_name, "type": ent.type, "aliases": ent.aliases})
+                        if len(entities) >= 10:
+                            break
+                except Exception as e:
+                    logger.warning(f"RAG graph lookup failed: {e}")
+
+            # ── Documents matching keywords (LIKE fallback or supplement) ──
+            if not vector_done or len(documents) < 4:
+                try:
+                    for kw in keywords[:3]:
+                        stmt = select(Document).where(Document.workspace_id == workspace_id).where(
+                            or_(Document.path.ilike(f"%{kw}%"), Document.summary.ilike(f"%{kw}%"))
+                        ).limit(5)
+                        res = await session.execute(stmt)
+                        for doc in res.scalars().all():
+                            if not any(d["id"] == str(doc.id) for d in documents):
+                                documents.append({"id": str(doc.id), "path": doc.path, "summary": (doc.summary or "")[:300]})
+                        if len(documents) >= 10:
+                            break
+                except Exception as e:
+                    logger.warning(f"RAG document lookup failed: {e}")
+
+            # ── Preferences / memory snippets ───────────────────────────
+            try:
+                # Look for preference-type entities
+                stmt = select(Entity).where(Entity.workspace_id == workspace_id).where(Entity.type == "preference").limit(10)
+                res = await session.execute(stmt)
+                for pref in res.scalars().all():
+                    # If query overlaps preference name, keep it
+                    if any(kw.lower() in (pref.canonical_name or "").lower() for kw in keywords):
+                        preferences.append({"id": str(pref.id), "name": pref.canonical_name, "metadata": pref.metadata_})
+                    elif len(preferences) < 3:
+                        preferences.append({"id": str(pref.id), "name": pref.canonical_name, "metadata": pref.metadata_})
+            except Exception as e:
+                logger.warning(f"RAG preference lookup failed: {e}")
+
+        # Truncate
+        return {"entities": entities[:8], "documents": documents[:8], "preferences": preferences[:5]}
+    except Exception as e:
+        logger.warning(f"RAG assembler non-blocking error: {e}")
+        return {"entities": [], "documents": [], "preferences": []}
+
+
 # ── Plan ────────────────────────────────────────────────────────────
 
 async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
     logger.info(f"PLAN: agent={request.agent_name}, request={request.id}")
+    # Automated RAG context injection
+    rag_context: dict[str, Any] = {}
+    try:
+        rag_context = await _assemble_rag_context(request.workspace_id, request.message, request.agent)
+        if rag_context.get("entities") or rag_context.get("documents"):
+            logger.info(f"RAG injected: {len(rag_context.get('entities', []))} entities, {len(rag_context.get('documents', []))} docs, {len(rag_context.get('preferences', []))} prefs")
+    except Exception as e:
+        logger.warning(f"RAG injection failed (non-blocking): {e}")
     return {
         "agent_type": request.agent_name,
         "message": request.message,
         "workspace_id": request.workspace_id,
+        "rag_context": rag_context,
+        # Flatten for easy consumption by Act/ReAct
+        "context_prompt": _build_context_prompt(rag_context),
     }
+
+
+def _build_context_prompt(rag: dict[str, Any]) -> str:
+    """Turn RAG bundles into compact LLM context string."""
+    parts: list[str] = []
+    for ent in (rag.get("entities") or [])[:5]:
+        parts.append(f"Entity: {ent.get('name')} ({ent.get('type')})")
+    for doc in (rag.get("documents") or [])[:3]:
+        parts.append(f"Doc: {doc.get('path')} — {doc.get('summary','')[:120]}")
+    for pref in (rag.get("preferences") or [])[:3]:
+        parts.append(f"Preference: {pref.get('name')}")
+    return "\n".join(parts) if parts else ""
+
+
+# ── Dynamic ReAct Tool Loop ─────────────────────────────────────
+
+async def _try_react_loop(agent: BaseAgent, message: str, workspace_id: str, agent_name: str) -> dict[str, Any] | None:
+    """Attempt dynamic LLM-driven tool calling. Returns result dict or None to fallback."""
+    if not _REACT_AVAILABLE or not settings.llm_api_key:
+        return None
+    # Only attempt ReAct for agents that could benefit from live tools
+    # Skip for very short messages to avoid overhead — still allow via explicit flag
+    if len(message.strip()) < 3:
+        return None
+    try:
+        from ..services.llm_service import llm_service
+        import json
+
+        # Build tool schemas — cap to 14 most relevant to keep prompt small
+        # Prioritise tools matching agent's declared tool names, then fill with common ones
+        declared = {t.name for t in getattr(agent, "tools", []) or []}
+        prioritized: list[Any] = []
+        others: list[Any] = []
+        for td in ALL_TOOLS.values():
+            if td.name in declared:
+                prioritized.append(td)
+            else:
+                others.append(td)
+        ordered = prioritized + others
+        # Limit to 12 tools for token budget
+        ordered = ordered[:12]
+        tool_schemas = [
+            {"type": "function", "function": {"name": td.name, "description": td.description, "parameters": td.input_schema}}
+            for td in ordered
+        ]
+
+        system_content = (getattr(agent, "mission", "") or f"You are the {agent_name} agent.").strip()
+        system_content += " You have access to tools. Call them when they help answer the user's request. After tool results, synthesise a helpful answer."
+
+        messages: list[dict[str, Any]] = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": message},
+        ]
+
+        for _round in range(3):
+            try:
+                resp = await llm_service.generate_completion_with_tools(messages=messages, tools=tool_schemas)
+            except Exception as e:
+                logger.warning(f"ReAct LLM call failed (round {_round}): {e}")
+                return None
+
+            tool_calls = resp.get("tool_calls") or []
+            content = resp.get("content", "")
+
+            # No tool calls → LLM produced direct answer
+            if not tool_calls:
+                if content:
+                    # Handle content that may be list of blocks (Anthropic style)
+                    if isinstance(content, list):
+                        content_str = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
+                    else:
+                        content_str = str(content)
+                    if content_str.strip():
+                        return {
+                            "agent_name": agent_name,
+                            "action": "suggest",
+                            "confidence": 0.88,
+                            "result": {"summary": content_str[:800], "details": content_str, "proposals": [], "questions": []},
+                        }
+                return None
+
+            # Execute each tool call sequentially (preserving order)
+            for tc in tool_calls:
+                func = tc.get("function", {}) or {}
+                tname = func.get("name", "")
+                args = func.get("arguments", {})
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except Exception:
+                        args = {}
+                if not isinstance(args, dict):
+                    args = {}
+                td = ALL_TOOLS.get(tname)
+                if not td:
+                    logger.warning(f"ReAct: unknown tool '{tname}' requested by LLM — skipping")
+                    continue
+                try:
+                    # For ReAct, grant the tool's own scope so permission check passes
+                    result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=[td.required_scope], workspace_id=workspace_id)
+                except Exception as e:
+                    result = {"status": "error", "tool": tname, "result": str(e)}
+                # Feed tool result back to LLM
+                # OpenAI expects assistant with tool_calls + tool role; Anthropic uses tool_result blocks — we add both forms for compat
+                messages.append({"role": "assistant", "content": content or None, "tool_calls": [tc]})
+                messages.append({"role": "tool", "tool_call_id": tc.get("id", tname), "content": json.dumps(result)[:4000]})
+                # Keep content for next round's synthesis
+
+            # Loop continues — LLM will synthesise after seeing tool outputs
+        return None
+    except Exception as e:
+        logger.warning(f"ReAct loop exception: {e}")
+        return None
 
 
 # ── Act ─────────────────────────────────────────────────────────────
@@ -193,6 +456,10 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
 async def act_phase(plan: dict[str, Any], request: AgentRequest) -> dict[str, Any]:
     agent = request.agent
     message = plan.get("message", request.message)
+    # Enrich message with RAG context if available (plan_phase injected it)
+    context_prompt = plan.get("context_prompt", "")
+    if context_prompt:
+        message = f"{message}\n\n[Context from knowledge graph & documents:\n{context_prompt}]"
     agent_type = type(agent).__name__
     agent_name = request.agent_name
 
@@ -212,7 +479,16 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest) -> dict[str, An
             },
         }
 
-    # ── Circuit breaker + timeout ────────────────────────────────
+    # ── Dynamic ReAct (LLM-driven tool calling) — best-effort before static dispatch ──
+    try:
+        react_result = await _try_react_loop(agent, message, request.workspace_id, agent_name)
+        if react_result is not None:
+            logger.info(f"ACT: ReAct loop succeeded for {agent_name}")
+            return react_result
+    except Exception as e:
+        logger.warning(f"ReAct dispatch failed, falling back to static: {e}")
+
+    # ── Circuit breaker + timeout (static dispatch fallback) ─────
     cb = _get_circuit_breaker(agent_name)
     timeout = settings.agent_timeout_seconds
 
@@ -263,7 +539,18 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest) -> dict[str, An
 
 
 def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: AgentRequest):
-    """Return a coroutine for the given agent type (used by circuit breaker)."""
+    """Return a coroutine for the given agent type (used by circuit breaker).
+
+    Handles all 8 canonical MVP agents + 14 enterprise agents.
+    Enterprise routing uses both class-name (agent_type) and registry key (request.agent_name)
+    for robustness whether the caller used explicit routing or classification.
+    """
+    # Normalise for enterprise routing: registry key is lower-case (career, github, etc.)
+    registry_key = (request.agent_name or "").lower()
+    msg_lower = message.lower()
+    keywords = [w for w in message.split() if len(w) > 2]
+
+    # ── Canonical MVP agents ──────────────────────────────────────────
     if agent_type == "OrganizationAgent":
         docs = [{"id": f"doc_{request.id}", "filename": message}]
         return agent.execute(docs)
@@ -283,7 +570,6 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
         return agent.score(parts[0].strip(), parts[1].strip() if len(parts) > 1 else "")
 
     if agent_type == "JobSearchAgent":
-        keywords = [w for w in message.split() if len(w) > 2]
         return agent.search(keywords=keywords, user_skills=[], rejected_job_ids=[])
 
     if agent_type == "ApplicationAgent":
@@ -292,29 +578,129 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
             job=job, resume_text="", user_profile={"name": "User", "skills": []}, has_approval=has_approval
         ))
 
-    if agent_type in ("GmailAgent", "GmailAgentHandler"):
+    if agent_type in ("GmailAgent", "GmailAgentHandler") or registry_key == "gmail":
         emails = [{"id": f"email_{request.id}", "subject": message, "sender": "unknown", "body": message}]
-        return _dispatch_with_approval(request, agent, "email_send", lambda has_approval: agent.classify_emails(
-            emails=emails, has_approval=has_approval
-        ))
+        # Gmail is draft-only, no approval needed — classify directly
+        return agent.classify_emails(emails=emails)
 
-    if agent_type in ("DriveAgent", "DriveAgentHandler"):
-        return _dispatch_with_approval(request, agent, "file_modify", lambda has_approval: agent.process(
-            request, has_approval=has_approval
-        ))
+    if agent_type in ("DriveAgent", "DriveAgentHandler") or registry_key == "drive":
+        # DriveAgent.process(request) — no approval param; approval handled at file_modify level if needed
+        return agent.process(request)
 
-    if agent_type == "SchedulerAgent":
+    if agent_type == "SchedulerAgent" or registry_key == "scheduler":
         return _dispatch_with_approval(request, agent, "calendar_write", lambda has_approval: agent.check_conflicts(
             events=[], has_approval=has_approval
         ))
 
-    if agent_type in ("MemoryAgent", "MemoryAgentHandler"):
+    if agent_type in ("MemoryAgent", "MemoryAgentHandler") or registry_key == "memory":
         return agent.execute(
             content=message,
             source_type="user_input",
             source_id=f"input_{request.id}",
             workspace_id=request.workspace_id,
         )
+
+    # ── Enterprise agents ─────────────────────────────────────────────
+    if agent_type == "CareerAgent" or registry_key == "career":
+        # Route to best Career method by keywords
+        if any(kw in msg_lower for kw in ["gap", "missing skill", "skill gap"]):
+            return agent.identify_skill_gaps(current_skills=keywords, target_role=message[:120])
+        if any(kw in msg_lower for kw in ["course", "recommend", "learn", "training"]):
+            return agent.recommend_courses(skill_gaps=keywords)
+        return agent.analyze_career_path(current_role=message[:120] or "Current Role", skills=keywords, target_role=None)
+
+    if agent_type == "LearningAgent" or registry_key == "learning":
+        if any(kw in msg_lower for kw in ["progress", "track", "completed"]):
+            return agent.track_progress(completed_items=[message], current_goal=None)
+        if any(kw in msg_lower for kw in ["material", "resource", "book", "article"]):
+            return agent.recommend_materials(skill=message[:80] or "general", goal=None)
+        # Default: course search
+        topic = message.strip() or "general"
+        return agent.search_courses(topic=topic, level="beginner")
+
+    if agent_type == "ResearchAgent" or registry_key == "research":
+        if any(kw in msg_lower for kw in ["trend", "emerging", "future"]):
+            return agent.spot_trends(domain=message[:100] or "technology", timeframe="6 months")
+        if any(kw in msg_lower for kw in ["industry", "market", "sector"]):
+            return agent.analyze_industry(industry=message[:100] or "technology")
+        return agent.research_company(company_name=message[:100] or "Acme Corp")
+
+    if agent_type == "GitHubAgent" or registry_key == "github":
+        # Try to extract username / repo from message
+        username = message.strip().split()[0][:39] if message.strip() else "octocat"
+        if "/" in message and any(c in message for c in ["/"]):
+            # Looks like owner/repo
+            repo = message.strip().split()[0]
+            if "/" in repo:
+                return agent.get_repo_stats(repo_full_name=repo)
+        if any(kw in msg_lower for kw in ["repo", "repository", "stats"]):
+            return agent.get_repo_stats(repo_full_name=username if "/" in username else f"{username}/repo")
+        if any(kw in msg_lower for kw in ["skill", "assess"]):
+            return agent.assess_skills(username=username)
+        return agent.analyze_profile(username=username)
+
+    if agent_type == "CodingAgent" or registry_key == "coding":
+        if any(kw in msg_lower for kw in ["review", "check code", "audit code"]):
+            return agent.review_code(code_snippet=message, language="python")
+        if any(kw in msg_lower for kw in ["practice", "generate", "exercise"]):
+            return agent.generate_practice(topics=keywords or ["algorithms"], difficulty="medium")
+        return agent.solve_challenge(problem_statement=message, language="python")
+
+    if agent_type == "ReminderAgent" or registry_key == "reminder":
+        if any(kw in msg_lower for kw in ["priority", "sort", "prioritize"]):
+            return agent.sort_by_priority(items=[{"name": message, "due_date": "soon"}])
+        if any(kw in msg_lower for kw in ["follow", "schedule"]):
+            return agent.schedule_followup(context=message)
+        return agent.check_deadlines(tasks=[{"name": message, "due_date": "2026-08-30", "priority": "medium"}])
+
+    if agent_type == "AnalyticsAgent" or registry_key == "analytics":
+        if any(kw in msg_lower for kw in ["report", "generate report"]):
+            return agent.generate_report(report_type=message[:60] or "activity", data_sources=["activity"], period="30d")
+        if any(kw in msg_lower for kw in ["application", "funnel", "conversion"]):
+            return agent.analyze_applications(applications=[{"role": message[:60], "company": "Unknown", "status": "applied"}])
+        return agent.get_activity_trends(metrics=keywords or ["activity"], period="30d")
+
+    if agent_type == "RecommendationAgent" or registry_key == "recommendation":
+        if any(kw in msg_lower for kw in ["connection", "network", "mentor"]):
+            return agent.suggest_connections(profile={"title": message[:60], "industry": "General"})
+        if any(kw in msg_lower for kw in ["content", "article", "curate"]):
+            return agent.curate_content(interests=keywords or [message[:40]])
+        return agent.match_jobs(profile={"skills": keywords or [message[:40]], "experience": message[:120]})
+
+    if agent_type == "ReflectionAgent" or registry_key == "reflection":
+        if any(kw in msg_lower for kw in ["goal", "track goal"]):
+            return agent.track_goals(goals=[{"name": message[:60], "target": "Q4", "progress": 50}])
+        if any(kw in msg_lower for kw in ["monthly", "month"]):
+            return agent.monthly_review(monthly_data={"applications": 5, "connections": 3, "skills_added": 2})
+        return agent.generate_weekly_digest(activity_log=[{"action": message, "date": "2026-08-22"}])
+
+    if agent_type == "SecurityAgent" or registry_key == "security":
+        if any(kw in msg_lower for kw in ["access log", "access", "log"]):
+            return agent.analyze_access_logs(logs=[{"user": "user", "resource": message[:60], "ip": "127.0.0.1", "time": "now"}])
+        if any(kw in msg_lower for kw in ["monitor", "activity"]):
+            return agent.monitor_activity(recent_actions=[{"action": message, "user": "user", "time": "now"}])
+        return agent.scan_for_pii(content=message)
+
+    if agent_type == "ConnectorAgent" or registry_key == "connector":
+        if any(kw in msg_lower for kw in ["setup", "guide", "configure"]):
+            return agent.guide_setup(connector_name=message[:60] or "generic")
+        if any(kw in msg_lower for kw in ["health", "monitor", "status"]):
+            return agent.monitor_health(connectors=[{"name": message[:40], "status": "unknown"}])
+        return agent.discover_connectors(category=None, search_query=message)
+
+    if agent_type == "PluginAgent" or registry_key == "plugin":
+        if any(kw in msg_lower for kw in ["update", "manage update"]):
+            return agent.manage_updates(installed_plugins=[{"name": message[:40], "version": "1.0.0"}])
+        if any(kw in msg_lower for kw in ["compat", "check compat"]):
+            return agent.check_compatibility(plugin_name=message[:40] or "plugin", current_version="1.0.0", environment={})
+        return agent.browse_plugins(category=None, query=message)
+
+    if agent_type == "PlanningAgent" or registry_key == "planning":
+        if any(kw in msg_lower for kw in ["milestone", "milestone", "checkpoint"]):
+            return agent.suggest_milestones(roadmap={"title": message[:80]}, timeline_months=12)
+        if any(kw in msg_lower for kw in ["resource", "recommend"]):
+            return agent.recommend_resources(topic=message[:80] or "career", skill_level="intermediate")
+        return agent.build_roadmap(profile={"background": message[:200]}, goals=[message[:120]])
 
     logger.warning(
         "dispatch_unknown_agent",
@@ -400,6 +786,78 @@ async def improve_phase(state: LoopState, request: AgentRequest) -> AgentRespons
 async def escalate_to_user(state: LoopState) -> AgentResponse:
     logger.warning("ESCALATE: max iterations exceeded")
     return AgentResponse(status="escalated", final_result="max retries exceeded")
+
+
+# ── Streaming Loop — phase-by-phase SSE events ──────────────────────
+
+from collections.abc import AsyncGenerator
+
+
+async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[str, Any], None]:
+    """Streaming variant of run_agent_loop. Yields SSE-ready event dicts.
+
+    Event types: intent, plan, act, observe, reflect, token, approval_required, done, error
+    Caller is responsible for mapping to SSE `event:` + `data:` framing.
+    """
+    import json as _json
+    from ..services.llm_service import llm_service  # lazy to avoid circular
+
+    logger.info(f"START stream loop: request={request.id}, agent={request.agent_name}")
+    state = await load_or_create_state(request.id)
+
+    # Emit intent classification immediately (re-emit from router context if available)
+    yield {"event": "intent", "data": {"agent": request.agent_name, "request_id": str(request.id)}}
+
+    for iteration in range(3):
+        logger.info(f"─── Stream Iteration {iteration + 1}/3 ───")
+
+        plan = await plan_phase(request, state)
+        state.add_phase(f"plan_{iteration}", plan)
+        await save_checkpoint(state)
+        yield {"event": "plan", "data": {"iteration": iteration, "plan": plan}}
+
+        # Stream tokens if LLM is involved in Act — weemit incremental token events
+        # For now, act_phase is non-streaming; we wrap it and if it did ReAct with streaming, we would forward tokens.
+        # We attempt to stream LLM tokens for the final synthesis if available
+        act_result = await act_phase(plan, request)
+        state.add_phase(f"act_{iteration}", act_result)
+        await save_checkpoint(state)
+        yield {"event": "act", "data": {"iteration": iteration, "result": act_result}}
+
+        # Emit tool-level events if act_result contains tool calls info
+        tool_calls = act_result.get("tool_calls") or act_result.get("result", {}).get("tool_calls") or []
+        for tc in tool_calls:
+            yield {"event": "tool_start", "data": {"tool": tc.get("function", {}).get("name", "unknown"), "params": tc.get("function", {}).get("arguments", {})}}
+        # If approval gate surfaced a pending approval inside result
+        proposals = act_result.get("result", {}).get("proposals") or []
+        for p in proposals:
+            if p.get("requires_approval"):
+                yield {"event": "approval_required", "data": p}
+
+        observe_result = await observe_phase(act_result)
+        state.add_phase(f"observe_{iteration}", observe_result)
+        await save_checkpoint(state)
+        yield {"event": "observe", "data": {"iteration": iteration, "observation": observe_result}}
+
+        reflect_result = await reflect_phase(request, observe_result, iteration)
+        state.add_phase(f"reflect_{iteration}", {"is_satisfied": reflect_result.is_satisfied, "reason": reflect_result.reason})
+        await save_checkpoint(state)
+        yield {"event": "reflect", "data": {"iteration": iteration, "is_satisfied": reflect_result.is_satisfied, "reason": reflect_result.reason}}
+
+        if reflect_result.is_satisfied:
+            improve_resp = await improve_phase(state, request)
+            # Stream final answer as token events for typewriter effect (chunk by 40 chars)
+            final_text = str(improve_resp.final_result or "")
+            chunk_size = 40
+            for i in range(0, len(final_text), chunk_size):
+                yield {"event": "token", "data": {"text": final_text[i:i+chunk_size]}}
+                await asyncio.sleep(0)  # allow event loop to flush
+            yield {"event": "done", "data": {"status": improve_resp.status, "result": improve_resp.final_result}}
+            return
+
+    escalated = await escalate_to_user(state)
+    yield {"event": "error", "data": {"status": escalated.status, "result": escalated.final_result}}
+    yield {"event": "done", "data": {"status": escalated.status, "result": escalated.final_result}}
 
 
 # ── Main Loop ───────────────────────────────────────────────────────

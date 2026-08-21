@@ -228,8 +228,7 @@ class TestKnowledgeGraph:
             "depth": 2,
             "mode": "bfs",
         }, headers=headers)
-        assert res.status_code == 200
-        assert res.json() == []
+        assert res.status_code == 404
 
     async def test_traverse_dfs_mode(self, client: AsyncClient):
         headers = await self._auth_header(client)

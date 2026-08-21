@@ -67,6 +67,20 @@ class Settings(BaseSettings):
     db_max_overflow: int = 10
 
     agent_timeout_seconds: int = 120
+    agent_circuit_failure_threshold: int = 3
+    agent_circuit_recovery_timeout: float = 30.0
+    # JSON string or dict: {"memory": {"failure_threshold": 5, "recovery_timeout": 15}, ...}
+    agent_circuit_config: dict[str, dict[str, Any]] | str = {}
+
+    @field_validator("agent_circuit_config", mode="before")
+    @classmethod
+    def parse_circuit_config(cls, v: Any) -> dict[str, Any]:
+        if isinstance(v, str):
+            if not v.strip():
+                return {}
+            return json.loads(v)
+        return v or {}
+
     prompt_injection_check: bool = True
     prompt_dir: str = ""
     mvp_scope_enforced: bool = True

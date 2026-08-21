@@ -1,10 +1,11 @@
 'use client';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, Modal } from '@vaeloom/ui-kit';
 import { Table, type Column } from '@/components/shared/Table';
 import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
 import { ProgressBar } from '@/components/shared/ProgressBar';
+import { billingApi, ApiClientError } from '@/lib/api-client';
 
 interface Invoice {
   id: string;
@@ -51,44 +52,6 @@ const plans = [
   },
 ];
 
-const invoices: Invoice[] = [
-  {
-    id: 'inv_001',
-    date: 'Jul 1, 2026',
-    amount: '$99.00',
-    status: 'paid',
-    description: 'Professional Plan - Monthly',
-  },
-  {
-    id: 'inv_002',
-    date: 'Jun 1, 2026',
-    amount: '$99.00',
-    status: 'paid',
-    description: 'Professional Plan - Monthly',
-  },
-  {
-    id: 'inv_003',
-    date: 'May 1, 2026',
-    amount: '$99.00',
-    status: 'paid',
-    description: 'Professional Plan - Monthly',
-  },
-  {
-    id: 'inv_004',
-    date: 'Apr 1, 2026',
-    amount: '$29.00',
-    status: 'paid',
-    description: 'Starter Plan - Monthly',
-  },
-  {
-    id: 'inv_005',
-    date: 'Mar 1, 2026',
-    amount: '$29.00',
-    status: 'pending',
-    description: 'Starter Plan - Monthly',
-  },
-];
-
 const invoiceColors: Record<string, StatusVariant> = {
   paid: 'success',
   pending: 'warning',
@@ -102,7 +65,71 @@ export default function BillingPage() {
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [pendingPlan, setPendingPlan] = useState('pro');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Billing" />;
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [usage, setUsage] = useState<{
+    apiCalls: number;
+    storage: number;
+    users: number;
+    agents: number;
+  }>({ apiCalls: 0, storage: 0, users: 0, agents: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchBillingData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch subscription
+        try {
+          const subscription = await billingApi.subscription();
+          setSelectedPlan(subscription.plan);
+        } catch (e) {
+          if (e instanceof ApiClientError && (e.status === 403 || e.status === 404)) {
+            // No subscription yet, keep default
+          } else {
+            throw e;
+          }
+        }
+
+        // Fetch usage
+        const usageRecords = await billingApi.usage();
+        const usageData = { apiCalls: 0, storage: 0, users: 0, agents: 0 };
+        usageRecords.forEach((record) => {
+          switch (record.metric) {
+            case 'api_calls':
+              usageData.apiCalls = record.value;
+              break;
+            case 'storage':
+              usageData.storage = record.value;
+              break;
+            case 'users':
+              usageData.users = record.value;
+              break;
+            case 'agents':
+              usageData.agents = record.value;
+              break;
+          }
+        });
+        setUsage(usageData);
+
+        // For invoices, we'll show a placeholder since there's no invoice endpoint
+        setInvoices([]);
+      } catch (e) {
+        if (e instanceof ApiClientError && (e.status === 403 || e.status === 404)) {
+          setError('This feature requires an Enterprise license. Contact sales@vaeloom.app.');
+        } else {
+          setError('Failed to load billing data. Please try again later.');
+        }
+        console.error('Billing data fetch error:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBillingData();
+  }, []);
 
   const invoiceColumns: Column<Invoice>[] = [
     { key: 'date', header: 'Date', className: 'text-text-muted' },
@@ -124,6 +151,33 @@ export default function BillingPage() {
       className: 'text-right',
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-text-muted">Loading billing data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono uppercase tracking-widest text-text-dim mb-4">
+          Enterprise — Gated
+        </div>
+        <h1 className="text-2xl font-display font-medium text-text mb-2">Billing</h1>
+        <p className="text-text-muted max-w-lg">{error}</p>
+        <div className="mt-6 flex gap-3">
+          <a href="mailto:sales@vaeloom.app" className="btn-secondary">
+            Contact sales
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Billing" />;
 
   return (
     <div className="space-y-8">
@@ -179,10 +233,10 @@ export default function BillingPage() {
         <Card padding="lg">
           <h2 className="text-lg font-display font-medium text-text mb-4">Usage This Month</h2>
           <div className="space-y-4">
-            <ProgressBar value={4200} max={10000} label="API Calls" color="primary" />
-            <ProgressBar value={3.2} max={10} label="Storage Used (GB)" color="accent" />
-            <ProgressBar value={8} max={25} label="Active Users" color="success" />
-            <ProgressBar value={12} max={25} label="Agents Deployed" color="warning" />
+            <ProgressBar value={usage.apiCalls} max={10000} label="API Calls" color="primary" />
+            <ProgressBar value={usage.storage} max={10} label="Storage Used (GB)" color="accent" />
+            <ProgressBar value={usage.users} max={25} label="Active Users" color="success" />
+            <ProgressBar value={usage.agents} max={25} label="Agents Deployed" color="warning" />
           </div>
         </Card>
       </div>

@@ -1,7 +1,13 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { agentApi, agentCatalogApi, approvalApi, documentApi, type CatalogAgent } from '@/lib/api-client';
+import {
+  agentApi,
+  agentCatalogApi,
+  approvalApi,
+  documentApi,
+  type CatalogAgent,
+} from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'error';
@@ -454,16 +460,26 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       if (attached) {
         const toUpload = attached;
         setAttached(null);
-        raw = rawBase ? `${rawBase}\n\n[Attached file: ${toUpload.name}]` : `[Attached file: ${toUpload.name}]`;
+        raw = rawBase
+          ? `${rawBase}\n\n[Attached file: ${toUpload.name}]`
+          : `[Attached file: ${toUpload.name}]`;
         fileContext = toUpload.name;
         // fire upload non-blocking but provide toast; chat includes filename context even if upload fails
         try {
           const doc = await documentApi.upload(toUpload, workspaceId);
-          toast({ tone: 'success', title: 'File attached', detail: `${doc.path} — referenced in message` });
+          toast({
+            tone: 'success',
+            title: 'File attached',
+            detail: `${doc.path} — referenced in message`,
+          });
           fileContext = `${toUpload.name} (stored as ${doc.path})`;
           raw = rawBase ? `${rawBase}\n\n[File stored: ${doc.path}]` : `[File stored: ${doc.path}]`;
         } catch {
-          toast({ tone: 'error', title: 'Attach failed', detail: `${toUpload.name} not stored — message sent with name only` });
+          toast({
+            tone: 'error',
+            title: 'Attach failed',
+            detail: `${toUpload.name} not stored — message sent with name only`,
+          });
         }
       }
       const userMsg: ChatMessage = {
@@ -505,102 +521,319 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         timestamp: nowIso(),
         agentName: agentForCall || 'assistant',
         confidence: agentForCall ? 0.98 : undefined,
-        toolCalls: agentForCall ? [{ name: 'routing', status: 'running' }] : undefined,
+        toolCalls: [{ name: 'routing', status: 'running' }],
         streaming: true,
       };
       setMessages((p) => [...p, ph]);
       if (activeId) updateThread(activeId, (t) => ({ ...t, messages: [...t.messages, ph] }));
-      try {
-        const res: unknown = agentForCall
-          ? await agentApi.chat({ workspaceId, message: raw, agentName: agentForCall })
-          : await agentApi.chat({ workspaceId, message: raw });
-        const r = res as Record<string, unknown>;
-        let reply = '';
-        let conf: number | undefined;
-        let proposals: ChatMessage['proposals'];
-        let questions: string[] | undefined;
-        let tools: ChatMessage['toolCalls'];
-        let cites: ChatMessage['citations'];
-        let an = agentForCall;
-        if (r && typeof r === 'object' && 'result' in r) {
-          const o = (
-            r as {
-              result: {
-                summary?: string;
-                proposals?: unknown[];
-                questions?: string[];
-                details?: unknown;
-              };
-              agent_name?: string;
-              confidence?: number;
-            }
-          ).result;
-          reply = (o?.summary as string) || '';
-          proposals = (o?.proposals as unknown[])?.map((p) => {
-            const q = p as Record<string, unknown>;
-            const approvalId =
-              typeof q['approval_id'] === 'string' || typeof q['approvalId'] === 'string'
-                ? String(q['approval_id'] || q['approvalId'])
-                : undefined;
-            return {
-              title: String(q['title'] || q['action'] || 'Proposal'),
-              detail: String(q['detail'] || q['description'] || ''),
-              requiresApproval: q['requires_approval'] === true || Boolean(approvalId),
-              approvalId,
-              status: approvalId ? ('pending' as const) : undefined,
-            };
-          }) as ChatMessage['proposals'];
-          questions = o?.questions as string[];
-          conf = (r as { confidence?: number }).confidence;
-          an = (r as { agent_name?: string }).agent_name || an;
-          const d = o?.details as Record<string, unknown> | undefined;
-          if (d && Array.isArray((d as Record<string, unknown>)['entities']))
-            tools = [
-              { name: 'search_documents', status: 'done', latencyMs: 210 },
-              { name: 'query_graph', status: 'done', latencyMs: 170 },
-            ];
-          else if (an) tools = [{ name: `${an}_run`, status: 'done', latencyMs: 280 }];
-          if (d && Array.isArray((d as Record<string, unknown>)['citations']))
-            cites = d['citations'] as ChatMessage['citations'];
-        } else if (r && 'reply' in (r as Record<string, unknown>))
-          reply = String((r as { reply?: string }).reply || '');
-        else if (typeof r === 'string') reply = r;
-        else reply = JSON.stringify(r).slice(0, 2000);
-        if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
-        const final: Partial<ChatMessage> = {
-          text: reply,
-          confidence: conf,
-          proposals,
-          questions,
-          toolCalls: tools,
-          citations: cites,
-          agentName: an || 'assistant',
-          streaming: false,
-          latencyMs: Math.round(420 + Math.random() * 500),
-        };
-        await streamText(reply, agentId);
-        setMessages((p) =>
-          p.map((m) => (m.id === agentId ? { ...m, ...final, streaming: false } : m)),
-        );
+
+      // ── Streaming orchestrator (phase-by-phase SSE) with blocking fallback ──
+      let streamedText = '';
+      let streamedProposals: ChatMessage['proposals'] = [];
+      let streamedQuestions: string[] | undefined;
+      let streamedTools: ChatMessage['toolCalls'] = [];
+      let streamedCitations: ChatMessage['citations'];
+      let streamedAgent = agentForCall || 'assistant';
+      let streamedConfidence: number | undefined = agentForCall ? 0.98 : undefined;
+      let streamedError = false;
+      let gotDone = false;
+      let abortCtrl: AbortController | null = null;
+
+      const applyPatch = (patch: Partial<ChatMessage>) => {
+        setMessages((p) => p.map((m) => (m.id === agentId ? { ...m, ...patch } : m)));
         setThreads((p) =>
           p.map((t) => ({
             ...t,
-            messages: t.messages.map((m) =>
-              m.id === agentId ? { ...m, ...final, streaming: false } : m,
-            ),
+            messages: t.messages.map((m) => (m.id === agentId ? { ...m, ...patch } : m)),
           })),
         );
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed';
-        setMessages((p) =>
-          p.map((m) => (m.id === agentId ? { ...m, text: msg, error: true, streaming: false } : m)),
+      };
+
+      const onSseEvent = (event: string, data: Record<string, unknown>) => {
+        if (event === 'intent') {
+          streamedAgent = (data['agent'] as string) || streamedAgent;
+          streamedConfidence = (data['confidence'] as number) ?? streamedConfidence;
+          applyPatch({
+            agentName: streamedAgent,
+            confidence: streamedConfidence,
+            toolCalls: [{ name: `intent:${streamedAgent}`, status: 'running' }],
+          });
+        } else if (event === 'plan') {
+          const plan = (data['plan'] as Record<string, unknown>) || {};
+          const rag = plan['rag_context'] as Record<string, unknown> | undefined;
+          const ragCount = rag
+            ? ((rag['entities'] as unknown[])?.length || 0) +
+              ((rag['documents'] as unknown[])?.length || 0)
+            : 0;
+          applyPatch({
+            toolCalls: [
+              { name: 'plan', status: 'done' },
+              ...(ragCount ? [{ name: `rag:${ragCount} hits`, status: 'done' as const }] : []),
+            ],
+          });
+        } else if (event === 'act' || event === 'tool_start') {
+          const tool =
+            (data['tool'] as string) ||
+            ((data['result'] as Record<string, unknown>)?.['tool'] as string) ||
+            'tool';
+          streamedTools = [...(streamedTools || []), { name: tool, status: 'running' as const }];
+          // keep only last 6 to avoid clutter
+          if (streamedTools.length > 6) streamedTools = streamedTools.slice(-6);
+          applyPatch({ toolCalls: streamedTools });
+        } else if (event === 'observe' || event === 'reflect') {
+          // mark tools done
+          if (streamedTools.length) {
+            streamedTools = streamedTools.map((t) => ({
+              ...t,
+              status: 'done' as const,
+              latencyMs: 120,
+            }));
+            applyPatch({ toolCalls: streamedTools });
+          }
+        } else if (event === 'supervisor_start') {
+          const dag = (data['dag'] as unknown[]) || (data['subtasks'] as unknown[]) || [];
+          applyPatch({
+            toolCalls: [
+              { name: `supervisor DAG ${JSON.stringify(dag).slice(0, 60)}`, status: 'running' },
+            ],
+          });
+        } else if (event === 'supervisor_layer_start' || event === 'supervisor_parallel') {
+          const agents = (data['agents'] as string[]) || [];
+          applyPatch({ toolCalls: agents.map((a) => ({ name: a, status: 'running' as const })) });
+        } else if (event === 'supervisor_agent_done') {
+          const an = (data['agent_name'] as string) || 'agent';
+          const summary =
+            ((data['result'] as Record<string, unknown>)?.['summary'] as string) || '';
+          if (summary) streamedText += (streamedText ? '\n\n' : '') + `[${an}] ${summary}`;
+          applyPatch({
+            text: streamedText,
+            streaming: true,
+            toolCalls: [{ name: `${an}:done`, status: 'done' }],
+          });
+        } else if (event === 'token') {
+          const t = (data['text'] as string) || '';
+          streamedText += t;
+          applyPatch({ text: streamedText, streaming: true });
+        } else if (event === 'qa') {
+          // QA gate — show as tool
+          const decision = data['decision'] as string;
+          applyPatch({
+            toolCalls: [
+              { name: `qa:${decision}`, status: decision === 'approved' ? 'done' : 'running' },
+            ],
+          });
+        } else if (event === 'approval_required') {
+          const p = data as Record<string, unknown>;
+          const approvalId = (p['approval_id'] as string) || (p['approvalId'] as string);
+          const item: NonNullable<ChatMessage['proposals']>[number] = {
+            title: (p['title'] as string) || 'Approval required',
+            detail: (p['detail'] as string) || (p['reason'] as string) || '',
+            requiresApproval: true,
+            approvalId,
+            status: 'pending',
+          };
+          streamedProposals = [...(streamedProposals || []), item];
+          applyPatch({ proposals: streamedProposals });
+        } else if (event === 'out_of_scope') {
+          streamedText = (data['message'] as string) || 'Outside MVP scope';
+          streamedError = true;
+          applyPatch({ text: streamedText, error: true, streaming: false });
+        } else if (event === 'ask_clarification') {
+          const qs = (data['questions'] as string[]) || [];
+          streamedQuestions = qs;
+          streamedText = 'Could you clarify what you need help with?';
+          applyPatch({ text: streamedText, questions: streamedQuestions, streaming: false });
+        } else if (event === 'error') {
+          streamedText = (data['message'] as string) || 'Error';
+          streamedError = true;
+          applyPatch({ text: streamedText, error: true, streaming: false });
+        } else if (event === 'done') {
+          gotDone = true;
+          // Final payload may carry summary/proposals/questions
+          const result = (data['result'] as string | Record<string, unknown>) || data;
+          let finalText = '';
+          let finalProposals = streamedProposals;
+          let finalQuestions = streamedQuestions;
+          if (typeof result === 'string') finalText = result;
+          else if (result && typeof result === 'object') {
+            const r = result as Record<string, unknown>;
+            if (typeof r['summary'] === 'string') finalText = r['summary'] as string;
+            else if (typeof r['result'] === 'string') finalText = r['result'] as string;
+            // proposals/questions may be nested in result.result
+            const nested = (r['result'] as Record<string, unknown>) || r;
+            if (Array.isArray(nested['proposals'])) {
+              finalProposals = (nested['proposals'] as unknown[]).map((p) => {
+                const q = p as Record<string, unknown>;
+                const approvalId = (q['approval_id'] as string) || (q['approvalId'] as string);
+                return {
+                  title: String(q['title'] || q['action'] || 'Proposal'),
+                  detail: String(q['detail'] || q['description'] || ''),
+                  requiresApproval: q['requires_approval'] === true || Boolean(approvalId),
+                  approvalId,
+                  status: approvalId ? ('pending' as const) : undefined,
+                };
+              }) as typeof finalProposals;
+            }
+            if (Array.isArray(nested['questions']))
+              finalQuestions = nested['questions'] as string[];
+            // citations
+            const d = nested['details'] as Record<string, unknown> | undefined;
+            if (d && Array.isArray((d as Record<string, unknown>)['citations'])) {
+              streamedCitations = d['citations'] as ChatMessage['citations'];
+            }
+          }
+          // If tokens already streamed, prefer streamedText; otherwise use finalText
+          const displayText = streamedText.trim()
+            ? streamedText
+            : finalText || 'No response — try rephrasing or @mention an agent.';
+          // Mark tools done
+          const doneTools = streamedTools.map((t) => ({ ...t, status: 'done' as const }));
+          applyPatch({
+            text: displayText,
+            proposals: finalProposals?.length ? finalProposals : streamedProposals,
+            questions: finalQuestions,
+            toolCalls: doneTools.length
+              ? doneTools
+              : [{ name: `${streamedAgent}:done`, status: 'done' }],
+            citations: streamedCitations,
+            agentName: streamedAgent,
+            confidence: streamedConfidence,
+            streaming: false,
+            error: streamedError,
+            latencyMs: Math.round(320 + Math.random() * 400),
+          });
+        }
+      };
+
+      try {
+        abortCtrl = new AbortController();
+        await agentApi.chatStream(
+          { workspaceId, message: raw, agentName: agentForCall },
+          onSseEvent,
+          abortCtrl.signal,
         );
-        toast({ tone: 'error', title: 'Message failed', detail: msg });
+        // If stream ended without done, finalize
+        if (!gotDone && !streamedError) {
+          const fallbackText =
+            streamedText.trim() || 'No response — try rephrasing or @mention an agent.';
+          applyPatch({
+            text: fallbackText,
+            streaming: false,
+            toolCalls: streamedTools.map((t) => ({ ...t, status: 'done' as const })),
+          });
+        }
+      } catch (err) {
+        // Streaming failed — fallback to blocking chat
+        const isAbort = err instanceof DOMException && err.name === 'AbortError';
+        if (isAbort) {
+          setLoading(false);
+          return;
+        }
+        try {
+          const res: unknown = agentForCall
+            ? await agentApi.chat({ workspaceId, message: raw, agentName: agentForCall })
+            : await agentApi.chat({ workspaceId, message: raw });
+          const r = res as Record<string, unknown>;
+          let reply = '';
+          let conf: number | undefined;
+          let proposals: ChatMessage['proposals'];
+          let questions: string[] | undefined;
+          let tools: ChatMessage['toolCalls'];
+          let cites: ChatMessage['citations'];
+          let an = agentForCall;
+          if (r && typeof r === 'object' && 'result' in r) {
+            const o = (
+              r as {
+                result: {
+                  summary?: string;
+                  proposals?: unknown[];
+                  questions?: string[];
+                  details?: unknown;
+                };
+                agent_name?: string;
+                confidence?: number;
+              }
+            ).result;
+            reply = (o?.summary as string) || '';
+            proposals = (o?.proposals as unknown[])?.map((p) => {
+              const q = p as Record<string, unknown>;
+              const approvalId =
+                typeof q['approval_id'] === 'string' || typeof q['approvalId'] === 'string'
+                  ? String(q['approval_id'] || q['approvalId'])
+                  : undefined;
+              return {
+                title: String(q['title'] || q['action'] || 'Proposal'),
+                detail: String(q['detail'] || q['description'] || ''),
+                requiresApproval: q['requires_approval'] === true || Boolean(approvalId),
+                approvalId,
+                status: approvalId ? ('pending' as const) : undefined,
+              };
+            }) as ChatMessage['proposals'];
+            questions = o?.questions as string[];
+            conf = (r as { confidence?: number }).confidence;
+            an = (r as { agent_name?: string }).agent_name || an;
+            const d = o?.details as Record<string, unknown> | undefined;
+            if (d && Array.isArray((d as Record<string, unknown>)['entities']))
+              tools = [
+                { name: 'search_documents', status: 'done', latencyMs: 210 },
+                { name: 'query_graph', status: 'done', latencyMs: 170 },
+              ];
+            else if (an) tools = [{ name: `${an}_run`, status: 'done', latencyMs: 280 }];
+            if (d && Array.isArray((d as Record<string, unknown>)['citations']))
+              cites = d['citations'] as ChatMessage['citations'];
+          } else if (r && 'reply' in (r as Record<string, unknown>))
+            reply = String((r as { reply?: string }).reply || '');
+          else if (typeof r === 'string') reply = r;
+          else reply = JSON.stringify(r).slice(0, 2000);
+          if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
+          const final: Partial<ChatMessage> = {
+            text: reply,
+            confidence: conf ?? streamedConfidence,
+            proposals,
+            questions,
+            toolCalls: tools,
+            citations: cites,
+            agentName: an || streamedAgent || 'assistant',
+            streaming: false,
+            latencyMs: Math.round(420 + Math.random() * 500),
+          };
+          await streamText(reply, agentId);
+          setMessages((p) =>
+            p.map((m) => (m.id === agentId ? { ...m, ...final, streaming: false } : m)),
+          );
+          setThreads((p) =>
+            p.map((t) => ({
+              ...t,
+              messages: t.messages.map((m) =>
+                m.id === agentId ? { ...m, ...final, streaming: false } : m,
+              ),
+            })),
+          );
+        } catch (fallbackErr) {
+          const msg = fallbackErr instanceof Error ? fallbackErr.message : 'Failed';
+          setMessages((p) =>
+            p.map((m) =>
+              m.id === agentId ? { ...m, text: msg, error: true, streaming: false } : m,
+            ),
+          );
+          toast({ tone: 'error', title: 'Message failed', detail: msg });
+        }
       } finally {
         setLoading(false);
       }
     },
-    [input, loading, messages, workspaceId, selected, activeId, updateThread, toast, streamText, attached],
+    [
+      input,
+      loading,
+      messages,
+      workspaceId,
+      selected,
+      activeId,
+      updateThread,
+      toast,
+      streamText,
+      attached,
+    ],
   );
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

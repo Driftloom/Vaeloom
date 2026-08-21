@@ -18,6 +18,9 @@ class LearningAgent(BaseAgent):
         Tool(name="search_courses", description="Search for courses based on topic and level"),
         Tool(name="recommend_materials", description="Recommend learning materials tailored to user"),
         Tool(name="track_progress", description="Track learning progress and suggest next steps"),
+        Tool(name="web_search", description="Real-time web search for learning resources and courses"),
+        Tool(name="search_documents", description="Search learning documents with semantic search"),
+        Tool(name="query_graph", description="Query knowledge graph for learning entities"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["skills", "learning", "goals", "progress"],
