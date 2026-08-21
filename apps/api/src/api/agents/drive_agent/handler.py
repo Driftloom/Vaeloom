@@ -3,7 +3,7 @@ Drive Agent — list Drive files, download new/changed files, ingest content.
 Integrates with real Google Drive API via DriveClient, falls back gracefully.
 """
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 
@@ -46,7 +46,7 @@ class DriveAgent(BaseAgent):
             },
         }
 
-    async def process(self, request: Any) -> Dict[str, Any]:
+    async def process(self, request: Any) -> dict[str, Any]:
         client = await self._get_client()
         if not client._configured:
             return await self.fallback()
@@ -72,7 +72,7 @@ class DriveAgent(BaseAgent):
             "metadata": {"file_count": len(files), "ingested_count": len([i for i in ingested if i])},
         }
 
-    async def _process_file(self, client: Any, file_meta: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def _process_file(self, client: Any, file_meta: dict[str, Any]) -> dict[str, Any] | None:
         file_id = file_meta.get("id", "")
         name = file_meta.get("name", "")
         mime_type = file_meta.get("mimeType", "")
@@ -96,7 +96,7 @@ class DriveAgent(BaseAgent):
             "ingested": ingested.get("status") == "success" if ingested else False,
         }
 
-    async def _ingest(self, file_meta: Dict[str, Any], content: bytes) -> Optional[Dict[str, Any]]:
+    async def _ingest(self, file_meta: dict[str, Any], content: bytes) -> dict[str, Any] | None:
         try:
             from api.ingestion.pipeline import run_pipeline
             name = file_meta.get("name", "unknown")

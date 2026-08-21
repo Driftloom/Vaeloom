@@ -7,7 +7,6 @@ import base64
 import logging
 import os
 import re
-from typing import Optional
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -46,7 +45,7 @@ class PromptInjectionMiddleware(BaseHTTPMiddleware):
     Returns 400 with X-Injection-Detected: true header when detected.
     """
 
-    def __init__(self, app, enabled: Optional[bool] = None):
+    def __init__(self, app, enabled: bool | None = None):
         super().__init__(app)
         env_val = os.environ.get("PROMPT_INJECTION_CHECK", "true").lower()
         self._enabled = enabled if enabled is not None else (env_val in ("true", "1", "yes"))
@@ -72,7 +71,7 @@ class PromptInjectionMiddleware(BaseHTTPMiddleware):
 
         return await call_next(request)
 
-    async def _get_body(self, request: Request) -> Optional[str]:
+    async def _get_body(self, request: Request) -> str | None:
         content_type = request.headers.get("content-type", "")
         if "application/json" in content_type or "application/x-www-form-urlencoded" in content_type:
             try:
@@ -83,7 +82,7 @@ class PromptInjectionMiddleware(BaseHTTPMiddleware):
                 return None
         return None
 
-    def _scan(self, text: str) -> Optional[str]:
+    def _scan(self, text: str) -> str | None:
         for pattern in INJECTION_PATTERNS:
             match = pattern.search(text)
             if match:

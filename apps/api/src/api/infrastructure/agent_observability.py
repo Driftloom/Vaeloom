@@ -7,8 +7,7 @@ Provides admin endpoints for toggling agents at runtime.
 import logging
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ class AgentMetric:
     success: bool
     latency_ms: float
     cost_usd: float = 0.0
-    error_type: Optional[str] = None
+    error_type: str | None = None
     confidence: float = 0.0
     iteration_count: int = 1
 
@@ -77,7 +76,7 @@ class AgentMetricsCollector:
         }
 
     def get_all_stats(self) -> dict:
-        agents = set(r.agent_name for r in self._records)
+        agents = {r.agent_name for r in self._records}
         return {agent: self.get_agent_stats(agent) for agent in sorted(agents)}
 
     def get_health_summary(self) -> dict:

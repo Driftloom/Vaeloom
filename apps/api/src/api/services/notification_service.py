@@ -1,6 +1,7 @@
-import uuid
+import contextlib
 import re
-from datetime import datetime, timezone
+import uuid
+from datetime import UTC, datetime
 
 import httpx
 from fastapi import HTTPException
@@ -12,7 +13,7 @@ from ..models.schema import Notification
 
 class NotificationService:
     async def send(self, dto, db: AsyncSession = None):
-        now = datetime.now(timezone.utc)
+        datetime.now(UTC)
         body = dto.body
         subject = dto.subject
 
@@ -43,16 +44,12 @@ class NotificationService:
         await db.flush()
 
         try:
-            if dto.channel.value == "email":
+            if dto.channel.value == "email" or dto.channel.value == "slack" or dto.channel.value == "push":
                 notification.status = "sent"
-            elif dto.channel.value == "slack":
-                notification.status = "sent"
-            elif dto.channel.value == "push":
-                notification.status = "sent"
-            notification.updated_at = datetime.now(timezone.utc)
+            notification.updated_at = datetime.now(UTC)
         except Exception:
             notification.status = "failed"
-            notification.updated_at = datetime.now(timezone.utc)
+            notification.updated_at = datetime.now(UTC)
 
         await db.flush()
         await db.refresh(notification)
@@ -83,7 +80,7 @@ class NotificationService:
 
     async def create_template(self, dto, db: AsyncSession = None):
         template_id = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("""
                 INSERT INTO notification_templates (id, name, subject, body, channel, created_at)
@@ -124,7 +121,7 @@ class NotificationService:
 
     async def subscribe(self, dto, db: AsyncSession = None):
         sub_id = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("""
                 INSERT INTO notification_subscribers (id, url, tenant_id, created_at)
@@ -141,7 +138,7 @@ class NotificationService:
             subscribers = result.fetchall()
             async with httpx.AsyncClient(timeout=5) as client:
                 for sub in subscribers:
-                    try:
+                    with contextlib.suppress(Exception):
                         await client.post(sub[0], json={
                             "id": str(notification.id),
                             "channel": notification.channel,
@@ -150,8 +147,6 @@ class NotificationService:
                             "body": notification.message,
                             "status": notification.status,
                         })
-                    except Exception:
-                        pass
         except Exception:
             pass
 
@@ -160,7 +155,7 @@ class NotificationService:
         if not notification:
             raise HTTPException(404, "Notification not found")
         notification.status = dto.status or notification.status
-        notification.updated_at = datetime.now(timezone.utc)
+        notification.updated_at = datetime.now(UTC)
         await db.flush()
         await db.refresh(notification)
         return notification
@@ -168,7 +163,7 @@ class NotificationService:
     async def update_status(self, notification_id: str, status: str, db: AsyncSession = None):
         result = await db.execute(
             text("UPDATE notifications SET status = :status, updated_at = :updated_at WHERE id = :id"),
-            {"status": status, "updated_at": datetime.now(timezone.utc), "id": uuid.UUID(notification_id)},
+            {"status": status, "updated_at": datetime.now(UTC), "id": uuid.UUID(notification_id)},
         )
         await db.flush()
         return result.rowcount > 0

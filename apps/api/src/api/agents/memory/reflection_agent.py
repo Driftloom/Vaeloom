@@ -1,9 +1,9 @@
 import logging
 from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 

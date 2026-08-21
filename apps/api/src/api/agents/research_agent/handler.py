@@ -3,11 +3,11 @@ Research Agent — conduct web research on companies, industries, market trends.
 Read-only, full autonomy. Never fabricates data; cites sources when available.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,8 @@ class ResearchAgent(BaseAgent):
     async def research_company(
         self,
         company_name: str,
-        aspects: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        aspects: list[str] | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_company(company_name)
         try:
@@ -71,8 +71,8 @@ class ResearchAgent(BaseAgent):
     async def analyze_industry(
         self,
         industry: str,
-        focus_area: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        focus_area: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_industry(industry)
         try:
@@ -99,7 +99,7 @@ class ResearchAgent(BaseAgent):
         self,
         domain: str,
         timeframe: str = "6 months",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_trends(domain)
         try:
@@ -122,7 +122,7 @@ class ResearchAgent(BaseAgent):
             logger.warning(f"Trend spotting failed: {e}")
             return self._fallback_trends(domain)
 
-    def _fallback_company(self, company_name: str) -> Dict[str, Any]:
+    def _fallback_company(self, company_name: str) -> dict[str, Any]:
         return {
             "agent_name": "research",
             "action": "suggest",
@@ -135,7 +135,7 @@ class ResearchAgent(BaseAgent):
             },
         }
 
-    def _fallback_industry(self, industry: str) -> Dict[str, Any]:
+    def _fallback_industry(self, industry: str) -> dict[str, Any]:
         return {
             "agent_name": "research",
             "action": "suggest",
@@ -148,7 +148,7 @@ class ResearchAgent(BaseAgent):
             },
         }
 
-    def _fallback_trends(self, domain: str) -> Dict[str, Any]:
+    def _fallback_trends(self, domain: str) -> dict[str, Any]:
         return {
             "agent_name": "research",
             "action": "suggest",

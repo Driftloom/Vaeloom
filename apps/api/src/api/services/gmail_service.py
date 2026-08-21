@@ -4,7 +4,7 @@ MVP rule: Gmail is draft-only. Watch state is persisted per workspace so push
 notifications can be verified, renewed and reconciled without polling.
 """
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -43,7 +43,7 @@ class GmailService:
         if not result:
             return WatchStatusResponse(active=False, message="Failed to start Gmail watch")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expiration = now + timedelta(days=7)
         history_id = str(result.get("historyId", "")) or None
         channel_token = secrets.token_urlsafe(32)
@@ -104,8 +104,8 @@ class GmailService:
         if watch.expiration:
             expiration = watch.expiration
             if expiration.tzinfo is None:
-                expiration = expiration.replace(tzinfo=timezone.utc)
-            if expiration < datetime.now(timezone.utc) + timedelta(hours=WATCH_RENEWAL_HOURS):
+                expiration = expiration.replace(tzinfo=UTC)
+            if expiration < datetime.now(UTC) + timedelta(hours=WATCH_RENEWAL_HOURS):
                 await self.renew_watch(workspace_id, db, client=client)
                 await db.refresh(watch)
         return WatchStatusResponse(
@@ -138,7 +138,7 @@ class GmailService:
         watch.resource_id = result.get("resourceId")
         if result.get("historyId"):
             watch.history_id = str(result["historyId"])
-        watch.expiration = datetime.now(timezone.utc) + timedelta(days=7)
+        watch.expiration = datetime.now(UTC) + timedelta(days=7)
         watch.status = "ACTIVE"
         await db.commit()
         await db.refresh(watch)
@@ -179,7 +179,7 @@ class GmailService:
             return False
         if history_id is not None:
             watch.history_id = str(history_id)
-        watch.last_reconciled_at = datetime.now(timezone.utc)
+        watch.last_reconciled_at = datetime.now(UTC)
         await db.commit()
         logger.info(
             "Push notification accepted for workspace %s (history=%s)",

@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import text
 
@@ -16,8 +16,8 @@ class AnalyticsService:
         interval: str,
         db=None,
     ) -> list[UsageTimePoint]:
-        date_from = date_from or (datetime.now(timezone.utc).isoformat()[:10])
-        date_to = date_to or (datetime.now(timezone.utc).isoformat()[:10])
+        date_from = date_from or (datetime.now(UTC).isoformat()[:10])
+        date_to = date_to or (datetime.now(UTC).isoformat()[:10])
 
         start = datetime.strptime(date_from[:10], "%Y-%m-%d")
         end = datetime.strptime(date_to[:10], "%Y-%m-%d")
@@ -91,7 +91,7 @@ class AnalyticsService:
         db=None,
     ):
         event_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("""
                 INSERT INTO analytics_events (id, name, properties, tenant_id, user_id, created_at)
@@ -109,7 +109,7 @@ class AnalyticsService:
         return event_id
 
     async def aggregate(self, date: str | None, tenant_id: str | None, db=None):
-        target_date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        target_date = date or datetime.now(UTC).strftime("%Y-%m-%d")
         if tenant_id:
             memories_r = await db.execute(
                 text("SELECT COUNT(*) FROM memories WHERE tenant_id = :tenant_id AND DATE(created_at) = :date"),

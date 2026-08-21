@@ -1,15 +1,15 @@
+import contextlib
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select, func, or_, delete
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from ..models.schema import Memory
-from ..schemas.memory import MemoryCreate, MemoryUpdate, MemoryQuery, MemorySearch
+from ..schemas.memory import MemoryCreate, MemoryQuery, MemorySearch, MemoryUpdate
 from ..utils.sanitize import sanitize_text
-from .llm_service import llm_service, LLMProviderError
+from .llm_service import LLMProviderError, llm_service
 
 
 class MemoryService:
@@ -130,15 +130,13 @@ class MemoryService:
             update_data["content"] = sanitize_text(update_data["content"])
             content_for_embedding = update_data.get("content") or memory.content or ""
             if content_for_embedding.strip():
-                try:
+                with contextlib.suppress(LLMProviderError):
                     update_data["embedding"] = await llm_service.generate_embedding(
                         content_for_embedding,
                         user_id=str(memory.user_id) if memory.user_id else None,
                         workspace_id=str(memory.workspace_id) if memory.workspace_id else None,
                         db=db,
                     )
-                except LLMProviderError:
-                    pass
                 update_data["content_hash"] = llm_service.compute_content_hash(content_for_embedding)
                 update_data["size"] = len(content_for_embedding)
 
@@ -157,7 +155,7 @@ class MemoryService:
         if not memory:
             return False
         memory.status = "deleted"
-        memory.deleted_at = datetime.now(timezone.utc)
+        memory.deleted_at = datetime.now(UTC)
         await db.flush()
         return True
 

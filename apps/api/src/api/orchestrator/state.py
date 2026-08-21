@@ -1,9 +1,9 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -13,15 +13,15 @@ STATE_DIR = Path(os.environ.get("VAELOOM_STATE_DIR", str(Path.home() / ".vaeloom
 class LoopState:
     def __init__(self, request_id: str):
         self.request_id = request_id
-        self.phases: Dict[str, Any] = {}
-        self.created_at: str = datetime.now(timezone.utc).isoformat()
+        self.phases: dict[str, Any] = {}
+        self.created_at: str = datetime.now(UTC).isoformat()
         self.updated_at: str = self.created_at
 
     def add_phase(self, phase_name: str, result: Any):
         self.phases[phase_name] = result
-        self.updated_at = datetime.now(timezone.utc).isoformat()
+        self.updated_at = datetime.now(UTC).isoformat()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "request_id": self.request_id,
             "phases": self._serialize_phases(),
@@ -29,7 +29,7 @@ class LoopState:
             "updated_at": self.updated_at,
         }
 
-    def _serialize_phases(self) -> Dict[str, Any]:
+    def _serialize_phases(self) -> dict[str, Any]:
         serialized = {}
         for key, value in self.phases.items():
             if hasattr(value, "model_dump"):
@@ -43,7 +43,7 @@ class LoopState:
         return serialized
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LoopState":
+    def from_dict(cls, data: dict[str, Any]) -> "LoopState":
         state = cls(data["request_id"])
         state.phases = data.get("phases", {})
         state.created_at = data.get("created_at", "")

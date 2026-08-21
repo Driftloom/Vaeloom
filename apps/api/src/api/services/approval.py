@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, text
@@ -46,7 +46,7 @@ class ApprovalManager:
         db: AsyncSession,
     ) -> ApprovalResponse:
         approval_id = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires_at = now + timedelta(minutes=expires_in_minutes or 60)
         await db.execute(
             text("""
@@ -189,7 +189,7 @@ class ApprovalManager:
         current = await self.get_approval(approval_id, db, user_workspaces=user_workspaces)
         if current.status != "PENDING":
             raise HTTPException(status_code=409, detail=f"Approval already {current.status.lower()}")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("""
                 UPDATE agent_approvals
@@ -209,7 +209,7 @@ class ApprovalManager:
         return await self.get_approval(approval_id, db, user_workspaces=user_workspaces)
 
     async def _expire_stale(self, db: AsyncSession) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("""
                 UPDATE agent_approvals

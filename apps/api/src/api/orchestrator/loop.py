@@ -1,16 +1,15 @@
 import asyncio
 import logging
-import time
-import uuid
-from typing import Any, Dict, Optional
+from datetime import UTC
+from typing import Any
 
 from sqlalchemy import text
 
-from .state import LoopState, load_or_create_state, save_checkpoint
-from .base import BaseAgent
-from ..infrastructure.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
-from ..infrastructure.agent_limits import AgentRateLimiter, AgentRateLimitError
 from ..config import settings
+from ..infrastructure.agent_limits import AgentRateLimiter, AgentRateLimitError
+from ..infrastructure.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
+from .base import BaseAgent
+from .state import LoopState, load_or_create_state, save_checkpoint
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ def _get_circuit_breaker(agent_name: str) -> CircuitBreaker:
 
 # ── Approval Lookup ────────────────────────────────────────────────
 
-async def fetch_pending_approvals(workspace_id: str) -> list[Dict[str, Any]]:
+async def fetch_pending_approvals(workspace_id: str) -> list[dict[str, Any]]:
     """Return fresh PENDING approval records for a workspace, oldest first.
 
     Used by the orchestrator to surface actionable approval cards in chat
@@ -42,8 +41,8 @@ async def fetch_pending_approvals(workspace_id: str) -> list[Dict[str, Any]]:
 
     try:
         async with async_session_factory() as db:
-            from datetime import datetime, timezone
-            now = datetime.now(timezone.utc)
+            from datetime import datetime
+            now = datetime.now(UTC)
             await db.execute(
                 text("""
                     UPDATE agent_approvals
@@ -82,19 +81,20 @@ async def lookup_approval(
     workspace_id: str,
     agent_name: str,
     action_type: str,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Look up an approved approval decision for the given agent/action.
 
     Returns the approval record if found and APPROVED, None otherwise.
     This replaces the hardcoded has_approval=False in the agent loop.
     """
     import json
+
     from ..database import async_session_factory
 
     try:
         async with async_session_factory() as db:
-            from datetime import datetime, timezone
-            now = datetime.now(timezone.utc)
+            from datetime import datetime
+            now = datetime.now(UTC)
 
             # Expire any stale approvals
             await db.execute(
@@ -179,7 +179,7 @@ class ReflectResult:
 
 # ── Plan ────────────────────────────────────────────────────────────
 
-async def plan_phase(request: AgentRequest, state: LoopState) -> Dict[str, Any]:
+async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
     logger.info(f"PLAN: agent={request.agent_name}, request={request.id}")
     return {
         "agent_type": request.agent_name,
@@ -190,7 +190,7 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> Dict[str, Any]:
 
 # ── Act ─────────────────────────────────────────────────────────────
 
-async def act_phase(plan: Dict[str, Any], request: AgentRequest) -> Dict[str, Any]:
+async def act_phase(plan: dict[str, Any], request: AgentRequest) -> dict[str, Any]:
     agent = request.agent
     message = plan.get("message", request.message)
     agent_type = type(agent).__name__
@@ -225,7 +225,7 @@ async def act_phase(plan: Dict[str, Any], request: AgentRequest) -> Dict[str, An
     except CircuitBreakerOpenError:
         logger.warning(f"Circuit breaker OPEN for {agent_name}, using fallback")
         return await agent.fallback()
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error(f"Agent {agent_name} timed out after {timeout}s")
         return {
             "agent_name": agent_name,
@@ -343,7 +343,7 @@ async def _dispatch_with_approval(
 
 # ── Observe ─────────────────────────────────────────────────────────
 
-async def observe_phase(act_result: Dict[str, Any]) -> Dict[str, Any]:
+async def observe_phase(act_result: dict[str, Any]) -> dict[str, Any]:
     result = act_result.get("result", {})
     logger.info(f"OBSERVE: action={act_result.get('action')}, summary={str(result.get('summary', ''))[:80]}")
     return {
@@ -356,7 +356,7 @@ async def observe_phase(act_result: Dict[str, Any]) -> Dict[str, Any]:
 
 # ── Reflect ─────────────────────────────────────────────────────────
 
-async def reflect_phase(request: AgentRequest, observe_result: Dict[str, Any], iteration: int) -> ReflectResult:
+async def reflect_phase(request: AgentRequest, observe_result: dict[str, Any], iteration: int) -> ReflectResult:
     action = observe_result.get("action", "")
     confidence = observe_result.get("confidence", 0.0)
 

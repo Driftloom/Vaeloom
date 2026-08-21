@@ -11,7 +11,6 @@ from ..schemas.knowledge_graph import (
     CreateNodeRequest,
     EdgeResponse,
     NodeResponse,
-    ShortestPathRequest,
     TraverseRequest,
     UpdateNodeRequest,
 )

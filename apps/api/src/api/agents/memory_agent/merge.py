@@ -1,7 +1,7 @@
 import logging
-import math
 from difflib import SequenceMatcher
-from typing import List, Literal, Optional
+from typing import Literal
+
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ FUZZY_THRESHOLD = 0.85
 
 class MergeResult(BaseModel):
     action: Literal["merge", "create_new"]
-    target_id: Optional[str] = None
+    target_id: str | None = None
     confidence: float = 0.0
 
 def _fuzzy_score(a: str, b: str) -> float:
@@ -27,17 +27,15 @@ def _compute_confidence(name: str, aliases: list[str], existing_name: str, exist
                 alias_scores.append(_fuzzy_score(alias, ea))
     best_text_sim = max(alias_scores)
     confidence = best_text_sim
-    if same_type:
-        confidence = confidence * 0.7 + 0.3
-    else:
-        confidence = confidence * 0.7
+    confidence = confidence * 0.7 + 0.3 if same_type else confidence * 0.7
     return round(min(confidence, 1.0), 4)
 
-async def merge_check(entity_name: str, aliases: List[str], workspace_id: str, entity_type: Optional[str] = None) -> MergeResult:
+async def merge_check(entity_name: str, aliases: list[str], workspace_id: str, entity_type: str | None = None) -> MergeResult:
     try:
-        from api.models.schema import Entity
-        from api.database import async_session_factory
         from sqlalchemy import select
+
+        from api.database import async_session_factory
+        from api.models.schema import Entity
     except ImportError:
         logger.warning("Database modules not available, using fallback merge logic")
         return _fallback_merge_check(entity_name, aliases)
@@ -70,7 +68,7 @@ async def merge_check(entity_name: str, aliases: List[str], workspace_id: str, e
 
     return MergeResult(action="create_new", confidence=best_confidence)
 
-def _fallback_merge_check(entity_name: str, aliases: List[str], entity_type: Optional[str] = None) -> MergeResult:
+def _fallback_merge_check(entity_name: str, aliases: list[str], entity_type: str | None = None) -> MergeResult:
     name_lower = entity_name.lower()
     if name_lower in ["react", "react.js", "reactjs"]:
         return MergeResult(action="merge", target_id="entity_react_123", confidence=0.95)

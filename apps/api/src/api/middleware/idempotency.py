@@ -10,10 +10,10 @@ import hashlib
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Request
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import JSONResponse, Response
@@ -86,7 +86,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 select(IdempotencyRecord).where(
                     IdempotencyRecord.idempotency_key == key,
                     IdempotencyRecord.request_path == path,
-                    IdempotencyRecord.expires_at > datetime.now(timezone.utc),
+                    IdempotencyRecord.expires_at > datetime.now(UTC),
                 )
             )
             record = result.scalar_one_or_none()
@@ -110,7 +110,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
     async def _store(self, key: str, path: str, req_hash: str, response: Response) -> bytes:
         body_bytes = b"".join([chunk async for chunk in response.body_iterator])
         body_text = body_bytes.decode("utf-8", errors="replace")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             try:
                 await session.execute(

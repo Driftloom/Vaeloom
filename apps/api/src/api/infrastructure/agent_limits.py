@@ -4,7 +4,8 @@ import logging
 import os
 import time
 from collections import defaultdict
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger("vaeloom-api.infrastructure.agent_limits")
 

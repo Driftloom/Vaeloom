@@ -3,21 +3,22 @@ Application Agent — tailor documents, manage submissions.
 APPROVAL-GATED: Never submits without explicit per-application user approval.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class ApplicationPackage(BaseModel):
     job_id: str
-    tailored_resume_id: Optional[str] = None
+    tailored_resume_id: str | None = None
     cover_letter: str
-    deep_link: Optional[str] = None
+    deep_link: str | None = None
     status: str = "drafted"
 
 
@@ -48,11 +49,11 @@ class ApplicationAgent(BaseAgent):
 
     async def prepare(
         self,
-        job: Dict[str, Any],
+        job: dict[str, Any],
         resume_text: str,
-        user_profile: Dict[str, Any],
+        user_profile: dict[str, Any],
         has_approval: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         cover_letter = await self._generate_cover_letter(job, user_profile)
         deep_link = job.get("apply_url", f"https://example.com/apply/{job.get('id', '')}")
 
@@ -91,7 +92,7 @@ class ApplicationAgent(BaseAgent):
         }
 
     async def _generate_cover_letter(
-        self, job: Dict[str, Any], profile: Dict[str, Any]
+        self, job: dict[str, Any], profile: dict[str, Any]
     ) -> str:
         name = profile.get("name", "the applicant")
         title = job.get("title", "the role")
@@ -114,7 +115,7 @@ class ApplicationAgent(BaseAgent):
 
         return self._template_cover_letter(name, title, company, skills)
 
-    def _template_cover_letter(self, name: str, title: str, company: str, skills: List[str]) -> str:
+    def _template_cover_letter(self, name: str, title: str, company: str, skills: list[str]) -> str:
         skill_text = ", ".join(skills[:3]) if skills else "relevant skills"
         return (
             f"Dear Hiring Manager,\n\n"

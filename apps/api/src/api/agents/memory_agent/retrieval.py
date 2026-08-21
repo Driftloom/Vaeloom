@@ -1,6 +1,7 @@
 import logging
 import math
-from typing import List, Literal, Optional
+from typing import Literal
+
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -14,24 +15,25 @@ RESPONSE_TOKENS = 1000
 class RetrievedMemory(BaseModel):
     id: str
     content: str
-    source_document_id: Optional[str] = None
-    source_memory_id: Optional[str] = None
+    source_document_id: str | None = None
+    source_memory_id: str | None = None
     relevance_score: float
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(x * x for x in b))
     if norm_a == 0 or norm_b == 0:
         return 0.0
     return dot / (norm_a * norm_b)
 
-async def vector_search(query: str, workspace_id: str, limit: int) -> List[RetrievedMemory]:
+async def vector_search(query: str, workspace_id: str, limit: int) -> list[RetrievedMemory]:
     try:
-        from api.database import async_session_factory
-        from api.models.schema import Embedding, Entity, MemoryRecord
-        from api.services.llm_service import llm_service
         from sqlalchemy import select, text
+
+        from api.database import async_session_factory
+        from api.models.schema import Embedding, Entity, MemoryRecord  # noqa: F401
+        from api.services.llm_service import llm_service
     except ImportError as e:
         logger.warning(f"Vector search imports unavailable: {e}")
         return []
@@ -101,8 +103,9 @@ async def vector_search(query: str, workspace_id: str, limit: int) -> List[Retri
         return _in_memory_vector_search(query, workspace_id, limit)
 
 async def _fallback_vector_search(session, query_embedding: list[float], workspace_id: str, limit: int) -> list:
-    from api.models.schema import Embedding
     from sqlalchemy import select
+
+    from api.models.schema import Embedding
 
     stmt = select(Embedding).where(Embedding.workspace_id == workspace_id).limit(limit * 3)
     result = await session.execute(stmt)
@@ -122,18 +125,19 @@ async def _fallback_vector_search(session, query_embedding: list[float], workspa
         results.append(emb)
     return results
 
-def _in_memory_vector_search(query: str, workspace_id: str, limit: int) -> List[RetrievedMemory]:
+def _in_memory_vector_search(query: str, workspace_id: str, limit: int) -> list[RetrievedMemory]:
     return [RetrievedMemory(
         id="vec_fallback",
         content=f"Vector search unavailable for: {query}",
         relevance_score=0.5,
     )]
 
-async def keyword_search(query: str, workspace_id: str, limit: int) -> List[RetrievedMemory]:
+async def keyword_search(query: str, workspace_id: str, limit: int) -> list[RetrievedMemory]:
     try:
+        from sqlalchemy import or_, select
+
         from api.database import async_session_factory
         from api.models.schema import Entity, MemoryRecord
-        from sqlalchemy import select, or_
     except ImportError as e:
         logger.warning(f"Keyword search imports unavailable: {e}")
         return []
@@ -184,12 +188,14 @@ async def keyword_search(query: str, workspace_id: str, limit: int) -> List[Retr
         logger.warning(f"Keyword search failed: {e}")
         return []
 
-async def graph_traversal(query: str, workspace_id: str, limit: int) -> List[RetrievedMemory]:
+async def graph_traversal(query: str, workspace_id: str, limit: int) -> list[RetrievedMemory]:
     try:
+        import uuid  # noqa: F401
+
+        from sqlalchemy import or_, select
+
         from api.database import async_session_factory
         from api.models.schema import Entity, Relationship
-        from sqlalchemy import select, or_
-        import uuid
     except ImportError as e:
         logger.warning(f"Graph traversal imports unavailable: {e}")
         return []
@@ -242,7 +248,7 @@ async def graph_traversal(query: str, workspace_id: str, limit: int) -> List[Ret
         logger.warning(f"Graph traversal failed: {e}")
         return []
 
-async def rerank(results: List[RetrievedMemory], query: str, limit: int) -> List[RetrievedMemory]:
+async def rerank(results: list[RetrievedMemory], query: str, limit: int) -> list[RetrievedMemory]:
     seen = set()
     deduped = []
     for r in results:
@@ -260,9 +266,9 @@ def _estimate_tokens(text: str) -> int:
 
 
 def fit_to_context_window(
-    results: List[RetrievedMemory],
+    results: list[RetrievedMemory],
     max_context_tokens: int = DEFAULT_MAX_CONTEXT_TOKENS,
-) -> List[RetrievedMemory]:
+) -> list[RetrievedMemory]:
     """Filter results to fit within LLM context window.
 
     Keeps highest-relevance items first, then re-sorts by original order
@@ -288,7 +294,7 @@ async def retrieve(
     strategy: Literal["vector", "keyword", "graph", "hybrid"] = "hybrid",
     limit: int = 10,
     max_context_tokens: int = DEFAULT_MAX_CONTEXT_TOKENS,
-) -> List[RetrievedMemory]:
+) -> list[RetrievedMemory]:
     logger.info(f"Retrieving memories for '{query}' using '{strategy}' strategy")
 
     if strategy == "vector":

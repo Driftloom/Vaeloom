@@ -1,6 +1,5 @@
 import hashlib
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -9,12 +8,14 @@ def compute_content_hash(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
-async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> Optional[str]:
+async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> str | None:
     try:
+        import uuid  # noqa: F401
+
+        from sqlalchemy import select
+
         from api.database import async_session_factory
         from api.models.schema import Document, DocumentVersion
-        from sqlalchemy import select
-        import uuid
     except ImportError as e:
         logger.warning(f"Dedup DB imports unavailable: {e}")
         return _fallback_dedup(workspace_id, content_hash, filename)
@@ -57,7 +58,7 @@ async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> Op
     return None
 
 
-def _fallback_dedup(workspace_id: str, content_hash: str, filename: str) -> Optional[str]:
+def _fallback_dedup(workspace_id: str, content_hash: str, filename: str) -> str | None:
     if "duplicate" in filename.lower():
         logger.info(f"Fallback dedup: found 'duplicate' in filename {filename}")
         return "existing_doc_id_123"

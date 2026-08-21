@@ -3,11 +3,11 @@ Security Agent — monitor for suspicious activity, PII leaks, access anomalies.
 Full autonomy (monitoring only). Never logs sensitive data; alerts on findings.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,9 @@ class SecurityAgent(BaseAgent):
 
     async def monitor_activity(
         self,
-        recent_actions: List[Dict[str, Any]],
-        thresholds: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        recent_actions: list[dict[str, Any]],
+        thresholds: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_monitor(recent_actions)
         try:
@@ -70,7 +70,7 @@ class SecurityAgent(BaseAgent):
         self,
         content: str,
         content_type: str = "text",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_pii()
         try:
@@ -95,9 +95,9 @@ class SecurityAgent(BaseAgent):
 
     async def analyze_access_logs(
         self,
-        logs: List[Dict[str, Any]],
-        baseline_period: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        logs: list[dict[str, Any]],
+        baseline_period: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_access(logs)
         try:
@@ -121,7 +121,7 @@ class SecurityAgent(BaseAgent):
             logger.warning(f"Access log analysis failed: {e}")
             return self._fallback_access(logs)
 
-    def _fallback_monitor(self, actions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_monitor(self, actions: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "agent_name": "security",
             "action": "info",
@@ -134,7 +134,7 @@ class SecurityAgent(BaseAgent):
             },
         }
 
-    def _fallback_pii(self) -> Dict[str, Any]:
+    def _fallback_pii(self) -> dict[str, Any]:
         return {
             "agent_name": "security",
             "action": "info",
@@ -147,7 +147,7 @@ class SecurityAgent(BaseAgent):
             },
         }
 
-    def _fallback_access(self, logs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_access(self, logs: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "agent_name": "security",
             "action": "info",

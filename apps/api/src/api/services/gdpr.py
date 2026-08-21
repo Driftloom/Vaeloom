@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -90,7 +90,7 @@ class GDPRService:
 
         return DataExportResponse(
             user_id=user_id,
-            exported_at=datetime.now(timezone.utc),
+            exported_at=datetime.now(UTC),
             data=data,
             total_records=total_records,
         )

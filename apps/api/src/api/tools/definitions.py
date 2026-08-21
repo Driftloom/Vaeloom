@@ -2,7 +2,8 @@
 MCP-shaped tool definitions for Vaeloom agents.
 Every tool follows the MCP format: name, description, input_schema, output_schema, required_scope.
 """
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -10,8 +11,8 @@ class ToolDefinition(BaseModel):
     """MCP-shaped tool definition."""
     name: str
     description: str
-    input_schema: Dict[str, Any]
-    output_schema: Dict[str, Any]
+    input_schema: dict[str, Any]
+    output_schema: dict[str, Any]
     required_scope: str
     category: str  # memory_read | memory_write | connector_read | connector_write | system
 
@@ -264,7 +265,7 @@ NOTIFY_USER = ToolDefinition(
 
 # ── Registry ───────────────────────────────────────────────────────
 
-ALL_TOOLS: Dict[str, ToolDefinition] = {
+ALL_TOOLS: dict[str, ToolDefinition] = {
     t.name: t
     for t in [
         SEARCH_DOCUMENTS, QUERY_GRAPH, GET_ENTITY,
@@ -276,6 +277,6 @@ ALL_TOOLS: Dict[str, ToolDefinition] = {
 }
 
 
-def get_tools_for_agent(tool_names: List[str]) -> List[ToolDefinition]:
+def get_tools_for_agent(tool_names: list[str]) -> list[ToolDefinition]:
     """Return tool definitions for a given agent's declared tool list."""
     return [ALL_TOOLS[name] for name in tool_names if name in ALL_TOOLS]

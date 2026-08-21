@@ -1,13 +1,13 @@
 import asyncio
 import logging
-from typing import Dict, Any, Type
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class ParsedDocument:
-    def __init__(self, content: str, metadata: Dict[str, Any]):
+    def __init__(self, content: str, metadata: dict[str, Any]):
         self.content = content
         self.metadata = metadata
 
@@ -33,8 +33,9 @@ class PDFParser(BaseParser):
         num_pages = 0
 
         try:
-            import fitz
             import io
+
+            import fitz
             doc = fitz.open(stream=content, filetype="pdf")
             num_pages = len(doc)
             for page_num in range(num_pages):
@@ -44,8 +45,9 @@ class PDFParser(BaseParser):
             logger.info(f"Extracted {num_pages} pages via PyMuPDF")
         except ImportError:
             try:
-                import pdfplumber
                 import io
+
+                import pdfplumber
                 with pdfplumber.open(io.BytesIO(content)) as pdf:
                     num_pages = len(pdf.pages)
                     for page in pdf.pages:
@@ -54,8 +56,9 @@ class PDFParser(BaseParser):
                 logger.info(f"Extracted {num_pages} pages via pdfplumber")
             except ImportError:
                 try:
-                    from PyPDF2 import PdfReader
                     import io
+
+                    from PyPDF2 import PdfReader
                     reader = PdfReader(io.BytesIO(content))
                     num_pages = len(reader.pages)
                     for page in reader.pages:
@@ -98,8 +101,9 @@ class DOCXParser(BaseParser):
 
     def _parse_sync(self, content: bytes) -> ParsedDocument:
         try:
-            import docx
             import io
+
+            import docx
             doc = docx.Document(io.BytesIO(content))
             text_parts = [p.text for p in doc.paragraphs if p.text.strip()]
 
@@ -132,9 +136,10 @@ class ImageParser(BaseParser):
 
     def _parse_sync(self, content: bytes) -> ParsedDocument:
         try:
+            import io
+
             import pytesseract
             from PIL import Image
-            import io
             image = Image.open(io.BytesIO(content))
             ocr_text = pytesseract.image_to_string(image)
             confidence = 0.75
@@ -167,7 +172,7 @@ class ImageParser(BaseParser):
             )
 
 
-PARSERS: Dict[str, Type[BaseParser]] = {
+PARSERS: dict[str, type[BaseParser]] = {
     ".pdf": PDFParser,
     ".md": MarkdownParser,
     ".docx": DOCXParser,
@@ -189,6 +194,6 @@ async def parse_document(filename: str, content: bytes) -> ParsedDocument:
     parser = parser_cls(timeout=30)
     try:
         return await asyncio.wait_for(parser.parse(content), timeout=parser.timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error(f"Parsing timed out for {filename}")
         raise

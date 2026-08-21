@@ -1,10 +1,10 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 
-from ..models.schema import UsageRecord, Subscription
+from ..models.schema import Subscription, UsageRecord
 
 
 class BillingService:
@@ -40,7 +40,7 @@ class BillingService:
         )
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="Subscription already exists")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         sub = Subscription(
             user_id=uuid.UUID(user_id),
             plan=plan,

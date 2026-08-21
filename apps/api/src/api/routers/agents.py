@@ -7,13 +7,18 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
+from ..dependencies import get_current_user, get_tenant_id
+from ..orchestrator.router import UserRequest, handle
 from ..schemas.agent import (
-    AgentCreate, AgentResponse, AgentUpdate, AgentExecute,
-    ExecutionResponse, ScheduleRequest, ScheduleResponse,
+    AgentCreate,
+    AgentExecute,
+    AgentResponse,
+    AgentUpdate,
+    ExecutionResponse,
+    ScheduleRequest,
+    ScheduleResponse,
 )
 from ..services.agent_service import agent_service
-from ..dependencies import get_current_user, get_tenant_id
-from ..orchestrator.router import handle, UserRequest
 
 router = APIRouter()
 
@@ -48,7 +53,7 @@ async def get_agent_catalog(
             if isinstance(t, dict):
                 tool_names.append(t.get("name", str(t)))
             elif hasattr(t, "name"):
-                tool_names.append(getattr(t, "name"))
+                tool_names.append(t.name)
             else:
                 tool_names.append(str(t))
 

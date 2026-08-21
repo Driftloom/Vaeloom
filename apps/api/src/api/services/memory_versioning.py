@@ -1,9 +1,8 @@
-import copy
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class MemoryVersion(BaseModel):
@@ -53,7 +52,7 @@ def create_version(memory_id: uuid.UUID, old_state: dict[str, Any], new_state: d
         version_number=version_number,
         changes=changes,
         snapshot=_make_json_safe(new_state),
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     if memory_id not in _versions:

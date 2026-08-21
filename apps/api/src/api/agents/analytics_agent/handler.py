@@ -3,11 +3,11 @@ Analytics Agent — provide insights on user activity, job search metrics, platf
 Read-only. Never exposes individual user data in aggregate reports without anonymization.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +43,10 @@ class AnalyticsAgent(BaseAgent):
 
     async def get_activity_trends(
         self,
-        metrics: List[str],
+        metrics: list[str],
         period: str = "30d",
         granularity: str = "daily",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_trends(metrics)
         try:
@@ -71,8 +71,8 @@ class AnalyticsAgent(BaseAgent):
 
     async def analyze_applications(
         self,
-        applications: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        applications: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_applications(applications)
         try:
@@ -99,9 +99,9 @@ class AnalyticsAgent(BaseAgent):
     async def generate_report(
         self,
         report_type: str,
-        data_sources: List[str],
+        data_sources: list[str],
         period: str = "30d",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_report(report_type)
         try:
@@ -124,7 +124,7 @@ class AnalyticsAgent(BaseAgent):
             logger.warning(f"Report generation failed: {e}")
             return self._fallback_report(report_type)
 
-    def _fallback_trends(self, metrics: List[str]) -> Dict[str, Any]:
+    def _fallback_trends(self, metrics: list[str]) -> dict[str, Any]:
         return {
             "agent_name": "analytics",
             "action": "suggest",
@@ -137,7 +137,7 @@ class AnalyticsAgent(BaseAgent):
             },
         }
 
-    def _fallback_applications(self, applications: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_applications(self, applications: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "agent_name": "analytics",
             "action": "suggest",
@@ -150,7 +150,7 @@ class AnalyticsAgent(BaseAgent):
             },
         }
 
-    def _fallback_report(self, report_type: str) -> Dict[str, Any]:
+    def _fallback_report(self, report_type: str) -> dict[str, Any]:
         return {
             "agent_name": "analytics",
             "action": "suggest",

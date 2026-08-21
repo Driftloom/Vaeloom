@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..models.schema import Workspace
-from ..schemas.application import ApplicationCreate, ApplicationUpdateOutcome, ApplicationResponse
+from ..schemas.application import ApplicationCreate, ApplicationResponse, ApplicationUpdateOutcome
 from ..services.application_service import application_service
 
 router = APIRouter()

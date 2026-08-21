@@ -13,6 +13,7 @@ interface Metric {
 
 export function reportWebVitals(metric: Metric): void {
   console.info('[Web Vitals]', {
+    // eslint-disable-line no-console
     name: metric.name,
     value: metric.value,
     rating: metric.rating,

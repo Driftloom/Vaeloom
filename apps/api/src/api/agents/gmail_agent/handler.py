@@ -6,12 +6,13 @@ Integrates with real Gmail API via GmailClient, falls back to mock data.
 """
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class ClassifiedEmail(BaseModel):
     subject: str
     sender: str
     classification: str
-    extracted_deadline: Optional[str] = None
+    extracted_deadline: str | None = None
     is_high_priority: bool = False
 
 
@@ -61,14 +62,14 @@ class GmailAgent(BaseAgent):
         }
 
     async def fetch_emails(
-        self, query: Optional[str] = None, max_results: int = 20
-    ) -> Optional[List[Dict[str, Any]]]:
+        self, query: str | None = None, max_results: int = 20
+    ) -> list[dict[str, Any]] | None:
         client = await self._get_client()
         return await client.fetch_emails(max_results=max_results, query=query)
 
     async def classify_emails(
-        self, emails: List[Dict[str, Any]], trigger: str = "scheduled"
-    ) -> Dict[str, Any]:
+        self, emails: list[dict[str, Any]], trigger: str = "scheduled"
+    ) -> dict[str, Any]:
         if not emails:
             api_emails = await self.fetch_emails()
             if api_emails:
@@ -77,8 +78,8 @@ class GmailAgent(BaseAgent):
         if not emails:
             return await self.fallback()
 
-        classified: List[ClassifiedEmail] = []
-        high_priority: List[ClassifiedEmail] = []
+        classified: list[ClassifiedEmail] = []
+        high_priority: list[ClassifiedEmail] = []
 
         for email in emails:
             classification = await self._classify(email)
@@ -117,8 +118,8 @@ class GmailAgent(BaseAgent):
         }
 
     async def draft_response(
-        self, email: Dict[str, Any], response_body: str
-    ) -> Optional[Dict[str, Any]]:
+        self, email: dict[str, Any], response_body: str
+    ) -> dict[str, Any] | None:
         client = await self._get_client()
         return await client.create_draft(
             to=email.get("sender", ""),
@@ -126,7 +127,7 @@ class GmailAgent(BaseAgent):
             body=response_body,
         )
 
-    async def _classify(self, email: Dict[str, Any]) -> ClassifiedEmail:
+    async def _classify(self, email: dict[str, Any]) -> ClassifiedEmail:
         if not settings.llm_api_key:
             return self._keyword_classify(email)
         try:
@@ -149,7 +150,7 @@ class GmailAgent(BaseAgent):
             logger.warning(f"LLM classification failed, falling back to keyword: {e}")
             return self._keyword_classify(email)
 
-    def _keyword_classify(self, email: Dict[str, Any]) -> ClassifiedEmail:
+    def _keyword_classify(self, email: dict[str, Any]) -> ClassifiedEmail:
         subject = email.get("subject", "").lower()
         body = email.get("body", "").lower()
         combined = f"{subject} {body}"
@@ -176,7 +177,7 @@ class GmailAgent(BaseAgent):
             is_high_priority=is_high_priority,
         )
 
-    def _extract_deadline_keyword(self, email: Dict[str, Any]) -> Optional[str]:
+    def _extract_deadline_keyword(self, email: dict[str, Any]) -> str | None:
         body = email.get("body", "").lower()
         if "tomorrow" in body:
             return "tomorrow"

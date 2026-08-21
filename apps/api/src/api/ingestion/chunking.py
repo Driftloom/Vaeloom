@@ -7,7 +7,6 @@ Each chunk carries source document provenance for citation.
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +23,8 @@ class TextChunk:
     index: int
     start_offset: int
     end_offset: int
-    source_document_id: Optional[str] = None
-    source_version_id: Optional[str] = None
+    source_document_id: str | None = None
+    source_version_id: str | None = None
     metadata: dict = field(default_factory=dict)
 
     @property
@@ -37,10 +36,10 @@ def chunk_text(
     text: str,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
-    source_document_id: Optional[str] = None,
-    source_version_id: Optional[str] = None,
-    metadata: Optional[dict] = None,
-) -> List[TextChunk]:
+    source_document_id: str | None = None,
+    source_version_id: str | None = None,
+    metadata: dict | None = None,
+) -> list[TextChunk]:
     """Split text into overlapping chunks with provenance.
 
     Uses paragraph boundaries when possible, falls back to sentence,
@@ -84,7 +83,7 @@ def chunk_text(
 
 def _chunk_by_paragraphs(
     text: str, chunk_size: int, overlap: int
-) -> List[tuple[str, int, int]]:
+) -> list[tuple[str, int, int]]:
     """Split on paragraph boundaries, merging small paragraphs."""
     paragraphs = re.split(r'\n\s*\n', text)
     chunks = []
@@ -132,7 +131,7 @@ def _chunk_by_paragraphs(
 
 def _chunk_by_sentences(
     text: str, chunk_size: int, overlap: int
-) -> List[tuple[str, int, int]]:
+) -> list[tuple[str, int, int]]:
     """Split on sentence boundaries."""
     sentences = re.split(r'(?<=[.!?])\s+', text)
     chunks = []
@@ -171,7 +170,7 @@ def _chunk_by_sentences(
 
 def _chunk_by_characters(
     text: str, chunk_size: int, overlap: int
-) -> List[tuple[str, int, int]]:
+) -> list[tuple[str, int, int]]:
     """Character-level splitting with overlap."""
     chunks = []
     start = 0
@@ -189,11 +188,11 @@ def estimate_tokens(text: str) -> int:
 
 
 def fits_context_window(
-    chunks: List[TextChunk],
+    chunks: list[TextChunk],
     max_tokens: int = 8000,
     system_prompt_tokens: int = 500,
     response_tokens: int = 1000,
-) -> List[TextChunk]:
+) -> list[TextChunk]:
     """Filter chunks to fit within an LLM context window.
 
     Keeps highest-relevance chunks first, ordered by index for coherence.

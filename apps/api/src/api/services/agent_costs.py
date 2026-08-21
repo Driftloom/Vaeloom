@@ -3,16 +3,14 @@ Agent cost tracking — tracks token usage per agent per workspace.
 Uses in-memory store with Redis-ready interface.
 """
 import logging
-import os
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
-from ..dependencies import get_current_user, require_role
+from ..dependencies import require_role
 
 logger = logging.getLogger(__name__)
 
@@ -86,9 +84,9 @@ class AgentCostTracker:
 
     async def get_usage(
         self,
-        agent_name: Optional[str] = None,
-        workspace_id: Optional[str] = None,
-        period: Optional[int] = None,
+        agent_name: str | None = None,
+        workspace_id: str | None = None,
+        period: int | None = None,
     ) -> list[UsageRecord]:
         records: list[UsageRecord] = []
         for key, recs in self._records.items():
@@ -124,9 +122,9 @@ router = APIRouter()
 
 @router.get("/admin/agents/usage")
 async def get_agent_usage(
-    agent_name: Optional[str] = Query(None, description="Filter by agent name"),
-    workspace_id: Optional[str] = Query(None, description="Filter by workspace ID"),
-    period_hours: Optional[int] = Query(None, description="Time period in hours"),
+    agent_name: str | None = Query(None, description="Filter by agent name"),
+    workspace_id: str | None = Query(None, description="Filter by workspace ID"),
+    period_hours: int | None = Query(None, description="Time period in hours"),
     current_user: dict = Depends(require_role("admin")),
 ):
     period = period_hours * 3600 if period_hours else None
@@ -144,7 +142,7 @@ async def get_agent_usage(
                 "output_tokens": r.output_tokens,
                 "model": r.model,
                 "cost": r.cost,
-                "timestamp": datetime.fromtimestamp(r.timestamp, tz=timezone.utc).isoformat(),
+                "timestamp": datetime.fromtimestamp(r.timestamp, tz=UTC).isoformat(),
             }
             for r in records
         ],

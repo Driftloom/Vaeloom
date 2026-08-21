@@ -1,5 +1,4 @@
-import uuid
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 

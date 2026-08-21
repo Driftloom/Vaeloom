@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user, require_role
+from ..dependencies import require_role
 from ..schemas.iam import AssignRolesRequest, CreateUserRequest, UpdateUserRequest, UserResponse
 from ..services.iam_service import iam_service
 

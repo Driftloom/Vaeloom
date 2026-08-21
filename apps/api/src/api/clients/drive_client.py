@@ -4,10 +4,10 @@ search, metadata retrieval, and Google Workspace file export.
 Falls back gracefully when API is unavailable.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from api.config import settings
 
@@ -35,7 +35,7 @@ class DriveClient:
         self.client_id = client_id or settings.google_client_id
         self.client_secret = client_secret or settings.google_client_secret
         self.refresh_token = refresh_token or settings.google_refresh_token
-        self._access_token: Optional[str] = None
+        self._access_token: str | None = None
         self._configured = bool(self.client_id and self.client_secret and self.refresh_token)
 
     async def _refresh_access_token(self) -> str:
@@ -57,7 +57,7 @@ class DriveClient:
             self._access_token = data["access_token"]
             return self._access_token
 
-    async def _get_headers(self) -> Dict[str, str]:
+    async def _get_headers(self) -> dict[str, str]:
         if not self._access_token:
             await self._refresh_access_token()
         return {"Authorization": f"Bearer {self._access_token}", "Content-Type": "application/json"}
@@ -67,7 +67,7 @@ class DriveClient:
         wait=wait_exponential(multiplier=1, min=2, max=30),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError, DriveAuthError)),
     )
-    async def _request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
+    async def _request(self, method: str, path: str, **kwargs) -> dict[str, Any]:
         headers = await self._get_headers()
         if "headers" in kwargs:
             headers.update(kwargs.pop("headers"))
@@ -108,7 +108,7 @@ class DriveClient:
 
     async def list_files(
         self, page_size: int = 100, query: str = "trashed = false"
-    ) -> Optional[List[Dict[str, Any]]]:
+    ) -> list[dict[str, Any]] | None:
         if not self._configured:
             logger.info("Drive API not configured — returning None for mock fallback")
             return None
@@ -124,7 +124,7 @@ class DriveClient:
             logger.warning(f"Drive list_files failed: {e}")
             return None
 
-    async def download_file(self, file_id: str) -> Optional[bytes]:
+    async def download_file(self, file_id: str) -> bytes | None:
         if not self._configured:
             logger.info("Drive API not configured — cannot download file")
             return None
@@ -134,7 +134,7 @@ class DriveClient:
             logger.warning(f"Drive download_file failed: {e}")
             return None
 
-    async def search_files(self, query: str, page_size: int = 100) -> Optional[List[Dict[str, Any]]]:
+    async def search_files(self, query: str, page_size: int = 100) -> list[dict[str, Any]] | None:
         if not self._configured:
             logger.info("Drive API not configured — returning None for mock fallback")
             return None
@@ -151,7 +151,7 @@ class DriveClient:
             logger.warning(f"Drive search_files failed: {e}")
             return None
 
-    async def get_file(self, file_id: str) -> Optional[Dict[str, Any]]:
+    async def get_file(self, file_id: str) -> dict[str, Any] | None:
         if not self._configured:
             logger.info("Drive API not configured — cannot get file metadata")
             return None
@@ -162,7 +162,7 @@ class DriveClient:
             logger.warning(f"Drive get_file failed: {e}")
             return None
 
-    async def export_file(self, file_id: str, mime_type: str = "application/pdf") -> Optional[bytes]:
+    async def export_file(self, file_id: str, mime_type: str = "application/pdf") -> bytes | None:
         if not self._configured:
             logger.info("Drive API not configured — cannot export file")
             return None

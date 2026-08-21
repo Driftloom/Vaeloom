@@ -7,12 +7,14 @@ orchestrator for agent execution.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
 import signal
 import uuid
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import redis.asyncio as redis
 
@@ -159,7 +161,7 @@ class BullMQWorker:
 
 async def handle_event_publish(data: dict[str, Any]) -> dict[str, Any]:
     """Handle 'event.publish' jobs from the API events queue."""
-    from api.orchestrator.router import handle, UserRequest
+    from api.orchestrator.router import UserRequest, handle
 
     event_type = data.get("type", "unknown")
     payload = data.get("payload", {})
@@ -200,20 +202,16 @@ async def run_worker():
         stop_event.set()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
-        try:
+        with contextlib.suppress(NotImplementedError):
             loop.add_signal_handler(sig, _signal_handler)
-        except NotImplementedError:
-            pass
 
     worker_task = asyncio.create_task(worker.start())
 
     await stop_event.wait()
     await worker.stop()
     worker_task.cancel()
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await worker_task
-    except asyncio.CancelledError:
-        pass
 
 
 if __name__ == "__main__":

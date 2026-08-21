@@ -3,12 +3,13 @@ ATS Agent — read-only resume-vs-JD scoring with keyword gap analysis.
 Never writes to memory. Never edits the resume.
 """
 import logging
-from typing import Any, Dict, List
+from typing import Any
+
 from pydantic import BaseModel
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +18,9 @@ class ATSResult(BaseModel):
     overall_score: float
     keyword_match_pct: float
     format_compliance_pct: float
-    matched_keywords: List[str]
-    missing_keywords: List[str]
-    recommendations: List[str]
+    matched_keywords: list[str]
+    missing_keywords: list[str]
+    recommendations: list[str]
 
 
 class ATSAgent(BaseAgent):
@@ -48,7 +49,7 @@ class ATSAgent(BaseAgent):
 
     async def score(
         self, resume_text: str, job_description: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not resume_text or not job_description:
             return await self.fallback()
 
@@ -57,7 +58,7 @@ class ATSAgent(BaseAgent):
 
         return self._keyword_score(resume_text, job_description)
 
-    async def _llm_score(self, resume_text: str, job_description: str) -> Dict[str, Any]:
+    async def _llm_score(self, resume_text: str, job_description: str) -> dict[str, Any]:
         try:
             response = await llm_service.generate_completion([
                 {"role": "system", "content": "You are an ATS (Applicant Tracking System) scoring expert. Analyze the resume against the job description. Return ONLY valid JSON with these exact keys: overall_score (0.0-1.0), keyword_match_pct (0-100), format_compliance_pct (0-100), matched_keywords (list), missing_keywords (list), recommendations (list of strings). Be thorough and accurate."},
@@ -92,7 +93,7 @@ class ATSAgent(BaseAgent):
             logger.warning(f"LLM scoring failed, falling back to keyword scoring: {e}")
             return self._keyword_score(resume_text, job_description)
 
-    def _keyword_score(self, resume_text: str, job_description: str) -> Dict[str, Any]:
+    def _keyword_score(self, resume_text: str, job_description: str) -> dict[str, Any]:
         jd_keywords = self._extract_keywords_keyword(job_description)
         resume_keywords = self._extract_keywords_keyword(resume_text)
 
@@ -130,7 +131,7 @@ class ATSAgent(BaseAgent):
             },
         }
 
-    def _extract_keywords_keyword(self, text: str) -> List[str]:
+    def _extract_keywords_keyword(self, text: str) -> list[str]:
         common_skills = [
             "python", "javascript", "typescript", "react", "node",
             "sql", "aws", "docker", "kubernetes", "git",

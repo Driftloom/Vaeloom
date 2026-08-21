@@ -1,7 +1,16 @@
+"""
+Dead for MVP — tested in isolation, not wired to any router.
+
+`services/sso.py:137` SAMLSSOProvider stub is the runtime path (raises NotImplementedError
+and is excluded from get_sso_provider map). This file `services/saml.py` is a real
+`signxml` SAML implementation kept for ENT track, covered by `tests/test_saml.py` but
+intentionally not imported by `routers/auth.py`. Enable by importing into
+`sso.py` map when `SAML_IDP_METADATA_URL` + IdP is provisioned.
+"""
 import base64
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from lxml import etree as ET
@@ -58,7 +67,7 @@ def _verify_signature_with_signxml(
         # signxml verifies the signature and returns the verified element tree
         # It handles canonicalization (C14N) and digest verification internally.
         verifier = XMLVerifier()
-        verified_data = verifier.verify(
+        verifier.verify(
             assertion_element,
             x509_cert=idp_certificate,
             require_x509=True,
@@ -165,7 +174,7 @@ class SAMLProvider:
 
         conditions = assertion.find(f"{{{SAML_XMLNS}}}Conditions")
         if conditions is not None:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             not_before_str = conditions.get("NotBefore")
             not_on_or_after_str = conditions.get("NotOnOrAfter")
             if not_before_str:

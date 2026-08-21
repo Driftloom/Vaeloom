@@ -1,12 +1,13 @@
 import hashlib
 import time
-from typing import Any, AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ..config import settings
-from .model_router import model_router, ModelConfig, MODEL_CATALOG
+from .model_router import MODEL_CATALOG, model_router
 
 
 def _infer_provider_from_model(model: str | None) -> str:

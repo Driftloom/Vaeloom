@@ -2,14 +2,14 @@ import os
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Header, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select, text, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import settings
 from ..database import get_db
 from ..models.schema import User
+
 
 def _get_scim_token() -> str:
     return os.environ.get("SCIM_TOKEN", "")
@@ -119,10 +119,9 @@ async def list_scim_users(
     _auth=Depends(verify_scim_token),
 ):
     query = select(User)
-    if filter:
-        if "userName" in filter and "eq" in filter:
-            email = filter.split("eq")[-1].strip().strip('"').strip("'")
-            query = query.where(User.email == email)
+    if filter and "userName" in filter and "eq" in filter:
+        email = filter.split("eq")[-1].strip().strip('"').strip("'")
+        query = query.where(User.email == email)
     query = query.offset(startIndex - 1).limit(count)
     result = await db.execute(query)
     users = result.scalars().all()

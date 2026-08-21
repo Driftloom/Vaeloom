@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import uuid
-from collections import OrderedDict
-from collections.abc import MutableMapping
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 
-class ActionType(str, Enum):
+class ActionType(StrEnum):
     DOCUMENT_DELETE = "document_delete"
     MEMORY_UPDATE = "memory_update"
     SETTINGS_CHANGE = "settings_change"
@@ -33,7 +31,7 @@ class UndoRedoAction:
         self.user_id = user_id
         self.old_state = old_state
         self.new_state = new_state
-        self.timestamp = timestamp or datetime.now(timezone.utc)
+        self.timestamp = timestamp or datetime.now(UTC)
 
     def to_dict(self) -> dict[str, Any]:
         return {

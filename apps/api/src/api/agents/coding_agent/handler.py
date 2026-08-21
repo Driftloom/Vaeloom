@@ -3,11 +3,11 @@ Coding Agent — assist with coding challenges, technical interview prep.
 Suggest autonomy. Never runs untrusted code; provides educational solutions.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,8 @@ class CodingAgent(BaseAgent):
         self,
         problem_statement: str,
         language: str = "python",
-        constraints: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        constraints: list[str] | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_challenge(problem_statement)
         try:
@@ -73,8 +73,8 @@ class CodingAgent(BaseAgent):
         self,
         code_snippet: str,
         language: str = "python",
-        focus: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        focus: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_review(code_snippet)
         try:
@@ -99,10 +99,10 @@ class CodingAgent(BaseAgent):
 
     async def generate_practice(
         self,
-        topics: List[str],
+        topics: list[str],
         difficulty: str = "medium",
         language: str = "python",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_practice(topics)
         try:
@@ -125,7 +125,7 @@ class CodingAgent(BaseAgent):
             logger.warning(f"Practice generation failed: {e}")
             return self._fallback_practice(topics)
 
-    def _fallback_challenge(self, problem: str) -> Dict[str, Any]:
+    def _fallback_challenge(self, problem: str) -> dict[str, Any]:
         return {
             "agent_name": "coding",
             "action": "suggest",
@@ -138,7 +138,7 @@ class CodingAgent(BaseAgent):
             },
         }
 
-    def _fallback_review(self, code: str) -> Dict[str, Any]:
+    def _fallback_review(self, code: str) -> dict[str, Any]:
         return {
             "agent_name": "coding",
             "action": "suggest",
@@ -151,7 +151,7 @@ class CodingAgent(BaseAgent):
             },
         }
 
-    def _fallback_practice(self, topics: List[str]) -> Dict[str, Any]:
+    def _fallback_practice(self, topics: list[str]) -> dict[str, Any]:
         return {
             "agent_name": "coding",
             "action": "suggest",

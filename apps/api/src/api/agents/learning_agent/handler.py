@@ -3,11 +3,11 @@ Learning Agent — curate personalized learning resources.
 Suggest autonomy. Never recommends unverified or low-quality materials.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,8 @@ class LearningAgent(BaseAgent):
         self,
         topic: str,
         level: str = "beginner",
-        format: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        format: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_search(topic, level)
         try:
@@ -72,9 +72,9 @@ class LearningAgent(BaseAgent):
     async def recommend_materials(
         self,
         skill: str,
-        goal: Optional[str] = None,
-        preferred_formats: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        goal: str | None = None,
+        preferred_formats: list[str] | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_materials(skill)
         try:
@@ -99,10 +99,10 @@ class LearningAgent(BaseAgent):
 
     async def track_progress(
         self,
-        completed_items: List[str],
-        current_goal: Optional[str] = None,
-        time_spent_hours: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        completed_items: list[str],
+        current_goal: str | None = None,
+        time_spent_hours: float | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_progress(completed_items)
         try:
@@ -125,7 +125,7 @@ class LearningAgent(BaseAgent):
             logger.warning(f"Progress tracking failed: {e}")
             return self._fallback_progress(completed_items)
 
-    def _fallback_search(self, topic: str, level: str) -> Dict[str, Any]:
+    def _fallback_search(self, topic: str, level: str) -> dict[str, Any]:
         return {
             "agent_name": "learning",
             "action": "suggest",
@@ -138,7 +138,7 @@ class LearningAgent(BaseAgent):
             },
         }
 
-    def _fallback_materials(self, skill: str) -> Dict[str, Any]:
+    def _fallback_materials(self, skill: str) -> dict[str, Any]:
         return {
             "agent_name": "learning",
             "action": "suggest",
@@ -151,7 +151,7 @@ class LearningAgent(BaseAgent):
             },
         }
 
-    def _fallback_progress(self, completed_items: List[str]) -> Dict[str, Any]:
+    def _fallback_progress(self, completed_items: list[str]) -> dict[str, Any]:
         return {
             "agent_name": "learning",
             "action": "suggest",

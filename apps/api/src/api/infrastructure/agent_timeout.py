@@ -5,8 +5,9 @@ Configurable per-agent-type timeouts via AGENT_TIMEOUT_SECONDS env var.
 import asyncio
 import logging
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ class AgentTimeout:
     async def run(self) -> AsyncIterator["AgentTimeout"]:
         try:
             yield self
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._timed_out = True
             logger.warning(
                 "Agent '%s' timed out after %ds",
@@ -93,7 +94,7 @@ class AgentTimeout:
         try:
             result = await asyncio.wait_for(coro, timeout=self.timeout)
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._timed_out = True
             self._partial_result = partial_on_timeout
             logger.warning(
@@ -116,7 +117,7 @@ async def with_timeout(
     effective_timeout = timeout or timeout_for(agent_name)
     try:
         return await asyncio.wait_for(coro, timeout=effective_timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning(
             "Agent '%s' timed out after %ds",
             agent_name, effective_timeout,

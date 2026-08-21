@@ -6,8 +6,7 @@ per-agent token usage and cost.
 
 import logging
 import time
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +69,8 @@ class ModelRouter:
     def select_model(
         self,
         task_type: str,
-        provider: Optional[str] = None,
-        force_tier: Optional[str] = None,
+        provider: str | None = None,
+        force_tier: str | None = None,
     ) -> ModelConfig:
         """Select the best model for a given task type."""
         provider = provider or self._default_provider
@@ -122,7 +121,7 @@ class ModelRouter:
         )
         return record
 
-    def get_agent_summary(self, agent_name: Optional[str] = None) -> dict:
+    def get_agent_summary(self, agent_name: str | None = None) -> dict:
         """Get aggregated cost/usage stats."""
         records = self._cost_log
         if agent_name:

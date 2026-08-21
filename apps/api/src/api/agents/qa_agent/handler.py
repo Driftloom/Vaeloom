@@ -3,18 +3,19 @@ QA Agent — validates every agent output before delivery.
 Checks: schema compliance, policy, safety, plausibility, hallucination.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel
 
-from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
+from api.orchestrator.base import BaseAgent, MemoryScopes
 
 logger = logging.getLogger(__name__)
 
 
 class QAValidationResult(BaseModel):
     decision: str  # "approved" | "rejected"
-    issues: List[str] = []
-    action: Optional[str] = None  # "regenerate" when rejected
+    issues: list[str] = []
+    action: str | None = None  # "regenerate" when rejected
 
 
 class QAAgent(BaseAgent):
@@ -29,12 +30,12 @@ class QAAgent(BaseAgent):
             issues=["QA gate could not complete — passing with warning"],
         )
 
-    async def validate(self, agent_output: Dict[str, Any]) -> QAValidationResult:
+    async def validate(self, agent_output: dict[str, Any]) -> QAValidationResult:
         """
         Run the QA validation checklist on an agent's output.
         Returns approved/rejected with issues.
         """
-        issues: List[str] = []
+        issues: list[str] = []
 
         # 1. Schema compliance
         if not isinstance(agent_output, dict):

@@ -1,9 +1,8 @@
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..services.llm_service import LLMService
-
 
 DEFAULT_WEIGHTS = {
     "relevance": 0.4,
@@ -116,8 +115,8 @@ class SearchRankingService:
             else:
                 dt = created
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            age_hours = (datetime.now(timezone.utc) - dt).total_seconds() / 3600
+                dt = dt.replace(tzinfo=UTC)
+            age_hours = (datetime.now(UTC) - dt).total_seconds() / 3600
             if age_hours < 1:
                 return 1.0
             if age_hours < 24:

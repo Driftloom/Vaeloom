@@ -1,9 +1,10 @@
+import contextlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -48,7 +49,7 @@ class AuditLogger:
         user_agent: str | None = None,
     ) -> str:
         entry_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await self.db.execute(
             text("""
                 INSERT INTO audit_events (
@@ -146,10 +147,8 @@ class AuditMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             if response.status_code < 400:
                 import asyncio
-                try:
+                with contextlib.suppress(Exception):
                     asyncio.ensure_future(self._log_request(request, response))
-                except Exception:
-                    pass
             return response
         return await call_next(request)
 

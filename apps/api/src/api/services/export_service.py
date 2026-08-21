@@ -2,13 +2,18 @@
 import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import (
-    Memory, Document, Application, Resume, ScheduleEvent, User,
+    Application,
+    Document,
+    Memory,
+    Resume,
+    ScheduleEvent,
+    User,
 )
 
 
@@ -116,7 +121,7 @@ class ExportService:
         export.export_metadata = {
             "user_id": str(user_id),
             "workspace_id": str(workspace_id),
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "total_memories": len(export.memories),
             "total_documents": len(export.documents),
             "total_applications": len(export.applications),

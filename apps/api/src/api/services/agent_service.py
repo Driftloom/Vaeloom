@@ -1,15 +1,16 @@
-import uuid
 import time
-from datetime import datetime, timezone
-from typing import Any, AsyncGenerator
+import uuid
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+from typing import Any
 
-from sqlalchemy import select, func, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import Agent, AgentExecution, AgentSchedule
 from ..schemas.agent import AgentCreate, AgentExecute, AgentUpdate
 from ..utils.sanitize import sanitize_text
-from .llm_service import llm_service, LLMProviderError
+from .llm_service import llm_service
 
 
 class AgentService:
@@ -78,7 +79,7 @@ class AgentService:
             agent.config = dto.config
         if dto.status is not None:
             agent.status = dto.status
-        agent.updated_at = datetime.now(timezone.utc)
+        agent.updated_at = datetime.now(UTC)
         await db.flush()
         await db.refresh(agent)
         return agent
@@ -90,7 +91,7 @@ class AgentService:
         if not agent:
             return False
         agent.status = "inactive"
-        agent.updated_at = datetime.now(timezone.utc)
+        agent.updated_at = datetime.now(UTC)
         await db.flush()
         return True
 
@@ -125,7 +126,7 @@ class AgentService:
             input=dto.input,
             tenant_id=tenant_id,
             user_id=user_id,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
         db.add(execution)
         await db.flush()
@@ -179,12 +180,12 @@ class AgentService:
             execution.tokens_used = tokens_used
             execution.cost = round(cost, 6)
             execution.duration_ms = duration
-            execution.completed_at = datetime.now(timezone.utc)
+            execution.completed_at = datetime.now(UTC)
 
         except Exception as e:
             execution.status = "failed"
             execution.error = str(e)
-            execution.completed_at = datetime.now(timezone.utc)
+            execution.completed_at = datetime.now(UTC)
 
         await db.flush()
         await db.refresh(execution)

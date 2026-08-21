@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user
-from ..schemas.resume import ResumeResponse, GenerateResumeRequest
+from ..schemas.resume import GenerateResumeRequest, ResumeResponse
 from ..services.resume_service import resume_service
 
 router = APIRouter()

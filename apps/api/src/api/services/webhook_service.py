@@ -5,15 +5,14 @@ import hashlib
 import hmac
 import json
 import uuid
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import Webhook, WebhookDelivery
-from ..services.encryption import encrypt_value, decrypt_value, is_encrypted
+from ..services.encryption import decrypt_value, encrypt_value, is_encrypted
 
 
 class WebhookService:
@@ -61,7 +60,7 @@ class WebhookService:
             if key == "secret" and isinstance(value, str) and not is_encrypted(value):
                 value = encrypt_value(value)
             setattr(webhook, key, value)
-        webhook.updated_at = datetime.now(timezone.utc)
+        webhook.updated_at = datetime.now(UTC)
         await db.commit()
         await db.refresh(webhook)
         return webhook
@@ -80,7 +79,7 @@ class WebhookService:
         return hmac.new(actual_secret.encode(), payload, hashlib.sha256).hexdigest()
 
     async def dispatch(self, event_type: str, payload: dict, tenant_id: str | None, db: AsyncSession) -> list[WebhookDelivery]:
-        query = select(Webhook).where(Webhook.active == True)
+        query = select(Webhook).where(Webhook.active)
         if tenant_id:
             query = query.where(Webhook.tenant_id == uuid.UUID(tenant_id))
         if event_type != "*":
@@ -125,7 +124,7 @@ class WebhookService:
             "event_type": delivery.event_type,
             "payload": delivery.payload,
             "delivery_id": str(delivery.id),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }).encode()
 
         signature = await self._compute_signature(body, webhook.secret)
@@ -147,20 +146,20 @@ class WebhookService:
                 delivery.status_code = resp.status_code
                 delivery.response_body = resp.text[:2000]
                 delivery.status = "DELIVERED" if resp.is_success else "FAILED"
-                delivery.completed_at = datetime.now(timezone.utc)
+                delivery.completed_at = datetime.now(UTC)
                 await db.commit()
                 return
 
-            except (httpx.RequestError, asyncio.TimeoutError) as exc:
+            except (TimeoutError, httpx.RequestError) as exc:
                 if attempt < delivery.max_attempts:
                     wait = 2 ** attempt
-                    delivery.next_retry_at = datetime.now(timezone.utc)
+                    delivery.next_retry_at = datetime.now(UTC)
                     delivery.attempt = attempt + 1
                     await db.commit()
                     await asyncio.sleep(wait)
                 else:
                     delivery.status = "FAILED"
-                    delivery.completed_at = datetime.now(timezone.utc)
+                    delivery.completed_at = datetime.now(UTC)
                     delivery.response_body = str(exc)[:2000]
                     await db.commit()
 

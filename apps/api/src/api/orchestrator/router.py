@@ -4,43 +4,41 @@ Two-stage intent classification: coarse category -> specific agent.
 """
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
-from .base import BaseAgent, Tool, MemoryScopes
-from .loop import AgentRequest, run_agent_loop, AgentResponse
-
-from api.agents.organization_agent.handler import OrganizationAgent
-from api.agents.memory_agent.handler import MemoryAgentHandler
-from api.agents.resume_agent.handler import ResumeAgent
-from api.agents.ats_agent.handler import ATSAgent
-from api.agents.job_search_agent.handler import JobSearchAgent
-from api.agents.application_agent.handler import ApplicationAgent
-from api.agents.gmail_agent.handler import GmailAgent
-from api.agents.scheduler_agent.handler import SchedulerAgent
-from api.agents.qa_agent.handler import QAAgent, QAValidationResult
-from api.agents.career_agent.handler import CareerAgent  # G1
-from api.agents.learning_agent.handler import LearningAgent  # G2
-from api.agents.research_agent.handler import ResearchAgent  # G3
-from api.agents.memory.planning_agent import PlanningAgent  # Planning - roadmap
-from api.agents.github_agent.handler import GitHubAgent  # G4
-from api.agents.coding_agent.handler import CodingAgent  # G5
-from api.agents.reminder_agent.handler import ReminderAgent  # G6
 from api.agents.analytics_agent.handler import AnalyticsAgent  # G7
+from api.agents.application_agent.handler import ApplicationAgent
+from api.agents.ats_agent.handler import ATSAgent
+from api.agents.career_agent.handler import CareerAgent  # G1
+from api.agents.coding_agent.handler import CodingAgent  # G5
+from api.agents.connector_agent.handler import ConnectorAgent  # G11
+from api.agents.drive_agent.handler import DriveAgent  # G13
+from api.agents.github_agent.handler import GitHubAgent  # G4
+from api.agents.gmail_agent.handler import GmailAgent
+from api.agents.job_search_agent.handler import JobSearchAgent
+from api.agents.learning_agent.handler import LearningAgent  # G2
+from api.agents.memory.planning_agent import PlanningAgent  # Planning - roadmap
+from api.agents.memory_agent.handler import MemoryAgentHandler
+from api.agents.organization_agent.handler import OrganizationAgent
+from api.agents.plugin_agent.handler import PluginAgent  # G12
+from api.agents.qa_agent.handler import QAAgent, QAValidationResult
 from api.agents.recommendation_agent.handler import RecommendationAgent  # G8
 from api.agents.reflection_agent.handler import ReflectionAgent  # G9
+from api.agents.reminder_agent.handler import ReminderAgent  # G6
+from api.agents.research_agent.handler import ResearchAgent  # G3
+from api.agents.resume_agent.handler import ResumeAgent
+from api.agents.scheduler_agent.handler import SchedulerAgent
 from api.agents.security_agent.handler import SecurityAgent  # G10
-from api.agents.connector_agent.handler import ConnectorAgent  # G11
-from api.agents.plugin_agent.handler import PluginAgent  # G12
-from api.agents.drive_agent.handler import DriveAgent  # G13
-
-from api.infrastructure.agent_observability import kill_switch, metrics_collector, AgentMetric
 from api.infrastructure.agent_eval import detect_adversarial_prompt
+from api.infrastructure.agent_observability import AgentMetric, kill_switch, metrics_collector
+
+from .loop import AgentRequest, run_agent_loop
 
 logger = logging.getLogger(__name__)
 
 # ── Agent Registry ─────────────────────────────────────────────────
 
-AGENT_REGISTRY: Dict[str, type] = {
+AGENT_REGISTRY: dict[str, type] = {
     "organization": OrganizationAgent,
     "memory": MemoryAgentHandler,
     "resume": ResumeAgent,
@@ -206,7 +204,7 @@ MVP_CATEGORY_AGENT_MAP = {
 }
 
 
-def _handle_out_of_scope(agent_name: str, confidence: float) -> Dict[str, Any]:
+def _handle_out_of_scope(agent_name: str, confidence: float) -> dict[str, Any]:
     logger.info("Out-of-MVP-scope agent requested: %s", agent_name)
     return {
         "agent_name": "orchestrator",
@@ -225,7 +223,7 @@ def _handle_out_of_scope(agent_name: str, confidence: float) -> Dict[str, Any]:
     }
 
 
-async def handle(request: UserRequest) -> Dict[str, Any]:
+async def handle(request: UserRequest) -> dict[str, Any]:
     """
     Orchestrator entry point.
     1. Classify intent -> select agent
@@ -364,7 +362,7 @@ async def handle(request: UserRequest) -> Dict[str, Any]:
     return agent_output
 
 
-async def _attach_pending_approvals(agent_output: Dict[str, Any], workspace_id: str) -> None:
+async def _attach_pending_approvals(agent_output: dict[str, Any], workspace_id: str) -> None:
     """Surface actionable pending approvals as proposal cards in chat output.
 
     Each card carries `approval_id` so the frontend can call the approve/reject

@@ -3,10 +3,10 @@ Google Calendar API client. Handles OAuth2 token refresh, event listing, and cre
 Falls back to mock events when API is unavailable.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from api.config import settings
 
@@ -32,7 +32,7 @@ class CalendarClient:
         self.client_secret = client_secret or settings.google_client_secret
         self.refresh_token = refresh_token or settings.google_refresh_token
         self.calendar_id = calendar_id or settings.google_calendar_id
-        self._access_token: Optional[str] = None
+        self._access_token: str | None = None
         self._configured = bool(self.client_id and self.client_secret and self.refresh_token)
 
     async def _refresh_access_token(self) -> str:
@@ -54,7 +54,7 @@ class CalendarClient:
             self._access_token = data["access_token"]
             return self._access_token
 
-    async def _get_headers(self) -> Dict[str, str]:
+    async def _get_headers(self) -> dict[str, str]:
         if not self._access_token:
             await self._refresh_access_token()
         return {"Authorization": f"Bearer {self._access_token}", "Content-Type": "application/json"}
@@ -64,7 +64,7 @@ class CalendarClient:
         wait=wait_exponential(multiplier=1, min=2, max=30),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError, CalendarAuthError)),
     )
-    async def _request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
+    async def _request(self, method: str, path: str, **kwargs) -> dict[str, Any]:
         headers = await self._get_headers()
         if "headers" in kwargs:
             headers.update(kwargs.pop("headers"))
@@ -83,15 +83,15 @@ class CalendarClient:
 
     async def list_events(
         self,
-        time_min: Optional[str] = None,
-        time_max: Optional[str] = None,
+        time_min: str | None = None,
+        time_max: str | None = None,
         max_results: int = 50,
-    ) -> Optional[List[Dict[str, Any]]]:
+    ) -> list[dict[str, Any]] | None:
         if not self._configured:
             logger.info("Calendar API not configured — returning None for mock fallback")
             return None
         try:
-            params: Dict[str, Any] = {
+            params: dict[str, Any] = {
                 "maxResults": min(max_results, 250),
                 "orderBy": "startTime",
                 "singleEvents": True,
@@ -124,7 +124,7 @@ class CalendarClient:
         start_time: str,
         end_time: str,
         description: str = "",
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         if not self._configured:
             logger.info("Calendar API not configured — cannot create event")
             return None

@@ -1,17 +1,14 @@
-import hashlib
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import httpx
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.schema import ProviderKey
-from ..services.encryption import encrypt_value, decrypt_value
 from ..config import settings
-
+from ..models.schema import ProviderKey
+from ..services.encryption import decrypt_value, encrypt_value
 
 SUPPORTED_PROVIDERS = {"openai", "anthropic", "google", "mistral", "cohere", "azure", "openrouter", "groq", "ollama", "custom"}
 
@@ -70,7 +67,7 @@ class ProviderKeyService:
             existing.is_active = True
             existing.is_valid = None  # reset validation on rotation
             existing.validation_error = None
-            existing.updated_at = datetime.now(timezone.utc)
+            existing.updated_at = datetime.now(UTC)
             await db.flush()
             await db.refresh(existing)
             return existing
@@ -129,7 +126,7 @@ class ProviderKeyService:
         if not row:
             return None
         row.is_active = is_active
-        row.updated_at = datetime.now(timezone.utc)
+        row.updated_at = datetime.now(UTC)
         await db.flush()
         await db.refresh(row)
         return row
@@ -209,7 +206,7 @@ class ProviderKeyService:
         }
 
     async def mark_used(self, db: AsyncSession, row: ProviderKey) -> None:
-        row.last_used_at = datetime.now(timezone.utc)
+        row.last_used_at = datetime.now(UTC)
         await db.flush()
 
     async def validate(
@@ -269,7 +266,7 @@ class ProviderKeyService:
         latency_ms = int((time.monotonic() - start) * 1000)
 
         row.is_valid = is_valid
-        row.last_validated_at = datetime.now(timezone.utc)
+        row.last_validated_at = datetime.now(UTC)
         row.validation_error = None if is_valid else msg
         await db.flush()
         await db.refresh(row)

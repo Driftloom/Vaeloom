@@ -141,7 +141,7 @@ async def list_workspace_document_actions(
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found or access denied")
     from ..models.schema import DocumentAction
-    from ..schemas.document import DocumentActionResponse, DocumentActionListResponse
+    from ..schemas.document import DocumentActionListResponse, DocumentActionResponse
     result = await db.execute(
         select(DocumentAction)
         .where(DocumentAction.workspace_id == uuid.UUID(workspace_id))
@@ -167,8 +167,9 @@ async def list_workspace_agent_actions(
     ws = await workspace_service.find_by_id(workspace_id=workspace_id, user_id=user_id, db=db)
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found or access denied")
-    from ..models.schema import AgentAction
     from sqlalchemy import desc
+
+    from ..models.schema import AgentAction
     result = await db.execute(
         select(AgentAction)
         .where(AgentAction.workspace_id == uuid.UUID(workspace_id))

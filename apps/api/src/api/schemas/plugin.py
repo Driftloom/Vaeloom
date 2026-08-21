@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
+
 from pydantic import BaseModel, Field
-from enum import Enum
 
 
-class PluginStatus(str, Enum):
+class PluginStatus(StrEnum):
     REGISTERED = "REGISTERED"
     ACTIVE = "ACTIVE"
     DISABLED = "DISABLED"

@@ -1,17 +1,17 @@
 import hashlib
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import func, select
 
 from api.database import async_session_factory
 from api.models.schema import Document, DocumentVersion
 
+from .chunking import TextChunk, chunk_text
 from .dedup import check_dedup
 from .parsers import UnsupportedFormatError, parse_document
-from .chunking import chunk_text, TextChunk
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +20,9 @@ async def run_pipeline(
     workspace_id: str,
     filename: str,
     content: bytes,
-    user_id: Optional[str] = None,
-    connector_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    user_id: str | None = None,
+    connector_id: str | None = None,
+) -> dict[str, Any]:
     """Run the ingestion pipeline.
 
     Source -> format detection -> parser dispatch -> structure extraction ->
@@ -72,7 +72,7 @@ async def run_pipeline(
                         session.add(new_version)
 
                         # Update document metadata
-                        existing_doc.updated_at = datetime.now(timezone.utc)
+                        existing_doc.updated_at = datetime.now(UTC)
                         if parsed_doc.metadata:
                             existing_doc.metadata_ = {**existing_doc.metadata_, **parsed_doc.metadata}
 

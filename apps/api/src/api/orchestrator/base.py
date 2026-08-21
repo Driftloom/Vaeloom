@@ -1,9 +1,11 @@
-from typing import List, Literal, Callable, Any
+from typing import Any, Literal
+
 from pydantic import BaseModel
 
+
 class MemoryScopes(BaseModel):
-    read_types: List[str]
-    write_types: List[str]
+    read_types: list[str]
+    write_types: list[str]
 
 class Tool(BaseModel):
     name: str
@@ -11,7 +13,7 @@ class Tool(BaseModel):
 
 class BaseAgent:
     mission: str
-    tools: List[Tool]
+    tools: list[Tool]
     memory_scopes: MemoryScopes
     default_autonomy: Literal["suggest", "full", "read_only", "approval_gated"]
 

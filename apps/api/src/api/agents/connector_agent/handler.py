@@ -3,11 +3,11 @@ Connector Agent — help users discover and configure new integrations.
 Suggest autonomy. Never exposes API keys or secrets in responses.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,9 @@ class ConnectorAgent(BaseAgent):
 
     async def discover_connectors(
         self,
-        category: Optional[str] = None,
-        search_query: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        category: str | None = None,
+        search_query: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_discover(category)
         try:
@@ -71,8 +71,8 @@ class ConnectorAgent(BaseAgent):
     async def guide_setup(
         self,
         connector_name: str,
-        config_params: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        config_params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_setup(connector_name)
         try:
@@ -97,8 +97,8 @@ class ConnectorAgent(BaseAgent):
 
     async def monitor_health(
         self,
-        connectors: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        connectors: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_health(connectors)
         try:
@@ -122,7 +122,7 @@ class ConnectorAgent(BaseAgent):
             logger.warning(f"Health monitor failed: {e}")
             return self._fallback_health(connectors)
 
-    def _fallback_discover(self, category: Optional[str]) -> Dict[str, Any]:
+    def _fallback_discover(self, category: str | None) -> dict[str, Any]:
         return {
             "agent_name": "connector",
             "action": "suggest",
@@ -135,7 +135,7 @@ class ConnectorAgent(BaseAgent):
             },
         }
 
-    def _fallback_setup(self, connector_name: str) -> Dict[str, Any]:
+    def _fallback_setup(self, connector_name: str) -> dict[str, Any]:
         return {
             "agent_name": "connector",
             "action": "suggest",
@@ -148,7 +148,7 @@ class ConnectorAgent(BaseAgent):
             },
         }
 
-    def _fallback_health(self, connectors: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_health(self, connectors: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "agent_name": "connector",
             "action": "suggest",

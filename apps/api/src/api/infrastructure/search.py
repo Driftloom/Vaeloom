@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class SearchIndex(ABC):

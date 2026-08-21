@@ -5,12 +5,13 @@ Integrates with configurable job board API via JobBoardClient, falls back to moc
 """
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -66,11 +67,11 @@ class JobSearchAgent(BaseAgent):
 
     async def search(
         self,
-        keywords: List[str],
-        user_skills: List[str],
-        rejected_job_ids: List[str],
-        location: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        keywords: list[str],
+        user_skills: list[str],
+        rejected_job_ids: list[str],
+        location: str | None = None,
+    ) -> dict[str, Any]:
         raw_jobs = None
 
         client = await self._get_client()
@@ -115,8 +116,8 @@ class JobSearchAgent(BaseAgent):
         }
 
     async def _llm_generate_jobs(
-        self, keywords: List[str], user_skills: List[str], location: Optional[str]
-    ) -> List[Dict[str, Any]]:
+        self, keywords: list[str], user_skills: list[str], location: str | None
+    ) -> list[dict[str, Any]]:
         try:
             loc_hint = f" near {location}" if location else ""
             response = await llm_service.generate_completion([
@@ -133,7 +134,7 @@ class JobSearchAgent(BaseAgent):
 
         return self._mock_jobs()
 
-    def _mock_jobs(self) -> List[Dict[str, Any]]:
+    def _mock_jobs(self) -> list[dict[str, Any]]:
         return [
             {"id": "job_1", "title": "Senior Python Developer", "company": "TechCorp",
              "location": "Remote", "required_skills": ["python", "django", "aws"]},
@@ -146,7 +147,7 @@ class JobSearchAgent(BaseAgent):
         ]
 
     async def _score_fit(
-        self, job: Dict[str, Any], user_skills: List[str], keywords: List[str]
+        self, job: dict[str, Any], user_skills: list[str], keywords: list[str]
     ) -> tuple[float, str]:
         if settings.llm_api_key and user_skills:
             try:
@@ -164,10 +165,10 @@ class JobSearchAgent(BaseAgent):
         return self._keyword_score_fit(job, user_skills, keywords)
 
     def _keyword_score_fit(
-        self, job: Dict[str, Any], user_skills: List[str], keywords: List[str]
+        self, job: dict[str, Any], user_skills: list[str], keywords: list[str]
     ) -> tuple[float, str]:
-        required = set(s.lower() for s in job.get("required_skills", []))
-        user = set(s.lower() for s in user_skills)
+        required = {s.lower() for s in job.get("required_skills", [])}
+        user = {s.lower() for s in user_skills}
         matched = required & user
         missing = required - user
 

@@ -1,5 +1,4 @@
 import logging
-import sys
 import time
 import uuid
 
@@ -7,7 +6,6 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
-from ..config import settings
 from ..logging import correlation_id_var, tenant_id_var, user_id_var
 
 logger = logging.getLogger("vaeloom-api.infrastructure.logging")

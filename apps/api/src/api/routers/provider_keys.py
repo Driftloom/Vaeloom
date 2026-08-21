@@ -1,17 +1,19 @@
 import uuid
+from datetime import UTC
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..schemas.provider_key import (
-    ProviderKeyCreate,
-    ProviderKeyUpdate,
-    ProviderKeyResponse,
-    ProviderKeyListResponse,
-    EffectiveKeyResponse,
-    ValidateKeyResponse,
     ALLOWED_PROVIDERS,
+    EffectiveKeyResponse,
+    ProviderKeyCreate,
+    ProviderKeyListResponse,
+    ProviderKeyResponse,
+    ProviderKeyUpdate,
+    ValidateKeyResponse,
 )
 from ..services.provider_key_service import provider_key_service
 
@@ -78,8 +80,9 @@ async def create_provider_key(
     # Validate workspace ownership if provided
     ws_id = str(dto.workspace_id) if dto.workspace_id else None
     if ws_id:
-        from ..models.schema import Workspace
         from sqlalchemy import select
+
+        from ..models.schema import Workspace
         result = await db.execute(select(Workspace).where(Workspace.id == uuid.UUID(ws_id), Workspace.user_id == uuid.UUID(user_id)))
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Workspace not found or not owned by user")
@@ -150,8 +153,8 @@ async def update_provider_key(
         row.key_prefix = prefix
         row.is_valid = None
         row.validation_error = None
-        from datetime import datetime, timezone
-        row.updated_at = datetime.now(timezone.utc)
+        from datetime import datetime
+        row.updated_at = datetime.now(UTC)
         row.is_active = True
         await db.flush()
         await db.refresh(row)

@@ -1,10 +1,11 @@
 import asyncio
+import contextlib
 import json
 import os
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -20,19 +21,17 @@ class PluginService:
         for key in ('permissions', 'config_schema', 'output', 'capabilities', 'hooks', 'tags'):
             val = row_dict.get(key)
             if isinstance(val, str):
-                try:
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
                     row_dict[key] = json.loads(val)
-                except (json.JSONDecodeError, TypeError):
-                    pass
         return row_dict
 
     async def register(self, dto, tenant_id: str | None, db: AsyncSession):
         plugin_id = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         permissions_json = json.dumps(dto.permissions.model_dump() if hasattr(dto.permissions, "model_dump") else dto.permissions)
-        tags_list = f"{{{','.join(f'\"{t}\"' for t in dto.tags)}}}" if dto.tags else "{}"
-        capabilities_list = f"{{{','.join(f'\"{c}\"' for c in dto.capabilities)}}}" if dto.capabilities else "{}"
-        hooks_list = f"{{{','.join(f'\"{h}\"' for h in dto.hooks)}}}" if dto.hooks else "{}"
+        f"{{{','.join(f'\"{t}\"' for t in dto.tags)}}}" if dto.tags else "{}"
+        f"{{{','.join(f'\"{c}\"' for c in dto.capabilities)}}}" if dto.capabilities else "{}"
+        f"{{{','.join(f'\"{h}\"' for h in dto.hooks)}}}" if dto.hooks else "{}"
 
         stmt = text("""
             INSERT INTO plugins (id, name, version, author, description, license, status, permissions, capabilities, hooks, tags, entry_point, tenant_id, homepage, repository, icon, config_schema, code, min_app_version, created_at, updated_at)
@@ -150,7 +149,7 @@ class PluginService:
             return await self.get_plugin(plugin_id, db)
 
         sets.append("updated_at = :updated_at")
-        params["updated_at"] = datetime.now(timezone.utc)
+        params["updated_at"] = datetime.now(UTC)
 
         stmt = text(f"""
             UPDATE plugins SET {', '.join(sets)}
@@ -232,7 +231,7 @@ class PluginService:
                     proc.communicate(code.encode("utf-8")),
                     timeout=timeout_ms / 1000,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
                 await proc.wait()
                 status = "failed"
@@ -267,7 +266,7 @@ class PluginService:
             "duration_ms": duration,
             "output": json.dumps(output) if output else None,
             "error_message": error_message,
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
         })
         row = exec_result.mappings().first()
         return PluginService._fix_json_fields(dict(row)) if row else None

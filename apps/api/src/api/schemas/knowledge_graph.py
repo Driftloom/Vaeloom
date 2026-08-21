@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
+
 from pydantic import BaseModel, Field
-from enum import Enum
 
 
-class NodeType(str, Enum):
+class NodeType(StrEnum):
     CONCEPT = "concept"
     ENTITY = "entity"
     DOCUMENT = "document"

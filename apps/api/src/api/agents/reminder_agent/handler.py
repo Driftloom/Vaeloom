@@ -3,11 +3,11 @@ Reminder Agent — manage deadlines, follow-ups, and task reminders.
 Full autonomy (reminders only). Respects user's time and priority preferences.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ class ReminderAgent(BaseAgent):
 
     async def check_deadlines(
         self,
-        tasks: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        tasks: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_deadlines(tasks)
         try:
@@ -71,9 +71,9 @@ class ReminderAgent(BaseAgent):
     async def schedule_followup(
         self,
         context: str,
-        proposed_time: Optional[str] = None,
-        recurrence: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        proposed_time: str | None = None,
+        recurrence: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_followup(context)
         try:
@@ -98,9 +98,9 @@ class ReminderAgent(BaseAgent):
 
     async def sort_by_priority(
         self,
-        items: List[Dict[str, Any]],
-        criteria: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        items: list[dict[str, Any]],
+        criteria: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_priority(items)
         try:
@@ -124,7 +124,7 @@ class ReminderAgent(BaseAgent):
             logger.warning(f"Priority sort failed: {e}")
             return self._fallback_priority(items)
 
-    def _fallback_deadlines(self, tasks: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_deadlines(self, tasks: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "agent_name": "reminder",
             "action": "suggest",
@@ -137,7 +137,7 @@ class ReminderAgent(BaseAgent):
             },
         }
 
-    def _fallback_followup(self, context: str) -> Dict[str, Any]:
+    def _fallback_followup(self, context: str) -> dict[str, Any]:
         return {
             "agent_name": "reminder",
             "action": "suggest",
@@ -150,7 +150,7 @@ class ReminderAgent(BaseAgent):
             },
         }
 
-    def _fallback_priority(self, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_priority(self, items: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "agent_name": "reminder",
             "action": "suggest",

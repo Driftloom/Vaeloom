@@ -2,9 +2,8 @@ import asyncio
 import logging
 import random
 import time
-from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Optional, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 T = TypeVar("T")
 logger = logging.getLogger("vaeloom-api.infrastructure.agent_fallback")
@@ -19,7 +18,7 @@ class FallbackPolicy(Protocol[T]):
 class Result:
     success: bool
     data: Any = None
-    error: Optional[str] = None
+    error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -56,7 +55,7 @@ class RetryWithBackoff:
         self._max_delay = max_delay
 
     async def execute(self, input: Any, context: dict[str, Any] | None = None) -> Result:
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
                 policy = context.get("policy") if context else None

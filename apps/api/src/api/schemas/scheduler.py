@@ -1,14 +1,16 @@
 import uuid
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
-from pydantic import BaseModel, Field
-from enum import Enum
 
-class JobType(str, Enum):
+from pydantic import BaseModel
+
+
+class JobType(StrEnum):
     HTTP = "http"
     EVENT = "event"
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     ACTIVE = "active"
     PAUSED = "paused"
     DISABLED = "disabled"

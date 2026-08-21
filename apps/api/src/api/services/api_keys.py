@@ -1,10 +1,10 @@
 import secrets
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import bcrypt
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import ApiKey
@@ -78,12 +78,11 @@ class APIKeyManager:
 
         raw, key_hash = self.generate_key()
         key_prefix = raw[:10]
-        old_hash = key.key_hash
 
         key.key_hash = key_hash
         key.key_prefix = key_prefix
         key.version += 1
-        key.rotated_at = datetime.now(timezone.utc)
+        key.rotated_at = datetime.now(UTC)
         key.rotated_from = key.id
         key.last_used = None
 
@@ -105,9 +104,7 @@ class APIKeyManager:
         if not key.enabled:
             return False
         reference = key.rotated_at or key.created_at
-        if reference.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc) - timedelta(days=max_age_days):
-            return True
-        return False
+        return reference.replace(tzinfo=UTC) < datetime.now(UTC) - timedelta(days=max_age_days)
 
     async def list_keys(self, user_id: str, db: AsyncSession) -> list[ApiKey]:
         result = await db.execute(

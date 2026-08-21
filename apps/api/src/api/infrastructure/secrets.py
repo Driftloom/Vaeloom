@@ -1,7 +1,6 @@
 import os
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 
 
 class SecretManager(ABC):
@@ -17,7 +16,8 @@ class EnvSecretManager(SecretManager):
 class InfisicalClient:
     def __init__(self, client_id: str, client_secret: str, site_url: str | None = None):
         try:
-            from infisical_client import ClientSettings, InfisicalClient as _InfisicalClient
+            from infisical_client import ClientSettings
+            from infisical_client import InfisicalClient as _InfisicalClient
 
             settings = ClientSettings(client_id=client_id, client_secret=client_secret)
             if site_url:

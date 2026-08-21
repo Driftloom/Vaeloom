@@ -5,14 +5,14 @@ Upgraded from Phase 4 modules to full specialist agent with handler.
 import hashlib
 import logging
 import uuid
-from typing import Any, Dict, List
-
-from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
-from .extraction import extract, ExtractedFacts
-from .merge import merge_check, MergeResult
-from .retrieval import retrieve, RetrievedMemory
+from typing import Any
 
 from sqlalchemy import func
+
+from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
+
+from .extraction import ExtractedFacts, extract
+from .merge import MergeResult, merge_check
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class MemoryAgentHandler(BaseAgent):
         source_type: str,
         source_id: str,
         workspace_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Full Memory Agent flow:
         1. Extract entities/relationships from content
@@ -72,7 +72,7 @@ class MemoryAgentHandler(BaseAgent):
         facts: ExtractedFacts = await extract(content, source_type, source_id, workspace_id)
 
         # 2. Check each entity for merge candidates
-        merge_results: List[Dict[str, Any]] = []
+        merge_results: list[dict[str, Any]] = []
         for entity in facts.entities:
             result: MergeResult = await merge_check(
                 entity.name, entity.aliases, workspace_id, entity.entity_type
@@ -88,11 +88,11 @@ class MemoryAgentHandler(BaseAgent):
         persisted_count = 0
         entities_created = 0
         relationships_created = 0
-        entity_id_map: Dict[str, uuid.UUID] = {}  # name -> DB id for relationship resolution
+        entity_id_map: dict[str, uuid.UUID] = {}  # name -> DB id for relationship resolution
 
         try:
             from ...database import async_session_factory
-            from ...models.schema import Memory, Entity, Relationship
+            from ...models.schema import Entity, Memory, Relationship
 
             async with async_session_factory() as db:
                 # 3a. Create Entity rows (knowledge graph nodes)

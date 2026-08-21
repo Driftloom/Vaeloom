@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -78,7 +78,7 @@ class TenantProvisioner:
 
         self._provisioning_status[str(tenant_id)]["default_workspace_created"] = True
         self._provisioning_status[str(tenant_id)]["completed"] = True
-        self._provisioning_status[str(tenant_id)]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        self._provisioning_status[str(tenant_id)]["completed_at"] = datetime.now(UTC).isoformat()
 
         return {
             "tenant_id": str(tenant_id),

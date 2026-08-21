@@ -1,10 +1,10 @@
 import json
 import logging
-from typing import List, Optional
+
 from pydantic import BaseModel
 
-from api.services.llm_service import llm_service
 from api.config import settings
+from api.services.llm_service import llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ class ExtractedEntity(BaseModel):
     name: str
     entity_type: str
     confidence: float
-    aliases: List[str] = []
+    aliases: list[str] = []
 
 
 class ExtractedRelationship(BaseModel):
@@ -24,8 +24,8 @@ class ExtractedRelationship(BaseModel):
 
 
 class ExtractedFacts(BaseModel):
-    entities: List[ExtractedEntity]
-    relationships: List[ExtractedRelationship]
+    entities: list[ExtractedEntity]
+    relationships: list[ExtractedRelationship]
 
 
 async def extract(content: str, source_type: str, source_id: str, workspace_id: str) -> ExtractedFacts:

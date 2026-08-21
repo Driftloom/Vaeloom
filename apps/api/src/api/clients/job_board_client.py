@@ -4,10 +4,10 @@ Can be pointed at any REST job board API. Falls back to mock data when unavailab
 Supports Greenhouse, Lever, and generic API formats.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from api.config import settings
 
@@ -35,14 +35,14 @@ class JobBoardClient:
     )
     async def search_jobs(
         self,
-        keywords: List[str],
-        location: Optional[str] = None,
-    ) -> Optional[List[Dict[str, Any]]]:
+        keywords: list[str],
+        location: str | None = None,
+    ) -> list[dict[str, Any]] | None:
         if not self._configured:
             logger.info("Job board API not configured — returning None for mock fallback")
             return None
         try:
-            params: Dict[str, Any] = {"query": " ".join(keywords)}
+            params: dict[str, Any] = {"query": " ".join(keywords)}
             if location:
                 params["location"] = location
 
@@ -63,7 +63,7 @@ class JobBoardClient:
             logger.warning(f"Job board search failed: {e}")
             return None
 
-    def _normalize_response(self, raw: Any) -> List[Dict[str, Any]]:
+    def _normalize_response(self, raw: Any) -> list[dict[str, Any]]:
         if isinstance(raw, list):
             return [self._normalize_job(j) for j in raw]
         if isinstance(raw, dict):
@@ -72,7 +72,7 @@ class JobBoardClient:
                 return [self._normalize_job(j) for j in jobs]
         return []
 
-    def _normalize_job(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_job(self, raw: dict[str, Any]) -> dict[str, Any]:
         return {
             "id": raw.get("id", raw.get("external_id", f"job_{hash(str(raw)) % 10000}")),
             "title": raw.get("title", raw.get("name", raw.get("position", "Unknown Role"))),

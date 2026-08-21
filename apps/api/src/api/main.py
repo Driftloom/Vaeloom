@@ -1,17 +1,15 @@
-import asyncio
+import sqlite3
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
-import uuid
-import sqlite3
-
 if "sqlite" in __import__("os").environ.get("DATABASE__URL", ""):
     import sqlalchemy.types as sa_types
-    from sqlalchemy.dialects.sqlite import TEXT, JSON as SQLiteJSON
+    from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 
     class MockVector(sa_types.TypeDecorator):
         impl = sa_types.Text
@@ -44,28 +42,62 @@ if "sqlite" in __import__("os").environ.get("DATABASE__URL", ""):
     sqlite3.register_adapter(dict, lambda d: __import__("json").dumps(d))
     sqlite3.register_adapter(list, lambda l: __import__("json").dumps(l))
 
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 from .config import settings, validate_settings
-from .database import engine, Base
-from .infrastructure.logging import CorrelationIDMiddleware, RequestLoggingMiddleware, setup_logging, get_logger
+from .database import Base, engine
+from .infrastructure.logging import (
+    CorrelationIDMiddleware,
+    RequestLoggingMiddleware,
+    get_logger,
+    setup_logging,
+)
 from .infrastructure.metrics import MetricsMiddleware
-from .infrastructure.opentelemetry import setup_opentelemetry, instrumement_fastapi
+from .infrastructure.opentelemetry import instrumement_fastapi, setup_opentelemetry
+from .middleware.api_version import APIVersionMiddleware
 from .middleware.auth import AuthMiddleware
 from .middleware.csrf import CSRFMiddleware, create_csrf_token
+from .middleware.exception_handler import generic_exception_handler, unified_exception_handler
+from .middleware.idempotency import IdempotencyMiddleware
 from .middleware.ip_filter import IPAllowlistMiddleware
+from .middleware.prompt_injection import PromptInjectionMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.security_headers import SecurityHeadersMiddleware
 from .middleware.tenant import TenantMiddleware
-from .middleware.api_version import APIVersionMiddleware
-from .middleware.prompt_injection import PromptInjectionMiddleware
-from .middleware.idempotency import IdempotencyMiddleware
-from .middleware.exception_handler import unified_exception_handler, generic_exception_handler
-from .routers import health, auth, workspaces, memory, agents, events, search, integrations, billing, documents, resumes, applications, plugins, chat, notifications, connectors, scheduler, analytics, audit, iam, knowledge_graph, recommendations, webhooks, admin_console, gmail, provider_keys
+from .routers import (
+    admin_console,
+    agents,
+    analytics,
+    applications,
+    audit,
+    auth,
+    billing,
+    chat,
+    connectors,
+    documents,
+    events,
+    gmail,
+    health,
+    iam,
+    integrations,
+    knowledge_graph,
+    memory,
+    notifications,
+    plugins,
+    provider_keys,
+    recommendations,
+    resumes,
+    scheduler,
+    search,
+    webhooks,
+    workspaces,
+)
+from .services.agent_costs import router as agent_costs_router
+from .services.approval import router as approval_router
+from .services.consent import router as consent_router
 from .services.encryption import router as encryption_router
 from .services.gdpr import router as gdpr_router
-from .services.consent import router as consent_router
-from .services.approval import router as approval_router
-from .services.agent_costs import router as agent_costs_router
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from .services.scim import router as scim_router
 
 logger = get_logger(__name__)
 
@@ -81,7 +113,9 @@ async def lifespan(app: FastAPI):
     # Run Alembic migrations (standard, replaces custom migration runner)
     try:
         import os
+
         from alembic.config import Config
+
         from alembic import command
         # Use absolute path to alembic.ini relative to this file
         alembic_ini = os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
@@ -126,8 +160,9 @@ app.add_middleware(
     window_seconds=settings.rate_limit_window,
     api_key_rate_limit=settings.api_key_rate_limit,
 )
-app.add_middleware(AuthMiddleware)
+# Tenant must be inner than Auth (added before Auth so Auth outer) → fixes RLS never-set bug (audit CRITICAL 2026-08-21)
 app.add_middleware(TenantMiddleware)
+app.add_middleware(AuthMiddleware)
 app.add_middleware(CSRFMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CorrelationIDMiddleware)
@@ -152,15 +187,16 @@ app.add_exception_handler(Exception, generic_exception_handler)
 
 @app.get("/csrf-token", tags=["security"])
 async def get_csrf_token():
-    from fastapi.responses import JSONResponse
     token, cookie_value = create_csrf_token()
     response = JSONResponse({"csrf_token": token})
+    # httponly=False so SPA can read cookie for double-submit X-CSRF-Token header (fixes 2026-08-21 audit)
+    # TODO: replace in-memory _token_store with Redis for multi-worker (see middleware/csrf.py:49)
     response.set_cookie(
         key="csrf_token",
         value=cookie_value,
         max_age=3600,
         secure=settings.service_environment != "local",
-        httponly=True,
+        httponly=False,
         samesite="lax",
     )
     return response
@@ -214,3 +250,4 @@ if settings.enterprise_routes_enabled:
     app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["recommendations"])
     app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
     app.include_router(admin_console.router, prefix="", tags=["admin"])
+    app.include_router(scim_router, prefix="/scim", tags=["scim"])

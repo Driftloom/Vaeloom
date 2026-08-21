@@ -2,9 +2,8 @@ import csv
 import io
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from fastapi import HTTPException
 from sqlalchemy import text
 
 
@@ -20,7 +19,7 @@ class AuditService:
         db=None,
     ):
         event_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("""
                 INSERT INTO audit_events (id, actor_id, action, resource, resource_id, tenant_id, metadata, created_at)
@@ -257,7 +256,7 @@ class AuditService:
             "by_action": action_counts,
             "by_resource": resource_counts,
             "total": total,
-            "generated_at": datetime.now(timezone.utc),
+            "generated_at": datetime.now(UTC),
         }
 
 

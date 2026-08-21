@@ -6,7 +6,7 @@ import json
 import logging
 import time
 import uuid as uuid_lib
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .definitions import ToolDefinition
 
@@ -59,11 +59,12 @@ async def check_permission(
     return False
 
 
-async def _execute_search_documents(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_search_documents(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     try:
+        from sqlalchemy import or_, select
+
         from api.database import async_session_factory
         from api.models.schema import Document
-        from sqlalchemy import select, or_
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
@@ -106,11 +107,12 @@ async def _execute_search_documents(params: Dict[str, Any], workspace_id: str) -
         return {"status": "error", "tool": "search_documents", "result": str(e)}
 
 
-async def _execute_query_graph(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_query_graph(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     try:
+        from sqlalchemy import or_, select
+
         from api.database import async_session_factory
         from api.models.schema import Entity, Relationship
-        from sqlalchemy import select, or_
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
@@ -169,12 +171,14 @@ async def _execute_query_graph(params: Dict[str, Any], workspace_id: str) -> Dic
         return {"status": "error", "tool": "query_graph", "result": str(e)}
 
 
-async def _execute_get_entity(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_get_entity(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     try:
+        import uuid
+
+        from sqlalchemy import or_, select
+
         from api.database import async_session_factory
         from api.models.schema import Entity, Relationship
-        from sqlalchemy import select, or_
-        import uuid
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
@@ -222,11 +226,12 @@ async def _execute_get_entity(params: Dict[str, Any], workspace_id: str) -> Dict
         return {"status": "error", "tool": "get_entity", "result": str(e)}
 
 
-async def _execute_create_entity(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_create_entity(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     try:
+        from sqlalchemy import select
+
         from api.database import async_session_factory
         from api.models.schema import Entity
-        from sqlalchemy import select
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
@@ -275,16 +280,18 @@ async def _execute_create_entity(params: Dict[str, Any], workspace_id: str) -> D
         return {"status": "error", "tool": "create_entity", "result": str(e)}
 
 
-async def _execute_categorize_document(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_categorize_document(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     document_id = params.get("document_id", "")
     category = params.get("category", "")
     folder = params.get("folder", "")
 
     try:
+        import uuid
+
+        from sqlalchemy import select  # noqa: F401
+
         from api.database import async_session_factory
         from api.models.schema import Document
-        from sqlalchemy import select
-        import uuid
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
@@ -316,16 +323,17 @@ async def _execute_categorize_document(params: Dict[str, Any], workspace_id: str
         return {"status": "error", "tool": "categorize_document", "result": str(e)}
 
 
-async def _execute_notify_user(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_notify_user(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     message = params.get("message", "")
     priority = params.get("priority", "medium")
 
     logger.info(f"NOTIFICATION [{priority.upper()}]: {message}")
 
     try:
+        import uuid
+
         from api.database import async_session_factory
         from api.models.schema import AgentAction
-        import uuid
     except ImportError:
         return {"status": "success", "tool": "notify_user", "result": {"delivered": True, "logged_to": "stdout"}}
 
@@ -351,12 +359,15 @@ async def _execute_notify_user(params: Dict[str, Any], workspace_id: str) -> Dic
         return {"status": "success", "tool": "notify_user", "result": {"delivered": True, "logged_to": "stdout"}}
 
 
-async def _execute_merge_entities(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_merge_entities(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     try:
-        from api.database import async_session_factory
-        from api.models.schema import Entity, Relationship, Embedding
-        from sqlalchemy import select, or_, delete, update as sa_update
         import uuid
+
+        from sqlalchemy import delete, or_, select  # noqa: F401
+        from sqlalchemy import update as sa_update
+
+        from api.database import async_session_factory
+        from api.models.schema import Embedding, Entity, Relationship
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
@@ -428,7 +439,7 @@ async def _execute_merge_entities(params: Dict[str, Any], workspace_id: str) -> 
         return {"status": "error", "tool": "merge_entities", "result": str(e)}
 
 
-async def _execute_search_gmail(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_search_gmail(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     query = params.get("query", "")
     max_results = params.get("max_results", 20)
     after_date = params.get("after_date")
@@ -468,7 +479,7 @@ async def _execute_search_gmail(params: Dict[str, Any], workspace_id: str) -> Di
         return {"status": "error", "tool": "search_gmail", "result": str(e)}
 
 
-async def _execute_search_jobs(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_search_jobs(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     keywords_raw = params.get("keywords", "")
     location = params.get("location")
     remote_ok = params.get("remote_ok", True)
@@ -517,7 +528,7 @@ async def _execute_search_jobs(params: Dict[str, Any], workspace_id: str) -> Dic
         return {"status": "error", "tool": "search_jobs", "result": str(e)}
 
 
-async def _execute_list_calendar_events(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_list_calendar_events(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     start_date = params.get("start_date", "")
     end_date = params.get("end_date", "")
 
@@ -552,7 +563,7 @@ async def _execute_list_calendar_events(params: Dict[str, Any], workspace_id: st
         return {"status": "error", "tool": "list_calendar_events", "result": str(e)}
 
 
-async def _execute_rename_file(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_rename_file(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     document_id = params.get("document_id", "")
     new_name = params.get("new_name", "")
 
@@ -560,9 +571,10 @@ async def _execute_rename_file(params: Dict[str, Any], workspace_id: str) -> Dic
         return {"status": "error", "tool": "rename_file", "result": "document_id and new_name are required"}
 
     try:
+        import uuid
+
         from api.database import async_session_factory
         from api.models.schema import Document
-        import uuid
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
@@ -573,10 +585,7 @@ async def _execute_rename_file(params: Dict[str, Any], workspace_id: str) -> Dic
                 return {"status": "error", "tool": "rename_file", "result": f"Document {document_id} not found"}
 
             parts = doc.path.rsplit("/", 1)
-            if len(parts) > 1:
-                new_path = f"{parts[0]}/{new_name}"
-            else:
-                new_path = new_name
+            new_path = f"{parts[0]}/{new_name}" if len(parts) > 1 else new_name
 
             old_path = doc.path
             doc.path = new_path
@@ -596,7 +605,7 @@ async def _execute_rename_file(params: Dict[str, Any], workspace_id: str) -> Dic
         return {"status": "error", "tool": "rename_file", "result": str(e)}
 
 
-async def _execute_move_file(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_move_file(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     document_id = params.get("document_id", "")
     target_folder = params.get("target_folder", "")
 
@@ -604,9 +613,10 @@ async def _execute_move_file(params: Dict[str, Any], workspace_id: str) -> Dict[
         return {"status": "error", "tool": "move_file", "result": "document_id and target_folder are required"}
 
     try:
+        import uuid
+
         from api.database import async_session_factory
         from api.models.schema import Document
-        import uuid
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
@@ -642,11 +652,11 @@ async def _execute_move_file(params: Dict[str, Any], workspace_id: str) -> Dict[
         return {"status": "error", "tool": "move_file", "result": str(e)}
 
 
-async def _execute_draft_email(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_draft_email(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     to = params.get("to", "")
     subject = params.get("subject", "")
     body = params.get("body", "")
-    reply_to_id = params.get("reply_to_id")
+    params.get("reply_to_id")
 
     if not to or not subject or not body:
         return {"status": "error", "tool": "draft_email", "result": "to, subject, and body are required"}
@@ -689,7 +699,7 @@ async def _execute_draft_email(params: Dict[str, Any], workspace_id: str) -> Dic
         return {"status": "error", "tool": "draft_email", "result": str(e)}
 
 
-async def _execute_create_calendar_event(params: Dict[str, Any], workspace_id: str) -> Dict[str, Any]:
+async def _execute_create_calendar_event(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     title = params.get("title", "")
     start_time = params.get("start_time", "")
     end_time = params.get("end_time")
@@ -743,7 +753,7 @@ async def _execute_create_calendar_event(params: Dict[str, Any], workspace_id: s
         return {"status": "error", "tool": "create_calendar_event", "result": str(e)}
 
 
-async def _execute_mock(tool: ToolDefinition, params: Dict[str, Any]) -> Dict[str, Any]:
+async def _execute_mock(tool: ToolDefinition, params: dict[str, Any]) -> dict[str, Any]:
     return {
         "status": "success",
         "tool": tool.name,
@@ -753,7 +763,7 @@ async def _execute_mock(tool: ToolDefinition, params: Dict[str, Any]) -> Dict[st
     }
 
 
-TOOL_DISPATCH: Dict[str, Any] = {
+TOOL_DISPATCH: dict[str, Any] = {
     "search_documents": _execute_search_documents,
     "query_graph": _execute_query_graph,
     "get_entity": _execute_get_entity,
@@ -773,11 +783,11 @@ TOOL_DISPATCH: Dict[str, Any] = {
 
 async def execute_tool(
     tool: ToolDefinition,
-    params: Dict[str, Any],
+    params: dict[str, Any],
     agent_id: str,
     agent_scopes: list[str],
     workspace_id: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Execute a tool call with permission checking, retry logic, and audit logging.
 
@@ -804,7 +814,7 @@ async def execute_tool(
     # ── 2. Execute with retry ──────────────────────────────────────
     timeout = CATEGORY_TIMEOUTS.get(tool.category, 5)
     max_retries = CATEGORY_RETRIES.get(tool.category, 3)
-    last_error: Optional[Exception] = None
+    last_error: Exception | None = None
 
     for attempt in range(1, max_retries + 1):
         try:
@@ -816,7 +826,7 @@ async def execute_tool(
             _audit_log(agent_id, tool.name, workspace_id, True, duration_ms, None)
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             last_error = TimeoutError(f"Tool {tool.name} timed out after {timeout}s")
             backoff = min(2 ** (attempt - 1), 8)
             logger.warning(
@@ -853,7 +863,7 @@ def _audit_log(
     workspace_id: str,
     success: bool,
     duration_ms: int,
-    error: Optional[str],
+    error: str | None,
 ):
     """
     Append-only audit log. Records metadata only — never payload content.

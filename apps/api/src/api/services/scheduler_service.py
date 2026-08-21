@@ -1,6 +1,7 @@
+import contextlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException
@@ -17,15 +18,13 @@ class SchedulerService:
         for key in ('payload', 'headers'):
             val = row.get(key)
             if isinstance(val, str):
-                try:
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
                     row[key] = json.loads(val)
-                except (json.JSONDecodeError, TypeError):
-                    pass
         return row
 
     async def create_job(self, dto, tenant_id: str | None, db: AsyncSession = None):
         job_id = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("""
                 INSERT INTO scheduled_jobs (id, name, type, cron, method, url, event, payload, headers, status, tenant_id, created_at, updated_at)
@@ -120,7 +119,7 @@ class SchedulerService:
             raise HTTPException(400, "No fields to update")
 
         sets.append("updated_at = :updated_at")
-        params["updated_at"] = datetime.now(timezone.utc)
+        params["updated_at"] = datetime.now(UTC)
 
         await db.execute(
             text(f"UPDATE scheduled_jobs SET {', '.join(sets)} WHERE id = :id"),
@@ -131,7 +130,7 @@ class SchedulerService:
 
     async def pause_job(self, job_id: uuid.UUID, db: AsyncSession = None):
         await self.get_job(job_id, db)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("UPDATE scheduled_jobs SET status = :status, updated_at = :updated_at WHERE id = :id"),
             {"status": "paused", "updated_at": now, "id": job_id},
@@ -141,7 +140,7 @@ class SchedulerService:
 
     async def resume_job(self, job_id: uuid.UUID, db: AsyncSession = None):
         await self.get_job(job_id, db)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("UPDATE scheduled_jobs SET status = :status, updated_at = :updated_at WHERE id = :id"),
             {"status": "active", "updated_at": now, "id": job_id},
@@ -151,7 +150,7 @@ class SchedulerService:
 
     async def trigger_job(self, job_id: uuid.UUID, db: AsyncSession = None):
         await self.get_job(job_id, db)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("UPDATE scheduled_jobs SET last_run_at = :now, updated_at = :updated_at WHERE id = :id"),
             {"now": now, "updated_at": now, "id": job_id},

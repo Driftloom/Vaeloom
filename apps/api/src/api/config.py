@@ -77,6 +77,14 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         secret_manager = kwargs.pop("secret_manager", None)
         super().__init__(**kwargs)
+        # Auto-wire Infisical when INFISICAL_ENABLED (fixes dead code 2026-08-21)
+        if secret_manager is None and os.environ.get("INFISICAL_ENABLED", "").lower() in ("1", "true", "yes"):
+            try:
+                from .infrastructure.secrets import get_secret_manager
+
+                secret_manager = get_secret_manager()
+            except Exception:
+                secret_manager = None
         if secret_manager is not None:
             self._resolve_from_secret_manager(secret_manager)
 
@@ -103,6 +111,14 @@ def validate_settings() -> dict[str, list[str]]:
 
     if not settings.jwt_secret:
         errors.append("JWT_SECRET must be set — refusing to start with empty/missing secret")
+    elif len(settings.jwt_secret) < 32:
+        msg = "JWT_SECRET must be at least 32 characters (got %d) — weak secret" % len(settings.jwt_secret)
+        if settings.service_environment != "local":
+            errors.append(msg + " — refusing to start in non-local")
+        else:
+            warnings.append(msg + " — allowed in local, but set a stronger secret for prod")
+    elif settings.jwt_secret.lower() in {"secret", "changeme", "dev-only", "super-secret"}:
+        errors.append("JWT_SECRET is a known weak/default value — refusing to start")
 
     if not settings.storage_secret_key and settings.service_environment != "local":
         errors.append("STORAGE_SECRET_KEY must be set in non-local environments")
@@ -142,7 +158,7 @@ def validate_settings() -> dict[str, list[str]]:
     if settings.service_environment != "local":
         localhost_origins = [o for o in settings.allowed_origins if "localhost" in o]
         if localhost_origins:
-            warnings.append(f"CORS allowed_origins contains localhost in non-local env: {localhost_origins}")
+            errors.append(f"CORS allowed_origins contains localhost in non-local env: {localhost_origins} — set VAELOOM_ALLOWED_ORIGINS")
 
     if errors:
         raise RuntimeError(

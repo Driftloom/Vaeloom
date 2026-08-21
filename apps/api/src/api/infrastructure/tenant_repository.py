@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import async_session_factory, Base
+from ..database import Base, async_session_factory
 
 
 class TenantNotFoundError(Exception):
@@ -16,8 +16,9 @@ class TenantNotFoundError(Exception):
 async def get_tenant_connection(tenant_id: str) -> AsyncSession:
     session = async_session_factory()
     try:
-        from ..models.schema import Tenant
         from sqlalchemy import select as _select
+
+        from ..models.schema import Tenant
 
         tid = uuid.UUID(tenant_id)
         result = await session.execute(_select(Tenant).where(Tenant.id == tid))

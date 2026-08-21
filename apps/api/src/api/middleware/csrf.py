@@ -2,9 +2,8 @@ import hashlib
 import hmac
 import secrets
 import time
-from collections.abc import Awaitable, Callable
 
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 

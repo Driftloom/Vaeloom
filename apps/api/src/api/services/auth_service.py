@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
@@ -20,10 +20,25 @@ class AuthService:
 
         display_name = sanitize_text(display_name)
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        # Ensure tenant exists for RLS (audit 2026-08-21 CRITICAL)
+        tenant = None
+        if db is not None:
+            try:
+                from ..models.schema import Tenant
+
+                tenant_result = await db.execute(select(Tenant).where(Tenant.slug == "default"))
+                tenant = tenant_result.scalar_one_or_none()
+                if not tenant:
+                    tenant = Tenant(name="Default", slug="default")
+                    db.add(tenant)
+                    await db.flush()
+            except Exception:
+                tenant = None
         user = User(
             email=email,
             password_hash=password_hash,
             display_name=display_name or email.split("@")[0],
+            tenant_id=tenant.id if tenant else None,
         )
         db.add(user)
         await db.flush()
@@ -36,7 +51,7 @@ class AuthService:
         await db.flush()
         await db.refresh(user)
 
-        access_token, refresh_token = await self.issue_token(str(user.id), email, db=db)
+        access_token, refresh_token = await self.issue_token(str(user.id), email, tenant_id=str(user.tenant_id) if user.tenant_id else None, db=db)
 
         return AuthResponse(
             access_token=access_token,
@@ -58,7 +73,7 @@ class AuthService:
         if user.status != "ACTIVE":
             raise HTTPException(status_code=403, detail="Account is not active")
 
-        access_token, refresh_token = await self.issue_token(str(user.id), email, db=db)
+        access_token, refresh_token = await self.issue_token(str(user.id), email, tenant_id=str(user.tenant_id) if user.tenant_id else None, db=db)
 
         return AuthResponse(
             access_token=access_token,
@@ -69,7 +84,7 @@ class AuthService:
     async def issue_token(self, user_id: str, email: str, tenant_id: str | None = None, db=None):
         import secrets
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         access_token = self._create_jwt(user_id, email, tenant_id)
         refresh_token = secrets.token_urlsafe(64)
 
@@ -94,7 +109,7 @@ class AuthService:
         if not session:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if session.status != "ACTIVE" or session.expires_at < now:
             raise HTTPException(status_code=401, detail="Refresh token expired or invalid")
 
@@ -107,7 +122,7 @@ class AuthService:
         db.add(session)
 
         access_token, new_refresh_token = await self.issue_token(
-            str(user.id), user.email, db=db,
+            str(user.id), user.email, tenant_id=str(user.tenant_id) if user.tenant_id else None, db=db,
         )
 
         return AuthResponse(
@@ -124,7 +139,7 @@ class AuthService:
         return None
 
     def _create_jwt(self, user_id: str, email: str, tenant_id: str | None = None):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {
             "jti": str(uuid.uuid4()),
             "sub": user_id,

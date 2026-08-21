@@ -3,26 +3,27 @@ Resume Agent — build, maintain, and optimize the master resume.
 Never fabricates; every claim traces to a source. Asks when uncertain.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class ResumeBullet(BaseModel):
     text: str
-    source_document_id: Optional[str] = None
+    source_document_id: str | None = None
     is_inferred: bool = False
     format: str = "xyz"
 
 
 class ResumeVariant(BaseModel):
     variant_type: str
-    sections: Dict[str, List[ResumeBullet]]
+    sections: dict[str, list[ResumeBullet]]
 
 
 class ResumeAgent(BaseAgent):
@@ -52,10 +53,10 @@ class ResumeAgent(BaseAgent):
 
     async def execute(
         self,
-        profile: Dict[str, Any],
+        profile: dict[str, Any],
         variant_type: str = "master",
-        target_jd: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        target_jd: str | None = None,
+    ) -> dict[str, Any]:
         missing_fields = self._check_missing_fields(profile)
 
         if missing_fields:
@@ -92,17 +93,17 @@ class ResumeAgent(BaseAgent):
             },
         }
 
-    def _check_missing_fields(self, profile: Dict[str, Any]) -> List[str]:
+    def _check_missing_fields(self, profile: dict[str, Any]) -> list[str]:
         expected = ["name", "email", "education", "experience"]
         return [f for f in expected if f not in profile]
 
     async def _build_sections(
         self,
-        profile: Dict[str, Any],
+        profile: dict[str, Any],
         variant_type: str,
-        target_jd: Optional[str],
-    ) -> Dict[str, List[ResumeBullet]]:
-        sections: Dict[str, List[ResumeBullet]] = {}
+        target_jd: str | None,
+    ) -> dict[str, list[ResumeBullet]]:
+        sections: dict[str, list[ResumeBullet]] = {}
 
         education = profile.get("education", [])
         if isinstance(education, list):

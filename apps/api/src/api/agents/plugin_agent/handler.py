@@ -3,11 +3,11 @@ Plugin Agent — manage plugins, recommend extensions, handle updates.
 Suggest autonomy. Verifies compatibility before recommending installations.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +43,10 @@ class PluginAgent(BaseAgent):
 
     async def browse_plugins(
         self,
-        category: Optional[str] = None,
-        query: Optional[str] = None,
+        category: str | None = None,
+        query: str | None = None,
         sort_by: str = "rating",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_browse(category)
         try:
@@ -73,8 +73,8 @@ class PluginAgent(BaseAgent):
         self,
         plugin_name: str,
         current_version: str,
-        environment: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        environment: dict[str, Any],
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_compatibility(plugin_name)
         try:
@@ -99,9 +99,9 @@ class PluginAgent(BaseAgent):
 
     async def manage_updates(
         self,
-        installed_plugins: List[Dict[str, Any]],
+        installed_plugins: list[dict[str, Any]],
         action: str = "check",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_updates(installed_plugins)
         try:
@@ -125,7 +125,7 @@ class PluginAgent(BaseAgent):
             logger.warning(f"Update management failed: {e}")
             return self._fallback_updates(installed_plugins)
 
-    def _fallback_browse(self, category: Optional[str]) -> Dict[str, Any]:
+    def _fallback_browse(self, category: str | None) -> dict[str, Any]:
         return {
             "agent_name": "plugin",
             "action": "suggest",
@@ -138,7 +138,7 @@ class PluginAgent(BaseAgent):
             },
         }
 
-    def _fallback_compatibility(self, plugin_name: str) -> Dict[str, Any]:
+    def _fallback_compatibility(self, plugin_name: str) -> dict[str, Any]:
         return {
             "agent_name": "plugin",
             "action": "suggest",
@@ -151,7 +151,7 @@ class PluginAgent(BaseAgent):
             },
         }
 
-    def _fallback_updates(self, installed: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_updates(self, installed: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "agent_name": "plugin",
             "action": "suggest",

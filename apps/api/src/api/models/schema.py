@@ -3,10 +3,20 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, ForeignKey, Index, Integer,
-    LargeBinary, String, Text, UniqueConstraint, func,
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
-from sqlalchemy import JSON
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -625,6 +635,7 @@ class Event(Base):
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"))
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     max_retries: Mapped[int] = mapped_column(Integer, default=3)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -634,6 +645,7 @@ class Event(Base):
         Index("idx_events_tenant_type", "tenant_id", "type"),
         Index("idx_events_tenant_status", "tenant_id", "status"),
         Index("idx_events_correlation_id", "correlation_id"),
+        Index("idx_events_workspace_id", "workspace_id"),
     )
 
 

@@ -6,8 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..dependencies import get_current_user, get_tenant_id
 from ..schemas.plugin import (
-    RegisterPluginRequest, UpdatePluginRequest, ExecutePluginRequest,
-    PluginResponse, ExecutionResponse,
+    ExecutePluginRequest,
+    ExecutionResponse,
+    PluginResponse,
+    RegisterPluginRequest,
+    UpdatePluginRequest,
 )
 from ..services.plugin_service import plugin_service
 

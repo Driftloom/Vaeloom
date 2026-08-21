@@ -1,9 +1,7 @@
 import logging
 import time
 from collections import defaultdict
-from collections.abc import Sequence
 from functools import wraps
-from typing import Optional
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -28,7 +26,7 @@ def rate_limit(max_requests: int, window_seconds: int = 60):
     return decorator
 
 
-def _resolve_rate_limit(endpoint) -> Optional[tuple[int, int]]:
+def _resolve_rate_limit(endpoint) -> tuple[int, int] | None:
     """Walk through decorator wrappers to find a rate-limit override."""
     seen: set[int] = set()
     fn = endpoint
@@ -108,7 +106,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         app,
         requests_per_minute: int = 100,
         window_seconds: int = 60,
-        redis_url: Optional[str] = None,
+        redis_url: str | None = None,
         api_key_rate_limit: int = 1000,
     ):
         super().__init__(app)

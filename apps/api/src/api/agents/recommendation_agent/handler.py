@@ -3,11 +3,11 @@ Recommendation Agent — suggest jobs, connections, content based on user profil
 Suggest autonomy. Never recommends irrelevant or low-quality matches.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +43,10 @@ class RecommendationAgent(BaseAgent):
 
     async def match_jobs(
         self,
-        profile: Dict[str, Any],
-        preferences: Optional[Dict[str, Any]] = None,
+        profile: dict[str, Any],
+        preferences: dict[str, Any] | None = None,
         limit: int = 10,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_jobs(profile)
         try:
@@ -71,10 +71,10 @@ class RecommendationAgent(BaseAgent):
 
     async def suggest_connections(
         self,
-        profile: Dict[str, Any],
-        industry: Optional[str] = None,
-        goals: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        profile: dict[str, Any],
+        industry: str | None = None,
+        goals: list[str] | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_connections(profile)
         try:
@@ -99,10 +99,10 @@ class RecommendationAgent(BaseAgent):
 
     async def curate_content(
         self,
-        interests: List[str],
-        content_type: Optional[str] = None,
+        interests: list[str],
+        content_type: str | None = None,
         depth: str = "overview",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_content(interests)
         try:
@@ -125,7 +125,7 @@ class RecommendationAgent(BaseAgent):
             logger.warning(f"Content curation failed: {e}")
             return self._fallback_content(interests)
 
-    def _fallback_jobs(self, profile: Dict[str, Any]) -> Dict[str, Any]:
+    def _fallback_jobs(self, profile: dict[str, Any]) -> dict[str, Any]:
         return {
             "agent_name": "recommendation",
             "action": "suggest",
@@ -138,7 +138,7 @@ class RecommendationAgent(BaseAgent):
             },
         }
 
-    def _fallback_connections(self, profile: Dict[str, Any]) -> Dict[str, Any]:
+    def _fallback_connections(self, profile: dict[str, Any]) -> dict[str, Any]:
         return {
             "agent_name": "recommendation",
             "action": "suggest",
@@ -151,7 +151,7 @@ class RecommendationAgent(BaseAgent):
             },
         }
 
-    def _fallback_content(self, interests: List[str]) -> Dict[str, Any]:
+    def _fallback_content(self, interests: list[str]) -> dict[str, Any]:
         return {
             "agent_name": "recommendation",
             "action": "suggest",

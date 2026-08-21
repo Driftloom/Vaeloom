@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user, require_role
-from ..services.tenant_provisioning import tenant_provisioner, ProvisioningError
-from ..services.tenant_settings import TenantSettings, tenant_settings_manager, TenantSettingsError
+from ..dependencies import require_role
+from ..services.tenant_provisioning import ProvisioningError, tenant_provisioner
+from ..services.tenant_settings import TenantSettings, TenantSettingsError, tenant_settings_manager
 
 router = APIRouter()
 
@@ -63,6 +63,7 @@ async def admin_get_user(
     _admin=Depends(require_role("admin")),
 ):
     from uuid import UUID
+
     from ..models.schema import User
 
     result = await db.execute(select(User).where(User.id == UUID(user_id)))
@@ -88,6 +89,7 @@ async def admin_suspend_user(
     _admin=Depends(require_role("admin")),
 ):
     from uuid import UUID
+
     from ..models.schema import User
 
     result = await db.execute(select(User).where(User.id == UUID(user_id)))
@@ -106,6 +108,7 @@ async def admin_activate_user(
     _admin=Depends(require_role("admin")),
 ):
     from uuid import UUID
+
     from ..models.schema import User
 
     result = await db.execute(select(User).where(User.id == UUID(user_id)))

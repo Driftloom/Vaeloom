@@ -1,8 +1,7 @@
-from fastapi import Request, HTTPException
+import jwt
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import JSONResponse, Response
-
-import jwt
 
 from ..config import settings
 
@@ -44,7 +43,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         token = auth_header.removeprefix("Bearer ")
         try:
-            payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+            payload = jwt.decode(
+                token,
+                settings.jwt_secret,
+                algorithms=[settings.jwt_algorithm],
+                options={"require": ["exp", "sub"]},
+            )
             request.state.user = payload
             request.state.user_id = payload.get("sub") or payload.get("user_id")
             request.state.tenant_id = payload.get("tenant_id")

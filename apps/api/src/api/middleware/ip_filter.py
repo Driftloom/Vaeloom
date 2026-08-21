@@ -3,7 +3,7 @@ import logging
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from ..config import settings
 
@@ -79,7 +79,4 @@ class IPAllowlistMiddleware(BaseHTTPMiddleware):
             addr = ipaddress.ip_address(client_ip)
         except ValueError:
             return False
-        for net in self.allowlist:
-            if addr in net:
-                return True
-        return False
+        return any(addr in net for net in self.allowlist)

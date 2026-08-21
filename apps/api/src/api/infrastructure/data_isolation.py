@@ -10,7 +10,7 @@ from ..database import Base
 
 class RowLevelSecurityMixin:
     @declared_attr
-    def tenant_id(cls) -> Mapped[uuid.UUID | None]:
+    def tenant_id(self) -> Mapped[uuid.UUID | None]:
         return mapped_column(UUID(as_uuid=True), default=None)
 
     def set_tenant(self, tenant_id: str | uuid.UUID) -> None:
@@ -42,10 +42,7 @@ class TenantScopedQuery:
 
     @staticmethod
     def filter_query(stmt: Select, tenant_id: str | uuid.UUID) -> Select:
-        if isinstance(tenant_id, str):
-            tid = uuid.UUID(tenant_id)
-        else:
-            tid = tenant_id
+        tid = uuid.UUID(tenant_id) if isinstance(tenant_id, str) else tenant_id
         if hasattr(stmt, "get_final_froms"):
             froms = stmt.get_final_froms()
             for f in froms:
@@ -59,7 +56,7 @@ class TenantAwareBase(RowLevelSecurityMixin, Base):
     __abstract__ = True
 
     @declared_attr
-    def tenant_id(cls) -> Mapped[uuid.UUID | None]:
+    def tenant_id(self) -> Mapped[uuid.UUID | None]:
         return mapped_column(UUID(as_uuid=True), default=None)
 
     def __init__(self, **kwargs: Any) -> None:

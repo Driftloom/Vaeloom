@@ -3,11 +3,11 @@ Reflection Agent — weekly/monthly summaries and self-improvement insights.
 Suggest autonomy (weekly schedule). Privacy-aware; never exposes raw user data.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,9 @@ class ReflectionAgent(BaseAgent):
 
     async def generate_weekly_digest(
         self,
-        activity_log: List[Dict[str, Any]],
-        goals: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        activity_log: list[dict[str, Any]],
+        goals: list[str] | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_digest(activity_log)
         try:
@@ -71,9 +71,9 @@ class ReflectionAgent(BaseAgent):
 
     async def monthly_review(
         self,
-        monthly_data: Dict[str, Any],
-        focus_areas: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        monthly_data: dict[str, Any],
+        focus_areas: list[str] | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_review(monthly_data)
         try:
@@ -98,8 +98,8 @@ class ReflectionAgent(BaseAgent):
 
     async def track_goals(
         self,
-        goals: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        goals: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_goals(goals)
         try:
@@ -123,7 +123,7 @@ class ReflectionAgent(BaseAgent):
             logger.warning(f"Goal tracking failed: {e}")
             return self._fallback_goals(goals)
 
-    def _fallback_digest(self, activity_log: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_digest(self, activity_log: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "agent_name": "reflection",
             "action": "suggest",
@@ -136,7 +136,7 @@ class ReflectionAgent(BaseAgent):
             },
         }
 
-    def _fallback_review(self, monthly_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _fallback_review(self, monthly_data: dict[str, Any]) -> dict[str, Any]:
         return {
             "agent_name": "reflection",
             "action": "suggest",
@@ -149,7 +149,7 @@ class ReflectionAgent(BaseAgent):
             },
         }
 
-    def _fallback_goals(self, goals: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_goals(self, goals: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "agent_name": "reflection",
             "action": "suggest",

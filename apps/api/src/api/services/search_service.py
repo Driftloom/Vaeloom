@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import cast, or_, select, String
+from sqlalchemy import String, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import Entity, Memory, MemoryRecord
@@ -47,7 +47,7 @@ def _apply_filters(results: list[dict], filters: dict | None) -> list[dict]:
         filtered = [r for r in filtered if r.get("source") == filters["type"] or r.get("metadata", {}).get("type") == filters["type"]]
     if filters.get("date_from"):
         try:
-            date_from = datetime.fromisoformat(filters["date_from"]).replace(tzinfo=timezone.utc)
+            date_from = datetime.fromisoformat(filters["date_from"]).replace(tzinfo=UTC)
             filtered = [
                 r for r in filtered
                 if _parse_created(r) is None or _parse_created(r) >= date_from
@@ -56,7 +56,7 @@ def _apply_filters(results: list[dict], filters: dict | None) -> list[dict]:
             pass
     if filters.get("date_to"):
         try:
-            date_to = datetime.fromisoformat(filters["date_to"]).replace(tzinfo=timezone.utc)
+            date_to = datetime.fromisoformat(filters["date_to"]).replace(tzinfo=UTC)
             filtered = [
                 r for r in filtered
                 if _parse_created(r) is None or _parse_created(r) <= date_to

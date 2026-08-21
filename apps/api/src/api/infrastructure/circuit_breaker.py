@@ -2,7 +2,7 @@ import asyncio
 import enum
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger("vaeloom-api.infrastructure.circuit_breaker")
 
@@ -42,7 +42,7 @@ class CircuitBreaker:
         self._last_failure_time = 0.0
         logger.info("Circuit breaker '%s' manually reset to CLOSED", self._name)
 
-    async def call(self, coro, fallback: Optional[Any] = None) -> Any:
+    async def call(self, coro, fallback: Any | None = None) -> Any:
         async with self._lock:
             if self._state == CircuitState.OPEN:
                 if time.monotonic() - self._last_failure_time >= self._recovery_timeout:
@@ -65,7 +65,7 @@ class CircuitBreaker:
 
         try:
             result = await coro
-        except Exception as exc:
+        except Exception:
             async with self._lock:
                 self._failure_count += 1
                 self._last_failure_time = time.monotonic()

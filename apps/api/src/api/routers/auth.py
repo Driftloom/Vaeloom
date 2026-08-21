@@ -1,6 +1,4 @@
 import secrets
-import hashlib
-import hmac
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,9 +8,12 @@ from ..database import get_db
 from ..dependencies import get_current_user
 from ..middleware.rate_limit import rate_limit
 from ..schemas.auth import (
-    SignupRequest, LoginRequest, RefreshRequest, AuthResponse, MeResponse,
+    AuthResponse,
+    LoginRequest,
+    MeResponse,
+    RefreshRequest,
+    SignupRequest,
 )
-from ..schemas.workspace import WorkspaceResponse
 from ..services.auth_service import auth_service
 from ..services.sso import SSOConfig, get_sso_provider
 from ..services.workspace_service import workspace_service
@@ -104,7 +105,8 @@ async def sso_token_login(
     from sqlalchemy import select
 
     from ..models.schema import User
-    from ..schemas.auth import AuthResponse as AuthResp, PublicUser
+    from ..schemas.auth import AuthResponse as AuthResp
+    from ..schemas.auth import PublicUser
 
     provider_config = settings.sso_providers.get(provider)
     if not provider_config:
@@ -171,7 +173,8 @@ async def sso_callback(
     from sqlalchemy import select
 
     from ..models.schema import User
-    from ..schemas.auth import AuthResponse as AuthResp, PublicUser
+    from ..schemas.auth import AuthResponse as AuthResp
+    from ..schemas.auth import PublicUser
 
     expected_provider = _sso_states.pop(state, None)
     if expected_provider is None:
@@ -197,7 +200,7 @@ async def sso_callback(
     if not email:
         raise HTTPException(status_code=401, detail="Email not provided by SSO provider")
 
-    sub = payload.get("sub")
+    payload.get("sub")
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 

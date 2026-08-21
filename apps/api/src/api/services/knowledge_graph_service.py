@@ -1,12 +1,13 @@
+import contextlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
 from sqlalchemy import text
 
-from ..services.llm_service import llm_service, LLMProviderError
+from ..services.llm_service import LLMProviderError, llm_service
 
 
 class KnowledgeGraphService:
@@ -18,13 +19,11 @@ class KnowledgeGraphService:
         d = dict(row._mapping)
         for col in ("properties", "embedding"):
             if col in d and isinstance(d[col], str):
-                try:
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
                     d[col] = json.loads(d[col])
-                except (json.JSONDecodeError, TypeError):
-                    pass
         if hasattr(row, "edge_count") and row.edge_count is not None:
             d["edge_count"] = int(row.edge_count)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for col in ("created_at", "updated_at"):
             if col in d and d[col] is None:
                 d[col] = now
@@ -53,10 +52,8 @@ class KnowledgeGraphService:
             d["target"] = {"id": d.pop("tgt_id"), "label": d.pop("tgt_label"), "type": d.pop("tgt_type")}
             for col in ("properties",):
                 if col in d and isinstance(d[col], str):
-                    try:
+                    with contextlib.suppress(json.JSONDecodeError, TypeError):
                         d[col] = json.loads(d[col])
-                    except (json.JSONDecodeError, TypeError):
-                        pass
             ns = SimpleNamespace(**d)
             ns._mapping = d
             enriched.append(ns)
@@ -355,10 +352,7 @@ class KnowledgeGraphService:
         from collections import deque
 
         visited = {start_id}
-        if mode == "bfs":
-            queue = deque([(start_id, 0)])
-        else:
-            queue = [(start_id, 0)]
+        queue = deque([(start_id, 0)]) if mode == "bfs" else [(start_id, 0)]
 
         result = []
 

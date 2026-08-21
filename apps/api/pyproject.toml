@@ -53,7 +53,25 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "ARG", "C4"]
-ignore = ["E501"]
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "B008",    # function-call-in-default-argument — intentional FastAPI Depends() pattern
+    "ARG001",  # unused-function-argument — common in FastAPI route handlers / protocols
+    "ARG002",  # unused-method-argument — common in FastAPI route handlers / protocols
+    "B904",    # raise-without-from-inside-except — intentional exception translation (FastAPI HTTPException wrapping)
+    "N815",    # mixed-case-variable-in-class-scope — existing naming, renaming breaks references
+    "N818",    # error-suffix-on-exception-name — existing exception class names
+    "N812",    # lowercase-imported-as-non-lowercase — existing import patterns
+    "N803",    # invalid-argument-name — existing parameter names
+    "N811",    # constant-imported-as-non-constant — existing patterns
+    "SIM117",  # multiple-with-statements — minor style, not a bug
+    "E701",    # multiple-statements-on-one-line-colon — minor style
+    "E741",    # ambiguous-variable-name — existing variable names
+    "SIM102",  # collapsible-if — minor style preference
+    "B039",    # mutable-contextvar-default — intentional pattern
+    "E402",    # module-import-not-at-top — intentional ordering
+    "UP031",   # printf-string-formatting — existing code style
+]
 
 [tool.ruff.format]
 quote-style = "double"

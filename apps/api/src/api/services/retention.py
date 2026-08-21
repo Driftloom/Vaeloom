@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from pydantic import BaseModel
@@ -35,7 +35,7 @@ def load_retention_policies() -> list[RetentionPolicy]:
 
 
 async def apply_retention(policy: RetentionPolicy, db: AsyncSession) -> dict:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=policy.max_age_days)
+    cutoff = datetime.now(UTC) - timedelta(days=policy.max_age_days)
     params = {"cutoff": cutoff.isoformat()}
     tenant_clause = ""
     if policy.tenant_id:

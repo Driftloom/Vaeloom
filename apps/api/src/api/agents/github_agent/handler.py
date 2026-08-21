@@ -3,11 +3,11 @@ GitHub Agent — analyze GitHub profiles and repositories for skill assessment.
 Read-only, suggest autonomy. Respects rate limits and public data only.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class GitHubAgent(BaseAgent):
     async def analyze_profile(
         self,
         username: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_profile(username)
         try:
@@ -67,7 +67,7 @@ class GitHubAgent(BaseAgent):
     async def get_repo_stats(
         self,
         repo_full_name: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_repo(repo_full_name)
         try:
@@ -93,8 +93,8 @@ class GitHubAgent(BaseAgent):
     async def assess_skills(
         self,
         username: str,
-        target_role: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        target_role: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_skills(username)
         try:
@@ -117,7 +117,7 @@ class GitHubAgent(BaseAgent):
             logger.warning(f"Skill assessment failed: {e}")
             return self._fallback_skills(username)
 
-    def _fallback_profile(self, username: str) -> Dict[str, Any]:
+    def _fallback_profile(self, username: str) -> dict[str, Any]:
         return {
             "agent_name": "github",
             "action": "suggest",
@@ -130,7 +130,7 @@ class GitHubAgent(BaseAgent):
             },
         }
 
-    def _fallback_repo(self, repo_full_name: str) -> Dict[str, Any]:
+    def _fallback_repo(self, repo_full_name: str) -> dict[str, Any]:
         return {
             "agent_name": "github",
             "action": "suggest",
@@ -143,7 +143,7 @@ class GitHubAgent(BaseAgent):
             },
         }
 
-    def _fallback_skills(self, username: str) -> Dict[str, Any]:
+    def _fallback_skills(self, username: str) -> dict[str, Any]:
         return {
             "agent_name": "github",
             "action": "suggest",

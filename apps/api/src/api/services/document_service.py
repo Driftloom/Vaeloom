@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from ..models.schema import Document, DocumentAction
 
@@ -44,8 +44,19 @@ class DocumentActionAlreadyUndone(Exception):
 
 class DocumentService:
     async def upload(self, file, workspace_id: str, user_id: str, db=None):
+        from fastapi import HTTPException
+
+        from ..utils.sanitize import sanitize_text
+
         content = await file.read()
-        filename = file.filename or "untitled"
+        if len(content) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large — max 10MB")
+        raw_name = file.filename or "untitled"
+        # Sanitize filename and prevent path traversal
+        filename = sanitize_text(raw_name)[:255]
+        filename = filename.replace("..", "").lstrip("/\\")
+        if not filename:
+            filename = "untitled"
         ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "txt"
         doc_type = EXTENSION_MAP.get(ext, "unknown")
         doc = Document(
@@ -99,9 +110,13 @@ class DocumentService:
         return doc.content, doc.type, doc.path
 
     async def rename(self, document_id: str, workspace_id: str, new_path: str, db=None):
+        from ..utils.sanitize import sanitize_text
+
         doc = await self.get_document(document_id, workspace_id, db)
         old_path = doc.path
-        if old_path == new_path:
+        # Sanitize and prevent path traversal (audit 2026-08-21)
+        new_path = sanitize_text(new_path)[:1000].replace("..", "").lstrip("/\\")
+        if not new_path or old_path == new_path:
             return doc
         doc.path = new_path
         await self._record_action(db, doc, ACTION_RENAME, old_path, new_path)
@@ -110,21 +125,28 @@ class DocumentService:
     async def archive(self, document_id: str, workspace_id: str, db=None):
         doc = await self.get_document(document_id, workspace_id, db)
         if doc.deleted_at is None:
-            doc.deleted_at = datetime.now(timezone.utc)
-            await self._record_action(db, doc, ACTION_ARCHIVE, None, None)
+            old_deleted = doc.deleted_at
+            doc.deleted_at = datetime.now(UTC)
+            await self._record_action(db, doc, ACTION_ARCHIVE, None, None, old_deleted_at=old_deleted, new_deleted_at=doc.deleted_at)
         return doc
 
     async def restore(self, document_id: str, workspace_id: str, db=None):
         doc = await self.get_document(document_id, workspace_id, db)
         if doc.deleted_at is not None:
+            old_deleted = doc.deleted_at
             doc.deleted_at = None
-            await self._record_action(db, doc, ACTION_RESTORE, None, None)
+            await self._record_action(db, doc, ACTION_RESTORE, None, None, old_deleted_at=old_deleted, new_deleted_at=None)
         return doc
 
     async def _record_action(
         self, db, doc: Document, action_type: str, old_path: str | None, new_path: str | None,
+        old_deleted_at: datetime | None = None, new_deleted_at: datetime | None = None,
     ) -> None:
-        now = datetime.now(timezone.utc)
+        # Capture deletes explicitly when provided, fall back to legacy inference for rename
+        if action_type == ACTION_ARCHIVE and old_deleted_at is None and new_deleted_at is None:
+            # legacy path for rename — keep None
+            pass
+        now = datetime.now(UTC)
         action = DocumentAction(
             id=uuid.uuid4(),
             document_id=doc.id,
@@ -132,8 +154,8 @@ class DocumentService:
             action_type=action_type,
             old_path=old_path,
             new_path=new_path,
-            old_deleted_at=doc.deleted_at if action_type == ACTION_ARCHIVE else None,
-            new_deleted_at=doc.deleted_at if action_type == ACTION_RESTORE else None,
+            old_deleted_at=old_deleted_at,
+            new_deleted_at=new_deleted_at,
             created_at=now,
         )
         db.add(action)
@@ -177,7 +199,7 @@ class DocumentService:
             doc.deleted_at = None
         elif action.action_type == ACTION_RESTORE:
             doc.deleted_at = action.old_deleted_at
-        action.undone_at = datetime.now(timezone.utc)
+        action.undone_at = datetime.now(UTC)
         return action, doc
 
 

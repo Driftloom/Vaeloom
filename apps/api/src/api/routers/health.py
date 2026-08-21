@@ -1,12 +1,12 @@
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import get_db
 from ..config import settings
+from ..database import get_db
 
 router = APIRouter()
 
@@ -57,7 +57,7 @@ async def liveness():
         "status": "ok",
         "service": settings.service_name,
         "version": settings.service_version,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -77,7 +77,7 @@ async def readiness(db: AsyncSession = Depends(get_db)):
         "status": "ok" if all_ok else "degraded",
         "service": settings.service_name,
         "version": settings.service_version,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "dependencies": dependencies,
     }
 
@@ -103,6 +103,6 @@ async def startup(db: AsyncSession = Depends(get_db)):
         "status": overall,
         "service": settings.service_name,
         "version": settings.service_version,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "dependencies": dependencies,
     }

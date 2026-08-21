@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -30,13 +30,14 @@ async def publish_event(
 
 @router.get("", response_model=list[EventResponse])
 async def list_events(
+    workspace_id: str | None = Query(None, description="Filter by workspace"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
-    events = await event_service.find_all(user_id, db)
+    events = await event_service.find_all(user_id, db, workspace_id=workspace_id)
     return [EventResponse.model_validate(e) for e in events]
 
 

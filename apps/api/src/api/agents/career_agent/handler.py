@@ -3,11 +3,11 @@ Career Agent — guide users on career paths and skill development.
 Read-only, full autonomy. Never fabricates career data.
 """
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +48,9 @@ class CareerAgent(BaseAgent):
     async def analyze_career_path(
         self,
         current_role: str,
-        skills: List[str],
-        target_role: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        skills: list[str],
+        target_role: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_analysis(current_role, target_role)
         try:
@@ -75,9 +75,9 @@ class CareerAgent(BaseAgent):
 
     async def identify_skill_gaps(
         self,
-        current_skills: List[str],
+        current_skills: list[str],
         target_role: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_gaps(current_skills, target_role)
         try:
@@ -102,10 +102,10 @@ class CareerAgent(BaseAgent):
 
     async def recommend_courses(
         self,
-        skill_gaps: List[str],
-        budget: Optional[str] = None,
-        time_available: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        skill_gaps: list[str],
+        budget: str | None = None,
+        time_available: str | None = None,
+    ) -> dict[str, Any]:
         if not settings.llm_api_key:
             return self._fallback_courses(skill_gaps)
         try:
@@ -128,7 +128,7 @@ class CareerAgent(BaseAgent):
             logger.warning(f"Course recommendation failed: {e}")
             return self._fallback_courses(skill_gaps)
 
-    def _fallback_analysis(self, current_role: str, target_role: Optional[str]) -> Dict[str, Any]:
+    def _fallback_analysis(self, current_role: str, target_role: str | None) -> dict[str, Any]:
         return {
             "agent_name": "career",
             "action": "suggest",
@@ -145,7 +145,7 @@ class CareerAgent(BaseAgent):
             },
         }
 
-    def _fallback_gaps(self, current_skills: List[str], target_role: str) -> Dict[str, Any]:
+    def _fallback_gaps(self, current_skills: list[str], target_role: str) -> dict[str, Any]:
         return {
             "agent_name": "career",
             "action": "suggest",
@@ -162,7 +162,7 @@ class CareerAgent(BaseAgent):
             },
         }
 
-    def _fallback_courses(self, skill_gaps: List[str]) -> Dict[str, Any]:
+    def _fallback_courses(self, skill_gaps: list[str]) -> dict[str, Any]:
         return {
             "agent_name": "career",
             "action": "suggest",

@@ -12,6 +12,7 @@ class EventPublish(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
     priority: str = "NORMAL"
     correlation_id: str | None = None
+    workspace_id: str | None = Field(None, description="Workspace to scope event")
 
 
 class EventResponse(BaseModel):
@@ -27,6 +28,7 @@ class EventResponse(BaseModel):
     metadata: dict[str, Any] = Field(validation_alias="metadata_")
     tenant_id: uuid.UUID | None = None
     user_id: uuid.UUID | None = None
+    workspace_id: uuid.UUID | None = None
     retry_count: int = 0
     max_retries: int = 3
     created_at: datetime

@@ -1,15 +1,28 @@
 """Erasure service — 100% deletion across all stores (BQ-P02-03)."""
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import (
-    Memory, MemoryRecord, Document, DocumentVersion, Embedding,
-    Application, Resume, ScheduleEvent, Agent, AgentAction, AgentExecution,
-    Notification, Permission, WorkspaceUser, AuthSession, ApiKey, User,
+    Agent,
+    AgentAction,
+    AgentExecution,
+    ApiKey,
+    Application,
+    AuthSession,
+    Document,
+    DocumentVersion,
+    Embedding,
+    Memory,
+    MemoryRecord,
+    Notification,
+    Permission,
+    Resume,
+    ScheduleEvent,
+    WorkspaceUser,
 )
 
 
@@ -29,7 +42,7 @@ class ErasureService:
         self, db: AsyncSession, user_id: uuid.UUID, workspace_id: uuid.UUID
     ) -> ErasureReceipt:
         """Delete all user data from all stores. Generate receipt."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         receipt = ErasureReceipt(
             user_id=str(user_id),
             workspace_id=str(workspace_id),

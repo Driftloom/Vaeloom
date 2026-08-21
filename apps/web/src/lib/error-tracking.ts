@@ -15,25 +15,25 @@ type EventProperties = Record<string, unknown>;
  */
 class ErrorTrackerImpl {
   captureError(error: Error, context?: ErrorContext): void {
-    console.error('[ErrorTracker]', error.message, context ?? '');
+    console.error('[ErrorTracker]', error.message, context ?? ''); // eslint-disable-line no-console
     if (error.stack) {
-      console.debug('[ErrorTracker] Stack:', error.stack);
+      console.debug('[ErrorTracker] Stack:', error.stack); // eslint-disable-line no-console
     }
     if (SENTRY_DSN && typeof window !== 'undefined') {
-      console.info('[ErrorTracker] Sentry DSN set but SDK not installed — console fallback');
+      console.info('[ErrorTracker] Sentry DSN set but SDK not installed — console fallback'); // eslint-disable-line no-console
     }
   }
 
   captureEvent(name: EventName, properties?: EventProperties): void {
-    console.info('[EventTracker]', name, properties ?? '');
+    console.info('[EventTracker]', name, properties ?? ''); // eslint-disable-line no-console
   }
 
   setUser(userId: string, traits?: { email?: string; name?: string }): void {
-    console.info('[ErrorTracker] User set:', userId, traits ?? '');
+    console.info('[ErrorTracker] User set:', userId, traits ?? ''); // eslint-disable-line no-console
   }
 
   clearUser(): void {
-    console.info('[ErrorTracker] User cleared');
+    console.info('[ErrorTracker] User cleared'); // eslint-disable-line no-console
   }
 }
 

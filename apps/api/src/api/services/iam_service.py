@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -8,7 +8,7 @@ from sqlalchemy import text
 class IamService:
     async def create_user(self, dto, db=None) -> dict:
         user_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("""
                 INSERT INTO iam_users (id, email, display_name, tenant_id, active, created_at, updated_at)
@@ -115,7 +115,7 @@ class IamService:
 
         if sets:
             sets.append("updated_at = :now")
-            params["now"] = datetime.now(timezone.utc)
+            params["now"] = datetime.now(UTC)
             await db.execute(
                 text(f"UPDATE iam_users SET {', '.join(sets)} WHERE id = :id"),
                 params,
@@ -126,7 +126,7 @@ class IamService:
     async def deactivate_user(self, user_id: str, db=None):
         result = await db.execute(
             text("UPDATE iam_users SET active = FALSE, updated_at = :now WHERE id = :id"),
-            {"id": user_id, "now": datetime.now(timezone.utc)},
+            {"id": user_id, "now": datetime.now(UTC)},
         )
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="User not found")

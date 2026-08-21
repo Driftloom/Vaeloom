@@ -1,11 +1,17 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user
-from ..schemas.analytics import AggregateRequest, DashboardPayload, KpiSummary, TrackEventRequest, UsageTimePoint
+from ..schemas.analytics import (
+    AggregateRequest,
+    DashboardPayload,
+    KpiSummary,
+    TrackEventRequest,
+    UsageTimePoint,
+)
 from ..services.analytics_service import analytics_service
 
 router = APIRouter()
@@ -26,7 +32,7 @@ async def dashboard(
     usage = await analytics_service.get_usage(
         tenant_id=tenant_id, date_from=date_from, date_to=date_to, interval=interval, db=db,
     )
-    return DashboardPayload(kpis=kpis, usage=usage, generated_at=datetime.now(timezone.utc))
+    return DashboardPayload(kpis=kpis, usage=usage, generated_at=datetime.now(UTC))
 
 
 @router.get("/usage", response_model=list[UsageTimePoint])

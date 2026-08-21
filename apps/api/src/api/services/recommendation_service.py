@@ -18,7 +18,6 @@ class RecommendationService:
         user_id = dto.user_id
         tenant_id = dto.tenant_id or "default"
         top_n = dto.top_n
-        personalize = dto.personalize
         context_tags = dto.context_tags or []
 
         pref_vector_result = await db.execute(

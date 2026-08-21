@@ -7,8 +7,9 @@ and automated agent scoring.
 import logging
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ class AgentEvaluator:
         self,
         agent_name: str,
         agent_fn: Callable,
-        cases: Optional[list[EvalCase]] = None,
+        cases: list[EvalCase] | None = None,
     ) -> list[EvalResult]:
         """Run eval cases against an agent function."""
         cases = cases or GOLDEN_DATASET

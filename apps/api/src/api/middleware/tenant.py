@@ -1,12 +1,11 @@
 import uuid
 from contextvars import ContextVar
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 
 from ..database import get_db
 from ..dependencies import get_current_user
@@ -93,10 +92,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
             # If JWT has no tenant_id, leave tenant_id as None (RLS will match zero rows).
             tenant_id = None
 
-        if jwt_workspace_id:
-            workspace_id = str(jwt_workspace_id)
-        else:
-            workspace_id = None
+        workspace_id = str(jwt_workspace_id) if jwt_workspace_id else None
 
         request.state.tenant_id = tenant_id
         request.state.workspace_id = workspace_id

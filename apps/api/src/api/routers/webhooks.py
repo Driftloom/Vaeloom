@@ -1,9 +1,8 @@
 import uuid
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -147,7 +146,7 @@ async def update_webhook(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    updates = {k: v for k, v in dto.model_dump(exclude_none=True).items()}
+    updates = dict(dto.model_dump(exclude_none=True).items())
     webhook = await webhook_service.update(webhook_id, tenant_id, updates, db)
     if not webhook:
         raise HTTPException(status_code=404, detail="Webhook not found")

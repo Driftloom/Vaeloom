@@ -9,7 +9,6 @@ from ..schemas.recommendation import (
     IndexRequest,
     RecommendationItem,
     RecommendationResponse,
-    TrendingQuery,
 )
 from ..services.recommendation_service import recommendation_service
 

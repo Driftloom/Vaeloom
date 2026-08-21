@@ -1,13 +1,14 @@
-import uuid
-from datetime import datetime, timezone
 import logging
+import uuid
+from datetime import UTC, datetime
 
 import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..models.schema import Connector, Workspace
-from .encryption import encrypt_value, decrypt_value, is_encrypted
+from .encryption import decrypt_value, encrypt_value, is_encrypted
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +174,7 @@ class ConnectorExtService:
         pagination, and persist fetched records to the memory store.
         """
         connector = await self.get(connector_id, tenant_id, db)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         try:
             connector.last_synced_at = now
             connector.status = "synced"

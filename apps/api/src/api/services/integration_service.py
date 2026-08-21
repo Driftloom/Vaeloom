@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -86,7 +86,7 @@ class IntegrationService:
         if not integration:
             raise HTTPException(status_code=404, detail="Integration not found")
 
-        integration.last_sync_at = datetime.now(timezone.utc)
+        integration.last_sync_at = datetime.now(UTC)
         integration.status = "syncing"
         await db.commit()
         await db.refresh(integration)

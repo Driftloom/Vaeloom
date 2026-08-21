@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from ..models.schema import Application
 
@@ -60,7 +60,7 @@ class ApplicationService:
         application = result.scalar_one_or_none()
         if application:
             application.status = status
-            application.outcome_at = datetime.now(timezone.utc)
+            application.outcome_at = datetime.now(UTC)
             await db.flush()
             await db.refresh(application)
         return application

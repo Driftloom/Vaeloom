@@ -1,9 +1,8 @@
 import base64
 import hashlib
 import logging
-import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from ..config import settings
 from ..dependencies import require_role
@@ -65,7 +64,7 @@ class EncryptionService:
 
 def _fernet_available() -> bool:
     try:
-        from cryptography.fernet import Fernet
+        from cryptography.fernet import Fernet  # noqa: F401
         return True
     except ImportError:
         return False

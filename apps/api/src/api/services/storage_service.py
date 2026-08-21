@@ -1,4 +1,3 @@
-from botocore.config import Config
 
 from ..config import settings
 

@@ -1,9 +1,9 @@
 import enum
-from datetime import timedelta
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 
-class MemoryType(str, enum.Enum):
+class MemoryType(enum.StrEnum):
     Person = "person"
     Organization = "organization"
     Project = "project"

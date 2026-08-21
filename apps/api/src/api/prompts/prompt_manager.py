@@ -5,7 +5,6 @@ Supports environment variable override for prompt directory.
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class PromptManager:
     Supports PROMPT_DIR env var for custom prompt directory.
     """
 
-    def __init__(self, prompt_dir: Optional[str] = None):
+    def __init__(self, prompt_dir: str | None = None):
         env_dir = os.environ.get("PROMPT_DIR")
         if env_dir:
             self._prompt_dir = Path(env_dir)
@@ -36,7 +35,7 @@ class PromptManager:
         self._cache: dict[str, str] = {}
         logger.info("PromptManager initialized with directory: %s", self._prompt_dir)
 
-    def get_prompt(self, agent_name: str, variables: Optional[dict[str, str]] = None) -> str:
+    def get_prompt(self, agent_name: str, variables: dict[str, str] | None = None) -> str:
         """
         Load and render a prompt template for the given agent.
         Falls back to the base prompt if no agent-specific prompt exists.

@@ -4,12 +4,13 @@ Never auto-applies changes; always proposes for user approval.
 """
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel
 
+from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
-from api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class RenameProposal(BaseModel):
     suggested_name: str
     suggested_folder: str
     confidence: float
-    is_version_of: Optional[str] = None
+    is_version_of: str | None = None
 
 
 class OrganizationAgent(BaseAgent):
@@ -50,7 +51,7 @@ class OrganizationAgent(BaseAgent):
             },
         }
 
-    async def execute(self, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def execute(self, documents: list[dict[str, Any]]) -> dict[str, Any]:
         proposals = []
         for doc in documents:
             category, confidence = await self._classify_document(doc.get("filename", ""))
@@ -145,8 +146,8 @@ class OrganizationAgent(BaseAgent):
         return cleaned or filename
 
     def _detect_version_chain(
-        self, filename: str, all_docs: List[Dict[str, Any]]
-    ) -> Optional[str]:
+        self, filename: str, all_docs: list[dict[str, Any]]
+    ) -> str | None:
         base = re.sub(
             r"[_-]?(v\d+|final|draft|copy|new|FINAL)(?=[_\-\.]|$)", "", filename, flags=re.IGNORECASE
         )

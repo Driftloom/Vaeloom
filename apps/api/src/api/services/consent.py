@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ CONSENT_SCOPES = {
 }
 
 
-class ConsentScope(str, Enum):
+class ConsentScope(StrEnum):
     data_processing = "data_processing"
     agent_access = "agent_access"
     email_marketing = "email_marketing"
@@ -46,7 +46,7 @@ class ConsentManager:
         tenant_id: str | None = None,
         ip_address: str | None = None,
     ) -> dict[str, Any]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         await db.execute(
             text("""
@@ -79,7 +79,7 @@ class ConsentManager:
         scope: ConsentScope,
         db: AsyncSession,
     ) -> dict[str, Any]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await db.execute(
             text("""
                 UPDATE consent_records

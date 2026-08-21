@@ -1,10 +1,9 @@
+import json
 import logging
 import sys
 from contextvars import ContextVar
+from datetime import UTC, datetime
 from typing import Any
-
-import json
-from datetime import datetime, timezone
 
 from .config import settings
 
@@ -36,7 +35,7 @@ class StructuredJsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         log_entry: dict[str, Any] = {
             "level": record.levelname.lower(),
-            "time": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            "time": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "service": settings.service_name,
             "environment": settings.service_environment,
             "version": settings.service_version,
@@ -100,10 +99,7 @@ def setup_logging() -> None:
     )
 
     formatter: logging.Formatter
-    if fmt == "json":
-        formatter = StructuredJsonFormatter()
-    else:
-        formatter = PrettyFormatter()
+    formatter = StructuredJsonFormatter() if fmt == "json" else PrettyFormatter()
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)
