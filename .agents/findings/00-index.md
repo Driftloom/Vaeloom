@@ -1,11 +1,18 @@
 # Vaeloom Findings Index
 
-**Last Updated:** 2026-08-22 — Agentic Closure Zero-Trust Audit (8 gaps + 7
-polish) + Full Working-Tree Verification at `e92f352`
+**Last Updated:** 2026-08-22 -- Full Project Zero-Trust Re-Audit (P13 + whole
+repo) at ccb22ed + 8 new findings F-20..27
 
-**New:** `35-agentic-closure-zero-trust-2026-08-22.md` — 11 findings (2 HIGH
-self-flag on this session's ReAct/MVP-bypass, 5 MEDIUM, 3 LOW, 1 INFO) — honest
-audit of the agentic-gap closure work.
+**New:** 2026-08-22-P13-zero-trust-full-re-audit.md -- 27 findings re-checked (9
+FIXED, 7 CONDITIONAL, 3 debt) + 8 NEW (F-20..F-27: daemon columns, SAML dead,
+search isolation, GDPR vectors, frontend mocks, base64 FP, storage check, source
+register) -- deep research 11 websearches, honest 84.4 FAILED -> 89 waived still
+stands.
+
+**Prev:** 35-agentic-closure-zero-trust-2026-08-22.md -- 11 findings (2 HIGH
+self-flag, 5 MEDIUM, 3 LOW, 1 INFO) -- agentic-gap closure audit. **Parent:**
+P13-zero-trust-audit-2026-08-22.md -- 19 findings (F-01..19) -- P13 + project
+health.
 
 ## Structure
 

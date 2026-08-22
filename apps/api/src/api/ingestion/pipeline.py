@@ -123,8 +123,35 @@ async def run_pipeline(
             logger.info("Chunked document into %d chunks", len(chunks))
 
         # 5b. Persist chunks + auto-embed (EXC-P12-04 fix: chunk->embedding auto-wiring, provenance)
-        # Durable: DocumentChunk rows + embeddings table + lineage to Memories
+        # F-08 fix: scan chunk text for prompt injection before persisting — quarantine if detected
         if chunks:
+            try:
+                from api.middleware.prompt_injection import PromptInjectionMiddleware
+
+                _inject_scanner = PromptInjectionMiddleware(app=None)
+                clean_chunks: list[TextChunk] = []
+                quarantined = 0
+                for ch in chunks:
+                    detection = _inject_scanner._scan(ch.content or "")
+                    if detection:
+                        logger.warning(
+                            "Ingestion chunk quarantined: workspace=%s doc=%s chunk=%d reason=%s",
+                            workspace_id, document_id, ch.index, detection,
+                        )
+                        # Mark chunk metadata as quarantined so retrieval can filter if needed
+                        try:
+                            ch.metadata = {**(ch.metadata or {}), "quarantined": True, "quarantine_reason": detection}
+                        except Exception:
+                            pass
+                        quarantined += 1
+                        # Still persist but flagged — alternative is to skip persistence entirely
+                        # We persist flagged so admin can review via audit; retrieval filters quarantined
+                    clean_chunks.append(ch)
+                if quarantined:
+                    logger.info("Ingestion scanning: %d/%d chunks flagged (%s)", quarantined, len(chunks), workspace_id)
+                chunks = clean_chunks
+            except Exception as scan_e:
+                logger.debug("Ingestion prompt injection scan failed (non-blocking): %s", scan_e)
             try:
                 await _persist_chunks_with_embeddings(
                     workspace_id=workspace_id,

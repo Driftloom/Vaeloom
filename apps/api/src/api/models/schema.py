@@ -957,3 +957,28 @@ class DocumentChunk(Base):
         Index("idx_document_chunks_version", "document_version_id"),
         Index("idx_document_chunks_embedding", "embedding_id"),
     )
+
+
+class RetentionRun(Base):
+    """Retention purge audit row — DPIA 4.6 evidence.
+
+    Each retention policy execution logs tenant, policy JSON, started/finished,
+    status, and records_affected. Enables DPIA to show purge logs, not just design.
+    """
+
+    __tablename__ = "retention_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    policy: Mapped[dict] = mapped_column(JSON, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="running")
+    records_affected: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_retention_runs_tenant", "tenant_id"),
+        Index("idx_retention_runs_created", "created_at"),
+    )

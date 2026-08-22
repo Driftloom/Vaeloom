@@ -1,12 +1,11 @@
 """Tests for the 8 agentic gaps + 7 polish fixes closed in Aug 2026."""
 import pytest
 
-pytestmark = pytest.mark.asyncio
-
 
 class TestEnterpriseDispatch:
     """P0: loop.py _dispatch_agent handles all 22 agents (was 8)."""
 
+    @pytest.mark.asyncio
     async def test_all_registry_agents_dispatch_without_unknown(self):
         from api.orchestrator.loop import AgentRequest, _dispatch_agent
         from api.orchestrator.router import AGENT_REGISTRY
@@ -27,6 +26,7 @@ class TestEnterpriseDispatch:
             # Should not be fallback error due to unknown agent (fallback has confidence 0 and ask_clarification, but not error)
             assert result.get("action") in ("suggest", "execute", "ask_clarification", "request_approval", "alert", "info", "build_roadmap", "suggest_milestones", "recommend_resources")
 
+    @pytest.mark.asyncio
     async def test_career_dispatch_variants(self):
         from api.orchestrator.loop import AgentRequest, _dispatch_agent
         from api.agents.career_agent.handler import CareerAgent
@@ -42,6 +42,7 @@ class TestEnterpriseDispatch:
             res = await coro
             assert res["agent_name"] == "career"
 
+    @pytest.mark.asyncio
     async def test_gmail_and_drive_no_approval_param(self):
         from api.orchestrator.loop import AgentRequest, _dispatch_agent
         from api.agents.gmail_agent.handler import GmailAgent
@@ -73,6 +74,7 @@ class TestToolRegistry:
         assert ALL_TOOLS["create_github_issue"].category == "connector_write"
         assert ALL_TOOLS["execute_code_sandbox"].category == "system"
 
+    @pytest.mark.asyncio
     async def test_executor_live_mocks(self):
         from api.tools.definitions import ALL_TOOLS
         from api.tools.executor import execute_tool
@@ -88,6 +90,7 @@ class TestToolRegistry:
             assert res["status"] == "success", f"{name} failed {res}"
             assert res["tool"] == name
 
+    @pytest.mark.asyncio
     async def test_code_sandbox_blocked(self):
         from api.tools.definitions import ALL_TOOLS
         from api.tools.executor import execute_tool
@@ -100,6 +103,7 @@ class TestToolRegistry:
 class TestReActLoop:
     """P0: dynamic ReAct loop exists and is non-blocking without LLM key."""
 
+    @pytest.mark.asyncio
     async def test_react_returns_none_without_key(self, monkeypatch):
         from api.orchestrator.loop import _try_react_loop
         from api.agents.career_agent.handler import CareerAgent
@@ -116,6 +120,7 @@ class TestReActLoop:
 class TestStreamingLoop:
     """P1: run_agent_loop_stream yields phase events."""
 
+    @pytest.mark.asyncio
     async def test_stream_yields_intent_and_done(self, tmp_path, monkeypatch):
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
         from api.orchestrator.loop import AgentRequest, run_agent_loop_stream
@@ -134,6 +139,7 @@ class TestStreamingLoop:
         assert "reflect" in events
         assert "done" in events
 
+    @pytest.mark.asyncio
     async def test_catalog_has_22_tools(self):
         from api.tools.definitions import ALL_TOOLS
         assert len(ALL_TOOLS) == 22
@@ -148,6 +154,7 @@ class TestSupervisor:
         assert is_multi_agent_request("hello") is False
         assert is_multi_agent_request("organize my files") is False
 
+    @pytest.mark.asyncio
     async def test_detect_and_build_dag(self):
         from api.orchestrator.supervisor import _detect_subtasks, _build_dag
         subtasks = await _detect_subtasks("I want to apply for Senior Backend Engineer at Google. Tailor my resume, check ATS, draft cover letter, add calendar event")
@@ -157,6 +164,7 @@ class TestSupervisor:
         assert isinstance(layers, list)
         assert all(isinstance(layer, list) for layer in layers)
 
+    @pytest.mark.asyncio
     async def test_run_supervisor_merges(self, tmp_path, monkeypatch):
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
         from api.orchestrator.supervisor import run_supervisor
@@ -167,6 +175,7 @@ class TestSupervisor:
         assert "dag" in result
         assert "summary" in result["result"]
 
+    @pytest.mark.asyncio
     async def test_supervisor_stream(self, tmp_path, monkeypatch):
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
         from api.orchestrator.supervisor import run_supervisor_stream
@@ -180,6 +189,7 @@ class TestSupervisor:
 class TestRAGAssembler:
     """P2: RAG pre-execution context injection."""
 
+    @pytest.mark.asyncio
     async def test_plan_phase_injects_rag_context(self, tmp_path, monkeypatch):
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
         from api.orchestrator.loop import plan_phase, AgentRequest
@@ -204,6 +214,7 @@ class TestRAGAssembler:
         assert "/a.pdf" in prompt
         assert "pref" in prompt
 
+    @pytest.mark.asyncio
     async def test_vector_fallback_on_sqlite(self, tmp_path, monkeypatch):
         # Ensure vector path doesn't crash on SQLite mock
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
@@ -218,6 +229,7 @@ class TestRAGAssembler:
 class TestPreferenceFeedback:
     """P2: approval feedback -> preference entity."""
 
+    @pytest.mark.asyncio
     async def test_ingest_creates_entity(self, db_session):
         from api.services.approval import _ingest_feedback_preference
         import uuid
@@ -236,6 +248,7 @@ class TestPreferenceFeedback:
         assert len(rows) == 1
         assert "Objective" in rows[0][0]
 
+    @pytest.mark.asyncio
     async def test_ingest_dedup(self, db_session):
         from api.services.approval import _ingest_feedback_preference
         import uuid

@@ -72,14 +72,15 @@ USER_TABLES = [
     ("api_keys", "user_id"),
     ("connectors", "workspace_id"),
     # Expanded F-09: direct user_id or workspace subquery — ADVISORY excludes system tables without user tie
+    # F-23 fix: embeddings before document_chunks so vectors derived from personal data are removed before chunk rows (SET NULL safe either way, but logical delete order)
     ("consent_records", "user_id"),
     ("documents", "workspace_id"),
     ("document_actions", "workspace_id"),
+    ("embeddings", "workspace_id"),
     ("document_chunks", "workspace_id"),
     ("memory_records", "workspace_id"),
     ("entities", "workspace_id"),
     ("relationships", "workspace_id"),
-    ("embeddings", "workspace_id"),
     ("resumes", "workspace_id"),
     ("applications", "workspace_id"),
     ("schedule_events", "workspace_id"),

@@ -20,8 +20,8 @@ class TenantContext:
         return tenant_context.get()
 
     @staticmethod
-    def set(tenant_id: str | None, workspace_id: str | None = None) -> None:
-        tenant_context.set({"tenant_id": tenant_id, "workspace_id": workspace_id})
+    def set(tenant_id: str | None, workspace_id: str | None = None, user_id: str | None = None) -> None:
+        tenant_context.set({"tenant_id": tenant_id, "workspace_id": workspace_id, "user_id": user_id})
 
     @staticmethod
     def clear() -> None:
@@ -35,12 +35,16 @@ class TenantContext:
     def get_workspace_id() -> str | None:
         return tenant_context.get().get("workspace_id")
 
+    @staticmethod
+    def get_user_id() -> str | None:
+        return tenant_context.get().get("user_id")
+
 
 async def set_rls_session_vars(db: AsyncSession) -> None:
     """Set PostgreSQL session variables for Row Level Security.
 
     Must be called on each DB session before queries that require RLS isolation.
-    Sets app.tenant_id and app.workspace_id GUCs used by RLS policies.
+    Sets app.tenant_id, app.workspace_id, and app.user_id GUCs used by RLS policies.
 
     Uses SET LOCAL (transaction-scoped) instead of SET (session-scoped).
     Critical for PgBouncer transaction pooling mode — session-scoped SET
@@ -55,6 +59,7 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
     ctx = TenantContext.get()
     tenant_id = ctx.get("tenant_id")
     workspace_id = ctx.get("workspace_id")
+    user_id = ctx.get("user_id")
 
     if not tenant_id:
         return
@@ -65,6 +70,8 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
         await db.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
         if workspace_id:
             await db.execute(text("SET LOCAL app.workspace_id = :wid"), {"wid": workspace_id})
+        if user_id:
+            await db.execute(text("SET LOCAL app.user_id = :uid"), {"uid": user_id})
     except Exception as exc:
         # SQLite or non-PostgreSQL — RLS not applicable, ignore.
         # On PostgreSQL this should never fail; log and continue (fail-closed:
@@ -76,7 +83,11 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
 class TenantMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         jwt_tenant_id = getattr(request.state, "tenant_id", None)
+        jwt_user_id = getattr(request.state, "user_id", None)
+        # Workspace_id can come from JWT (if present), X-Workspace-ID header, or path param
         jwt_workspace_id = getattr(request.state, "workspace_id", None)
+        header_workspace_id = request.headers.get("X-Workspace-ID", "") or request.headers.get("X-WORKSPACE-ID", "")
+        path_workspace_id = request.path_params.get("workspace_id") if hasattr(request, "path_params") and request.path_params else None
 
         if jwt_tenant_id:
             tenant_id = str(jwt_tenant_id)
@@ -92,11 +103,21 @@ class TenantMiddleware(BaseHTTPMiddleware):
             # If JWT has no tenant_id, leave tenant_id as None (RLS will match zero rows).
             tenant_id = None
 
-        workspace_id = str(jwt_workspace_id) if jwt_workspace_id else None
+        # Workspace_id: prefer JWT, then path param, then header (validated against ownership via require_workspace_access)
+        workspace_id = None
+        if jwt_workspace_id:
+            workspace_id = str(jwt_workspace_id)
+        elif path_workspace_id:
+            workspace_id = str(path_workspace_id)
+        elif header_workspace_id:
+            workspace_id = str(header_workspace_id)
+
+        user_id = str(jwt_user_id) if jwt_user_id else None
 
         request.state.tenant_id = tenant_id
         request.state.workspace_id = workspace_id
-        TenantContext.set(tenant_id, workspace_id)
+        request.state.user_id = user_id
+        TenantContext.set(tenant_id, workspace_id, user_id)
 
         try:
             response = await call_next(request)

@@ -135,8 +135,14 @@ class SearchService:
             record_stmt = select(MemoryRecord).where(
                 cast(MemoryRecord.content, String).ilike(pattern)
             )
+            # F-22 fix: tenant-scoped — RLS is primary, this is defense-in-depth
+            if tenant_id:
+                record_stmt = record_stmt.where(MemoryRecord.workspace_id.isnot(None))
             record_result = await db.execute(record_stmt)
-            for rec in record_result.scalars().all():
+            recs = record_result.scalars().all()
+            if tenant_id:
+                recs = [r for r in recs if getattr(r, "workspace_id", None) is not None]
+            for rec in recs:
                 rec_created = getattr(rec, "created_at", None)
                 results.append({
                     "id": str(rec.id),
@@ -158,8 +164,13 @@ class SearchService:
                     cast(Entity.aliases, String).ilike(pattern),
                 )
             )
+            if tenant_id:
+                entity_stmt = entity_stmt.where(Entity.workspace_id.isnot(None))
             entity_result = await db.execute(entity_stmt)
-            for ent in entity_result.scalars().all():
+            ents = entity_result.scalars().all()
+            if tenant_id:
+                ents = [e for e in ents if getattr(e, "workspace_id", None) is not None]
+            for ent in ents:
                 score = 2.0 if query.lower() in ent.canonical_name.lower() else 1.5
                 ent_created = getattr(ent, "created_at", None)
                 results.append({

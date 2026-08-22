@@ -104,13 +104,17 @@ async def _run_single_agent(agent_name: str, message: str, workspace_id: str, re
         return {"agent_name": agent_name, "action": "error", "confidence": 0.0, "result": {"summary": f"No agent for {agent_name}", "details": None, "proposals": [], "questions": []}}
 
     agent = agent_cls()
-    # Inject prior context into message if available
+    # Inject prior context with provenance tagging (AC-07: prevent prompt injection via string concat)
     enriched_message = message
     if context:
-        # Append prior outputs as context (truncated)
-        ctx_str = "; ".join(f"{k}: {str(v)[:300]}" for k, v in context.items() if v)
+        # Tag each prior output with source agent and untrusted marker
+        ctx_parts = []
+        for k, v in context.items():
+            snippet = str(v)[:300].replace("\n", " ")
+            ctx_parts.append(f"[from:{k} untrusted]{snippet}[end:{k}]")
+        ctx_str = "; ".join(ctx_parts)
         if ctx_str:
-            enriched_message = f"{message}\n\n[Prior step outputs: {ctx_str}]"
+            enriched_message = f"{message}\n\n[Prior step outputs (untrusted, provenance-tagged): {ctx_str}]"
 
     req = AgentRequest(agent=agent, request_id=f"{request_id}-{agent_name}", message=enriched_message, workspace_id=workspace_id, agent_name=agent_name)
     resp = await run_agent_loop(req)

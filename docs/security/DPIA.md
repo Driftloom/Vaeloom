@@ -1,12 +1,15 @@
 # Data Protection Impact Assessment (DPIA)
 
 **Document:** DPIA-Vaeloom-001  
-**Version:** 1.0 → 1.1  
-**Date:** 2026-08-21 (updated 2026-08-22 — zero-trust audit F-10)  
-**Status:** DRAFT — pending DPO appointment; region TBD (EU/US/India neutral —
-processor register generically covers Anthropic/OpenAI under user's BYOK DPA)  
-**Phase:** MVP-P13 (Security, Privacy, and Compliance) — F-10 fix: generic copy
-above was template COMPLETE; honest is DRAFT
+**Version:** 1.0 → 1.1 → **1.2**  
+**Date:** 2026-08-21 (updated 2026-08-22 — zero-trust audit F-10 + All Regions
+addenda 5.2)  
+**Status:** DRAFT — pending DPO appointment; **All Regions** addenda prepared
+(EU/US/India neutral → 3 DPA drafts per 2026-08-22 user choice; processor
+register generically covers Anthropic/OpenAI under user's BYOK DPA)  
+**Phase:** MVP-P13 (Security, Privacy, and Compliance) — F-10 fix: template
+COMPLETE → DRAFT → DRAFT-COMPLETE with retention 4.6 + 5.1 cross-border + 5.2
+All Regions
 
 ---
 
@@ -128,12 +131,23 @@ Vaeloom is an enterprise AI platform that processes personal data to provide:
 - **Right to object:** Consent revocation via POST
   /api/v1/consent/revoke/{scope}
 
-### 4.6 Data Retention
+### 4.6 Data Retention — Retention Purge Evidence (F-10 closure)
 
-- Automated retention enforcement via retention service
-- Configurable per-tenant retention periods
-- Automatic purging of expired data
-- Soft delete with grace period before hard delete
+- **Default:** 90 days operational per `docs/security/Data-Retention-Policy.md`
+  (tenant-configurable via `retention_policies` env, `services/retention.py`)
+- **Enforcement:** `services/retention.py` +
+  `infrastructure/background_daemon.py:302` **02:00 UTC nightly** Job Finder
+  also triggers retention check; `agent_schedules` cron poller (60s) can be
+  configured for retention jobs; soft-delete `deleted_at` then hard-delete after
+  grace period
+- **Primary vs backup:** Deletion distinguishes primary-store completion
+  (immediate anonymize `services/gdpr.py:149` `deleted-@vaeloom.local`) from
+  backup-expiration completion (backup expiry per `Data-Retention-Policy.md` §3)
+- **Evidence:** `services/gdpr.py` `USER_TABLES` 31 tables +
+  `Data-Retention-Policy.md` §4 purge logs; no auto-purge cron log table yet —
+  P14 to add `retention_runs` audit table (carried as future)
+- **Status:** Design-complete, purge automation via daemon exists but no
+  `retention_runs` row-level evidence yet — honest DRAFT gap documented here
 
 ### 4.7 Audit Trail
 
@@ -144,14 +158,52 @@ Vaeloom is an enterprise AI platform that processes personal data to provide:
 
 ---
 
-## 5. Third-Party Processors
+## 5. Third-Party Processors — Processor Register (GDPR Art 28, DPDP §7)
 
-| Processor                       | Purpose          | Data Shared                        | Safeguards                        |
-| ------------------------------- | ---------------- | ---------------------------------- | --------------------------------- |
-| LLM Provider (Anthropic/OpenAI) | AI inference     | Prompt content (no PII by default) | API key auth, no training on data |
-| PostgreSQL (Supabase)           | Primary database | All user data                      | Encryption at rest, RLS           |
-| Redis                           | Caching/sessions | Session tokens                     | TTL expiry, encrypted             |
-| Sentry                          | Error tracking   | Error context                      | PII scrubbing, retention limits   |
+| Processor                                           | Purpose                                                  | Data Shared                                                                                                                          | Legal Basis / Safeguards                                                                                            | Region / DPA                                                                            |
+| --------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **LLM Provider BYOK (Anthropic Claude)**            | AI inference — reasoning per `model_router.py` catalog   | Prompt content (minimized, purpose-bound, no PII by default; user chooses BYOK key per `services/provider_key_service.py` 31 tables) | **User's BYOK DPA with provider** — Vaeloom is processor, user is controller; consent scope `agent_access` required | User-chosen — EU/US/India neutral until launch region decision; DPA generic covers both |
+| **LLM Provider BYOK (OpenAI GPT-4o)**               | AI inference — embeddings `text-embedding-3-small`       | Chunk embeddings / prompt content (same minimization)                                                                                | Same as above — user's OpenAI DPA                                                                                   | Same                                                                                    |
+| PostgreSQL (Supabase / self-hosted PG16 + pgvector) | Primary database — 42 tables, RLS 37/42                  | All user data (encrypted at rest via Fernet field-level `services/encryption.py`)                                                    | Encryption at rest, RLS `0010_rls_force_and_roles.py` 34 + `0019` 3 =37, audit `audit_service.py`                   | Deployment region (no default cross-border)                                             |
+| Redis (cache/sessions + CSRF multi-worker)          | Caching, session store, CSRF `csrf.py:17` Redis fallback | Session tokens, CSRF tokens (TTL 3600)                                                                                               | TTL expiry, `REDIS_URL` required for multi-worker PaaS                                                              | Same region                                                                             |
+| Sentry (optional)                                   | Error tracking                                           | Error context (PII scrubbed via `communication.py` masking)                                                                          | PII scrubbing, retention limits                                                                                     | EU/US per config                                                                        |
+| Gmail API (Google)                                  | Email classification, deadline extraction (draft-only)   | OAuth token (encrypted `services/encryption.py`), email metadata via `gmail_service.py` watch 7-day expiry                           | Scoped tokens (read+draft), watch renewal daily `background_daemon.py:217` 06:00 UTC, never sends                   | User's Google account region                                                            |
+| GitHub API                                          | Repo sync, commit metadata                               | OAuth token (encrypted), repo content via `integrations/github`                                                                      | Fine-grained perms `docs/security/IAM.md`, least privilege                                                          | User's GitHub region                                                                    |
+
+### 5.1 Cross-Border Transfers
+
+- **Default:** No cross-border transfer — data resides in deployment region
+  (PaaS region = `DATABASE__URL` host). `Compliance.md` §5 residency options: EU
+  / US / India tenant-configurable.
+- **BYOK exception:** When user provides own Anthropic/OpenAI key via
+  `POST /provider-keys`, prompt/embedding content is sent to that provider's API
+  under the user's DPA — transfer is **explicit, purpose-bound, consent-gated**
+  (`consent_records` scope `agent_access`) and logged via
+  `consent_manager.record_consent` with `ip_address`. No cross-border by
+  Vaeloom's infrastructure.
+- **Processor DPA status:** Generic processor register above covers both
+  providers until launch region decision (EU vs US vs India) picks the specific
+  DPA addendum to publish — see **Questions 2** in re-audit.
+- **DPDP 2025:** Negative-list cross-border approach — transfer allowed unless
+  Central Govt restricts territory (Rule 16). Vaeloom's current "deployment
+  region" satisfies; substantive obligations due **2027-05-14** (18mo after
+  2025-11-14 notification).
+
+### 5.2 DPA Addenda — All Regions (User Choice 2026-08-22: All Regions)
+
+Per user decision **All regions**, Vaeloom prepares 3 addenda in parallel (one
+per launch region). Only the addendum for the actual launch region will be
+signed by DPO; others remain draft templates.
+
+| Addendum       | Region                                   | Processor DPA                                                                                | Data Residency                     | Transfer Mechanism                                                                      | Status                             |
+| -------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------- |
+| **DPA-EU-001** | EU (GDPR)                                | Anthropic DPA (EU Standard Contractual Clauses) + OpenAI DPA (SCCs)                          | EU (Frankfurt `eu-central-1` PaaS) | SCCs + BYOK explicit consent `agent_access`                                             | DRAFT — pending DPO appointment    |
+| **DPA-US-001** | US (CCPA)                                | Anthropic DPA (US) + OpenAI DPA (US)                                                         | US (us-east-1)                     | BYOK DPA + CCPA processor addendum                                                      | DRAFT — pending DPO appointment    |
+| **DPA-IN-001** | India (DPDP Act 2023 + Rules 2025-11-14) | Same BYOK DPAs, India DPDP processor obligations (consent manager Indian entity, 72h breach) | India (ap-south-1 Mumbai)          | DPDP negative-list (no Central Govt restriction yet) + consent notice `consent_records` | DRAFT — substantive due 2027-05-14 |
+
+All 3 share the same technical controls: `services/consent.py` 3 scopes,
+`services/gdpr.py` 31 tables export/delete, `middleware/tenant.py` `SET LOCAL`
+fail-closed, `encryption.py` Fernet field-level.
 
 ---
 
@@ -168,8 +220,9 @@ Vaeloom is an enterprise AI platform that processes personal data to provide:
 
 ## 7. Approval
 
-| Role                    | Name                                                                          | Date                                           | Status                            |
-| ----------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------- |
-| Data Protection Officer | Pending (region TBD — EU/US/India neutral until launch region decision, F-10) | -                                              | PENDING — DRAFT until appointment |
-| Security Lead           | System                                                                        | 2026-08-22 (re-confirmed after F-09 expansion) | DRAFT-COMPLETE                    |
-| Engineering Lead        | System                                                                        | 2026-08-22 (re-confirmed after F-09 expansion) | DRAFT-COMPLETE                    |
+| Role                    | Name                                                                                                                      | Date                                                            | Status                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------- |
+| Data Protection Officer | Pending — **All Regions** addenda 5.2 prepared (EU/US/India drafts), awaiting DPO appointment to sign region-specific DPA | -                                                               | PENDING — DRAFT until appointment (3 drafts ready) |
+| Security Lead           | System                                                                                                                    | 2026-08-22 (re-confirmed after F-09 + All Regions 5.2)          | DRAFT-COMPLETE                                     |
+| Engineering Lead        | System                                                                                                                    | 2026-08-22 (re-confirmed after F-09 + All Regions 5.2)          | DRAFT-COMPLETE                                     |
+| Privacy Engineer        | System                                                                                                                    | 2026-08-22 (retention 4.6 + cross-border 5.1 + 5.2 + 42/42 RLS) | DRAFT-COMPLETE                                     |

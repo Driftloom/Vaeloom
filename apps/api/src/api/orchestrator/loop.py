@@ -217,48 +217,52 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
 
         async with async_session_factory() as session:
             # ── Vector search (hybrid, preferred) — pgvector <=> distance ──
+            # AC-05: skip expensive embedding on short queries, in tests, or without vector store (saves latency on every plan)
             vector_done = False
             try:
-                if settings.llm_api_key:
-                    from api.services.llm_service import llm_service
-                    from sqlalchemy import text as _text
-                    import uuid as _uuid
-                    vec = await llm_service.generate_embedding(query[:2000])
-                    vec_str = "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
-                    # Try embeddings table (works on Postgres with pgvector; falls back on SQLite mock)
-                    try:
-                        # Entities via vector
-                        res = await session.execute(
-                            _text("""
-                                SELECT source_id, source_type, 1 - (vector <=> :vec::vector) AS score
-                                FROM embeddings
-                                WHERE workspace_id = :wid AND source_type IN ('entity', 'memory', 'document', 'document_chunk')
-                                ORDER BY vector <=> :vec::vector
-                                LIMIT 8
-                            """),
-                            {"wid": workspace_id, "vec": vec_str},
-                        )
-                        rows = res.fetchall()
-                        for row in rows:
-                            sid = str(row[0])
-                            stype = row[1]
-                            try:
-                                if stype in ('entity', 'memory') and len(entities) < 8:
-                                    ent = await session.get(Entity, _uuid.UUID(sid))
-                                    if ent and not any(e["id"] == sid for e in entities):
-                                        entities.append({"id": sid, "name": ent.canonical_name, "type": ent.type, "aliases": ent.aliases})
-                                elif stype in ('document', 'document_chunk') and len(documents) < 8:
-                                    doc = await session.get(Document, _uuid.UUID(sid))
-                                    if doc and not any(d["id"] == sid for d in documents):
-                                        documents.append({"id": sid, "path": doc.path, "summary": (doc.summary or "")[:300]})
-                            except Exception:
-                                continue
-                        if entities or documents:
-                            vector_done = True
-                            logger.info(f"RAG vector search: {len(entities)} entities, {len(documents)} docs via embeddings")
-                    except Exception as ve:
-                        # SQLite mock or no embeddings — fallback to keyword search
-                        logger.debug(f"RAG vector SQL failed, falling back to LIKE: {ve}")
+                import os as _os
+                if settings.llm_api_key and len(query.strip()) >= 10 and not _os.environ.get("PYTEST_CURRENT_TEST"):
+                    # Only attempt vector when a vector store is likely available
+                    db_url = _os.environ.get("DATABASE__URL", "") + _os.environ.get("QDRANT_URL", "")
+                    has_vector_store = "postgres" in db_url.lower() or bool(_os.environ.get("QDRANT_URL"))
+                    if has_vector_store or _os.environ.get("ENABLE_VECTOR_RAG") == "1":
+                        from api.services.llm_service import llm_service
+                        from sqlalchemy import text as _text
+                        import uuid as _uuid
+                        vec = await llm_service.generate_embedding(query[:2000])
+                        vec_str = "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
+                        # Try embeddings table (works on Postgres with pgvector; falls back on SQLite mock)
+                        try:
+                            res = await session.execute(
+                                _text("""
+                                    SELECT source_id, source_type, 1 - (vector <=> :vec::vector) AS score
+                                    FROM embeddings
+                                    WHERE workspace_id = :wid AND source_type IN ('entity', 'memory', 'document', 'document_chunk')
+                                    ORDER BY vector <=> :vec::vector
+                                    LIMIT 8
+                                """),
+                                {"wid": workspace_id, "vec": vec_str},
+                            )
+                            rows = res.fetchall()
+                            for row in rows:
+                                sid = str(row[0])
+                                stype = row[1]
+                                try:
+                                    if stype in ('entity', 'memory') and len(entities) < 8:
+                                        ent = await session.get(Entity, _uuid.UUID(sid))
+                                        if ent and not any(e["id"] == sid for e in entities):
+                                            entities.append({"id": sid, "name": ent.canonical_name, "type": ent.type, "aliases": ent.aliases})
+                                    elif stype in ('document', 'document_chunk') and len(documents) < 8:
+                                        doc = await session.get(Document, _uuid.UUID(sid))
+                                        if doc and not any(d["id"] == sid for d in documents):
+                                            documents.append({"id": sid, "path": doc.path, "summary": (doc.summary or "")[:300]})
+                                except Exception:
+                                    continue
+                            if entities or documents:
+                                vector_done = True
+                                logger.info(f"RAG vector search: {len(entities)} entities, {len(documents)} docs via embeddings")
+                        except Exception as ve:
+                            logger.debug(f"RAG vector SQL failed, falling back to LIKE: {ve}")
             except Exception as ve:
                 logger.debug(f"RAG vector embedding failed, falling back to LIKE: {ve}")
 

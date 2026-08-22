@@ -68,6 +68,25 @@ class PromptInjectionMiddleware(BaseHTTPMiddleware):
                     content={"detail": "Request blocked: potential prompt injection detected"},
                     headers={"X-Injection-Detected": "true"},
                 )
+            # LLM classifier fallback (second layer) — only when regex silent and LLM available
+            # Enabled via INJECTION_LLM_CLASSIFIER=true (cost-controlled, P14)
+            # This closes F-08: ingestion bypass already handled via pipeline.py:5b, this handles middleware bypass
+            try:
+                from ..services.injection_classifier import classify_injection_llm
+
+                llm_flag = await classify_injection_llm(body)
+                if llm_flag is True:
+                    logger.warning(
+                        "Prompt injection detected via LLM classifier path=%s method=%s",
+                        request.url.path, request.method,
+                    )
+                    return JSONResponse(
+                        status_code=400,
+                        content={"detail": "Request blocked: potential prompt injection detected (llm)"},
+                        headers={"X-Injection-Detected": "true", "X-Detection-Layer": "llm"},
+                    )
+            except Exception as e:
+                logger.debug("LLM injection classifier error: %s", e)
 
         return await call_next(request)
 

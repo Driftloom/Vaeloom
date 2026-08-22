@@ -188,7 +188,7 @@ async def db_session(db_path):
             "CREATE TABLE IF NOT EXISTS notification_subscribers (id TEXT PRIMARY KEY, url TEXT, tenant_id TEXT, created_at TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, actor_id TEXT, action TEXT, resource TEXT, resource_id TEXT, tenant_id TEXT, metadata TEXT, created_at TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS analytics_events (id TEXT PRIMARY KEY, name TEXT, properties TEXT, tenant_id TEXT, user_id TEXT, created_at TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS job_executions (id TEXT PRIMARY KEY, job_id TEXT, status TEXT, created_at TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS job_executions (id TEXT PRIMARY KEY, job_id TEXT, status TEXT, started_at TIMESTAMP, finished_at TIMESTAMP, status_code INTEGER, error TEXT, created_at TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS iam_users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, tenant_id TEXT NOT NULL, active INTEGER DEFAULT 1, created_at TIMESTAMP, updated_at TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS iam_user_roles (user_id TEXT NOT NULL, role_id TEXT NOT NULL, PRIMARY KEY (user_id, role_id))",
             "CREATE TABLE IF NOT EXISTS rbac_roles (id TEXT PRIMARY KEY, name TEXT NOT NULL, permissions TEXT DEFAULT '[]')",

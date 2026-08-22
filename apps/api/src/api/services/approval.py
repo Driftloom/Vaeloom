@@ -250,12 +250,22 @@ async def _ingest_feedback_preference(
             "polarity": polarity,
             "source": "approval_feedback",
         }
-        existing = await db.execute(
-            text("SELECT id FROM entities WHERE workspace_id = :wid AND type = 'preference' AND canonical_name = :name LIMIT 1"),
-            {"wid": workspace_id, "name": canonical_name},
-        )
-        if existing.fetchone():
-            return
+        # Dedup by (workspace, name, action_type, decision) to avoid collisions — e.g., same note "Objective" for resume vs different agent
+        try:
+            existing = await db.execute(
+                text("SELECT id FROM entities WHERE workspace_id = :wid AND type = 'preference' AND canonical_name = :name AND metadata ->> 'action_type' = :action AND metadata ->> 'decision' = :decision LIMIT 1"),
+                {"wid": workspace_id, "name": canonical_name, "action": action_type, "decision": decision},
+            )
+            if existing.fetchone():
+                return
+        except Exception:
+            # SQLite fallback: metadata is TEXT, JSONB query fails — fallback to name-only
+            existing2 = await db.execute(
+                text("SELECT id FROM entities WHERE workspace_id = :wid AND type = 'preference' AND canonical_name = :name LIMIT 1"),
+                {"wid": workspace_id, "name": canonical_name},
+            )
+            if existing2.fetchone():
+                return
         entity = Entity(
             id=uuid.uuid4(),
             workspace_id=uuid.UUID(workspace_id) if isinstance(workspace_id, str) else workspace_id,

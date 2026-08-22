@@ -1,5 +1,7 @@
 import hashlib
 import hmac
+import logging
+import os
 import secrets
 import time
 
@@ -8,6 +10,39 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import JSONResponse, Response
 
 from ..config import settings
+
+logger = logging.getLogger(__name__)
+
+# ── Redis fallback for multi-worker (F-06 / EXC-P13-07) ──────────────────
+# In-memory dict is single-process only (uvicorn --workers 1). When REDIS_URL
+# is set (PaaS / multi-worker), tokens are stored in Redis with TTL 3600 so
+# any worker can validate. Falls back to in-memory for local/test.
+_redis_client = None
+_redis_checked = False
+
+
+def _get_redis():
+    global _redis_client, _redis_checked
+    if _redis_checked:
+        return _redis_client
+    _redis_checked = True
+    redis_url = os.environ.get("REDIS_URL") or getattr(settings, "redis__url", "") or getattr(settings, "rate_limit_redis_url", "")
+    if not redis_url or redis_url == "redis://localhost:6379/0":
+        # Don't use default localhost in test/dev without explicit REDIS_URL — keep in-memory
+        # Only use Redis when explicitly configured via REDIS_URL env for multi-worker
+        if not os.environ.get("REDIS_URL"):
+            return None
+    try:
+        import redis  # type: ignore
+
+        client = redis.Redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=1, socket_timeout=1)
+        client.ping()
+        _redis_client = client
+        logger.info("CSRF store using Redis at %s", redis_url.split("@")[-1])
+        return _redis_client
+    except Exception as e:
+        logger.debug("CSRF Redis unavailable, using in-memory: %s", e)
+        return None
 
 MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc", "/metrics", "/csrf-token"})
@@ -30,11 +65,27 @@ class CSRFTokenStore:
 
     def generate(self) -> str:
         token = secrets.token_urlsafe(32)
+        # Try Redis first (multi-worker)
+        redis_client = _get_redis()
+        if redis_client is not None:
+            try:
+                redis_client.setex(f"csrf:{token}", int(self._ttl), "1")
+                return token
+            except Exception as e:
+                logger.debug("CSRF Redis setex failed, fallback to memory: %s", e)
         self._tokens[token] = time.monotonic() + self._ttl
         self._evict()
         return token
 
     def validate(self, token: str) -> bool:
+        redis_client = _get_redis()
+        if redis_client is not None:
+            try:
+                if redis_client.exists(f"csrf:{token}"):
+                    return True
+                # Fallback check memory in case token was generated before Redis was available
+            except Exception as e:
+                logger.debug("CSRF Redis exists failed: %s", e)
         self._evict()
         return token in self._tokens
 

@@ -90,6 +90,74 @@ function agentDot(a?: string) {
   return m[a || ''] || 'bg-zinc-600';
 }
 
+function parseBlockingChatResponse(
+  res: unknown,
+  fallbackAgent?: string,
+): {
+  reply: string;
+  proposals?: ChatMessage['proposals'];
+  questions?: string[];
+  tools?: ChatMessage['toolCalls'];
+  cites?: ChatMessage['citations'];
+  agentName?: string;
+  confidence?: number;
+} {
+  const r = res as Record<string, unknown>;
+  let reply = '';
+  let conf: number | undefined;
+  let proposals: ChatMessage['proposals'];
+  let questions: string[] | undefined;
+  let tools: ChatMessage['toolCalls'];
+  let cites: ChatMessage['citations'];
+  let an = fallbackAgent;
+  if (r && typeof r === 'object' && 'result' in r) {
+    const o = (
+      r as {
+        result: {
+          summary?: string;
+          proposals?: unknown[];
+          questions?: string[];
+          details?: unknown;
+        };
+        agent_name?: string;
+        confidence?: number;
+      }
+    ).result;
+    reply = (o?.summary as string) || '';
+    proposals = (o?.proposals as unknown[])?.map((p) => {
+      const q = p as Record<string, unknown>;
+      const approvalId =
+        typeof q['approval_id'] === 'string' || typeof q['approvalId'] === 'string'
+          ? String(q['approval_id'] || q['approvalId'])
+          : undefined;
+      return {
+        title: String(q['title'] || q['action'] || 'Proposal'),
+        detail: String(q['detail'] || q['description'] || ''),
+        requiresApproval: q['requires_approval'] === true || Boolean(approvalId),
+        approvalId,
+        status: approvalId ? ('pending' as const) : undefined,
+      };
+    }) as ChatMessage['proposals'];
+    questions = o?.questions as string[];
+    conf = (r as { confidence?: number }).confidence;
+    an = (r as { agent_name?: string }).agent_name || an;
+    const d = o?.details as Record<string, unknown> | undefined;
+    if (d && Array.isArray((d as Record<string, unknown>)['entities']))
+      tools = [
+        { name: 'search_documents', status: 'done', latencyMs: 210 },
+        { name: 'query_graph', status: 'done', latencyMs: 170 },
+      ];
+    else if (an) tools = [{ name: `${an}_run`, status: 'done', latencyMs: 280 }];
+    if (d && Array.isArray((d as Record<string, unknown>)['citations']))
+      cites = d['citations'] as ChatMessage['citations'];
+  } else if (r && 'reply' in (r as Record<string, unknown>))
+    reply = String((r as { reply?: string }).reply || '');
+  else if (typeof r === 'string') reply = r;
+  else reply = JSON.stringify(r).slice(0, 2000);
+  if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
+  return { reply, proposals, questions, tools, cites, agentName: an, confidence: conf };
+}
+
 export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const { toast } = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -733,71 +801,19 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           const res: unknown = agentForCall
             ? await agentApi.chat({ workspaceId, message: raw, agentName: agentForCall })
             : await agentApi.chat({ workspaceId, message: raw });
-          const r = res as Record<string, unknown>;
-          let reply = '';
-          let conf: number | undefined;
-          let proposals: ChatMessage['proposals'];
-          let questions: string[] | undefined;
-          let tools: ChatMessage['toolCalls'];
-          let cites: ChatMessage['citations'];
-          let an = agentForCall;
-          if (r && typeof r === 'object' && 'result' in r) {
-            const o = (
-              r as {
-                result: {
-                  summary?: string;
-                  proposals?: unknown[];
-                  questions?: string[];
-                  details?: unknown;
-                };
-                agent_name?: string;
-                confidence?: number;
-              }
-            ).result;
-            reply = (o?.summary as string) || '';
-            proposals = (o?.proposals as unknown[])?.map((p) => {
-              const q = p as Record<string, unknown>;
-              const approvalId =
-                typeof q['approval_id'] === 'string' || typeof q['approvalId'] === 'string'
-                  ? String(q['approval_id'] || q['approvalId'])
-                  : undefined;
-              return {
-                title: String(q['title'] || q['action'] || 'Proposal'),
-                detail: String(q['detail'] || q['description'] || ''),
-                requiresApproval: q['requires_approval'] === true || Boolean(approvalId),
-                approvalId,
-                status: approvalId ? ('pending' as const) : undefined,
-              };
-            }) as ChatMessage['proposals'];
-            questions = o?.questions as string[];
-            conf = (r as { confidence?: number }).confidence;
-            an = (r as { agent_name?: string }).agent_name || an;
-            const d = o?.details as Record<string, unknown> | undefined;
-            if (d && Array.isArray((d as Record<string, unknown>)['entities']))
-              tools = [
-                { name: 'search_documents', status: 'done', latencyMs: 210 },
-                { name: 'query_graph', status: 'done', latencyMs: 170 },
-              ];
-            else if (an) tools = [{ name: `${an}_run`, status: 'done', latencyMs: 280 }];
-            if (d && Array.isArray((d as Record<string, unknown>)['citations']))
-              cites = d['citations'] as ChatMessage['citations'];
-          } else if (r && 'reply' in (r as Record<string, unknown>))
-            reply = String((r as { reply?: string }).reply || '');
-          else if (typeof r === 'string') reply = r;
-          else reply = JSON.stringify(r).slice(0, 2000);
-          if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
+          const parsed = parseBlockingChatResponse(res, agentForCall);
           const final: Partial<ChatMessage> = {
-            text: reply,
-            confidence: conf ?? streamedConfidence,
-            proposals,
-            questions,
-            toolCalls: tools,
-            citations: cites,
-            agentName: an || streamedAgent || 'assistant',
+            text: parsed.reply,
+            confidence: parsed.confidence ?? streamedConfidence,
+            proposals: parsed.proposals,
+            questions: parsed.questions,
+            toolCalls: parsed.tools,
+            citations: parsed.cites,
+            agentName: parsed.agentName || streamedAgent || 'assistant',
             streaming: false,
             latencyMs: Math.round(420 + Math.random() * 500),
           };
-          await streamText(reply, agentId);
+          await streamText(parsed.reply, agentId);
           setMessages((p) =>
             p.map((m) => (m.id === agentId ? { ...m, ...final, streaming: false } : m)),
           );
