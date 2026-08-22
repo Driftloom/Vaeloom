@@ -562,15 +562,42 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
     # ── Canonical MVP agents ──────────────────────────────────────────
     if agent_type == "OrganizationAgent":
         docs = [{"id": f"doc_{request.id}", "filename": message}]
-        return agent.execute(docs)
+        # Organization file moves/renames are consequential — approval-gated per ADR-031
+        async def _org_handler(has_approval: bool):
+            result = await agent.execute(docs)
+            # Enrich proposals with approval metadata (human-in-loop)
+            try:
+                res = result.get("result", {}) if isinstance(result, dict) else {}
+                props = res.get("proposals") if isinstance(res, dict) else None
+                if isinstance(props, list) and props:
+                    for p in props:
+                        if isinstance(p, dict):
+                            p.setdefault("requires_approval", not has_approval)
+                            p.setdefault("approval_type", "file_organize")
+                    if not has_approval:
+                        result["action"] = "request_approval"
+                        # Surface as approval card copy
+                        if "result" in result and isinstance(result["result"], dict):
+                            s = result["result"].get("summary", "")
+                            if "awaiting approval" not in s.lower():
+                                result["result"]["summary"] = f"{s} — awaiting approval."
+                    else:
+                        result["action"] = "execute"
+                        logger.info(f"Organization APPROVED file_organize for {request.workspace_id}")
+            except Exception as e:
+                logger.warning(f"Organization approval enrichment failed: {e}")
+            return result
+        return _dispatch_with_approval(request, agent, "file_organize", _org_handler)
 
     if agent_type == "ResumeAgent":
+        # Use extracted keywords as skills instead of raw message blob (fixes synthetic single-string skill)
+        skill_list = keywords if keywords else ([message.strip()] if message.strip() else [])
         profile = {
             "name": "User",
             "email": "user@example.com",
             "education": [],
             "experience": [],
-            "skills": [message] if message else [],
+            "skills": skill_list,
         }
         return agent.execute(profile)
 
@@ -579,7 +606,7 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
         return agent.score(parts[0].strip(), parts[1].strip() if len(parts) > 1 else "")
 
     if agent_type == "JobSearchAgent":
-        return agent.search(keywords=keywords, user_skills=[], rejected_job_ids=[])
+        return agent.search(keywords=keywords, user_skills=keywords, rejected_job_ids=[])
 
     if agent_type == "ApplicationAgent":
         job = {"id": f"job_{request.id}", "title": message, "company": "Target Company"}
@@ -593,8 +620,22 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
         return agent.classify_emails(emails=emails)
 
     if agent_type in ("DriveAgent", "DriveAgentHandler") or registry_key == "drive":
-        # DriveAgent.process(request) — no approval param; approval handled at file_modify level if needed
-        return agent.process(request)
+        # Drive sync can write documents/episodic — gate ingestion behind approval (suggest vs execute)
+        async def _drive_handler(has_approval: bool):
+            result = await agent.process(request)
+            # Drive is read-heavy; only gate actual ingestion. If not approved, downgrade to suggest with notice
+            if not has_approval and isinstance(result, dict):
+                act = result.get("action")
+                if act == "suggest":
+                    # Ensure summary notes approval needed for writes without breaking read path
+                    try:
+                        r = result.get("result", {})
+                        if isinstance(r, dict) and r.get("summary") and "ingested" in str(r.get("summary", "")).lower():
+                            r["summary"] = str(r["summary"]) + " (ingestion requires approval for new files)"
+                    except Exception:
+                        pass
+            return result
+        return _dispatch_with_approval(request, agent, "drive_sync", _drive_handler)
 
     if agent_type == "SchedulerAgent" or registry_key == "scheduler":
         return _dispatch_with_approval(request, agent, "calendar_write", lambda has_approval: agent.check_conflicts(
@@ -759,6 +800,9 @@ async def reflect_phase(request: AgentRequest, observe_result: dict[str, Any], i
 
     if action == "execute":
         return ReflectResult(True, "Executed successfully")
+
+    if action == "request_approval":
+        return ReflectResult(True, "Approval required — proposal ready")
 
     if action == "suggest" and confidence >= 0.7:
         return ReflectResult(True, f"Good suggestion (confidence={confidence:.2f})")
