@@ -47,12 +47,12 @@
 
 ## API — Test State
 
-- **2555 tests collected (2459 pass, 4 skipped, 2 xfailed, 1 pre-existing
-  failure fixed on 2026-08-21 + debug_test removed)** — security suite 233/233
+- **2557 tests collected (2459 pass, 4 skipped, 2 xfailed, 1 pre-existing
+  failure fixed on 2026-08-21 + debug_test removed; +2 since 2026-08-22 via new suites)** — security suite 233/233
   (170 unique de-duplicated; middleware/test_csrf duplicates security/test_csrf
   per zero-trust audit 2026-08-22 F-02; F-20/F-22 fixes 2026-08-22 do not change
   count); coverage **94% total** — see
-  `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`
+  `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`; OpenAPI **99 paths** (`docs/backend/openapi.yaml` — was 88 at P12, now 99)
 - Python 3.12.13 (per `apps/api/.python-version` pinned via
   `uv python pin 3.12`; `.venv` managed by `uv`)
 - Tests use SQLite with mock backend (`tmp_path` per-test DB via `NullPool`);
@@ -87,8 +87,8 @@
 | 7.x Agent hardening       | DONE   | IMPLEMENTED             | Circuit breaker, fallback policies, per-agent rate limits; approval gate now wired in orchestrator loop                                                                                                                                                                                                                                                                                  |
 | 8.x Performance           | DONE   | IMPLEMENTED             | SWR caching, route prefetching, image optimization, bundle analysis                                                                                                                                                                                                                                                                                                                      |
 | 9.x Security & Compliance | DONE   | PARTIAL                 | GDPR, API key rotation, data retention implemented; IP Allowlist middleware ALWAYS MOUNTED (main.py:188 no-op when empty) — was stale NOT MOUNTED claim fixed 2026-08-22 F-18; input sanitization designed (ADR-031)                                                                                                                                                                     |
-| 10.x Testing/QA           | DONE   | PARTIAL                 | 2555 pytest, 233 security (170 unique), 37 jest, 39 e2e real; testing/smoke/, security/, chaos/, fuzz/, visual-regression/ are EMPTY                                                                                                                                                                                                                                                     |
-| 11.x Documentation        | DONE   | IMPLEMENTED             | 32 ADRs (ADR-001 through ADR-032), OpenAPI spec, onboarding guide, deployment/DR runbooks, API reference                                                                                                                                                                                                                                                                                 |
+| 10.x Testing/QA           | DONE   | PARTIAL                 | 2557 pytest, 233 security (170 unique), 37 jest, 39 e2e real; testing/smoke/, security/, chaos/, fuzz/, visual-regression/ are EMPTY — coverage 94% + WCAG + perf not re-measured (EXC-P14-01..03, P15 owns)                                                                                                                                                                           |
+| 11.x Documentation        | DONE   | IMPLEMENTED             | 32 ADRs (ADR-001 through ADR-032), OpenAPI **99 paths** (`docs/backend/openapi.yaml`), onboarding guide, deployment/DR runbooks, API reference                                                                                                                                                                                            |
 | 12.x Enterprise Polish    | DONE   | IMPLEMENTED             | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                                                                                                                                                                                                                                                                                          |
 
 ## Critical Config for Agent Sessions
