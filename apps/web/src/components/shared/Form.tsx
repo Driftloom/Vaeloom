@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 interface FormFieldProps {
   label: string;
@@ -28,7 +28,7 @@ export function FormField({
       <label className="block text-sm font-medium text-text">
         {label}
         {required && (
-          <span className="text-red-400 ml-0.5" aria-hidden="true">
+          <span className="text-error ml-0.5" aria-hidden="true">
             *
           </span>
         )}
@@ -44,7 +44,7 @@ export function FormField({
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-xs text-red-400" role="alert">
+        <p id={errorId} className="text-xs text-error" role="alert">
           {error}
         </p>
       )}

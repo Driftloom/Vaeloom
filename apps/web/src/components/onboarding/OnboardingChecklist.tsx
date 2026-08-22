@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
@@ -47,8 +47,8 @@ export function OnboardingChecklist({ workspaceId }: { workspaceId?: string }) {
   return (
     <div className="card border-primary/20 bg-primary/5 mb-6">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display font-medium text-text">Get started</h3>
-        <span className="text-xs font-mono text-text-dim">
+        <h2 className="font-display font-medium text-text">Get started</h2>
+        <span className="text-xs font-mono text-text-muted">
           {doneCount}/{steps.length} completed
         </span>
       </div>
@@ -62,10 +62,10 @@ export function OnboardingChecklist({ workspaceId }: { workspaceId?: string }) {
         {steps.map((s) => (
           <div
             key={s.id}
-            className={`rounded-lg border p-3 ${s.done ? 'border-green-500/30 bg-green-500/5' : 'border-border bg-surface'}`}
+            className={`rounded-lg border p-3 ${s.done ? 'border-success/30 bg-success/5' : 'border-border bg-surface'}`}
           >
             <p className="text-sm font-medium text-text">{s.label}</p>
-            <p className="text-xs text-text-dim mt-1">{s.done ? 'Completed' : 'Next step'}</p>
+            <p className="text-xs text-text-muted mt-1">{s.done ? 'Completed' : 'Next step'}</p>
             {!s.done && (
               <Link
                 href={s.href}

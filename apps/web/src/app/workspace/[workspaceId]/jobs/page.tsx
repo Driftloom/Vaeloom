@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -30,38 +30,38 @@ function MatchBadge({ score }: { score: number | null }) {
   }
   if (score >= 80) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-green-400">
-        <span className="h-2 w-2 rounded-full bg-green-400" />
-        {score}% — Strong Match
+      <span className="inline-flex items-center gap-1.5 text-xs text-success">
+        <span className="h-2 w-2 rounded-full bg-success" />
+        {score}% â€” Strong Match
       </span>
     );
   }
   if (score >= 60) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-blue-400">
+      <span className="inline-flex items-center gap-1.5 text-xs text-info">
         <span className="h-2 w-2 rounded-full bg-blue-400" />
-        {score}% — Good Match
+        {score}% â€” Good Match
       </span>
     );
   }
   if (score >= 40) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-yellow-400">
-        <span className="h-2 w-2 rounded-full bg-yellow-400" />
-        {score}% — Partial Match
+      <span className="inline-flex items-center gap-1.5 text-xs text-warning">
+        <span className="h-2 w-2 rounded-full bg-warning" />
+        {score}% â€” Partial Match
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
       <span className="h-2 w-2 rounded-full bg-gray-400" />
-      {score}% — Low Match
+      {score}% â€” Low Match
     </span>
   );
 }
 
 function formatDate(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) return 'â€”';
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -70,10 +70,10 @@ function formatDate(iso?: string): string {
 }
 
 const statusStyles: Record<string, string> = {
-  active: 'border-green-500/50 text-green-400 bg-green-950/20',
-  paused: 'border-yellow-500/50 text-yellow-400 bg-yellow-950/20',
+  active: 'border-success/50 text-success bg-success/10',
+  paused: 'border-warning/50 text-warning bg-warning/10',
   completed: 'border-primary/50 text-primary bg-primary/10',
-  failed: 'border-red-500/50 text-red-400 bg-red-950/20',
+  failed: 'border-error/50 text-error bg-error/10',
 };
 
 export default function JobsPage() {
@@ -216,7 +216,7 @@ export default function JobsPage() {
         toast({
           tone: 'success',
           title: 'Application started',
-          detail: `${title} — check Approvals for approval or Applications for status`,
+          detail: `${title} â€” check Approvals for approval or Applications for status`,
         });
       } catch (err) {
         toast({
@@ -319,24 +319,24 @@ export default function JobsPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSearch();
               }}
-              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineer…"
+              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineerâ€¦"
               className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
               aria-label="Job search query"
             />
             <button
               onClick={handleSearch}
               disabled={searching || !query.trim()}
-              className="rounded-full bg-white px-5 py-2 text-sm text-black disabled:opacity-40"
+              className="rounded-full bg-primary px-5 py-2 text-sm text-primary-fg disabled:opacity-40 hover:bg-action-hover"
               aria-label="Search jobs"
             >
-              {searching ? 'Searching…' : 'Search'}
+              {searching ? 'Searchingâ€¦' : 'Search'}
             </button>
           </div>
           <div className="flex gap-3 mt-3">
             <input
               value={filterLocation}
               onChange={(e) => setFilterLocation(e.target.value)}
-              placeholder="Filter by location…"
+              placeholder="Filter by locationâ€¦"
               className="rounded-full border border-border bg-background px-4 py-1.5 text-xs outline-none focus:border-primary w-48"
               aria-label="Filter proposals by location"
             />
@@ -352,17 +352,17 @@ export default function JobsPage() {
             </label>
           </div>
           <p className="text-xs text-text-dim mt-2">
-            Powered by the Job Search agent — results include match explanation and fit summary.
+            Powered by the Job Search agent â€” results include match explanation and fit summary.
           </p>
         </div>
 
-        {searching && <LoadingSpinner text="Searching jobs…" />}
+        {searching && <LoadingSpinner text="Searching jobsâ€¦" />}
         {!searching && searchResult && (
           <div className="space-y-4">
             <div className="card">
               <h3 className="font-medium text-text mb-2">Results</h3>
               <p className="text-sm text-text-muted whitespace-pre-wrap">
-                {searchResult.summary || 'No summary returned — try a different query.'}
+                {searchResult.summary || 'No summary returned â€” try a different query.'}
               </p>
               {searchResult.questions && searchResult.questions.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -391,7 +391,7 @@ export default function JobsPage() {
                       </div>
                       <div className="flex flex-wrap gap-2 mt-1 text-xs text-text-dim">
                         {p.location && <span>{p.location}</span>}
-                        {p.remote && <span className="text-green-400">Remote</span>}
+                        {p.remote && <span className="text-success">Remote</span>}
                         {p.salary && <span>{p.salary}</span>}
                       </div>
                       {p.detail && (
@@ -419,7 +419,7 @@ export default function JobsPage() {
                         <button
                           onClick={() => handleSave(p)}
                           disabled={isSaved}
-                          className={`flex-1 rounded-full text-xs py-1.5 ${isSaved ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-white text-black'}`}
+                          className={`flex-1 rounded-full text-xs py-1.5 ${isSaved ? 'bg-success/15 text-success border border-success/30' : 'bg-white text-black'}`}
                           aria-label={isSaved ? `${p.title} is saved` : `Save ${p.title}`}
                         >
                           {isSaved ? 'Saved' : 'Save'}
@@ -450,7 +450,7 @@ export default function JobsPage() {
               </p>
             ) : (
               <p className="text-sm text-text-muted">
-                No structured proposals returned — the summary above contains the ranked matches.
+                No structured proposals returned â€” the summary above contains the ranked matches.
                 Save interesting roles from the summary and use Apply to start an approval-gated
                 application (you will get a deep link after approval).
               </p>
@@ -545,7 +545,7 @@ export default function JobsPage() {
                   </button>
                   <button
                     onClick={() => handleJobAction(job, 'delete')}
-                    className="rounded-full border border-red-500/20 px-3 py-1 text-xs text-red-400 hover:bg-red-500/10"
+                    className="rounded-full border border-error/30 px-3 py-1 text-xs text-error hover:bg-error/10"
                     aria-label={`Delete job ${job.name}`}
                   >
                     Delete
@@ -561,7 +561,7 @@ export default function JobsPage() {
         {saved.length === 0 ? (
           <EmptyState
             title="No saved jobs"
-            description="Save roles from the Job Search tab — they persist here. Apply requires approval and will give you a deep link to the application."
+            description="Save roles from the Job Search tab â€” they persist here. Apply requires approval and will give you a deep link to the application."
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -573,7 +573,7 @@ export default function JobsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2 mt-1 text-xs text-text-dim">
                   {s.location && <span>{s.location}</span>}
-                  {s.remote && <span className="text-green-400">Remote</span>}
+                  {s.remote && <span className="text-success">Remote</span>}
                   {s.salary && <span>{s.salary}</span>}
                 </div>
                 {s.detail && <p className="text-sm text-text-muted mt-1">{s.detail}</p>}

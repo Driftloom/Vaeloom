@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 interface TimelineEvent {
   id: string;
@@ -15,9 +15,9 @@ interface TimelineProps {
 
 const typeColors: Record<string, string> = {
   default: 'bg-border',
-  success: 'bg-green-500',
-  warning: 'bg-yellow-500',
-  error: 'bg-red-500',
+  success: 'bg-success',
+  warning: 'bg-warning',
+  error: 'bg-error',
 };
 
 export function Timeline({ events, className = '' }: TimelineProps) {

@@ -177,9 +177,9 @@ export default function MemoryDetailPage() {
             <span
               className={`text-xs rounded-full px-2.5 py-0.5 border ${
                 status === 'superseded'
-                  ? 'bg-amber-500/10 text-amber-700 border-amber-500/20'
+                  ? 'bg-warning/10 text-warning border-warning/30'
                   : status === 'READY' || status === 'active'
-                    ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
+                    ? 'bg-success/10 text-success border-success/30'
                     : 'bg-surface-hover text-text-muted border-border'
               }`}
             >
@@ -273,7 +273,7 @@ export default function MemoryDetailPage() {
                       return (
                         <div
                           key={String(mem['id'])}
-                          className="shrink-0 w-48 rounded border border-amber-500/20 bg-amber-500/5 p-2"
+                          className="shrink-0 w-48 rounded border border-warning/30 bg-warning/10 p-2"
                         >
                           <p className="text-sm font-medium text-text truncate">
                             {String(mem['title'] || mem['id']).slice(0, 28)}

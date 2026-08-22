@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 type AgentStatusType = 'healthy' | 'degraded' | 'down' | 'idle';
 
@@ -11,10 +11,10 @@ interface AgentStatusProps {
 }
 
 const statusConfig: Record<AgentStatusType, { color: string; label: string; icon: string }> = {
-  healthy: { color: 'text-green-400', label: 'Healthy', icon: '●' },
-  degraded: { color: 'text-yellow-400', label: 'Degraded', icon: '●' },
-  down: { color: 'text-red-400', label: 'Down', icon: '●' },
-  idle: { color: 'text-text-muted', label: 'Idle', icon: '○' },
+  healthy: { color: 'text-success', label: 'Healthy', icon: 'â—' },
+  degraded: { color: 'text-warning', label: 'Degraded', icon: 'â—' },
+  down: { color: 'text-error', label: 'Down', icon: 'â—' },
+  idle: { color: 'text-text-muted', label: 'Idle', icon: 'â—‹' },
 };
 
 export function AgentStatus({

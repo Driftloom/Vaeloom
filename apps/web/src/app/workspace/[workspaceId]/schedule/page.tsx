@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -41,10 +41,10 @@ function getSourceBadge(e: Event): { label: string; cls: string } {
   const payloadSrc = String((e.payload as Record<string, unknown>)?.['source'] ?? '').toLowerCase();
   const combined = `${src} ${payloadSrc}`;
   if (combined.includes('gmail'))
-    return { label: 'Gmail', cls: 'bg-red-500/10 text-red-600 border-red-500/20' };
+    return { label: 'Gmail', cls: 'bg-error/10 text-error border-error/30' };
   if (combined.includes('agent') || (e.payload as Record<string, unknown>)?.['proposed'])
     return { label: 'Agent', cls: 'bg-violet-500/10 text-violet-700 border-violet-500/20' };
-  return { label: 'You', cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' };
+  return { label: 'You', cls: 'bg-success/10 text-success border-success/30' };
 }
 
 function isProposed(e: Event): boolean {
@@ -205,50 +205,40 @@ export default function SchedulePage() {
   const handleApprove = useCallback(
     async (e: Event, decision: 'approve' | 'reject') => {
       const approvalId = getApprovalId(e);
+      // F-03: without a real approval record there is nothing to approve â€”
+      // the previous local-only status flip diverged UI state from the
+      // backend. The action is refused with an explanation instead.
+      if (!approvalId) {
+        toast({
+          tone: 'info',
+          title: 'No approval record',
+          detail:
+            'This proposed event has no approval record yet. Ask the agent to create one (e.g. via chat) to enable a real approval decision.',
+        });
+        return;
+      }
       setBusyApprove(e.id);
       try {
-        if (approvalId) {
-          if (decision === 'approve') await approvalApi.approve(approvalId);
-          else await approvalApi.reject(approvalId);
-          toast({
-            tone: 'success',
-            title: decision === 'approve' ? 'Approved' : 'Rejected',
-            detail: String((e.payload as Record<string, unknown>)?.['title'] ?? e.type),
-          });
-          setEvents((prev) =>
-            prev.map((ev) =>
-              ev.id === e.id
-                ? {
-                    ...ev,
-                    status:
-                      decision === 'approve'
-                        ? ('completed' as Event['status'])
-                        : ('failed' as Event['status']),
-                  }
-                : ev,
-            ),
-          );
-        } else {
-          // No backend approval — local proposed resolution
-          setEvents((prev) =>
-            prev.map((ev) =>
-              ev.id === e.id
-                ? {
-                    ...ev,
-                    status:
-                      decision === 'approve'
-                        ? ('completed' as Event['status'])
-                        : ('failed' as Event['status']),
-                  }
-                : ev,
-            ),
-          );
-          toast({
-            tone: decision === 'approve' ? 'success' : 'info',
-            title: decision === 'approve' ? 'Approved locally' : 'Rejected locally',
-            detail: 'No approval record — marked in UI. Create via agent for real approval gate.',
-          });
-        }
+        if (decision === 'approve') await approvalApi.approve(approvalId);
+        else await approvalApi.reject(approvalId);
+        toast({
+          tone: 'success',
+          title: decision === 'approve' ? 'Approved' : 'Rejected',
+          detail: String((e.payload as Record<string, unknown>)?.['title'] ?? e.type),
+        });
+        setEvents((prev) =>
+          prev.map((ev) =>
+            ev.id === e.id
+              ? {
+                  ...ev,
+                  status:
+                    decision === 'approve'
+                      ? ('completed' as Event['status'])
+                      : ('failed' as Event['status']),
+                }
+              : ev,
+          ),
+        );
       } catch (err) {
         toast({
           tone: 'error',
@@ -314,7 +304,7 @@ export default function SchedulePage() {
         <div>
           <h1 className="text-3xl font-display font-medium text-text mb-1">Schedule</h1>
           <p className="text-text-muted text-sm">
-            Workspace-scoped · calendar + list · Gmail vs agent vs you · proposed events need
+            Workspace-scoped Â· calendar + list Â· Gmail vs agent vs you Â· proposed events need
             approval
           </p>
           <p className="text-xs text-text-dim font-mono">
@@ -348,11 +338,13 @@ export default function SchedulePage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search title or type…"
+          aria-label="Search events by title or type"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-48"
         />
         <select
           value={filterSource}
           onChange={(e) => setFilterSource(e.target.value)}
+          aria-label="Filter events by source"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
         >
           <option value="all">All sources</option>
@@ -363,6 +355,7 @@ export default function SchedulePage() {
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
+          aria-label="Filter events by category"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
         >
           <option value="all">All categories</option>
@@ -422,7 +415,7 @@ export default function SchedulePage() {
             {calDays.map((cell, i) => (
               <div
                 key={i}
-                className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''} ${cell.date && cell.events.some((e) => conflicts.has(e.id)) ? 'bg-amber-500/5' : ''}`}
+                className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''} ${cell.date && cell.events.some((e) => conflicts.has(e.id)) ? 'bg-warning/10' : ''}`}
               >
                 {cell.date && (
                   <>
@@ -438,14 +431,14 @@ export default function SchedulePage() {
                           <button
                             key={e.id}
                             onClick={() => setSelected(e)}
-                            className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''} ${conflicts.has(e.id) ? 'ring-1 ring-amber-500/30' : ''}`}
+                            className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-warning/30 bg-warning/10 text-warning' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''} ${conflicts.has(e.id) ? 'ring-1 ring-amber-500/30' : ''}`}
                           >
                             {title.slice(0, 16)}
-                            {conflicts.has(e.id) && ' ⚠'}
+                            {conflicts.has(e.id) && ' âš '}
                             {Boolean(
                               (e.payload as Record<string, unknown>)?.['recurrence'] ||
                               (e.payload as Record<string, unknown>)?.['rrule'],
-                            ) && ' 🔁'}
+                            ) && ' ðŸ”'}
                           </button>
                         );
                       })}
@@ -477,7 +470,7 @@ export default function SchedulePage() {
               return (
                 <div
                   key={event.id}
-                  className={`flex flex-col gap-2 rounded-lg border p-3 ${proposed ? 'border-amber-500/30 bg-amber-500/5' : 'border-border bg-background'}`}
+                  className={`flex flex-col gap-2 rounded-lg border p-3 ${proposed ? 'border-warning/30 bg-warning/10' : 'border-border bg-background'}`}
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span
@@ -489,20 +482,20 @@ export default function SchedulePage() {
                       {event.category}
                     </span>
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-xs ${event.status === 'completed' ? 'border-green-500/30 text-green-600 bg-green-500/10' : event.status === 'failed' ? 'border-red-500/30 text-red-500 bg-red-500/10' : 'border-border text-text-muted bg-surface'}`}
+                      className={`rounded-full border px-2 py-0.5 text-xs ${event.status === 'completed' ? 'border-success/30 text-success bg-success/10' : event.status === 'failed' ? 'border-error/30 text-error bg-error/10' : 'border-border text-text-muted bg-surface'}`}
                     >
                       {event.status.toUpperCase()}
                     </span>
                     {event.priority && (
                       <span
-                        className={`rounded-full border px-2 py-0.5 text-xs ${event.priority === 'critical' ? 'border-red-500/30 text-red-600 bg-red-500/10' : event.priority === 'high' ? 'border-amber-500/30 text-amber-700 bg-amber-500/10' : 'border-border text-text-dim bg-surface'}`}
+                        className={`rounded-full border px-2 py-0.5 text-xs ${event.priority === 'critical' ? 'border-error/30 text-error bg-error/10' : event.priority === 'high' ? 'border-warning/30 text-warning bg-warning/10' : 'border-border text-text-dim bg-surface'}`}
                       >
                         {event.priority}
                       </span>
                     )}
                     {conflicts.has(event.id) && (
-                      <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs text-amber-700">
-                        ⚠ Conflict
+                      <span className="rounded-full bg-warning/10 border border-warning/30 px-2 py-0.5 text-xs text-warning">
+                        âš  Conflict
                       </span>
                     )}
                     {Boolean(
@@ -510,15 +503,15 @@ export default function SchedulePage() {
                       (event.payload as Record<string, unknown>)?.['rrule'],
                     ) && (
                       <span
-                        className="rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs text-blue-700"
+                        className="rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs text-info"
                         title="Recurring event"
                       >
-                        🔁
+                        ðŸ”
                       </span>
                     )}
                     {urgency && (
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-mono ${urgency === 'Overdue' ? 'bg-red-500 text-white' : urgency === 'Today' ? 'bg-amber-500 text-white' : 'bg-surface-hover text-text-muted border border-border'}`}
+                        className={`rounded-full px-2 py-0.5 text-xs font-mono ${urgency === 'Overdue' ? 'bg-error text-white' : urgency === 'Today' ? 'bg-warning text-white' : 'bg-surface-hover text-text-muted border border-border'}`}
                       >
                         {urgency}
                       </span>
@@ -546,9 +539,9 @@ export default function SchedulePage() {
                     <button
                       onClick={() => toggleReminder(event.id)}
                       aria-label="Toggle reminder"
-                      className={`shrink-0 rounded-full border px-2 py-1 text-xs hover:bg-surface-hover ${reminders[event.id] ? 'border-amber-500/30 text-amber-600' : 'border-border text-text-muted'}`}
+                      className={`shrink-0 rounded-full border px-2 py-1 text-xs hover:bg-surface-hover ${reminders[event.id] ? 'border-warning/30 text-warning' : 'border-border text-text-muted'}`}
                     >
-                      {reminders[event.id] ? '🔔' : '🔕'}
+                      {reminders[event.id] ? 'ðŸ””' : 'ðŸ”•'}
                     </button>
                   </div>
                   {proposed && (
@@ -558,7 +551,7 @@ export default function SchedulePage() {
                         onClick={() => handleApprove(event, 'approve')}
                         className="flex-1 rounded-full bg-white text-black text-xs py-1.5 disabled:opacity-40"
                       >
-                        {busyApprove === event.id ? 'Approving…' : 'Approve'}
+                        {busyApprove === event.id ? 'Approvingâ€¦' : 'Approve'}
                       </button>
                       <button
                         disabled={busyApprove === event.id}
@@ -594,7 +587,7 @@ export default function SchedulePage() {
                 {getSourceBadge(selected).label}
               </span>
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-mono">
-                {selected.category} · {selected.type}
+                {selected.category} Â· {selected.type}
               </span>
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs">
                 {selected.status}
@@ -700,7 +693,7 @@ export default function SchedulePage() {
       </Modal>
 
       <p className="text-xs text-text-dim mt-3">
-        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) —
+        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) â€”
         migrated 2026-08-21; Gmail-extracted events are read via Gmail connector, agent-proposed
         events via the scheduler/gmail agents.
       </p>

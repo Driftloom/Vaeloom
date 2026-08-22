@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -54,9 +54,9 @@ function VerifyEmailContent() {
 
         {status === 'success' && (
           <>
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 rounded-full bg-success/10 border border-success/30 flex items-center justify-center mx-auto">
               <svg
-                className="w-8 h-8 text-emerald-500"
+                className="w-8 h-8 text-success"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -75,9 +75,9 @@ function VerifyEmailContent() {
 
         {status === 'error' && (
           <>
-            <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 rounded-full bg-error/10 border border-error/30 flex items-center justify-center mx-auto">
               <svg
-                className="w-8 h-8 text-red-500"
+                className="w-8 h-8 text-error"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"

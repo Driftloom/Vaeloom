@@ -296,12 +296,12 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
                           }
                         />
                         {stats.inferred > 0 && (
-                          <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs text-amber-700">
+                          <span className="rounded-full bg-warning/10 border border-warning/30 px-2 py-0.5 text-xs text-warning">
                             Inferred {stats.inferred}/{stats.total}
                           </span>
                         )}
                         {stats.sources.length > 0 && (
-                          <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-700">
+                          <span className="rounded-full bg-success/10 border border-success/30 px-2 py-0.5 text-xs text-success">
                             {stats.sources.length} source docs
                           </span>
                         )}
@@ -375,14 +375,14 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
                       </div>
                       {typeof ats === 'number' && (
                         <span
-                          className={`rounded-full border px-2 py-0.5 text-xs font-mono ${ats >= 80 ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' : ats >= 60 ? 'bg-amber-500/10 text-amber-700 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}
+                          className={`rounded-full border px-2 py-0.5 text-xs font-mono ${ats >= 80 ? 'bg-success/10 text-success border-success/30' : ats >= 60 ? 'bg-warning/10 text-warning border-warning/30' : 'bg-error/10 text-error border-error/30'}`}
                         >
                           ATS {ats}
                         </span>
                       )}
                     </div>
                     {st.inferred > 0 && (
-                      <span className="text-xs text-amber-700">Inferred {st.inferred} lines</span>
+                      <span className="text-xs text-warning">Inferred {st.inferred} lines</span>
                     )}
                     <div className="flex gap-1 flex-wrap">
                       <button

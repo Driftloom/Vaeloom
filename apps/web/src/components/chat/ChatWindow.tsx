@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
@@ -42,14 +42,14 @@ interface Thread {
 }
 
 const SLASH = [
-  { trigger: '/organize', desc: 'Organize workspace files', agent: 'organization', icon: '◧' },
-  { trigger: '/remember', desc: 'Extract memories', agent: 'memory', icon: '◎' },
-  { trigger: '/resume', desc: 'Generate resume', agent: 'resume', icon: '≡' },
-  { trigger: '/ats', desc: 'ATS score', agent: 'ats', icon: '▣' },
-  { trigger: '/jobs', desc: 'Search jobs', agent: 'job_search', icon: '◩' },
-  { trigger: '/apply', desc: 'Draft application', agent: 'application', icon: '✉' },
-  { trigger: '/email', desc: 'Draft email (approval)', agent: 'gmail', icon: '✉' },
-  { trigger: '/schedule', desc: 'Calendar & reminders', agent: 'scheduler', icon: '◷' },
+  { trigger: '/organize', desc: 'Organize workspace files', agent: 'organization', icon: 'â—§' },
+  { trigger: '/remember', desc: 'Extract memories', agent: 'memory', icon: 'â—Ž' },
+  { trigger: '/resume', desc: 'Generate resume', agent: 'resume', icon: 'â‰¡' },
+  { trigger: '/ats', desc: 'ATS score', agent: 'ats', icon: 'â–£' },
+  { trigger: '/jobs', desc: 'Search jobs', agent: 'job_search', icon: 'â—©' },
+  { trigger: '/apply', desc: 'Draft application', agent: 'application', icon: 'âœ‰' },
+  { trigger: '/email', desc: 'Draft email (approval)', agent: 'gmail', icon: 'âœ‰' },
+  { trigger: '/schedule', desc: 'Calendar & reminders', agent: 'scheduler', icon: 'â—·' },
 ];
 
 const QUICK = [
@@ -78,13 +78,13 @@ function fmtRel(iso: string) {
 }
 function agentDot(a?: string) {
   const m: Record<string, string> = {
-    organization: 'bg-amber-500',
+    organization: 'bg-warning',
     memory: 'bg-violet-500',
     resume: 'bg-sky-500',
-    ats: 'bg-emerald-500',
+    ats: 'bg-success',
     job_search: 'bg-blue-500',
     application: 'bg-pink-500',
-    gmail: 'bg-red-500',
+    gmail: 'bg-error',
     scheduler: 'bg-amber-600',
   };
   return m[a || ''] || 'bg-zinc-600';
@@ -150,7 +150,7 @@ function parseBlockingChatResponse(
     reply = String((r as { reply?: string }).reply || '');
   else if (typeof r === 'string') reply = r;
   else reply = JSON.stringify(r).slice(0, 2000);
-  if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
+  if (!reply.trim()) reply = 'No response â€” try rephrasing or @mention an agent.';
   return { reply, proposals, questions, tools, cites, agentName: an, confidence: conf };
 }
 
@@ -180,7 +180,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const canonical = useMemo(() => {
     const list = catalog.filter((c) => c.isCanonical);
     if (list.length) return list;
-    // fallback — 10 canonical now (planning + research promoted as main)
+    // fallback â€” 10 canonical now (planning + research promoted as main)
     const fallback: CatalogAgent[] = [
       {
         name: 'organization',
@@ -534,7 +534,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           toast({
             tone: 'success',
             title: 'File attached',
-            detail: `${doc.path} — referenced in message`,
+            detail: `${doc.path} â€” referenced in message`,
           });
           fileContext = `${toUpload.name} (stored as ${doc.path})`;
           raw = rawBase ? `${rawBase}\n\n[File stored: ${doc.path}]` : `[File stored: ${doc.path}]`;
@@ -542,7 +542,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           toast({
             tone: 'error',
             title: 'Attach failed',
-            detail: `${toUpload.name} not stored — message sent with name only`,
+            detail: `${toUpload.name} not stored â€” message sent with name only`,
           });
         }
       }
@@ -593,7 +593,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       setMessages((p) => [...p, ph]);
       if (activeId) updateThread(activeId, (t) => ({ ...t, messages: [...t.messages, ph] }));
 
-      // ── Streaming orchestrator (phase-by-phase SSE) with blocking fallback ──
+      // â”€â”€ Streaming orchestrator (phase-by-phase SSE) with blocking fallback â”€â”€
       let streamedText = '';
       let streamedProposals: ChatMessage['proposals'] = [];
       let streamedQuestions: string[] | undefined;
@@ -648,7 +648,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           if ((streamedTools?.length || 0) > 6) streamedTools = streamedTools!.slice(-6);
           applyPatch({ toolCalls: streamedTools });
         } else if (event === 'observe' || event === 'reflect') {
-          // mark tools done — F-02: no fabricated per-tool latency is shown;
+          // mark tools done â€” F-02: no fabricated per-tool latency is shown;
           // durations are only rendered when actually measured.
           if (streamedTools?.length) {
             streamedTools = streamedTools!.map((t) => ({
@@ -682,7 +682,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           streamedText += t;
           applyPatch({ text: streamedText, streaming: true });
         } else if (event === 'qa') {
-          // QA gate — show as tool
+          // QA gate â€” show as tool
           const decision = data['decision'] as string;
           applyPatch({
             toolCalls: [
@@ -752,7 +752,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           // If tokens already streamed, prefer streamedText; otherwise use finalText
           const displayText = streamedText.trim()
             ? streamedText
-            : finalText || 'No response — try rephrasing or @mention an agent.';
+            : finalText || 'No response â€” try rephrasing or @mention an agent.';
           // Mark tools done
           const doneTools = (streamedTools || []).map((t) => ({ ...t, status: 'done' as const }));
           applyPatch({
@@ -782,7 +782,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         // If stream ended without done, finalize
         if (!gotDone && !streamedError) {
           const fallbackText =
-            streamedText.trim() || 'No response — try rephrasing or @mention an agent.';
+            streamedText.trim() || 'No response â€” try rephrasing or @mention an agent.';
           applyPatch({
             text: fallbackText,
             streaming: false,
@@ -790,7 +790,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           });
         }
       } catch (err) {
-        // Streaming failed — fallback to blocking chat
+        // Streaming failed â€” fallback to blocking chat
         const isAbort = err instanceof DOMException && err.name === 'AbortError';
         if (isAbort) {
           setLoading(false);
@@ -870,6 +870,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
       {/* left - hermes subtle rail, keep threads */}
       <aside
+        aria-label="Chat threads"
         className={`${showAgents ? 'flex' : 'hidden'} md:flex w-[260px] shrink-0 flex-col border-r border-border/40 bg-background max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:w-[82%] max-md:bg-background max-md:shadow-xl`}
       >
         <div className="h-12 flex items-center justify-between px-4 border-b border-border/40">
@@ -878,12 +879,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             onClick={() => startNew(selected)}
             className="text-xs text-text-muted hover:text-text"
           >
-            ＋ New
+            ï¼‹ New
           </button>
         </div>
         <div className="px-3 py-2 border-b border-border/40">
           <p className="text-xs text-text-dim">
-            Single agentic chat — just ask. Orchestrator routes to planning, research & 8
+            Single agentic chat â€” just ask. Orchestrator routes to planning, research & 8
             specialists behind the scenes.
           </p>
         </div>
@@ -900,7 +901,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 >
                   <p className="text-sm text-text truncate pr-2">{t.title}</p>
                   <p className="text-xs text-text-dim mt-0.5">
-                    {fmtRel(t.createdAt)} · {t.messages.length} msgs
+                    {fmtRel(t.createdAt)} Â· {t.messages.length} msgs
                   </p>
                 </button>
               ))}
@@ -909,7 +910,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         </div>
         <div className="p-3 border-t border-border/40">
           <p className="text-xs text-text-dim leading-relaxed">
-            BYOK → <span className="font-mono text-text">Settings → API Keys</span>
+            BYOK â†’ <span className="font-mono text-text">Settings â†’ API Keys</span>
           </p>
         </div>
       </aside>
@@ -928,10 +929,10 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             </button>
             <h1 className="text-sm font-medium text-text">Chat</h1>
             <span className="hidden sm:inline text-xs text-text-dim font-mono">
-              · {workspaceId.slice(0, 8)}
+              Â· {workspaceId.slice(0, 8)}
             </span>
             <span
-              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${selected === 'auto' ? 'border-border/50 text-text-dim' : 'bg-white text-black border-white'}`}
+              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${selected === 'auto' ? 'border-border/50 text-text-dim' : 'bg-action text-action-fg border-primary'}`}
             >
               <span
                 className={`w-1.5 h-1.5 rounded-full ${selected === 'auto' ? 'bg-text-dim' : 'bg-black'}`}
@@ -940,7 +941,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="hidden lg:inline text-xs text-text-dim">8 agents · QA gate</span>
+            <span className="hidden lg:inline text-xs text-text-dim">8 agents Â· QA gate</span>
             <button
               onClick={() => startNew()}
               className="ml-2 hidden sm:inline-flex rounded-full border border-border/50 px-3 py-1.5 text-xs hover:bg-surface-hover"
@@ -954,7 +955,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           <div className="max-w-[768px] w-full mx-auto px-4 md:px-6 py-8">
             {messages.length === 0 && !loading ? (
               <div className="py-10 md:py-16 text-center">
-                <div className="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center mx-auto text-sm font-bold">
+                <div className="w-10 h-10 rounded-xl bg-surface-200 text-text flex items-center justify-center mx-auto text-sm font-bold">
                   V
                 </div>
                 <h2 className="mt-4 text-xl font-medium text-text">How can we help?</h2>
@@ -1001,7 +1002,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                       />
                     )}
                     <div
-                      className={`${m.role === 'user' ? 'max-w-[75%] bg-white text-black rounded-2xl px-4 py-3' : 'flex-1 min-w-0'}`}
+                      className={`${m.role === 'user' ? 'max-w-[75%] bg-action text-action-fg rounded-2xl px-4 py-3' : 'flex-1 min-w-0'}`}
                     >
                       {m.role === 'agent' && (
                         <div className="flex items-center gap-2 mb-1.5">
@@ -1011,7 +1012,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                           <span className="text-xs text-text-dim">{fmtTime(m.timestamp)}</span>
                           {m.confidence !== undefined && (
                             <span
-                              className={`text-xs font-mono px-1.5 py-0.5 rounded border ${m.confidence >= 0.9 ? 'border-emerald-500/20 text-emerald-400' : m.confidence >= 0.7 ? 'border-amber-500/20 text-amber-400' : 'border-red-500/20 text-red-400'}`}
+                              className={`text-xs font-mono px-1.5 py-0.5 rounded border ${m.confidence >= 0.9 ? 'border-success/30 text-success' : m.confidence >= 0.7 ? 'border-warning/30 text-warning' : 'border-error/30 text-error'}`}
                             >
                               {Math.round(m.confidence * 100)}%
                             </span>
@@ -1036,12 +1037,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                               {m.toolCalls.map((t, i) => (
                                 <div key={i} className="flex items-center gap-2 text-xs font-mono">
                                   <span
-                                    className={`w-1.5 h-1.5 rounded-full ${t.status === 'done' ? 'bg-emerald-500' : t.status === 'error' ? 'bg-red-500' : 'bg-amber-500'}`}
+                                    className={`w-1.5 h-1.5 rounded-full ${t.status === 'done' ? 'bg-success' : t.status === 'error' ? 'bg-error' : 'bg-warning'}`}
                                   />
                                   {t.name}
                                   <span className="text-text-dim">
                                     {t.status}
-                                    {t.latencyMs ? ` · ${t.latencyMs}ms` : ''}
+                                    {t.latencyMs ? ` Â· ${t.latencyMs}ms` : ''}
                                   </span>
                                 </div>
                               ))}
@@ -1070,7 +1071,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                 return (
                                   <div
                                     key={i}
-                                    className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"
+                                    className="rounded-xl border border-warning/30 bg-warning/10 p-3"
                                   >
                                     <p className="text-sm font-medium text-text">{p.title}</p>
                                     {p.detail && (
@@ -1082,8 +1083,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                         onClick={() => handleProposalDecision(m.id, i, 'approve')}
                                         className={`flex-1 rounded-full text-xs py-1.5 ${
                                           p.status === 'approved'
-                                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 cursor-default'
-                                            : 'bg-white text-black hover:opacity-90 disabled:opacity-40 disabled:cursor-default'
+                                            ? 'bg-success/15 text-success border border-success/30 cursor-default'
+                                            : 'bg-action text-action-fg hover:bg-action-hover disabled:opacity-40 disabled:cursor-default'
                                         }`}
                                       >
                                         {p.status === 'approved' ? 'Approved' : 'Approve'}
@@ -1093,7 +1094,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                         onClick={() => handleProposalDecision(m.id, i, 'reject')}
                                         className={`flex-1 rounded-full text-xs py-1.5 disabled:opacity-40 disabled:cursor-default ${
                                           p.status === 'rejected'
-                                            ? 'bg-red-500/15 text-red-300 border border-red-500/30 cursor-default'
+                                            ? 'bg-error/15 text-error-fg border border-error/30 cursor-default'
                                             : 'border border-border'
                                         }`}
                                       >
@@ -1104,8 +1105,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                       <p className="text-xs text-text-dim mt-2">Expired</p>
                                     )}
                                     {p.status === 'error' && (
-                                      <p className="text-xs text-red-400 mt-2">
-                                        Action failed — pending approvals live in Notifications
+                                      <p className="text-xs text-error mt-2">
+                                        Action failed â€” pending approvals live in Notifications
                                       </p>
                                     )}
                                   </div>
@@ -1156,8 +1157,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                     <div className="w-7 h-7 rounded-full bg-zinc-700 shrink-0" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 text-xs text-text-dim">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        Thinking · routing + QA
+                        <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
+                        Thinking Â· routing + QA
                       </div>
                       <div className="mt-2 flex gap-1">
                         <span className="w-1.5 h-1.5 bg-text-dim rounded-full animate-bounce" />
@@ -1218,7 +1219,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               <div className="mb-2 flex items-center gap-2 text-xs border border-border/50 rounded-full px-3 py-1.5 bg-surface">
                 <span className="truncate">{attached.name}</span>
                 <button onClick={() => setAttached(null)} className="ml-auto">
-                  ✕
+                  âœ•
                 </button>
               </div>
             )}
@@ -1246,7 +1247,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                   className="hidden"
                   onChange={(e) => setAttached(e.target.files?.[0] || null)}
                 />
-                ＋
+                ï¼‹
               </label>
               <textarea
                 ref={inputRef}
@@ -1255,7 +1256,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 onChange={(e) => handleInput(e.target.value)}
                 onKeyDown={onKey}
                 rows={1}
-                placeholder={selected === 'auto' ? 'Ask anything…' : 'Message @' + selected}
+                placeholder={selected === 'auto' ? 'Ask anythingâ€¦' : 'Message @' + selected}
                 className="flex-1 max-h-[120px] min-h-[24px] resize-none bg-transparent text-sm placeholder:text-text-dim focus:outline-none py-2"
                 onInput={(e) => {
                   const t = e.currentTarget;
@@ -1267,14 +1268,14 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 aria-label="Send message"
                 onClick={() => void handleSend()}
                 disabled={loading || (!input.trim() && !attached)}
-                className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-zinc-200"
+                className="w-8 h-8 rounded-full bg-action text-action-fg flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-action-hover"
               >
-                ↑
+                â†‘
               </button>
             </div>
             <p className="mt-2 text-center text-xs text-text-dim">
-              ⏎ send · ⇧⏎ newline · <span className="font-mono">@</span> agents ·{' '}
-              <span className="font-mono">/</span> commands · {input.length}/10000
+              âŽ send Â· â‡§âŽ newline Â· <span className="font-mono">@</span> agents Â·{' '}
+              <span className="font-mono">/</span> commands Â· {input.length}/10000
             </p>
           </div>
         </div>

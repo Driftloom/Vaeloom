@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Button, Card, Input, Modal } from '@vaeloom/ui-kit';
@@ -7,6 +7,7 @@ import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge
 import { Toggle } from '@/components/shared/Toggle';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { useToast } from '@/components/shared/Toast';
 import { api } from '@/lib/api';
 
 interface WebhookItem {
@@ -44,6 +45,7 @@ const eventOptions = [
 export default function WebhooksPage() {
   const params = useParams();
   const workspaceId = params?.['workspaceId'] as string | undefined;
+  const { toast } = useToast();
 
   const [webhooks, setWebhooks] = useState<WebhookItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,15 +85,19 @@ export default function WebhooksPage() {
 
   const createWebhook = useCallback(async () => {
     try {
+      // F-02: when the user leaves the secret empty, omit it and let the
+      // backend generate the real signing secret (webhooks.py auto-generates).
+      // The client previously invented a fake 'sk-...' value.
+      const body: Record<string, unknown> = {
+        name: newName,
+        url: newUrl,
+        events: newEvents,
+        active: true,
+      };
+      if (newSecret.trim()) body['secret'] = newSecret.trim();
       await api.request('/webhooks', {
         method: 'POST',
-        body: JSON.stringify({
-          name: newName,
-          url: newUrl,
-          secret: newSecret || 'sk-' + Math.random().toString(36).slice(2),
-          events: newEvents,
-          active: true,
-        }),
+        body: JSON.stringify(body),
       });
       setShowCreate(false);
       setNewName('');
@@ -100,7 +106,11 @@ export default function WebhooksPage() {
       setNewEvents(['*']);
       await fetchWebhooks();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create webhook');
+      toast({
+        tone: 'error',
+        title: 'Create failed',
+        detail: err instanceof Error ? err.message : '',
+      });
     }
   }, [newName, newUrl, newSecret, newEvents, fetchWebhooks]);
 
@@ -113,7 +123,11 @@ export default function WebhooksPage() {
         });
         await fetchWebhooks();
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to update webhook');
+        toast({
+          tone: 'error',
+          title: 'Update failed',
+          detail: err instanceof Error ? err.message : '',
+        });
       }
     },
     [fetchWebhooks],
@@ -127,7 +141,11 @@ export default function WebhooksPage() {
         await api.request(`/webhooks/${webhookId}`, { method: 'DELETE' });
         await fetchWebhooks();
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to delete webhook');
+        toast({
+          tone: 'error',
+          title: 'Delete failed',
+          detail: err instanceof Error ? err.message : '',
+        });
       }
     },
     [fetchWebhooks],
@@ -140,7 +158,11 @@ export default function WebhooksPage() {
         await fetchDeliveries(webhookId);
         setShowDeliveries(true);
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Failed to fire test');
+        toast({
+          tone: 'error',
+          title: 'Test failed',
+          detail: err instanceof Error ? err.message : '',
+        });
       }
     },
     [fetchDeliveries],

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -63,9 +63,9 @@ function formatDate(iso?: string): string {
 }
 
 const statusStyles: Record<string, string> = {
-  connected: 'border-green-500/50 text-green-400 bg-green-950/20',
-  syncing: 'border-yellow-500/50 text-yellow-400 bg-yellow-950/20',
-  error: 'border-red-500/50 text-red-400 bg-red-950/20',
+  connected: 'border-success/50 text-success bg-success/10',
+  syncing: 'border-warning/50 text-warning bg-warning/10',
+  error: 'border-error/50 text-error bg-error/10',
   disconnected: 'border-border text-text-muted bg-surface',
 };
 
@@ -89,14 +89,14 @@ export default function ConnectorsPage() {
       // F-01: OAuth consent-install for connectors is not supported by the
       // backend yet (no integration OAuth install/callback endpoints exist).
       // The previous flow redirected users into the LOGIN sso flow under a
-      // "Connect" label — removed per no-fake-state rule. Connections are
+      // "Connect" label â€” removed per no-fake-state rule. Connections are
       // registered directly via integrations.create.
       await api.integrations.create({ name: meta?.name ?? provider, provider });
       await mutate();
       toast({
         tone: 'success',
         title: 'Connector created',
-        detail: `${meta?.name ?? provider} — ${meta?.scopes.join(', ')}`,
+        detail: `${meta?.name ?? provider} â€” ${meta?.scopes.join(', ')}`,
       });
       setPendingProvider(null);
     } catch (err) {
@@ -180,7 +180,7 @@ export default function ConnectorsPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-display font-medium text-text mb-2">Connectors</h1>
         <p className="text-text-muted">
-          Least-privilege OAuth. Each connector shows the exact scopes granted — review before
+          Least-privilege OAuth. Each connector shows the exact scopes granted â€” review before
           connecting. Sync progress and errors surface inline with retry.
         </p>
       </header>
@@ -216,7 +216,7 @@ export default function ConnectorsPage() {
                         {meta?.name ?? conn.provider}
                       </h3>
                       <p className="text-xs font-mono text-text-muted">
-                        {conn.provider} · {meta?.scopes.join(', ') ?? '—'}
+                        {conn.provider} Â· {meta?.scopes.join(', ') ?? 'â€”'}
                       </p>
                     </div>
                   </div>
@@ -234,11 +234,11 @@ export default function ConnectorsPage() {
                   </div>
                   {conn.status === 'syncing' && (
                     <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-hover">
-                      <div className="h-full w-2/3 animate-pulse bg-yellow-500/60" />
+                      <div className="h-full w-2/3 animate-pulse bg-warning/60" />
                     </div>
                   )}
                   {(conn as unknown as Record<string, unknown>)['errorDetail'] ? (
-                    <p className="text-xs text-red-400 mb-3" role="alert">
+                    <p className="text-xs text-error mb-3" role="alert">
                       {String((conn as unknown as Record<string, unknown>)['errorDetail'])}
                     </p>
                   ) : null}
@@ -249,14 +249,14 @@ export default function ConnectorsPage() {
                       disabled={isBusy}
                       onClick={() => handleSync(conn)}
                     >
-                      {isBusy ? 'Syncing…' : 'Sync Now'}
+                      {isBusy ? 'Syncingâ€¦' : 'Sync Now'}
                     </button>
                     <button
                       className="btn-ghost border border-border flex-1 text-sm"
                       disabled={busy === `revoke-${conn.id}`}
                       onClick={() => setConnectorToRevoke(conn)}
                     >
-                      {busy === `revoke-${conn.id}` ? 'Revoking…' : 'Revoke'}
+                      {busy === `revoke-${conn.id}` ? 'Revokingâ€¦' : 'Revoke'}
                     </button>
                   </div>
                 </div>
@@ -311,7 +311,7 @@ export default function ConnectorsPage() {
                   disabled={isBusy}
                   onClick={() => setPendingProvider(provider)}
                 >
-                  {isBusy ? 'Connecting…' : 'Connect'}
+                  {isBusy ? 'Connectingâ€¦' : 'Connect'}
                 </button>
               </div>
             );
@@ -355,7 +355,7 @@ export default function ConnectorsPage() {
                 disabled={busy === `connect-${pendingProvider}`}
                 onClick={() => handleConnect(pendingProvider)}
               >
-                {busy === `connect-${pendingProvider}` ? 'Connecting…' : 'Continue to OAuth'}
+                {busy === `connect-${pendingProvider}` ? 'Connectingâ€¦' : 'Continue to OAuth'}
               </button>
             </div>
           </div>

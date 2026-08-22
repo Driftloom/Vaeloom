@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { useParams } from 'next/navigation';
@@ -140,10 +140,10 @@ export default function DashboardPage() {
         </h1>
         <p className="text-text-muted">
           {agentsFailed || memoriesFailed ? (
-            'Could not load workspace stats — see cards below.'
+            'Could not load workspace stats â€” see cards below.'
           ) : agentCount === 0 && memoryCount === 0 ? (
             <>
-              No agents or memories yet —{' '}
+              No agents or memories yet â€”{' '}
               <a href={`/workspace/${workspaceId}/files`} className="text-primary underline">
                 upload a file
               </a>{' '}
@@ -164,20 +164,20 @@ export default function DashboardPage() {
       {pendingCount > 0 && (
         <Link
           href={`/workspace/${workspaceId}/approvals`}
-          className="card border-amber-500/30 bg-amber-500/5 flex items-center justify-between hover:border-amber-500/50 transition-colors"
+          className="card border-warning/30 bg-warning/10 flex items-center justify-between hover:border-warning/50 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/20 text-amber-700 font-mono text-sm">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-warning/15 border border-warning/30 text-warning font-mono text-sm">
               {pendingCount}
             </span>
             <div>
               <p className="font-medium text-text">Pending approvals</p>
               <p className="text-xs text-text-muted">
-                Agent suggestions require your review — Files, Gmail, Schedule, Applications
+                Agent suggestions require your review â€” Files, Gmail, Schedule, Applications
               </p>
             </div>
           </div>
-          <span className="text-sm text-amber-700 font-medium">Review →</span>
+          <span className="text-sm text-warning font-medium">Review â†’</span>
         </Link>
       )}
 
@@ -187,7 +187,7 @@ export default function DashboardPage() {
             Active Agents
           </h2>
           {agentsFailed ? (
-            <p className="text-sm text-red-400">Failed to load</p>
+            <p className="text-sm text-error">Failed to load</p>
           ) : (
             <div className="text-4xl font-display text-primary">{agentCount}</div>
           )}
@@ -197,15 +197,15 @@ export default function DashboardPage() {
             Memory Nodes
           </h2>
           {memoriesFailed ? (
-            <p className="text-sm text-red-400">Failed to load</p>
+            <p className="text-sm text-error">Failed to load</p>
           ) : (
             <div className="flex items-baseline gap-3">
               <div className="text-4xl font-display text-accent">{memoryCount}</div>
               {memoryGrowthPercent !== null && memoryGrowthPercent !== 0 && (
                 <span
-                  className={`text-sm font-mono ${memoryGrowthPercent > 0 ? 'text-emerald-500' : 'text-red-400'}`}
+                  className={`text-sm font-mono ${memoryGrowthPercent > 0 ? 'text-success' : 'text-error'}`}
                 >
-                  {memoryGrowthPercent > 0 ? '↑' : '↓'}
+                  {memoryGrowthPercent > 0 ? 'â†‘' : 'â†“'}
                   {Math.abs(memoryGrowthPercent)}%
                 </span>
               )}
@@ -223,9 +223,7 @@ export default function DashboardPage() {
             Connectors
           </h2>
           <div className="flex items-baseline gap-2">
-            <div className="text-4xl font-display text-emerald-500">
-              {connectedConnectors.length}
-            </div>
+            <div className="text-4xl font-display text-success">{connectedConnectors.length}</div>
             {allConnectors.length > 0 && (
               <span className="text-sm text-text-muted font-mono">/{allConnectors.length}</span>
             )}
@@ -362,7 +360,7 @@ export default function DashboardPage() {
               href={`/workspace/${workspaceId}/connectors`}
               className="text-xs text-primary hover:underline"
             >
-              View all →
+              View all â†’
             </Link>
           </div>
           <div className="flex-1 overflow-y-auto space-y-3">
@@ -394,10 +392,10 @@ export default function DashboardPage() {
               allConnectors.map((c) => {
                 const statusColor =
                   c.status === 'connected'
-                    ? 'bg-emerald-500'
+                    ? 'bg-success'
                     : c.status === 'syncing'
-                      ? 'bg-amber-500'
-                      : 'bg-red-400';
+                      ? 'bg-warning'
+                      : 'bg-error';
                 const statusLabel =
                   c.status === 'connected'
                     ? 'Connected'
@@ -415,7 +413,7 @@ export default function DashboardPage() {
                         <p className="text-text font-medium truncate">{c.name}</p>
                         <p className="text-xs text-text-muted font-mono">
                           {statusLabel}
-                          {c.last_synced_at && ` · ${formatRelativeTime(c.last_synced_at)}`}
+                          {c.last_synced_at && ` Â· ${formatRelativeTime(c.last_synced_at)}`}
                         </p>
                       </div>
                     </div>
@@ -438,28 +436,28 @@ export default function DashboardPage() {
             href={`/workspace/${workspaceId}/files`}
             className="flex items-center gap-3 p-4 bg-background rounded border border-border hover:border-primary/30 transition-colors"
           >
-            <span className="text-lg">📄</span>
+            <span className="text-lg">ðŸ“„</span>
             <span className="text-sm text-text font-medium">Upload file</span>
           </Link>
           <Link
             href={`/workspace/${workspaceId}/jobs`}
             className="flex items-center gap-3 p-4 bg-background rounded border border-border hover:border-primary/30 transition-colors"
           >
-            <span className="text-lg">🔍</span>
+            <span className="text-lg">ðŸ”</span>
             <span className="text-sm text-text font-medium">Search jobs</span>
           </Link>
           <Link
             href={`/workspace/${workspaceId}/memory`}
             className="flex items-center gap-3 p-4 bg-background rounded border border-border hover:border-primary/30 transition-colors"
           >
-            <span className="text-lg">🧠</span>
+            <span className="text-lg">ðŸ§ </span>
             <span className="text-sm text-text font-medium">View memory graph</span>
           </Link>
           <Link
             href={`/workspace/${workspaceId}/chat`}
             className="flex items-center gap-3 p-4 bg-background rounded border border-border hover:border-primary/30 transition-colors"
           >
-            <span className="text-lg">💬</span>
+            <span className="text-lg">ðŸ’¬</span>
             <span className="text-sm text-text font-medium">Chat with agent</span>
           </Link>
         </div>

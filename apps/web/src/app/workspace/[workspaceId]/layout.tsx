@@ -30,6 +30,22 @@ export default function WorkspaceLayout({
     setSidebarOpen(false);
   }, [pathname]);
 
+  // F-13: Escape closes the mobile drawer and returns focus to the trigger.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        setSidebarOpen(false);
+        const trigger = document.querySelector<HTMLButtonElement>(
+          'button[aria-label="Open navigation"]',
+        );
+        trigger?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sidebarOpen]);
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.replace('/login');
@@ -61,15 +77,17 @@ export default function WorkspaceLayout({
         )}
         <div className="flex-1 flex flex-col min-w-0">
           <TopNav onMenuClick={() => setSidebarOpen(true)} />
-          <main
-            id="main-content"
+          {/* F-08: the root layout owns the single <main id="main-content">
+              landmark; this wrapper stays a plain div to avoid nested/duplicate
+              main landmarks on every workspace route. */}
+          <div
             tabIndex={-1}
             className="flex-1 overflow-y-auto p-6 focus:outline-none"
             aria-hidden={sidebarOpen ? true : undefined}
             {...(sidebarOpen ? { inert: true } : {})}
           >
             <ErrorBoundary>{children}</ErrorBoundary>
-          </main>
+          </div>
         </div>
       </div>
     </PrefetchProvider>

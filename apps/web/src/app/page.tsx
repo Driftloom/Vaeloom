@@ -229,23 +229,9 @@ export default function LandingPage() {
             </a>
           </div>
 
-          {/* Social proof */}
-          <div className="mt-12 flex items-center justify-center gap-6 animate-slide-up stagger-3">
-            <div className="flex -space-x-2">
-              {[...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-accent-400 border-2 border-background flex items-center justify-center"
-                >
-                  <span className="text-xs font-bold text-white">
-                    {String.fromCharCode(65 + i)}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <p className="text-sm text-text-muted">
-              <span className="text-text font-medium">2,000+</span> users building smarter
-            </p>
+          {/* Value line */}
+          <div className="mt-12 animate-slide-up stagger-3">
+            <p className="text-sm text-text-muted">Built memory-first, private by default.</p>
           </div>
         </div>
       </section>
@@ -309,7 +295,7 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto text-center relative z-10">
           <h2 className="text-3xl md:text-4xl font-bold text-text mb-6">Ready to get started?</h2>
           <p className="text-lg text-text-muted mb-10">
-            Join thousands of users who are already building smarter with Vaeloom.
+            Set up your workspace in minutes — connect sources and let the agents organize.
           </p>
           <Link href="/signup" className="btn-primary text-base py-4 px-10">
             Create your free account

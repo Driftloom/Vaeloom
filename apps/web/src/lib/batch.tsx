@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
 
@@ -53,14 +53,18 @@ interface BatchActionBarProps {
   actions?: { label: string; onClick: () => void; variant?: 'primary' | 'danger' }[];
 }
 
-export function BatchActionBar({ count, onDelete, onUpdate, onClear, actions }: BatchActionBarProps) {
+export function BatchActionBar({
+  count,
+  onDelete,
+  onUpdate,
+  onClear,
+  actions,
+}: BatchActionBarProps) {
   if (count === 0) return null;
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-surface border border-border rounded-lg shadow-xl px-5 py-3">
-      <span className="text-sm text-text font-mono">
-        {count} selected
-      </span>
+      <span className="text-sm text-text font-mono">{count} selected</span>
       <div className="h-5 w-px bg-border" />
       {onDelete && (
         <button
@@ -141,7 +145,9 @@ export function ConfirmDialog({
           <button
             onClick={onConfirm}
             className={`px-4 py-2 text-sm font-mono text-white rounded-md transition-colors ${
-              variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary-hover'
+              variant === 'danger'
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-primary hover:bg-action-hover'
             }`}
           >
             {confirmLabel}
@@ -181,13 +187,18 @@ export function useBatchDelete(apiDelete: (ids: string[]) => Promise<void>) {
         confirmLabel="Delete"
         variant="danger"
         onConfirm={execute}
-        onCancel={() => { setConfirmOpen(false); setPendingIds([]); }}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setPendingIds([]);
+        }}
       />
     ),
   };
 }
 
-export function useBatchUpdate(apiUpdate: (ids: string[], updates: Record<string, unknown>) => Promise<void>) {
+export function useBatchUpdate(
+  apiUpdate: (ids: string[], updates: Record<string, unknown>) => Promise<void>,
+) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingIds, setPendingIds] = useState<string[]>([]);
 
@@ -215,7 +226,10 @@ export function useBatchUpdate(apiUpdate: (ids: string[], updates: Record<string
         confirmLabel="Update"
         variant="default"
         onConfirm={execute}
-        onCancel={() => { setConfirmOpen(false); setPendingIds([]); }}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setPendingIds([]);
+        }}
       />
     ),
   };

@@ -13,6 +13,8 @@ import { ErrorTrackingBoundary } from '../lib/error-tracking-boundary';
 import { WebVitals } from '../lib/web-vitals-client';
 import { ToastProvider } from '../components/shared/Toast';
 import { SkipLink } from '../components/shared/SkipLink';
+import { AuthProvider } from '../hooks/useAuth';
+import { SWRProvider } from '../components/providers/SWRProvider';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -95,34 +97,50 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>
+    <html
+      lang="en"
+      className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
+        {/* Pre-paint theme resolution — prevents flash of wrong theme. The
+            brand default is dark; stored user choice or OS light preference
+            is applied before first paint. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}var r=document.documentElement;r.classList.remove('light','dark');r.classList.add(t);}catch(e){}})();`,
+          }}
+        />
         <meta name="application-name" content="Vaeloom" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Vaeloom" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#0a0a0f" />
+        <meta name="theme-color" content="#090B25" />
       </head>
       <body className="antialiased min-h-screen bg-background text-text">
         <ErrorTrackingBoundary>
-          <ThemeProvider>
-            <I18nProvider>
-              <ToastProvider>
-                <KeyboardShortcutProvider>
-                  <ShortcutsInitializer />
-                  <KeyboardShortcutListener />
-                  <KeyboardShortcutsModal />
-                  <WebVitals />
-                  <SkipLink />
-                  <main id="main-content" tabIndex={-1} className="focus:outline-none">
-                    {children}
-                  </main>
-                </KeyboardShortcutProvider>
-              </ToastProvider>
-            </I18nProvider>
-          </ThemeProvider>
+          <SWRProvider>
+            <AuthProvider>
+              <ThemeProvider>
+                <I18nProvider>
+                  <ToastProvider>
+                    <KeyboardShortcutProvider>
+                      <ShortcutsInitializer />
+                      <KeyboardShortcutListener />
+                      <KeyboardShortcutsModal />
+                      <WebVitals />
+                      <SkipLink />
+                      <main id="main-content" tabIndex={-1} className="focus:outline-none">
+                        {children}
+                      </main>
+                    </KeyboardShortcutProvider>
+                  </ToastProvider>
+                </I18nProvider>
+              </ThemeProvider>
+            </AuthProvider>
+          </SWRProvider>
         </ErrorTrackingBoundary>
       </body>
     </html>

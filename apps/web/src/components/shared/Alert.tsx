@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 type AlertVariant = 'info' | 'success' | 'warning' | 'error';
 
@@ -12,20 +12,20 @@ interface AlertProps {
 
 const variantStyles: Record<AlertVariant, { container: string; icon: string }> = {
   info: {
-    container: 'bg-blue-900/20 border-blue-500/30 text-blue-400',
-    icon: 'ℹ',
+    container: 'bg-blue-900/20 border-blue-500/30 text-info',
+    icon: 'â„¹',
   },
   success: {
-    container: 'bg-green-900/20 border-green-500/30 text-green-400',
-    icon: '✓',
+    container: 'bg-success/10 border-success/30 text-success',
+    icon: 'âœ“',
   },
   warning: {
-    container: 'bg-yellow-900/20 border-yellow-500/30 text-yellow-400',
-    icon: '⚠',
+    container: 'bg-warning/10 border-warning/30 text-warning',
+    icon: 'âš ',
   },
   error: {
-    container: 'bg-red-900/20 border-red-500/30 text-red-400',
-    icon: '✕',
+    container: 'bg-error/10 border-error/30 text-error',
+    icon: 'âœ•',
   },
 };
 

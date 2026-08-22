@@ -61,7 +61,6 @@ export default function ApplicationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ApplicationResponse | null>(null);
   const [editStatus, setEditStatus] = useState('');
-  const [editOutcome, setEditOutcome] = useState('');
   const [saving, setSaving] = useState(false);
 
   const fetchApplications = useCallback(async () => {
@@ -93,13 +92,17 @@ export default function ApplicationsPage() {
   const openDetail = useCallback((app: ApplicationResponse) => {
     setSelected(app);
     setEditStatus(app.status ?? 'draft');
-    setEditOutcome(app.outcome ?? '');
   }, []);
 
   const handleSave = useCallback(async () => {
     if (!workspaceId || !selected) return;
     setSaving(true);
     try {
+      // F-03: the backend outcome endpoint persists `status` and stamps
+      // `outcome_at`. There is no independent outcome field server-side, so
+      // the previous UI outcome select (silently discarded on save) has been
+      // removed — outcomes are expressed through status until the backend
+      // adds a dedicated column.
       const body: ApplicationUpdateOutcomeRequest = { status: editStatus };
       const updated = await applicationApi.updateOutcome(workspaceId, selected.id, body);
       setApplications((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
@@ -282,20 +285,10 @@ export default function ApplicationsPage() {
                   <option value="resolved">resolved</option>
                   <option value="rejected">rejected</option>
                 </select>
-              </label>
-              <label htmlFor="edit-outcome" className="block">
-                Outcome
-                <select
-                  id="edit-outcome"
-                  value={editOutcome}
-                  onChange={(e) => setEditOutcome(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">—</option>
-                  <option value="offer">offer</option>
-                  <option value="rejected">rejected</option>
-                  <option value="withdrawn">withdrawn</option>
-                </select>
+                <span className="mt-1 block text-xs text-text-dim">
+                  Saving stamps the outcome time. Final results (offer / withdrawn) are recorded
+                  through status until a dedicated outcome field exists.
+                </span>
               </label>
             </div>
             <div className="flex justify-end gap-2">

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
@@ -6,7 +6,8 @@ import { api, clearToken, clearRefreshToken } from '../../../../lib/api';
 import { consentApi, gdprApi } from '../../../../lib/api-client';
 import { ProviderKeysSection } from '@/components/settings/ProviderKeysSection';
 import { ErrorState } from '@/components/shared/ErrorState';
-import type { Agent, PaginatedResponse, PublicUser, Workspace } from '@vaeloom/shared-types';
+import { useAuth } from '../../../../hooks/useAuth';
+import type { Agent, PaginatedResponse } from '@vaeloom/shared-types';
 
 type IntegrationData = Record<string, unknown> & {
   id: string;
@@ -26,14 +27,10 @@ export default function SettingsPage() {
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const router = useRouter();
 
-  const {
-    data: meData,
-    error: meError,
-    isLoading: meLoading,
-  } = useSWR<{ user: PublicUser; workspaces: Workspace[] }>('auth-me', () => api.me());
+  // F-16: consume the shared auth session instead of a third /auth/me fetch.
+  const { user, me, loading: meLoading, error: meError } = useAuth();
 
-  const user = meData?.user;
-  const userWorkspaces = meData?.workspaces ?? [];
+  const userWorkspaces = me?.workspaces ?? [];
 
   const {
     data: agentsRes,
@@ -233,7 +230,7 @@ export default function SettingsPage() {
     } catch (err) {
       // revert on failure
       setConnectorPerms((prev) => ({ ...prev, [id]: current }));
-      setSaveError(err instanceof Error ? err.message : 'Failed to update permission — reverted');
+      setSaveError(err instanceof Error ? err.message : 'Failed to update permission â€” reverted');
     }
   };
 
@@ -339,7 +336,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-text-muted mt-0.5">
                   {user?.authProvider === 'local'
                     ? 'Change your account password'
-                    : 'Your account uses SSO — password is managed externally'}
+                    : 'Your account uses SSO â€” password is managed externally'}
                 </p>
               </div>
               <button
@@ -469,7 +466,7 @@ export default function SettingsPage() {
 
           {saveError && (
             <div
-              className="mb-4 p-3 text-sm text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/20 rounded border border-red-500/50"
+              className="mb-4 p-3 text-sm text-error bg-error/10 dark:text-error dark:bg-error/10 rounded border border-error/50"
               role="alert"
             >
               {saveError}
@@ -525,7 +522,7 @@ export default function SettingsPage() {
           </p>
 
           {integrationsError ? (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-error">
               Failed to load integrations.{' '}
               <button className="underline" onClick={() => mutateIntegrations()}>
                 Retry
@@ -585,13 +582,13 @@ export default function SettingsPage() {
             delete it.
           </p>
           <p className="text-sm text-text-muted mb-2">
-            Consent version: <span className="font-mono">v1</span> — granted at signup, revocable
+            Consent version: <span className="font-mono">v1</span> â€” granted at signup, revocable
             anytime.
           </p>
           <div className="space-y-3">
             <label className="card flex items-center justify-between cursor-pointer">
               <div>
-                <h3 className="font-medium text-text">Gmail — read (draft-only)</h3>
+                <h3 className="font-medium text-text">Gmail â€” read (draft-only)</h3>
                 <p className="text-xs text-text-muted mt-0.5">
                   Watch for job emails and extract deadlines. Vaeloom never sends email without your
                   approval.
@@ -624,7 +621,7 @@ export default function SettingsPage() {
             </label>
             <label className="card flex items-center justify-between cursor-pointer opacity-60">
               <div>
-                <h3 className="font-medium text-text">Email send (T3 — gated)</h3>
+                <h3 className="font-medium text-text">Email send (T3 â€” gated)</h3>
                 <p className="text-xs text-text-muted mt-0.5">
                   Disabled by default. Only enabled after legal review and explicit approval (phase
                   13).
@@ -642,7 +639,7 @@ export default function SettingsPage() {
 
         <section>
           <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
-            API Keys — Bring Your Own Key
+            API Keys â€” Bring Your Own Key
           </h2>
           <ProviderKeysSection workspaceId={workspaceId} />
         </section>

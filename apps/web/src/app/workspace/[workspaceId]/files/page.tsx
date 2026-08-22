@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Modal } from '@vaeloom/ui-kit';
@@ -25,7 +25,7 @@ function formatDate(iso: string): string {
 
 function formatSize(bytes: unknown): string {
   const n = typeof bytes === 'number' ? bytes : Number(bytes ?? 0);
-  if (!n) return '—';
+  if (!n) return 'â€”';
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
@@ -284,7 +284,7 @@ export default function WorkspaceFilesPage() {
       toast({
         tone: 'success',
         title: 'Renamed (reversible)',
-        detail: `${oldPath} → ${updated.path} — undo via History`,
+        detail: `${oldPath} â†’ ${updated.path} â€” undo via History`,
       });
     } catch (err) {
       toast({
@@ -382,7 +382,7 @@ export default function WorkspaceFilesPage() {
   const actionLabel = (a: DocumentAction): string => {
     switch (actionType(a)) {
       case 'document_rename':
-        return `Renamed ${actionOldPath(a) ?? ''} → ${actionNewPath(a) ?? ''}`;
+        return `Renamed ${actionOldPath(a) ?? ''} â†’ ${actionNewPath(a) ?? ''}`;
       case 'document_archive':
         return 'Archived';
       case 'document_restore':
@@ -428,18 +428,21 @@ export default function WorkspaceFilesPage() {
         <p className="text-xs text-text-muted">
           PDF, DOCX, TXT, MD, CSV, images — stored in your workspace
         </p>
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="sr-only"
-          aria-label="Choose file to upload"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void startUpload(file);
-            e.target.value = '';
-          }}
-        />
       </div>
+      {/* F-11: the file input is a sibling of the role=button dropzone —
+          nesting a native input inside a button-role element is invalid
+          nested-interactive semantics (axe). */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="sr-only"
+        aria-label="Choose file to upload"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void startUpload(file);
+          e.target.value = '';
+        }}
+      />
 
       {upload.phase !== 'idle' && (
         <div className="card mb-6 p-4" role="status" aria-live="polite">
@@ -458,11 +461,11 @@ export default function WorkspaceFilesPage() {
             </div>
           )}
           {upload.phase === 'processing' && (
-            <p className="text-xs text-text-muted">Storing content…</p>
+            <p className="text-xs text-text-muted">Storing contentâ€¦</p>
           )}
           {upload.phase === 'error' && (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-red-400">Failed: {upload.message}</p>
+              <p className="text-xs text-error">Failed: {upload.message}</p>
               <button
                 onClick={() => void startUpload(upload.file)}
                 className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover"
@@ -481,7 +484,7 @@ export default function WorkspaceFilesPage() {
             setSearchQuery(e.target.value);
             setPage(1);
           }}
-          placeholder="Search files…"
+          placeholder="Search filesâ€¦"
           aria-label="Search files by name"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-48"
         />
@@ -602,7 +605,7 @@ export default function WorkspaceFilesPage() {
                         {archived ? (
                           <button
                             onClick={() => void handleRestore(doc)}
-                            className="rounded-full border border-emerald-500/30 px-3 py-1 text-xs text-emerald-300 hover:bg-emerald-500/10"
+                            className="rounded-full border border-success/30 px-3 py-1 text-xs text-success hover:bg-success/10"
                           >
                             Restore
                           </button>
@@ -651,7 +654,7 @@ export default function WorkspaceFilesPage() {
               </div>
               <div className="flex items-center gap-2 text-xs text-text-muted">
                 <span>{formatSize(docMetaSize(doc))}</span>
-                <span>·</span>
+                <span>Â·</span>
                 <span>{formatDate(docCreatedAt(doc))}</span>
                 {Boolean(docDeletedAt(doc)) && (
                   <span className="rounded-full border border-border px-2 py-0.5">archived</span>
@@ -711,9 +714,9 @@ export default function WorkspaceFilesPage() {
           <div className="flex max-h-[70vh] flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
               <span className="font-mono uppercase">{viewer.type}</span>
-              <span>·</span>
+              <span>Â·</span>
               <span>{formatSize(docMetaSize(viewer))}</span>
-              <span>·</span>
+              <span>Â·</span>
               <span>{formatDate(docCreatedAt(viewer))}</span>
               <div className="ml-auto flex gap-2" onClick={(e) => e.stopPropagation()}>
                 <button
@@ -728,7 +731,7 @@ export default function WorkspaceFilesPage() {
                 {docDeletedAt(viewer) ? (
                   <button
                     onClick={() => void handleRestore(viewer)}
-                    className="rounded-full border border-emerald-500/30 px-3 py-1 text-emerald-300 hover:bg-emerald-500/10"
+                    className="rounded-full border border-success/30 px-3 py-1 text-success hover:bg-success/10"
                   >
                     Restore
                   </button>
@@ -811,9 +814,9 @@ export default function WorkspaceFilesPage() {
           {renaming && renameValue.trim() && renaming.path !== renameValue.trim() && (
             <DiffViewer oldText={renaming.path} newText={renameValue.trim()} />
           )}
-          <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-text-muted">
-            <span className="font-medium text-amber-700">Organization Agent suggestion</span> — this
-            rename is logged and reversible via <span className="font-mono">History → Undo</span>.
+          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text-muted">
+            <span className="font-medium text-warning">Organization Agent suggestion</span> â€” this
+            rename is logged and reversible via <span className="font-mono">History â†’ Undo</span>.
             An approval record is created for traceability.
           </div>
           <div className="flex justify-end gap-2">
@@ -838,7 +841,7 @@ export default function WorkspaceFilesPage() {
       <Modal
         isOpen={Boolean(history)}
         onClose={() => setHistory(null)}
-        title={`History — ${history ? getFileName(history.path) : ''}`}
+        title={`History â€” ${history ? getFileName(history.path) : ''}`}
       >
         <div className="flex max-h-[60vh] flex-col gap-3 overflow-auto">
           {actionsLoading ? (
@@ -859,7 +862,7 @@ export default function WorkspaceFilesPage() {
                     <div>
                       <p className="text-sm font-medium text-text">{actionLabel(a)}</p>
                       <p className="text-xs text-text-muted">
-                        {new Date(actionCreatedAt(a)).toLocaleString()} ·{' '}
+                        {new Date(actionCreatedAt(a)).toLocaleString()} Â·{' '}
                         {undone ? 'undone' : actionType(a)}
                       </p>
                     </div>
@@ -869,7 +872,7 @@ export default function WorkspaceFilesPage() {
                         onClick={() => void handleUndo(a, history!)}
                         className="shrink-0 rounded-full border border-primary/40 px-3 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-40"
                       >
-                        {busyAction === a.id ? 'Undoing…' : 'Undo'}
+                        {busyAction === a.id ? 'Undoingâ€¦' : 'Undo'}
                       </button>
                     )}
                   </div>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
@@ -18,9 +18,9 @@ interface HealthResponse {
 }
 
 const indicatorColors: Record<string, string> = {
-  ok: 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.5)]',
-  degraded: 'bg-yellow-500 shadow-[0_0_12px_rgba(234,179,8,0.5)]',
-  down: 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]',
+  ok: 'bg-success shadow-[0_0_12px_rgba(34,197,94,0.5)]',
+  degraded: 'bg-warning shadow-[0_0_12px_rgba(234,179,8,0.5)]',
+  down: 'bg-error shadow-[0_0_12px_rgba(239,68,68,0.5)]',
 };
 
 const statusLabels: Record<string, string> = {
@@ -42,15 +42,6 @@ async function fetchHealth(): Promise<{ overall: HealthResponse; ready: HealthRe
     readyRes.json() as Promise<HealthResponse>,
   ]);
   return { overall, ready };
-}
-
-function formatUptime(startedAt: string): string {
-  const diff = Date.now() - new Date(startedAt).getTime();
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(hours / 24);
-  if (days > 0) return `${days}d ${hours % 24}h`;
-  if (hours > 0) return `${hours}h ${Math.floor((diff % 3600000) / 60000)}m`;
-  return `${Math.floor(diff / 60000)}m`;
 }
 
 function ServiceRow({
@@ -79,10 +70,10 @@ function ServiceRow({
       <span
         className={`text-sm font-mono px-2.5 py-0.5 rounded-full border ${
           s === 'ok'
-            ? 'text-green-400 border-green-500/30 bg-green-900/20'
+            ? 'text-success border-success/30 bg-success/10'
             : s === 'degraded'
-              ? 'text-yellow-400 border-yellow-500/30 bg-yellow-900/20'
-              : 'text-red-400 border-red-500/30 bg-red-900/20'
+              ? 'text-warning border-warning/30 bg-warning/10'
+              : 'text-error border-error/30 bg-error/10'
         }`}
       >
         {statusLabels[s]}
@@ -199,9 +190,10 @@ export default function StatusPage() {
             </div>
             <div>
               <span className="text-text-muted">Uptime</span>
-              <p className="text-text font-mono">
-                {overall?.timestamp ? formatUptime(overall.timestamp) : '-'}
-              </p>
+              {/* F-02: /health does not report process start time; showing a
+                  computed-from-poll value was always ~0m. Honest state until
+                  the API exposes real uptime. */}
+              <p className="text-text font-mono">Not reported</p>
             </div>
             <div>
               <span className="text-text-muted">Auto-refresh</span>

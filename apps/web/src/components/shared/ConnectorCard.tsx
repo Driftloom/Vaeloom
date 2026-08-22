@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 type ConnectorStatus = 'connected' | 'disconnected' | 'error' | 'syncing';
 
@@ -12,10 +12,10 @@ interface ConnectorCardProps {
 }
 
 const statusConfig: Record<ConnectorStatus, { label: string; color: string }> = {
-  connected: { label: 'Connected', color: 'text-green-400' },
+  connected: { label: 'Connected', color: 'text-success' },
   disconnected: { label: 'Disconnected', color: 'text-text-muted' },
-  error: { label: 'Error', color: 'text-red-400' },
-  syncing: { label: 'Syncing...', color: 'text-blue-400' },
+  error: { label: 'Error', color: 'text-error' },
+  syncing: { label: 'Syncing...', color: 'text-info' },
 };
 
 export function ConnectorCard({
@@ -41,7 +41,7 @@ export function ConnectorCard({
         {status === 'connected' ? (
           <button
             onClick={onDisconnect}
-            className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded border border-red-500/30 hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-background"
+            className="text-xs text-error hover:text-error-fg px-3 py-1.5 rounded border border-error/30 hover:bg-error/10 transition-colors focus:outline-none focus:ring-2 focus:ring-error focus:ring-offset-background"
           >
             Disconnect
           </button>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 function formatRelative(iso: string | null | undefined) {
-  if (!iso) return '—';
+  if (!iso) return 'â€”';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'Just now';
@@ -27,9 +27,9 @@ function formatRelative(iso: string | null | undefined) {
 
 function KindBadge({ kind }: { kind: string }) {
   const map: Record<string, string> = {
-    memory_created: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
+    memory_created: 'bg-success/10 text-success border-success/30',
     memory_corrected: 'bg-sky-500/10 text-sky-700 border-sky-500/20',
-    memory_superseded: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
+    memory_superseded: 'bg-warning/10 text-warning border-warning/30',
     agent_created: 'bg-primary/10 text-primary border-primary/20',
     agent_memory_text: 'bg-primary/10 text-primary border-primary/20',
   };
@@ -45,7 +45,11 @@ function KindBadge({ kind }: { kind: string }) {
   );
 }
 
-function ConfidenceBar({ value }: { value: number }) {
+function ConfidenceBar({ value }: { value: number | undefined }) {
+  // F-02: absent confidence renders an honest label instead of a fake bar.
+  if (value === undefined || value === null) {
+    return <span className="font-mono text-xs text-text-muted">confidence: not reported</span>;
+  }
   const pct = Math.round((value || 0) * 100);
   return (
     <div className="flex items-center gap-1.5">
@@ -115,8 +119,8 @@ export default function MemoryGraphPage() {
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-surface border border-border px-3 py-1 text-xs text-text-muted">
-            {feedData?.stats?.totalMemories ?? memItems.length} memories •{' '}
-            {feedData?.stats?.superseded ?? 0} superseded • {feedData?.stats?.agentCreated ?? 0}{' '}
+            {feedData?.stats?.totalMemories ?? memItems.length} memories â€¢{' '}
+            {feedData?.stats?.superseded ?? 0} superseded â€¢ {feedData?.stats?.agentCreated ?? 0}{' '}
             agent-created
           </span>
           <button onClick={() => mutateFeed()} className="btn-secondary text-xs !px-3 !py-1.5">
@@ -139,7 +143,7 @@ export default function MemoryGraphPage() {
           </div>
           <div className="card py-3">
             <p className="font-mono text-xs uppercase tracking-widest text-text-dim">Superseded</p>
-            <p className="text-2xl font-display text-amber-600 mt-1">{feedData.stats.superseded}</p>
+            <p className="text-2xl font-display text-warning mt-1">{feedData.stats.superseded}</p>
           </div>
           <div className="card py-3">
             <p className="font-mono text-xs uppercase tracking-widest text-text-dim">
@@ -176,8 +180,11 @@ export default function MemoryGraphPage() {
                 (mem?.['sourceType'] as string) || (mem?.['source_type'] as string) || '';
               const id = (mem?.['id'] as string) || '';
               const metadata = (mem?.['metadata'] as Record<string, unknown>) || {};
+              // F-02: confidence is shown only when the backend supplies it;
+              // the previous 0.85 default was fabricated.
               const confidence =
-                (metadata?.['confidence'] as number) ?? (mem?.['confidence'] as number) ?? 0.85;
+                (metadata?.['confidence'] as number | undefined) ??
+                (mem?.['confidence'] as number | undefined);
 
               return (
                 <div
@@ -200,7 +207,7 @@ export default function MemoryGraphPage() {
                           </span>
                         )}
                         {status === 'superseded' && (
-                          <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs text-amber-700">
+                          <span className="rounded-full bg-warning/10 border border-warning/30 px-2 py-0.5 text-xs text-warning">
                             superseded
                           </span>
                         )}
@@ -249,8 +256,8 @@ export default function MemoryGraphPage() {
           </div>
         )}
         <p className="text-xs text-text-dim mt-3">
-          Provenance: each memory links source document → embedding → graph node → agent action.
-          Superseded versions stay visible; corrections create new rows with{' '}
+          Provenance: each memory links source document â†’ embedding â†’ graph node â†’ agent
+          action. Superseded versions stay visible; corrections create new rows with{' '}
           <span className="font-mono">supersedes_id</span>.
         </p>
       </TabPanel>
@@ -282,7 +289,7 @@ export default function MemoryGraphPage() {
                         {type}
                       </span>
                       <span
-                        className={`text-xs rounded-full px-2 py-0.5 border ${status === 'superseded' ? 'bg-amber-500/10 text-amber-700 border-amber-500/20' : status === 'READY' || status === 'active' ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' : 'bg-surface-hover text-text-muted border-border'}`}
+                        className={`text-xs rounded-full px-2 py-0.5 border ${status === 'superseded' ? 'bg-warning/10 text-warning border-warning/30' : status === 'READY' || status === 'active' ? 'bg-success/10 text-success border-success/30' : 'bg-surface-hover text-text-muted border-border'}`}
                       >
                         {status || 'active'}
                       </span>
@@ -332,7 +339,7 @@ export default function MemoryGraphPage() {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium text-text mb-1">
-                Supersession chain (backwards — supersedes)
+                Supersession chain (backwards â€” supersedes)
               </h3>
               {lineage.chainBackwards.length === 0 ? (
                 <p className="text-xs text-text-muted">No ancestors</p>
@@ -374,7 +381,7 @@ export default function MemoryGraphPage() {
                     return (
                       <div
                         key={String(mem['id'])}
-                        className="shrink-0 w-48 rounded border border-amber-500/20 bg-amber-500/5 p-2"
+                        className="shrink-0 w-48 rounded border border-warning/30 bg-warning/10 p-2"
                       >
                         <p className="text-sm font-medium text-text truncate">
                           {String(mem['title'] || mem['id']).slice(0, 28)}
@@ -428,10 +435,10 @@ export default function MemoryGraphPage() {
                           className="rounded border border-border bg-surface-hover px-2 py-1 text-xs"
                         >
                           <span className="font-medium text-text">{a.agentName}</span>
-                          <span className="mx-1 text-text-dim">•</span>
+                          <span className="mx-1 text-text-dim">â€¢</span>
                           <span className="text-text-muted">{a.actionType}</span>
                           <span
-                            className={`ml-2 rounded px-1 py-0.5 text-[10px] border ${a.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-surface text-text-muted border-border'}`}
+                            className={`ml-2 rounded px-1 py-0.5 text-[10px] border ${a.status === 'completed' ? 'bg-success/10 text-success border-success/30' : 'bg-surface text-text-muted border-border'}`}
                           >
                             {a.status}
                           </span>

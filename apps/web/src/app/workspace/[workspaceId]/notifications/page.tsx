@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
@@ -26,14 +26,14 @@ function formatTimestamp(iso: string): string {
 const channelStyles: Record<string, string> = {
   email: 'border-primary/50 text-primary bg-primary/10',
   webhook: 'border-border text-text-muted bg-surface',
-  slack: 'border-green-500/50 text-green-400 bg-green-950/20',
-  push: 'border-blue-500/50 text-blue-400 bg-blue-950/20',
+  slack: 'border-success/50 text-success bg-success/10',
+  push: 'border-blue-500/50 text-info bg-blue-950/20',
 };
 
 const statusStyles: Record<string, string> = {
-  sent: 'text-green-400 border-green-500/30 bg-green-900/20',
-  pending: 'text-yellow-400 border-yellow-500/30 bg-yellow-900/20',
-  failed: 'text-red-400 border-red-500/30 bg-red-900/20',
+  sent: 'text-success border-success/30 bg-success/10',
+  pending: 'text-warning border-warning/30 bg-warning/10',
+  failed: 'text-error border-error/30 bg-error/10',
 };
 
 export default function NotificationsPage() {
