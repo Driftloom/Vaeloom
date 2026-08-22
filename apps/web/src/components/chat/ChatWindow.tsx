@@ -141,13 +141,9 @@ function parseBlockingChatResponse(
     questions = o?.questions as string[];
     conf = (r as { confidence?: number }).confidence;
     an = (r as { agent_name?: string }).agent_name || an;
+    // F-02: no fabricated tool executions are synthesized from response shape;
+    // toolCalls render only when the backend reports them.
     const d = o?.details as Record<string, unknown> | undefined;
-    if (d && Array.isArray((d as Record<string, unknown>)['entities']))
-      tools = [
-        { name: 'search_documents', status: 'done', latencyMs: 210 },
-        { name: 'query_graph', status: 'done', latencyMs: 170 },
-      ];
-    else if (an) tools = [{ name: `${an}_run`, status: 'done', latencyMs: 280 }];
     if (d && Array.isArray((d as Record<string, unknown>)['citations']))
       cites = d['citations'] as ChatMessage['citations'];
   } else if (r && 'reply' in (r as Record<string, unknown>))
@@ -582,13 +578,15 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       setLoading(true);
       const agentId = (Date.now() + 1).toString();
       const agentForCall = selected === 'auto' ? undefined : selected;
+      // F-02: latency shown to users is always client-measured wall time.
+      const requestStartedAt = Date.now();
       const ph: ChatMessage = {
         id: agentId,
         role: 'agent',
         text: '',
         timestamp: nowIso(),
         agentName: agentForCall || 'assistant',
-        confidence: agentForCall ? 0.98 : undefined,
+        confidence: undefined,
         toolCalls: [{ name: 'routing', status: 'running' }],
         streaming: true,
       };
@@ -602,7 +600,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       let streamedTools: ChatMessage['toolCalls'] = [];
       let streamedCitations: ChatMessage['citations'];
       let streamedAgent = agentForCall || 'assistant';
-      let streamedConfidence: number | undefined = agentForCall ? 0.98 : undefined;
+      // F-02: confidence is only ever shown when the backend supplies it.
+      let streamedConfidence: number | undefined;
       let streamedError = false;
       let gotDone = false;
       let abortCtrl: AbortController | null = null;
@@ -649,12 +648,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           if ((streamedTools?.length || 0) > 6) streamedTools = streamedTools!.slice(-6);
           applyPatch({ toolCalls: streamedTools });
         } else if (event === 'observe' || event === 'reflect') {
-          // mark tools done
+          // mark tools done — F-02: no fabricated per-tool latency is shown;
+          // durations are only rendered when actually measured.
           if (streamedTools?.length) {
             streamedTools = streamedTools!.map((t) => ({
               ...t,
               status: 'done' as const,
-              latencyMs: 120,
             }));
             applyPatch({ toolCalls: streamedTools });
           }
@@ -768,7 +767,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             confidence: streamedConfidence,
             streaming: false,
             error: streamedError,
-            latencyMs: Math.round(320 + Math.random() * 400),
+            latencyMs: Date.now() - requestStartedAt,
           });
         }
       };
@@ -811,7 +810,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             citations: parsed.cites,
             agentName: parsed.agentName || streamedAgent || 'assistant',
             streaming: false,
-            latencyMs: Math.round(420 + Math.random() * 500),
+            latencyMs: Date.now() - requestStartedAt,
           };
           await streamText(parsed.reply, agentId);
           setMessages((p) =>

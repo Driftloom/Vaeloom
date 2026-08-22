@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { resumeApi, agentApi, type ResumeResponse } from '@/lib/api-client';
@@ -59,7 +59,8 @@ function getTrustStats(content: Record<string, unknown>) {
           total++;
           const obj = item as Record<string, unknown>;
           if (obj['is_inferred'] === true) inferred++;
-          if (typeof obj['source_document_id'] === 'string') sources.add(obj['source_document_id'] as string);
+          if (typeof obj['source_document_id'] === 'string')
+            sources.add(obj['source_document_id'] as string);
         }
       }
     }
@@ -74,7 +75,11 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
   const [resumes, setResumes] = useState<ResumeResponse[]>([]);
   const [generating, setGenerating] = useState(false);
   const [targetRole, setTargetRole] = useState('');
-  const [diffPair, setDiffPair] = useState<{ oldText: string; newText: string; title: string } | null>(null);
+  const [diffPair, setDiffPair] = useState<{
+    oldText: string;
+    newText: string;
+    title: string;
+  } | null>(null);
   const [atsScores, setAtsScores] = useState<Record<string, number>>({});
   const [atsLoading, setAtsLoading] = useState<string | null>(null);
 
@@ -108,7 +113,11 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
         variant_type: targetRole ? 'tailored' : 'generic',
         ...(targetRole && { target_role: targetRole }),
       });
-      toast({ tone: 'success', title: 'Variant generated', detail: targetRole || 'Generic variant' });
+      toast({
+        tone: 'success',
+        title: 'Variant generated',
+        detail: targetRole || 'Generic variant',
+      });
       setTargetRole('');
       await fetchData();
     } catch (err) {
@@ -127,15 +136,41 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
         agentName: 'ats',
       })) as Record<string, unknown>;
       const result = (res as { result?: { summary?: string } })?.result;
-      const text = result?.summary ?? (res as { reply?: string })?.reply ?? JSON.stringify(res).slice(0, 200);
+      const text =
+        result?.summary ?? (res as { reply?: string })?.reply ?? JSON.stringify(res).slice(0, 200);
       const match = text.match(/(\d{1,3})\s*%|score[^0-9]*(\d{1,3})/i);
-      const score = match ? parseInt(match[1] ?? match[2] ?? '0', 10) : Math.round(70 + Math.random() * 20);
-      setAtsScores((m) => ({ ...m, [resume.id]: Math.min(100, Math.max(0, score)) }));
-      toast({ tone: 'success', title: 'ATS score', detail: `${score} — ${text.slice(0, 120)}` });
+      // F-02: never fabricate a score. If the agent response does not contain
+      // a parseable score, surface an honest unavailable state instead.
+      if (!match) {
+        setAtsScores((m) => {
+          const next = { ...m };
+          delete next[resume.id];
+          return next;
+        });
+        toast({
+          tone: 'info',
+          title: 'ATS score unavailable',
+          detail: 'The ATS agent did not return a numeric score. Response kept below for review.',
+        });
+        return;
+      }
+      const score = Math.min(100, Math.max(0, parseInt(match[1] ?? match[2] ?? '0', 10)));
+      setAtsScores((m) => ({ ...m, [resume.id]: score }));
+      toast({ tone: 'success', title: 'ATS score', detail: `${score} â€” ${text.slice(0, 120)}` });
     } catch (err) {
-      const fallback = Math.round(72 + Math.random() * 18);
-      setAtsScores((m) => ({ ...m, [resume.id]: fallback }));
-      toast({ tone: 'info', title: 'ATS (fallback)', detail: `${fallback} — agent unavailable, using heuristic` });
+      setAtsScores((m) => {
+        const next = { ...m };
+        delete next[resume.id];
+        return next;
+      });
+      toast({
+        tone: 'error',
+        title: 'ATS check failed',
+        detail:
+          err instanceof Error
+            ? err.message
+            : 'The ATS agent is unavailable. No score was produced.',
+      });
     } finally {
       setAtsLoading(null);
     }
@@ -155,7 +190,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
     setDiffPair({
       oldText: renderContent(a.content as Record<string, unknown>),
       newText: renderContent(b.content as Record<string, unknown>),
-      title: `${a.variant_type} v${a.version} → ${b.variant_type} v${b.version}`,
+      title: `${a.variant_type} v${a.version} â†’ ${b.variant_type} v${b.version}`,
     });
   };
 
@@ -164,7 +199,9 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
       <div className="flex flex-col h-full">
         <header className="mb-6">
           <h1 className="text-3xl font-display font-medium text-text mb-2">Resume</h1>
-          <p className="text-text-muted">Edit your master resume and view tailored variants.</p>
+          <p className="text-text-muted">
+            Review your master resume, generate tailored variants, and export.
+          </p>
         </header>
         <div className="flex-1 flex items-center justify-center text-text-muted">
           Loading resumes...
@@ -206,7 +243,9 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
       <header className="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-4">
         <div>
           <h1 className="text-3xl font-display font-medium text-text mb-2">Resume</h1>
-          <p className="text-text-muted">Edit your master resume and view tailored variants.</p>
+          <p className="text-text-muted">
+            Review your master resume, generate tailored variants, and export.
+          </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 w-full lg:w-auto">
           <div className="flex-1 sm:flex-none">
@@ -230,44 +269,82 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
             onClick={handleGenerate}
             disabled={generating || resumes.length === 0}
           >
-            {generating ? 'Generating…' : 'Generate Variant'}
+            {generating ? 'Generatingâ€¦' : 'Generate Variant'}
           </button>
         </div>
       </header>
 
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
         <div className="flex-1 flex flex-col gap-4 min-w-0">
-          {masterResume && (() => {
-            const stats = getTrustStats(masterResume.content as Record<string, unknown>);
-            const ats = atsScores[masterResume.id];
-            return (
-            <div className="card border-accent/30 bg-accent/5 flex-1 flex flex-col p-0 overflow-hidden">
-              <div className="px-6 py-3 border-b border-accent/20 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="font-display font-medium text-text">Master Resume</h2>
-                  <p className="text-xs text-text-muted font-mono">
-                    v{masterResume.version} &middot; {formatDate(masterResume.created_at)}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <ProvenanceBadge label="Master" confidence={stats.total ? 1 - stats.inferred / Math.max(stats.total, 1) : 1} />
-                    {stats.inferred > 0 && <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs text-amber-700">Inferred {stats.inferred}/{stats.total}</span>}
-                    {stats.sources.length > 0 && <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-700">{stats.sources.length} source docs</span>}
-                    <span className="text-xs text-text-dim font-mono">{stats.inferred ? 'user-confirmed vs inferred distinct — verify inferred lines' : 'all lines user-confirmed'}</span>
+          {masterResume &&
+            (() => {
+              const stats = getTrustStats(masterResume.content as Record<string, unknown>);
+              const ats = atsScores[masterResume.id];
+              return (
+                <div className="card border-accent/30 bg-accent/5 flex-1 flex flex-col p-0 overflow-hidden">
+                  <div className="px-6 py-3 border-b border-accent/20 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="font-display font-medium text-text">Master Resume</h2>
+                      <p className="text-xs text-text-muted font-mono">
+                        v{masterResume.version} &middot; {formatDate(masterResume.created_at)}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <ProvenanceBadge
+                          label="Master"
+                          confidence={
+                            stats.total ? 1 - stats.inferred / Math.max(stats.total, 1) : 1
+                          }
+                        />
+                        {stats.inferred > 0 && (
+                          <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs text-amber-700">
+                            Inferred {stats.inferred}/{stats.total}
+                          </span>
+                        )}
+                        {stats.sources.length > 0 && (
+                          <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-700">
+                            {stats.sources.length} source docs
+                          </span>
+                        )}
+                        <span className="text-xs text-text-dim font-mono">
+                          {stats.inferred
+                            ? 'user-confirmed vs inferred distinct â€” verify inferred lines'
+                            : 'all lines user-confirmed'}
+                        </span>
+                      </div>
+                      {typeof ats === 'number' && (
+                        <ConfidenceMeter value={ats / 100} label={`ATS ${ats}`} />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <button
+                        onClick={() => handleAts(masterResume)}
+                        disabled={atsLoading === masterResume.id}
+                        className="btn-secondary text-xs !px-3 !py-1.5 disabled:opacity-40"
+                      >
+                        {atsLoading === masterResume.id
+                          ? 'Scoringâ€¦'
+                          : ats
+                            ? `ATS ${ats}`
+                            : 'ATS Score'}
+                      </button>
+                      <button
+                        onClick={() => handleDownload(masterResume)}
+                        className="btn-ghost border border-border text-xs !px-3 !py-1.5"
+                      >
+                        Download
+                      </button>
+                    </div>
                   </div>
-                  {typeof ats === 'number' && <ConfidenceMeter value={ats / 100} label={`ATS ${ats}`} />}
+                  <pre className="flex-1 bg-transparent text-text p-6 overflow-y-auto font-sans text-sm leading-relaxed whitespace-pre-wrap">
+                    {renderContent(masterResume.content as Record<string, unknown>) || 'No content'}
+                  </pre>
+                  <p className="px-6 pb-3 text-xs text-text-dim">
+                    Lines marked [inferred] need review. Sources linked via Files viewer by Source
+                    ID in raw payload.
+                  </p>
                 </div>
-                <div className="flex flex-col gap-2 shrink-0">
-                  <button onClick={() => handleAts(masterResume)} disabled={atsLoading === masterResume.id} className="btn-secondary text-xs !px-3 !py-1.5 disabled:opacity-40">{atsLoading === masterResume.id ? 'Scoring…' : ats ? `ATS ${ats}` : 'ATS Score'}</button>
-                  <button onClick={() => handleDownload(masterResume)} className="btn-ghost border border-border text-xs !px-3 !py-1.5">Download</button>
-                </div>
-              </div>
-              <pre className="flex-1 bg-transparent text-text p-6 overflow-y-auto font-sans text-sm leading-relaxed whitespace-pre-wrap">
-                {renderContent(masterResume.content as Record<string, unknown>) || 'No content'}
-              </pre>
-              <p className="px-6 pb-3 text-xs text-text-dim">Lines marked [inferred] need review. Sources linked via Files viewer by Source ID in raw payload.</p>
-            </div>
-            );
-          })()}
+              );
+            })()}
 
           {!masterResume && (
             <div className="card flex-1 flex flex-col p-6">
@@ -288,30 +365,61 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
                 const ats = atsScores[v.id];
                 const st = getTrustStats(v.content as Record<string, unknown>);
                 return (
-                <div key={v.id} className="card p-3 border-border/50 text-sm flex flex-col gap-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-medium text-text capitalize">{v.variant_type}</div>
-                      <div className="text-xs text-text-muted font-mono mt-1">
-                        v{v.version} &middot; {formatDate(v.created_at)}
+                  <div key={v.id} className="card p-3 border-border/50 text-sm flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-medium text-text capitalize">{v.variant_type}</div>
+                        <div className="text-xs text-text-muted font-mono mt-1">
+                          v{v.version} &middot; {formatDate(v.created_at)}
+                        </div>
                       </div>
+                      {typeof ats === 'number' && (
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-xs font-mono ${ats >= 80 ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' : ats >= 60 ? 'bg-amber-500/10 text-amber-700 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}
+                        >
+                          ATS {ats}
+                        </span>
+                      )}
                     </div>
-                    {typeof ats === 'number' && <span className={`rounded-full border px-2 py-0.5 text-xs font-mono ${ats >= 80 ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' : ats >= 60 ? 'bg-amber-500/10 text-amber-700 border-amber-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>ATS {ats}</span>}
+                    {st.inferred > 0 && (
+                      <span className="text-xs text-amber-700">Inferred {st.inferred} lines</span>
+                    )}
+                    <div className="flex gap-1 flex-wrap">
+                      <button
+                        onClick={() => handleAts(v)}
+                        disabled={atsLoading === v.id}
+                        className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover disabled:opacity-40"
+                      >
+                        {atsLoading === v.id ? 'â€¦' : 'ATS'}
+                      </button>
+                      <button
+                        onClick={() => handleDownload(v)}
+                        className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover"
+                      >
+                        Download
+                      </button>
+                      {masterResume && (
+                        <button
+                          onClick={() => openDiff(masterResume, v)}
+                          className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs text-primary"
+                        >
+                          Diff
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {st.inferred > 0 && <span className="text-xs text-amber-700">Inferred {st.inferred} lines</span>}
-                  <div className="flex gap-1 flex-wrap">
-                    <button onClick={() => handleAts(v)} disabled={atsLoading === v.id} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover disabled:opacity-40">{atsLoading === v.id ? '…' : 'ATS'}</button>
-                    <button onClick={() => handleDownload(v)} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover">Download</button>
-                    {masterResume && <button onClick={() => openDiff(masterResume, v)} className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs text-primary">Diff</button>}
-                  </div>
-                </div>
                 );
               })}
             </div>
           </aside>
         )}
       </div>
-      <Modal isOpen={Boolean(diffPair)} onClose={() => setDiffPair(null)} title={diffPair?.title ?? 'Diff'} size="lg">
+      <Modal
+        isOpen={Boolean(diffPair)}
+        onClose={() => setDiffPair(null)}
+        title={diffPair?.title ?? 'Diff'}
+        size="lg"
+      >
         {diffPair && <DiffViewer oldText={diffPair.oldText} newText={diffPair.newText} />}
       </Modal>
     </div>

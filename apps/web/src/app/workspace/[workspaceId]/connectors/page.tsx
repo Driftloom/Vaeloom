@@ -86,21 +86,11 @@ export default function ConnectorsPage() {
     const meta = PROVIDER_META[provider];
     setBusy(`connect-${provider}`);
     try {
-      // Try real OAuth redirect first for providers that support SSO
-      const redirectUri = `${window.location.origin}/auth/callback`;
-      try {
-        const res = await api.request<{ auth_url?: string; authUrl?: string }>(
-          `/auth/sso/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`,
-        );
-        const url =
-          (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
-        if (url) {
-          window.location.href = url;
-          return;
-        }
-      } catch {
-        // fallback to legacy integration create if SSO not configured for this provider
-      }
+      // F-01: OAuth consent-install for connectors is not supported by the
+      // backend yet (no integration OAuth install/callback endpoints exist).
+      // The previous flow redirected users into the LOGIN sso flow under a
+      // "Connect" label — removed per no-fake-state rule. Connections are
+      // registered directly via integrations.create.
       await api.integrations.create({ name: meta?.name ?? provider, provider });
       await mutate();
       toast({

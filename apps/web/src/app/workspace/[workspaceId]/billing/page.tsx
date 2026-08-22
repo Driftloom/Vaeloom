@@ -6,6 +6,7 @@ import { Table, type Column } from '@/components/shared/Table';
 import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { billingApi, ApiClientError } from '@/lib/api-client';
+import { useToast } from '@/components/shared/Toast';
 
 interface Invoice {
   id: string;
@@ -61,10 +62,11 @@ const invoiceColors: Record<string, StatusVariant> = {
 const invColor = (s: string): StatusVariant => invoiceColors[s] ?? 'neutral';
 
 export default function BillingPage() {
+  const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState('pro');
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [pendingPlan, setPendingPlan] = useState('pro');
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [changingPlan, setChangingPlan] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [usage, setUsage] = useState<{
     apiCalls: number;
@@ -310,31 +312,36 @@ export default function BillingPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => {
-                setSelectedPlan(pendingPlan);
-                setShowChangeModal(false);
+              disabled={changingPlan || pendingPlan === selectedPlan}
+              onClick={async () => {
+                if (!pendingPlan) return;
+                setChangingPlan(true);
+                try {
+                  // F-03: persist the plan change to the real billing API.
+                  await billingApi.createSubscription({ plan: pendingPlan });
+                  setSelectedPlan(pendingPlan);
+                  setShowChangeModal(false);
+                  toast({
+                    tone: 'success',
+                    title: 'Plan updated',
+                    detail: `Subscription switched to ${plans.find((p) => p.id === pendingPlan)?.name ?? pendingPlan}.`,
+                  });
+                } catch (err) {
+                  toast({
+                    tone: 'error',
+                    title: 'Plan change failed',
+                    detail:
+                      err instanceof ApiClientError
+                        ? err.message
+                        : 'The billing service could not complete the change. No changes were applied.',
+                  });
+                } finally {
+                  setChangingPlan(false);
+                }
               }}
             >
-              Confirm Change
+              {changingPlan ? 'Updating…' : 'Confirm Change'}
             </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        title="Update Payment Method"
-      >
-        <div className="space-y-4">
-          <div className="p-4 bg-background rounded-lg border border-border text-text-muted text-sm text-center">
-            Payment method integration would open here (Stripe Elements, etc.)
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setShowPaymentModal(false)}>Save</Button>
           </div>
         </div>
       </Modal>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import React, { useState, useEffect } from 'react';
 import { Button, Modal } from '@vaeloom/ui-kit';
@@ -59,7 +59,6 @@ export default function AdminPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [auditLog, setAuditLog] = useState<AuditEvent[]>([]);
   const [auditPage, setAuditPage] = useState(1);
-  const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pageSize = 3;
@@ -95,19 +94,19 @@ export default function AdminPage() {
                 id: 'db',
                 name: 'Database',
                 status: dependencies.database?.status || 'unknown',
-                uptime: '99.99%',
+                uptime: '—',
               },
               {
                 id: 'redis',
                 name: 'Redis',
                 status: dependencies.redis?.status || 'unknown',
-                uptime: '99.99%',
+                uptime: '—',
               },
               {
                 id: 'api',
                 name: 'API Server',
                 status: healthData.status === 'ok' ? 'operational' : 'degraded',
-                uptime: '99.99%',
+                uptime: '—',
               },
             ];
             setServices(servicesList);
@@ -144,11 +143,6 @@ export default function AdminPage() {
 
   const paginatedAudit = auditLog.slice((auditPage - 1) * pageSize, auditPage * pageSize);
   const totalPages = Math.ceil(auditLog.length / pageSize);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2000);
-  };
 
   const userColumns: Column<User>[] = [
     { key: 'name', header: 'Name' },
@@ -190,7 +184,7 @@ export default function AdminPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono uppercase tracking-widest text-text-dim mb-4">
-          Enterprise — Gated
+          Enterprise â€” Gated
         </div>
         <h1 className="text-2xl font-display font-medium text-text mb-2">Admin Dashboard</h1>
         <p className="text-text-muted max-w-lg">{error}</p>
@@ -207,15 +201,6 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
-      {toast && (
-        <div
-          role="alert"
-          className="fixed top-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-xl text-text text-sm animate-in"
-        >
-          {toast}
-        </div>
-      )}
-
       <header>
         <h1 className="text-3xl font-display font-medium text-text mb-2">Admin Dashboard</h1>
         <p className="text-text-muted">
@@ -293,20 +278,35 @@ export default function AdminPage() {
         <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
           Quick Actions
         </h2>
+        {/* F-02: these controls previously faked success toasts without any
+            backend call. They are disabled until corresponding admin APIs exist. */}
         <div className="flex flex-wrap gap-4">
-          <Button variant="secondary" onClick={() => showToast('Cache cleared successfully.')}>
+          <Button
+            variant="secondary"
+            disabled
+            title="Requires a cache-clear admin endpoint (not yet available)"
+          >
             Clear Cache
           </Button>
           <Button
             variant="secondary"
-            onClick={() => showToast('Backup triggered. This may take a few minutes.')}
+            disabled
+            title="Requires a backup-trigger admin endpoint (not yet available)"
           >
             Trigger Backup
           </Button>
-          <Button variant="secondary" onClick={() => showToast('System health check started.')}>
+          <Button
+            variant="secondary"
+            disabled
+            title="Requires a diagnostics admin endpoint (not yet available)"
+          >
             Run Diagnostics
           </Button>
-          <Button variant="secondary" onClick={() => showToast('Restart scheduled.')}>
+          <Button
+            variant="secondary"
+            disabled
+            title="Requires a service-restart admin endpoint (not yet available)"
+          >
             Restart Services
           </Button>
         </div>

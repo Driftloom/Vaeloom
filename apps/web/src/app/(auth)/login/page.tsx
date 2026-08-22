@@ -31,6 +31,10 @@ function LoginForm() {
       const url =
         (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
       if (url) {
+        // Persist context for /auth/callback: the provider never echoes back
+        // which app flow started the sign-in.
+        sessionStorage.setItem('vaeloom.sso.provider', provider);
+        if (redirect) sessionStorage.setItem('vaeloom.sso.redirect', redirect);
         window.location.href = url;
         return;
       }
