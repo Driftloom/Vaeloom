@@ -56,15 +56,11 @@ class TestCreateMemory:
         db.refresh.assert_called_once_with(memory)
 
     async def test_create_without_content(self, svc):
-        db = MagicMock()
-        db.add = MagicMock()
-        db.flush = AsyncMock()
-        db.refresh = AsyncMock()
-        dto = MemoryCreate(type="note", title="")
-        memory = await svc.create_memory(db, dto, tenant_id=None, user_id=None)
-        assert memory.content_hash is None
-        assert memory.size == 0
-        assert memory.embedding is None
+        # P14 fix: empty title/summary/content must 422, not 500 via DB
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            MemoryCreate(type="note", title="")
 
     async def test_create_embedding_error(self, svc, monkeypatch):
         from api.services import llm_service
@@ -81,15 +77,11 @@ class TestCreateMemory:
         assert memory.embedding is None
 
     async def test_create_whitespace_content(self, svc):
-        db = MagicMock()
-        db.add = MagicMock()
-        db.flush = AsyncMock()
-        db.refresh = AsyncMock()
-        dto = MemoryCreate(type="note", title="   ", content="   ")
-        memory = await svc.create_memory(db, dto, tenant_id=None, user_id=None)
-        assert memory.embedding is None
-        assert memory.content_hash is not None
-        assert memory.size == 3
+        # P14 fix: whitespace-only must 422
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            MemoryCreate(type="note", title="   ", content="   ")
 
 
 class TestListMemories:
