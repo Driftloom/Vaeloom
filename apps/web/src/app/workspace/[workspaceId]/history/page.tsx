@@ -116,7 +116,7 @@ export default function HistoryPage() {
     URL.revokeObjectURL(url);
   }, [workspaceId, docActionsRes, agentActions, notifications]);
 
-  const docActions = docActionsRes?.actions ?? [];
+  const docActions = useMemo(() => docActionsRes?.actions ?? [], [docActionsRes]);
 
   const sq = searchQuery.toLowerCase();
 

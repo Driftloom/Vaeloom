@@ -11,8 +11,8 @@ function SmokeShell() {
     <div>
       <header>
         <nav aria-label="Primary">
-          <a href="/">Home</a>
-          <a href="/workspace/test">Workspace</a>
+          <a href="#home">Home</a>
+          <a href="#workspace">Workspace</a>
         </nav>
       </header>
       <main>
@@ -34,7 +34,6 @@ describe('a11y smoke (WCAG 2.2 AA)', () => {
   it('has no axe violations on the smoke shell', async () => {
     let axe: any = null;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       axe = require('jest-axe').axe;
     } catch {
       // jest-axe not installed — fallback to structural checks
