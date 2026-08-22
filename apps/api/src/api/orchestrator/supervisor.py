@@ -41,31 +41,27 @@ async def _detect_subtasks(message: str) -> list[tuple[str, float]]:
         score = sum(1 for kw in keywords if kw in msg_lower)
         if score >= MULTI_AGENT_KEYWORD_THRESHOLD:
             confidence = min(score / 3.0, 1.0)
-            # Disambiguate to concrete agent via classify_intent sub-logic
-            # We reuse classify_intent's coarse->fine mapping by crafting a sub-message
-            # containing only that category's keywords
             from .router import CATEGORY_AGENT_MAP  # local to avoid circular at top
             agents_in_cat = CATEGORY_AGENT_MAP.get(category, ["memory"])
-            # Re-run full classify on message but force category? Simplify: pick first agent in category
-            # For better accuracy, call classify_intent on a filtered slice containing only that category's keywords
-            # Instead we just use the first agent (or disambiguated one via keyword check in router)
-            # For categories with 2 agents (career_resume etc.) we need the right one — run classify on the original message
-            # but only keep result if it lands in that category
             agent_name, conf = await classify_intent(message)
-            # If classify landed on an agent in this category, keep it; otherwise pick the category's primary
             if agent_name in agents_in_cat:
-                # de-duplicate
                 if agent_name not in [c[0] for c in candidates]:
                     candidates.append((agent_name, confidence))
             else:
-                # Add primary agent for this category if not already present
                 primary = agents_in_cat[0]
                 if primary not in [c[0] for c in candidates]:
                     candidates.append((primary, confidence))
-    # Also add the top intent from classify_intent if not already included
     top_agent, top_conf = await classify_intent(message)
     if top_agent not in [c[0] for c in candidates] and top_conf >= 0.33:
         candidates.insert(0, (top_agent, top_conf))
+    # MVP scope lock: filter to canonical agents when enforced (AC-02 fix)
+    try:
+        from ..config import settings as _settings
+        if _settings.mvp_scope_enforced:
+            from .router import MVP_CANONICAL_AGENTS
+            candidates = [c for c in candidates if c[0] in MVP_CANONICAL_AGENTS]
+    except Exception:
+        pass
     return candidates
 
 
@@ -126,6 +122,17 @@ def is_multi_agent_request(message: str) -> bool:
     if len(message.split()) < MULTI_AGENT_MIN_MESSAGE_WORDS:
         return False
     msg_lower = message.lower()
+    # When MVP scope is enforced, only count canonical categories
+    try:
+        from ..config import settings as _settings
+        if _settings.mvp_scope_enforced:
+            from .router import MVP_CATEGORY_AGENT_MAP
+            # Only count keywords for canonical categories
+            canonical_cats = set(MVP_CATEGORY_AGENT_MAP.keys())
+            matching_cats = sum(1 for cat, kws in CATEGORY_KEYWORDS.items() if cat in canonical_cats and any(kw in msg_lower for kw in kws))
+            return matching_cats >= MULTI_AGENT_MIN_CATEGORIES
+    except Exception:
+        pass
     matching_cats = 0
     for keywords in CATEGORY_KEYWORDS.values():
         if any(kw in msg_lower for kw in keywords):

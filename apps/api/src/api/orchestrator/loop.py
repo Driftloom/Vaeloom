@@ -364,19 +364,12 @@ async def _try_react_loop(agent: BaseAgent, message: str, workspace_id: str, age
         from ..services.llm_service import llm_service
         import json
 
-        # Build tool schemas — cap to 14 most relevant to keep prompt small
-        # Prioritise tools matching agent's declared tool names, then fill with common ones
+        # Build tool schemas — least-privilege: only offer tools the agent is explicitly allowed (OWASP LLM06/PATI)
         declared = {t.name for t in getattr(agent, "tools", []) or []}
-        prioritized: list[Any] = []
-        others: list[Any] = []
-        for td in ALL_TOOLS.values():
-            if td.name in declared:
-                prioritized.append(td)
-            else:
-                others.append(td)
-        ordered = prioritized + others
-        # Limit to 12 tools for token budget
-        ordered = ordered[:12]
+        ordered = [td for td in ALL_TOOLS.values() if td.name in declared][:12]
+        if not ordered:
+            return None
+        agent_allowed_scopes = [td.required_scope for td in ordered]
         tool_schemas = [
             {"type": "function", "function": {"name": td.name, "description": td.description, "parameters": td.input_schema}}
             for td in ordered
@@ -433,11 +426,23 @@ async def _try_react_loop(agent: BaseAgent, message: str, workspace_id: str, age
                 if not td:
                     logger.warning(f"ReAct: unknown tool '{tname}' requested by LLM — skipping")
                     continue
-                try:
-                    # For ReAct, grant the tool's own scope so permission check passes
-                    result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=[td.required_scope], workspace_id=workspace_id)
-                except Exception as e:
-                    result = {"status": "error", "tool": tname, "result": str(e)}
+                # Enforce least-privilege: LLM output is untrusted, check against agent's allowed scopes (PATI/OWASP LLM06)
+                from ..tools.executor import check_permission
+                allowed = await check_permission(agent_allowed_scopes, td.required_scope)
+                if not allowed:
+                    logger.warning(f"ReAct: tool '{tname}' denied — scope {td.required_scope} not in agent allowed {agent_allowed_scopes}")
+                    result = {"status": "error", "tool": tname, "result": f"Permission denied: scope {td.required_scope} not allowed for agent {agent_name}"}
+                else:
+                    # Approval gate for high-risk writes — fail closed, require human (OWASP LLM06 excessive autonomy)
+                    APPROVAL_GATED_TOOLS = {"create_github_issue", "send_slack_message", "create_calendar_event", "draft_email", "rename_file", "move_file", "categorize_document", "create_entity", "merge_entities"}
+                    if tname in APPROVAL_GATED_TOOLS:
+                        logger.info(f"ReAct: tool '{tname}' requires approval — not auto-executing")
+                        result = {"status": "error", "tool": tname, "result": f"Approval required for {tname} — awaiting user approval", "requires_approval": True}
+                    else:
+                        try:
+                            result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
+                        except Exception as e:
+                            result = {"status": "error", "tool": tname, "result": str(e)}
                 # Feed tool result back to LLM
                 # OpenAI expects assistant with tool_calls + tool role; Anthropic uses tool_result blocks — we add both forms for compat
                 messages.append({"role": "assistant", "content": content or None, "tool_calls": [tc]})

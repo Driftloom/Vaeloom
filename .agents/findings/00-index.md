@@ -1,6 +1,11 @@
 # Vaeloom Findings Index
 
-**Last Updated:** 2026-08-17 (deep zero-trust audit + final sweep complete)
+**Last Updated:** 2026-08-22 — Agentic Closure Zero-Trust Audit (8 gaps + 7
+polish) + Full Working-Tree Verification at `e92f352`
+
+**New:** `35-agentic-closure-zero-trust-2026-08-22.md` — 11 findings (2 HIGH
+self-flag on this session's ReAct/MVP-bypass, 5 MEDIUM, 3 LOW, 1 INFO) — honest
+audit of the agentic-gap closure work.
 
 ## Structure
 
@@ -18,7 +23,8 @@
 | Phase Reports   | 4      | 3                | 1                         |
 | Legacy Audits   | 8      | 1                | 7                         |
 | Phase Prompts   | 4      | 4                | 0                         |
-| **TOTAL**       | **49** | **31**           | **18**                    |
+| Agentic Closure | 11     | 0                | 11 (2 HIGH self-flag)     |
+| **TOTAL**       | **60** | **31**           | **29**                    |
 
 ---
 
@@ -149,52 +155,53 @@
 
 ## Files
 
-| File                                       | Source             | Status              |
-| ------------------------------------------ | ------------------ | ------------------- |
-| `00-index.md`                              | —                  | This file (updated) |
-| `01-comprehensive-audit-2026-08-16.md`     | Full audit         | 23 fixes + 15 gaps  |
-| `02-rls-coverage-gap.md`                   | RLS Audit          | OPEN                |
-| `03-encryption-not-implemented.md`         | Security Audit     | OPEN                |
-| `04-memory-write-path-broken.md`           | AI Audit           | OPEN                |
-| `05-documentation-reality-gaps.md`         | Doc Audit          | FIXED               |
-| `06-missing-infrastructure.md`             | Infra Audit        | FIXED               |
-| `10-orch-fragile-dispatch.md`              | Orchestrator Audit | DEFERRED            |
-| `11-orch-ats-case-sensitivity.md`          | Orchestrator Audit | DEFERRED            |
-| `12-orch-drive-no-approval.md`             | Orchestrator Audit | DEFERRED            |
-| `13-orch-sync-disk-writes.md`              | Orchestrator Audit | DEFERRED            |
-| `14-orch-wasted-iterations.md`             | Orchestrator Audit | DEFERRED            |
-| `20-main-tenant-spoofing.md`               | main.py Audit      | FIXED               |
-| `21-main-ip-allowlist-not-mounted.md`      | main.py Audit      | FIXED               |
-| `22-main-prometheus-no-guard.md`           | main.py Audit      | FIXED               |
-| `23-main-dual-prometheus.md`               | main.py Audit      | FIXED               |
-| `24-main-eager-router-imports.md`          | main.py Audit      | DEFERRED            |
-| `25-main-duplicate-logging.md`             | main.py Audit      | DEFERRED            |
-| `26-main-options-rate-limited.md`          | main.py Audit      | FIXED               |
-| `30-rls-alembic-wrong-columns.md`          | RLS Audit          | OPEN                |
-| `31-rls-no-force.md`                       | RLS Audit          | OPEN                |
-| `32-rls-no-integration-tests.md`           | RLS Audit          | OPEN                |
-| `33-rls-silent-exception.md`               | RLS Audit          | OPEN                |
-| `34-rls-dead-code.md`                      | RLS Audit          | OPEN                |
-| `40-doc-desktop-vscode-fake.md`            | Doc Audit          | FIXED               |
-| `41-doc-ocr-stub.md`                       | Doc Audit          | FIXED               |
-| `42-doc-mtls-fiction.md`                   | Doc Audit          | FIXED               |
-| `43-doc-websocket-missing.md`              | Doc Audit          | FIXED               |
-| `44-doc-encryption-fake.md`                | Doc Audit          | FIXED               |
-| `45-doc-secrets-manager-fake.md`           | Doc Audit          | FIXED               |
-| `46-doc-consolidation-dead.md`             | Doc Audit          | FIXED               |
-| `47-doc-permission-engine-fake.md`         | Doc Audit          | FIXED               |
-| `48-doc-no-terraform.md`                   | Doc Audit          | FIXED               |
-| `49-doc-grafana-missing.md`                | Doc Audit          | FIXED               |
-| `50-doc-pii-redaction-fake.md`             | Doc Audit          | FIXED               |
-| `51-doc-deletion-verification-fake.md`     | Doc Audit          | FIXED               |
-| `52-doc-adr013-false-claim.md`             | Doc Audit          | FIXED               |
-| `53-doc-adr024-meilisearch-fake.md`        | Doc Audit          | FIXED               |
-| `07-mvp-p04-doc-audit.md`                  | MVP-P04 Doc Audit  | FIXED               |
-| `08-ci-cd-workflow-fixes.md`               | CI/CD Audit        | FIXED               |
-| `FINDINGS-architecture-inconsistencies.md` | Phase Prompt Audit | FIXED               |
-| `FINDINGS-scope-count-mismatches.md`       | Phase Prompt Audit | FIXED               |
-| `FINDINGS-dead-dependencies.md`            | Phase Prompt Audit | FIXED               |
-| `FINDINGS-directory-path-mismatches.md`    | Phase Prompt Audit | FIXED               |
-| `2026-08-17-zero-trust-audit.md`           | Zero-Trust Audit   | 14/20 FIXED         |
-| `P07-deep-audit-2026-08-17.md`             | P07 Deep Audit     | 5/14 FIXED          |
-| `DEEP-ZERO-TRUST-AUDIT-2026-08-17.md`      | Fresh Deep Audit   | 18/21 FIXED         |
+| File                                          | Source             | Status                                              |
+| --------------------------------------------- | ------------------ | --------------------------------------------------- |
+| `00-index.md`                                 | —                  | This file (updated)                                 |
+| `01-comprehensive-audit-2026-08-16.md`        | Full audit         | 23 fixes + 15 gaps                                  |
+| `02-rls-coverage-gap.md`                      | RLS Audit          | OPEN                                                |
+| `03-encryption-not-implemented.md`            | Security Audit     | OPEN                                                |
+| `04-memory-write-path-broken.md`              | AI Audit           | OPEN                                                |
+| `05-documentation-reality-gaps.md`            | Doc Audit          | FIXED                                               |
+| `06-missing-infrastructure.md`                | Infra Audit        | FIXED                                               |
+| `10-orch-fragile-dispatch.md`                 | Orchestrator Audit | DEFERRED                                            |
+| `11-orch-ats-case-sensitivity.md`             | Orchestrator Audit | DEFERRED                                            |
+| `12-orch-drive-no-approval.md`                | Orchestrator Audit | DEFERRED                                            |
+| `13-orch-sync-disk-writes.md`                 | Orchestrator Audit | DEFERRED                                            |
+| `14-orch-wasted-iterations.md`                | Orchestrator Audit | DEFERRED                                            |
+| `20-main-tenant-spoofing.md`                  | main.py Audit      | FIXED                                               |
+| `21-main-ip-allowlist-not-mounted.md`         | main.py Audit      | FIXED                                               |
+| `22-main-prometheus-no-guard.md`              | main.py Audit      | FIXED                                               |
+| `23-main-dual-prometheus.md`                  | main.py Audit      | FIXED                                               |
+| `24-main-eager-router-imports.md`             | main.py Audit      | DEFERRED                                            |
+| `25-main-duplicate-logging.md`                | main.py Audit      | DEFERRED                                            |
+| `26-main-options-rate-limited.md`             | main.py Audit      | FIXED                                               |
+| `30-rls-alembic-wrong-columns.md`             | RLS Audit          | OPEN                                                |
+| `31-rls-no-force.md`                          | RLS Audit          | OPEN                                                |
+| `32-rls-no-integration-tests.md`              | RLS Audit          | OPEN                                                |
+| `33-rls-silent-exception.md`                  | RLS Audit          | OPEN                                                |
+| `34-rls-dead-code.md`                         | RLS Audit          | OPEN                                                |
+| `40-doc-desktop-vscode-fake.md`               | Doc Audit          | FIXED                                               |
+| `41-doc-ocr-stub.md`                          | Doc Audit          | FIXED                                               |
+| `42-doc-mtls-fiction.md`                      | Doc Audit          | FIXED                                               |
+| `43-doc-websocket-missing.md`                 | Doc Audit          | FIXED                                               |
+| `44-doc-encryption-fake.md`                   | Doc Audit          | FIXED                                               |
+| `45-doc-secrets-manager-fake.md`              | Doc Audit          | FIXED                                               |
+| `46-doc-consolidation-dead.md`                | Doc Audit          | FIXED                                               |
+| `47-doc-permission-engine-fake.md`            | Doc Audit          | FIXED                                               |
+| `48-doc-no-terraform.md`                      | Doc Audit          | FIXED                                               |
+| `49-doc-grafana-missing.md`                   | Doc Audit          | FIXED                                               |
+| `50-doc-pii-redaction-fake.md`                | Doc Audit          | FIXED                                               |
+| `51-doc-deletion-verification-fake.md`        | Doc Audit          | FIXED                                               |
+| `52-doc-adr013-false-claim.md`                | Doc Audit          | FIXED                                               |
+| `53-doc-adr024-meilisearch-fake.md`           | Doc Audit          | FIXED                                               |
+| `07-mvp-p04-doc-audit.md`                     | MVP-P04 Doc Audit  | FIXED                                               |
+| `08-ci-cd-workflow-fixes.md`                  | CI/CD Audit        | FIXED                                               |
+| `FINDINGS-architecture-inconsistencies.md`    | Phase Prompt Audit | FIXED                                               |
+| `FINDINGS-scope-count-mismatches.md`          | Phase Prompt Audit | FIXED                                               |
+| `FINDINGS-dead-dependencies.md`               | Phase Prompt Audit | FIXED                                               |
+| `FINDINGS-directory-path-mismatches.md`       | Phase Prompt Audit | FIXED                                               |
+| `2026-08-17-zero-trust-audit.md`              | Zero-Trust Audit   | 14/20 FIXED                                         |
+| `P07-deep-audit-2026-08-17.md`                | P07 Deep Audit     | 5/14 FIXED                                          |
+| `DEEP-ZERO-TRUST-AUDIT-2026-08-17.md`         | Fresh Deep Audit   | 18/21 FIXED                                         |
+| `35-agentic-closure-zero-trust-2026-08-22.md` | Agentic Closure    | 11 findings (2 HIGH) — 8 gaps + 7 polish, self-flag |

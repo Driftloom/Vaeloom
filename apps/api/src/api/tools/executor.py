@@ -9,6 +9,7 @@ import uuid as uuid_lib
 from typing import Any
 
 from .definitions import ToolDefinition
+from ..utils.sanitize import sanitize_text
 
 logger = logging.getLogger(__name__)
 
@@ -1088,12 +1089,22 @@ async def execute_tool(
     Execute a tool call with permission checking, retry logic, and audit logging.
 
     Flow:
+    0. Input sanitization (ADR-031) — strip HTML/JS vectors before any tool sees payload
     1. Permission check (zero retries on denial)
     2. Execute with timeout
     3. Retry on transient failure (exponential backoff)
     4. Audit log metadata
     """
     start_time = time.monotonic()
+
+    # ── 0. Sanitize string params (ADR-031, closes F-11 / EXC-P13-04) ──────
+    try:
+        sanitized: dict[str, Any] = {}
+        for k, v in (params or {}).items():
+            sanitized[k] = sanitize_text(v) if isinstance(v, str) else v
+        params = sanitized
+    except Exception:
+        pass
 
     # ── 1. Permission Check ────────────────────────────────────────
     has_permission = await check_permission(agent_scopes, tool.required_scope)

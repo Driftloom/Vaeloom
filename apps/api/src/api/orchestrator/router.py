@@ -42,6 +42,14 @@ def _is_complex_multi_agent(message: str) -> bool:
     if len(message.split()) < 8:
         return False
     msg_lower = message.lower()
+    # Respect MVP scope lock: only count canonical categories when enforced (AC-02)
+    try:
+        from ..config import settings as _settings
+        if _settings.mvp_scope_enforced:
+            cats = sum(1 for cat, kws in CATEGORY_KEYWORDS.items() if cat in MVP_CATEGORY_AGENT_MAP and any(kw in msg_lower for kw in kws))
+            return cats >= 2
+    except Exception:
+        pass
     cats = sum(1 for kws in CATEGORY_KEYWORDS.values() if any(kw in msg_lower for kw in kws))
     return cats >= 2
 
