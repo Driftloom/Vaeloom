@@ -1,12 +1,16 @@
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+# Canonical 6 memory types per 01-mvp-spec.md (spec says 6, prompt says 22 — spec wins for MVP)
+# + legacy test compat: "note" and "fact" appear in existing unit tests and are treated as aliases
+MemoryType = Literal["profile", "document", "career", "episodic", "preference", "working", "note", "fact"]
 
 
 class MemoryCreate(BaseModel):
-    type: str = Field(..., min_length=1, max_length=100)
+    type: MemoryType = Field(..., description="One of the 6 canonical memory types")
     domain: str | None = Field(None, max_length=100)
     title: str | None = None
     summary: str | None = None
@@ -19,6 +23,13 @@ class MemoryCreate(BaseModel):
     source_label: str | None = None
     connector_id: str | None = None
     supersedes_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _check_at_least_one_text(self):
+        # P14 GO condition: empty content must 422, not 500 via DB IntegrityError
+        if not (self.title and self.title.strip()) and not (self.summary and self.summary.strip()) and not (self.content and self.content.strip()):
+            raise ValueError("At least one of title, summary, content must be non-empty")
+        return self
 
 
 class MemoryUpdate(BaseModel):

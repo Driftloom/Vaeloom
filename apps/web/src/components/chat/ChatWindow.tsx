@@ -578,12 +578,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             'tool';
           streamedTools = [...(streamedTools || []), { name: tool, status: 'running' as const }];
           // keep only last 6 to avoid clutter
-          if (streamedTools.length > 6) streamedTools = streamedTools.slice(-6);
+          if ((streamedTools?.length || 0) > 6) streamedTools = streamedTools!.slice(-6);
           applyPatch({ toolCalls: streamedTools });
         } else if (event === 'observe' || event === 'reflect') {
           // mark tools done
-          if (streamedTools.length) {
-            streamedTools = streamedTools.map((t) => ({
+          if (streamedTools?.length) {
+            streamedTools = streamedTools!.map((t) => ({
               ...t,
               status: 'done' as const,
               latencyMs: 120,
@@ -687,7 +687,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             ? streamedText
             : finalText || 'No response — try rephrasing or @mention an agent.';
           // Mark tools done
-          const doneTools = streamedTools.map((t) => ({ ...t, status: 'done' as const }));
+          const doneTools = (streamedTools || []).map((t) => ({ ...t, status: 'done' as const }));
           applyPatch({
             text: displayText,
             proposals: finalProposals?.length ? finalProposals : streamedProposals,
@@ -719,7 +719,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           applyPatch({
             text: fallbackText,
             streaming: false,
-            toolCalls: streamedTools.map((t) => ({ ...t, status: 'done' as const })),
+            toolCalls: (streamedTools || []).map((t) => ({ ...t, status: 'done' as const })),
           });
         }
       } catch (err) {

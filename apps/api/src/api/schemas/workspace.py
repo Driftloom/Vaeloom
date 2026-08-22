@@ -1,11 +1,11 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CreateWorkspaceRequest(BaseModel):
-    name: str | None = None
+    name: str = Field(..., min_length=1, max_length=255, description="Workspace name must be non-empty")
 
 
 class UpdateWorkspaceRequest(BaseModel):

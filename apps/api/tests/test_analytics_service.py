@@ -76,11 +76,12 @@ class TestAnalyticsService:
         r3 = MagicMock()
         r3.scalar_one.return_value = 1000
         exec_results.append(r3)
-        r4 = MagicMock()
-        exec_results.append(r4)
+        for _ in range(3):
+            r4 = MagicMock()
+            exec_results.append(r4)
         db.execute = AsyncMock(side_effect=exec_results)
         await service.aggregate(date="2025-01-01", tenant_id="t1", db=db)
-        assert db.execute.call_count == 4
+        assert db.execute.call_count == 6
 
     async def test_aggregate_without_tenant(self, service):
         db = AsyncMock()

@@ -794,6 +794,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/memories/{memory_id}/history:
+    get:
+      tags:
+        - memory
+      summary: Get Memory History
+      description: DB-backed version history for a memory — EXC-P12-03 durable history.
+      operationId: get_memory_history_api_v1_memories__memory_id__history_get
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Memory Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Memory History Api V1 Memories  Memory Id  History
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/memories/{memory_id}/chunks:
+    get:
+      tags:
+        - memory
+      summary: Get Memory Chunks
+      description: Chunk-level provenance for a memory's source document — obsidian
+        chunk view.
+      operationId: get_memory_chunks_api_v1_memories__memory_id__chunks_get
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Memory Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Memory Chunks Api V1 Memories  Memory Id  Chunks
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/memories/search:
     post:
       tags:
@@ -936,6 +999,34 @@ paths:
 
         (enterprise explicit routing), honors it with high confidence.'
       operationId: chat_api_v1_agents_chat_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatMessage'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents/chat/stream:
+    post:
+      tags:
+        - agents
+      summary: Chat Stream
+      description: "Streaming orchestrator chat — phase-by-phase SSE.\n\nEvents:\n\
+        \  intent → plan → act → tool_start/tool_result → observe → reflect → token*\
+        \ → approval_required? → done\nUses the full 5-phase loop (not the simple\
+        \ execute path) with QA gate."
+      operationId: chat_stream_api_v1_agents_chat_stream_post
       requestBody:
         content:
           application/json:
@@ -1189,32 +1280,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/events:
-    get:
-      tags:
-        - events
-      summary: List Events
-      operationId: list_events_api_v1_events_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/EventResponse'
-                type: array
-                title: Response List Events Api V1 Events Get
     post:
       tags:
         - events
       summary: Publish Event
       operationId: publish_event_api_v1_events_post
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/EventPublish'
-        required: true
       responses:
         '201':
           description: Successful Response
@@ -1222,6 +1298,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EventResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - events
+      summary: List Events
+      operationId: list_events_api_v1_events_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Filter by workspace
+            title: Workspace Id
+          description: Filter by workspace
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventResponse'
+                title: Response List Events Api V1 Events Get
         '422':
           description: Validation Error
           content:
@@ -4796,6 +4904,12 @@ components:
             - type: string
             - type: 'null'
           title: Correlation Id
+        workspace_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Workspace Id
+          description: Workspace to scope event
       type: object
       required:
         - type
@@ -4853,6 +4967,12 @@ components:
               format: uuid
             - type: 'null'
           title: User Id
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
         retry_count:
           type: integer
           title: Retry Count

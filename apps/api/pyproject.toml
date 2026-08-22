@@ -9,8 +9,7 @@ description = "Vaeloom Unified API - API Gateway + AI Service"
 requires-python = ">=3.12"
 license = {text = "MIT"}
 dependencies = [
-    "fastapi>=0.115.0,<0.121.0",
-    "starlette>=0.49.1",
+    "fastapi>=0.115.0,<0.116.0",
     "uvicorn[standard]>=0.29.0",
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
@@ -97,8 +96,8 @@ where = ["src"]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=9.0.3,<10",
-    "pytest-asyncio>=1.0.0",
+    "pytest>=8.4.2,<9",
+    "pytest-asyncio>=0.23.0,<1.0",
     "httpx>=0.27.0",
     "aiosqlite>=0.20.0",
     "email-validator>=2.0.0",
