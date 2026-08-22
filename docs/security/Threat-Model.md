@@ -1,8 +1,10 @@
 # Threat Model
 
 > **Purpose:** Comprehensive threat model covering assets, attack vectors, and
-> mitigations for Vaeloom **Status:** âœ… Upgraded to enterprise quality
-> **Owner:** Security Team **Last Updated:** 2026-07-12
+> mitigations for Vaeloom **Status:** âœ… Upgraded to enterprise quality +
+> patched 2026-08-22 (zero-trust audit F-17: added BYOK provider_keys +
+> document_chunks/doc-variants assets, RLS 37/42 correction, fail-closed note)
+> **Owner:** Security Team **Last Updated:** 2026-08-22
 
 ---
 
@@ -18,15 +20,17 @@ architecture changes are made.
 
 ## Assets
 
-| Asset                   | Sensitivity  | Description                                  | CIA Triad Priority                         |
-| ----------------------- | ------------ | -------------------------------------------- | ------------------------------------------ |
-| User documents          | **High**     | Personal files, resumes, certificates        | Confidentiality > Integrity > Availability |
-| Memory graph            | **High**     | Structured knowledge about the user          | Confidentiality > Integrity > Availability |
-| OAuth access tokens     | **Critical** | Access to connected services (Gmail, GitHub) | Confidentiality > Integrity > Availability |
-| AI model API keys       | **Critical** | Access to Anthropic/OpenAI APIs              | Confidentiality > Availability             |
-| User credentials        | **Critical** | Password hashes (delegated to auth provider) | Confidentiality > Integrity                |
-| Agent action logs       | **Medium**   | Audit trail of system actions                | Integrity > Availability                   |
-| Application source code | **Medium**   | Proprietary business logic                   | Confidentiality > Integrity                |
+| Asset                   | Sensitivity  | Description                                                                               | CIA Triad Priority                         |
+| ----------------------- | ------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------ |
+| User documents          | **High**     | Personal files, resumes, certificates                                                     | Confidentiality > Integrity > Availability |
+| Document chunks         | **High**     | Chunked slices (`document_chunks`) ingested for embeddings â€” ingestion bypass path (F-08) | Confidentiality > Integrity > Availability |
+| Memory graph            | **High**     | Structured knowledge about the user                                                       | Confidentiality > Integrity > Availability |
+| OAuth access tokens     | **Critical** | Access to connected services (Gmail, GitHub)                                              | Confidentiality > Integrity > Availability |
+| BYOK provider keys      | **Critical** | Per-user/per-workspace LLM keys (`provider_keys`) Fernet-encrypted; user DPA (F-09)       | Confidentiality > Integrity > Availability |
+| AI model API keys       | **Critical** | System fallback Anthropic/OpenAI keys                                                     | Confidentiality > Availability             |
+| User credentials        | **Critical** | Password hashes (delegated to auth provider)                                              | Confidentiality > Integrity                |
+| Agent action logs       | **Medium**   | Audit trail of system actions                                                             | Integrity > Availability                   |
+| Application source code | **Medium**   | Proprietary business logic                                                                | Confidentiality > Integrity                |
 
 ## Attack Surface
 
@@ -169,7 +173,7 @@ flowchart TB
 ```
 
 **Cross-cutting mitigations** are controls that protect against multiple STRIDE
-categories simultaneously — they're the highest-value security investments.
+categories simultaneously ï¿½ they're the highest-value security investments.
 
 ### Spoofing
 
@@ -281,8 +285,8 @@ export class TenantGuard implements CanActivate {
 | workspace_id from token, not request | Prevents tenant spoofing                                       |
 | Rate limit by user, not IP           | Users can share IPs; rate limiting per user prevents abuse     |
 | Never log sensitive data             | Auth tokens, passwords, API keys must not appear in logs       |
-| Fail closed on permission check      | If permission engine is down, deny access — don't allow        |
-| Audit every access attempt           | Both allowed and denied — denied attempts may indicate attacks |
+| Fail closed on permission check      | If permission engine is down, deny access ï¿½ don't allow        |
+| Audit every access attempt           | Both allowed and denied ï¿½ denied attempts may indicate attacks |
 | Test tenant isolation quarterly      | Dedicated penetration testing for cross-tenant leakage         |
 
 ## Common Mistakes
@@ -318,10 +322,10 @@ export class TenantGuard implements CanActivate {
 ### 1. Quarterly Threat Model Review
 
 1. Security team schedules quarterly review (calendar reminder)
-2. Review current assets list — add/remove/update as needed
-3. Walk through each STRIDE category — check if new threats emerged
+2. Review current assets list ï¿½ add/remove/update as needed
+3. Walk through each STRIDE category ï¿½ check if new threats emerged
 4. Review mitigations for continued effectiveness
-5. Check attack trees — new paths to existing goals?
+5. Check attack trees ï¿½ new paths to existing goals?
 6. Verify all CI/CD pipeline security checks still passing
 7. Document review outcome in security records
 8. If significant changes found: schedule architecture-level threat model update
@@ -383,7 +387,7 @@ Result: Attack blocked at first check. Attacker gains nothing.
 ## Overview
 
 Vaeloom's threat model systematically identifies, classifies, and documents
-security threats across all platform components — web application, API service,
+security threats across all platform components ï¿½ web application, API service,
 AI service, database, storage, and third-party integrations. The model uses
 STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of
 Service, Elevation of Privilege) as the primary classification framework, with
@@ -445,7 +449,7 @@ threats have explicit mitigation plans with assigned owners and deadlines.
   training)
 - Zero-day vulnerabilities in cloud provider infrastructure (provider
   responsibility)
-- Threats specific to on-premise deployment (not applicable — cloud-native only)
+- Threats specific to on-premise deployment (not applicable ï¿½ cloud-native only)
 
 ---
 
@@ -462,7 +466,7 @@ threats have explicit mitigation plans with assigned owners and deadlines.
 | **Component**         | AI Service (FastAPI)                                                                           |
 | **Attack Vector**     | User uploads document containing "Ignore previous instructions and perform X"                  |
 | **Likelihood**        | High (4/5)                                                                                     |
-| **Impact**            | Critical (5/5) — AI agent could expose system context, execute unintended actions              |
+| **Impact**            | Critical (5/5) ï¿½ AI agent could expose system context, execute unintended actions              |
 | **Risk**              | Critical (20)                                                                                  |
 | **Existing Controls** | System prompt hardening, input sanitization, output filtering                                  |
 | **Gap**               | No secondary LLM validation of outputs before action execution                                 |
@@ -482,7 +486,7 @@ threats have explicit mitigation plans with assigned owners and deadlines.
 | **Component**         | API (FastAPI)                                                        |
 | **Attack Vector**     | Attacker modifies JWT alg from RS256 to HS256, signs with public key |
 | **Likelihood**        | Medium (3/5)                                                         |
-| **Impact**            | Critical (5/5) — full account takeover                               |
+| **Impact**            | Critical (5/5) ï¿½ full account takeover                               |
 | **Risk**              | High (15)                                                            |
 | **Existing Controls** | JWT library defaults to algorithm whitelist                          |
 | **Gap**               | Explicit algorithm verification not configured in middleware         |
@@ -532,7 +536,7 @@ sequenceDiagram
     end
 ```
 
-> **Diagram:** Threat scenario — prompt injection attack (attacker embeds
+> **Diagram:** Threat scenario ï¿½ prompt injection attack (attacker embeds
 > malicious instructions in document, AI service either blocks or executes
 > unintended action) and JWT algorithm confusion attack (verification middleware
 > either detects or allows modified token).

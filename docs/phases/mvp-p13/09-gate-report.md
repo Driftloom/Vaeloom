@@ -84,15 +84,19 @@ remain zero.
 
 - **Risks:** 9 active in `08-registers.md` (RISK-MVP-P13-01..05 + 06–09 +
   carried RISK-P12-09/10) — all owned, none critical-blocking
-- **Decisions:** 10 in `08-registers.md` (DEC-P13-01..10) — conditional IP
-  allowlist, Tenant-inner-than-Auth, RLS 4/36, 14-pattern regex, 3 scopes, 12
-  tables, B608 FP, 0018 fix, enterprise gated, reuse security docs
-- **Assumptions:** 6 active (ASM-P13-01..06) — SQLite vs PG RLS, test key 27
-  bytes, mock LLM, processor DPA, starlette upgrade, under-13 policy
-- **Exceptions:** 6 with owner/controls/approvers/expiry/monitoring/prohibited
-  work (EXC-P13-01..06) — all 88–94 conditional compliant
+- **Decisions:** 10 in `08-registers.md` (DEC-P13-01..10) — IP always-mounted
+  F-18, Tenant-inner-than-Auth, RLS 37/42 corrected F-04, 14-pattern regex
+  JSON-only F-08, 3 scopes, GDPR 12→30 F-09, B608 FP, 0018/0019 fail-closed
+  F-05, enterprise gated, reuse security docs
+- **Assumptions:** 6 active (ASM-P13-01..06) — SQLite vs PG RLS, JWT now 32+
+  F-07 RESOLVED, mock LLM, processor DPA region TBD F-10, starlette upgrade,
+  under-13 policy
+- **Exceptions:** 7 with owner/controls/approvers/expiry/monitoring/prohibited
+  work (EXC-P13-01..07) — all 88—94 conditional with waiver (raw 84.4 FAILED
+  F-03)
 - **Changes:** 6 additive (CHG-P13-01..06) — SCIM mount, Tenant order,
-  PUBLIC_PATHS, 0018, daemon, additive-only
+  PUBLIC_PATHS, 0018/0019, daemon, additive-only + 0019 fail-closed RLS + DPIA
+  DRAFT
 
 ## Gate Result
 

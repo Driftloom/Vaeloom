@@ -16,6 +16,12 @@ ALLOWED_TABLES = frozenset({
     "users", "auth_sessions", "workspaces", "workspace_users",
     "memories", "agents", "integrations", "notifications",
     "events", "usage_records", "api_keys", "connectors",
+    # Expanded 2026-08-22 F-09: user-tied tables for complete Art.20 portability
+    "consent_records", "documents", "document_actions", "document_chunks",
+    "memory_records", "entities", "relationships", "embeddings",
+    "resumes", "applications", "schedule_events", "agent_executions",
+    "agent_actions", "agent_approvals", "permissions", "subscriptions",
+    "gmail_watches", "provider_keys", "memory_versions",
 })
 
 EXPORT_COLUMNS = {
@@ -31,6 +37,25 @@ EXPORT_COLUMNS = {
     "usage_records": "*",
     "api_keys": "*",
     "connectors": "*",
+    "consent_records": "*",
+    "documents": "*",
+    "document_actions": "*",
+    "document_chunks": "*",
+    "memory_records": "*",
+    "entities": "*",
+    "relationships": "*",
+    "embeddings": "*",
+    "resumes": "*",
+    "applications": "*",
+    "schedule_events": "*",
+    "agent_executions": "*",
+    "agent_actions": "*",
+    "agent_approvals": "*",
+    "permissions": "*",
+    "subscriptions": "*",
+    "gmail_watches": "*",
+    "provider_keys": "*",
+    "memory_versions": "*",
 }
 
 USER_TABLES = [
@@ -46,6 +71,26 @@ USER_TABLES = [
     ("usage_records", "user_id"),
     ("api_keys", "user_id"),
     ("connectors", "workspace_id"),
+    # Expanded F-09: direct user_id or workspace subquery — ADVISORY excludes system tables without user tie
+    ("consent_records", "user_id"),
+    ("documents", "workspace_id"),
+    ("document_actions", "workspace_id"),
+    ("document_chunks", "workspace_id"),
+    ("memory_records", "workspace_id"),
+    ("entities", "workspace_id"),
+    ("relationships", "workspace_id"),
+    ("embeddings", "workspace_id"),
+    ("resumes", "workspace_id"),
+    ("applications", "workspace_id"),
+    ("schedule_events", "workspace_id"),
+    ("agent_executions", "user_id"),
+    ("agent_actions", "workspace_id"),
+    ("agent_approvals", "workspace_id"),
+    ("permissions", "workspace_id"),
+    ("subscriptions", "user_id"),
+    ("gmail_watches", "user_id"),
+    ("provider_keys", "user_id"),
+    ("memory_versions", "workspace_id"),
 ]
 
 

@@ -126,10 +126,19 @@ per §16.
 
 ## Maturity and Coverage
 
-- **Total security tests:** 233/233 pass (172 pre-P13 + 61 new)
+- **Total security tests:** 233/233 pass (172 pre-P13 + 61 new) — de-duplicated
+  170 unique (middleware duplicates security F-02)
 - **Docs:** 17 files under `docs/security/` enterprise quality (all upgraded,
-  file counts verified)
-- **Coverage:** 94% total per `AGENTS.md` (2527 tests, 2459 pass)
-- **Gaps carried:** RLS 4/36 tables (32 using service filters), IP allowlist
-  conditional not always-on, starlette CVE (must-fix pre-prod), input
-  sanitization ADR-031 designed but not fully wired (should-fix post-MVP)
+  file counts verified) — `DPIA.md` status now DRAFT pending DPO (F-10),
+  Threat-Model assets now include BYOK provider_keys + document_chunks (F-17)
+- **Coverage:** 94% total per `AGENTS.md` (2555 tests, 2459 pass — was stale
+  2527 fixed F-01, debug_test removed)
+- **Gaps carried:** RLS 37/42 tables (5 via service filters:
+  `users, agents, permissions, provider_keys, document_actions` not RLS — was
+  stale 4/36 fixed F-04; 0019 now fail-closed F-05), IP allowlist ALWAYS mounted
+  conditional no-op when empty (was stale NOT MOUNTED fixed F-18), starlette CVE
+  (must-fix pre-prod), input sanitization ADR-031 designed but not fully wired
+  (F-11: 0019 docstring corrected to honest "Middleware deferred to P14; service
+  coverage NOT verified"), CSRF multi-worker in-memory (F-06 EXC-P13-07), GDPR
+  12→30 tables expanding (F-09), prompt injection JSON-only + ingestion bypass
+  (F-08)

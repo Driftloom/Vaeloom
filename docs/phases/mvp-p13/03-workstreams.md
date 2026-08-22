@@ -96,10 +96,12 @@ segregation per §12 task 2 + §16.
 
 ### Isolation Verification
 
-- RLS on 4/36 tables enforced via `TenantMiddleware` (inner than Auth) —
-  `main.py:177` ordering fixes RLS never-set bug (audit CRITICAL 2026-08-21).
-  Remaining 32 tables use service-layer workspace filters (see `08-registers.md`
-  gap).
+- RLS on 37/42 tables enforced via `TenantMiddleware` (inner than Auth) —
+  `main.py:177` ordering fixes RLS never-set bug (audit CRITICAL 2026-08-21);
+  `0010` 34 + `0019` 3 =37, was stale 4/36 fixed F-04, 0019 now fail-closed
+  F-05. Remaining 5 non-RLS tables
+  (`users, agents, permissions, provider_keys, document_actions`) use
+  service-layer workspace filters (see `08-registers.md` gap).
 - `alembic/versions/0009`–`0014` enforce RLS policies with `workspace_id` GUCs.
 
 ### Acceptance

@@ -8,9 +8,9 @@ Create Date: 2026-08-22
   and tighten on embeddings, memories. Policies are tenant/workspace-scoped
   via app.tenant_id / app.workspace_id GUC (set by TenantMiddleware).
   On SQLite the migration is a no-op (create_all handles schema, RLS is PG-only).
-- Input sanitization: global guarantee via service-layer sanitize_text (ADR-031)
-  is now explicitly documented; middleware-level sanitization deferred to P14
-  but service coverage verified.
+- Input sanitization: ADR-031 sanitize_text defined in tools/definitions.py but NOT verified wiring in
+  tools/executor.py — zero-trust audit 2026-08-22 F-11 found grep sanitize = 0 hits. Middleware-level sanitization
+  deferred to P14; service coverage NOT verified (honest gap). 0019 does not claim verification after this fix.
 - IP allowlist: mounted always (main.py) — this migration just ensures index
   for allowlist lookups if table exists.
 """

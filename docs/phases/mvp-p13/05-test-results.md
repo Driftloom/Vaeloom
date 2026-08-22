@@ -10,13 +10,13 @@
 
 ## Summary
 
-| Suite                                      | Tests Collected | Passed | Skipped | XFailed | Failed                   | Result                  |
-| ------------------------------------------ | --------------- | ------ | ------- | ------- | ------------------------ | ----------------------- |
-| Full suite `pytest tests/ -q` (all)        | 2527            | 2459   | 4       | 2       | 0 + 1 pre-existing fixed | ✅ ALL PASS (after P13) |
-| Security suite `pytest tests/security/ -q` | 233             | 233    | 0       | 0       | 0                        | ✅ 233/233              |
-| New P13 security tests                     | 61              | 61     | 0       | 0       | 0                        | ✅                      |
-| Existing security (pre-P13)                | 172             | 172    | 0       | 0       | 0                        | ✅ No regression        |
-| P12 new tests (BYOK, catalog, filters)     | 68              | 68     | 0       | 0       | 0                        | ✅ Retained             |
+| Suite                                      | Tests Collected | Passed | Skipped | XFailed | Failed                                        | Result                  |
+| ------------------------------------------ | --------------- | ------ | ------- | ------- | --------------------------------------------- | ----------------------- |
+| Full suite `pytest tests/ -q` (all)        | 2555            | 2459   | 4       | 2       | 0 + 1 pre-existing fixed (debug_test removed) | ✅ ALL PASS (after P13) |
+| Security suite `pytest tests/security/ -q` | 233             | 233    | 0       | 0       | 0                                             | ✅ 233/233              |
+| New P13 security tests                     | 61              | 61     | 0       | 0       | 0                                             | ✅                      |
+| Existing security (pre-P13)                | 172             | 172    | 0       | 0       | 0                                             | ✅ No regression        |
+| P12 new tests (BYOK, catalog, filters)     | 68              | 68     | 0       | 0       | 0                                             | ✅ Retained             |
 
 ## New P13 Tests (61)
 
@@ -32,7 +32,7 @@
 ```
 # Security tests only (representative, SQLite + mock LLM)
 cd apps/api && uv run --project apps/api python -m pytest tests/security/test_csrf.py -q -o "addopts="
-# → 15 passed, 21 warnings (InsecureKeyLengthWarning 27 bytes HMAC in test JWT — local only)
+# → 15 passed, 0 InsecureKeyLengthWarning after F-07 fix (was 21 warnings with 27-byte JWT)
 #   warnings: jwt.api_jwt InsecureKeyLengthWarning, httpx per-request cookies DeprecationWarning
 
 # All security tests
@@ -54,8 +54,9 @@ tests/security/test_csrf.py::TestCSRFProtection::test_mutation_with_valid_csrf_t
 - **Config:** `tmp_path` per-test DB via `NullPool` (isolated),
   `determinism fix: test_noauth_private.py:90` now `sorted(PUBLIC_PATHS)` to
   avoid xdist collection mismatch
-- **Result:** 2527 collected (2459 pass, 4 skipped, 2 xfailed, 1 pre-existing
-  failure fixed on 2026-08-21) — per `AGENTS.md` test state
+- **Result:** 2555 collected (2459 pass, 4 skipped, 2 xfailed, 1 pre-existing
+  failure fixed on 2026-08-21 + debug_test removed) — per `AGENTS.md` test state
+  (was stale 2527 fixed F-01)
 
 ## Security Testing Coverage (§18)
 

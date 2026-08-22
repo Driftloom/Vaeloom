@@ -1,10 +1,12 @@
 # Data Protection Impact Assessment (DPIA)
 
 **Document:** DPIA-Vaeloom-001  
-**Version:** 1.0  
-**Date:** 2026-08-21  
-**Status:** COMPLETE  
-**Phase:** MVP-P13 (Security, Privacy, and Compliance)
+**Version:** 1.0 → 1.1  
+**Date:** 2026-08-21 (updated 2026-08-22 — zero-trust audit F-10)  
+**Status:** DRAFT — pending DPO appointment; region TBD (EU/US/India neutral —
+processor register generically covers Anthropic/OpenAI under user's BYOK DPA)  
+**Phase:** MVP-P13 (Security, Privacy, and Compliance) — F-10 fix: generic copy
+above was template COMPLETE; honest is DRAFT
 
 ---
 
@@ -115,9 +117,13 @@ Vaeloom is an enterprise AI platform that processes personal data to provide:
 
 ### 4.5 Data Subject Rights
 
-- **Right of access:** GET /api/v1/gdpr/export (exports all 12 tables)
-- **Right to erasure:** POST /api/v1/gdpr/delete (anonymization + cascade
-  delete)
+- **Right of access:** GET /api/v1/gdpr/export (exports ~30 tables — expanded
+  2026-08-22 F-09 from 12; was stale minimization claim; see `services/gdpr.py`
+  30-table USER_TABLES including `consent_records`, `documents`,
+  `memory_versions`, `document_chunks`, `provider_keys`, `entities`,
+  `relationships`, `embeddings`)
+- **Right to erasure:** POST /api/v1/gdpr/delete (anonymization + cascade delete
+  across ~30 tables — expanded F-09)
 - **Right to portability:** Export format is JSON (machine-readable)
 - **Right to object:** Consent revocation via POST
   /api/v1/consent/revoke/{scope}
@@ -162,8 +168,8 @@ Vaeloom is an enterprise AI platform that processes personal data to provide:
 
 ## 7. Approval
 
-| Role                    | Name    | Date       | Status   |
-| ----------------------- | ------- | ---------- | -------- |
-| Data Protection Officer | Pending | -          | PENDING  |
-| Security Lead           | System  | 2026-08-21 | COMPLETE |
-| Engineering Lead        | System  | 2026-08-21 | COMPLETE |
+| Role                    | Name                                                                          | Date                                           | Status                            |
+| ----------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------- |
+| Data Protection Officer | Pending (region TBD — EU/US/India neutral until launch region decision, F-10) | -                                              | PENDING — DRAFT until appointment |
+| Security Lead           | System                                                                        | 2026-08-22 (re-confirmed after F-09 expansion) | DRAFT-COMPLETE                    |
+| Engineering Lead        | System                                                                        | 2026-08-22 (re-confirmed after F-09 expansion) | DRAFT-COMPLETE                    |
