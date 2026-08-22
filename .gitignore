@@ -73,10 +73,20 @@ blob-report/
 # Husky internal auto-managed hooks
 .husky/_
 
-# AI session artifacts
+# AI session artifacts (local audit, screenshots, build dumps — not committed)
+# .agents/findings, .agents/plans, .agents/audit ARE tracked (98 files) — keep them commitable
+# only ignore heavy local evidence with PNGs/logs:
+.agents/aaaduit/
+.claude/
+.cursor/
 .qoder/
 .zcode/
 .opencode/
+
+# Vaeloom local orchestrator checkpoints (home ~/.vaeloom is outside repo, but repo-local .vaeloom/ if ever created)
+.vaeloom/
+tmp/
+temp/
 
 # Graphify knowledge graph — ALL outputs (build artifacts, cache, exports, temp files)
 graphify-out/
