@@ -1,6 +1,7 @@
 .PHONY: help dev build test lint typecheck clean setup docker-up docker-down \
         docker-build db-migrate db-studio db-seed format format-check hooks-install \
-        services-dev services-lint services-typecheck services-test
+        services-dev services-lint services-typecheck services-test \
+        dev-worker
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -15,6 +16,9 @@ dev-web: ## Start frontend only (fast, no Nx orchestration)
 
 dev-be: ## Start API only (hot reload)
 	cd apps/api && uvicorn api.main:app --reload --port 8000
+
+dev-worker: ## Start the durable queue worker (schedules + events)
+	uv run --project apps/api python -m api.workers.queue_worker
 
 install-fast: ## Install deps without hoisting (faster)
 	pnpm install --no-frozen-lockfile

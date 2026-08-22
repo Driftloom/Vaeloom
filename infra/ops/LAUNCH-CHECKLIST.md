@@ -16,6 +16,13 @@
 - [ ] Redis password set if using AUTH
 - [ ] Rate limit Redis URL configured (`rate_limit_redis_url`)
 - [ ] `SERVICE_ENVIRONMENT` = `production`
+- [ ] **Queue worker deployed** (ADR-033): `queue-worker` service/compose task
+      running `python -m api.workers.queue_worker` alongside the API — without
+      it cron schedules execute inline (single-instance, no retry)
+- [ ] `REDIS__URL` reachable from API + worker pods; daemon claims visible under
+      `vaeloom:daemon:claim:*`
+- [ ] Optional: `AGENT_REACT_ENABLED` explicitly set (`0` default) after
+      reviewing ADR-033 cost/latency trade-off
 
 ### DNS & SSL
 

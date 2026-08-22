@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import time
 from collections.abc import AsyncGenerator
@@ -381,6 +382,195 @@ class LLMService:
                     "output_tokens": usage.get("output_tokens", 0),
                 },
             }
+
+    async def generate_completion_with_tools_stream(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        model: str | None = None,
+        temperature: float = 0.7,
+        *,
+        api_key_override: str | None = None,
+        provider_override: str | None = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Streaming variant of generate_completion_with_tools (true SSE token streaming).
+
+        Yields typed events:
+          {"type": "text_delta", "text": "..."}       — incremental assistant text as it arrives
+          {"type": "tool_calls", "tool_calls": [...]} — complete accumulated tool calls
+                                                        (same OpenAI-style shape as the buffered path)
+          {"type": "done", "finish_reason": "..."}    — terminal event
+
+        When no API key is resolvable (tests / unconfigured), delegates to the buffered
+        generate_completion_with_tools and emits its result as single-shot events so
+        callers get one uniform contract.
+        """
+        effective_model = model or self.model
+        inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+        _prov, effective_key = await self._resolve_api_key(
+            inferred_provider, explicit_key=api_key_override
+        )
+        if not effective_key:
+            # No key — fall back to the buffered path (mocked in tests, raises clearly in prod)
+            result = await self.generate_completion_with_tools(
+                messages=messages,
+                tools=tools,
+                model=model,
+                temperature=temperature,
+                api_key_override=api_key_override,
+                provider_override=provider_override,
+            )
+            content = result.get("content", "")
+            if isinstance(content, list):  # Anthropic block style
+                text = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
+            else:
+                text = str(content or "")
+            if text:
+                yield {"type": "text_delta", "text": text}
+            tool_calls = result.get("tool_calls") or []
+            if tool_calls:
+                yield {"type": "tool_calls", "tool_calls": tool_calls}
+            yield {"type": "done", "finish_reason": result.get("finish_reason") or ("tool_calls" if tool_calls else "end_turn")}
+            return
+
+        if inferred_provider == "openai":
+            async for evt in self._openai_tool_completion_stream(messages, tools, effective_model, temperature, api_key=effective_key):
+                yield evt
+        else:
+            async for evt in self._anthropic_tool_completion_stream(messages, tools, effective_model, temperature, api_key=effective_key):
+                yield evt
+
+    async def _openai_tool_completion_stream(
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        import json as _json
+
+        key = api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing OpenAI API key — configure BYOK")
+        # Accumulate tool_call fragments by index: {"index": 0, "id"?, "function": {"name"?, "arguments"?}}
+        fragments: dict[int, dict[str, Any]] = {}
+        finish_reason: str | None = None
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream(
+                "POST", "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={"model": model, "messages": messages, "tools": tools, "temperature": temperature, "stream": True},
+            ) as resp:
+                if resp.status_code != 200:
+                    body = (await resp.aread())[:300]
+                    raise LLMProviderError(f"OpenAI tool stream failed: {resp.status_code} {body!r}")
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    payload = line[6:]
+                    if payload == "[DONE]":
+                        break
+                    data = _json.loads(payload)
+                    choice = (data.get("choices") or [{}])[0]
+                    delta = choice.get("delta") or {}
+                    if delta.get("content"):
+                        yield {"type": "text_delta", "text": delta["content"]}
+                    for frag in delta.get("tool_calls") or []:
+                        idx = int(frag.get("index", 0))
+                        acc = fragments.setdefault(idx, {"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
+                        if frag.get("id"):
+                            acc["id"] = frag["id"]
+                        fn = frag.get("function") or {}
+                        if fn.get("name"):
+                            acc["function"]["name"] += fn["name"]
+                        if fn.get("arguments"):
+                            acc["function"]["arguments"] += fn["arguments"]
+                    if choice.get("finish_reason"):
+                        finish_reason = choice["finish_reason"]
+
+        if fragments:
+            ordered = [fragments[i] for i in sorted(fragments)]
+            for tc in ordered:
+                raw_args = tc["function"]["arguments"]
+                # Keep raw string on parse failure — ReAct caller handles str args already
+                with contextlib.suppress(Exception):
+                    tc["function"]["arguments"] = _json.loads(raw_args) if raw_args else {}
+            yield {"type": "tool_calls", "tool_calls": ordered}
+        yield {"type": "done", "finish_reason": finish_reason or ("tool_calls" if fragments else "stop")}
+
+    async def _anthropic_tool_completion_stream(
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        import json as _json
+
+        system = None
+        anthropic_messages = []
+        for msg in messages:
+            if msg["role"] == "system":
+                system = msg["content"]
+            else:
+                anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
+
+        body: dict[str, Any] = {
+            "model": model,
+            "max_tokens": 4096,
+            "temperature": temperature,
+            "stream": True,
+            "messages": anthropic_messages,
+            "tools": tools,
+        }
+        if system:
+            body["system"] = system
+
+        key = api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing Anthropic API key — configure BYOK")
+        headers = {
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }
+
+        # Per-index state: {"type": "tool_use"/"text", "id", "name", "json": ""}
+        blocks: dict[int, dict[str, Any]] = {}
+        stop_reason: str | None = None
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream("POST", "https://api.anthropic.com/v1/messages", headers=headers, json=body) as resp:
+                if resp.status_code != 200:
+                    body_txt = (await resp.aread())[:300]
+                    raise LLMProviderError(f"Anthropic tool stream failed: {resp.status_code} {body_txt!r}")
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data = _json.loads(line[6:])
+                    etype = data.get("type")
+                    if etype == "content_block_start":
+                        block = data.get("content_block") or {}
+                        idx = int(data.get("index", 0))
+                        if block.get("type") == "tool_use":
+                            blocks[idx] = {"id": block.get("id", ""), "name": block.get("name", ""), "json": ""}
+                    elif etype == "content_block_delta":
+                        delta = data.get("delta") or {}
+                        idx = int(data.get("index", 0))
+                        dtype = delta.get("type")
+                        if dtype == "text_delta" and delta.get("text"):
+                            yield {"type": "text_delta", "text": delta["text"]}
+                        elif dtype == "input_json_delta" and delta.get("partial_json"):
+                            blocks.setdefault(idx, {"id": "", "name": "", "json": ""})["json"] += delta["partial_json"]
+                    elif etype == "message_delta":
+                        stop_reason = (data.get("delta") or {}).get("stop_reason", stop_reason)
+
+        if blocks:
+            tool_calls = []
+            for idx in sorted(blocks):
+                b = blocks[idx]
+                try:
+                    args = _json.loads(b["json"]) if b["json"] else {}
+                except Exception:
+                    args = b["json"]
+                tool_calls.append({
+                    "id": b["id"],
+                    "type": "function",
+                    "function": {"name": b["name"], "arguments": args},
+                })
+            yield {"type": "tool_calls", "tool_calls": tool_calls}
+        yield {"type": "done", "finish_reason": stop_reason or ("tool_calls" if blocks else "end_turn")}
 
     async def generate_completion_stream(
         self,

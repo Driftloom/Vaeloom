@@ -125,6 +125,45 @@ services:
           memory: '512M'
     <<: *service-base
 
+  # ─── Durable queue worker (schedules + events, ADR-033) ──────────
+  queue-worker:
+    build:
+      context: apps/api
+      dockerfile: Dockerfile
+    command: ['python', '-m', 'api.workers.queue_worker']
+    container_name: vaeloom-queue-worker
+    env_file:
+      - .env.production
+    environment:
+      SERVICE_NAME: vaeloom-queue-worker
+      SERVICE_ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import redis, os; r = redis.from_url(os.environ.get('REDIS__URL', os.environ.get('REDIS_URL', '')), socket_connect_timeout=2); r.ping()",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: '512M'
+        reservations:
+          cpus: '0.5'
+          memory: '256M'
+    <<: *service-base
+
   # ─── PostgreSQL ──────────────────────────────────────────────────────
   postgres:
     build:

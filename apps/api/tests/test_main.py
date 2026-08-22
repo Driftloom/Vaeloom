@@ -122,9 +122,15 @@ class TestMiddlewareRegistration:
 
 
 class TestRouterRegistration:
+    @staticmethod
+    def _route_paths(mod) -> set:
+        # Newer FastAPI wraps includes in lazy _IncludedRouter objects whose
+        # .path is unavailable — OpenAPI generation materializes all routes.
+        return set(mod.app.openapi()["paths"].keys())
+
     def test_all_routers_included(self):
         mod = _reimport_main()
-        route_paths = [r.path for r in mod.app.routes]
+        route_paths = self._route_paths(mod)
         for prefix in EXPECTED_ROUTER_PREFIXES:
             assert any(p.startswith(prefix) for p in route_paths), f"Missing prefix: {prefix}"
         # Enterprise routes (CF-06 / R6) are gated behind the MVP flag.
@@ -138,8 +144,7 @@ class TestRouterRegistration:
     def test_router_count(self):
         mod = _reimport_main()
         prefixes_found = set()
-        for r in mod.app.routes:
-            path = getattr(r, "path", "")
+        for path in self._route_paths(mod):
             for prefix in EXPECTED_ROUTER_PREFIXES:
                 if path.startswith(prefix):
                     prefixes_found.add(prefix)
@@ -148,14 +153,14 @@ class TestRouterRegistration:
     def test_enterprise_routes_enabled_adds_prefixes(self):
         settings.enterprise_routes_enabled = True
         mod = _reimport_main()
-        route_paths = [r.path for r in mod.app.routes]
+        route_paths = self._route_paths(mod)
         for prefix in ENTERPRISE_ROUTER_PREFIXES:
             assert any(p.startswith(prefix) for p in route_paths), f"Missing prefix: {prefix}"
 
     def test_enterprise_routes_gated_in_mvp_default(self):
         settings.enterprise_routes_enabled = False
         mod = _reimport_main()
-        route_paths = [r.path for r in mod.app.routes]
+        route_paths = self._route_paths(mod)
         for prefix in ENTERPRISE_ROUTER_PREFIXES:
             assert not any(p.startswith(prefix) for p in route_paths), f"Leaked prefix: {prefix}"
 

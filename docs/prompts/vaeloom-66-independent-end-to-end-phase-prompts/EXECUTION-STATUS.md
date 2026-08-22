@@ -2,9 +2,23 @@
 
 > **Role:** Live status overlay for the source-of-truth prompt package. This
 > file tracks which of the 66 prompts have been executed, where the evidence
-> lives, and what is next. **Last updated:** 2026-08-22 Evidence location
+> lives, and what is next. **Last updated:** 2026-08-23 Evidence location
 > convention: `docs/phases/<track>-pXX/` (e.g.
 > `docs/phases/mvp-p01/06-gate-report.md`).
+
+## Post-MVP Maintenance Notes
+- **2026-08-23 — ADR-033 hardening (post-MVP close, no phase re-open):**
+  ReAct gated behind `AGENT_REACT_ENABLED` (default off), true SSE token
+  streaming via `generate_completion_with_tools_stream` (single-agent chat AND
+  supervisor single-path), background daemon converted to durable Redis/BullMQ
+  enqueuer + `queue-worker` process with retry/backoff/catch-up
+  (`0022_agent_schedules_last_run`). Ops rollout: compose dev+prod worker
+  service, K8s `apps/queue-worker` deployment, launch-checklist items,
+  `.env.example` flag. Full suite **2572 passed / 0 failed** after aligning 6
+  stale tests to current contracts (FastAPI lazy `_IncludedRouter` route
+  materialization, worker zadd dead-letter, RLS workspace-header trust).
+  Evidence: `docs/adr/ADR-033-react-gating-streaming-durable-scheduling.md`,
+  `apps/api/tests/test_streaming_and_daemon_durability.py`.
 
 ## Legend
 

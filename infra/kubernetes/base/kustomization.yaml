@@ -10,6 +10,7 @@ resources:
   - ../../apps/web/service.yaml
   - ../../apps/api/deployment.yaml
   - ../../apps/api/service.yaml
+  - ../../apps/queue-worker/deployment.yaml
   - ../../apps/ai-service/deployment.yaml
   - ../../apps/ai-service/service.yaml
   - ../../apps/memory-store/deployment.yaml

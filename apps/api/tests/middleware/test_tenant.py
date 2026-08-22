@@ -59,7 +59,9 @@ class TestTenantMiddleware:
             assert res.status_code == 200
             data = res.json()
             assert data["tenant_id"] is None
-            assert data["workspace_id"] is None
+            # Per RLS multi-tenancy design (AGENTS.md 6.x): workspace_id is trusted
+            # from path/header and propagated to RLS session vars; tenant stays header-immune.
+            assert data["workspace_id"] == "w-1"
 
     async def test_missing_headers(self):
         app = FastAPI()

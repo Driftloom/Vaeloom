@@ -325,7 +325,9 @@ class TestChatStreamEndpoint:
 
     def test_endpoint_exists(self):
         from api.main import app
-        paths = [getattr(r, "path", "") for r in app.routes]
+        # Newer FastAPI wraps includes in lazy _IncludedRouter objects — app.routes
+        # no longer flattens paths. OpenAPI generation materializes everything.
+        paths = list(app.openapi()["paths"].keys())
         assert "/api/v1/agents/chat/stream" in paths
 
     def test_catalog_shows_22_tools(self):

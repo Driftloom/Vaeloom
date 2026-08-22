@@ -252,6 +252,10 @@ async def mock_llm(monkeypatch):
         yield {"type": "content", "text": "Mock stream"}
         yield {"type": "done", "finish_reason": "stop"}
 
+    # NOTE: generate_completion_with_tools_stream intentionally NOT mocked here.
+    # Its no-key fallback delegates to the mocked buffered tool completion above,
+    # keeping a single mock surface for all LLM tool paths.
+
     monkeypatch.setattr(LLMService, "generate_embedding", fake_generate_embedding)
     monkeypatch.setattr(LLMService, "generate_completion", fake_generate_completion)
     monkeypatch.setattr(LLMService, "generate_completion_with_tools", fake_generate_completion_with_tools)

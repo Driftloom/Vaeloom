@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     prompt_dir: str = ""
     mvp_scope_enforced: bool = True
     enterprise_routes_enabled: bool = False
+    # ReAct (LLM-driven dynamic tool calling) is opt-in — static dispatch stays
+    # the deterministic primary path. Enable per environment via AGENT_REACT_ENABLED=1
+    agent_react_enabled: bool = False
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 
