@@ -169,7 +169,36 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const [mentionOpen, setMentionOpen] = useState(false);
   const [slashF, setSlashF] = useState('');
   const [mentionF, setMentionF] = useState('');
-  const [showAgents, setShowAgents] = useState(true);
+  // F-24: threads rail overlays content below md — default it CLOSED on
+  // mobile so the composer is never covered on first paint.
+  const [showAgents, setShowAgents] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= 768,
+  );
+
+  const [streamingId, setStreamingId] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+
+  const commitRename = (): void => {
+    const id = editingThreadId;
+    const title = editingTitle.trim();
+    setEditingThreadId(null);
+    if (!id || !title) return;
+    const apply = (list: Thread[]): Thread[] =>
+      list.map((x) => (x.id === id ? { ...x, title } : x));
+    setThreads(apply);
+  };
+
+  // F-24: Escape closes the mobile threads rail.
+  useEffect(() => {
+    if (!showAgents) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && window.innerWidth < 768) setShowAgents(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showAgents]);
   const [dragOver, setDragOver] = useState(false);
   const [attached, setAttached] = useState<File | null>(null);
 
@@ -554,6 +583,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       };
       const next = [...messages, userMsg];
       setMessages(next);
+      let freshThreadId: string | null = null;
       if (activeId)
         updateThread(activeId, (t) => ({
           ...t,
@@ -562,6 +592,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         }));
       else {
         const id = Math.random().toString(36).slice(2, 7);
+        freshThreadId = id;
         const th: Thread = {
           id,
           title: raw.slice(0, 30),
@@ -580,6 +611,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       const agentForCall = selected === 'auto' ? undefined : selected;
       // F-02: latency shown to users is always client-measured wall time.
       const requestStartedAt = Date.now();
+      setStreamingId(agentId);
       const ph: ChatMessage = {
         id: agentId,
         role: 'agent',
@@ -592,6 +624,13 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       };
       setMessages((p) => [...p, ph]);
       if (activeId) updateThread(activeId, (t) => ({ ...t, messages: [...t.messages, ph] }));
+      else if (freshThreadId)
+        // Fresh thread: the activeThread sync effect replaces `messages` from
+        // the thread — the placeholder must live there too or the assistant
+        // reply (and its stopped/partial states) never render.
+        setThreads((p) =>
+          p.map((t) => (t.id === freshThreadId ? { ...t, messages: [...t.messages, ph] } : t)),
+        );
 
       // â”€â”€ Streaming orchestrator (phase-by-phase SSE) with blocking fallback â”€â”€
       let streamedText = '';
@@ -769,11 +808,13 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             error: streamedError,
             latencyMs: Date.now() - requestStartedAt,
           });
+          setStreamingId(null);
         }
       };
 
       try {
         abortCtrl = new AbortController();
+        abortRef.current = abortCtrl;
         await agentApi.chatStream(
           { workspaceId, message: raw, agentName: agentForCall },
           onSseEvent,
@@ -782,18 +823,36 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         // If stream ended without done, finalize
         if (!gotDone && !streamedError) {
           const fallbackText =
-            streamedText.trim() || 'No response â€” try rephrasing or @mention an agent.';
+            streamedText.trim() || 'No response — try rephrasing or @mention an agent.';
           applyPatch({
             text: fallbackText,
             streaming: false,
             toolCalls: (streamedTools || []).map((t) => ({ ...t, status: 'done' as const })),
           });
+          setStreamingId(null);
         }
       } catch (err) {
-        // Streaming failed â€” fallback to blocking chat
-        const isAbort = err instanceof DOMException && err.name === 'AbortError';
+        // Streaming failed — fallback to blocking chat
+        // F-19: detect user-initiated cancellation robustly — some browsers /
+        // proxy layers surface abort as TypeError(net::ERR_FAILED) rather than
+        // DOMException(AbortError), so honor the signal itself as ground truth.
+        const isAbort =
+          (err instanceof DOMException && err.name === 'AbortError') ||
+          Boolean(abortCtrl?.signal?.aborted);
         if (isAbort) {
+          // F-19: user stopped generation — keep the partial response with an
+          // honest stopped notice instead of leaving a phantom streaming bubble.
+          const partial = streamedText.trim();
+          applyPatch({
+            text: partial
+              ? `${partial}\n\n_(generation stopped)_`
+              : '_Generation stopped before any output._',
+            streaming: false,
+            toolCalls: (streamedTools || []).map((t) => ({ ...t, status: 'done' as const })),
+            latencyMs: Date.now() - requestStartedAt,
+          });
           setLoading(false);
+          setStreamingId(null);
           return;
         }
         try {
@@ -832,6 +891,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             ),
           );
           toast({ tone: 'error', title: 'Message failed', detail: msg });
+        } finally {
+          setStreamingId(null);
         }
       } finally {
         setLoading(false);
@@ -894,23 +955,71 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           ) : (
             <div className="space-y-1">
               {threads.map((t) => (
-                <button
+                <div
                   key={t.id}
-                  onClick={() => setActiveId(t.id)}
-                  className={`w-full text-left rounded-lg px-3 py-2.5 ${activeId === t.id ? 'bg-surface border border-border/50' : 'hover:bg-surface-hover border border-transparent'}`}
+                  className={`group flex items-center rounded-lg ${activeId === t.id ? 'bg-surface border border-border/50' : 'hover:bg-surface-hover border border-transparent'}`}
                 >
-                  <p className="text-sm text-text truncate pr-2">{t.title}</p>
-                  <p className="text-xs text-text-dim mt-0.5">
-                    {fmtRel(t.createdAt)} Â· {t.messages.length} msgs
-                  </p>
-                </button>
+                  {editingThreadId === t.id ? (
+                    <input
+                      autoFocus
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitRename();
+                        if (e.key === 'Escape') setEditingThreadId(null);
+                      }}
+                      onBlur={commitRename}
+                      aria-label="Thread name"
+                      className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-sm text-text focus:outline-none"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setActiveId(t.id)}
+                      className="flex-1 min-w-0 text-left rounded-lg px-3 py-2.5"
+                    >
+                      <p className="text-sm text-text truncate pr-2">{t.title}</p>
+                      <p className="text-xs text-text-dim mt-0.5">
+                        {fmtRel(t.createdAt)} {'\u00B7'} {t.messages.length} msgs
+                      </p>
+                    </button>
+                  )}
+                  {/* F-19b: threads live only in this browser (localStorage) —
+                      rename/delete are honest local operations. */}
+                  {editingThreadId !== t.id && (
+                    <div className="flex shrink-0 pr-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <button
+                        aria-label={'Rename thread ' + t.title}
+                        title="Rename"
+                        onClick={() => {
+                          setEditingThreadId(t.id);
+                          setEditingTitle(t.title);
+                        }}
+                        className="p-1.5 text-xs text-text-muted hover:text-text"
+                      >
+                        {'\u270E'}
+                      </button>
+                      <button
+                        aria-label={'Delete thread ' + t.title}
+                        title="Delete (from this browser)"
+                        onClick={() => {
+                          const nextThreads = threads.filter((x) => x.id !== t.id);
+                          setThreads(nextThreads);
+                          if (activeId === t.id) setActiveId(nextThreads[0]?.id ?? null);
+                        }}
+                        className="p-1.5 text-xs text-text-muted hover:text-error"
+                      >
+                        {'\u2715'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
         </div>
         <div className="p-3 border-t border-border/40">
-          <p className="text-xs text-text-dim leading-relaxed">
-            BYOK â†’ <span className="font-mono text-text">Settings â†’ API Keys</span>
+          <p className="text-[11px] text-text-dim leading-relaxed">
+            Threads are stored in this browser only.
           </p>
         </div>
       </aside>
@@ -928,6 +1037,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               </svg>
             </button>
             <h1 className="text-sm font-medium text-text">Chat</h1>
+            <span
+              className="hidden md:inline text-[10px] font-mono uppercase tracking-wider text-text-dim border border-border/60 rounded-full px-2 py-0.5"
+              title="Messages are generated by AI agents and may contain mistakes. Consequential actions always require your approval."
+            >
+              AI assistant
+            </span>
             <span className="hidden sm:inline text-xs text-text-dim font-mono">
               Â· {workspaceId.slice(0, 8)}
             </span>
@@ -1264,14 +1379,25 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                   t.style.height = Math.min(t.scrollHeight, 120) + 'px';
                 }}
               />
-              <button
-                aria-label="Send message"
-                onClick={() => void handleSend()}
-                disabled={loading || (!input.trim() && !attached)}
-                className="w-8 h-8 rounded-full bg-action text-action-fg flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-action-hover"
-              >
-                â†‘
-              </button>
+              {streamingId ? (
+                <button
+                  aria-label="Stop generating"
+                  title="Stop generating"
+                  onClick={() => abortRef.current?.abort()}
+                  className="w-8 h-8 rounded-full bg-error text-white flex items-center justify-center shrink-0 hover:brightness-110"
+                >
+                  <span aria-hidden className="block w-2.5 h-2.5 bg-current rounded-[2px]" />
+                </button>
+              ) : (
+                <button
+                  aria-label="Send message"
+                  onClick={() => void handleSend()}
+                  disabled={loading || (!input.trim() && !attached)}
+                  className="w-8 h-8 rounded-full bg-action text-action-fg flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-action-hover"
+                >
+                  ↑
+                </button>
+              )}
             </div>
             <p className="mt-2 text-center text-xs text-text-dim">
               âŽ send Â· â‡§âŽ newline Â· <span className="font-mono">@</span> agents Â·{' '}
@@ -1283,7 +1409,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
 
       {showAgents && (
         <button
-          aria-label="close"
+          aria-label="Close chat threads"
           onClick={() => setShowAgents(false)}
           className="md:hidden fixed inset-0 bg-black/30 z-20"
         />

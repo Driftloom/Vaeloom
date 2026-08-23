@@ -169,11 +169,17 @@ export default function SchedulePage() {
     return conflictMap;
   }, [filtered]);
 
+  // F-07 state completeness: inline validation + submit loading for create.
+  const [creating, setCreating] = useState(false);
+  const [createErrors, setCreateErrors] = useState<{ title?: string; date?: string }>({});
+
   const handleCreate = useCallback(async () => {
-    if (!createTitle.trim() || !createDate) {
-      toast({ tone: 'error', title: 'Missing fields', detail: 'Title and date are required.' });
-      return;
-    }
+    const errs: typeof createErrors = {};
+    if (!createTitle.trim()) errs.title = 'Title is required';
+    if (!createDate) errs.date = 'Date is required';
+    setCreateErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    setCreating(true);
     try {
       const payload: Record<string, unknown> = {
         title: createTitle.trim(),
@@ -192,6 +198,7 @@ export default function SchedulePage() {
       setShowCreate(false);
       setCreateTitle('');
       setCreateDate('');
+      setCreateErrors({});
       await fetchEvents();
     } catch (err) {
       toast({
@@ -199,6 +206,8 @@ export default function SchedulePage() {
         title: 'Create failed',
         detail: err instanceof Error ? err.message : 'Please try again.',
       });
+    } finally {
+      setCreating(false);
     }
   }, [createTitle, createDate, createCategory, createPriority, workspaceId, fetchEvents, toast]);
 
@@ -313,7 +322,7 @@ export default function SchedulePage() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="rounded-full bg-white px-4 py-2 text-sm text-black"
+          className="rounded-full bg-action px-4 py-2 text-sm text-action-fg"
         >
           New event
         </button>
@@ -323,13 +332,13 @@ export default function SchedulePage() {
         <div className="flex rounded-full border border-border p-1">
           <button
             onClick={() => setView('list')}
-            className={`rounded-full px-3 py-1 text-xs ${view === 'list' ? 'bg-white text-black' : 'text-text-muted'}`}
+            className={`rounded-full px-3 py-1 text-xs ${view === 'list' ? 'bg-action text-action-fg' : 'text-text-muted'}`}
           >
             List
           </button>
           <button
             onClick={() => setView('calendar')}
-            className={`rounded-full px-3 py-1 text-xs ${view === 'calendar' ? 'bg-white text-black' : 'text-text-muted'}`}
+            className={`rounded-full px-3 py-1 text-xs ${view === 'calendar' ? 'bg-action text-action-fg' : 'text-text-muted'}`}
           >
             Calendar
           </button>
@@ -403,53 +412,60 @@ export default function SchedulePage() {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-px rounded-lg overflow-hidden border border-border bg-border">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <div
-                key={d}
-                className="bg-surface-hover p-2 text-center font-mono text-xs uppercase text-text-dim"
-              >
-                {d}
-              </div>
-            ))}
-            {calDays.map((cell, i) => (
-              <div
-                key={i}
-                className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''} ${cell.date && cell.events.some((e) => conflicts.has(e.id)) ? 'bg-warning/10' : ''}`}
-              >
-                {cell.date && (
-                  <>
-                    <p className="text-xs font-mono text-text-dim">{cell.date.getDate()}</p>
-                    <div className="mt-1 space-y-1">
-                      {cell.events.slice(0, 3).map((e) => {
-                        const title = String(
-                          (e.payload as Record<string, unknown>)?.['title'] ?? e.type,
-                        );
-                        const badge = getSourceBadge(e);
-                        const proposed = isProposed(e);
-                        return (
-                          <button
-                            key={e.id}
-                            onClick={() => setSelected(e)}
-                            className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-warning/30 bg-warning/10 text-warning' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''} ${conflicts.has(e.id) ? 'ring-1 ring-amber-500/30' : ''}`}
-                          >
-                            {title.slice(0, 16)}
-                            {conflicts.has(e.id) && ' âš '}
-                            {Boolean(
-                              (e.payload as Record<string, unknown>)?.['recurrence'] ||
-                              (e.payload as Record<string, unknown>)?.['rrule'],
-                            ) && ' ðŸ”'}
-                          </button>
-                        );
-                      })}
-                      {cell.events.length > 3 && (
-                        <p className="text-[10px] text-text-dim">+{cell.events.length - 3} more</p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+          {/* F-24: the 7-column month grid is intentionally wider than small
+              viewports — it scrolls inside this controlled container instead
+              of overflowing the page. The list view is the default on mobile. */}
+          <div className="overflow-x-auto -mx-2 px-2 pb-1">
+            <div className="grid grid-cols-7 gap-px rounded-lg overflow-hidden border border-border bg-border min-w-[640px]">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                <div
+                  key={d}
+                  className="bg-surface-hover p-2 text-center font-mono text-xs uppercase text-text-dim"
+                >
+                  {d}
+                </div>
+              ))}
+              {calDays.map((cell, i) => (
+                <div
+                  key={i}
+                  className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''} ${cell.date && cell.events.some((e) => conflicts.has(e.id)) ? 'bg-warning/10' : ''}`}
+                >
+                  {cell.date && (
+                    <>
+                      <p className="text-xs font-mono text-text-dim">{cell.date.getDate()}</p>
+                      <div className="mt-1 space-y-1">
+                        {cell.events.slice(0, 3).map((e) => {
+                          const title = String(
+                            (e.payload as Record<string, unknown>)?.['title'] ?? e.type,
+                          );
+                          const badge = getSourceBadge(e);
+                          const proposed = isProposed(e);
+                          return (
+                            <button
+                              key={e.id}
+                              onClick={() => setSelected(e)}
+                              className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-warning/30 bg-warning/10 text-warning' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''} ${conflicts.has(e.id) ? 'ring-1 ring-amber-500/30' : ''}`}
+                            >
+                              {title.slice(0, 16)}
+                              {conflicts.has(e.id) && ' âš '}
+                              {Boolean(
+                                (e.payload as Record<string, unknown>)?.['recurrence'] ||
+                                (e.payload as Record<string, unknown>)?.['rrule'],
+                              ) && ' ðŸ”'}
+                            </button>
+                          );
+                        })}
+                        {cell.events.length > 3 && (
+                          <p className="text-[10px] text-text-dim">
+                            +{cell.events.length - 3} more
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       ) : (
@@ -549,7 +565,7 @@ export default function SchedulePage() {
                       <button
                         disabled={busyApprove === event.id}
                         onClick={() => handleApprove(event, 'approve')}
-                        className="flex-1 rounded-full bg-white text-black text-xs py-1.5 disabled:opacity-40"
+                        className="flex-1 rounded-full bg-action text-action-fg text-xs py-1.5 disabled:opacity-40 hover:bg-action-hover"
                       >
                         {busyApprove === event.id ? 'Approvingâ€¦' : 'Approve'}
                       </button>
@@ -609,7 +625,7 @@ export default function SchedulePage() {
                 <button
                   disabled={busyApprove === selected.id}
                   onClick={() => handleApprove(selected, 'approve')}
-                  className="flex-1 rounded-full bg-white text-black text-xs py-2 disabled:opacity-40"
+                  className="flex-1 rounded-full bg-success text-white text-xs py-2 disabled:opacity-40"
                 >
                   Approve
                 </button>
@@ -628,23 +644,39 @@ export default function SchedulePage() {
 
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="New event">
         <div className="space-y-3">
-          <label className="block text-sm">
+          <label className="block text-sm" htmlFor="ev-title">
             Title
             <input
+              id="ev-title"
               value={createTitle}
               onChange={(e) => setCreateTitle(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              aria-invalid={createErrors.title ? true : undefined}
+              aria-describedby={createErrors.title ? 'ev-title-error' : undefined}
+              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary ${createErrors.title ? 'border-error' : 'border-border'}`}
               placeholder="Interview with Acme"
             />
+            {createErrors.title && (
+              <span id="ev-title-error" role="alert" className="mt-1 block text-xs text-error">
+                {createErrors.title}
+              </span>
+            )}
           </label>
-          <label className="block text-sm">
+          <label className="block text-sm" htmlFor="ev-date">
             Date & time
             <input
+              id="ev-date"
               type="datetime-local"
               value={createDate}
               onChange={(e) => setCreateDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              aria-invalid={createErrors.date ? true : undefined}
+              aria-describedby={createErrors.date ? 'ev-date-error' : undefined}
+              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary ${createErrors.date ? 'border-error' : 'border-border'}`}
             />
+            {createErrors.date && (
+              <span id="ev-date-error" role="alert" className="mt-1 block text-xs text-error">
+                {createErrors.date}
+              </span>
+            )}
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">
@@ -683,10 +715,11 @@ export default function SchedulePage() {
               Cancel
             </button>
             <button
-              onClick={handleCreate}
-              className="rounded-full bg-white px-4 py-1.5 text-sm text-black"
+              onClick={() => void handleCreate()}
+              disabled={creating}
+              className="rounded-full bg-action px-4 py-1.5 text-sm text-action-fg disabled:opacity-50"
             >
-              Create
+              {creating ? 'Creating…' : 'Create'}
             </button>
           </div>
         </div>

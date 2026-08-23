@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google';
 import '../styles/globals.css';
 import { ThemeProvider } from '../hooks/useTheme';
@@ -8,7 +8,6 @@ import {
   KeyboardShortcutListener,
   ShortcutsInitializer,
 } from '../hooks/useKeyboardShortcuts';
-import { I18nProvider } from '../i18n';
 import { ErrorTrackingBoundary } from '../lib/error-tracking-boundary';
 import { WebVitals } from '../lib/web-vitals-client';
 import { ToastProvider } from '../components/shared/Toast';
@@ -69,7 +68,7 @@ export const metadata: Metadata = {
         url: `${siteUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'Vaeloom — Enterprise AI operating system',
+        alt: 'Vaeloom â€” Enterprise AI operating system',
       },
     ],
   },
@@ -103,7 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <head>
-        {/* Pre-paint theme resolution — prevents flash of wrong theme. The
+        {/* Pre-paint theme resolution â€” prevents flash of wrong theme. The
             brand default is dark; stored user choice or OS light preference
             is applied before first paint. */}
         <script
@@ -124,20 +123,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SWRProvider>
             <AuthProvider>
               <ThemeProvider>
-                <I18nProvider>
-                  <ToastProvider>
-                    <KeyboardShortcutProvider>
-                      <ShortcutsInitializer />
-                      <KeyboardShortcutListener />
-                      <KeyboardShortcutsModal />
-                      <WebVitals />
-                      <SkipLink />
-                      <main id="main-content" tabIndex={-1} className="focus:outline-none">
-                        {children}
-                      </main>
-                    </KeyboardShortcutProvider>
-                  </ToastProvider>
-                </I18nProvider>
+                <ToastProvider>
+                  <KeyboardShortcutProvider>
+                    <ShortcutsInitializer />
+                    <KeyboardShortcutListener />
+                    <KeyboardShortcutsModal />
+                    <WebVitals />
+                    <SkipLink />
+                    <main id="main-content" tabIndex={-1} className="focus:outline-none">
+                      {children}
+                    </main>
+                  </KeyboardShortcutProvider>
+                </ToastProvider>
               </ThemeProvider>
             </AuthProvider>
           </SWRProvider>

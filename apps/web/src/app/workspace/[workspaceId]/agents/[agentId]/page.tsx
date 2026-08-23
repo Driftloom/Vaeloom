@@ -54,7 +54,7 @@ export default function AgentDetailPage() {
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const agentId = params?.['agentId'] as string | undefined;
 
-  const { data, error, isLoading } = useSWR('agent-catalog', () => agentCatalogApi.get());
+  const { data, error, isLoading, mutate } = useSWR('agent-catalog', () => agentCatalogApi.get());
 
   if (isLoading) {
     return (
@@ -73,7 +73,7 @@ export default function AgentDetailPage() {
         <p className="text-sm text-text-muted mt-1">
           {(error as Error).message || 'Unexpected error'}
         </p>
-        <button onClick={() => window.location.reload()} className="btn-secondary mt-4">
+        <button onClick={() => mutate()} className="btn-secondary mt-4">
           Retry
         </button>
       </div>

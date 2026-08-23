@@ -1,6 +1,6 @@
 ﻿'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -78,13 +78,23 @@ const statusStyles: Record<string, string> = {
 
 export default function JobsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const { toast } = useToast();
-  const [active, setActive] = useState('search');
+  const [active, setActive] = useState(() => (searchParams.get('tab') as string) ?? 'search');
   const [jobs, setJobs] = useState<JobResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+
+  useEffect(() => {
+    const sp = new URLSearchParams();
+    if (active !== 'search') sp.set('tab', active);
+    if (query) sp.set('q', query);
+    const qs = sp.toString();
+    router.replace(qs ? `?${qs}` : '?', { scroll: false });
+  }, [active, query, router]);
   const [searching, setSearching] = useState(false);
   const [searchResult, setSearchResult] = useState<{
     summary: string;

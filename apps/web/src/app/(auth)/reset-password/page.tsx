@@ -230,7 +230,7 @@ function ResetPasswordForm() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background relative">
+      <div className="flex-1 flex items-center justify-center p-8 bg-background relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
 
         <div className="w-full max-w-[400px] relative z-10">

@@ -93,8 +93,9 @@ export default function ApprovalsPage() {
           <h1 className="text-3xl font-display font-medium text-text mb-2">Approvals</h1>
           <p className="text-text-muted text-sm">
             Unified inbox for all agent suggestions requiring approval. Least-privilege â€” review
-            scopes, risk, and expiry before acting. Use <kbd className="font-mono">A</kbd> to
-            approve, <kbd className="font-mono">R</kbd> to reject.
+            scopes, risk, and expiry before acting. Focus a decision card, then press{' '}
+            <kbd className="font-mono">A</kbd> to approve, <kbd className="font-mono">R</kbd> to
+            reject.
           </p>
         </div>
         <div className="flex items-center gap-2">

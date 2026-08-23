@@ -61,6 +61,7 @@ export default function DashboardPage() {
     data: eventsRes,
     loading: eventsLoading,
     error: eventsError,
+    refetch: refetchEvents,
   } = useApi<Event[] | PaginatedResponse<Event>>(
     () => api.request<Event[] | PaginatedResponse<Event>>(`/events?workspace_id=${workspaceId}`),
     { enabled: !!workspaceId },
@@ -255,7 +256,7 @@ export default function DashboardPage() {
                 <p>Could not load activity feed.</p>
                 <button
                   className="text-sm text-primary hover:underline"
-                  onClick={() => window.location.reload()}
+                  onClick={() => void refetchEvents()}
                 >
                   Retry
                 </button>
@@ -307,7 +308,7 @@ export default function DashboardPage() {
                 <p>Could not load deadlines.</p>
                 <button
                   className="text-sm text-primary hover:underline"
-                  onClick={() => window.location.reload()}
+                  onClick={() => void refetchEvents()}
                 >
                   Retry
                 </button>

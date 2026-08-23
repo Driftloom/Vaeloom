@@ -1,5 +1,6 @@
 name: Frontend CI
 on: [push, pull_request]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,5 +14,63 @@ jobs:
           node-version: '20'
       - uses: pnpm/action-setup@v4
       - run: pnpm install
-      - run: pnpm build
+      - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm build
+
+  unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install
+      - name: Jest unit/component tests
+        run: pnpm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Prepare API database (fresh)
+        working-directory: apps/api
+        run: uv sync --frozen || uv sync
+      # webServer entries in playwright.config.ts start both the real API
+      # (SQLite + mock LLM key, e2e user auto-seeded by api-launcher.py) and
+      # the Next.js dev server.
+      - name: Run E2E suite (real backend, axe, responsive — gating)
+        run: pnpm exec playwright test --grep-invert "visual baselines"
+      # Visual regression is advisory in CI: font rasterization differs across
+      # OSes, so linux baselines are refreshed and uploaded for review rather
+      # than compared against win32-generated baselines.
+      - name: Visual baselines (advisory, refresh + upload)
+        run: pnpm exec playwright test --grep "visual baselines" --update-snapshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-baselines-linux
+          path: apps/web/e2e/quality.spec.ts-snapshots/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/

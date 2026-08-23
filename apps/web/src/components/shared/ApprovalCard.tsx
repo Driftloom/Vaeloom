@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useCallback, useState } from 'react';
 import { DiffViewer } from './DiffViewer';
@@ -78,7 +78,7 @@ export function ApprovalCard({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-primary text-xl" aria-hidden="true">
-            💡
+            ðŸ’¡
           </span>
           <span className="text-xs uppercase tracking-wider text-primary font-mono">
             {agentName} suggests
@@ -88,6 +88,16 @@ export function ApprovalCard({
           {expiresAt && <ExpiryTimer expiresAt={expiresAt} onExpire={() => setExpired(true)} />}
           <span className="font-mono text-[11px] text-text-muted">{actionType}</span>
         </div>
+      </div>
+
+      {/* Trust UX: proposed !== executed — always label the state explicitly. */}
+      <div className="flex items-center gap-2">
+        <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-primary">
+          Proposed — not yet executed
+        </span>
+        {expiresAt && (
+          <span className="text-[10px] text-text-muted font-mono">decide before expiry</span>
+        )}
       </div>
 
       <div className="text-text">{description}</div>
@@ -137,11 +147,17 @@ export function ApprovalCard({
         </p>
       )}
 
+      <p className="text-[11px] text-text-muted leading-relaxed">
+        {t3Warning
+          ? 'This action sends an email and cannot be undone once executed.'
+          : 'If this changes a document, you can undo it later from History.'}
+      </p>
+
       {expired ? (
         <p className="text-xs text-text-muted">Expired. No action was taken.</p>
       ) : (
         <div className="flex items-center gap-2 mt-2">
-          <button className="btn-primary flex-1" onClick={approve} autoFocus>
+          <button className="btn-primary flex-1" onClick={approve}>
             Approve <kbd className="ml-1 opacity-70">A</kbd>
           </button>
           <button className="btn-secondary flex-1" onClick={reject}>

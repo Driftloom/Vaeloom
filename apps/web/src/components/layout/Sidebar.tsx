@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import Link from 'next/link';
@@ -25,7 +25,7 @@ function isEnterpriseEnabled(): boolean {
 function groupLinks(workspaceId: string): NavGroup[] {
   const ws = (path: string) => `/workspace/${workspaceId}${path}`;
   const enableEnterprise = isEnterpriseEnabled();
-  // Build groups then filter enterprise if not enabled — honest gating for MVP (FW-017)
+  // Build groups then filter enterprise if not enabled â€” honest gating for MVP (FW-017)
   const allGroups: NavGroup[] = [
     {
       label: 'Assist',
@@ -492,7 +492,7 @@ export function Sidebar({
         <button
           onClick={onClose}
           aria-label="Close navigation"
-          className="md:hidden text-text-muted hover:text-text transition-colors"
+          className="md:hidden p-2 -m-2 text-text-muted hover:text-text transition-colors"
         >
           <svg
             className="w-5 h-5"

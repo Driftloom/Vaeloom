@@ -266,7 +266,7 @@ class TestApplicationAgent:
     async def test_instantiation(self):
         agent = ApplicationAgent()
         assert agent.mission == "Tailor documents and submit/hand-off applications"
-        assert len(agent.tools) == 2
+        assert len(agent.tools) == 4
         assert agent.default_autonomy == "approval_gated"
 
     @pytest.mark.asyncio

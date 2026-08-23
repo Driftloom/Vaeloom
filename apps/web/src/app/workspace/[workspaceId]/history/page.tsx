@@ -1,6 +1,6 @@
 ﻿'use client';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
@@ -38,18 +38,31 @@ function getActionField<T>(a: DocumentAction, snake: string, camel: string): T |
 
 export default function HistoryPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const { toast } = useToast();
-  const [active, setActive] = useState('documents');
+  const [active, setActive] = useState(() => searchParams.get('tab') ?? 'documents');
   const [busyUndo, setBusyUndo] = useState<string | null>(null);
   // Odissian polish: paginated history â€” avoids rendering 100+ cards at once
   const PAGE_SIZE = 15;
   const [docPage, setDocPage] = useState(1);
   const [agentPage, setAgentPage] = useState(1);
   const [notifPage, setNotifPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') ?? '');
+  const [dateFrom, setDateFrom] = useState(() => searchParams.get('from') ?? '');
+  const [dateTo, setDateTo] = useState(() => searchParams.get('to') ?? '');
+
+  // URL persistence for deep-linking / back-button
+  useEffect(() => {
+    const sp = new URLSearchParams();
+    if (active !== 'documents') sp.set('tab', active);
+    if (searchQuery) sp.set('q', searchQuery);
+    if (dateFrom) sp.set('from', dateFrom);
+    if (dateTo) sp.set('to', dateTo);
+    const qs = sp.toString();
+    router.replace(qs ? `?${qs}` : '?', { scroll: false });
+  }, [active, searchQuery, dateFrom, dateTo, router]);
 
   const {
     data: docActionsRes,
@@ -63,6 +76,7 @@ export default function HistoryPage() {
     data: agentActions,
     error: agentError,
     isLoading: agentLoading,
+    mutate: mutateAgentActions,
   } = useSWR(workspaceId ? `agent-actions-${workspaceId}` : null, () =>
     documentApi.workspaceAgentActions(workspaceId!),
   );
@@ -389,7 +403,11 @@ export default function HistoryPage() {
           <ErrorState
             title="Failed to load agent history"
             message={String((agentError as Error).message ?? agentError)}
-            onRetry={() => window.location.reload()}
+            onRetry={() => {
+              void mutateDocs();
+              void mutateAgentActions();
+              void mutateNotif();
+            }}
           />
         ) : !agentActions || agentActions.length === 0 ? (
           <EmptyState
@@ -499,8 +517,8 @@ export default function HistoryPage() {
             description="Try adjusting your search or date range."
           />
         ) : (
-          <div className="card">
-            <table className="w-full text-left">
+          <div className="card overflow-x-auto">
+            <table className="w-full text-left min-w-[560px]">
               <thead>
                 <tr className="border-b border-border text-text-muted font-mono text-sm uppercase">
                   <th scope="col" className="pb-3 font-normal">

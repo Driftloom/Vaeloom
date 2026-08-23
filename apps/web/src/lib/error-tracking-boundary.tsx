@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { ErrorTracker } from './error-tracking';
@@ -18,6 +18,17 @@ export class ErrorTrackingBoundary extends React.Component<
   constructor(props: ErrorTrackingBoundaryProps) {
     super(props);
     this.state = { hasError: false };
+  }
+
+  override componentDidMount(): void {
+    // W-13: surface unhandled errors/rejections through the tracker façade.
+    window.addEventListener('unhandledrejection', (e) => {
+      const reason = e.reason instanceof Error ? e.reason : new Error(String(e.reason));
+      ErrorTracker.captureError(reason, { kind: 'unhandledrejection' });
+    });
+    window.addEventListener('error', (e) => {
+      if (e.error) ErrorTracker.captureError(e.error, { kind: 'window.onerror' });
+    });
   }
 
   static getDerivedStateFromError(): ErrorTrackingBoundaryState {

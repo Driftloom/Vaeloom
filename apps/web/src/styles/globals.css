@@ -131,13 +131,16 @@
   --accent-hover: 55 48 163;
   --accent-active: 49 46 129;
 
-  /* Semantic status (light-tuned deep hues, AA on white surfaces) */
-  --success: 4 120 87;          /* #047857 */
-  --success-muted: 5 150 105;
-  --success-fg: 4 120 87;
-  --warning: 180 83 9;          /* #B45309 */
-  --warning-muted: 217 119 6;
-  --warning-fg: 180 83 9;
+  /* Semantic status (light-tuned deep hues, AA on white surfaces AND on
+     their own /10–/20 alpha tints — axe color-contrast verified):
+       warning #92400E  = 6.2:1 on warning/10, 7.1:1 on white
+       success-muted #065F46 = 5.4:1 on success/20 (DiffViewer <ins>) */
+  --success: 6 95 70;           /* #065F46 — 6.3:1 on success/10 tint */
+  --success-muted: 6 95 70;     /* #065F46 — 5.4:1 on success/20 (DiffViewer <ins>) */
+  --success-fg: 6 95 70;
+  --warning: 146 64 14;         /* #92400E */
+  --warning-muted: 146 64 14;
+  --warning-fg: 146 64 14;
   --error: 185 28 28;           /* #B91C1C */
   --error-muted: 220 38 38;
   --error-fg: 185 28 28;

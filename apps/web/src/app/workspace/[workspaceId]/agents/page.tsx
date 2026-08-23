@@ -156,7 +156,7 @@ export default function AgentsPage() {
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const { workspace } = useWorkspace(workspaceId);
 
-  const { data, error, isLoading } = useSWR('agent-catalog', () => agentCatalogApi.get());
+  const { data, error, isLoading, mutate } = useSWR('agent-catalog', () => agentCatalogApi.get());
 
   const agents = useMemo<CatalogAgent[]>(() => data?.agents ?? [], [data?.agents]);
   const canonical = useMemo(() => agents.filter((a) => a.isCanonical), [agents]);
@@ -201,7 +201,7 @@ export default function AgentsPage() {
         <p className="text-sm text-text-muted mt-1">
           {(error as Error).message || 'Unexpected error'}
         </p>
-        <button onClick={() => window.location.reload()} className="btn-secondary mt-4">
+        <button onClick={() => mutate()} className="btn-secondary mt-4">
           Retry
         </button>
       </div>

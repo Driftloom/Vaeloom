@@ -235,7 +235,7 @@ class TestJobSearchAgent:
     async def test_instantiation(self):
         agent = JobSearchAgent()
         assert agent.mission == "Search connected platforms, rank against memory, return shortlist"
-        assert len(agent.tools) == 3
+        assert len(agent.tools) == 6
         assert agent.default_autonomy == "suggest"
 
     @pytest.mark.asyncio
