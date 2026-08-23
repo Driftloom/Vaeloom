@@ -47,13 +47,13 @@
 
 ## API — Test State
 
-- **2661 tests collected (2648+ pass, 4 skipped, 2 xfailed; +76 net new on
-  2026-08-23 via resume document pipeline suites)** — security suite 233/233
-  (170 unique de-duplicated; middleware/test_csrf duplicates security/test_csrf
-  per zero-trust audit 2026-08-22 F-02; F-20/F-22 fixes 2026-08-22 do not change
+- **2672 tests collected (2725 pass / 0 fail after 2026-08-23 zero-trust audit
+  of P1-P3; 4 skipped, 2 xfailed)** — security suite 233/233 (170 unique
+  de-duplicated; middleware/test_csrf duplicates security/test_csrf per
+  zero-trust audit 2026-08-22 F-02; F-20/F-22 fixes 2026-08-22 do not change
   count); coverage **94% total** — see
   `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`; OpenAPI **106
-  paths** (`docs/Backend/openapi.yaml` — was 99, +7 resume document routes on
+  paths** (`docs/backend/openapi.yaml` — was 99, +7 resume document routes on
   2026-08-23)
 - Python 3.12.13 (per `apps/api/.python-version` pinned via
   `uv python pin 3.12`; `.venv` managed by `uv`)

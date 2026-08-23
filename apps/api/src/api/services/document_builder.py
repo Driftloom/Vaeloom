@@ -90,6 +90,13 @@ class _PlaywrightManager:
         Shared by document compilation (Phase 1) and browser scraping tools
         (Phase 2). Raises PlaywrightUnavailableError when chromium is missing.
         """
+        return await self.fetch_page_text_guarded(url, None, timeout_ms)
+
+    async def fetch_page_text_guarded(self, url: str, route_guard=None,
+                                      timeout_ms: int = 20000) -> tuple[str, str]:
+        """Like fetch_page_text but intercepts every network request through
+        `route_guard` (async handler: route -> continue_/abort) so redirects
+        and subresources are re-validated against the SSRF policy."""
         if self._unavailable:
             raise PlaywrightUnavailableError(
                 "Playwright Chromium unavailable — run `uv run playwright install chromium`"
@@ -101,15 +108,22 @@ class _PlaywrightManager:
 
                     self._playwright = await async_playwright().start()
                     self._browser = await self._playwright.chromium.launch(headless=True)
-                page = await self._browser.new_page()
+                context = await self._browser.new_context()
                 try:
-                    await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-                    title = await page.title()
-                    text = await page.inner_text("body")
-                    return (text or "").strip(), (title or "").strip()
+                    if route_guard is not None:
+                        await context.route("**/*", route_guard)
+                    page = await context.new_page()
+                    try:
+                        await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                        title = await page.title()
+                        text = await page.inner_text("body")
+                        return (text or "").strip(), (title or "").strip()
+                    finally:
+                        with contextlib.suppress(Exception):
+                            await page.close()
                 finally:
                     with contextlib.suppress(Exception):
-                        await page.close()
+                        await context.close()
             except PlaywrightUnavailableError:
                 raise
             except Exception as e:  # noqa: BLE001 - convert low-level errors

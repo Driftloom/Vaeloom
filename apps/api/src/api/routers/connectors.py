@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user, get_tenant_id
+from ..middleware.rate_limit import rate_limit
 from ..schemas.connector_ext import (
     ConnectorResponse,
     CreateConnectorRequest,
@@ -167,6 +168,7 @@ async def refresh_mcp_tools(
 
 
 @router.post("/{connector_id}/mcp/call")
+@rate_limit(max_requests=10, window_seconds=60)
 async def call_mcp_tool(
     connector_id: uuid.UUID,
     dto: McpCallRequest,

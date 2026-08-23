@@ -1547,23 +1547,28 @@ async def _execute_scrape_company_insights(params: dict[str, Any], workspace_id:
         }
 
     insights: dict[str, list[Any]] = {}
+    axis_sources: dict[str, str] = {}
     for key, template in _INSIGHT_QUERIES:
         query = template.format(c=company)
         try:
             res = await _execute_web_search({"query": query, "limit": 3}, workspace_id)
             results = res.get("result", []) if res.get("status") == "success" else []
+            is_mock = isinstance(res.get("note"), str) and "mock" in res.get("note", "").lower()
             insights[key] = [
                 {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": r.get("snippet", "")}
                 for r in results[:3] if isinstance(r, dict)
             ]
+            axis_sources[key] = "mock" if is_mock else "live"
         except Exception as e:  # noqa: BLE001 - one failed axis must not sink the rest
             logger.warning(f"insight axis '{key}' failed for {company}: {e}")
             insights[key] = []
+            axis_sources[key] = "error"
 
     return {
         "status": "success",
         "tool": "scrape_company_insights",
         "result": {"company": company, **insights},
+        "axis_sources": axis_sources,
         "note": None if any(insights.values()) else "Web search unavailable — empty insight axes",
     }
 

@@ -104,17 +104,56 @@ class _McpClientService:
         self._discovery_cache: dict[str, tuple[float, list[McpToolInfo]]] = {}
 
     # ── Session plumbing ──────────────────────────────────────────────
-    @staticmethod
-    def _server_params(cfg: dict):
+    # Minimal parent-env allowlist passed to stdio servers — never leak
+    # JWT secrets / encryption keys to third-party server processes.
+    _ALLOWED_PARENT_ENV = (
+        "PATH", "PATHEXT", "SYSTEMROOT", "SYSTEMDRIVE", "COMSPEC", "TEMP",
+        "TMP", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA",
+        "PROGRAMFILES", "PROGRAMFILES(X86)", "LANG", "TZ", "TERM",
+    )
+
+    @classmethod
+    def _server_params(cls, cfg: dict):
         import os
 
         from mcp import StdioServerParameters
 
-        merged_env = dict(os.environ)
+        command = cls._resolve_command(cfg["command"])
+        merged_env = {k: os.environ[k] for k in cls._ALLOWED_PARENT_ENV if k in os.environ}
         merged_env.update(cfg.get("env") or {})
         return StdioServerParameters(
-            command=cfg["command"], args=list(cfg.get("args") or []), env=merged_env,
+            command=command, args=list(cfg.get("args") or []), env=merged_env,
         )
+
+    @staticmethod
+    def _resolve_command(command: str) -> str:
+        """Resolve bare executable names on PATH; wrap .cmd/.bat in cmd.exe.
+
+        Windows CreateProcess will not execute .cmd/.bat directly (npx!,
+        uvx!), so they need `cmd.exe /c`. argv stays validated (no shell
+        metacharacters) before this wrapping.
+        """
+        resolved = command
+        has_sep = ("/" in command) or ("\\" in command)
+        if not has_sep:
+            import shutil as _shutil
+
+            resolved = _shutil.which(command) or command
+        lower = resolved.lower()
+        if lower.endswith((".cmd", ".bat")):
+            return "cmd.exe"
+        return resolved
+
+    @staticmethod
+    def _stdio_argv(cfg: dict) -> list[str]:
+        """Full argv for Windows batch wrappers (command becomes an arg)."""
+        import shutil
+
+        command = cfg["command"]
+        resolved = command if ("/" in command or "\\" in command) else (shutil.which(command) or command)
+        if resolved.lower().endswith((".cmd", ".bat")):
+            return [resolved, *list(cfg.get("args") or [])]
+        return list(cfg.get("args") or [])
 
     @staticmethod
     def _validate_command(command: str) -> None:
@@ -123,14 +162,20 @@ class _McpClientService:
             raise McpConfigError(f"Shell interpreter '{base}' is not allowed")
 
     async def _run_with_session(self, cfg: dict, operation):
-        """Open a one-shot session and run `operation(session)` inside it."""
-        from mcp import ClientSession
+        from mcp import ClientSession, StdioServerParameters
 
         if cfg.get("transport") == "stdio":
             self._validate_command(cfg["command"])
+            import os
+
             from mcp.client.stdio import stdio_client
 
-            params = self._server_params(cfg)
+            params = StdioServerParameters(
+                command=self._resolve_command(cfg["command"]),
+                args=self._stdio_argv(cfg),
+                env={k: os.environ[k] for k in self._ALLOWED_PARENT_ENV if k in os.environ}
+                | dict(cfg.get("env") or {}),
+            )
             async with stdio_client(params) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()

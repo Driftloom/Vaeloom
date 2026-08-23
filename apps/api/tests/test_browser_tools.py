@@ -300,6 +300,66 @@ class TestVerifyApplicationLink:
         assert r["status"] == "error"
 
 
+class TestRedirectSafety:
+    """Regression: guard must validate EVERY redirect hop, not just hop 0."""
+
+    @staticmethod
+    def _patch_factory(monkeypatch, handler):
+        import httpx
+
+        from api.services import browser_service as bsm
+
+        def factory():
+            return httpx.AsyncClient(
+                follow_redirects=False, timeout=5.0,
+                transport=httpx.MockTransport(handler),
+            )
+
+        monkeypatch.setattr(bsm, "_client_factory", factory)
+
+    async def test_cross_origin_redirect_to_private_is_blocked(self, monkeypatch):
+        import httpx
+
+        from api.services.browser_service import RedirectPolicyViolation, _guarded_fetch
+        from api.utils.url_guard import UrlBlockedError
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == "evil.example.com":
+                return httpx.Response(302, headers={"location": "http://169.254.169.254/latest"})
+            return httpx.Response(200, text="internal metadata page")
+
+        self._patch_factory(monkeypatch, handler)
+        with pytest.raises((UrlBlockedError, RedirectPolicyViolation)):
+            await _guarded_fetch("https://evil.example.com/redirect")
+
+    async def test_same_site_redirect_chain_allowed(self, monkeypatch):
+        import httpx
+
+        from api.services.browser_service import _guarded_fetch
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/start":
+                return httpx.Response(302, headers={"location": "https://example.com/final"})
+            return httpx.Response(200, text="final page content")
+
+        self._patch_factory(monkeypatch, handler)
+        resp = await _guarded_fetch("https://example.com/start")
+        assert resp.status_code == 200
+        assert "final page" in resp.text
+
+    async def test_redirect_loop_hits_hop_cap(self, monkeypatch):
+        import httpx
+
+        from api.services.browser_service import RedirectPolicyViolation, _guarded_fetch
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(302, headers={"location": "https://example.com/loop"})
+
+        self._patch_factory(monkeypatch, handler)
+        with pytest.raises(RedirectPolicyViolation, match="hops"):
+            await _guarded_fetch("https://example.com/loop")
+
+
 class TestRegistryWiring:
     def test_tool_count_now_28(self):
         from api.tools.definitions import ALL_TOOLS

@@ -1,4 +1,4 @@
-﻿"""Unit tests for the MCP client service: config validation, bridging, dispatch."""
+"""Unit tests for the MCP client service: config validation, bridging, dispatch."""
 import pytest
 
 from api.services.mcp_client_service import (
@@ -266,3 +266,54 @@ class TestReActIntegrationSurface:
         gates = approval_gated_tools()
         for legacy in ("draft_email", "send_slack_message", "create_calendar_event"):
             assert legacy in gates
+
+
+class TestStdioHardening:
+    """Zero-trust follow-ups: Windows .cmd resolution + parent-env allowlist."""
+
+    def test_resolve_command_wraps_windows_batch(self, monkeypatch):
+        import shutil
+
+        import api.services.mcp_client_service as m
+
+        # Simulate a Windows machine where npx resolves to npx.cmd
+        monkeypatch.setattr(shutil, "which", lambda name: "C:\\npm\\npx.cmd" if name == "npx" else None)
+        assert m._McpClientService._resolve_command("npx") == "cmd.exe"
+
+    def test_resolve_command_passthrough_absolute_unix_style(self, monkeypatch):
+        import shutil
+
+        import api.services.mcp_client_service as m
+
+        monkeypatch.setattr(shutil, "which", lambda name: None)
+        assert m._McpClientService._resolve_command("/usr/local/bin/server") == "/usr/local/bin/server"
+
+    def test_stdio_argv_keeps_batch_as_argument(self, monkeypatch):
+        import shutil
+
+        import api.services.mcp_client_service as m
+
+        monkeypatch.setattr(shutil, "which", lambda name: "C:\\npm\\uvx.exe" if name == "uvx" else None)
+        argv = m._McpClientService._stdio_argv(
+            {"command": "uvx", "args": ["mcp-server-git"]}
+        )
+        # .exe does NOT need cmd wrapper; command itself stays the executable
+        assert argv == ["mcp-server-git"]
+
+    async def test_parent_env_secrets_not_leaked_to_stdio_servers(self, monkeypatch, monkeypatch_tmp=None):
+        import os
+
+        import api.services.mcp_client_service as m
+
+        monkeypatch.setenv("VAELOOM_JWT_SECRET", "super-secret-value")
+        monkeypatch.setenv("ENCRYPTION_KEY", "leak-me")
+        monkeypatch.setenv("PATH", os.environ.get("PATH", ""))
+
+        cfg = {"transport": "stdio", "command": "true", "args": [],
+               "env": {"CUSTOM_VAR": "from-config"}}
+        params = m._McpClientService._server_params(cfg)
+        env = params.env
+        assert "VAELOOM_JWT_SECRET" not in env
+        assert "ENCRYPTION_KEY" not in env
+        assert env.get("CUSTOM_VAR") == "from-config"
+        assert "PATH" in env
