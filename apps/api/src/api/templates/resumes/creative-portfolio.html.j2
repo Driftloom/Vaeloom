@@ -1,0 +1,124 @@
+{# Creative Portfolio — two-column with dark sidebar; main column first in DOM for ATS parsing #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: {{ template.font_stack }}; color: #1f2937; font-size: 9.5pt; line-height: 1.5; }
+  .wrap { display: flex; min-height: 100%; }
+  main { flex: 1 1 66%; padding: 14mm 10mm 14mm 14mm; }
+  aside { flex: 1 1 34%; background: #17131f; color: #d1d5db; padding: 14mm 12mm; }
+  aside h3 { font-size: 9pt; text-transform: uppercase; letter-spacing: 1.6pt; color: {{ template.accent_color }};
+             margin: 12pt 0 6pt 0; font-weight: 700; }
+  aside h3:first-child { margin-top: 0; }
+  a { color: {{ template.accent_color }}; text-decoration: none; }
+  .name { font-size: 24pt; font-weight: 700; color: #111; letter-spacing: -0.5pt; line-height: 1.15; }
+  .title { font-size: 11.5pt; color: {{ template.accent_color }}; margin-top: 2pt; font-weight: 500; }
+  .contact-main { margin-top: 6pt; font-size: 9pt; color: #6b7280; display: flex; flex-wrap: wrap; gap: 3pt 12pt; }
+  section { margin-top: 11pt; }
+  h2 { font-size: 10.5pt; text-transform: uppercase; letter-spacing: 1.4pt; color: #111;
+       border-bottom: 1.5pt solid {{ template.accent_color }}; padding-bottom: 2.5pt; margin-bottom: 7pt; font-weight: 700; }
+  .entry { margin-bottom: 8pt; page-break-inside: avoid; }
+  .entry-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .entry-head .left { font-weight: 700; font-size: 10pt; }
+  .entry-head .right { font-size: 8.5pt; color: #9ca3af; white-space: nowrap; }
+  .entry-sub { font-size: 9pt; color: {{ template.accent_color }}; margin-top: 1pt; }
+  ul { list-style: none; margin-top: 3pt; }
+  li { position: relative; padding-left: 11pt; margin-bottom: 2pt; }
+  li::before { content: "//"; position: absolute; left: 0; color: {{ template.accent_color }}; font-size: 8pt; top: 1pt; }
+  .side-block p, .side-item { font-size: 8.75pt; margin-bottom: 3pt; word-break: break-word; }
+  .bar { background: #37304a; border-radius: 3pt; height: 4pt; margin: 2pt 0 5pt 0; overflow: hidden; }
+  .bar > div { height: 100%; background: {{ template.accent_color }}; border-radius: 3pt; }
+  .chip { display: inline-block; border: 0.75pt solid #4b4263; border-radius: 8pt; padding: 1pt 7pt;
+          font-size: 8pt; margin: 0 2pt 3pt 0; color: #e5e7eb; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <main>
+    <div class="name">{{ name }}</div>
+    {% if title %}<div class="title">{{ title }}</div>{% endif %}
+    <div class="contact-main">
+      {% if email %}<span>{{ email }}</span>{% endif %}
+      {% if phone %}<span>{{ phone }}</span>{% endif %}
+      {% if location %}<span>{{ location }}</span>{% endif %}
+    </div>
+
+    {% if summary %}
+    <section><h2>Profile</h2><p>{{ summary }}</p></section>
+    {% endif %}
+
+    {% if experience %}
+    <section>
+      <h2>Experience</h2>
+      {% for e in experience %}
+      <div class="entry">
+        <div class="entry-head">
+          <span class="left">{{ e.role }} &middot; {{ e.company }}</span>
+          <span class="right">{% if e.start %}{{ e.start }} &ndash; {{ e.end or "Now" }}{% endif %}</span>
+        </div>
+        {% if e.bullets %}<ul>{% for b in e.bullets %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if projects %}
+    <section>
+      <h2>Selected Work</h2>
+      {% for p in projects %}
+      <div class="entry">
+        <div class="entry-head"><span class="left">{{ p.name }}</span></div>
+        {% if p.description %}<p>{{ p.description }}</p>{% endif %}
+        {% if p.highlights %}<ul>{% for h in p.highlights %}<li>{{ h }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if education %}
+    <section>
+      <h2>Education</h2>
+      {% for ed in education %}
+      <div class="entry">
+        <div class="entry-head"><span class="left">{{ ed.degree }}</span>
+        <span class="right">{% if ed.start %}{{ ed.start }} &ndash; {{ ed.end }}{% endif %}</span></div>
+        <div class="entry-sub">{{ ed.institution }}</div>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+  </main>
+
+  <aside>
+    {% if email or phone or links %}
+    <h3>Contact</h3>
+    <div class="side-block">
+      {% if email %}<div class="side-item">{{ email }}</div>{% endif %}
+      {% if phone %}<div class="side-item">{{ phone }}</div>{% endif %}
+      {% if links.github %}<div class="side-item">GitHub: {{ links.github }}</div>{% endif %}
+      {% if links.linkedin %}<div class="side-item">LinkedIn: {{ links.linkedin }}</div>{% endif %}
+      {% if links.portfolio %}<div class="side-item">Web: {{ links.portfolio }}</div>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if skills %}
+    <h3>Competencies</h3>
+    {% for g in skills %}
+    {% for s in g['items'] %}
+    <div class="side-item">{{ s.name }}</div>
+    <div class="bar"><div style="width: {{ s.level if s.level and s.level is number else (80 + (loop.index0 % 4) * 5) }}%"></div></div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    {% if certifications %}
+    <h3>Certifications</h3>
+    {% for c in certifications %}<span class="chip">{{ c }}</span>{% endfor %}
+    {% endif %}
+  </aside>
+</div>
+</body>
+</html>

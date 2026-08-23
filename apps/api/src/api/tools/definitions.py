@@ -297,6 +297,159 @@ CALCULATE_ATS_DIFF = ToolDefinition(
     category="memory_read",
 )
 
+CALCULATE_SEMANTIC_ATS_SCORE = ToolDefinition(
+    name="calculate_semantic_ats_score",
+    description=(
+        "Score resume-to-job-description compatibility 0-100 using embedding "
+        "cosine similarity plus keyword frequency matching"
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "resume_text": {"type": "string"},
+            "job_description": {"type": "string"},
+            "target_title": {"type": "string"},
+        },
+        "required": ["resume_text", "job_description"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "score": {"type": "number"},
+            "semantic_similarity": {"type": "number"},
+            "keyword_match_pct": {"type": "number"},
+            "matched_keywords": {"type": "array", "items": {"type": "string"}},
+            "missing_keywords": {"type": "array", "items": {"type": "string"}},
+        },
+    },
+    required_scope="memory.read",
+    category="memory_read",
+)
+
+EXTRACT_MISSING_HARD_SKILLS = ToolDefinition(
+    name="extract_missing_hard_skills",
+    description="Identify technical skills, certifications, and tooling present in a job description but missing from the resume",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "resume_text": {"type": "string"},
+            "job_description": {"type": "string"},
+        },
+        "required": ["resume_text", "job_description"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "missing_skills": {"type": "array", "items": {"type": "string"}},
+            "present_skills": {"type": "array", "items": {"type": "string"}},
+            "certifications": {"type": "array", "items": {"type": "string"}},
+        },
+    },
+    required_scope="memory.read",
+    category="memory_read",
+)
+
+AUDIT_ATS_FORMATTING = ToolDefinition(
+    name="audit_ats_formatting",
+    description="Scan resume text/markdown for ATS parser failure points: tables, non-standard headers, invalid date formats, graphics",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "resume_markdown": {"type": "string"},
+        },
+        "required": ["resume_markdown"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "issues": {"type": "array", "items": {"type": "object"}},
+            "passed": {"type": "boolean"},
+        },
+    },
+    required_scope="memory.read",
+    category="memory_read",
+)
+
+# ── Browser / Scraping Tools ──────────────────────────────────────
+
+BROWSE_JOB_PAGE = ToolDefinition(
+    name="browse_job_page",
+    description=(
+        "Open a public job-posting URL in a headless browser and extract "
+        "structured data: title, company, description, requirements, skills"
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "url": {"type": "string", "description": "Public https URL of the job posting"},
+        },
+        "required": ["url"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "company": {"type": "string"},
+            "description": {"type": "string"},
+            "requirements": {"type": "array", "items": {"type": "string"}},
+            "skills_mentioned": {"type": "array", "items": {"type": "string"}},
+        },
+    },
+    required_scope="system.browser.read",
+    category="connector_read",
+)
+
+SCRAPE_COMPANY_INSIGHTS = ToolDefinition(
+    name="scrape_company_insights",
+    description=(
+        "Aggregate web intelligence about a company: culture, recent news and "
+        "funding, interview questions, and engineering tech stack"
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "company_name": {"type": "string"},
+        },
+        "required": ["company_name"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "culture": {"type": "array"},
+            "news_funding": {"type": "array"},
+            "interview_questions": {"type": "array"},
+            "tech_stack": {"type": "array"},
+        },
+    },
+    required_scope="system.browser.read",
+    category="connector_read",
+)
+
+VERIFY_APPLICATION_LINK = ToolDefinition(
+    name="verify_application_link",
+    description=(
+        "Check that an application URL is live before the user applies — "
+        "cheap HEAD probe (GET fallback), never renders the page"
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "url": {"type": "string", "description": "Public https application URL"},
+        },
+        "required": ["url"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "reachable": {"type": "boolean"},
+            "status_code": {"type": "integer"},
+            "final_url": {"type": "string"},
+        },
+    },
+    required_scope="system.browser.read",
+    category="connector_read",
+)
+
 # ── GitHub / Slack / Notion / Sandbox Tools ──────────────────────────
 
 FETCH_GITHUB_REPO = ToolDefinition(
@@ -420,6 +573,9 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
         RENAME_FILE, MOVE_FILE, DRAFT_EMAIL, CREATE_CALENDAR_EVENT,
         NOTIFY_USER,
         WEB_SEARCH, PARSE_DOCUMENT_OCR, CALCULATE_ATS_DIFF,
+        CALCULATE_SEMANTIC_ATS_SCORE, EXTRACT_MISSING_HARD_SKILLS,
+        AUDIT_ATS_FORMATTING,
+        BROWSE_JOB_PAGE, SCRAPE_COMPANY_INSIGHTS, VERIFY_APPLICATION_LINK,
         FETCH_GITHUB_REPO, CREATE_GITHUB_ISSUE, SEND_SLACK_MESSAGE,
         SYNC_NOTION_PAGES, EXECUTE_CODE_SANDBOX,
     ]

@@ -1890,6 +1890,236 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/templates:
+    get:
+      tags:
+        - resumes
+      summary: List Templates
+      operationId: list_templates_api_v1_resumes_templates_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ResumeTemplateResponse'
+                type: array
+                title: Response List Templates Api V1 Resumes Templates Get
+  /api/v1/resumes/{resume_id}/tailor:
+    post:
+      tags:
+        - resumes
+      summary: Tailor Resume
+      operationId: tailor_resume_api_v1_resumes__resume_id__tailor_post
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TailorResumeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/{resume_id}/compile:
+    post:
+      tags:
+        - resumes
+      summary: Compile Resume
+      operationId: compile_resume_api_v1_resumes__resume_id__compile_post
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompileResumeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeArtifactResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/{resume_id}/cover-letter:
+    post:
+      tags:
+        - resumes
+      summary: Compile Cover Letter
+      operationId: compile_cover_letter_api_v1_resumes__resume_id__cover_letter_post
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoverLetterRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeArtifactResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/{resume_id}/artifacts:
+    get:
+      tags:
+        - resumes
+      summary: List Resume Artifacts
+      operationId: list_resume_artifacts_api_v1_resumes__resume_id__artifacts_get
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResumeArtifactResponse'
+                title: Response List Resume Artifacts Api V1 Resumes  Resume Id  Artifacts
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/artifacts/{artifact_id}/download:
+    get:
+      tags:
+        - resumes
+      summary: Download Artifact
+      operationId: download_artifact_api_v1_resumes_artifacts__artifact_id__download_get
+      parameters:
+        - name: artifact_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Artifact Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/{resume_id}/cheatsheet:
+    post:
+      tags:
+        - resumes
+      summary: Compile Cheatsheet
+      description: One-page interview prep sheet derived from the resume content.
+      operationId: compile_cheatsheet_api_v1_resumes__resume_id__cheatsheet_post
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeArtifactResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/workspaces/{workspace_id}/applications:
     get:
       tags:
@@ -2447,6 +2677,138 @@ paths:
         - connectors
       summary: Test Connection
       operationId: test_connection_api_v1_connectors__connector_id__test_post
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/{connector_id}/mcp/tools:
+    get:
+      tags:
+        - connectors
+      summary: List Mcp Tools
+      operationId: list_mcp_tools_api_v1_connectors__connector_id__mcp_tools_get
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+        - name: refresh
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+            title: Refresh
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/McpToolInfoResponse'
+                title: Response List Mcp Tools Api V1 Connectors  Connector Id  Mcp
+                  Tools Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/{connector_id}/mcp/tools/refresh:
+    post:
+      tags:
+        - connectors
+      summary: Refresh Mcp Tools
+      operationId: refresh_mcp_tools_api_v1_connectors__connector_id__mcp_tools_refresh_post
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/McpToolInfoResponse'
+                title: Response Refresh Mcp Tools Api V1 Connectors  Connector Id  Mcp
+                  Tools Refresh Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/{connector_id}/mcp/call:
+    post:
+      tags:
+        - connectors
+      summary: Call Mcp Tool
+      description: 'Direct operator-invoked tool call. Agent-driven calls go through
+        the
+
+        tool executor where non-read-only MCP tools are approval-gated.'
+      operationId: call_mcp_tool_api_v1_connectors__connector_id__mcp_call_post
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/McpCallRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/{connector_id}/mcp/sync:
+    post:
+      tags:
+        - connectors
+      summary: Sync Mcp Bridge
+      description: Discover tools and register them into the agent tool executor.
+      operationId: sync_mcp_bridge_api_v1_connectors__connector_id__mcp_sync_post
       parameters:
         - name: connector_id
           in: path
@@ -4300,7 +4662,7 @@ components:
       properties:
         file:
           type: string
-          format: binary
+          contentMediaType: application/octet-stream
           title: File
       type: object
       required:
@@ -4340,6 +4702,27 @@ components:
       required:
         - message
       title: ChatRequest
+    CompileResumeRequest:
+      properties:
+        template_slug:
+          type: string
+          minLength: 1
+          title: Template Slug
+        format:
+          type: string
+          pattern: ^(pdf|docx|html)$
+          title: Format
+          default: pdf
+        max_pages:
+          type: integer
+          maximum: 3.0
+          minimum: 1.0
+          title: Max Pages
+          default: 2
+      type: object
+      required:
+        - template_slug
+      title: CompileResumeRequest
     ConnectorResponse:
       properties:
         id:
@@ -4402,6 +4785,7 @@ components:
         - graphql
         - database
         - file
+        - mcp
       title: ConnectorType
     ConsentScope:
       type: string
@@ -4410,6 +4794,42 @@ components:
         - agent_access
         - email_marketing
       title: ConsentScope
+    CoverLetterRequest:
+      properties:
+        body:
+          type: string
+          minLength: 1
+          title: Body
+          description: Cover letter text (paragraphs separated by blank lines)
+        template_slug:
+          type: string
+          minLength: 1
+          title: Template Slug
+        format:
+          type: string
+          pattern: ^(pdf|docx|html)$
+          title: Format
+          default: pdf
+        recipient:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Recipient
+        company:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Company
+        role:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Role
+      type: object
+      required:
+        - body
+        - template_slug
+      title: CoverLetterRequest
     CreateConnectorRequest:
       properties:
         name:
@@ -4570,11 +4990,14 @@ components:
     CreateWorkspaceRequest:
       properties:
         name:
-          anyOf:
-            - type: string
-            - type: 'null'
+          type: string
+          maxLength: 255
+          minLength: 1
           title: Name
+          description: Workspace name must be non-empty
       type: object
+      required:
+        - name
       title: CreateWorkspaceRequest
     DocumentActionListResponse:
       properties:
@@ -5358,6 +5781,42 @@ components:
         - email
         - password
       title: LoginRequest
+    McpCallRequest:
+      properties:
+        tool_name:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Tool Name
+        arguments:
+          additionalProperties: true
+          type: object
+          title: Arguments
+      type: object
+      required:
+        - tool_name
+      title: McpCallRequest
+    McpToolInfoResponse:
+      properties:
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+          default: ''
+        input_schema:
+          additionalProperties: true
+          type: object
+          title: Input Schema
+        read_only_hint:
+          type: boolean
+          title: Read Only Hint
+          default: false
+      type: object
+      required:
+        - name
+      title: McpToolInfoResponse
     MeResponse:
       properties:
         user:
@@ -5375,9 +5834,17 @@ components:
       properties:
         type:
           type: string
-          maxLength: 100
-          minLength: 1
+          enum:
+            - profile
+            - document
+            - career
+            - episodic
+            - preference
+            - working
+            - note
+            - fact
           title: Type
+          description: One of the 6 canonical memory types
         domain:
           anyOf:
             - type: string
@@ -5961,6 +6428,56 @@ components:
       required:
         - refresh_token
       title: RefreshRequest
+    ResumeArtifactResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        resume_id:
+          type: string
+          format: uuid
+          title: Resume Id
+        artifact_kind:
+          type: string
+          title: Artifact Kind
+        template_slug:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Template Slug
+        format:
+          type: string
+          title: Format
+        filename:
+          type: string
+          title: Filename
+        media_type:
+          type: string
+          title: Media Type
+        file_size:
+          type: integer
+          title: File Size
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - workspace_id
+        - resume_id
+        - artifact_kind
+        - format
+        - filename
+        - media_type
+        - file_size
+        - created_at
+      title: ResumeArtifactResponse
     ResumeResponse:
       properties:
         id:
@@ -5999,6 +6516,49 @@ components:
         - created_at
         - updated_at
       title: ResumeResponse
+    ResumeTemplateResponse:
+      properties:
+        slug:
+          type: string
+          title: Slug
+        name:
+          type: string
+          title: Name
+        category:
+          type: string
+          title: Category
+        description:
+          type: string
+          title: Description
+        best_for:
+          items:
+            type: string
+          type: array
+          title: Best For
+          default: []
+        ats_compatibility:
+          type: integer
+          title: Ats Compatibility
+          default: 100
+        accent_color:
+          type: string
+          title: Accent Color
+          default: '#111111'
+        font_stack:
+          type: string
+          title: Font Stack
+          default: serif
+        layout:
+          type: string
+          title: Layout
+          default: single-column
+      type: object
+      required:
+        - slug
+        - name
+        - category
+        - description
+      title: ResumeTemplateResponse
     SSOTokenRequest:
       properties:
         token:
@@ -6308,6 +6868,26 @@ components:
         - connector_id
         - status
       title: SyncStatusResponse
+    TailorResumeRequest:
+      properties:
+        job_description:
+          type: string
+          minLength: 1
+          title: Job Description
+        target_role:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Target Role
+        company:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Company
+      type: object
+      required:
+        - job_description
+      title: TailorResumeRequest
     TemplateResponse:
       properties:
         id:
@@ -6501,6 +7081,11 @@ components:
         type:
           type: string
           title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
       type: object
       required:
         - loc

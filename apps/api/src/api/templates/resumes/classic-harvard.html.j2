@@ -1,0 +1,107 @@
+{# Classic Harvard — traditional single-column, black & white, top rule lines #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 18mm 20mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: {{ template.font_stack }}; color: #1a1a1a; font-size: 10.5pt; line-height: 1.45; }
+  .header { text-align: center; padding-bottom: 8pt; border-bottom: 2pt solid #1a1a1a; }
+  .header h1 { font-size: 19pt; letter-spacing: 1.5pt; text-transform: uppercase; font-weight: 600; }
+  .header .title { font-size: 11pt; font-style: italic; margin-top: 2pt; }
+  .contact { margin-top: 5pt; font-size: 9.5pt; }
+  .contact span { margin: 0 6pt; white-space: nowrap; }
+  .rule { border-top: 0.75pt solid #1a1a1a; margin: 0 0 6pt 0; }
+  section { margin-top: 9pt; }
+  h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: 1.2pt; border-bottom: 0.75pt solid #1a1a1a; padding-bottom: 2pt; margin-bottom: 6pt; font-weight: 600; }
+  .entry { margin-bottom: 7pt; page-break-inside: avoid; }
+  .entry-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .entry-head .left { font-weight: 600; font-size: 10.5pt; }
+  .entry-head .right { font-size: 9.5pt; font-style: italic; white-space: nowrap; }
+  .entry-sub { font-style: italic; font-size: 10pt; }
+  ul { list-style: disc; margin-left: 14pt; }
+  li { margin-bottom: 2pt; }
+  .skills-line { margin-bottom: 3pt; }
+  .skills-line b { font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>{{ name }}</h1>
+    {% if title %}<div class="title">{{ title }}</div>{% endif %}
+    <div class="contact">
+      {% if email %}<span>{{ email }}</span>{% endif %}
+      {% if phone %}<span>{{ phone }}</span>{% endif %}
+      {% if location %}<span>{{ location }}</span>{% endif %}
+      {% if links.linkedin %}<span>{{ links.linkedin }}</span>{% endif %}
+      {% if links.github %}<span>{{ links.github }}</span>{% endif %}
+      {% if links.portfolio %}<span>{{ links.portfolio }}</span>{% endif %}
+    </div>
+  </div>
+
+  {% if summary %}
+  <section><h2>Professional Summary</h2><p>{{ summary }}</p></section>
+  {% endif %}
+
+  {% if experience %}
+  <section>
+    <h2>Professional Experience</h2>
+    <div class="rule"></div>
+    {% for e in experience %}
+    <div class="entry">
+      <div class="entry-head">
+        <span class="left">{{ e.company }}{% if e.location %}, {{ e.location }}{% endif %}</span>
+        <span class="right">{% if e.start %}{{ e.start }} &ndash; {{ e.end or "Present" }}{% endif %}</span>
+      </div>
+      <div class="entry-sub">{{ e.role }}</div>
+      {% if e.bullets %}<ul>{% for b in e.bullets %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if education %}
+  <section>
+    <h2>Education</h2>
+    <div class="rule"></div>
+    {% for ed in education %}
+    <div class="entry">
+      <div class="entry-head">
+        <span class="left">{{ ed.institution }}</span>
+        <span class="right">{% if ed.start %}{{ ed.start }} &ndash; {{ ed.end }}{% endif %}</span>
+      </div>
+      <div class="entry-sub">{{ ed.degree }}{% if ed.details %} &mdash; {{ ed.details }}{% endif %}</div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if skills %}
+  <section>
+    <h2>Skills</h2>
+    <div class="rule"></div>
+    {% for g in skills %}
+    <div class="skills-line"><b>{{ g.category }}:</b> {{ g['items'] | map(attribute='name') | join(", ") }}</div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if certifications %}
+  <section><h2>Certifications</h2><div class="rule"></div><ul>{% for c in certifications %}<li>{{ c }}</li>{% endfor %}</ul></section>
+  {% endif %}
+
+  {% if projects %}
+  <section>
+    <h2>Selected Projects</h2>
+    <div class="rule"></div>
+    {% for p in projects %}
+    <div class="entry">
+      <div class="entry-head"><span class="left">{{ p.name }}</span>{% if p.link %}<span class="right">{{ p.link }}</span>{% endif %}</div>
+      {% if p.description %}<p>{{ p.description }}</p>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+</body>
+</html>

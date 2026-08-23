@@ -383,7 +383,17 @@ async def _try_react_loop(
 
         # Build tool schemas — least-privilege: only offer tools the agent is explicitly allowed (OWASP LLM06/PATI)
         declared = {t.name for t in getattr(agent, "tools", []) or []}
-        ordered = [td for td in ALL_TOOLS.values() if td.name in declared][:12]
+        ordered = [td for td in ALL_TOOLS.values() if td.name in declared]
+        # Offer MCP-bridged tools (workspace ownership is enforced at call time)
+        try:
+            from ..tools.executor import dynamic_tool_definitions
+
+            for name, mcp_td in dynamic_tool_definitions().items():
+                if name not in declared:
+                    ordered.append(mcp_td)
+        except Exception:  # noqa: BLE001 - bridging must never break the loop
+            pass
+        ordered = ordered[:12]
         if not ordered:
             return None
         agent_allowed_scopes = [td.required_scope for td in ordered]
@@ -460,8 +470,9 @@ async def _try_react_loop(
                     result = {"status": "error", "tool": tname, "result": f"Permission denied: scope {td.required_scope} not allowed for agent {agent_name}"}
                 else:
                     # Approval gate for high-risk writes — fail closed, require human (OWASP LLM06 excessive autonomy)
-                    APPROVAL_GATED_TOOLS = {"create_github_issue", "send_slack_message", "create_calendar_event", "draft_email", "rename_file", "move_file", "categorize_document", "create_entity", "merge_entities"}
-                    if tname in APPROVAL_GATED_TOOLS:
+                    from ..tools.executor import approval_gated_tools
+
+                    if tname in approval_gated_tools():
                         logger.info(f"ReAct: tool '{tname}' requires approval — not auto-executing")
                         result = {"status": "error", "tool": tname, "result": f"Approval required for {tname} — awaiting user approval", "requires_approval": True}
                     else:

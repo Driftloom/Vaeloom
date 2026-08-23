@@ -18,6 +18,8 @@ _SENSITIVE_CONFIG_FIELDS: dict[str, list[str]] = {
     "rest": ["authToken", "apiKey"],
     "graphql": ["authToken", "apiKey"],
     "file": [],
+    # MCP: secrets live inside config.env (per-key encryption, see below)
+    "mcp": [],
 }
 
 
@@ -66,6 +68,13 @@ class ConnectorExtService:
             raise HTTPException(400, "connectionString is required for database connectors")
         if conn_type == "file" and not config.get("path"):
             raise HTTPException(400, "path is required for file connectors")
+        if conn_type == "mcp":
+            from .mcp_client_service import McpConfigError, validate_mcp_config
+
+            try:
+                validate_mcp_config(config)
+            except McpConfigError as e:
+                raise HTTPException(400, f"Invalid MCP config: {e}")
 
     async def list_all(self, page: int, page_size: int, type_filter: str | None, tenant_id: str | None, db: AsyncSession = None):
         stmt = select(Connector)
@@ -113,6 +122,7 @@ class ConnectorExtService:
         if dto.name is not None:
             connector.name = dto.name
         if dto.config is not None:
+            self._validate_config(connector.type, dict(dto.config))
             config = dict(dto.config)
             self._encrypt_config(config, connector.type)
             connector.config = config
@@ -150,6 +160,12 @@ class ConnectorExtService:
         for field in sensitive_fields:
             if field in config and config[field] and isinstance(config[field], str):
                 config[field] = self._encrypt_credential(config[field])
+        if conn_type == "mcp":
+            env = config.get("env")
+            if isinstance(env, dict):
+                for k, v in env.items():
+                    if isinstance(v, str):
+                        env[k] = self._encrypt_credential(v)
 
     def _decrypt_config(self, config: dict, conn_type: str) -> None:
         """Decrypt sensitive fields in the config dict in-place."""
@@ -158,6 +174,12 @@ class ConnectorExtService:
             if field in config and config[field] and isinstance(config[field], str):
                 if is_encrypted(config[field]):
                     config[field] = self._decrypt_credential(config[field])
+        if conn_type == "mcp":
+            env = config.get("env")
+            if isinstance(env, dict):
+                for k, v in env.items():
+                    if isinstance(v, str) and is_encrypted(v):
+                        env[k] = self._decrypt_credential(v)
 
     async def remove(self, connector_id: uuid.UUID, tenant_id: str | None, db: AsyncSession = None):
         connector = await self.get(connector_id, tenant_id, db)
@@ -202,6 +224,10 @@ class ConnectorExtService:
 
     async def test_connection(self, connector_id: uuid.UUID, tenant_id: str | None, db: AsyncSession = None):
         connector = await self.get(connector_id, tenant_id, db)
+        if connector.type == "mcp":
+            from .mcp_client_service import mcp_client_service
+
+            return await mcp_client_service.test_connection(connector_id, tenant_id, db)
         # Decrypt config for connection test
         config = dict(connector.config) if connector.config else {}
         self._decrypt_config(config, connector.type)

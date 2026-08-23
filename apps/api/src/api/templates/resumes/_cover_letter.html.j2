@@ -1,0 +1,48 @@
+{# Cover letter — adopts the typography/header branding of the selected resume template #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 20mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: {{ template.font_stack }}; color: #1f2937; font-size: 10.5pt; line-height: 1.6; }
+  .header { border-bottom: 2pt solid {{ template.accent_color }}; padding-bottom: 8pt; margin-bottom: 18pt;
+            display: flex; justify-content: space-between; align-items: baseline; }
+  .header h1 { font-size: 17pt; color: #111; letter-spacing: 0.5pt; }
+  .header .title { color: {{ template.accent_color }}; font-size: 10pt; margin-top: 1pt; }
+  .contact { text-align: right; font-size: 9pt; color: #6b7280; line-height: 1.5; }
+  .meta { font-size: 10pt; color: #374151; margin-bottom: 14pt; line-height: 1.7; }
+  .salutation { margin-bottom: 10pt; font-weight: 500; }
+  p.body-par { margin-bottom: 10pt; text-align: justify; }
+  .closing { margin-top: 16pt; }
+  .signature { margin-top: 24pt; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>{{ name }}</h1>
+      {% if title %}<div class="title">{{ title }}</div>{% endif %}
+    </div>
+    <div class="contact">
+      {% if email %}{{ email }}<br>{% endif %}
+      {% if phone %}{{ phone }}<br>{% endif %}
+      {% if location %}{{ location }}{% endif %}
+    </div>
+  </div>
+
+  <div class="meta">
+    {% if recipient %}<div>{{ recipient }}</div>{% endif %}
+    {% if company %}<div>{% if role %}Re: {{ role }}{% else %}{{ company }}{% endif %}
+      {%- if role and company %}, {{ company }}{% endif %}</div>{% endif %}
+  </div>
+
+  <div class="salutation">Dear {% if recipient %}{{ recipient }}{% elif company %}Hiring Team at {{ company }}{% else %}Hiring Manager{% endif %},</div>
+
+  {% for p in paragraphs %}<p class="body-par">{{ p }}</p>{% endfor %}
+
+  <div class="closing">Sincerely,</div>
+  <div class="signature">{{ name }}</div>
+</body>
+</html>

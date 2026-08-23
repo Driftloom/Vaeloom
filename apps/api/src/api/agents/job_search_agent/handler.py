@@ -30,6 +30,9 @@ class JobSearchAgent(BaseAgent):
     mission = "Search connected platforms, rank against memory, return shortlist"
     tools = [
         Tool(name="search_jobs", description="Search job boards"),
+        Tool(name="browse_job_page", description="Open a job posting URL and extract structured requirements"),
+        Tool(name="verify_application_link", description="Check an application URL is live before applying"),
+        Tool(name="scrape_company_insights", description="Company culture, news, interview questions, tech stack"),
         Tool(name="search_documents", description="Search career memory"),
         Tool(name="query_graph", description="Query career knowledge graph"),
     ]

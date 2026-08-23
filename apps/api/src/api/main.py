@@ -140,8 +140,38 @@ async def lifespan(app: FastAPI):
         logger.info("Background daemon started")
     except Exception as e:
         logger.warning(f"Background daemon failed to start (non-fatal): {e}")
+
+    # ── MCP bridge warm-up (fire-and-forget, never blocks boot) ──────
+    import asyncio as _asyncio
+
+    def _spawn_mcp_warmup():
+        async def _warm():
+            from sqlalchemy import select as _select
+
+            from .database import async_session_factory
+            from .models.schema import Connector
+            from .services.mcp_client_service import mcp_client_service
+
+            async with async_session_factory() as session:
+                rows = await session.execute(_select(Connector).where(Connector.type == "mcp"))
+                for c in rows.scalars():
+                    try:
+                        names = await mcp_client_service.bridge_connector_tools(c.id, None, session)
+                        logger.info("MCP bridge ready: %s → %d tools", c.name, len(names))
+                    except Exception as e:  # noqa: BLE001 - one bad server must not block others
+                        logger.warning("MCP bridge skipped for %s: %s", c.name, e)
+
+        return _asyncio.create_task(_warm())
+
+    _mcp_task = None
+    try:
+        _mcp_task = _spawn_mcp_warmup()
+    except Exception as e:
+        logger.warning(f"MCP bridge warm-up failed to schedule (non-fatal): {e}")
     yield
     # ── Stop background daemon ──────────────────────────────────────
+    if _mcp_task:
+        _mcp_task.cancel()
     try:
         from .infrastructure.background_daemon import stop_background_daemon
         stop_background_daemon()

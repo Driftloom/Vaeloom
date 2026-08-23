@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     # ReAct (LLM-driven dynamic tool calling) is opt-in — static dispatch stays
     # the deterministic primary path. Enable per environment via AGENT_REACT_ENABLED=1
     agent_react_enabled: bool = False
+    # Browser/scraping tools (browse_job_page etc.) — network-heavy fetches are
+    # quota-limited per workspace (sliding hour window).
+    browser_tools_enabled: bool = True
+    scrape_quota_per_hour: int = 20
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 

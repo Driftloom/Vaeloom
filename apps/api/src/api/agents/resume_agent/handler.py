@@ -3,6 +3,7 @@ Resume Agent — build, maintain, and optimize the master resume.
 Never fabricates; every claim traces to a source. Asks when uncertain.
 """
 import logging
+from copy import deepcopy
 from typing import Any
 
 from pydantic import BaseModel
@@ -153,3 +154,60 @@ class ResumeAgent(BaseAgent):
         except Exception as e:
             logger.warning(f"LLM bullet generation failed: {e}")
             return f"{achievement} at {company} as {role}"
+
+    async def tailor_content(self, content: dict[str, Any], target_jd: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Rewrite experience bullets of a canonical resume-content dict to align
+        with a target job description. Never fabricates: rewrites existing
+        claims only; falls back to original bullets when the LLM is unavailable.
+        Returns (tailored_content, meta).
+        """
+        from api.services.resume_templates import resume_templates
+
+        tailored = deepcopy(content or {})
+        rewritten = 0
+        for entry in tailored.get("experience") or []:
+            if not isinstance(entry, dict):
+                continue
+            new_bullets: list[str] = []
+            for b in entry.get("bullets") or []:
+                text = b if isinstance(b, str) else (b.get("text") or "")
+                if not text:
+                    continue
+                new_text = await self._llm_tailor_bullet(text, target_jd)
+                if new_text != text:
+                    rewritten += 1
+                new_bullets.append(new_text)
+            if new_bullets:
+                entry["bullets"] = new_bullets
+
+        suggested_template = resume_templates.suggest_template(
+            target_role="", industry=target_jd[:600]
+        )
+        meta = {
+            "bullets_rewritten": rewritten,
+            "suggested_template": suggested_template,
+            "mode": "llm" if settings.llm_api_key else "passthrough",
+        }
+        return tailored, meta
+
+    async def _llm_tailor_bullet(self, bullet: str, target_jd: str) -> str:
+        if not settings.llm_api_key:
+            return bullet
+        try:
+            response = await llm_service.generate_completion([
+                {"role": "system", "content": (
+                    "You are an expert resume writer. Rewrite the given resume bullet "
+                    "so its wording aligns with the target job description vocabulary. "
+                    "STRICT RULES: never invent metrics, tools, or achievements not "
+                    "present in the original bullet; keep it one sentence; keep XYZ "
+                    "format (Accomplished X by doing Y, resulting in Z). Return ONLY "
+                    "the rewritten bullet text."
+                )},
+                {"role": "user", "content": f"Target job description:\n{target_jd[:2500]}\n\nResume bullet:\n{bullet}"},
+            ], temperature=0.4, max_tokens=120)
+            rewritten = response["content"].strip().strip('"')
+            return rewritten or bullet
+        except Exception as e:
+            logger.warning(f"LLM bullet tailoring failed: {e}")
+            return bullet

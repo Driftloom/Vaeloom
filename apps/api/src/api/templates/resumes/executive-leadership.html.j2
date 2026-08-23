@@ -1,0 +1,94 @@
+{# Executive Leadership — navy accents, leadership summary highlight box #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 16mm 18mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: {{ template.font_stack }}; color: #1f2937; font-size: 10pt; line-height: 1.5; }
+  .header { text-align: center; border-bottom: 2.5pt solid {{ template.accent_color }}; padding-bottom: 8pt; }
+  .header h1 { font-size: 20pt; font-weight: 700; color: #111827; letter-spacing: 0.5pt; }
+  .header .title { font-size: 11.5pt; color: {{ template.accent_color }}; margin-top: 2pt; font-family: Lato, 'Segoe UI', sans-serif; }
+  .contact { margin-top: 5pt; font-size: 9pt; color: #4b5563; font-family: Lato, 'Segoe UI', sans-serif; }
+  .contact span { margin: 0 6pt; }
+  .summary-box { background: #f0f4f8; border-left: 3.5pt solid {{ template.accent_color }};
+                 padding: 8pt 12pt; margin-top: 10pt; page-break-inside: avoid; }
+  .summary-box .label { font-size: 9pt; text-transform: uppercase; letter-spacing: 1.5pt;
+                        color: {{ template.accent_color }}; font-weight: 700; margin-bottom: 3pt; font-family: Lato, 'Segoe UI', sans-serif; }
+  section { margin-top: 10pt; }
+  h2 { font-size: 11pt; color: {{ template.accent_color }}; text-transform: uppercase; letter-spacing: 1.2pt;
+       border-bottom: 0.75pt solid #cbd5e1; padding-bottom: 2.5pt; margin-bottom: 7pt; font-weight: 700; font-family: Lato, 'Segoe UI', sans-serif; }
+  .entry { margin-bottom: 8pt; page-break-inside: avoid; }
+  .entry-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .entry-head .left { font-weight: 700; font-size: 10.5pt; color: #111827; }
+  .entry-head .right { font-size: 9pt; color: #64748b; white-space: nowrap; }
+  .entry-sub { color: {{ template.accent_color }}; font-size: 10pt; margin-top: 1pt; }
+  ul { list-style: none; margin-top: 3pt; }
+  li { position: relative; padding-left: 13pt; margin-bottom: 2.5pt; }
+  li::before { content: "—"; position: absolute; left: 0; color: {{ template.accent_color }}; }
+  .skills-line b { font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>{{ name }}</h1>
+    {% if title %}<div class="title">{{ title }}</div>{% endif %}
+    <div class="contact">
+      {% if email %}<span>{{ email }}</span>{% endif %}
+      {% if phone %}<span>{{ phone }}</span>{% endif %}
+      {% if location %}<span>{{ location }}</span>{% endif %}
+      {% if links.linkedin %}<span>{{ links.linkedin }}</span>{% endif %}
+    </div>
+  </div>
+
+  {% if summary %}
+  <div class="summary-box">
+    <div class="label">Executive Summary</div>
+    <p>{{ summary }}</p>
+  </div>
+  {% endif %}
+
+  {% if experience %}
+  <section>
+    <h2>Leadership Experience</h2>
+    {% for e in experience %}
+    <div class="entry">
+      <div class="entry-head">
+        <span class="left">{{ e.company }}{% if e.location %}, {{ e.location }}{% endif %}</span>
+        <span class="right">{% if e.start %}{{ e.start }} &ndash; {{ e.end or "Present" }}{% endif %}</span>
+      </div>
+      <div class="entry-sub">{{ e.role }}</div>
+      {% if e.bullets %}<ul>{% for b in e.bullets %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if skills %}
+  <section>
+    <h2>Core Competencies</h2>
+    {% for g in skills %}<div class="skills-line"><b>{{ g.category }}:</b> {{ g['items'] | map(attribute='name') | join(" &middot; ") }}</div>{% endfor %}
+  </section>
+  {% endif %}
+
+  {% if education %}
+  <section>
+    <h2>Education</h2>
+    {% for ed in education %}
+    <div class="entry">
+      <div class="entry-head">
+        <span class="left">{{ ed.institution }}</span>
+        <span class="right">{% if ed.start %}{{ ed.start }} &ndash; {{ ed.end }}{% endif %}</span>
+      </div>
+      <div class="entry-sub">{{ ed.degree }}{% if ed.details %} &mdash; {{ ed.details }}{% endif %}</div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if certifications %}
+  <section><h2>Board &amp; Certifications</h2><ul>{% for c in certifications %}<li>{{ c }}</li>{% endfor %}</ul></section>
+  {% endif %}
+</body>
+</html>

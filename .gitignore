@@ -139,3 +139,12 @@ seed_output/
 # Misc
 *.tsbuildinfo
 .eslintcache
+
+# SQLite WAL sidecar files
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+
+# Next.js generated declaration
+next-env.d.ts

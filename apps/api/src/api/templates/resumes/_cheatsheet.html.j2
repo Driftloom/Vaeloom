@@ -1,0 +1,68 @@
+{# Interview cheat-sheet — one-page condensed prep document #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 12mm 14mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Helvetica, Arial, sans-serif; color: #1f2937; font-size: 9pt; line-height: 1.45; }
+  .header { background: #111827; color: #f9fafb; padding: 10pt 14pt; border-radius: 4pt; margin-bottom: 10pt; }
+  .header h1 { font-size: 15pt; }
+  .header .sub { font-size: 9.5pt; color: #9ca3af; margin-top: 2pt; }
+  section { margin-bottom: 10pt; page-break-inside: avoid; }
+  h2 { font-size: 10pt; text-transform: uppercase; letter-spacing: 1.2pt; color: #2563eb;
+       border-bottom: 0.75pt solid #dbeafe; padding-bottom: 2pt; margin-bottom: 5pt; }
+  ul { list-style: none; }
+  li { position: relative; padding-left: 11pt; margin-bottom: 2.5pt; }
+  li::before { content: "•"; position: absolute; left: 0; color: #2563eb; }
+  .star { border-left: 2.5pt solid #2563eb; padding: 4pt 8pt; margin-bottom: 6pt; background: #f8fafc; }
+  .star b { display: block; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.6pt; color: #334155; margin-bottom: 2pt; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Interview Cheat-Sheet{% if company_intel.company %} — {{ company_intel.company }}{% endif %}</h1>
+    {% if company_intel.role %}<div class="sub">Target role: {{ company_intel.role }}</div>{% endif %}
+  </div>
+
+  {% if company_intel %}
+  <section>
+    <h2>Company Intel</h2>
+    <ul>
+      {% for k, v in company_intel.items() %}{% if k != 'company' and k != 'role' and v %}
+      <li><b>{{ k | replace('_', ' ') | title }}:</b> {{ v }}</li>{% endif %}{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if star_stories %}
+  <section>
+    <h2>Your STAR Stories</h2>
+    {% for s in star_stories %}
+    <div class="star">
+      <b>{{ s.competency or ("Story " + loop.index|string) }}</b>
+      <b>Situation:</b> {{ s.situation }}<br>
+      <b>Task:</b> {{ s.task }}<br>
+      <b>Action:</b> {{ s.action }}<br>
+      <b>Result:</b> {{ s.result }}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if questions_to_ask %}
+  <section>
+    <h2>Questions To Ask</h2>
+    <ul>{% for q in questions_to_ask %}<li>{{ q }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  {% if skills %}
+  <section>
+    <h2>Skills To Weave In</h2>
+    <p>{% for g in skills %}{{ g['items'] | map(attribute='name') | join(", ") }}{% if not loop.last %}; {% endif %}{% endfor %}</p>
+  </section>
+  {% endif %}
+</body>
+</html>

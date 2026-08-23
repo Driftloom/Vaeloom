@@ -27,6 +27,8 @@ class ApplicationAgent(BaseAgent):
     tools = [
         Tool(name="search_documents", description="Search career documents"),
         Tool(name="query_graph", description="Query career knowledge graph"),
+        Tool(name="verify_application_link", description="Validate the application URL is live before submitting"),
+        Tool(name="scrape_company_insights", description="Company intel for tailored applications and interviews"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["career", "timeline"],
