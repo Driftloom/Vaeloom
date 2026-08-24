@@ -50,7 +50,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 # Memory-friendly: 4 workers (each ~300MB, total ~1.2GB). -n auto (16) ≈ 4-5GB and can OOM on 16GB laptops.
 # Use --dist loadfile only for large suites if you want file-level grouping; for 2-file small runs it can be slower.
-addopts = "-n 4"
+addopts = "-n 4 --dist loadfile --timeout=120 --timeout-method=thread"
 
 [tool.ruff]
 target-version = "py312"

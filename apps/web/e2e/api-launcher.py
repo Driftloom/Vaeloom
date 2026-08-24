@@ -1,40 +1,15 @@
 """E2E/dev API launcher.
 
-Works around a known upstream incompatibility between
-prometheus-fastapi-instrumentator 7.1.0 and FastAPI >= 0.141
-(`_IncludedRouter has no attribute 'path'`) WITHOUT touching backend source.
-
-Patches the instrumentator's route-name helper defensively, then imports the
-real application. This file lives under apps/web/e2e so CI checkouts include
-it. Backend owners should fix the root cause (pin FastAPI < 0.141 or upgrade
-prometheus-fastapi-instrumentator) and delete this shim.
+Bootstraps missing SQLite tables (consent_records etc. — no model owns them)
+and seeds the deterministic e2e user inside the app lifespan. The historical
+prometheus-fastapi-instrumentator 7.1.0 / FastAPI 0.141 `_IncludedRouter`
+monkeypatch was removed after bumping pfi to >=8.0.1 (fixed upstream in
+v8.0.1, 2026-06-22). This file lives under apps/web/e2e so CI checkouts
+include it.
 """
 
 import os
 import sqlite3
-
-import prometheus_fastapi_instrumentator.routing as _prouting
-
-
-def _safe_get_route_name(request):  # type: ignore[no-untyped-def]
-    try:
-        return _prouting.get_route_name.__wrapped_original__(request)  # type: ignore[attr-defined]
-    except Exception:
-        return "unknown"
-
-
-# Wrap whatever implementation exists at import time.
-_original_get_route_name = _prouting.get_route_name
-
-
-def _patched_get_route_name(request):  # type: ignore[no-untyped-def]
-    try:
-        return _original_get_route_name(request)
-    except Exception:
-        return "unknown"
-
-
-_prouting.get_route_name = _patched_get_route_name
 
 
 # ── Raw-SQL table bootstrap ──────────────────────────────────────────────────

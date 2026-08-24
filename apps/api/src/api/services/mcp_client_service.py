@@ -38,7 +38,10 @@ CONNECT_TIMEOUT_S = 10.0
 # Shell interpreters are never allowed as MCP stdio commands — argv only.
 _DENIED_COMMANDS = {"sh", "bash", "dash", "zsh", "cmd", "cmd.exe", "powershell",
                     "powershell.exe", "pwsh", "pwsh.exe"}
-_SHELL_METACHARS = re.compile(r"[;&|`$><\n\r]")
+# P2-41: include cmd.exe-active metachars ^ % ! (batch-wrapper expansion)
+_SHELL_METACHARS = re.compile(r"[;&|`$><\n\r^%!]")
+_MAX_STRUCTURED_CHARS = 20_000
+_MAX_ARGS_CHARS = 20_000
 _NAME_SLUG_RE = re.compile(r"[^a-zA-Z0-9_-]")
 
 
@@ -253,6 +256,16 @@ class _McpClientService:
     # ── Invocation ────────────────────────────────────────────────────
     async def call_tool(self, connector_id, tool_name: str, arguments: dict | None,
                         tenant_id: str | None, db) -> dict:
+        # P2-42: bound arguments size to prevent context blowout
+        if arguments is not None:
+            import json as _json
+
+            try:
+                _args_json = _json.dumps(arguments, ensure_ascii=False)
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(400, f"Invalid MCP arguments: {exc}") from exc
+            if len(_args_json) > _MAX_ARGS_CHARS:
+                raise HTTPException(400, f"MCP arguments too large ({len(_args_json)} > {_MAX_ARGS_CHARS})")
         _data, cfg = await self._load_mcp_connector(connector_id, tenant_id, db)
 
         async def op(session):
@@ -283,11 +296,23 @@ class _McpClientService:
         is_error = bool(getattr(result, "isError", False))
         payload: dict[str, Any] = {
             "tool": tool_name,
-            "text": "\n".join(p for p in text_parts if p)[:20000],
+            "text": "\n".join(p for p in text_parts if p)[:_MAX_STRUCTURED_CHARS],
             "is_error": is_error,
         }
         if structured is not None:
-            payload["structured"] = structured
+            # P2-42: cap structuredContent to same budget as text
+            try:
+                import json as _json2
+
+                _s = _json2.dumps(structured, ensure_ascii=False)
+                if len(_s) > _MAX_STRUCTURED_CHARS:
+                    # Truncate and mark; keep as string to avoid broken JSON shape
+                    payload["structured"] = _s[:_MAX_STRUCTURED_CHARS] + "...[truncated]"
+                    payload["structured_truncated"] = True
+                else:
+                    payload["structured"] = structured
+            except Exception:
+                payload["structured"] = str(structured)[:_MAX_STRUCTURED_CHARS]
         return payload
 
     # ── Health ────────────────────────────────────────────────────────

@@ -143,21 +143,23 @@ export default function SignupPage() {
             </span>
           </p>
           <p className="text-lg text-text-muted max-w-md animate-slide-up stagger-1">
-            Join thousands who are transforming how they work with AI. Your memories, your agents,
-            your rules.
+            Private, agent-native memory for your work. Your data, your rules, your agents — ask
+            before they act.
           </p>
           <div className="grid grid-cols-3 gap-8 mt-12 animate-slide-up stagger-2">
             <div>
-              <div className="text-3xl font-bold text-text">10K+</div>
-              <div className="text-sm text-text-muted mt-1">Active users</div>
+              <div className="text-sm font-semibold text-text">Memory-first</div>
+              <div className="text-sm text-text-muted mt-1">
+                Long-term memory, not just chat history
+              </div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-text">8</div>
-              <div className="text-sm text-text-muted mt-1">AI Agents</div>
+              <div className="text-sm font-semibold text-text">Agent-native</div>
+              <div className="text-sm text-text-muted mt-1">Specialized agents, approval-gated</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-text">99.9%</div>
-              <div className="text-sm text-text-muted mt-1">Uptime</div>
+              <div className="text-sm font-semibold text-text">Private</div>
+              <div className="text-sm text-text-muted mt-1">Workspace-isolated, encrypted</div>
             </div>
           </div>
         </div>

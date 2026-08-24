@@ -47,14 +47,15 @@
 
 ## API — Test State
 
-- **2672 tests collected (2725 pass / 0 fail after 2026-08-23 zero-trust audit
-  of P1-P3; 4 skipped, 2 xfailed)** — security suite 233/233 (170 unique
+- **2731 tests collected (was 2672 on 2026-08-23; +59 from parallel track; full
+  suite currently has known xdist hang — see `.agents/findings/39`; new pipeline
+  suites 349/349 pass standalone)** — security suite 233/233 (170 unique
   de-duplicated; middleware/test_csrf duplicates security/test_csrf per
   zero-trust audit 2026-08-22 F-02; F-20/F-22 fixes 2026-08-22 do not change
   count); coverage **94% total** — see
-  `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`; OpenAPI **106
-  paths** (`docs/backend/openapi.yaml` — was 99, +7 resume document routes on
-  2026-08-23)
+  `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`; OpenAPI **110
+  paths** (`docs/backend/openapi.yaml` — was 106 on 2026-08-23, was 99; +4
+  since)
 - Python 3.12.13 (per `apps/api/.python-version` pinned via
   `uv python pin 3.12`; `.venv` managed by `uv`)
 - Tests use SQLite with mock backend (`tmp_path` per-test DB via `NullPool`);
@@ -127,13 +128,13 @@
 | 2.x Frontend API          | DONE   | PARTIAL → **MVP WIRED** | Typed client + 18+ pages with real API (verified 2026-08-22: all `workspace/[workspaceId]/*/page.tsx` have `api`/`fetch`/`swr`; only `connectors/page.spec.tsx` has mock for test); 7 previously mocked enterprise pages (admin, marketplace, feature-flags, developer, organizations, plus 2 legacy) now wired or gated behind `enterprise_routes_enabled=false` — MVP pages 100% wired |
 | 3.x Next.js pages         | DONE   | IMPLEMENTED             | loading.tsx, error.tsx, not-found.tsx (global + per-route)                                                                                                                                                                                                                                                                                                                               |
 | 4.x Enterprise auth       | DONE   | PARTIAL                 | SSO (Google/Microsoft) implemented; SAML is ENT-track `services/saml.py` real `signxml` but not wired to router (MVP dead per `saml.py:1`), RBAC is dependency injection helper, not middleware — see F-21                                                                                                                                                                               |
-| 5.x Observability         | DONE   | IMPLEMENTED             | OTel setup + correlation IDs work; Prometheus `/metrics` endpoint ACTIVE (main.py:167); FastAPI OTel auto-instrumentation ACTIVE (main.py:168)                                                                                                                                                                                                                                           |
+| 5.x Observability         | DONE   | IMPLEMENTED             | OTel setup + correlation IDs work; Prometheus `/metrics` endpoint ACTIVE (main.py); FastAPI OTel auto-instrumentation ACTIVE (main.py) — **pfi 7.1.0 + FastAPI 0.141.1 requires shim until upgrade (see `.agents/findings/37`)**                                                                                                                                                         |
 | 6.x Multi-tenancy         | DONE   | **42/42 RLS**           | TenantMiddleware now also sets `app.workspace_id` (from path/header) + `app.user_id` + `app.tenant_id` via `TenantContext` + `set_rls_session_vars` (`database.py:30`); RLS **42/42** (34 via 0010 +3 via 0019 +5 via 0020 2026-08-22 per user choice); GUCs all SET fail-closed                                                                                                         |
 | 7.x Agent hardening       | DONE   | IMPLEMENTED             | Circuit breaker, fallback policies, per-agent rate limits; approval gate now wired in orchestrator loop                                                                                                                                                                                                                                                                                  |
 | 8.x Performance           | DONE   | IMPLEMENTED             | SWR caching, route prefetching, image optimization, bundle analysis                                                                                                                                                                                                                                                                                                                      |
 | 9.x Security & Compliance | DONE   | PARTIAL                 | GDPR, API key rotation, data retention implemented; IP Allowlist middleware ALWAYS MOUNTED (main.py:188 no-op when empty) — was stale NOT MOUNTED claim fixed 2026-08-22 F-18; input sanitization designed (ADR-031)                                                                                                                                                                     |
-| 10.x Testing/QA           | DONE   | PARTIAL                 | 2557 pytest, 233 security (170 unique), 37 jest, 39 e2e real; testing/smoke/, security/, chaos/, fuzz/, visual-regression/ are EMPTY — coverage 94% + WCAG + perf not re-measured (EXC-P14-01..03, P15 owns)                                                                                                                                                                             |
-| 11.x Documentation        | DONE   | IMPLEMENTED             | 32 ADRs (ADR-001 through ADR-032), OpenAPI **99 paths** (`docs/backend/openapi.yaml`), onboarding guide, deployment/DR runbooks, API reference                                                                                                                                                                                                                                           |
+| 10.x Testing/QA           | DONE   | PARTIAL                 | 2731 pytest (was 2557; security 233/233 170 unique; full suite currently hangs — see finding 39), 34 jest, 60 e2e (24 gating + 36 visual) real; testing/smoke/, security/, chaos/, fuzz/ are EMPTY — coverage 94% + WCAG + perf not re-measured (EXC-P14-01..03, P15 owns)                                                                                                               |
+| 11.x Documentation        | DONE   | IMPLEMENTED             | 36 ADRs (ADR-001 through ADR-036), OpenAPI **110 paths** (`docs/backend/openapi.yaml`), onboarding guide, deployment/DR runbooks, API reference                                                                                                                                                                                                                                          |
 | 12.x Enterprise Polish    | DONE   | IMPLEMENTED             | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                                                                                                                                                                                                                                                                                          |
 
 ## Critical Config for Agent Sessions
@@ -167,8 +168,10 @@ pnpm dev:web
 
 ### Test Account
 
-- Email: `demo@vaeloom.app`
-- Password: `demo1234`
+- `demo@vaeloom.app` / `demo1234` — demo DB seed (not present on fresh DBs; sign
+  up if missing)
+- `audit@vaeloom.test` / `AuditPass123!` — auto-seeded for e2e via
+  `apps/web/e2e/api-launcher.py`
 - Or sign up at `localhost:3000/signup`
 
 ## Graphify Knowledge Graph
