@@ -121,8 +121,8 @@ importers:
   connectors/graphql:
     dependencies:
       axios:
-        specifier: ^1.7.0
-        version: 1.18.1
+        specifier: ^1.19.0
+        version: 1.19.0
     devDependencies:
       '@types/jest':
         specifier: ^29.5.0
@@ -138,7 +138,7 @@ importers:
         version: link:../../packages/tsconfig
       axios-mock-adapter:
         specifier: ^1.22.0
-        version: 1.22.0(axios@1.18.1)
+        version: 1.22.0(axios@1.19.0)
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@20.19.43)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3))
@@ -152,8 +152,8 @@ importers:
   connectors/mcp:
     dependencies:
       axios:
-        specifier: ^1.7.0
-        version: 1.18.1
+        specifier: ^1.19.0
+        version: 1.19.0
     devDependencies:
       '@types/jest':
         specifier: ^29.5.0
@@ -180,8 +180,8 @@ importers:
   connectors/rest:
     dependencies:
       axios:
-        specifier: ^1.7.0
-        version: 1.18.1
+        specifier: ^1.19.0
+        version: 1.19.0
     devDependencies:
       '@types/jest':
         specifier: ^29.5.0
@@ -197,7 +197,7 @@ importers:
         version: link:../../packages/tsconfig
       axios-mock-adapter:
         specifier: ^1.22.0
-        version: 1.22.0(axios@1.18.1)
+        version: 1.22.0(axios@1.19.0)
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@20.19.43)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3))
@@ -576,8 +576,8 @@ importers:
   sdk/typescript:
     dependencies:
       axios:
-        specifier: ^1.7.0
-        version: 1.18.1
+        specifier: ^1.19.0
+        version: 1.19.0
     devDependencies:
       '@vaeloom/eslint-config':
         specifier: workspace:*
@@ -2508,8 +2508,8 @@ packages:
     peerDependencies:
       axios: '>= 0.17.0'
 
-  axios@1.18.1:
-    resolution: {integrity: sha512-3nTvFlvpn9Zu/RkHUqtc7/+al4UpRW5az71ap5zccp6e8RAYEzhMTecX8Dz1wWDYrPpUoB1HAQEGEAEvUr7S9g==}
+  axios@1.19.0:
+    resolution: {integrity: sha512-ht/iuYZXEjFxLH/Hkezgd7m6JKlHHXEUSneaDz8uZe1Gj5QZtCnpyDsckvAiEnT89OEbCLmnte4R4sn7P0EKFw==}
 
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
@@ -3236,6 +3236,7 @@ packages:
   eslint@9.39.5:
     resolution: {integrity: sha512-DgZS62aPLXKlnxILS/AYCoRvHaZeXceIzlXPkkGGzJWSow1aEk0lbTlxUSlyjC8jcaKxAdOnTDz+o1JFSBsyjw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -7823,13 +7824,13 @@ snapshots:
 
   axe-core@4.13.0: {}
 
-  axios-mock-adapter@1.22.0(axios@1.18.1):
+  axios-mock-adapter@1.22.0(axios@1.19.0):
     dependencies:
-      axios: 1.18.1
+      axios: 1.19.0
       fast-deep-equal: 3.1.3
       is-buffer: 2.0.5
 
-  axios@1.18.1:
+  axios@1.19.0:
     dependencies:
       follow-redirects: 1.16.0
       form-data: 4.0.6
@@ -10488,7 +10489,7 @@ snapshots:
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.0-rc.46
       '@zkochan/js-yaml': 0.0.7
-      axios: 1.18.1
+      axios: 1.19.0
       chalk: 4.1.2
       cli-cursor: 3.1.0
       cli-spinners: 2.6.1
