@@ -1,7 +1,7 @@
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
-import { Resource } from '@opentelemetry/resources';
+import * as OtelResources from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 
@@ -29,13 +29,28 @@ export function startTracing(options: TracingOptions): NodeSDK | undefined {
     url: `${endpoint.replace(/\/$/, '')}/v1/traces`,
   });
 
-  const resource = new Resource({
+  // Compatible with both @opentelemetry/resources 1.x (class Resource) and 2.x (resourceFromAttributes)
+  const resourceFromAttrs = (
+    OtelResources as unknown as {
+      resourceFromAttributes?: (attrs: Record<string, unknown>) => unknown;
+    }
+  ).resourceFromAttributes;
+  const ResourceCtor = (
+    OtelResources as unknown as { Resource?: new (attrs: Record<string, unknown>) => unknown }
+  ).Resource;
+  const attrs = {
     [SemanticResourceAttributes.SERVICE_NAME]: options.serviceName,
     [SemanticResourceAttributes.SERVICE_VERSION]: process.env.SERVICE_VERSION ?? '0.1.0',
-  });
+  };
+  const resource: unknown =
+    typeof resourceFromAttrs === 'function'
+      ? resourceFromAttrs(attrs)
+      : ResourceCtor
+        ? new ResourceCtor(attrs)
+        : (attrs as unknown);
 
   sdk = new NodeSDK({
-    resource,
+    resource: resource as any,
     traceExporter: exporter,
     instrumentations: [new HttpInstrumentation(), new NestInstrumentation()],
   });

@@ -25,7 +25,7 @@ function isEnterpriseEnabled(): boolean {
 function groupLinks(workspaceId: string): NavGroup[] {
   const ws = (path: string) => `/workspace/${workspaceId}${path}`;
   const enableEnterprise = isEnterpriseEnabled();
-  // Build groups then filter enterprise if not enabled â€” honest gating for MVP (FW-017)
+  // Build groups then filter enterprise if not enabled — honest gating for MVP (FW-017)
   const allGroups: NavGroup[] = [
     {
       label: 'Assist',

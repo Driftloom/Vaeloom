@@ -897,7 +897,7 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
     yield {"event": "intent", "data": {"agent": request.agent_name, "request_id": str(request.id)}}
 
     for iteration in range(3):
-        logger.info(f"─── Stream Iteration {iteration + 1}/3 ───")
+        logger.info(f"--- Stream Iteration {iteration + 1}/3 ---")
 
         plan = await plan_phase(request, state)
         state.add_phase(f"plan_{iteration}", plan)
@@ -988,7 +988,7 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
     state = await load_or_create_state(request.id)
 
     for iteration in range(3):
-        logger.info(f"─── Iteration {iteration + 1}/3 ───")
+        logger.info(f"--- Iteration {iteration + 1}/3 ---")
 
         plan = await plan_phase(request, state)
         state.add_phase(f"plan_{iteration}", plan)

@@ -25,7 +25,7 @@ function formatDate(iso: string): string {
 
 function formatSize(bytes: unknown): string {
   const n = typeof bytes === 'number' ? bytes : Number(bytes ?? 0);
-  if (!n) return 'â€”';
+  if (!n) return '—';
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
@@ -284,7 +284,7 @@ export default function WorkspaceFilesPage() {
       toast({
         tone: 'success',
         title: 'Renamed (reversible)',
-        detail: `${oldPath} â†’ ${updated.path} â€” undo via History`,
+        detail: `${oldPath} → ${updated.path} — undo via History`,
       });
     } catch (err) {
       toast({
@@ -382,7 +382,7 @@ export default function WorkspaceFilesPage() {
   const actionLabel = (a: DocumentAction): string => {
     switch (actionType(a)) {
       case 'document_rename':
-        return `Renamed ${actionOldPath(a) ?? ''} â†’ ${actionNewPath(a) ?? ''}`;
+        return `Renamed ${actionOldPath(a) ?? ''} → ${actionNewPath(a) ?? ''}`;
       case 'document_archive':
         return 'Archived';
       case 'document_restore':
@@ -461,7 +461,7 @@ export default function WorkspaceFilesPage() {
             </div>
           )}
           {upload.phase === 'processing' && (
-            <p className="text-xs text-text-muted">Storing contentâ€¦</p>
+            <p className="text-xs text-text-muted">Storing content…</p>
           )}
           {upload.phase === 'error' && (
             <div className="flex items-center justify-between gap-3">
@@ -484,7 +484,7 @@ export default function WorkspaceFilesPage() {
             setSearchQuery(e.target.value);
             setPage(1);
           }}
-          placeholder="Search filesâ€¦"
+          placeholder="Search files…"
           aria-label="Search files by name"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-48"
         />
@@ -645,7 +645,7 @@ export default function WorkspaceFilesPage() {
               </div>
               <div className="flex items-center gap-2 text-xs text-text-muted">
                 <span>{formatSize(docMetaSize(doc))}</span>
-                <span>Â·</span>
+                <span>·</span>
                 <span>{formatDate(docCreatedAt(doc))}</span>
                 {Boolean(docDeletedAt(doc)) && (
                   <span className="rounded-full border border-border px-2 py-0.5">archived</span>
@@ -705,9 +705,9 @@ export default function WorkspaceFilesPage() {
           <div className="flex max-h-[70vh] flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
               <span className="font-mono uppercase">{viewer.type}</span>
-              <span>Â·</span>
+              <span>·</span>
               <span>{formatSize(docMetaSize(viewer))}</span>
-              <span>Â·</span>
+              <span>·</span>
               <span>{formatDate(docCreatedAt(viewer))}</span>
               <div className="ml-auto flex gap-2" onClick={(e) => e.stopPropagation()}>
                 <button
@@ -806,8 +806,8 @@ export default function WorkspaceFilesPage() {
             <DiffViewer oldText={renaming.path} newText={renameValue.trim()} />
           )}
           <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text-muted">
-            <span className="font-medium text-warning">Organization Agent suggestion</span> â€” this
-            rename is logged and reversible via <span className="font-mono">History â†’ Undo</span>.
+            <span className="font-medium text-warning">Organization Agent suggestion</span> — this
+            rename is logged and reversible via <span className="font-mono">History → Undo</span>.
             An approval record is created for traceability.
           </div>
           <div className="flex justify-end gap-2">
@@ -832,7 +832,7 @@ export default function WorkspaceFilesPage() {
       <Modal
         isOpen={Boolean(history)}
         onClose={() => setHistory(null)}
-        title={`History â€” ${history ? getFileName(history.path) : ''}`}
+        title={`History — ${history ? getFileName(history.path) : ''}`}
       >
         <div className="flex max-h-[60vh] flex-col gap-3 overflow-auto">
           {actionsLoading ? (
@@ -853,7 +853,7 @@ export default function WorkspaceFilesPage() {
                     <div>
                       <p className="text-sm font-medium text-text">{actionLabel(a)}</p>
                       <p className="text-xs text-text-muted">
-                        {new Date(actionCreatedAt(a)).toLocaleString()} Â·{' '}
+                        {new Date(actionCreatedAt(a)).toLocaleString()} ·{' '}
                         {undone ? 'undone' : actionType(a)}
                       </p>
                     </div>
@@ -863,7 +863,7 @@ export default function WorkspaceFilesPage() {
                         onClick={() => void handleUndo(a, history!)}
                         className="shrink-0 rounded-full border border-primary/40 px-3 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-40"
                       >
-                        {busyAction === a.id ? 'Undoingâ€¦' : 'Undo'}
+                        {busyAction === a.id ? 'Undoing…' : 'Undo'}
                       </button>
                     )}
                   </div>

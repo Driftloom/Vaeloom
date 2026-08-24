@@ -187,7 +187,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
       }
       const score = Math.min(100, Math.max(0, parseInt(match[1] ?? match[2] ?? '0', 10)));
       setAtsScores((m) => ({ ...m, [resume.id]: score }));
-      toast({ tone: 'success', title: 'ATS score', detail: `${score} â€” ${text.slice(0, 120)}` });
+      toast({ tone: 'success', title: 'ATS score', detail: `${score} — ${text.slice(0, 120)}` });
     } catch (err) {
       setAtsScores((m) => {
         const next = { ...m };
@@ -293,7 +293,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
     setDiffPair({
       oldText: renderContent(a.content as Record<string, unknown>),
       newText: renderContent(b.content as Record<string, unknown>),
-      title: `${a.variantType} v${a.version} â†’ ${b.variantType} v${b.version}`,
+      title: `${a.variantType} v${a.version} → ${b.variantType} v${b.version}`,
     });
   };
 
@@ -451,7 +451,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
                         )}
                         <span className="text-xs text-text-dim font-mono">
                           {stats.inferred
-                            ? 'user-confirmed vs inferred distinct â€” verify inferred lines'
+                            ? 'user-confirmed vs inferred distinct — verify inferred lines'
                             : 'all lines user-confirmed'}
                         </span>
                       </div>

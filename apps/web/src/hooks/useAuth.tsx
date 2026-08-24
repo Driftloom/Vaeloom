@@ -5,7 +5,7 @@
  *
  * Phase-01 found `useAuth()` was a plain hook whose consumers each ran their
  * own /auth/me fetch (workspace layout + TopNav in parallel, plus settings
- * and the landing page with separate cache keys) â€” 2-4 identical requests per
+ * and the landing page with separate cache keys) — 2-4 identical requests per
  * screen load. The same state machine now lives in one provider mounted at
  * the app root; `useAuth()` keeps its exact previous signature so consumers
  * are unchanged.

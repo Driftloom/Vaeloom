@@ -68,7 +68,7 @@ export const metadata: Metadata = {
         url: `${siteUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'Vaeloom â€” Enterprise AI operating system',
+        alt: 'Vaeloom — Enterprise AI operating system',
       },
     ],
   },
@@ -102,7 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <head>
-        {/* Pre-paint theme resolution â€” prevents flash of wrong theme. The
+        {/* Pre-paint theme resolution — prevents flash of wrong theme. The
             brand default is dark; stored user choice or OS light preference
             is applied before first paint. */}
         <script

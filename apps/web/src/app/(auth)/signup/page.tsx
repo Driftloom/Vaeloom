@@ -102,7 +102,18 @@ export default function SignupPage() {
       }
       router.push('/');
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Something went wrong';
+      let message = 'Something went wrong';
+      if (err instanceof ApiError) {
+        message = err.message;
+        if (err.code) message += ` (${err.code})`;
+        if (err.status === 409)
+          message = `Account already exists. Try signing in. (${err.message})`;
+        else if (err.status === 422) message = `Validation failed: ${err.message}`;
+        else if (err.status === 400) message = `Bad request: ${err.message}`;
+        if (err.correlationId) message += ` [${err.correlationId.slice(0, 8)}]`;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
       setErrors({ form: message });
     } finally {
       setSubmitting(false);
@@ -197,6 +208,7 @@ export default function SignupPage() {
                   onBlur={() => setFocusedField(null)}
                   placeholder="Your name"
                   autoComplete="name"
+                  suppressHydrationWarning
                   className={`input-field ${focusedField === 'name' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
                 />
               </div>
@@ -214,6 +226,7 @@ export default function SignupPage() {
                   onBlur={() => setFocusedField(null)}
                   placeholder="you@example.com"
                   autoComplete="email"
+                  suppressHydrationWarning
                   className={`input-field ${errors.email ? 'input-error' : ''} ${focusedField === 'email' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
                 />
                 {errors.email && (
@@ -236,6 +249,7 @@ export default function SignupPage() {
                   onBlur={() => setFocusedField(null)}
                   placeholder="At least 8 characters"
                   autoComplete="new-password"
+                  suppressHydrationWarning
                   className={`input-field ${errors.password ? 'input-error' : ''} ${focusedField === 'password' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
                 />
                 {password && (
@@ -280,6 +294,7 @@ export default function SignupPage() {
                   onBlur={() => setFocusedField(null)}
                   placeholder="Repeat your password"
                   autoComplete="new-password"
+                  suppressHydrationWarning
                   className={`input-field ${errors.confirmPassword ? 'input-error' : ''} ${focusedField === 'confirm' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
                 />
                 {errors.confirmPassword && (
@@ -299,6 +314,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={submitting}
+                suppressHydrationWarning
                 className="w-full btn-primary flex items-center justify-center gap-2 py-3.5 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
@@ -339,6 +355,7 @@ export default function SignupPage() {
               <button
                 type="button"
                 onClick={() => handleSSO('google')}
+                suppressHydrationWarning
                 className="btn-secondary flex items-center justify-center gap-2 py-2.5"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -364,6 +381,7 @@ export default function SignupPage() {
               <button
                 type="button"
                 onClick={() => handleSSO('github')}
+                suppressHydrationWarning
                 className="btn-secondary flex items-center justify-center gap-2 py-2.5"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">

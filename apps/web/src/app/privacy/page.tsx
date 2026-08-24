@@ -4,8 +4,7 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-background text-text px-6 py-12 max-w-3xl mx-auto">
       <h1 className="text-3xl font-display font-medium mb-4">Privacy Policy</h1>
       <p className="text-text-muted text-sm mb-6">
-        Last updated: 2026-08-21. Placeholder â€” replace with counsel-reviewed policy before
-        launch.
+        Last updated: 2026-08-21. Placeholder — replace with counsel-reviewed policy before launch.
       </p>
       <div className="space-y-4 text-sm text-text-muted leading-relaxed">
         <p>

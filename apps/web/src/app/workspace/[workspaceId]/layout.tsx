@@ -54,7 +54,7 @@ export default function WorkspaceLayout({
   if (loading || !isAuthenticated || !workspaceId) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <LoadingSpinner size="lg" text="Loading workspaceâ€¦" />
+        <LoadingSpinner size="lg" text="Loading workspace…" />
       </div>
     );
   }

@@ -13,7 +13,7 @@ import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
 
 function formatTimestamp(iso: string | null | undefined): string {
-  if (!iso) return 'â€”';
+  if (!iso) return '—';
   const date = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -44,7 +44,7 @@ export default function HistoryPage() {
   const { toast } = useToast();
   const [active, setActive] = useState(() => searchParams.get('tab') ?? 'documents');
   const [busyUndo, setBusyUndo] = useState<string | null>(null);
-  // Odissian polish: paginated history â€” avoids rendering 100+ cards at once
+  // Odissian polish: paginated history — avoids rendering 100+ cards at once
   const PAGE_SIZE = 15;
   const [docPage, setDocPage] = useState(1);
   const [agentPage, setAgentPage] = useState(1);
@@ -304,7 +304,7 @@ export default function HistoryPage() {
         ) : docActions.length === 0 ? (
           <EmptyState
             title="No document changes yet"
-            description="Rename or archive a file from the Files page â€” changes appear here with before/after diffs and undo."
+            description="Rename or archive a file from the Files page — changes appear here with before/after diffs and undo."
           />
         ) : filteredDocs.length === 0 ? (
           <EmptyState
@@ -360,7 +360,7 @@ export default function HistoryPage() {
                           onClick={() => handleUndoDoc(a)}
                           className="rounded-full border border-primary/40 px-3 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-40"
                         >
-                          {busyUndo === a.id ? 'Undoingâ€¦' : 'Undo'}
+                          {busyUndo === a.id ? 'Undoing…' : 'Undo'}
                         </button>
                       </div>
                     )}
@@ -412,7 +412,7 @@ export default function HistoryPage() {
         ) : !agentActions || agentActions.length === 0 ? (
           <EmptyState
             title="No agent actions yet"
-            description="Run an agent from the workspace â€” executions appear here with input/output, approval state and duration."
+            description="Run an agent from the workspace — executions appear here with input/output, approval state and duration."
           />
         ) : filteredAgents.length === 0 ? (
           <EmptyState
@@ -448,12 +448,12 @@ export default function HistoryPage() {
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded bg-surface-hover border border-border p-2 overflow-auto">
                       <p className="font-mono text-text-dim mb-1">Input</p>
-                      <p className="font-mono text-text break-all">{a.inputRef ?? 'â€”'}</p>
+                      <p className="font-mono text-text break-all">{a.inputRef ?? '—'}</p>
                     </div>
                     <div className="rounded bg-surface-hover border border-border p-2 overflow-auto">
                       <p className="font-mono text-text-dim mb-1">Output</p>
                       <p className="font-mono text-text break-all">
-                        {a.outputRef ?? a.error ?? 'â€”'}
+                        {a.outputRef ?? a.error ?? '—'}
                       </p>
                     </div>
                   </div>

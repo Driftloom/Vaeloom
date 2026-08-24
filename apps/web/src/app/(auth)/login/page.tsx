@@ -41,7 +41,7 @@ function LoginForm() {
       toast({
         tone: 'info',
         title: `${provider} SSO`,
-        detail: 'No auth URL returned â€” check SSO provider configuration.',
+        detail: 'No auth URL returned — check SSO provider configuration.',
       });
     } catch (err) {
       const msg =

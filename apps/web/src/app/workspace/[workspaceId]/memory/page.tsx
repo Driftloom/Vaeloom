@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 function formatRelative(iso: string | null | undefined) {
-  if (!iso) return 'â€”';
+  if (!iso) return '—';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'Just now';
@@ -119,8 +119,8 @@ export default function MemoryGraphPage() {
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-surface border border-border px-3 py-1 text-xs text-text-muted">
-            {feedData?.stats?.totalMemories ?? memItems.length} memories â€¢{' '}
-            {feedData?.stats?.superseded ?? 0} superseded â€¢ {feedData?.stats?.agentCreated ?? 0}{' '}
+            {feedData?.stats?.totalMemories ?? memItems.length} memories •{' '}
+            {feedData?.stats?.superseded ?? 0} superseded • {feedData?.stats?.agentCreated ?? 0}{' '}
             agent-created
           </span>
           <button onClick={() => mutateFeed()} className="btn-secondary text-xs !px-3 !py-1.5">
@@ -256,8 +256,8 @@ export default function MemoryGraphPage() {
           </div>
         )}
         <p className="text-xs text-text-dim mt-3">
-          Provenance: each memory links source document â†’ embedding â†’ graph node â†’ agent
-          action. Superseded versions stay visible; corrections create new rows with{' '}
+          Provenance: each memory links source document → embedding → graph node → agent action.
+          Superseded versions stay visible; corrections create new rows with{' '}
           <span className="font-mono">supersedes_id</span>.
         </p>
       </TabPanel>
@@ -339,7 +339,7 @@ export default function MemoryGraphPage() {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium text-text mb-1">
-                Supersession chain (backwards â€” supersedes)
+                Supersession chain (backwards — supersedes)
               </h3>
               {lineage.chainBackwards.length === 0 ? (
                 <p className="text-xs text-text-muted">No ancestors</p>
@@ -435,7 +435,7 @@ export default function MemoryGraphPage() {
                           className="rounded border border-border bg-surface-hover px-2 py-1 text-xs"
                         >
                           <span className="font-medium text-text">{a.agentName}</span>
-                          <span className="mx-1 text-text-dim">â€¢</span>
+                          <span className="mx-1 text-text-dim">•</span>
                           <span className="text-text-muted">{a.actionType}</span>
                           <span
                             className={`ml-2 rounded px-1 py-0.5 text-[10px] border ${a.status === 'completed' ? 'bg-success/10 text-success border-success/30' : 'bg-surface text-text-muted border-border'}`}

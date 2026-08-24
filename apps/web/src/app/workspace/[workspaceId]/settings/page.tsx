@@ -230,7 +230,7 @@ export default function SettingsPage() {
     } catch (err) {
       // revert on failure
       setConnectorPerms((prev) => ({ ...prev, [id]: current }));
-      setSaveError(err instanceof Error ? err.message : 'Failed to update permission â€” reverted');
+      setSaveError(err instanceof Error ? err.message : 'Failed to update permission — reverted');
     }
   };
 
@@ -336,7 +336,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-text-muted mt-0.5">
                   {user?.authProvider === 'local'
                     ? 'Change your account password'
-                    : 'Your account uses SSO â€” password is managed externally'}
+                    : 'Your account uses SSO — password is managed externally'}
                 </p>
               </div>
               <button
@@ -582,13 +582,13 @@ export default function SettingsPage() {
             delete it.
           </p>
           <p className="text-sm text-text-muted mb-2">
-            Consent version: <span className="font-mono">v1</span> â€” granted at signup, revocable
+            Consent version: <span className="font-mono">v1</span> — granted at signup, revocable
             anytime.
           </p>
           <div className="space-y-3">
             <label className="card flex items-center justify-between cursor-pointer">
               <div>
-                <h3 className="font-medium text-text">Gmail â€” read (draft-only)</h3>
+                <h3 className="font-medium text-text">Gmail — read (draft-only)</h3>
                 <p className="text-xs text-text-muted mt-0.5">
                   Watch for job emails and extract deadlines. Vaeloom never sends email without your
                   approval.
@@ -621,7 +621,7 @@ export default function SettingsPage() {
             </label>
             <label className="card flex items-center justify-between cursor-pointer opacity-60">
               <div>
-                <h3 className="font-medium text-text">Email send (T3 â€” gated)</h3>
+                <h3 className="font-medium text-text">Email send (T3 — gated)</h3>
                 <p className="text-xs text-text-muted mt-0.5">
                   Disabled by default. Only enabled after legal review and explicit approval (phase
                   13).
@@ -639,7 +639,7 @@ export default function SettingsPage() {
 
         <section>
           <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
-            API Keys â€” Bring Your Own Key
+            API Keys — Bring Your Own Key
           </h2>
           <ProviderKeysSection workspaceId={workspaceId} />
         </section>

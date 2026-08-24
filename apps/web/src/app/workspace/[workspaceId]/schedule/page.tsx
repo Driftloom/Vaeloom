@@ -214,7 +214,7 @@ export default function SchedulePage() {
   const handleApprove = useCallback(
     async (e: Event, decision: 'approve' | 'reject') => {
       const approvalId = getApprovalId(e);
-      // F-03: without a real approval record there is nothing to approve â€”
+      // F-03: without a real approval record there is nothing to approve —
       // the previous local-only status flip diverged UI state from the
       // backend. The action is refused with an explanation instead.
       if (!approvalId) {
@@ -313,7 +313,7 @@ export default function SchedulePage() {
         <div>
           <h1 className="text-3xl font-display font-medium text-text mb-1">Schedule</h1>
           <p className="text-text-muted text-sm">
-            Workspace-scoped Â· calendar + list Â· Gmail vs agent vs you Â· proposed events need
+            Workspace-scoped · calendar + list · Gmail vs agent vs you · proposed events need
             approval
           </p>
           <p className="text-xs text-text-dim font-mono">
@@ -451,7 +451,7 @@ export default function SchedulePage() {
                               {Boolean(
                                 (e.payload as Record<string, unknown>)?.['recurrence'] ||
                                 (e.payload as Record<string, unknown>)?.['rrule'],
-                              ) && ' ðŸ”'}
+                              ) && ' 🔍”'}
                             </button>
                           );
                         })}
@@ -522,7 +522,7 @@ export default function SchedulePage() {
                         className="rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs text-info"
                         title="Recurring event"
                       >
-                        ðŸ”
+                        🔍”
                       </span>
                     )}
                     {urgency && (
@@ -557,7 +557,7 @@ export default function SchedulePage() {
                       aria-label="Toggle reminder"
                       className={`shrink-0 rounded-full border px-2 py-1 text-xs hover:bg-surface-hover ${reminders[event.id] ? 'border-warning/30 text-warning' : 'border-border text-text-muted'}`}
                     >
-                      {reminders[event.id] ? 'ðŸ””' : 'ðŸ”•'}
+                      {reminders[event.id] ? '🔍””' : '🔍”•'}
                     </button>
                   </div>
                   {proposed && (
@@ -567,7 +567,7 @@ export default function SchedulePage() {
                         onClick={() => handleApprove(event, 'approve')}
                         className="flex-1 rounded-full bg-action text-action-fg text-xs py-1.5 disabled:opacity-40 hover:bg-action-hover"
                       >
-                        {busyApprove === event.id ? 'Approvingâ€¦' : 'Approve'}
+                        {busyApprove === event.id ? 'Approving…' : 'Approve'}
                       </button>
                       <button
                         disabled={busyApprove === event.id}
@@ -603,7 +603,7 @@ export default function SchedulePage() {
                 {getSourceBadge(selected).label}
               </span>
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-mono">
-                {selected.category} Â· {selected.type}
+                {selected.category} · {selected.type}
               </span>
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs">
                 {selected.status}
@@ -726,7 +726,7 @@ export default function SchedulePage() {
       </Modal>
 
       <p className="text-xs text-text-dim mt-3">
-        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) â€”
+        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) —
         migrated 2026-08-21; Gmail-extracted events are read via Gmail connector, agent-proposed
         events via the scheduler/gmail agents.
       </p>

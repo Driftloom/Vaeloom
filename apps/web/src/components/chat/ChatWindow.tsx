@@ -46,7 +46,7 @@ const SLASH = [
   { trigger: '/remember', desc: 'Extract memories', agent: 'memory', icon: 'â—Ž' },
   { trigger: '/resume', desc: 'Generate resume', agent: 'resume', icon: 'â‰¡' },
   { trigger: '/ats', desc: 'ATS score', agent: 'ats', icon: 'â–£' },
-  { trigger: '/jobs', desc: 'Search jobs', agent: 'job_search', icon: 'â—©' },
+  { trigger: '/jobs', desc: 'Search jobs', agent: 'job_search', icon: '◩' },
   { trigger: '/apply', desc: 'Draft application', agent: 'application', icon: 'âœ‰' },
   { trigger: '/email', desc: 'Draft email (approval)', agent: 'gmail', icon: 'âœ‰' },
   { trigger: '/schedule', desc: 'Calendar & reminders', agent: 'scheduler', icon: 'â—·' },
@@ -150,7 +150,7 @@ function parseBlockingChatResponse(
     reply = String((r as { reply?: string }).reply || '');
   else if (typeof r === 'string') reply = r;
   else reply = JSON.stringify(r).slice(0, 2000);
-  if (!reply.trim()) reply = 'No response â€” try rephrasing or @mention an agent.';
+  if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
   return { reply, proposals, questions, tools, cites, agentName: an, confidence: conf };
 }
 
@@ -209,7 +209,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const canonical = useMemo(() => {
     const list = catalog.filter((c) => c.isCanonical);
     if (list.length) return list;
-    // fallback â€” 10 canonical now (planning + research promoted as main)
+    // fallback — 10 canonical now (planning + research promoted as main)
     const fallback: CatalogAgent[] = [
       {
         name: 'organization',
@@ -563,7 +563,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           toast({
             tone: 'success',
             title: 'File attached',
-            detail: `${doc.path} â€” referenced in message`,
+            detail: `${doc.path} — referenced in message`,
           });
           fileContext = `${toUpload.name} (stored as ${doc.path})`;
           raw = rawBase ? `${rawBase}\n\n[File stored: ${doc.path}]` : `[File stored: ${doc.path}]`;
@@ -571,7 +571,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           toast({
             tone: 'error',
             title: 'Attach failed',
-            detail: `${toUpload.name} not stored â€” message sent with name only`,
+            detail: `${toUpload.name} not stored — message sent with name only`,
           });
         }
       }
@@ -687,7 +687,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           if ((streamedTools?.length || 0) > 6) streamedTools = streamedTools!.slice(-6);
           applyPatch({ toolCalls: streamedTools });
         } else if (event === 'observe' || event === 'reflect') {
-          // mark tools done â€” F-02: no fabricated per-tool latency is shown;
+          // mark tools done — F-02: no fabricated per-tool latency is shown;
           // durations are only rendered when actually measured.
           if (streamedTools?.length) {
             streamedTools = streamedTools!.map((t) => ({
@@ -721,7 +721,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           streamedText += t;
           applyPatch({ text: streamedText, streaming: true });
         } else if (event === 'qa') {
-          // QA gate â€” show as tool
+          // QA gate — show as tool
           const decision = data['decision'] as string;
           applyPatch({
             toolCalls: [
@@ -791,7 +791,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           // If tokens already streamed, prefer streamedText; otherwise use finalText
           const displayText = streamedText.trim()
             ? streamedText
-            : finalText || 'No response â€” try rephrasing or @mention an agent.';
+            : finalText || 'No response — try rephrasing or @mention an agent.';
           // Mark tools done
           const doneTools = (streamedTools || []).map((t) => ({ ...t, status: 'done' as const }));
           applyPatch({
@@ -945,7 +945,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         </div>
         <div className="px-3 py-2 border-b border-border/40">
           <p className="text-xs text-text-dim">
-            Single agentic chat â€” just ask. Orchestrator routes to planning, research & 8
+            Single agentic chat — just ask. Orchestrator routes to planning, research & 8
             specialists behind the scenes.
           </p>
         </div>
@@ -1044,7 +1044,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               AI assistant
             </span>
             <span className="hidden sm:inline text-xs text-text-dim font-mono">
-              Â· {workspaceId.slice(0, 8)}
+              · {workspaceId.slice(0, 8)}
             </span>
             <span
               className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${selected === 'auto' ? 'border-border/50 text-text-dim' : 'bg-action text-action-fg border-primary'}`}
@@ -1056,7 +1056,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="hidden lg:inline text-xs text-text-dim">8 agents Â· QA gate</span>
+            <span className="hidden lg:inline text-xs text-text-dim">8 agents · QA gate</span>
             <button
               onClick={() => startNew()}
               className="ml-2 hidden sm:inline-flex rounded-full border border-border/50 px-3 py-1.5 text-xs hover:bg-surface-hover"
@@ -1157,7 +1157,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                   {t.name}
                                   <span className="text-text-dim">
                                     {t.status}
-                                    {t.latencyMs ? ` Â· ${t.latencyMs}ms` : ''}
+                                    {t.latencyMs ? ` · ${t.latencyMs}ms` : ''}
                                   </span>
                                 </div>
                               ))}
@@ -1221,7 +1221,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                     )}
                                     {p.status === 'error' && (
                                       <p className="text-xs text-error mt-2">
-                                        Action failed â€” pending approvals live in Notifications
+                                        Action failed — pending approvals live in Notifications
                                       </p>
                                     )}
                                   </div>
@@ -1273,7 +1273,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 text-xs text-text-dim">
                         <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
-                        Thinking Â· routing + QA
+                        Thinking · routing + QA
                       </div>
                       <div className="mt-2 flex gap-1">
                         <span className="w-1.5 h-1.5 bg-text-dim rounded-full animate-bounce" />
@@ -1371,7 +1371,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 onChange={(e) => handleInput(e.target.value)}
                 onKeyDown={onKey}
                 rows={1}
-                placeholder={selected === 'auto' ? 'Ask anythingâ€¦' : 'Message @' + selected}
+                placeholder={selected === 'auto' ? 'Ask anything…' : 'Message @' + selected}
                 className="flex-1 max-h-[120px] min-h-[24px] resize-none bg-transparent text-sm placeholder:text-text-dim focus:outline-none py-2"
                 onInput={(e) => {
                   const t = e.currentTarget;
@@ -1400,8 +1400,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               )}
             </div>
             <p className="mt-2 text-center text-xs text-text-dim">
-              âŽ send Â· â‡§âŽ newline Â· <span className="font-mono">@</span> agents Â·{' '}
-              <span className="font-mono">/</span> commands Â· {input.length}/10000
+              âŽ send · â‡§âŽ newline · <span className="font-mono">@</span> agents ·{' '}
+              <span className="font-mono">/</span> commands · {input.length}/10000
             </p>
           </div>
         </div>

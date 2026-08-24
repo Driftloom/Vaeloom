@@ -201,7 +201,7 @@ export class GoogleDriveIntegration implements Integration {
         throw new GoogleDriveWebhookVerificationError();
       }
     }
-    return null;
+    return undefined;
   }
 
   // ---- Sync (document ingestion) ----

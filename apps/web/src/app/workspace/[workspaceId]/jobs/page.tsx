@@ -32,7 +32,7 @@ function MatchBadge({ score }: { score: number | null }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-success">
         <span className="h-2 w-2 rounded-full bg-success" />
-        {score}% â€” Strong Match
+        {score}% — Strong Match
       </span>
     );
   }
@@ -40,7 +40,7 @@ function MatchBadge({ score }: { score: number | null }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-info">
         <span className="h-2 w-2 rounded-full bg-blue-400" />
-        {score}% â€” Good Match
+        {score}% — Good Match
       </span>
     );
   }
@@ -48,20 +48,20 @@ function MatchBadge({ score }: { score: number | null }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-warning">
         <span className="h-2 w-2 rounded-full bg-warning" />
-        {score}% â€” Partial Match
+        {score}% — Partial Match
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-text-muted">
       <span className="h-2 w-2 rounded-full bg-gray-400" />
-      {score}% â€” Low Match
+      {score}% — Low Match
     </span>
   );
 }
 
 function formatDate(iso?: string): string {
-  if (!iso) return 'â€”';
+  if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -226,7 +226,7 @@ export default function JobsPage() {
         toast({
           tone: 'success',
           title: 'Application started',
-          detail: `${title} â€” check Approvals for approval or Applications for status`,
+          detail: `${title} — check Approvals for approval or Applications for status`,
         });
       } catch (err) {
         toast({
@@ -329,7 +329,7 @@ export default function JobsPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSearch();
               }}
-              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineerâ€¦"
+              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineer…"
               className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
               aria-label="Job search query"
             />
@@ -339,14 +339,14 @@ export default function JobsPage() {
               className="rounded-full bg-primary px-5 py-2 text-sm text-primary-fg disabled:opacity-40 hover:bg-action-hover"
               aria-label="Search jobs"
             >
-              {searching ? 'Searchingâ€¦' : 'Search'}
+              {searching ? 'Searching…' : 'Search'}
             </button>
           </div>
           <div className="flex gap-3 mt-3">
             <input
               value={filterLocation}
               onChange={(e) => setFilterLocation(e.target.value)}
-              placeholder="Filter by locationâ€¦"
+              placeholder="Filter by location…"
               className="rounded-full border border-border bg-background px-4 py-1.5 text-xs outline-none focus:border-primary w-48"
               aria-label="Filter proposals by location"
             />
@@ -362,17 +362,17 @@ export default function JobsPage() {
             </label>
           </div>
           <p className="text-xs text-text-dim mt-2">
-            Powered by the Job Search agent â€” results include match explanation and fit summary.
+            Powered by the Job Search agent — results include match explanation and fit summary.
           </p>
         </div>
 
-        {searching && <LoadingSpinner text="Searching jobsâ€¦" />}
+        {searching && <LoadingSpinner text="Searching jobs…" />}
         {!searching && searchResult && (
           <div className="space-y-4">
             <div className="card">
               <h3 className="font-medium text-text mb-2">Results</h3>
               <p className="text-sm text-text-muted whitespace-pre-wrap">
-                {searchResult.summary || 'No summary returned â€” try a different query.'}
+                {searchResult.summary || 'No summary returned — try a different query.'}
               </p>
               {searchResult.questions && searchResult.questions.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -460,7 +460,7 @@ export default function JobsPage() {
               </p>
             ) : (
               <p className="text-sm text-text-muted">
-                No structured proposals returned â€” the summary above contains the ranked matches.
+                No structured proposals returned — the summary above contains the ranked matches.
                 Save interesting roles from the summary and use Apply to start an approval-gated
                 application (you will get a deep link after approval).
               </p>
@@ -571,7 +571,7 @@ export default function JobsPage() {
         {saved.length === 0 ? (
           <EmptyState
             title="No saved jobs"
-            description="Save roles from the Job Search tab â€” they persist here. Apply requires approval and will give you a deep link to the application."
+            description="Save roles from the Job Search tab — they persist here. Apply requires approval and will give you a deep link to the application."
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

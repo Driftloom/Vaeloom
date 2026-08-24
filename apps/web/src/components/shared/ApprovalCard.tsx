@@ -78,7 +78,7 @@ export function ApprovalCard({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-primary text-xl" aria-hidden="true">
-            ðŸ’¡
+            🔍’¡
           </span>
           <span className="text-xs uppercase tracking-wider text-primary font-mono">
             {agentName} suggests

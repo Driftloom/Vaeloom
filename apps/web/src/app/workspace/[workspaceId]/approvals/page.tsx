@@ -92,7 +92,7 @@ export default function ApprovalsPage() {
         <div>
           <h1 className="text-3xl font-display font-medium text-text mb-2">Approvals</h1>
           <p className="text-text-muted text-sm">
-            Unified inbox for all agent suggestions requiring approval. Least-privilege â€” review
+            Unified inbox for all agent suggestions requiring approval. Least-privilege — review
             scopes, risk, and expiry before acting. Focus a decision card, then press{' '}
             <kbd className="font-mono">A</kbd> to approve, <kbd className="font-mono">R</kbd> to
             reject.
@@ -134,7 +134,7 @@ export default function ApprovalsPage() {
             title={active === 'pending' ? 'No pending approvals' : `No ${active} approvals`}
             description={
               active === 'pending'
-                ? 'Agent suggestions will appear here â€” Files renames, Gmail drafts, Schedule events, Job applications. All are reversible via History.'
+                ? 'Agent suggestions will appear here — Files renames, Gmail drafts, Schedule events, Job applications. All are reversible via History.'
                 : `No ${active} items match the current filter.`
             }
           />
@@ -173,8 +173,8 @@ export default function ApprovalsPage() {
                 />
                 <div className="mt-1 flex flex-wrap gap-2 text-xs font-mono text-text-dim px-1">
                   <span>{new Date(ap.created_at).toLocaleString()}</span>
-                  <span>Â· {ap.status}</span>
-                  {ap.requested_by && <span>Â· requested {ap.requested_by.slice(0, 8)}</span>}
+                  <span>· {ap.status}</span>
+                  {ap.requested_by && <span>· requested {ap.requested_by.slice(0, 8)}</span>}
                 </div>
               </div>
             ))}

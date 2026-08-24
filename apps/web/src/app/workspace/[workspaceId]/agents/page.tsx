@@ -91,7 +91,7 @@ function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: 
 
       <div className="mt-3 flex items-center justify-between">
         <p className="text-xs text-text-muted">
-          <span className="font-mono">{agent.tools.length}</span> tools â€¢{' '}
+          <span className="font-mono">{agent.tools.length}</span> tools •{' '}
           <span className="font-mono">{agent.toolNames.length}</span> declared
         </p>
         <div className="flex items-center gap-2">
@@ -107,7 +107,7 @@ function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: 
               className="text-xs text-text-muted hover:text-text transition-colors"
               aria-label={`View details for ${agent.name}`}
             >
-              Details â†’
+              Details →
             </Link>
           )}
         </div>
@@ -215,10 +215,9 @@ export default function AgentsPage() {
           <div>
             <h1 className="text-3xl font-display font-medium text-text">Agents</h1>
             <p className="text-sm text-text-muted mt-1">
-              {workspace?.name ? `${workspace.name} â€” ` : ''}
+              {workspace?.name ? `${workspace.name} — ` : ''}
               {data?.canonicalCount ?? 0} canonical (MVP) +{' '}
-              {(data?.total ?? 0) - (data?.canonicalCount ?? 0)} enterprise â€” tools & skills
-              matrix
+              {(data?.total ?? 0) - (data?.canonicalCount ?? 0)} enterprise — tools & skills matrix
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -277,8 +276,8 @@ export default function AgentsPage() {
             How routing works
           </h2>
           <p className="text-xs text-text-muted">
-            Orchestrator classifies intent (keywords â†’ category â†’ agent) with 0.7 confidence
-            gate. Low confidence â†’ asks clarification. Enterprise agents are gated when{' '}
+            Orchestrator classifies intent (keywords → category → agent) with 0.7 confidence gate.
+            Low confidence → asks clarification. Enterprise agents are gated when{' '}
             <span className="font-mono">mvp_scope_enforced=true</span>.
           </p>
         </div>
@@ -291,7 +290,7 @@ export default function AgentsPage() {
             <span className="font-mono">
               name, description, input_schema, required_scope, category
             </span>
-            . Treat all retrieved/tool content as untrusted â€” it cannot change policy. (Defs in{' '}
+            . Treat all retrieved/tool content as untrusted — it cannot change policy. (Defs in{' '}
             <span className="font-mono">api/tools/definitions.py</span>).
           </p>
         </div>
@@ -300,8 +299,8 @@ export default function AgentsPage() {
             Keys (BYOK)
           </h2>
           <p className="text-xs text-text-muted">
-            Agents use resolved LLM keys: workspace â†’ user â†’ system. Configure in{' '}
-            <span className="font-mono">Settings â†’ API Keys</span>. Embeddings require OpenAI.
+            Agents use resolved LLM keys: workspace → user → system. Configure in{' '}
+            <span className="font-mono">Settings → API Keys</span>. Embeddings require OpenAI.
           </p>
         </div>
       </div>
@@ -317,7 +316,7 @@ export default function AgentsPage() {
                 <p className="font-mono text-xs text-text">{name}</p>
                 <p className="text-xs text-text-muted">{def.description}</p>
                 <p className="mt-1 font-mono text-[10px] text-text-dim">
-                  scope:{def.requiredScope} â€¢ {def.category}
+                  scope:{def.requiredScope} • {def.category}
                 </p>
               </div>
             ))}

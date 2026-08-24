@@ -27,7 +27,7 @@ const PROVIDERS = [
 type ProviderId = (typeof PROVIDERS)[number]['id'];
 
 function maskHint(key: ProviderKeyResponse) {
-  return key.keyHint || `${key.keyPrefix}â€¢â€¢â€¢â€¢`;
+  return key.keyHint || `${key.keyPrefix}••••`;
 }
 
 export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
@@ -77,7 +77,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
       toast({
         tone: 'success',
         title: 'Key saved',
-        detail: `${PROVIDERS.find((p) => p.id === selectedProvider)?.label} key stored encrypted. Resolution: ${wsId ? 'workspace' : 'user'} â†’ system fallback.`,
+        detail: `${PROVIDERS.find((p) => p.id === selectedProvider)?.label} key stored encrypted. Resolution: ${wsId ? 'workspace' : 'user'} → system fallback.`,
       });
       setApiKeyInput('');
       await load();
@@ -165,8 +165,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
             <span className="font-mono text-xs bg-surface-hover px-1 py-0.5 rounded">
               workspace
             </span>{' '}
-            â†’ <span className="font-mono text-xs bg-surface-hover px-1 py-0.5 rounded">user</span>{' '}
-            â†’{' '}
+            → <span className="font-mono text-xs bg-surface-hover px-1 py-0.5 rounded">user</span> →{' '}
             <span className="font-mono text-xs bg-surface-hover px-1 py-0.5 rounded">system</span>.
             Never logged in plaintext.
           </p>
@@ -261,7 +260,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
               : 'Applies to all your workspaces unless overridden.'}
           </p>
           <span className="ml-auto text-xs text-text-dim hidden md:inline">
-            Keys are stored encrypted â€” only hint is shown.
+            Keys are stored encrypted — only hint is shown.
           </span>
         </div>
       </div>
@@ -333,18 +332,16 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-text-muted">
                   <span className="font-mono">prefix {k.keyPrefix}</span>
-                  <span>â€¢</span>
+                  <span>•</span>
                   <span>updated {new Date(k.updatedAt).toLocaleDateString()}</span>
                   {k.lastValidatedAt && (
                     <>
-                      <span>â€¢</span>
+                      <span>•</span>
                       <span>checked {new Date(k.lastValidatedAt).toLocaleString()}</span>
                     </>
                   )}
                   {k.validationError && (
-                    <span className="text-error truncate max-w-[260px]">
-                      â€¢ {k.validationError}
-                    </span>
+                    <span className="text-error truncate max-w-[260px]">• {k.validationError}</span>
                   )}
                 </div>
               </div>
@@ -379,12 +376,12 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
         <p className="font-medium text-text mb-1">How resolution works</p>
         <ul className="list-disc ml-4 space-y-0.5">
           <li>
-            Embeddings: only <span className="font-mono">OpenAI</span> is supported â€” add an
-            OpenAI BYOK key to enable memory vectors.
+            Embeddings: only <span className="font-mono">OpenAI</span> is supported — add an OpenAI
+            BYOK key to enable memory vectors.
           </li>
           <li>
-            Chat / agents: model name decides provider â€” <span className="font-mono">gpt-*</span>{' '}
-            â†’ OpenAI, <span className="font-mono">claude-*</span> â†’ Anthropic. Set the matching
+            Chat / agents: model name decides provider — <span className="font-mono">gpt-*</span> →
+            OpenAI, <span className="font-mono">claude-*</span> → Anthropic. Set the matching
             provider key.
           </li>
           <li>

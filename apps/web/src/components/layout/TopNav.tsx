@@ -125,14 +125,14 @@ export function TopNav({ onMenuClick }: { onMenuClick?: () => void }) {
           aria-label="Global search"
         >
           <span>Search</span>
-          <kbd className="font-mono text-[10px] border border-border rounded px-1">âŒ˜K</kbd>
+          <kbd className="font-mono text-[10px] border border-border rounded px-1">⌘K</kbd>
         </button>
         <button
           onClick={() => setPaletteOpen(true)}
           className="sm:hidden p-2 rounded-lg border border-border hover:bg-surface-hover"
           aria-label="Search"
         >
-          âŒ•
+          ⌘•
         </button>
         <div className="text-xs font-mono text-text-dim hidden sm:block">Enterprise Mode</div>
         <ThemeToggle />
@@ -159,7 +159,7 @@ export function TopNav({ onMenuClick }: { onMenuClick?: () => void }) {
           />
           <div className="relative w-full max-w-xl bg-surface border border-border rounded-xl shadow-2xl overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-              <span className="text-text-muted">âŒ•</span>
+              <span className="text-text-muted">⌘•</span>
               <input
                 ref={inputRef}
                 value={query}
@@ -184,7 +184,7 @@ export function TopNav({ onMenuClick }: { onMenuClick?: () => void }) {
                     }
                   }
                 }}
-                placeholder="Search files, memories, eventsâ€¦  (e.g. Q3 plan)"
+                placeholder="Search files, memories, events…  (e.g. Q3 plan)"
                 className="flex-1 bg-transparent text-sm text-text placeholder:text-text-dim outline-none"
               />
               <button onClick={() => setPaletteOpen(false)} className="text-xs text-text-muted">
@@ -193,11 +193,11 @@ export function TopNav({ onMenuClick }: { onMenuClick?: () => void }) {
             </div>
             <div className="max-h-80 overflow-auto p-2">
               {searching ? (
-                <p className="p-4 text-center text-sm text-text-muted">Searchingâ€¦</p>
+                <p className="p-4 text-center text-sm text-text-muted">Searching…</p>
               ) : results.length === 0 ? (
                 <p className="p-6 text-center text-sm text-text-muted">
                   {query.trim()
-                    ? 'No results â€” try different keywords.'
+                    ? 'No results — try different keywords.'
                     : 'Type to search across files, memories, and events grouped by source + score.'}
                 </p>
               ) : (
@@ -219,7 +219,7 @@ export function TopNav({ onMenuClick }: { onMenuClick?: () => void }) {
                       <div className="min-w-0">
                         <p className="text-sm text-text truncate">{r.text}</p>
                         <p className="text-xs font-mono text-text-dim capitalize">
-                          {r.source} Â· id {r.id.slice(0, 8)}
+                          {r.source} · id {r.id.slice(0, 8)}
                         </p>
                       </div>
                       <span className="shrink-0 text-xs font-mono text-text-muted">
@@ -231,7 +231,7 @@ export function TopNav({ onMenuClick }: { onMenuClick?: () => void }) {
               )}
             </div>
             <p className="px-4 py-2 text-xs text-text-dim border-t border-border">
-              Enter opens Â· â†‘â†“ navigates Â· Global search is workspace-aware.
+              Enter opens · ↑↓ navigates · Global search is workspace-aware.
             </p>
           </div>
         </div>
