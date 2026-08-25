@@ -13,8 +13,8 @@ type Cfg = {
   density: number;
 };
 
-// Base count 650 at density 1.0 (was 170) — ~3.8x
-const BASE_COUNT = 650;
+// Base count 950 at density 1.0 (was 650) — ~5.6x original, ~1.46x current
+const BASE_COUNT = 950;
 
 // Size tiers: 70% very small, 20% small, 8% medium-small, 2% emphasized
 const SIZE_TIERS = [

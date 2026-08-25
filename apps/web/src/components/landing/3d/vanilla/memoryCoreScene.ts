@@ -13,9 +13,11 @@ const CORE_RADIUS = 0.85;
 const STREAMS = [
   { angle: -0.5, tilt: 0.35, color: '#22d3ee' },
   { angle: 0.65, tilt: -0.25, color: '#818cf8' },
+  { angle: 1.4, tilt: -0.18, color: '#6366f1' },
   { angle: 2.1, tilt: 0.2, color: '#e879f9' },
   { angle: 3.6, tilt: -0.35, color: '#22d3ee' },
   { angle: 4.9, tilt: 0.28, color: '#818cf8' },
+  { angle: 5.6, tilt: 0.22, color: '#a5b4fc' },
 ] as const;
 
 type Cfg = {
@@ -29,7 +31,7 @@ type Cfg = {
 export function mountMemoryCore({ container, theme, density, streams = true }: Cfg): SceneHandle {
   const palette = scenePalette(theme);
   const { renderer, scene, camera } = createRenderer(container);
-  camera.position.set(0, 0.6, 7.4);
+  camera.position.set(0, 0.9, 7.4);
 
   /* Core ---------------------------------------------------------------- */
   const haloTex = new THREE.CanvasTexture(glowTexture(palette.core));
@@ -70,8 +72,8 @@ export function mountMemoryCore({ container, theme, density, streams = true }: C
   );
   scene.add(inner);
 
-  /* Motes — 3.4x denser, clustered, layered depth ------------------- */
-  const moteCount = Math.round(750 * density);
+  /* Motes — ~5x denser, clustered, layered depth ------------------- */
+  const moteCount = Math.round(1100 * density);
   const motePos = new Float32Array(moteCount * 3);
   const moteSizes = new Float32Array(moteCount);
   // Mote clusters around the core and in the surrounding volume

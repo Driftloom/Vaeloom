@@ -14,6 +14,8 @@ const CHIP_POS_IMMERSIVE = [
   'left-[8%] bottom-[24%]',
   'right-[10%] bottom-[18%]',
   'left-[42%] top-[8%]',
+  'left-[18%] top-[52%]',
+  'right-[18%] top-[52%]',
 ] as const;
 
 function useIsMobile() {
@@ -65,7 +67,7 @@ export default function HeroSection() {
         {/* Full-viewport 3D environment — the hero IS the 3D world */}
         <motion.div
           style={{ y: bgY, scale: bgScale }}
-          className="absolute inset-0 z-0 h-[130%] w-full will-change-transform"
+          className="absolute inset-0 z-0 w-full h-[130%] top-[-15%] will-change-transform"
           aria-hidden="true"
         >
           {/* Base */}
