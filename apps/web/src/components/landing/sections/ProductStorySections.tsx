@@ -1,3 +1,5 @@
+'use client';
+
 import { CAREER, CONNECTORS, ORGANIZATION, RESUME, SCHEDULER } from '@/lib/landing/copy';
 import {
   Container,
@@ -7,10 +9,26 @@ import {
   Section,
   SectionHeading,
 } from '@/components/landing/shared/LandingKit';
+import { ConnectorFlowScene, useSceneAvailable } from '@/components/landing/3d/SceneShell';
+import { useTheme } from '@/hooks/useTheme';
+
+/** Chip positions approximating the six ring sources in connectorScene. */
+const SOURCE_CHIPS = [
+  'left-[4%] top-[38%]',
+  'left-[16%] top-[8%]',
+  'right-[16%] top-[8%]',
+  'right-[4%] top-[38%]',
+  'left-[22%] bottom-[6%]',
+  'right-[22%] bottom-[6%]',
+] as const;
+
+const SOURCE_HUES = ['#22d3ee', '#818cf8', '#e879f9', '#34d399', '#fbbf24', '#f87171'];
 
 /* ------------------------------ Connectors ------------------------------ */
 
 export function ConnectorSection() {
+  const sceneAvailable = useSceneAvailable();
+  const { theme } = useTheme();
   return (
     <Section id="connectors" labelledBy="connectors-title">
       <Container>
@@ -22,7 +40,7 @@ export function ConnectorSection() {
         />
         <Reveal className="mt-12">
           {/* Streams: sources -> ingestion -> memory */}
-          <div className="grid items-center gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr]">
+          <div className="grid items-center gap-4 md:grid-cols-[1fr_auto_1.2fr_auto_1fr]">
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Connectable sources">
               {CONNECTORS.items.map((c) => (
                 <li
@@ -56,14 +74,37 @@ export function ConnectorSection() {
               />
             </svg>
 
-            <div className="rounded-xl border border-primary-500/30 bg-surface-elevated p-4 text-center shadow-glow">
-              <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
-                Layer
-              </p>
-              <p className="mt-1 font-display text-sm font-bold text-text">
-                Ingestion · Parse · OCR
-              </p>
-            </div>
+            {sceneAvailable ? (
+              <div
+                className="relative h-64 overflow-hidden rounded-2xl border border-border-subtle bg-black/40 md:h-72"
+                role="img"
+                aria-label="Six connector sources streaming into one ingestion core"
+              >
+                <ConnectorFlowScene theme={theme} fallback={null} />
+                <ul className="pointer-events-none absolute inset-0">
+                  {CONNECTORS.items.map((c, i) => (
+                    <li key={c.name} className={`absolute ${SOURCE_CHIPS[i]}`}>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-background/70 px-2 py-0.5 text-[10px] font-medium text-text-secondary backdrop-blur-sm">
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ background: SOURCE_HUES[i] }}
+                        />
+                        {c.name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-primary-500/30 bg-surface-elevated p-4 text-center shadow-glow">
+                <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+                  Layer
+                </p>
+                <p className="mt-1 font-display text-sm font-bold text-text">
+                  Ingestion · Parse · OCR
+                </p>
+              </div>
+            )}
 
             <svg
               width="56"
@@ -189,7 +230,7 @@ export function ResumeSection() {
 
           {/* Evidence -> resume artifact */}
           <Reveal delay={0.1}>
-            <GlassCard className="overflow-hidden !p-0" hover={false}>
+            <GlassCard className="overflow-hidden !p-0" hover={false} tilt>
               <div className="border-b border-border-subtle px-5 py-3">
                 <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
                   Master resume · assembled from memory
@@ -343,7 +384,7 @@ export function SchedulerSection() {
 
           {/* Email -> extracted intelligence */}
           <Reveal delay={0.1}>
-            <GlassCard className="!p-0 overflow-hidden" hover={false}>
+            <GlassCard className="!p-0 overflow-hidden" hover={false} tilt>
               <div className="flex items-center gap-3 border-b border-border-subtle px-5 py-3.5">
                 <span
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-600 font-display text-xs font-bold text-white"

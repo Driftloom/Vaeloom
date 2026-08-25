@@ -3,6 +3,7 @@ import { AuthRedirectProbe } from '@/components/shared/AuthRedirectProbe';
 import { SEO } from '@/lib/landing/copy';
 
 import LandingNav from '@/components/landing/sections/LandingNav';
+import { DustField } from '@/components/landing/3d/SceneShell';
 import HeroSection from '@/components/landing/sections/HeroSection';
 import { PrinciplesStrip, ProductDifference } from '@/components/landing/sections/ProductSections';
 import HowItWorks from '@/components/landing/sections/HowItWorks';
@@ -85,7 +86,8 @@ export default function LandingPage() {
       />
       <AuthRedirectProbe />
       <LandingNav />
-      <main id="main-content" className="relative overflow-x-clip">
+      <DustField />
+      <main id="main-content" className="relative z-10 overflow-x-clip">
         <HeroSection />
         <PrinciplesStrip />
         <ProductDifference />

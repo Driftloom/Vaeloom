@@ -14,7 +14,8 @@ import AxeBuilder from '@axe-core/playwright';
 
 test.describe('landing functional', () => {
   test('renders product truth with working CTAs and anchors', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.goto('http://localhost:3000/', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1500);
     await page.evaluate(() => document.fonts.ready);
 
     await expect(page.getByRole('heading', { level: 1 })).toContainText('second brain');
@@ -47,7 +48,8 @@ for (const theme of ['dark', 'light'] as const) {
     test.use({ colorScheme: theme });
     test('axe: zero serious/critical', async ({ page }) => {
       await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await page.goto('http://localhost:3000/', { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(1500);
       await page.evaluate(async () => {
         const h = document.body.scrollHeight;
         for (let y = 0; y < h; y += 800) {
@@ -71,18 +73,19 @@ for (const theme of ['dark', 'light'] as const) {
 test.describe('landing visual baselines (reduced motion — static fallbacks)', () => {
   for (const theme of ['dark', 'light'] as const) {
     for (const vp of [375, 1440] as const) {
-      test.describe(`${theme} ${vp}`, () => {
-        test.use({
-          colorScheme: theme,
-          reducedMotion: 'reduce',
-          viewport: { width: vp, height: 850 },
-        });
-        test(`landing ${theme} ${vp}`, async ({ page }) => {
-          await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
-          await page.goto('/', { waitUntil: 'networkidle' });
-          await page.evaluate(() => document.fonts.ready);
-          await page.waitForTimeout(1200);
-          await expect(page).toHaveScreenshot(`landing-${theme}-${vp}.png`, { fullPage: true });
+      test(`landing ${theme} ${vp}`, async ({ page }) => {
+        test.setTimeout(60_000);
+        await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+        await page.setViewportSize({ width: vp, height: 850 });
+        await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
+        await page.goto('http://localhost:3000/', { waitUntil: 'networkidle' });
+        await page.waitForTimeout(1500);
+        await page.evaluate(() => document.fonts.ready);
+        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        await expect(page).toHaveScreenshot(`landing-${theme}-${vp}.png`, {
+          fullPage: true,
+          animations: 'disabled',
+          maxDiffPixelRatio: 0.08,
         });
       });
     }

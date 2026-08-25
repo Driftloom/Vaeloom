@@ -22,9 +22,11 @@ type Cfg = {
   container: HTMLElement;
   theme: 'dark' | 'light';
   density: number;
+  /** false -> calm variant (core + motes only, used behind the final CTA) */
+  streams?: boolean;
 };
 
-export function mountMemoryCore({ container, theme, density }: Cfg): SceneHandle {
+export function mountMemoryCore({ container, theme, density, streams = true }: Cfg): SceneHandle {
   const palette = scenePalette(theme);
   const { renderer, scene, camera } = createRenderer(container);
   camera.position.set(0, 0.6, 7.4);
@@ -97,31 +99,36 @@ export function mountMemoryCore({ container, theme, density }: Cfg): SceneHandle
 
   /* Streams ------------------------------------------------------------- */
   const streamCount = Math.round(110 * density);
-  const streams = STREAMS.map((cfg) => {
-    const progress = new Float32Array(streamCount);
-    const seeds = new Float32Array(streamCount);
-    for (let i = 0; i < streamCount; i++) {
-      progress[i] = Math.random() * STREAM_RADIUS;
-      seeds[i] = Math.random() * Math.PI * 2;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(streamCount * 3), 3));
-    const pts = new THREE.Points(
-      geo,
-      new THREE.PointsMaterial({
-        size: 0.07,
-        color: cfg.color,
-        transparent: true,
-        opacity: 0.9,
-        sizeAttenuation: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }),
-    );
-    pts.frustumCulled = false;
-    scene.add(pts);
-    return { cfg, geo, progress, seeds };
-  });
+  const streamsList = streams
+    ? STREAMS.map((cfg) => {
+        const progress = new Float32Array(streamCount);
+        const seeds = new Float32Array(streamCount);
+        for (let i = 0; i < streamCount; i++) {
+          progress[i] = Math.random() * STREAM_RADIUS;
+          seeds[i] = Math.random() * Math.PI * 2;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute(
+          'position',
+          new THREE.BufferAttribute(new Float32Array(streamCount * 3), 3),
+        );
+        const pts = new THREE.Points(
+          geo,
+          new THREE.PointsMaterial({
+            size: 0.07,
+            color: cfg.color,
+            transparent: true,
+            opacity: 0.9,
+            sizeAttenuation: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+          }),
+        );
+        pts.frustumCulled = false;
+        scene.add(pts);
+        return { cfg, geo, progress, seeds };
+      })
+    : [];
 
   const handle = runLoop(
     container,
@@ -144,7 +151,7 @@ export function mountMemoryCore({ container, theme, density }: Cfg): SceneHandle
 
         motes.rotation.y += dt * 0.07;
 
-        for (const st of streams) {
+        for (const st of streamsList) {
           const attr = st.geo.getAttribute('position') as THREE.BufferAttribute;
           const arr = attr.array as Float32Array;
           for (let i = 0; i < streamCount; i++) {

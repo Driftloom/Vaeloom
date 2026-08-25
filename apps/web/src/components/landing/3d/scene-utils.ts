@@ -28,7 +28,7 @@ const DARK: ScenePalette = {
   core: '#818cf8',
   streamA: '#22d3ee',
   link: '#e879f9',
-  edge: '#3b4079',
+  edge: '#2c2c34',
   edgeHot: '#a5b4fc',
   nodes: {
     person: '#ec4899',

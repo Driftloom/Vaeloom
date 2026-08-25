@@ -10,7 +10,7 @@ const cspConnectSrc =
 
 const nextConfig = {
   output: process.env.CI === 'true' && process.platform !== 'win32' ? 'standalone' : undefined,
-  transpilePackages: ['@vaeloom/shared-types', '@vaeloom/ui-kit'],
+  transpilePackages: ['@vaeloom/shared-types', '@vaeloom/ui-kit', 'three'],
   reactStrictMode: true,
   poweredByHeader: false,
   compiler: {

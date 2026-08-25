@@ -32,15 +32,22 @@ export function Section({
   className = '',
   labelledBy,
   as: Tag = 'section',
+  innerRef,
 }: {
   id?: string;
   children: React.ReactNode;
   className?: string;
   labelledBy?: string;
   as?: 'section' | 'div';
+  innerRef?: React.RefObject<HTMLElement>;
 }) {
   return (
-    <Tag id={id} aria-labelledby={labelledBy} className={`relative py-20 sm:py-28 ${className}`}>
+    <Tag
+      id={id}
+      aria-labelledby={labelledBy}
+      ref={innerRef as React.Ref<never>}
+      className={`relative py-20 sm:py-28 ${className}`}
+    >
       {children}
     </Tag>
   );
@@ -116,17 +123,43 @@ export function GlassCard({
   children,
   className = '',
   hover = true,
+  tilt = false,
 }: {
   children: React.ReactNode;
   className?: string;
   hover?: boolean;
+  tilt?: boolean;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    if (!tilt || reduce) return;
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    const onMove = (e: MouseEvent): void => {
+      const r = el.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      el.style.transform = `perspective(900px) rotateX(${(-py * 5).toFixed(2)}deg) rotateY(${(px * 6).toFixed(2)}deg) translateZ(0)`;
+    };
+    const onLeave = (): void => {
+      el.style.transform = '';
+    };
+    el.addEventListener('mousemove', onMove);
+    el.addEventListener('mouseleave', onLeave);
+    return () => {
+      el.removeEventListener('mousemove', onMove);
+      el.removeEventListener('mouseleave', onLeave);
+    };
+  }, [tilt, reduce]);
+
   return (
     <div
-      className={`landing-panel rounded-2xl ${
-        hover
-          ? 'transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-500/40 hover:shadow-glow'
-          : ''
+      ref={ref}
+      className={`landing-panel rounded-2xl transition-[border-color,box-shadow,transform] duration-300 will-change-transform ${
+        hover ? 'hover:-translate-y-0.5 hover:border-primary-500/40 hover:shadow-glow' : ''
       } ${className}`}
     >
       {children}
