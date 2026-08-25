@@ -42,10 +42,10 @@ export function ProductDifference() {
           title={DIFFERENCE.title}
         />
         <div className="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-[0.8fr_auto_1.2fr] md:items-stretch">
-          {/* Chatbot side */}
+          {/* Chatbot side — visually subdued, still AA-readable */}
           <Reveal>
-            <div className="h-full rounded-2xl border border-border-subtle bg-surface-50 p-6 opacity-80">
-              <h3 className="font-mono text-xs uppercase tracking-widest text-text-muted">
+            <div className="h-full rounded-2xl border border-border-subtle bg-surface-50 p-6">
+              <h3 className="font-mono text-xs uppercase tracking-widest text-text-secondary">
                 {DIFFERENCE.chatbot.label}
               </h3>
               <ol className="mt-5 space-y-3">
@@ -56,7 +56,7 @@ export function ProductDifference() {
                   </li>
                 ))}
               </ol>
-              <p className="mt-6 border-t border-border-subtle pt-4 text-xs leading-relaxed text-text-muted">
+              <p className="mt-6 border-t border-border-subtle pt-4 text-xs leading-relaxed text-text-secondary">
                 {DIFFERENCE.chatbot.verdict}
               </p>
             </div>

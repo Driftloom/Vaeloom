@@ -117,17 +117,19 @@ export function OrganizationSection() {
         />
         <ol className="mx-auto mt-12 grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {ORGANIZATION.flow.map((f, i) => (
-            <Reveal key={f.step} delay={i * 0.06}>
-              <li className="h-full rounded-2xl border border-border-subtle bg-background/70 p-5">
-                <span className="font-mono text-xs font-semibold text-primary-400">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <p className="mt-2 text-sm font-bold text-text">{f.step}</p>
-                <p className="mt-1 font-mono text-[11px] leading-relaxed text-text-muted">
-                  {f.detail}
-                </p>
-              </li>
-            </Reveal>
+            <li key={f.step} className="h-full">
+              <Reveal delay={i * 0.06} className="h-full">
+                <div className="h-full rounded-2xl border border-border-subtle bg-background/70 p-5">
+                  <span className="font-mono text-xs font-semibold text-primary-400">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <p className="mt-2 text-sm font-bold text-text">{f.step}</p>
+                  <p className="mt-1 font-mono text-[11px] leading-relaxed text-text-muted">
+                    {f.detail}
+                  </p>
+                </div>
+              </Reveal>
+            </li>
           ))}
         </ol>
         <p className="mt-8 text-center text-xs text-text-muted">
@@ -276,22 +278,24 @@ export function CareerSection() {
         <SectionHeading id="career-title" eyebrow={CAREER.eyebrow} title={CAREER.title} />
         <ol className="mx-auto mt-12 max-w-5xl space-y-2">
           {CAREER.stages.map((s, i) => (
-            <Reveal key={s.name} delay={i * 0.05}>
-              <li className="group relative flex items-start gap-4 rounded-2xl border border-border-subtle bg-background/70 p-4 transition-colors hover:border-primary-500/30 sm:p-5">
-                <div className="flex flex-col items-center self-stretch" aria-hidden="true">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary-500/30 bg-surface-elevated font-mono text-xs font-bold text-primary-300">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  {i < CAREER.stages.length - 1 ? (
-                    <span className="mt-1 w-px flex-1 bg-gradient-to-b from-primary-400/50 to-transparent" />
-                  ) : null}
+            <li key={s.name}>
+              <Reveal delay={i * 0.05}>
+                <div className="group relative flex items-start gap-4 rounded-2xl border border-border-subtle bg-background/70 p-4 transition-colors hover:border-primary-500/30 sm:p-5">
+                  <div className="flex flex-col items-center self-stretch" aria-hidden="true">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary-500/30 bg-surface-elevated font-mono text-xs font-bold text-primary-300">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    {i < CAREER.stages.length - 1 ? (
+                      <span className="mt-1 w-px flex-1 bg-gradient-to-b from-primary-400/50 to-transparent" />
+                    ) : null}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-text">{s.name}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-text-secondary">{s.body}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-text">{s.name}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-text-secondary">{s.body}</p>
-                </div>
-              </li>
-            </Reveal>
+              </Reveal>
+            </li>
           ))}
         </ol>
         <p className="mt-8 text-center text-xs font-medium text-success">{CAREER.note}</p>
