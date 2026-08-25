@@ -75,13 +75,13 @@ export function dprForTier(tier: QualityTier): [number, number] {
   }
 }
 
-/** Particle budget multiplier per tier. */
+/** Particle budget multiplier per tier — preserves atmosphere on mobile. */
 export function densityForTier(tier: QualityTier): number {
   switch (tier) {
     case 'low':
-      return 0.35;
+      return 0.5; // 40-60% for mobile — keep it rich
     case 'medium':
-      return 0.65;
+      return 0.75; // 70-80% for tablet
     default:
       return 1;
   }
