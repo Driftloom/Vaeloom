@@ -1,8 +1,9 @@
-'use client';
+﻿'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { providerKeysApi, type ProviderKeyResponse } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 const PROVIDERS = [
   {
@@ -38,6 +39,8 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [scope, setScope] = useState<'user' | 'workspace'>('user');
   const [showKey, setShowKey] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<ProviderKeyResponse | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
@@ -111,20 +114,28 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
   };
 
   const handleDelete = async (k: ProviderKeyResponse) => {
-    if (
-      !confirm(`Remove ${k.provider} key ${k.keyHint}? This will fallback to system key (if set).`)
-    )
-      return;
+    // F-12: native confirm() replaced by the canonical ConfirmDialog; the
+    // pending key is tracked in state and the dialog drives execution.
+    setPendingDelete(k);
+  };
+
+  const confirmDelete = async () => {
+    const k = pendingDelete;
+    if (!k) return;
+    setDeleting(true);
     try {
       await providerKeysApi.delete(k.id);
       toast({ tone: 'success', title: 'Key removed', detail: `${k.provider} key deleted.` });
       await load();
+      setPendingDelete(null);
     } catch (err) {
       toast({
         tone: 'error',
         title: 'Delete failed',
         detail: err instanceof Error ? err.message : 'Could not delete.',
       });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -160,7 +171,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
           </p>
         </div>
         <span className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs text-text-muted">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Encrypted at rest
+          <span className="h-2 w-2 rounded-full bg-success animate-pulse" /> Encrypted at rest
         </span>
       </div>
 
@@ -168,10 +179,14 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
       <div className="card border-border">
         <div className="grid gap-4 md:grid-cols-[180px_1fr] items-end">
           <div>
-            <label className="block text-xs font-mono uppercase tracking-widest text-text-dim mb-1">
+            <label
+              htmlFor="provider-select"
+              className="block text-xs font-mono uppercase tracking-widest text-text-dim mb-1"
+            >
               Provider
             </label>
             <select
+              id="provider-select"
               value={selectedProvider}
               onChange={(e) => setSelectedProvider(e.target.value as ProviderId)}
               className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
@@ -280,7 +295,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
           {keys.map((k) => (
             <div
               key={k.id}
-              className={`card flex flex-wrap items-center justify-between gap-3 ${!k.isActive ? 'opacity-60' : ''} ${k.isValid === false ? 'border-red-500/30 bg-red-50/20 dark:bg-red-950/10' : ''}`}
+              className={`card flex flex-wrap items-center justify-between gap-3 ${!k.isActive ? 'opacity-60' : ''} ${k.isValid === false ? 'border-error/30 bg-error/10' : ''}`}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -289,10 +304,10 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
                   </span>
                   <span className="font-mono text-sm text-text">{maskHint(k)}</span>
                   <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${k.isValid === true ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : k.isValid === false ? 'bg-red-500/10 text-red-600 border border-red-500/20' : 'bg-surface-hover text-text-muted border border-border'}`}
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${k.isValid === true ? 'bg-success/10 text-success border border-success/30' : k.isValid === false ? 'bg-error/10 text-error border border-error/30' : 'bg-surface-hover text-text-muted border border-border'}`}
                   >
                     <span
-                      className={`h-1.5 w-1.5 rounded-full ${k.isValid === true ? 'bg-emerald-500' : k.isValid === false ? 'bg-red-500' : 'bg-text-dim'}`}
+                      className={`h-1.5 w-1.5 rounded-full ${k.isValid === true ? 'bg-success' : k.isValid === false ? 'bg-error' : 'bg-text-dim'}`}
                     />
                     {k.isValid === true
                       ? 'valid'
@@ -326,9 +341,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
                     </>
                   )}
                   {k.validationError && (
-                    <span className="text-red-600 truncate max-w-[260px]">
-                      • {k.validationError}
-                    </span>
+                    <span className="text-error truncate max-w-[260px]">• {k.validationError}</span>
                   )}
                 </div>
               </div>
@@ -349,7 +362,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
                 </button>
                 <button
                   onClick={() => void handleDelete(k)}
-                  className="text-xs px-3 py-1.5 rounded border border-border text-text-muted hover:text-red-600 hover:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-950/20"
+                  className="text-xs px-3 py-1.5 rounded border border-border text-text-muted hover:text-error hover:border-error/30 hover:bg-error/10 dark:hover:bg-error/10"
                 >
                   Delete
                 </button>
@@ -378,6 +391,18 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
           </li>
         </ul>
       </div>
+
+      {/* F-12: canonical confirmation for destructive key removal. */}
+      <ConfirmDialog
+        isOpen={pendingDelete !== null}
+        onClose={() => (deleting ? undefined : setPendingDelete(null))}
+        onConfirm={confirmDelete}
+        title={`Remove ${pendingDelete?.provider ?? ''} key?`}
+        message={`Remove ${pendingDelete?.provider ?? ''} key ${pendingDelete?.keyHint ?? ''}? Agents will fall back to the system key (if one is set). This cannot be undone.`}
+        confirmLabel="Remove key"
+        variant="danger"
+        loading={deleting}
+      />
     </section>
   );
 }

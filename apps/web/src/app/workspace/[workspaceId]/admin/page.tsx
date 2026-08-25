@@ -184,7 +184,7 @@ export default function AdminPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono uppercase tracking-widest text-text-dim mb-4">
-          Enterprise â€” Gated
+          Enterprise — Gated
         </div>
         <h1 className="text-2xl font-display font-medium text-text mb-2">Admin Dashboard</h1>
         <p className="text-text-muted max-w-lg">{error}</p>

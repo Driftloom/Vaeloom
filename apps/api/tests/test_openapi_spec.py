@@ -1,10 +1,15 @@
-"""Verifies the committed static OpenAPI spec (docs/Backend/openapi.yaml)
-matches the live application schema."""
-import pytest
-import yaml
+"""Verifies the committed static OpenAPI spec (docs/backend/openapi.yaml)
+matches the live application schema.
+
+NOTE: path is lowercase to match the git-tracked file exactly — this test
+silently skipped on case-sensitive Linux CI when it referenced docs/Backend.
+"""
 from pathlib import Path
 
-SPEC_PATH = Path(__file__).parent.parent.parent.parent / "docs" / "Backend" / "openapi.yaml"
+import pytest
+import yaml
+
+SPEC_PATH = Path(__file__).parent.parent.parent.parent / "docs" / "backend" / "openapi.yaml"
 
 
 @pytest.mark.skipif(not SPEC_PATH.exists(), reason="docs/Backend/openapi.yaml not present — run scripts/gen_openapi.py first")

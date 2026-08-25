@@ -356,8 +356,21 @@ def _build_context_prompt(rag: dict[str, Any]) -> str:
 
 # ── Dynamic ReAct Tool Loop ─────────────────────────────────────
 
-async def _try_react_loop(agent: BaseAgent, message: str, workspace_id: str, agent_name: str) -> dict[str, Any] | None:
-    """Attempt dynamic LLM-driven tool calling. Returns result dict or None to fallback."""
+async def _try_react_loop(
+    agent: BaseAgent,
+    message: str,
+    workspace_id: str,
+    agent_name: str,
+    on_token: Any = None,
+) -> dict[str, Any] | None:
+    """Attempt dynamic LLM-driven tool calling. Returns result dict or None to fallback.
+
+    Opt-in via AGENT_REACT_ENABLED (default off) — static dispatch is the deterministic
+    primary path. `on_token` is an optional sync callback receiving incremental text
+    deltas for live SSE streaming.
+    """
+    if not settings.agent_react_enabled:
+        return None
     if not _REACT_AVAILABLE or not settings.llm_api_key:
         return None
     # Only attempt ReAct for agents that could benefit from live tools
@@ -370,7 +383,17 @@ async def _try_react_loop(agent: BaseAgent, message: str, workspace_id: str, age
 
         # Build tool schemas — least-privilege: only offer tools the agent is explicitly allowed (OWASP LLM06/PATI)
         declared = {t.name for t in getattr(agent, "tools", []) or []}
-        ordered = [td for td in ALL_TOOLS.values() if td.name in declared][:12]
+        ordered = [td for td in ALL_TOOLS.values() if td.name in declared]
+        # Offer MCP-bridged tools (workspace ownership is enforced at call time)
+        try:
+            from ..tools.executor import dynamic_tool_definitions
+
+            for name, mcp_td in dynamic_tool_definitions().items():
+                if name not in declared:
+                    ordered.append(mcp_td)
+        except Exception:  # noqa: BLE001 - bridging must never break the loop
+            pass
+        ordered = ordered[:12]
         if not ordered:
             return None
         agent_allowed_scopes = [td.required_scope for td in ordered]
@@ -388,30 +411,39 @@ async def _try_react_loop(agent: BaseAgent, message: str, workspace_id: str, age
         ]
 
         for _round in range(3):
+            # Streaming round — real text deltas forwarded via on_token as they arrive
+            content_str = ""
+            tool_calls: list[dict[str, Any]] = []
             try:
-                resp = await llm_service.generate_completion_with_tools(messages=messages, tools=tool_schemas)
+                async for evt in llm_service.generate_completion_with_tools_stream(
+                    messages=messages, tools=tool_schemas
+                ):
+                    etype = evt.get("type")
+                    if etype == "text_delta":
+                        delta = evt.get("text", "")
+                        content_str += delta
+                        if on_token and delta:
+                            try:
+                                on_token(delta)
+                            except Exception:
+                                pass
+                    elif etype == "tool_calls":
+                        tool_calls = evt.get("tool_calls") or []
+                    elif etype == "done":
+                        pass
             except Exception as e:
                 logger.warning(f"ReAct LLM call failed (round {_round}): {e}")
                 return None
 
-            tool_calls = resp.get("tool_calls") or []
-            content = resp.get("content", "")
-
             # No tool calls → LLM produced direct answer
             if not tool_calls:
-                if content:
-                    # Handle content that may be list of blocks (Anthropic style)
-                    if isinstance(content, list):
-                        content_str = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
-                    else:
-                        content_str = str(content)
-                    if content_str.strip():
-                        return {
-                            "agent_name": agent_name,
-                            "action": "suggest",
-                            "confidence": 0.88,
-                            "result": {"summary": content_str[:800], "details": content_str, "proposals": [], "questions": []},
-                        }
+                if content_str.strip():
+                    return {
+                        "agent_name": agent_name,
+                        "action": "suggest",
+                        "confidence": 0.88,
+                        "result": {"summary": content_str[:800], "details": content_str, "proposals": [], "questions": []},
+                    }
                 return None
 
             # Execute each tool call sequentially (preserving order)
@@ -438,8 +470,9 @@ async def _try_react_loop(agent: BaseAgent, message: str, workspace_id: str, age
                     result = {"status": "error", "tool": tname, "result": f"Permission denied: scope {td.required_scope} not allowed for agent {agent_name}"}
                 else:
                     # Approval gate for high-risk writes — fail closed, require human (OWASP LLM06 excessive autonomy)
-                    APPROVAL_GATED_TOOLS = {"create_github_issue", "send_slack_message", "create_calendar_event", "draft_email", "rename_file", "move_file", "categorize_document", "create_entity", "merge_entities"}
-                    if tname in APPROVAL_GATED_TOOLS:
+                    from ..tools.executor import approval_gated_tools
+
+                    if tname in approval_gated_tools():
                         logger.info(f"ReAct: tool '{tname}' requires approval — not auto-executing")
                         result = {"status": "error", "tool": tname, "result": f"Approval required for {tname} — awaiting user approval", "requires_approval": True}
                     else:
@@ -449,7 +482,7 @@ async def _try_react_loop(agent: BaseAgent, message: str, workspace_id: str, age
                             result = {"status": "error", "tool": tname, "result": str(e)}
                 # Feed tool result back to LLM
                 # OpenAI expects assistant with tool_calls + tool role; Anthropic uses tool_result blocks — we add both forms for compat
-                messages.append({"role": "assistant", "content": content or None, "tool_calls": [tc]})
+                messages.append({"role": "assistant", "content": content_str or None, "tool_calls": [tc]})
                 messages.append({"role": "tool", "tool_call_id": tc.get("id", tname), "content": json.dumps(result)[:4000]})
                 # Keep content for next round's synthesis
 
@@ -462,7 +495,7 @@ async def _try_react_loop(agent: BaseAgent, message: str, workspace_id: str, age
 
 # ── Act ─────────────────────────────────────────────────────────────
 
-async def act_phase(plan: dict[str, Any], request: AgentRequest) -> dict[str, Any]:
+async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any = None) -> dict[str, Any]:
     agent = request.agent
     message = plan.get("message", request.message)
     # Enrich message with RAG context if available (plan_phase injected it)
@@ -488,14 +521,16 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest) -> dict[str, An
             },
         }
 
-    # ── Dynamic ReAct (LLM-driven tool calling) — best-effort before static dispatch ──
-    try:
-        react_result = await _try_react_loop(agent, message, request.workspace_id, agent_name)
-        if react_result is not None:
-            logger.info(f"ACT: ReAct loop succeeded for {agent_name}")
-            return react_result
-    except Exception as e:
-        logger.warning(f"ReAct dispatch failed, falling back to static: {e}")
+    # ── Dynamic ReAct (LLM-driven tool calling) — opt-in via AGENT_REACT_ENABLED ──
+    # Static dispatch below is the deterministic primary path; ReAct is best-effort.
+    if settings.agent_react_enabled:
+        try:
+            react_result = await _try_react_loop(agent, message, request.workspace_id, agent_name, on_token=on_token)
+            if react_result is not None:
+                logger.info(f"ACT: ReAct loop succeeded for {agent_name}")
+                return react_result
+        except Exception as e:
+            logger.warning(f"ReAct dispatch failed, falling back to static: {e}")
 
     # ── Circuit breaker + timeout (static dispatch fallback) ─────
     cb = _get_circuit_breaker(agent_name)
@@ -849,12 +884,12 @@ from collections.abc import AsyncGenerator
 async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[str, Any], None]:
     """Streaming variant of run_agent_loop. Yields SSE-ready event dicts.
 
-    Event types: intent, plan, act, observe, reflect, token, approval_required, done, error
+    Event types: intent, plan, act, observe, reflect, tool_start, approval_required,
+    token, done, error. When ReAct is enabled and the LLM streams text deltas, `token`
+    events carry REAL incremental provider output; otherwise (static dispatch) the
+    final answer is typewriter-chunked as a fallback so clients always get a typewriter UX.
     Caller is responsible for mapping to SSE `event:` + `data:` framing.
     """
-    import json as _json
-    from ..services.llm_service import llm_service  # lazy to avoid circular
-
     logger.info(f"START stream loop: request={request.id}, agent={request.agent_name}")
     state = await load_or_create_state(request.id)
 
@@ -862,17 +897,47 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
     yield {"event": "intent", "data": {"agent": request.agent_name, "request_id": str(request.id)}}
 
     for iteration in range(3):
-        logger.info(f"─── Stream Iteration {iteration + 1}/3 ───")
+        logger.info(f"--- Stream Iteration {iteration + 1}/3 ---")
 
         plan = await plan_phase(request, state)
         state.add_phase(f"plan_{iteration}", plan)
         await save_checkpoint(state)
         yield {"event": "plan", "data": {"iteration": iteration, "plan": plan}}
 
-        # Stream tokens if LLM is involved in Act — weemit incremental token events
-        # For now, act_phase is non-streaming; we wrap it and if it did ReAct with streaming, we would forward tokens.
-        # We attempt to stream LLM tokens for the final synthesis if available
-        act_result = await act_phase(plan, request)
+        # ── Act with live token streaming via queue pump ────────────
+        # act_phase runs as a concurrent task; any on_token callbacks from the
+        # streaming LLM are forwarded to the SSE consumer in real time.
+        token_q: asyncio.Queue = asyncio.Queue()
+        streamed_real_tokens = False
+
+        async def _run_act(plan=plan, token_q=token_q) -> None:
+            try:
+                res = await act_phase(plan, request, on_token=lambda t: token_q.put_nowait(("token", t)))
+            except BaseException as exc:
+                token_q.put_nowait(("error", exc))
+                raise
+            token_q.put_nowait(("done", res))
+
+        runner = asyncio.create_task(_run_act())
+        act_result: dict[str, Any] | None = None
+        try:
+            while True:
+                kind, payload = await token_q.get()
+                if kind == "token":
+                    streamed_real_tokens = True
+                    yield {"event": "token", "data": {"text": str(payload)}}
+                elif kind == "done":
+                    act_result = payload
+                    break
+                else:  # error — re-raise the original exception from its task
+                    await runner
+                    return
+        finally:
+            if not runner.done():
+                runner.cancel()
+
+        if act_result is None:
+            act_result = {"agent_name": request.agent_name, "action": "error", "confidence": 0.0, "result": {"summary": "Act phase produced no result"}}
         state.add_phase(f"act_{iteration}", act_result)
         await save_checkpoint(state)
         yield {"event": "act", "data": {"iteration": iteration, "result": act_result}}
@@ -899,12 +964,15 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
 
         if reflect_result.is_satisfied:
             improve_resp = await improve_phase(state, request)
-            # Stream final answer as token events for typewriter effect (chunk by 40 chars)
-            final_text = str(improve_resp.final_result or "")
-            chunk_size = 40
-            for i in range(0, len(final_text), chunk_size):
-                yield {"event": "token", "data": {"text": final_text[i:i+chunk_size]}}
-                await asyncio.sleep(0)  # allow event loop to flush
+            # If the winning iteration already streamed REAL LLM tokens (ReAct path),
+            # don't re-emit the full text. Static dispatch has no LLM stream →
+            # typewriter-chunk the final answer so clients keep a streaming UX.
+            if not streamed_real_tokens:
+                final_text = str(improve_resp.final_result or "")
+                chunk_size = 40
+                for i in range(0, len(final_text), chunk_size):
+                    yield {"event": "token", "data": {"text": final_text[i:i+chunk_size]}}
+                    await asyncio.sleep(0)  # allow event loop to flush
             yield {"event": "done", "data": {"status": improve_resp.status, "result": improve_resp.final_result}}
             return
 
@@ -920,7 +988,7 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
     state = await load_or_create_state(request.id)
 
     for iteration in range(3):
-        logger.info(f"─── Iteration {iteration + 1}/3 ───")
+        logger.info(f"--- Iteration {iteration + 1}/3 ---")
 
         plan = await plan_phase(request, state)
         state.add_phase(f"plan_{iteration}", plan)

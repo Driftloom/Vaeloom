@@ -204,12 +204,52 @@ async def run_supervisor(message: str, workspace_id: str, request_id: str | None
 
 
 async def run_supervisor_stream(message: str, workspace_id: str, request_id: str | None = None):
-    """Streaming variant — yields per-agent events plus final merged done."""
+    """Streaming variant — yields per-agent events plus final merged done.
+
+    Single-agent requests delegate to the full orchestrator stream so clients
+    receive REAL token events (ADR-033); multi-agent layers keep agent-level
+    granularity (parallel sub-run tokens would interleave chaotically).
+    """
     request_id = request_id or str(uuid.uuid4())
     subtasks = await _detect_subtasks(message)
     if len(subtasks) < 2:
         top_agent = subtasks[0][0] if subtasks else "memory"
         yield {"event": "supervisor_start", "data": {"mode": "single", "agent": top_agent}}
+        agent_cls = AGENT_REGISTRY.get(top_agent)
+        if agent_cls is not None:
+            from .loop import AgentRequest as _AgentRequest
+            from .loop import run_agent_loop_stream
+
+            agent_req = _AgentRequest(
+                agent=agent_cls(),
+                request_id=f"{request_id}-{top_agent}",
+                message=message,
+                workspace_id=workspace_id,
+                agent_name=top_agent,
+            )
+            async for evt in run_agent_loop_stream(agent_req):
+                etype = evt.get("event")
+                if etype in ("token", "tool_start", "tool_result", "approval_required"):
+                    yield evt
+                elif etype == "done":
+                    data = evt.get("data") or {}
+                    final_text = str(data.get("result", "") or "")
+                    result = {
+                        "agent_name": top_agent,
+                        "action": "suggest",
+                        "confidence": 0.85,
+                        "result": {
+                            "summary": final_text,
+                            "details": final_text,
+                            "proposals": [],
+                            "questions": [],
+                        },
+                        "status": data.get("status", "success"),
+                    }
+                    yield {"event": "supervisor_agent_done", "data": result}
+                    yield {"event": "done", "data": result}
+                    return
+        # Registry miss or stream produced no terminal event — blocking fallback
         result = await _run_single_agent(top_agent, message, workspace_id, request_id)
         yield {"event": "supervisor_agent_done", "data": result}
         yield {"event": "done", "data": result}

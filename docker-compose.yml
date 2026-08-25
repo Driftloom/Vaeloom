@@ -100,6 +100,27 @@ services:
         condition: service_healthy
     <<: *service-base
 
+  # ─── Durable queue worker (schedules + events, ADR-033) ───
+  queue-worker:
+    build: ./apps/api
+    container_name: vaeloom-queue-worker
+    command: ['python', '-m', 'api.workers.queue_worker']
+    environment:
+      SERVICE_NAME: vaeloom-queue-worker
+      SERVICE_VERSION: '0.2.0'
+      SERVICE_ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+      DATABASE__URL: postgresql+asyncpg://vaeloom:vaeloom_dev@postgres:5432/vaeloom
+      REDIS__URL: redis://redis:6379/0
+      JWT_SECRET: dev-jwt-secret-not-for-production
+      JWT_ALGORITHM: HS256
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    <<: *service-base
+
   # ─── MinIO (S3-compatible object storage) ───
   minio:
     image: quay.io/minio/minio:latest

@@ -63,7 +63,7 @@ class TestToolRegistry:
 
     def test_all_tools_count(self):
         from api.tools.definitions import ALL_TOOLS
-        assert len(ALL_TOOLS) == 22
+        assert len(ALL_TOOLS) == 28
         for name in ["web_search", "parse_document_ocr", "calculate_ats_diff", "fetch_github_repo", "create_github_issue", "send_slack_message", "sync_notion_pages", "execute_code_sandbox"]:
             assert name in ALL_TOOLS, f"missing {name}"
 
@@ -140,9 +140,9 @@ class TestStreamingLoop:
         assert "done" in events
 
     @pytest.mark.asyncio
-    async def test_catalog_has_22_tools(self):
+    async def test_catalog_has_25_tools(self):
         from api.tools.definitions import ALL_TOOLS
-        assert len(ALL_TOOLS) == 22
+        assert len(ALL_TOOLS) == 28
 
 
 class TestSupervisor:
@@ -325,9 +325,11 @@ class TestChatStreamEndpoint:
 
     def test_endpoint_exists(self):
         from api.main import app
-        paths = [getattr(r, "path", "") for r in app.routes]
+        # Newer FastAPI wraps includes in lazy _IncludedRouter objects — app.routes
+        # no longer flattens paths. OpenAPI generation materializes everything.
+        paths = list(app.openapi()["paths"].keys())
         assert "/api/v1/agents/chat/stream" in paths
 
-    def test_catalog_shows_22_tools(self):
+    def test_catalog_shows_25_tools(self):
         from api.tools.definitions import ALL_TOOLS
-        assert len(ALL_TOOLS) == 22
+        assert len(ALL_TOOLS) == 28

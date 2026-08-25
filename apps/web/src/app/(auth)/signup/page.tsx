@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
-import { ApiError } from '../../../lib/api';
+import { ApiError, api } from '../../../lib/api';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_RE = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/;
@@ -36,6 +36,33 @@ export default function SignupPage() {
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const passwordStrength = getPasswordStrength(password);
+
+  // F-02/F-28: these buttons previously had no handlers. SSO signup is real:
+  // the backend auto-provisions the account from the provider email on
+  // callback (auth.py auto-provision), so we reuse the login SSO flow.
+  async function handleSSO(provider: string) {
+    try {
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      const res = await api.request<{ auth_url?: string; authUrl?: string }>(
+        `/auth/sso/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`,
+      );
+      const url =
+        (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
+      if (url) {
+        sessionStorage.setItem('vaeloom.sso.provider', provider);
+        window.location.href = url;
+        return;
+      }
+      setErrors({ form: `${provider} sign-up is not configured. Use email and password.` });
+    } catch (err) {
+      setErrors({
+        form:
+          err instanceof Error && err.message.includes('not configured')
+            ? `${provider} sign-up requires sso_providers config. Use email and password for now.`
+            : 'Could not start provider sign-up.',
+      });
+    }
+  }
 
   function validate(): boolean {
     const e: typeof errors = {};
@@ -75,7 +102,18 @@ export default function SignupPage() {
       }
       router.push('/');
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Something went wrong';
+      let message = 'Something went wrong';
+      if (err instanceof ApiError) {
+        message = err.message;
+        if (err.code) message += ` (${err.code})`;
+        if (err.status === 409)
+          message = `Account already exists. Try signing in. (${err.message})`;
+        else if (err.status === 422) message = `Validation failed: ${err.message}`;
+        else if (err.status === 400) message = `Bad request: ${err.message}`;
+        if (err.correlationId) message += ` [${err.correlationId.slice(0, 8)}]`;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
       setErrors({ form: message });
     } finally {
       setSubmitting(false);
@@ -108,29 +146,31 @@ export default function SignupPage() {
               <span className="text-2xl font-bold text-text">Vaeloom</span>
             </div>
           </div>
-          <h1 className="text-4xl lg:text-5xl font-bold text-text leading-tight mb-6 animate-slide-up">
+          <p className="text-4xl lg:text-5xl font-bold text-text leading-tight mb-6 animate-slide-up">
             Start building your
             <br />
             <span className="bg-gradient-to-r from-accent-400 via-primary-400 to-primary-300 bg-clip-text text-transparent">
               AI memory
             </span>
-          </h1>
+          </p>
           <p className="text-lg text-text-muted max-w-md animate-slide-up stagger-1">
-            Join thousands who are transforming how they work with AI. Your memories, your agents,
-            your rules.
+            Private, agent-native memory for your work. Your data, your rules, your agents — ask
+            before they act.
           </p>
           <div className="grid grid-cols-3 gap-8 mt-12 animate-slide-up stagger-2">
             <div>
-              <div className="text-3xl font-bold text-text">10K+</div>
-              <div className="text-sm text-text-muted mt-1">Active users</div>
+              <div className="text-sm font-semibold text-text">Memory-first</div>
+              <div className="text-sm text-text-muted mt-1">
+                Long-term memory, not just chat history
+              </div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-text">8</div>
-              <div className="text-sm text-text-muted mt-1">AI Agents</div>
+              <div className="text-sm font-semibold text-text">Agent-native</div>
+              <div className="text-sm text-text-muted mt-1">Specialized agents, approval-gated</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-text">99.9%</div>
-              <div className="text-sm text-text-muted mt-1">Uptime</div>
+              <div className="text-sm font-semibold text-text">Private</div>
+              <div className="text-sm text-text-muted mt-1">Workspace-isolated, encrypted</div>
             </div>
           </div>
         </div>
@@ -149,7 +189,7 @@ export default function SignupPage() {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-text mb-2">Create your account</h2>
+            <h1 className="text-2xl font-bold text-text mb-2">Create your account</h1>
             <p className="text-text-muted">Get started in seconds</p>
           </div>
 
@@ -168,6 +208,7 @@ export default function SignupPage() {
                   onBlur={() => setFocusedField(null)}
                   placeholder="Your name"
                   autoComplete="name"
+                  suppressHydrationWarning
                   className={`input-field ${focusedField === 'name' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
                 />
               </div>
@@ -185,6 +226,7 @@ export default function SignupPage() {
                   onBlur={() => setFocusedField(null)}
                   placeholder="you@example.com"
                   autoComplete="email"
+                  suppressHydrationWarning
                   className={`input-field ${errors.email ? 'input-error' : ''} ${focusedField === 'email' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
                 />
                 {errors.email && (
@@ -207,6 +249,7 @@ export default function SignupPage() {
                   onBlur={() => setFocusedField(null)}
                   placeholder="At least 8 characters"
                   autoComplete="new-password"
+                  suppressHydrationWarning
                   className={`input-field ${errors.password ? 'input-error' : ''} ${focusedField === 'password' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
                 />
                 {password && (
@@ -251,6 +294,7 @@ export default function SignupPage() {
                   onBlur={() => setFocusedField(null)}
                   placeholder="Repeat your password"
                   autoComplete="new-password"
+                  suppressHydrationWarning
                   className={`input-field ${errors.confirmPassword ? 'input-error' : ''} ${focusedField === 'confirm' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
                 />
                 {errors.confirmPassword && (
@@ -270,6 +314,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={submitting}
+                suppressHydrationWarning
                 className="w-full btn-primary flex items-center justify-center gap-2 py-3.5 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
@@ -309,6 +354,8 @@ export default function SignupPage() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
+                onClick={() => handleSSO('google')}
+                suppressHydrationWarning
                 className="btn-secondary flex items-center justify-center gap-2 py-2.5"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -333,6 +380,8 @@ export default function SignupPage() {
               </button>
               <button
                 type="button"
+                onClick={() => handleSSO('github')}
+                suppressHydrationWarning
                 className="btn-secondary flex items-center justify-center gap-2 py-2.5"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">

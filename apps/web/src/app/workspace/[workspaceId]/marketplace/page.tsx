@@ -101,10 +101,6 @@ export default function MarketplacePage() {
 
   const installedPlugins = plugins.filter((p) => p.installed);
 
-  const toggleInstall = (id: string) => {
-    setPlugins(plugins.map((p) => (p.id === id ? { ...p, installed: !p.installed } : p)));
-  };
-
   return (
     <div className="space-y-8">
       <header className="flex justify-between items-center">
@@ -164,7 +160,7 @@ export default function MarketplacePage() {
                 </div>
                 <StatusBadge
                   variant={plugin.installed ? 'success' : 'neutral'}
-                  label={plugin.installed ? 'Installed' : plugin.price}
+                  label={plugin.installed ? 'Installed' : 'Available'}
                 />
               </div>
               <h3 className="font-medium text-text mb-1">{plugin.name}</h3>
@@ -174,8 +170,6 @@ export default function MarketplacePage() {
               <div className="flex items-center gap-3 text-xs text-text-muted mb-4">
                 <span>{plugin.author}</span>
                 <span>v{plugin.version}</span>
-                <span>⭐ {plugin.rating}</span>
-                <span>{plugin.installs.toLocaleString()} installs</span>
               </div>
               <div className="flex gap-2 mt-auto">
                 <Button
@@ -186,11 +180,14 @@ export default function MarketplacePage() {
                 >
                   Details
                 </Button>
+                {/* F-03: no install/uninstall backend exists — action disabled
+                    instead of silently mutating local state. */}
                 <Button
-                  variant={plugin.installed ? 'ghost' : 'primary'}
+                  variant="secondary"
                   size="sm"
                   className="flex-1"
-                  onClick={() => toggleInstall(plugin.id)}
+                  disabled
+                  title="Plugin installation is not available yet"
                 >
                   {plugin.installed ? 'Uninstall' : 'Install'}
                 </Button>
@@ -211,7 +208,6 @@ export default function MarketplacePage() {
             <div className="flex gap-3 text-sm text-text-muted">
               <span>By {selectedPlugin.author}</span>
               <span>v{selectedPlugin.version}</span>
-              <span>⭐ {selectedPlugin.rating}</span>
             </div>
             <p className="text-text">{selectedPlugin.description}</p>
             <div className="flex items-center gap-2">
@@ -220,18 +216,13 @@ export default function MarketplacePage() {
                 label={selectedPlugin.installed ? 'Installed' : 'Not Installed'}
               />
               <StatusBadge variant="info" label={selectedPlugin.category} />
-              <StatusBadge variant="neutral" label={selectedPlugin.price} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setSelectedPlugin(null)}>
                 Close
               </Button>
-              <Button
-                onClick={() => {
-                  toggleInstall(selectedPlugin.id);
-                  setSelectedPlugin(null);
-                }}
-              >
+              {/* F-03: install/uninstall backend absent — disabled. */}
+              <Button variant="primary" disabled title="Plugin installation is not available yet">
                 {selectedPlugin.installed ? 'Uninstall' : 'Install'}
               </Button>
             </div>

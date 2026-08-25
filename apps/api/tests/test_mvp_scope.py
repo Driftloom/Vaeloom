@@ -20,7 +20,9 @@ class TestMvpScopeLock:
                   "security", "connector", "plugin", "drive"]
 
     @pytest.fixture(autouse=True)
-    async def _enforce_mvp_scope(self, monkeypatch):
+    def _enforce_mvp_scope(self, monkeypatch, mock_llm):
+        # Depend on mock_llm so this runs AFTER conftest's autouse that sets mvp_scope_enforced=False
+        # Must be sync (not async) — pytest-asyncio warns async autouse is unsupported and may not run.
         from api.config import settings
         monkeypatch.setattr(settings, "mvp_scope_enforced", True)
         yield

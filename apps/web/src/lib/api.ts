@@ -62,6 +62,8 @@ export class ApiError extends Error {
     public readonly status: number,
     message: string,
     public readonly code?: string,
+    /** Correlation ID echoed by the backend (or the client-generated one). */
+    public readonly correlationId?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -111,9 +113,16 @@ async function refreshToken(): Promise<string> {
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const mutating = isMutatingMethod(init.method);
+  // W-13: every request carries a correlation ID; the backend echoes it back
+  // (CorrelationIDMiddleware) and we expose it for support/debug context.
+  const requestId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
+    'X-Request-ID': requestId,
     ...(init.headers as Record<string, string> | undefined),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -126,6 +135,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     fetch(`${API_BASE}${API_PREFIX}${path}`, { ...init, credentials: 'include', headers });
 
   let res = await fetchWith();
+
+  // Capture the backend's correlation ID for error surfacing.
+  const serverCorrelationId =
+    res.headers.get('x-correlation-id') ?? res.headers.get('x-request-id') ?? requestId;
 
   // CSRF token may have expired server-side (1h TTL) — refresh and retry once.
   if (res.status === 403 && mutating && headers[CSRF_HEADER]) {
@@ -153,8 +166,11 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
         refreshQueue.forEach((q) => q.reject(err));
         refreshQueue = [];
         clearToken();
+        clearRefreshToken();
         if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+          // W-13: route to the purpose-built expired-session page instead of
+          // dropping the user on /login with no explanation.
+          window.location.href = '/session-expired';
         }
         throw err;
       }
@@ -184,7 +200,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiError(res.status, message, code);
+    throw new ApiError(res.status, message, code, serverCorrelationId);
   }
 
   return (res.status === 204 ? undefined : transformKeys(await res.json())) as T;

@@ -86,7 +86,7 @@ class TestBullMQWorkerExtended:
         })
         await worker._process_job("job-1")
         handler.assert_called_once_with({"key": "val"})
-        mock_redis.zadd.assert_called_once_with("bull:events:completed", {"job-1": "2000"})
+        mock_redis.zadd.assert_called_once_with("bull:events:completed", {"job-1": 2000.0})
         assert mock_redis.hset.call_count == 1
 
     async def test_process_job_no_handler(self, mock_redis):
@@ -99,7 +99,8 @@ class TestBullMQWorkerExtended:
             "timestamp": "3000",
         })
         await worker._process_job("job-2")
-        mock_redis.sadd.assert_called_once_with("bull:events:failed", "job-2")
+        # ADR-033: no-handler jobs dead-letter via zadd (not sadd)
+        mock_redis.zadd.assert_called_once_with("bull:events:failed", {"job-2": 0})
         mock_redis.hset.assert_called_once()
 
     async def test_process_job_handler_raises(self, mock_redis):
@@ -115,8 +116,11 @@ class TestBullMQWorkerExtended:
             "timestamp": "4000",
         })
         await worker._process_job("job-3")
-        mock_redis.zadd.assert_called_once_with("bull:events:failed", {"job-3": 0})
-        mock_redis.hset.assert_called_once_with("bull:events:job-3", "failedReason", "Worker processing error")
+        # ADR-033: first failure schedules a delayed retry (default maxAttempts=3)
+        mock_redis.zadd.assert_called_once()
+        assert mock_redis.zadd.call_args.args[0] == "bull:events:delayed"
+        assert "job-3" in mock_redis.zadd.call_args.args[1]
+        assert mock_redis.hset.call_args.kwargs.get("mapping") == {"attempts": "1"}
 
     async def test_process_job_not_found(self, mock_redis):
         from api.workers.queue_worker import BullMQWorker
@@ -308,7 +312,8 @@ class TestBullMQWorkerExtended:
         handlers[0]()
 
         await asyncio.wait_for(task, timeout=3)
-        mock_worker.stop.assert_called_once()
+        # ADR-033: run_worker now drives TWO queues (events + schedules)
+        assert mock_worker.stop.call_count == 2
 
     # ── __main__ block — covers lines 220-221 ─────────────────────────
 

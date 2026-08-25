@@ -79,7 +79,14 @@ export class QueueService {
     pattern: string,
     opts?: JobsOptions,
   ): Promise<Job<T>> {
-    return this.queue.add(jobName, data, { ...opts, repeat: { pattern } });
+    // BullMQ 6.x: `repeat` removed from JobsOptions — use JobScheduler API.
+    // `upsertJobScheduler` is the new way to schedule repeatable jobs (AGENTS.md: queue).
+    const schedulerId = `${jobName}:${pattern}`;
+    return this.queue.upsertJobScheduler(
+      schedulerId,
+      { pattern },
+      { name: jobName, data: data as any, opts: opts as any },
+    ) as Promise<Job<T>>;
   }
 
   async getJob<T>(jobId: string): Promise<Job<T> | undefined> {

@@ -196,12 +196,20 @@ async def db_session(db_path):
             await conn.execute(text(q))
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
-    async with session_factory() as session:
-        yield session
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+    try:
+        async with session_factory() as session:
+            yield session
+    finally:
+        # Teardown must not hang the worker: drop is best-effort, dispose is mandatory.
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+        except Exception:
+            pass
+        try:
+            await engine.dispose()
+        except Exception:
+            pass
 
 
 @pytest_asyncio.fixture
@@ -252,6 +260,10 @@ async def mock_llm(monkeypatch):
         yield {"type": "content", "text": "Mock stream"}
         yield {"type": "done", "finish_reason": "stop"}
 
+    # NOTE: generate_completion_with_tools_stream intentionally NOT mocked here.
+    # Its no-key fallback delegates to the mocked buffered tool completion above,
+    # keeping a single mock surface for all LLM tool paths.
+
     monkeypatch.setattr(LLMService, "generate_embedding", fake_generate_embedding)
     monkeypatch.setattr(LLMService, "generate_completion", fake_generate_completion)
     monkeypatch.setattr(LLMService, "generate_completion_with_tools", fake_generate_completion_with_tools)
@@ -267,3 +279,39 @@ async def mock_connector_test(monkeypatch):
         return {"status": "ok", "code": 200}
 
     monkeypatch.setattr(ConnectorExtService, "test_connection", fake_test_connection)
+
+
+@pytest.fixture(autouse=True)
+def _clean_global_state(monkeypatch):
+    """Isolate parser sys.modules + circuit state across xdist workers.
+
+    Full 2731-suite reuses workers (loadfile); a previous file's
+    monkeypatch.setitem(sys.modules, 'fitz', None) would otherwise leak
+    into the next file's `import fitz` inside parsers._parse_sync.
+    Also clear loop circuit breakers that survive worker reuse.
+    """
+    for mod in ("fitz", "pdfplumber", "PyPDF2", "docx", "pytesseract", "PIL", "PIL.Image"):
+        monkeypatch.delitem(sys.modules, mod, raising=False)
+    # Clear in-memory circuit breakers / rate limiter state if present
+    try:
+        from api.orchestrator.loop import _circuit_breakers
+
+        _circuit_breakers.clear()
+    except Exception:
+        pass
+    try:
+        from api.infrastructure.circuit_breaker import CircuitBreaker as _CB
+
+        # no global to clear, instance-local
+        pass
+    except Exception:
+        pass
+    yield
+    for mod in ("fitz", "pdfplumber", "PyPDF2", "docx", "pytesseract", "PIL", "PIL.Image"):
+        monkeypatch.delitem(sys.modules, mod, raising=False)
+    try:
+        from api.orchestrator.loop import _circuit_breakers as _cb2
+
+        _cb2.clear()
+    except Exception:
+        pass

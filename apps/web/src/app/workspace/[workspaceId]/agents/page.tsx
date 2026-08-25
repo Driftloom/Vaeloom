@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
@@ -28,7 +28,7 @@ function ScopePills({ scopes }: { scopes: { readTypes: string[]; writeTypes: str
       {scopes.readTypes.map((t) => (
         <span
           key={`r-${t}`}
-          className="rounded bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 text-xs text-emerald-700 dark:text-emerald-400"
+          className="rounded bg-success/10 border border-success/30 px-1.5 py-0.5 text-xs text-success dark:text-success"
         >
           read:{t}
         </span>
@@ -36,7 +36,7 @@ function ScopePills({ scopes }: { scopes: { readTypes: string[]; writeTypes: str
       {scopes.writeTypes.map((t) => (
         <span
           key={`w-${t}`}
-          className="rounded bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-400"
+          className="rounded bg-warning/10 border border-warning/30 px-1.5 py-0.5 text-xs text-warning dark:text-warning"
         >
           write:{t}
         </span>
@@ -57,9 +57,9 @@ function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-base font-medium text-text capitalize">
+            <h2 className="text-base font-medium text-text capitalize">
               {agent.name.replace(/[_-]/g, ' ')}
-            </h3>
+            </h2>
             <CategoryBadge isCanonical={agent.isCanonical} />
           </div>
           <p className="mt-1 text-sm text-text-muted line-clamp-2">
@@ -130,9 +130,9 @@ function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: 
                 <span
                   className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${
                     t.category === 'memory_write' || t.category === 'connector_write'
-                      ? 'bg-red-500/10 text-red-600 border-red-500/20'
+                      ? 'bg-error/10 text-error border-error/30'
                       : t.category === 'memory_read' || t.category === 'connector_read'
-                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                        ? 'bg-success/10 text-success border-success/30'
                         : 'bg-surface-hover text-text-muted border-border'
                   }`}
                 >
@@ -156,7 +156,7 @@ export default function AgentsPage() {
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const { workspace } = useWorkspace(workspaceId);
 
-  const { data, error, isLoading } = useSWR('agent-catalog', () => agentCatalogApi.get());
+  const { data, error, isLoading, mutate } = useSWR('agent-catalog', () => agentCatalogApi.get());
 
   const agents = useMemo<CatalogAgent[]>(() => data?.agents ?? [], [data?.agents]);
   const canonical = useMemo(() => agents.filter((a) => a.isCanonical), [agents]);
@@ -201,7 +201,7 @@ export default function AgentsPage() {
         <p className="text-sm text-text-muted mt-1">
           {(error as Error).message || 'Unexpected error'}
         </p>
-        <button onClick={() => window.location.reload()} className="btn-secondary mt-4">
+        <button onClick={() => mutate()} className="btn-secondary mt-4">
           Retry
         </button>
       </div>
@@ -222,7 +222,7 @@ export default function AgentsPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden md:inline text-xs text-text-dim">8 required for MVP</span>
-            <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs text-emerald-700 dark:text-emerald-400">
+            <span className="rounded-full bg-success/10 border border-success/30 px-3 py-1 text-xs text-success dark:text-success">
               suggest-mode-first
             </span>
           </div>
@@ -272,9 +272,9 @@ export default function AgentsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card">
-          <h3 className="font-mono text-xs uppercase tracking-widest text-text-dim mb-2">
+          <h2 className="font-mono text-xs uppercase tracking-widest text-text-dim mb-2">
             How routing works
-          </h3>
+          </h2>
           <p className="text-xs text-text-muted">
             Orchestrator classifies intent (keywords → category → agent) with 0.7 confidence gate.
             Low confidence → asks clarification. Enterprise agents are gated when{' '}
@@ -282,9 +282,9 @@ export default function AgentsPage() {
           </p>
         </div>
         <div className="card">
-          <h3 className="font-mono text-xs uppercase tracking-widest text-text-dim mb-2">
+          <h2 className="font-mono text-xs uppercase tracking-widest text-text-dim mb-2">
             Tools = MCP-shaped
-          </h3>
+          </h2>
           <p className="text-xs text-text-muted">
             Each tool has{' '}
             <span className="font-mono">
@@ -295,9 +295,9 @@ export default function AgentsPage() {
           </p>
         </div>
         <div className="card">
-          <h3 className="font-mono text-xs uppercase tracking-widest text-text-dim mb-2">
+          <h2 className="font-mono text-xs uppercase tracking-widest text-text-dim mb-2">
             Keys (BYOK)
-          </h3>
+          </h2>
           <p className="text-xs text-text-muted">
             Agents use resolved LLM keys: workspace → user → system. Configure in{' '}
             <span className="font-mono">Settings → API Keys</span>. Embeddings require OpenAI.

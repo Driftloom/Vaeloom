@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 interface ProgressBarProps {
   value: number;
@@ -12,8 +12,8 @@ interface ProgressBarProps {
 const colorStyles: Record<string, string> = {
   primary: 'bg-primary',
   accent: 'bg-accent',
-  success: 'bg-green-500',
-  warning: 'bg-yellow-500',
+  success: 'bg-success',
+  warning: 'bg-warning',
 };
 
 export function ProgressBar({

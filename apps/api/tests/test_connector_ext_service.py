@@ -196,15 +196,30 @@ class TestConnectorExtService:
         conn = _make_connector()
         dto = MagicMock()
         dto.name = "Updated"
-        dto.config = {"new": "config"}
+        dto.config = {"url": "https://api.example.com/v2"}
         dto.token_ref = None
         with patch.object(service, 'get', new=AsyncMock()) as mock_get:
             mock_get.return_value = conn
             result = await service.update(conn.id, dto, None, mock_db)
             assert result.name == "Updated"
-            assert result.config == {"new": "config"}
+            assert result.config == {"url": "https://api.example.com/v2"}
             mock_db.commit.assert_awaited()
             mock_db.refresh.assert_awaited()
+
+    async def test_update_rejects_invalid_config(self, service, mock_db):
+        """Update path revalidates configs (e.g. rest without url → 400)."""
+        from fastapi import HTTPException
+
+        conn = _make_connector()
+        dto = MagicMock()
+        dto.name = "Updated"
+        dto.config = {"new": "config"}  # missing url for rest type
+        dto.token_ref = None
+        with patch.object(service, 'get', new=AsyncMock()) as mock_get:
+            mock_get.return_value = conn
+            with pytest.raises(HTTPException) as exc:
+                await service.update(conn.id, dto, None, mock_db)
+            assert exc.value.status_code == 400
 
     async def test_update_name_only(self, service, mock_db):
         conn = _make_connector()

@@ -1,127 +1,143 @@
 import type { Config } from 'tailwindcss';
 
+/**
+ * Vaeloom dual-theme design tokens (Phase 02A / Wave 03).
+ *
+ * Every semantic color resolves through a CSS custom property so ONE class
+ * set produces BOTH the deep-navy enterprise dark theme and the premium
+ * white enterprise light theme. Values are defined in src/styles/globals.css
+ * (`:root`/`.dark` and `.light`). Triplets are R G B for alpha support.
+ *
+ * Black policy: pure black is NOT the app background anywhere. It remains
+ * available intentionally for scrims/overlays, graph canvas voids, code
+ * surfaces, and shadows (see globals.css `.bg-scrim` and raw `black`
+ * utilities where already justified).
+ */
+
+const rgb = (v: string) => `rgb(${v} / <alpha-value>)`;
+
 const config: Config = {
   darkMode: 'class',
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    // F-06 fix: ui-kit classes were previously purged (Modal backdrop,
+    // Button hover/active/focus states) because the package was not scanned.
+    '../../packages/ui-kit/src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
       colors: {
-        background: '#000000',
+        // App canvas
+        background: rgb('var(--bg)'),
+        // Surface hierarchy
         surface: {
-          DEFAULT: '#09090b',
-          50: '#09090b',
-          100: '#0f0f12',
-          200: '#18181b',
-          300: '#27272a',
-          400: '#3f3f46',
-          hover: '#18181b',
-          active: '#27272a',
+          DEFAULT: rgb('var(--surface)'),
+          elevated: rgb('var(--surface-elevated)'),
+          50: rgb('var(--surface-50)'),
+          100: rgb('var(--surface-100)'),
+          200: rgb('var(--surface-200)'),
+          300: rgb('var(--surface-300)'),
+          400: rgb('var(--surface-400)'),
+          500: rgb('var(--surface-500)'),
+          900: rgb('var(--surface-900)'),
+          hover: rgb('var(--surface-hover)'),
+          active: rgb('var(--surface-active)'),
+          selected: rgb('var(--surface-selected)'),
         },
+        // Canonical primary ACTION family (indigo) — identical across themes.
         primary: {
-          DEFAULT: '#fafafa',
-          50: '#ffffff',
-          100: '#f4f4f5',
-          200: '#e4e4e7',
-          300: '#d4d4d8',
-          400: '#a1a1aa',
-          500: '#71717a',
-          600: '#52525b',
-          700: '#3f3f46',
-          800: '#27272a',
-          900: '#18181b',
-          hover: '#f4f4f5',
-          active: '#e4e4e7',
-        },
-        accent: {
-          DEFAULT: '#818cf8',
+          DEFAULT: rgb('var(--primary)'),
+          fg: rgb('var(--primary-fg)'),
           50: '#eef2ff',
           100: '#e0e7ff',
           200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
+          300: rgb('var(--primary-300)'),
+          400: rgb('var(--primary-400)'),
           500: '#6366f1',
           600: '#4f46e5',
           700: '#4338ca',
-          hover: '#a5b4fc',
-          active: '#6366f1',
+          800: '#3730a3',
+          900: '#312e81',
+        },
+        // Solid button/action surface — fixed indigo, white label, both themes.
+        action: {
+          DEFAULT: rgb('var(--action)'),
+          hover: rgb('var(--action-hover)'),
+          active: rgb('var(--action-active)'),
+          fg: rgb('var(--action-fg)'),
+        },
+        accent: {
+          DEFAULT: rgb('var(--accent)'),
+          50: '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: rgb('var(--accent-300)'),
+          400: rgb('var(--accent-400)'),
+          500: '#6366f1',
+          600: '#4f46e5',
+          700: '#4338ca',
+          hover: rgb('var(--accent-hover)'),
+          active: rgb('var(--accent-active)'),
         },
         text: {
-          DEFAULT: '#fafafa',
-          50: '#ffffff',
-          100: '#f4f4f5',
-          200: '#e4e4e7',
-          300: '#d4d4d8',
-          400: '#a1a1aa',
-          500: '#71717a',
-          600: '#52525b',
-          muted: '#a1a1aa',
-          dim: '#71717a',
+          DEFAULT: rgb('var(--text)'),
+          secondary: rgb('var(--text-secondary)'),
+          muted: rgb('var(--text-muted)'),
+          dim: rgb('var(--text-dim)'),
+          200: rgb('var(--text-200)'),
+          300: rgb('var(--text-300)'),
+          400: rgb('var(--text-400)'),
+          500: rgb('var(--text-500)'),
+          600: rgb('var(--text-600)'),
         },
         border: {
-          DEFAULT: '#27272a',
-          subtle: '#1e1e22',
-          focus: '#818cf8',
+          DEFAULT: rgb('var(--border)'),
+          subtle: rgb('var(--border-subtle)'),
+          strong: rgb('var(--border-strong)'),
+          focus: rgb('var(--accent)'),
         },
+        // Semantic status — designed per theme for WCAG AA on real surfaces.
         success: {
-          DEFAULT: '#22c55e',
-          muted: '#4ade80',
+          DEFAULT: rgb('var(--success)'),
+          muted: rgb('var(--success-muted)'),
+          fg: rgb('var(--success-fg)'),
         },
         warning: {
-          DEFAULT: '#f59e0b',
-          muted: '#fbbf24',
+          DEFAULT: rgb('var(--warning)'),
+          muted: rgb('var(--warning-muted)'),
+          fg: rgb('var(--warning-fg)'),
         },
         error: {
-          DEFAULT: '#ef4444',
-          muted: '#f87171',
+          DEFAULT: rgb('var(--error)'),
+          muted: rgb('var(--error-muted)'),
+          fg: rgb('var(--error-fg)'),
         },
         info: {
-          DEFAULT: '#737373',
-          muted: '#a3a3a3',
+          DEFAULT: rgb('var(--info)'),
+          muted: rgb('var(--info-muted)'),
+          fg: rgb('var(--info-fg)'),
         },
-        // Light mode
-        'l-bg': '#fafbfc',
-        'l-surface': {
-          DEFAULT: '#ffffff',
-          50: '#f9fafb',
-          100: '#f3f4f6',
-          200: '#e5e7eb',
-          hover: '#f3f4f8',
-          active: '#e8ecf4',
-        },
-        'l-text': {
-          DEFAULT: '#111827',
-          muted: '#6b7280',
-        },
-        'l-border': '#e5e7eb',
-        'l-success': '#16a34a',
-        'l-warning': '#d97706',
-        'l-error': '#dc2626',
-        'l-info': '#2563eb',
+        overlay: rgb('var(--overlay)'),
       },
       boxShadow: {
-        glow: '0 0 20px rgba(129, 140, 248, 0.1)',
-        'glow-lg': '0 0 40px rgba(129, 140, 248, 0.15)',
-        card: '0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)',
-        'card-hover': '0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)',
-        elevated: '0 8px 32px rgba(0, 0, 0, 0.5)',
-        'inner-glow': 'inset 0 1px 0 rgba(255, 255, 255, 0.03)',
-        'l-subtle': '0 1px 3px rgba(0,0,0,0.06)',
-        'l-card': '0 4px 16px rgba(0,0,0,0.06)',
+        glow: '0 0 20px rgba(99, 102, 241, 0.12)',
+        'glow-lg': '0 0 40px rgba(99, 102, 241, 0.18)',
+        card: 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
+        elevated: 'var(--shadow-elevated)',
+        'inner-glow': 'inset 0 1px 0 var(--shadow-inner-highlight)',
       },
       fontFamily: {
         display: ['var(--font-space-grotesk)', 'system-ui', 'sans-serif'],
         sans: ['var(--font-space-grotesk)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-ibm-plex-mono)', 'monospace'],
-        inter: ['var(--font-inter)', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-mesh':
-          'linear-gradient(135deg, rgba(129, 140, 248, 0.03) 0%, rgba(99, 102, 241, 0.01) 50%, rgba(0, 0, 0, 0) 100%)',
+          'linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(67, 56, 202, 0.02) 50%, rgba(0, 0, 0, 0) 100%)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',

@@ -96,8 +96,11 @@ export function KeyboardShortcutsModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={() => setShowModal(false)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') setShowModal(false);
+      }}
     >
       <div
         role="dialog"

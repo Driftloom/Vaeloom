@@ -250,22 +250,15 @@ export default function BillingPage() {
 
       <Card padding="lg">
         <h2 className="text-lg font-display font-medium text-text mb-4">Payment Method</h2>
+        {/* F-02: previously displayed a fictional "Visa ending in 4242".
+            No payment-method backend exists yet — honest state shown. */}
         <div className="flex items-center gap-4 p-4 bg-background rounded-lg border border-border">
-          <div className="w-12 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">
-            VISA
-          </div>
           <div>
-            <p className="text-text">Visa ending in 4242</p>
-            <p className="text-text-muted text-sm">Expires 12/2027</p>
+            <p className="text-text">No payment method on file</p>
+            <p className="text-text-muted text-sm">
+              Payment collection is not configured for this environment.
+            </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setShowPaymentModal(true)}
-          >
-            Update
-          </Button>
         </div>
       </Card>
 
@@ -318,7 +311,7 @@ export default function BillingPage() {
                 setChangingPlan(true);
                 try {
                   // F-03: persist the plan change to the real billing API.
-                  await billingApi.createSubscription({ plan: pendingPlan });
+                  await billingApi.createSubscription(pendingPlan);
                   setSelectedPlan(pendingPlan);
                   setShowChangeModal(false);
                   toast({

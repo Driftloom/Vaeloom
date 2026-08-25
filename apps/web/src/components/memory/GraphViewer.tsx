@@ -234,6 +234,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <input
             placeholder="Filter nodes…"
+            aria-label="Filter graph nodes by name"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-40"
@@ -241,6 +242,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label="Filter graph nodes by type"
             className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
           >
             <option value="all">All types</option>
@@ -412,7 +414,11 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-1 text-xs text-text-dim">
             <span>{Math.round(transform.k * 100)}%</span>
             <span>·</span>
-            <span>{visibleNodes.length === filteredNodes.length ? `${filteredNodes.length} nodes` : `${visibleNodes.length}/${filteredNodes.length} visible`}</span>
+            <span>
+              {visibleNodes.length === filteredNodes.length
+                ? `${filteredNodes.length} nodes`
+                : `${visibleNodes.length}/${filteredNodes.length} visible`}
+            </span>
           </div>
         </div>
       )}

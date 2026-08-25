@@ -400,6 +400,32 @@ class Resume(Base):
     __table_args__ = (Index("idx_resumes_workspace_id", "workspace_id"),)
 
 
+class ResumeArtifact(Base):
+    """Compiled document output (PDF/DOCX/HTML) for a resume variant.
+
+    Bytes are stored inline (resume documents are small, <2MB) so downloads
+    work without object storage; storage_key is reserved for S3 offload.
+    """
+    __tablename__ = "resume_artifacts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    resume_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="CASCADE"), nullable=False)
+    artifact_kind: Mapped[str] = mapped_column(String(30), default="resume")  # resume | cover_letter | cheatsheet
+    template_slug: Mapped[str | None] = mapped_column(String(50))
+    format: Mapped[str] = mapped_column(String(10), nullable=False)  # pdf | docx | html
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    media_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, default=0)
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_resume_artifacts_resume_id", "resume_id"),
+        Index("idx_resume_artifacts_workspace_id", "workspace_id"),
+    )
+
+
 class Application(Base):
     __tablename__ = "applications"
 
@@ -832,6 +858,8 @@ class AgentSchedule(Base):
     cron: Mapped[str] = mapped_column(String(100), nullable=False)
     input: Mapped[dict] = mapped_column(JSON, default=dict)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Last successful trigger (set by daemon inline execution or worker after queue run)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

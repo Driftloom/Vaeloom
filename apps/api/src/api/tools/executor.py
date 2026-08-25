@@ -42,6 +42,76 @@ CATEGORY_RETRIES = {
     "system": 1,
 }
 
+# Per-tool timeout overrides (seconds) — browser tools need longer than the
+# connector_read default because chromium cold-start + navigation is slow.
+TOOL_TIMEOUT_OVERRIDES = {
+    "browse_job_page": 45,
+    "scrape_company_insights": 20,
+    "verify_application_link": 15,
+}
+
+# Per-workspace scraping quota (sliding window, in-process; matches the
+# MemoryBackend rate-limiter precedent). Applied to network-heavy fetches.
+_SCRAPE_TIMESTAMPS: dict[str, list[float]] = {}
+
+
+def _check_scrape_quota(workspace_id: str, limit: int = 20, window_s: float = 3600.0) -> bool:
+    """True if workspace is under the scraping quota; records the hit."""
+    import time as _time
+
+    now = _time.monotonic()
+    hits = _SCRAPE_TIMESTAMPS.get(workspace_id)
+    if hits is None:
+        hits = _SCRAPE_TIMESTAMPS[workspace_id] = []
+    while hits and hits[0] <= now - window_s:
+        hits.pop(0)
+    if len(hits) >= limit:
+        return False
+    hits.append(now)
+    return True
+
+
+# ── Dynamic tool registry (MCP-bridged tools) ─────────────────────────
+# Static tools live in TOOL_DISPATCH; MCP servers register here at runtime.
+DYNAMIC_HANDLERS: dict[str, Any] = {}
+DYNAMIC_TOOL_DEFS: dict[str, ToolDefinition] = {}
+_DYNAMIC_APPROVAL_GATED: set[str] = set()
+
+_BASE_APPROVAL_GATED = frozenset({
+    "create_github_issue", "send_slack_message", "create_calendar_event",
+    "draft_email", "rename_file", "move_file", "categorize_document",
+    "create_entity", "merge_entities",
+})
+
+
+def register_dynamic_tool(td: ToolDefinition, handler) -> None:
+    """Register an externally-discovered tool (namespaced mcp__server__tool)."""
+    DYNAMIC_TOOL_DEFS[td.name] = td
+    DYNAMIC_HANDLERS[td.name] = handler
+    TOOL_TIMEOUT_OVERRIDES.setdefault(td.name, 30)
+
+
+def unregister_dynamic_tools(prefix: str) -> int:
+    removed = [n for n in DYNAMIC_TOOL_DEFS if n.startswith(prefix)]
+    for n in removed:
+        DYNAMIC_TOOL_DEFS.pop(n, None)
+        DYNAMIC_HANDLERS.pop(n, None)
+        _DYNAMIC_APPROVAL_GATED.discard(n)
+    return len(removed)
+
+
+def mark_approval_gated(name: str) -> None:
+    _DYNAMIC_APPROVAL_GATED.add(name)
+
+
+def approval_gated_tools() -> frozenset[str]:
+    """Static write-tools plus dynamically-gated (non-read-only) MCP tools."""
+    return frozenset(_BASE_APPROVAL_GATED | _DYNAMIC_APPROVAL_GATED)
+
+
+def dynamic_tool_definitions() -> dict[str, ToolDefinition]:
+    return dict(DYNAMIC_TOOL_DEFS)
+
 
 async def check_permission(
     agent_scopes: list[str], required_scope: str
@@ -858,6 +928,254 @@ async def _execute_calculate_ats_diff(params: dict[str, Any], workspace_id: str)
         return {"status": "error", "tool": "calculate_ats_diff", "result": str(e)}
 
 
+# ── Semantic ATS helpers ──────────────────────────────────────────────
+
+_ATS_STOPWORDS = frozenset({
+    "the", "and", "for", "with", "you", "your", "our", "are", "will", "have",
+    "this", "that", "from", "their", "they", "who", "all", "any", "can", "not",
+    "but", "has", "was", "were", "been", "being", "into", "about", "out", "job",
+    "role", "work", "team", "teams", "years", "year", "experience", "including",
+    "using", "use", "used", "ability", "strong", "plus", "must", "should", "may",
+    "new", "other", "such", "more", "most", "well", "also", "help", "across",
+    "within", "working", "candidate", "candidates", "ideal", "join", "company",
+    "requirements", "responsibilities", "qualifications", "preferred", "required",
+})
+
+_SKILL_GAZETTEER = (
+    "python", "java", "javascript", "typescript", "go", "golang", "rust", "ruby",
+    "kotlin", "swift", "scala", "c++", "c#", ".net", "php", "sql", "nosql",
+    "postgresql", "mysql", "mongodb", "redis", "dynamodb", "cassandra", "oracle",
+    "react", "next.js", "vue", "angular", "svelte", "node.js", "django", "flask",
+    "fastapi", "spring", "rails", "laravel", "graphql", "grpc", "rest", "soap",
+    "aws", "azure", "gcp", "google cloud", "docker", "kubernetes", "terraform",
+    "ansible", "helm", "jenkins", "github actions", "gitlab ci", "circleci",
+    "linux", "unix", "bash", "powershell", "nginx", "apache", "kafka", "rabbitmq",
+    "sqs", "sns", "spark", "hadoop", "airflow", "dbt", "snowflake", "bigquery",
+    "redshift", "databricks", "tableau", "power bi", "looker", "pandas", "numpy",
+    "scikit-learn", "tensorflow", "pytorch", "keras", "hugging face", "llm",
+    "nlp", "computer vision", "machine learning", "deep learning", "mlops",
+    "ci/cd", "tdd", "bdd", "microservices", "serverless", "lambda", "s3", "ec2",
+    "eks", "aks", "istio", "envoy", "prometheus", "grafana", "datadog", "splunk",
+    "elasticsearch", "opensearch", "logstash", "hibernate", "jpa", "oauth",
+    "openid connect", "jwt", "saml", "webpack", "vite", "babel", "jest", "pytest",
+    "cypress", "playwright", "selenium", "jira", "confluence", "figma", "excel",
+    "salesforce", "sap", "servicenow", "hubspot", "stripe", "plaid", "twilio",
+    "pmp", "csm", "safe", "itil", "comptia", "ccna", "ccnp", "cissp", "ceh",
+    "aws certified", "azure certified", "gcp certified", "cpa", "cfa", "frm",
+    "bar", "pe ", "six sigma", "scrum master",
+)
+
+
+def _extract_jd_keywords(jd_text: str, limit: int = 30) -> list[str]:
+    """Top hard-skill gazetteer hits plus frequent domain tokens from a JD."""
+    import re
+    from collections import Counter
+
+    jd_lower = jd_text.lower()
+    gazetteer_hits = [s for s in _SKILL_GAZETTEER if s in jd_lower]
+    words = re.findall(r"[a-z][a-z+#.\-/]{2,}", jd_lower)
+    counts = Counter(w for w in words if w not in _ATS_STOPWORDS)
+    frequent = [w for w, c in counts.most_common(limit * 2) if c >= 2]
+    combined: list[str] = []
+    for kw in gazetteer_hits + frequent:
+        if kw not in combined and not any(kw != other and kw in other for other in combined):
+            combined.append(kw)
+        if len(combined) >= limit:
+            break
+    return combined
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    import math
+
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return max(-1.0, min(1.0, dot / (na * nb)))
+
+
+async def _execute_calculate_semantic_ats_score(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    resume_text = params.get("resume_text", "")
+    job_description = params.get("job_description", "")
+    if not resume_text or not job_description:
+        return {"status": "error", "tool": "calculate_semantic_ats_score",
+                "result": "resume_text and job_description are required"}
+
+    # Keyword frequency matching (always computed, deterministic)
+    keywords = _extract_jd_keywords(job_description)
+    resume_lower = resume_text.lower()
+    matched = [k for k in keywords if k in resume_lower]
+    missing = [k for k in keywords if k not in resume_lower]
+    keyword_pct = round(len(matched) / len(keywords) * 100, 1) if keywords else 0.0
+
+    # Semantic similarity via embeddings when LLM key available
+    semantic_similarity = None
+    try:
+        from api.services.llm_service import llm_service
+
+        emb_resume = await llm_service.generate_embedding(resume_text[:8000])
+        emb_jd = await llm_service.generate_embedding(job_description[:8000])
+        semantic_similarity = round(_cosine_similarity(emb_resume, emb_jd), 4)
+    except Exception as e:
+        logger.warning(f"semantic ATS embedding unavailable, keyword-only scoring: {e}")
+
+    if semantic_similarity is not None:
+        score = round(semantic_similarity * 60 + (keyword_pct / 100) * 40, 1)
+        mode = "semantic+keyword"
+    else:
+        score = round(min(keyword_pct * 1.1, 100.0), 1)
+        mode = "keyword-fallback"
+
+    return {
+        "status": "success",
+        "tool": "calculate_semantic_ats_score",
+        "result": {
+            "score": score,
+            "mode": mode,
+            "semantic_similarity": semantic_similarity,
+            "keyword_match_pct": keyword_pct,
+            "matched_keywords": matched,
+            "missing_keywords": missing,
+        },
+    }
+
+
+async def _execute_extract_missing_hard_skills(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    resume_text = params.get("resume_text", "")
+    job_description = params.get("job_description", "")
+    if not resume_text or not job_description:
+        return {"status": "error", "tool": "extract_missing_hard_skills",
+                "result": "resume_text and job_description are required"}
+
+    # Deterministic gazetteer baseline
+    jd_skills = [s for s in _SKILL_GAZETTEER if s in job_description.lower()]
+    resume_lower = resume_text.lower()
+    present = [s for s in jd_skills if s in resume_lower]
+    missing = [s for s in jd_skills if s not in resume_lower]
+
+    # LLM refinement for non-gazetteer skills when available
+    try:
+        from api.services.llm_service import llm_service
+
+        prompt = (
+            "Extract from the JOB DESCRIPTION the technical hard skills, tools, and "
+            "certifications it requires. Then classify each against the RESUME as "
+            'present or missing. Respond with ONLY JSON: {"missing_skills": [...], '
+            '"present_skills": [...], "certifications": [...]}\n\n'
+            f"JOB DESCRIPTION:\n{job_description[:4000]}\n\nRESUME:\n{resume_text[:4000]}"
+        )
+        response = await llm_service.generate_completion(
+            [{"role": "user", "content": prompt}], temperature=0.1, max_tokens=600
+        )
+        parsed = json.loads(response["content"])
+        llm_missing = [str(s) for s in parsed.get("missing_skills", []) if s]
+        llm_present = [str(s) for s in parsed.get("present_skills", []) if s]
+        certs = [str(s) for s in parsed.get("certifications", []) if s]
+        merged_missing = list(dict.fromkeys(missing + llm_missing))
+        merged_present = list(dict.fromkeys(present + llm_present))
+        return {
+            "status": "success",
+            "tool": "extract_missing_hard_skills",
+            "result": {
+                "missing_skills": merged_missing,
+                "present_skills": merged_present,
+                "certifications": certs,
+                "source": "llm+gazetteer",
+            },
+        }
+    except Exception as e:
+        logger.info(f"extract_missing_hard_skills LLM unavailable ({e}); using gazetteer fallback")
+
+    cert_hits = [s for s in ("pmp", "csm", "cissp", "cpa", "cfa", "comptia", "ccna",
+                             "aws certified", "azure certified", "gcp certified", "six sigma")
+                 if s in job_description.lower()]
+    return {
+        "status": "success",
+        "tool": "extract_missing_hard_skills",
+        "result": {
+            "missing_skills": missing,
+            "present_skills": present,
+            "certifications": cert_hits,
+            "source": "gazetteer-fallback",
+        },
+    }
+
+
+async def _execute_audit_ats_formatting(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    """Pure heuristics — no external dependencies, deterministic."""
+    import re
+
+    text = params.get("resume_markdown", "")
+    if not text:
+        return {"status": "error", "tool": "audit_ats_formatting", "result": "resume_markdown is required"}
+
+    issues: list[dict[str, str]] = []
+
+    def add(issue_type: str, severity: str, detail: str, suggestion: str) -> None:
+        issues.append({"type": issue_type, "severity": severity,
+                       "detail": detail, "suggestion": suggestion})
+
+    if re.search(r"^\s*\|.*\|", text, re.MULTILINE):
+        add("table_detected", "high",
+            "Table-like pipe syntax detected — most ATS parsers scramble table content",
+            "Convert tables to simple bullet lists")
+    if re.search(r" {4,}\S", text):
+        add("whitespace_alignment", "medium",
+            "Long runs of spaces used for visual alignment",
+            "Use single spaces or line breaks; alignment spacing breaks parsing")
+    if re.search(r"!\[[^\]]*\]\([^)]+\)|<img\b|📷|🖼", text, re.IGNORECASE):
+        add("graphics_detected", "high",
+            "Embedded images/icons detected",
+            "Remove images; ATS parsers skip them entirely")
+    if re.search(r"\b(textbox|text box)\b", text, re.IGNORECASE):
+        add("textbox_content", "medium",
+            "Possible text-box content referenced",
+            "Move all content into normal document flow paragraphs")
+
+    headers_found = set()
+    lowered = text.lower()
+    for header, variants in {
+        "experience": ("experience", "employment", "work history"),
+        "education": ("education",),
+        "skills": ("skills", "competencies", "technologies"),
+    }.items():
+        if any(v in lowered for v in variants):
+            headers_found.add(header)
+        else:
+            add("missing_section_header", "low",
+                f"No standard '{header}' section header found",
+                f"Add a plain-text '{header.title()}' section heading")
+
+    date_ranges = re.findall(r"\b((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{4}|\d{1,2}/\d{4}|(?:19|20)\d{2})\s*(?:-|–|—|to)\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{4}|\d{1,2}/\d{4}|(?:19|20)\d{2}|present)\b", lowered)
+    if not date_ranges and ("experience" in headers_found or "employment history" in lowered):
+        add("date_format_unrecognized", "medium",
+            "No parseable employment date ranges found (e.g. 'Jan 2021 - Mar 2023')",
+            "Use Month YYYY to Month YYYY format for each role")
+    bad_dates = re.findall(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b", text)
+    if bad_dates:
+        add("ambiguous_date_format", "low",
+            f"Ambiguous short dates found: {', '.join(sorted(set(bad_dates))[:5])}",
+            "Prefer unambiguous Month YYYY format")
+
+    if not re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", text):
+        add("contact_info_missing", "medium",
+            "No email address detected",
+            "Include a plain-text email in the header")
+
+    return {
+        "status": "success",
+        "tool": "audit_ats_formatting",
+        "result": {
+            "issues": issues,
+            "passed": not any(i["severity"] == "high" for i in issues),
+        },
+    }
+
+
 async def _execute_fetch_github_repo(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     repo = params.get("repo", "")
     resource = params.get("resource", "repo")
@@ -1042,6 +1360,275 @@ async def _execute_execute_code_sandbox(params: dict[str, Any], workspace_id: st
         return {"status": "error", "tool": "execute_code_sandbox", "result": str(e)}
 
 
+# ── Browser / Scraping Tools ──────────────────────────────────────────
+
+_REQUIREMENT_HEADINGS = (
+    "requirements", "qualifications", "what you'll need", "what we're looking for",
+    "must have", "about you", "skills and experience", "we expect",
+)
+
+
+def _extract_job_posting(text: str, page_title: str, url: str) -> dict[str, Any]:
+    """Heuristic structured extraction from a job posting's visible text."""
+    import re as _re
+    from urllib.parse import urlparse
+
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    lowered_all = text.lower()
+
+    # Title: page <title> before common separators, else first short line
+    job_title = ""
+    for sep in (" | ", " – ", " — ", " - "):
+        if page_title and sep in page_title:
+            candidate = page_title.split(sep)[0].strip()
+            if 3 <= len(candidate) <= 120:
+                job_title = candidate
+                break
+    if not job_title and page_title:
+        job_title = page_title.strip()[:120]
+    if not job_title and lines:
+        job_title = lines[0][:120]
+
+    # Company: explicit patterns first ("Engineer at Acme", "About Acme"),
+    # then hostname skipping board-junk labels (jobs./careers./boards./apply.)
+    host = urlparse(url).hostname or ""
+    host_labels = [l for l in host.split(".") if l] if host else []
+    company = ""
+
+    def _domain_fallback() -> str:
+        skip = {"jobs", "job", "careers", "career", "boards", "board", "apply",
+                "www", "openings", "positions", "company"}
+        for label in host_labels:
+            if label.lower() not in skip:
+                return label.capitalize()
+        return host_labels[0].capitalize() if host_labels else ""
+
+    m = _re.search(r"\bat\s+([A-Z][A-Za-z0-9&\-]{1,30}(?:\s[A-Z][A-Za-z0-9&\-]{1,30})?)", page_title or "")
+    if not m:
+        m = _re.search(r"\b(?:at|join)\s+([A-Z][A-Za-z0-9&\-]{1,30})", text[:2000])
+    if m:
+        company = m.group(1).strip().rstrip(".,|- ")
+    if not company:
+        m2 = _re.search(r"about\s+([A-Z][A-Za-z0-9&\-]{1,30})", text[:4000])
+        if m2:
+            company = m2.group(1).strip().rstrip(".,|- ")
+    if not company or company.lower() in ("jobs", "careers", "job", "career"):
+        company = _domain_fallback()
+
+    description = text[:8000]
+
+    # Requirements section: first matching heading → next heading/blank block
+    requirements: list[str] = []
+    heading_idx = None
+    matched_heading_len = 0
+    for pat in _REQUIREMENT_HEADINGS:
+        i = lowered_all.find(pat)
+        if i >= 0 and (heading_idx is None or i < heading_idx):
+            heading_idx = i
+            matched_heading_len = len(pat)
+    if heading_idx is not None:
+        segment = text[heading_idx + matched_heading_len: heading_idx + 3000]
+        for raw in segment.splitlines():
+            cand = raw.strip(" \t•*-–—")
+            if not cand:
+                continue
+            stopped = any(
+                h in cand.lower() for h in
+                ("benefits", "perks", "equal opportunity", "how to apply", "about us")
+            )
+            if stopped:
+                break
+            if 8 < len(cand) < 240:
+                requirements.append(cand)
+            if len(requirements) >= 25:
+                break
+
+    skills_mentioned = [s for s in _SKILL_GAZETTEER if s in lowered_all][:30]
+
+    return {
+        "title": job_title,
+        "company": company,
+        "description": description,
+        "requirements": requirements,
+        "skills_mentioned": skills_mentioned,
+        "source_url": url,
+    }
+
+
+_MOCK_JOB_POSTING = {
+    "title": "Senior Backend Engineer",
+    "company": "ExampleCorp",
+    "description": (
+        "Mock job posting content. ExampleCorp is seeking a Senior Backend Engineer "
+        "skilled in Python, Go, Kubernetes, PostgreSQL, AWS, Terraform and GraphQL. "
+        "You will design distributed services, own CI/CD pipelines, and mentor engineers."
+    ),
+    "requirements": [
+        "5+ years building production services in Python or Go",
+        "Experience with Kubernetes and infrastructure-as-code (Terraform)",
+        "Strong SQL and data-modeling skills (PostgreSQL)",
+        "Track record of operating systems on AWS at scale",
+    ],
+    "skills_mentioned": ["python", "go", "kubernetes", "postgresql", "aws", "terraform", "graphql"],
+}
+
+
+async def _execute_browse_job_page(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    url = params.get("url", "")
+    if not url:
+        return {"status": "error", "tool": "browse_job_page", "result": "url is required"}
+
+    from api.config import settings as _settings
+    if not getattr(_settings, "browser_tools_enabled", True):
+        return {"status": "error", "tool": "browse_job_page",
+                "result": "Browser tools are disabled by configuration"}
+    limit = getattr(_settings, "scrape_quota_per_hour", 20)
+    if not _check_scrape_quota(workspace_id, limit=limit):
+        return {
+            "status": "error", "tool": "browse_job_page",
+            "result": f"Scraping quota exceeded ({limit}/hour per workspace) — try again later",
+            "retry_after_seconds": 3600,
+        }
+
+    try:
+        from ..services.browser_service import browser_service
+        from ..utils.url_guard import UrlBlockedError
+
+        try:
+            fetched = await browser_service.fetch_rendered_text(url)
+        except UrlBlockedError as e:
+            return {
+                "status": "error", "tool": "browse_job_page",
+                "result": f"URL blocked by SSRF policy: {e}",
+            }
+        posting = _extract_job_posting(fetched["text"], fetched["title"], url)
+        return {
+            "status": "success",
+            "tool": "browse_job_page",
+            "result": posting,
+            "engine": fetched["engine"],
+        }
+    except Exception as e:
+        logger.warning(f"browse_job_page live fetch failed ({e}); returning mock fixture")
+
+    mock = dict(_MOCK_JOB_POSTING)
+    mock["source_url"] = url
+    return {
+        "status": "success",
+        "tool": "browse_job_page",
+        "result": mock,
+        "note": "Live browsing unavailable — returned deterministic mock fixture",
+    }
+
+
+_INSIGHT_QUERIES = [
+    ("culture", "{c} company culture values employees"),
+    ("news_funding", "{c} recent news funding announcement"),
+    ("interview_questions", "{c} interview questions process glassdoor"),
+    ("tech_stack", "{c} engineering tech stack blog"),
+]
+
+
+async def _execute_scrape_company_insights(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    company = params.get("company_name", "").strip()
+    if not company:
+        return {"status": "error", "tool": "scrape_company_insights", "result": "company_name is required"}
+
+    from api.config import settings as _settings
+    if not getattr(_settings, "browser_tools_enabled", True):
+        return {"status": "error", "tool": "scrape_company_insights",
+                "result": "Browser tools are disabled by configuration"}
+    limit = getattr(_settings, "scrape_quota_per_hour", 20)
+    if not _check_scrape_quota(workspace_id, limit=limit):
+        return {
+            "status": "error", "tool": "scrape_company_insights",
+            "result": f"Scraping quota exceeded ({limit}/hour per workspace) — try again later",
+            "retry_after_seconds": 3600,
+        }
+
+    insights: dict[str, list[Any]] = {}
+    axis_sources: dict[str, str] = {}
+    for key, template in _INSIGHT_QUERIES:
+        query = template.format(c=company)
+        try:
+            res = await _execute_web_search({"query": query, "limit": 3}, workspace_id)
+            results = res.get("result", []) if res.get("status") == "success" else []
+            is_mock = isinstance(res.get("note"), str) and "mock" in res.get("note", "").lower()
+            insights[key] = [
+                {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": r.get("snippet", "")}
+                for r in results[:3] if isinstance(r, dict)
+            ]
+            axis_sources[key] = "mock" if is_mock else "live"
+        except Exception as e:  # noqa: BLE001 - one failed axis must not sink the rest
+            logger.warning(f"insight axis '{key}' failed for {company}: {e}")
+            insights[key] = []
+            axis_sources[key] = "error"
+
+    return {
+        "status": "success",
+        "tool": "scrape_company_insights",
+        "result": {"company": company, **insights},
+        "axis_sources": axis_sources,
+        "note": None if any(insights.values()) else "Web search unavailable — empty insight axes",
+    }
+
+
+async def _execute_verify_application_link(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    url = params.get("url", "")
+    if not url:
+        return {"status": "error", "tool": "verify_application_link", "result": "url is required"}
+
+    from api.config import settings as _settings
+    if not getattr(_settings, "browser_tools_enabled", True):
+        return {"status": "error", "tool": "verify_application_link",
+                "result": "Browser tools are disabled by configuration"}
+
+    try:
+        from ..services.browser_service import browser_service
+        from ..utils.url_guard import DnsResolutionError, UrlBlockedError
+
+        try:
+            probe = await browser_service.probe_status(url)
+        except DnsResolutionError:
+            return {
+                "status": "success",
+                "tool": "verify_application_link",
+                "result": {
+                    "reachable": False,
+                    "status_code": None,
+                    "final_url": url,
+                    "verdict": "expired_or_error",
+                    "note": "Domain no longer resolves — posting likely removed or URL mistyped",
+                },
+            }
+        except UrlBlockedError as e:
+            return {"status": "error", "tool": "verify_application_link",
+                    "result": f"URL blocked by SSRF policy: {e}"}
+        return {
+            "status": "success",
+            "tool": "verify_application_link",
+            "result": {
+                "reachable": probe["reachable"],
+                "status_code": probe["status_code"],
+                "final_url": probe["final_url"],
+                "verdict": "live" if probe["reachable"] else "expired_or_error",
+            },
+        }
+    except Exception as e:
+        logger.info(f"verify_application_link unreachable ({e}); honest offline verdict")
+        return {
+            "status": "success",
+            "tool": "verify_application_link",
+            "result": {
+                "reachable": False,
+                "status_code": None,
+                "final_url": url,
+                "verdict": "unreachable_or_offline",
+                "note": "Could not reach URL from server — may be offline, blocked, or expired",
+            },
+        }
+
+
 async def _execute_mock(tool: ToolDefinition, params: dict[str, Any]) -> dict[str, Any]:
     return {
         "status": "success",
@@ -1070,6 +1657,12 @@ TOOL_DISPATCH: dict[str, Any] = {
     "web_search": _execute_web_search,
     "parse_document_ocr": _execute_parse_document_ocr,
     "calculate_ats_diff": _execute_calculate_ats_diff,
+    "calculate_semantic_ats_score": _execute_calculate_semantic_ats_score,
+    "extract_missing_hard_skills": _execute_extract_missing_hard_skills,
+    "audit_ats_formatting": _execute_audit_ats_formatting,
+    "browse_job_page": _execute_browse_job_page,
+    "scrape_company_insights": _execute_scrape_company_insights,
+    "verify_application_link": _execute_verify_application_link,
     "fetch_github_repo": _execute_fetch_github_repo,
     "create_github_issue": _execute_create_github_issue,
     "send_slack_message": _execute_send_slack_message,
@@ -1119,13 +1712,17 @@ async def execute_tool(
         )
 
     # ── 2. Execute with retry ──────────────────────────────────────
-    timeout = CATEGORY_TIMEOUTS.get(tool.category, 5)
+    timeout = TOOL_TIMEOUT_OVERRIDES.get(
+        tool.name, CATEGORY_TIMEOUTS.get(tool.category, 5)
+    )
     max_retries = CATEGORY_RETRIES.get(tool.category, 3)
     last_error: Exception | None = None
 
     for attempt in range(1, max_retries + 1):
         try:
-            handler = TOOL_DISPATCH.get(tool.name, _execute_mock)
+            handler = TOOL_DISPATCH.get(tool.name) or DYNAMIC_HANDLERS.get(tool.name)
+            if handler is None:
+                handler = _execute_mock
             result = await asyncio.wait_for(
                 handler(params, workspace_id), timeout=timeout
             )

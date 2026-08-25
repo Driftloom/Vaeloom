@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
@@ -6,7 +6,8 @@ import { api, clearToken, clearRefreshToken } from '../../../../lib/api';
 import { consentApi, gdprApi } from '../../../../lib/api-client';
 import { ProviderKeysSection } from '@/components/settings/ProviderKeysSection';
 import { ErrorState } from '@/components/shared/ErrorState';
-import type { Agent, PaginatedResponse, PublicUser, Workspace } from '@vaeloom/shared-types';
+import { useAuth } from '../../../../hooks/useAuth';
+import type { Agent, PaginatedResponse } from '@vaeloom/shared-types';
 
 type IntegrationData = Record<string, unknown> & {
   id: string;
@@ -26,14 +27,10 @@ export default function SettingsPage() {
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const router = useRouter();
 
-  const {
-    data: meData,
-    error: meError,
-    isLoading: meLoading,
-  } = useSWR<{ user: PublicUser; workspaces: Workspace[] }>('auth-me', () => api.me());
+  // F-16: consume the shared auth session instead of a third /auth/me fetch.
+  const { user, me, loading: meLoading, error: meError } = useAuth();
 
-  const user = meData?.user;
-  const userWorkspaces = meData?.workspaces ?? [];
+  const userWorkspaces = me?.workspaces ?? [];
 
   const {
     data: agentsRes,
@@ -469,7 +466,7 @@ export default function SettingsPage() {
 
           {saveError && (
             <div
-              className="mb-4 p-3 text-sm text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/20 rounded border border-red-500/50"
+              className="mb-4 p-3 text-sm text-error bg-error/10 dark:text-error dark:bg-error/10 rounded border border-error/50"
               role="alert"
             >
               {saveError}
@@ -525,7 +522,7 @@ export default function SettingsPage() {
           </p>
 
           {integrationsError ? (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-error">
               Failed to load integrations.{' '}
               <button className="underline" onClick={() => mutateIntegrations()}>
                 Retry

@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -30,15 +30,15 @@ function MatchBadge({ score }: { score: number | null }) {
   }
   if (score >= 80) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-green-400">
-        <span className="h-2 w-2 rounded-full bg-green-400" />
+      <span className="inline-flex items-center gap-1.5 text-xs text-success">
+        <span className="h-2 w-2 rounded-full bg-success" />
         {score}% — Strong Match
       </span>
     );
   }
   if (score >= 60) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-blue-400">
+      <span className="inline-flex items-center gap-1.5 text-xs text-info">
         <span className="h-2 w-2 rounded-full bg-blue-400" />
         {score}% — Good Match
       </span>
@@ -46,8 +46,8 @@ function MatchBadge({ score }: { score: number | null }) {
   }
   if (score >= 40) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-yellow-400">
-        <span className="h-2 w-2 rounded-full bg-yellow-400" />
+      <span className="inline-flex items-center gap-1.5 text-xs text-warning">
+        <span className="h-2 w-2 rounded-full bg-warning" />
         {score}% — Partial Match
       </span>
     );
@@ -70,21 +70,31 @@ function formatDate(iso?: string): string {
 }
 
 const statusStyles: Record<string, string> = {
-  active: 'border-green-500/50 text-green-400 bg-green-950/20',
-  paused: 'border-yellow-500/50 text-yellow-400 bg-yellow-950/20',
+  active: 'border-success/50 text-success bg-success/10',
+  paused: 'border-warning/50 text-warning bg-warning/10',
   completed: 'border-primary/50 text-primary bg-primary/10',
-  failed: 'border-red-500/50 text-red-400 bg-red-950/20',
+  failed: 'border-error/50 text-error bg-error/10',
 };
 
 export default function JobsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const { toast } = useToast();
-  const [active, setActive] = useState('search');
+  const [active, setActive] = useState(() => (searchParams.get('tab') as string) ?? 'search');
   const [jobs, setJobs] = useState<JobResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+
+  useEffect(() => {
+    const sp = new URLSearchParams();
+    if (active !== 'search') sp.set('tab', active);
+    if (query) sp.set('q', query);
+    const qs = sp.toString();
+    router.replace(qs ? `?${qs}` : '?', { scroll: false });
+  }, [active, query, router]);
   const [searching, setSearching] = useState(false);
   const [searchResult, setSearchResult] = useState<{
     summary: string;
@@ -326,7 +336,7 @@ export default function JobsPage() {
             <button
               onClick={handleSearch}
               disabled={searching || !query.trim()}
-              className="rounded-full bg-white px-5 py-2 text-sm text-black disabled:opacity-40"
+              className="rounded-full bg-primary px-5 py-2 text-sm text-primary-fg disabled:opacity-40 hover:bg-action-hover"
               aria-label="Search jobs"
             >
               {searching ? 'Searching…' : 'Search'}
@@ -391,7 +401,7 @@ export default function JobsPage() {
                       </div>
                       <div className="flex flex-wrap gap-2 mt-1 text-xs text-text-dim">
                         {p.location && <span>{p.location}</span>}
-                        {p.remote && <span className="text-green-400">Remote</span>}
+                        {p.remote && <span className="text-success">Remote</span>}
                         {p.salary && <span>{p.salary}</span>}
                       </div>
                       {p.detail && (
@@ -419,7 +429,7 @@ export default function JobsPage() {
                         <button
                           onClick={() => handleSave(p)}
                           disabled={isSaved}
-                          className={`flex-1 rounded-full text-xs py-1.5 ${isSaved ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-white text-black'}`}
+                          className={`flex-1 rounded-full text-xs py-1.5 ${isSaved ? 'bg-success/15 text-success border border-success/30' : 'bg-white text-black'}`}
                           aria-label={isSaved ? `${p.title} is saved` : `Save ${p.title}`}
                         >
                           {isSaved ? 'Saved' : 'Save'}
@@ -545,7 +555,7 @@ export default function JobsPage() {
                   </button>
                   <button
                     onClick={() => handleJobAction(job, 'delete')}
-                    className="rounded-full border border-red-500/20 px-3 py-1 text-xs text-red-400 hover:bg-red-500/10"
+                    className="rounded-full border border-error/30 px-3 py-1 text-xs text-error hover:bg-error/10"
                     aria-label={`Delete job ${job.name}`}
                   >
                     Delete
@@ -573,7 +583,7 @@ export default function JobsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2 mt-1 text-xs text-text-dim">
                   {s.location && <span>{s.location}</span>}
-                  {s.remote && <span className="text-green-400">Remote</span>}
+                  {s.remote && <span className="text-success">Remote</span>}
                   {s.salary && <span>{s.salary}</span>}
                 </div>
                 {s.detail && <p className="text-sm text-text-muted mt-1">{s.detail}</p>}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { useParams } from 'next/navigation';
@@ -61,6 +61,7 @@ export default function DashboardPage() {
     data: eventsRes,
     loading: eventsLoading,
     error: eventsError,
+    refetch: refetchEvents,
   } = useApi<Event[] | PaginatedResponse<Event>>(
     () => api.request<Event[] | PaginatedResponse<Event>>(`/events?workspace_id=${workspaceId}`),
     { enabled: !!workspaceId },
@@ -164,10 +165,10 @@ export default function DashboardPage() {
       {pendingCount > 0 && (
         <Link
           href={`/workspace/${workspaceId}/approvals`}
-          className="card border-amber-500/30 bg-amber-500/5 flex items-center justify-between hover:border-amber-500/50 transition-colors"
+          className="card border-warning/30 bg-warning/10 flex items-center justify-between hover:border-warning/50 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/20 text-amber-700 font-mono text-sm">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-warning/15 border border-warning/30 text-warning font-mono text-sm">
               {pendingCount}
             </span>
             <div>
@@ -177,7 +178,7 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
-          <span className="text-sm text-amber-700 font-medium">Review →</span>
+          <span className="text-sm text-warning font-medium">Review →</span>
         </Link>
       )}
 
@@ -187,7 +188,7 @@ export default function DashboardPage() {
             Active Agents
           </h2>
           {agentsFailed ? (
-            <p className="text-sm text-red-400">Failed to load</p>
+            <p className="text-sm text-error">Failed to load</p>
           ) : (
             <div className="text-4xl font-display text-primary">{agentCount}</div>
           )}
@@ -197,13 +198,13 @@ export default function DashboardPage() {
             Memory Nodes
           </h2>
           {memoriesFailed ? (
-            <p className="text-sm text-red-400">Failed to load</p>
+            <p className="text-sm text-error">Failed to load</p>
           ) : (
             <div className="flex items-baseline gap-3">
               <div className="text-4xl font-display text-accent">{memoryCount}</div>
               {memoryGrowthPercent !== null && memoryGrowthPercent !== 0 && (
                 <span
-                  className={`text-sm font-mono ${memoryGrowthPercent > 0 ? 'text-emerald-500' : 'text-red-400'}`}
+                  className={`text-sm font-mono ${memoryGrowthPercent > 0 ? 'text-success' : 'text-error'}`}
                 >
                   {memoryGrowthPercent > 0 ? '↑' : '↓'}
                   {Math.abs(memoryGrowthPercent)}%
@@ -223,9 +224,7 @@ export default function DashboardPage() {
             Connectors
           </h2>
           <div className="flex items-baseline gap-2">
-            <div className="text-4xl font-display text-emerald-500">
-              {connectedConnectors.length}
-            </div>
+            <div className="text-4xl font-display text-success">{connectedConnectors.length}</div>
             {allConnectors.length > 0 && (
               <span className="text-sm text-text-muted font-mono">/{allConnectors.length}</span>
             )}
@@ -257,7 +256,7 @@ export default function DashboardPage() {
                 <p>Could not load activity feed.</p>
                 <button
                   className="text-sm text-primary hover:underline"
-                  onClick={() => window.location.reload()}
+                  onClick={() => void refetchEvents()}
                 >
                   Retry
                 </button>
@@ -309,7 +308,7 @@ export default function DashboardPage() {
                 <p>Could not load deadlines.</p>
                 <button
                   className="text-sm text-primary hover:underline"
-                  onClick={() => window.location.reload()}
+                  onClick={() => void refetchEvents()}
                 >
                   Retry
                 </button>
@@ -394,10 +393,10 @@ export default function DashboardPage() {
               allConnectors.map((c) => {
                 const statusColor =
                   c.status === 'connected'
-                    ? 'bg-emerald-500'
+                    ? 'bg-success'
                     : c.status === 'syncing'
-                      ? 'bg-amber-500'
-                      : 'bg-red-400';
+                      ? 'bg-warning'
+                      : 'bg-error';
                 const statusLabel =
                   c.status === 'connected'
                     ? 'Connected'

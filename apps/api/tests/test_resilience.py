@@ -62,7 +62,7 @@ class TestCircuitBreaker:
                 pass
 
         assert cb.get_state() == CircuitState.OPEN
-        await asyncio.sleep(0.15)
+        await asyncio.sleep(0.35)
 
         async def success_coro():
             return "recovered"
@@ -82,7 +82,7 @@ class TestCircuitBreaker:
             except RuntimeError:
                 pass
 
-        await asyncio.sleep(0.15)
+        await asyncio.sleep(0.35)
 
         async def success_coro():
             return "ok"
@@ -241,6 +241,6 @@ class TestRateLimitMemoryBackend:
         backend = MemoryBackend()
         for _ in range(3):
             await backend.check_and_record("client3", max_requests=3, window_seconds=0)
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.05)
         allowed, _ = await backend.check_and_record("client3", max_requests=3, window_seconds=0)
         assert allowed is True

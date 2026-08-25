@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
@@ -143,11 +143,11 @@ function LoginForm() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl lg:text-5xl font-bold text-text leading-tight mb-6 animate-slide-up">
+          <p className="text-4xl lg:text-5xl font-bold text-text leading-tight mb-6 animate-slide-up">
             Your AI-powered
             <br />
             <span className="gradient-text">memory platform</span>
-          </h1>
+          </p>
 
           <p className="text-lg text-text-muted max-w-md animate-slide-up stagger-1">
             Organize your thoughts, automate workflows, and let AI agents handle the busywork while
@@ -169,7 +169,7 @@ function LoginForm() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background relative">
+      <div className="flex-1 flex items-center justify-center p-8 bg-background relative overflow-hidden">
         {/* Subtle gradient orb */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
 
@@ -186,7 +186,7 @@ function LoginForm() {
 
           {/* Welcome text */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-text mb-2">Welcome back</h2>
+            <h1 className="text-2xl font-bold text-text mb-2">Welcome back</h1>
             <p className="text-text-muted">Sign in to continue to your workspace</p>
           </div>
 
@@ -208,6 +208,8 @@ function LoginForm() {
                     onBlur={() => setFocusedField(null)}
                     placeholder="you@example.com"
                     autoComplete="email"
+                    aria-invalid={errors.email ? true : undefined}
+                    aria-describedby={errors.email ? 'email-error' : undefined}
                     className={`input-field ${
                       errors.email ? 'input-error' : ''
                     } ${focusedField === 'email' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
@@ -217,7 +219,10 @@ function LoginForm() {
                   )}
                 </div>
                 {errors.email && (
-                  <p className="text-sm text-error flex items-center gap-1.5 animate-slide-down">
+                  <p
+                    id="email-error"
+                    className="text-sm text-error flex items-center gap-1.5 animate-slide-down"
+                  >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path
                         fillRule="evenodd"
@@ -245,13 +250,18 @@ function LoginForm() {
                     onBlur={() => setFocusedField(null)}
                     placeholder="Enter your password"
                     autoComplete="current-password"
+                    aria-invalid={errors.password ? true : undefined}
+                    aria-describedby={errors.password ? 'password-error' : undefined}
                     className={`input-field ${
                       errors.password ? 'input-error' : ''
                     } ${focusedField === 'password' ? 'ring-2 ring-primary/20 border-primary' : ''}`}
                   />
                 </div>
                 {errors.password && (
-                  <p className="text-sm text-error flex items-center gap-1.5 animate-slide-down">
+                  <p
+                    id="password-error"
+                    className="text-sm text-error flex items-center gap-1.5 animate-slide-down"
+                  >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path
                         fillRule="evenodd"

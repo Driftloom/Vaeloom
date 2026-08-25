@@ -756,12 +756,12 @@ export interface AgentActionHistory {
 
 export interface ResumeResponse {
   id: string;
-  workspace_id: string;
-  variant_type: string;
+  workspaceId: string;
+  variantType: string;
   content: Record<string, unknown>;
   version: number;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface GenerateResumeRequest {
@@ -769,6 +769,85 @@ export interface GenerateResumeRequest {
   job_description?: string;
   target_role?: string;
   company?: string;
+}
+
+export interface ResumeTemplate {
+  slug: string;
+  name: string;
+  category: string;
+  description: string;
+  bestFor: string[];
+  atsCompatibility: number;
+  accentColor: string;
+  fontStack: string;
+  layout: string;
+}
+
+export interface ResumeArtifact {
+  id: string;
+  workspaceId: string;
+  resumeId: string;
+  artifactKind: string;
+  templateSlug: string | null;
+  format: string;
+  filename: string;
+  mediaType: string;
+  fileSize: number;
+  createdAt: string;
+}
+
+export interface TailorResumeRequest {
+  job_description: string;
+  target_role?: string;
+  company?: string;
+}
+
+export interface CompileResumeRequest {
+  template_slug: string;
+  format?: 'pdf' | 'docx' | 'html';
+  max_pages?: number;
+}
+
+export interface CoverLetterRequest {
+  body: string;
+  template_slug: string;
+  format?: 'pdf' | 'docx' | 'html';
+  recipient?: string;
+  company?: string;
+  role?: string;
+}
+
+/** Fetch a compiled artifact as a Blob (bearer auth; GET needs no CSRF token). */
+export async function fetchArtifactBlob(workspaceId: string, artifactId: string): Promise<Blob> {
+  const token = getToken();
+  const res = await fetch(
+    `${API_BASE}${API_PREFIX}/resumes/artifacts/${artifactId}/download?workspace_id=${encodeURIComponent(workspaceId)}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    },
+  );
+  if (!res.ok) {
+    throw new ApiError(res.status, `Failed to download artifact (${res.status})`);
+  }
+  return res.blob();
+}
+
+/** Trigger a browser download of a compiled artifact. */
+export async function downloadArtifact(
+  workspaceId: string,
+  artifact: Pick<ResumeArtifact, 'id' | 'filename'>,
+): Promise<void> {
+  const blob = await fetchArtifactBlob(workspaceId, artifact.id);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = artifact.filename || 'resume';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export const resumeApi = {
@@ -780,6 +859,44 @@ export const resumeApi = {
   },
   generate(resumeId: string, body: GenerateResumeRequest): Promise<ResumeResponse> {
     return apiClient.post<ResumeResponse>(`/resumes/${resumeId}/generate`, body);
+  },
+  listTemplates(): Promise<ResumeTemplate[]> {
+    return apiClient.get<ResumeTemplate[]>('/resumes/templates');
+  },
+  tailor(
+    resumeId: string,
+    workspaceId: string,
+    body: TailorResumeRequest,
+  ): Promise<ResumeResponse> {
+    return apiClient.post<ResumeResponse>(
+      `/resumes/${resumeId}/tailor?workspace_id=${encodeURIComponent(workspaceId)}`,
+      body,
+    );
+  },
+  compile(
+    resumeId: string,
+    workspaceId: string,
+    body: CompileResumeRequest,
+  ): Promise<ResumeArtifact> {
+    return apiClient.post<ResumeArtifact>(
+      `/resumes/${resumeId}/compile?workspace_id=${encodeURIComponent(workspaceId)}`,
+      body,
+    );
+  },
+  coverLetter(
+    resumeId: string,
+    workspaceId: string,
+    body: CoverLetterRequest,
+  ): Promise<ResumeArtifact> {
+    return apiClient.post<ResumeArtifact>(
+      `/resumes/${resumeId}/cover-letter?workspace_id=${encodeURIComponent(workspaceId)}`,
+      body,
+    );
+  },
+  listArtifacts(resumeId: string, workspaceId: string): Promise<ResumeArtifact[]> {
+    return apiClient.get<ResumeArtifact[]>(`/resumes/${resumeId}/artifacts`, {
+      workspace_id: workspaceId,
+    });
   },
 };
 

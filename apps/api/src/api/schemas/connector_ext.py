@@ -11,6 +11,7 @@ class ConnectorType(StrEnum):
     GRAPHQL = "graphql"
     DATABASE = "database"
     FILE = "file"
+    MCP = "mcp"
 
 class CreateConnectorRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
@@ -40,3 +41,15 @@ class SyncStatusResponse(BaseModel):
     status: str
     error: str | None = None
     synced_at: datetime | None = None
+
+
+class McpToolInfoResponse(BaseModel):
+    name: str
+    description: str = ""
+    input_schema: dict[str, Any] = Field(default_factory=dict)
+    read_only_hint: bool = False
+
+
+class McpCallRequest(BaseModel):
+    tool_name: str = Field(..., min_length=1, max_length=200)
+    arguments: dict[str, Any] = Field(default_factory=dict)

@@ -7,6 +7,18 @@ from unittest.mock import MagicMock, AsyncMock
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _clean_parser_modules(monkeypatch):
+    # xdist reuses workers across files; ensure parser sys.modules is clean
+    # so previous file's monkeypatch (e.g. fitz=None) doesn't leak. Each test
+    # then sets exactly what it needs via monkeypatch.setitem.
+    for mod in ("fitz", "pdfplumber", "PyPDF2", "docx", "pytesseract", "PIL", "PIL.Image"):
+        monkeypatch.delitem(sys.modules, mod, raising=False)
+    yield
+    for mod in ("fitz", "pdfplumber", "PyPDF2", "docx", "pytesseract", "PIL", "PIL.Image"):
+        monkeypatch.delitem(sys.modules, mod, raising=False)
+
+
 class TestParsers:
 
     # --- BaseParser ---

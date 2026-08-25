@@ -1,6 +1,17 @@
 ﻿'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+/**
+ * Canonical confirmation dialog (Phase 02A / F-12).
+ *
+ * Built on the ui-kit Modal so every confirmation inherits the audited
+ * focus trap, focus restoration, Escape handling, portal rendering,
+ * aria-modal and body scroll-lock. The previous hand-rolled implementation
+ * had no trap, no aria-modal and a dangerous Enter-on-container confirm.
+ */
+
+import React from 'react';
+import { Modal } from '@vaeloom/ui-kit';
+import { Button } from '@vaeloom/ui-kit';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -10,14 +21,17 @@ interface ConfirmDialogProps {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** `danger` renders the destructive error-styled action. */
   variant?: 'danger' | 'warning' | 'default';
+  /** Disables the confirm action while the mutation is in flight. */
+  loading?: boolean;
 }
 
-const variantStyles: Record<string, string> = {
-  danger: 'bg-error hover:bg-error/90 text-white',
-  warning: 'bg-amber-600 hover:bg-amber-700 text-white',
-  default: 'bg-primary hover:bg-primary/90 text-white',
-};
+const confirmVariants = {
+  danger: 'danger',
+  warning: 'secondary',
+  default: 'primary',
+} as const;
 
 export function ConfirmDialog({
   isOpen,
@@ -28,73 +42,26 @@ export function ConfirmDialog({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   variant = 'default',
+  loading = false,
 }: ConfirmDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      cancelRef.current?.focus();
-    }
-  }, [isOpen]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-      if (e.key === 'Enter' && e.target === dialogRef.current) {
-        onConfirm();
-      }
-    },
-    [onClose, onConfirm],
-  );
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) {
-        onClose();
-      }
-    },
-    [onClose],
-  );
-
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={handleBackdropClick}
-      onKeyDown={handleKeyDown}
-      role="presentation"
-    >
-      <div
-        ref={dialogRef}
-        className="w-full max-w-md rounded-2xl bg-surface-50 border border-border shadow-xl p-6 animate-slide-up"
-        role="alertdialog"
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-message"
-        tabIndex={-1}
-      >
-        <h2 id="confirm-dialog-title" className="text-lg font-display font-medium text-text mb-2">
-          {title}
-        </h2>
-        <p id="confirm-dialog-message" className="text-sm text-text-muted mb-6">
-          {message}
-        </p>
+    <Modal isOpen={isOpen} onClose={loading ? () => {} : onClose} title={title} size="sm">
+      <div className="space-y-6">
+        <p className="text-sm leading-relaxed text-text-muted">{message}</p>
         <div className="flex justify-end gap-3">
-          <button ref={cancelRef} type="button" className="btn-secondary" onClick={onClose}>
+          <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${variantStyles[variant]}`}
+            variant={confirmVariants[variant]}
             onClick={onConfirm}
+            disabled={loading}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -49,7 +49,8 @@ class TestBullMQWorker:
         })
 
         await worker._process_job("job2")
-        mock_redis.sadd.assert_called_once()
+        # ADR-033: no-handler jobs dead-letter via zadd (not sadd)
+        mock_redis.zadd.assert_called_once_with("bull:events:failed", {"job2": 0})
         mock_redis.hset.assert_called()
 
     async def test_process_job_error(self, mock_redis):
@@ -69,7 +70,35 @@ class TestBullMQWorker:
         })
 
         await worker._process_job("job3")
-        mock_redis.zadd.assert_called_once_with("bull:events:failed", {"job3": 0})
+        # ADR-033: first failure schedules a delayed retry (default maxAttempts=3)
+        mock_redis.zadd.assert_called_once()
+        zadd_args = mock_redis.zadd.call_args.args
+        assert zadd_args[0] == "bull:events:delayed"
+        assert "job3" in zadd_args[1]
+
+    async def test_process_job_deadletters_after_max_attempts(self, mock_redis):
+        from api.workers.queue_worker import BullMQWorker
+        worker = BullMQWorker(queue_name="events")
+        worker._redis = mock_redis
+
+        async def failing_handler(data):
+            raise ValueError("processing failed")
+
+        worker.register("failing.type", failing_handler)
+
+        mock_redis.hgetall = AsyncMock(return_value={
+            "name": "failing.type",
+            "data": "{}",
+            "timestamp": "1000",
+            "attempts": "2",
+            "maxAttempts": "3",
+        })
+
+        await worker._process_job("job3x")
+        mock_redis.zadd.assert_called_once_with("bull:events:failed", {"job3x": 3})
+        mapping = mock_redis.hset.call_args.kwargs.get("mapping") or {}
+        assert mapping.get("attempts") == "3"
+        assert "failedReason" in mapping
 
     async def test_stop(self, mock_redis):
         from api.workers.queue_worker import BullMQWorker

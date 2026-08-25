@@ -29,7 +29,7 @@ function ScopePills({ scopes }: { scopes: { readTypes: string[]; writeTypes: str
       {scopes.readTypes.map((t) => (
         <span
           key={`r-${t}`}
-          className="rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400"
+          className="rounded bg-success/10 border border-success/30 px-2 py-0.5 text-xs text-success dark:text-success"
         >
           read:{t}
         </span>
@@ -37,7 +37,7 @@ function ScopePills({ scopes }: { scopes: { readTypes: string[]; writeTypes: str
       {scopes.writeTypes.map((t) => (
         <span
           key={`w-${t}`}
-          className="rounded bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400"
+          className="rounded bg-warning/10 border border-warning/30 px-2 py-0.5 text-xs text-warning dark:text-warning"
         >
           write:{t}
         </span>
@@ -54,7 +54,7 @@ export default function AgentDetailPage() {
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const agentId = params?.['agentId'] as string | undefined;
 
-  const { data, error, isLoading } = useSWR('agent-catalog', () => agentCatalogApi.get());
+  const { data, error, isLoading, mutate } = useSWR('agent-catalog', () => agentCatalogApi.get());
 
   if (isLoading) {
     return (
@@ -73,7 +73,7 @@ export default function AgentDetailPage() {
         <p className="text-sm text-text-muted mt-1">
           {(error as Error).message || 'Unexpected error'}
         </p>
-        <button onClick={() => window.location.reload()} className="btn-secondary mt-4">
+        <button onClick={() => mutate()} className="btn-secondary mt-4">
           Retry
         </button>
       </div>
@@ -226,9 +226,9 @@ export default function AgentDetailPage() {
                 <span
                   className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${
                     t.category === 'memory_write' || t.category === 'connector_write'
-                      ? 'bg-red-500/10 text-red-600 border-red-500/20'
+                      ? 'bg-error/10 text-error border-error/30'
                       : t.category === 'memory_read' || t.category === 'connector_read'
-                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                        ? 'bg-success/10 text-success border-success/30'
                         : 'bg-surface text-text-muted border-border'
                   }`}
                 >

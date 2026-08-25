@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Modal } from '@vaeloom/ui-kit';
@@ -428,18 +428,21 @@ export default function WorkspaceFilesPage() {
         <p className="text-xs text-text-muted">
           PDF, DOCX, TXT, MD, CSV, images — stored in your workspace
         </p>
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="sr-only"
-          aria-label="Choose file to upload"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void startUpload(file);
-            e.target.value = '';
-          }}
-        />
       </div>
+      {/* F-11: the file input is a sibling of the role=button dropzone —
+          nesting a native input inside a button-role element is invalid
+          nested-interactive semantics (axe). */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="sr-only"
+        aria-label="Choose file to upload"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void startUpload(file);
+          e.target.value = '';
+        }}
+      />
 
       {upload.phase !== 'idle' && (
         <div className="card mb-6 p-4" role="status" aria-live="polite">
@@ -462,7 +465,7 @@ export default function WorkspaceFilesPage() {
           )}
           {upload.phase === 'error' && (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-red-400">Failed: {upload.message}</p>
+              <p className="text-xs text-error">Failed: {upload.message}</p>
               <button
                 onClick={() => void startUpload(upload.file)}
                 className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover"
@@ -561,22 +564,20 @@ export default function WorkspaceFilesPage() {
                 return (
                   <tr
                     key={doc.id}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`View ${getFileName(doc.path)}`}
-                    onClick={() => void openViewer(doc)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        void openViewer(doc);
-                      }
-                    }}
-                    className={`border-b border-border/50 transition-colors focus:outline-none focus:bg-background/50 ${
+                    className={`border-b border-border/50 transition-colors ${
                       archived ? 'opacity-50 hover:opacity-80' : 'hover:bg-background/50'
-                    } cursor-pointer`}
+                    }`}
                   >
                     <td className="py-3">
-                      <span className="font-medium text-text">{getFileName(doc.path)}</span>
+                      {/* F-a11y: the row itself is NOT interactive (buttons live
+                          in the Actions cell); the file name is the open affordance
+                          so no role=button wraps interactive children. */}
+                      <button
+                        onClick={() => void openViewer(doc)}
+                        className="font-medium text-text hover:text-primary-as-link focus:outline-none focus-visible:ring-2 focus-visible:ring-action rounded"
+                      >
+                        {getFileName(doc.path)}
+                      </button>
                       {archived && (
                         <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs text-text-dim">
                           archived
@@ -602,7 +603,7 @@ export default function WorkspaceFilesPage() {
                         {archived ? (
                           <button
                             onClick={() => void handleRestore(doc)}
-                            className="rounded-full border border-emerald-500/30 px-3 py-1 text-xs text-emerald-300 hover:bg-emerald-500/10"
+                            className="rounded-full border border-success/30 px-3 py-1 text-xs text-success hover:bg-success/10"
                           >
                             Restore
                           </button>
@@ -632,21 +633,14 @@ export default function WorkspaceFilesPage() {
       {filteredDocs.length > 0 && (
         <div className="md:hidden mt-4 space-y-3">
           {filteredDocs.map((doc) => (
-            <div
-              key={`card-${doc.id}`}
-              role="button"
-              tabIndex={0}
-              onClick={() => void openViewer(doc)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  void openViewer(doc);
-                }
-              }}
-              className="card p-4 flex flex-col gap-2 cursor-pointer hover:border-primary/30"
-            >
+            <div key={`card-${doc.id}`} className="card p-4 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-text truncate">{getFileName(doc.path)}</span>
+                <button
+                  onClick={() => void openViewer(doc)}
+                  className="font-medium text-text truncate hover:text-primary-as-link focus:outline-none focus-visible:ring-2 focus-visible:ring-action rounded"
+                >
+                  {getFileName(doc.path)}
+                </button>
                 <span className="text-xs font-mono text-text-muted">{doc.type}</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-text-muted">
@@ -657,7 +651,7 @@ export default function WorkspaceFilesPage() {
                   <span className="rounded-full border border-border px-2 py-0.5">archived</span>
                 )}
               </div>
-              <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+              <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => {
                     setRenaming(doc);
@@ -669,7 +663,7 @@ export default function WorkspaceFilesPage() {
                 </button>
                 <button
                   onClick={() => void openViewer(doc)}
-                  className="flex-1 rounded-full bg-white text-black px-3 py-1 text-xs"
+                  className="flex-1 rounded-full bg-action text-action-fg px-3 py-1 text-xs"
                 >
                   View
                 </button>
@@ -728,7 +722,7 @@ export default function WorkspaceFilesPage() {
                 {docDeletedAt(viewer) ? (
                   <button
                     onClick={() => void handleRestore(viewer)}
-                    className="rounded-full border border-emerald-500/30 px-3 py-1 text-emerald-300 hover:bg-emerald-500/10"
+                    className="rounded-full border border-success/30 px-3 py-1 text-success hover:bg-success/10"
                   >
                     Restore
                   </button>
@@ -811,8 +805,8 @@ export default function WorkspaceFilesPage() {
           {renaming && renameValue.trim() && renaming.path !== renameValue.trim() && (
             <DiffViewer oldText={renaming.path} newText={renameValue.trim()} />
           )}
-          <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-text-muted">
-            <span className="font-medium text-amber-700">Organization Agent suggestion</span> — this
+          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text-muted">
+            <span className="font-medium text-warning">Organization Agent suggestion</span> — this
             rename is logged and reversible via <span className="font-mono">History → Undo</span>.
             An approval record is created for traceability.
           </div>
@@ -827,7 +821,7 @@ export default function WorkspaceFilesPage() {
             <button
               type="submit"
               disabled={!renameValue.trim()}
-              className="rounded-full bg-white px-4 py-1.5 text-sm text-black disabled:opacity-40"
+              className="rounded-full bg-action px-4 py-1.5 text-sm text-action-fg disabled:opacity-40"
             >
               Save
             </button>

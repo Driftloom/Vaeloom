@@ -17,7 +17,6 @@ __pycache__/
 .venv/
 .venv*/
 .venv-old/
-.python-version
 
 # Dependencies
 node_modules/
@@ -75,8 +74,13 @@ blob-report/
 
 # AI session artifacts (local audit, screenshots, build dumps — not committed)
 # .agents/findings, .agents/plans, .agents/audit ARE tracked (98 files) — keep them commitable
-# only ignore heavy local evidence with PNGs/logs:
-.agents/aaaduit/
+# aaaduit: track ONLY the phase reports (*.md, ~120 KB total); ignore ALL
+# heavy local evidence (~13 MB: server logs, PNG screenshots, txt/json dumps
+# under evidence/).
+# NOTE: contents-glob form is required — git cannot re-include inside an
+# excluded directory, so we must not exclude `aaaduit/` itself.
+.agents/aaaduit/*
+!.agents/aaaduit/*.md
 .claude/
 .cursor/
 .qoder/
@@ -139,3 +143,25 @@ seed_output/
 # Misc
 *.tsbuildinfo
 .eslintcache
+
+# Deploy tooling
+.vercel/
+
+# pnpm local store (only if store-dir is ever redirected into the repo)
+.pnpm-store/
+
+# Merge/patch leftovers and temp files
+*.orig
+*.rej
+*.tmp
+
+# SQLite WAL sidecar files
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.db-journal
+*.sqlite-journal
+
+# Next.js generated declaration
+next-env.d.ts

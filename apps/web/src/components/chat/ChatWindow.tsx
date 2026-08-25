@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
@@ -42,14 +42,14 @@ interface Thread {
 }
 
 const SLASH = [
-  { trigger: '/organize', desc: 'Organize workspace files', agent: 'organization', icon: '◧' },
-  { trigger: '/remember', desc: 'Extract memories', agent: 'memory', icon: '◎' },
-  { trigger: '/resume', desc: 'Generate resume', agent: 'resume', icon: '≡' },
-  { trigger: '/ats', desc: 'ATS score', agent: 'ats', icon: '▣' },
+  { trigger: '/organize', desc: 'Organize workspace files', agent: 'organization', icon: 'â—§' },
+  { trigger: '/remember', desc: 'Extract memories', agent: 'memory', icon: 'â—Ž' },
+  { trigger: '/resume', desc: 'Generate resume', agent: 'resume', icon: 'â‰¡' },
+  { trigger: '/ats', desc: 'ATS score', agent: 'ats', icon: 'â–£' },
   { trigger: '/jobs', desc: 'Search jobs', agent: 'job_search', icon: '◩' },
-  { trigger: '/apply', desc: 'Draft application', agent: 'application', icon: '✉' },
-  { trigger: '/email', desc: 'Draft email (approval)', agent: 'gmail', icon: '✉' },
-  { trigger: '/schedule', desc: 'Calendar & reminders', agent: 'scheduler', icon: '◷' },
+  { trigger: '/apply', desc: 'Draft application', agent: 'application', icon: 'âœ‰' },
+  { trigger: '/email', desc: 'Draft email (approval)', agent: 'gmail', icon: 'âœ‰' },
+  { trigger: '/schedule', desc: 'Calendar & reminders', agent: 'scheduler', icon: 'â—·' },
 ];
 
 const QUICK = [
@@ -78,13 +78,13 @@ function fmtRel(iso: string) {
 }
 function agentDot(a?: string) {
   const m: Record<string, string> = {
-    organization: 'bg-amber-500',
+    organization: 'bg-warning',
     memory: 'bg-violet-500',
     resume: 'bg-sky-500',
-    ats: 'bg-emerald-500',
+    ats: 'bg-success',
     job_search: 'bg-blue-500',
     application: 'bg-pink-500',
-    gmail: 'bg-red-500',
+    gmail: 'bg-error',
     scheduler: 'bg-amber-600',
   };
   return m[a || ''] || 'bg-zinc-600';
@@ -169,7 +169,36 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const [mentionOpen, setMentionOpen] = useState(false);
   const [slashF, setSlashF] = useState('');
   const [mentionF, setMentionF] = useState('');
-  const [showAgents, setShowAgents] = useState(true);
+  // F-24: threads rail overlays content below md — default it CLOSED on
+  // mobile so the composer is never covered on first paint.
+  const [showAgents, setShowAgents] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= 768,
+  );
+
+  const [streamingId, setStreamingId] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+
+  const commitRename = (): void => {
+    const id = editingThreadId;
+    const title = editingTitle.trim();
+    setEditingThreadId(null);
+    if (!id || !title) return;
+    const apply = (list: Thread[]): Thread[] =>
+      list.map((x) => (x.id === id ? { ...x, title } : x));
+    setThreads(apply);
+  };
+
+  // F-24: Escape closes the mobile threads rail.
+  useEffect(() => {
+    if (!showAgents) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && window.innerWidth < 768) setShowAgents(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showAgents]);
   const [dragOver, setDragOver] = useState(false);
   const [attached, setAttached] = useState<File | null>(null);
 
@@ -554,6 +583,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       };
       const next = [...messages, userMsg];
       setMessages(next);
+      let freshThreadId: string | null = null;
       if (activeId)
         updateThread(activeId, (t) => ({
           ...t,
@@ -562,6 +592,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         }));
       else {
         const id = Math.random().toString(36).slice(2, 7);
+        freshThreadId = id;
         const th: Thread = {
           id,
           title: raw.slice(0, 30),
@@ -580,6 +611,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       const agentForCall = selected === 'auto' ? undefined : selected;
       // F-02: latency shown to users is always client-measured wall time.
       const requestStartedAt = Date.now();
+      setStreamingId(agentId);
       const ph: ChatMessage = {
         id: agentId,
         role: 'agent',
@@ -592,8 +624,15 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       };
       setMessages((p) => [...p, ph]);
       if (activeId) updateThread(activeId, (t) => ({ ...t, messages: [...t.messages, ph] }));
+      else if (freshThreadId)
+        // Fresh thread: the activeThread sync effect replaces `messages` from
+        // the thread — the placeholder must live there too or the assistant
+        // reply (and its stopped/partial states) never render.
+        setThreads((p) =>
+          p.map((t) => (t.id === freshThreadId ? { ...t, messages: [...t.messages, ph] } : t)),
+        );
 
-      // ── Streaming orchestrator (phase-by-phase SSE) with blocking fallback ──
+      // â”€â”€ Streaming orchestrator (phase-by-phase SSE) with blocking fallback â”€â”€
       let streamedText = '';
       let streamedProposals: ChatMessage['proposals'] = [];
       let streamedQuestions: string[] | undefined;
@@ -769,11 +808,13 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             error: streamedError,
             latencyMs: Date.now() - requestStartedAt,
           });
+          setStreamingId(null);
         }
       };
 
       try {
         abortCtrl = new AbortController();
+        abortRef.current = abortCtrl;
         await agentApi.chatStream(
           { workspaceId, message: raw, agentName: agentForCall },
           onSseEvent,
@@ -788,12 +829,30 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             streaming: false,
             toolCalls: (streamedTools || []).map((t) => ({ ...t, status: 'done' as const })),
           });
+          setStreamingId(null);
         }
       } catch (err) {
         // Streaming failed — fallback to blocking chat
-        const isAbort = err instanceof DOMException && err.name === 'AbortError';
+        // F-19: detect user-initiated cancellation robustly — some browsers /
+        // proxy layers surface abort as TypeError(net::ERR_FAILED) rather than
+        // DOMException(AbortError), so honor the signal itself as ground truth.
+        const isAbort =
+          (err instanceof DOMException && err.name === 'AbortError') ||
+          Boolean(abortCtrl?.signal?.aborted);
         if (isAbort) {
+          // F-19: user stopped generation — keep the partial response with an
+          // honest stopped notice instead of leaving a phantom streaming bubble.
+          const partial = streamedText.trim();
+          applyPatch({
+            text: partial
+              ? `${partial}\n\n_(generation stopped)_`
+              : '_Generation stopped before any output._',
+            streaming: false,
+            toolCalls: (streamedTools || []).map((t) => ({ ...t, status: 'done' as const })),
+            latencyMs: Date.now() - requestStartedAt,
+          });
           setLoading(false);
+          setStreamingId(null);
           return;
         }
         try {
@@ -832,6 +891,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             ),
           );
           toast({ tone: 'error', title: 'Message failed', detail: msg });
+        } finally {
+          setStreamingId(null);
         }
       } finally {
         setLoading(false);
@@ -870,6 +931,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
       {/* left - hermes subtle rail, keep threads */}
       <aside
+        aria-label="Chat threads"
         className={`${showAgents ? 'flex' : 'hidden'} md:flex w-[260px] shrink-0 flex-col border-r border-border/40 bg-background max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:w-[82%] max-md:bg-background max-md:shadow-xl`}
       >
         <div className="h-12 flex items-center justify-between px-4 border-b border-border/40">
@@ -878,7 +940,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             onClick={() => startNew(selected)}
             className="text-xs text-text-muted hover:text-text"
           >
-            ＋ New
+            ï¼‹ New
           </button>
         </div>
         <div className="px-3 py-2 border-b border-border/40">
@@ -893,23 +955,71 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           ) : (
             <div className="space-y-1">
               {threads.map((t) => (
-                <button
+                <div
                   key={t.id}
-                  onClick={() => setActiveId(t.id)}
-                  className={`w-full text-left rounded-lg px-3 py-2.5 ${activeId === t.id ? 'bg-surface border border-border/50' : 'hover:bg-surface-hover border border-transparent'}`}
+                  className={`group flex items-center rounded-lg ${activeId === t.id ? 'bg-surface border border-border/50' : 'hover:bg-surface-hover border border-transparent'}`}
                 >
-                  <p className="text-sm text-text truncate pr-2">{t.title}</p>
-                  <p className="text-xs text-text-dim mt-0.5">
-                    {fmtRel(t.createdAt)} · {t.messages.length} msgs
-                  </p>
-                </button>
+                  {editingThreadId === t.id ? (
+                    <input
+                      autoFocus
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitRename();
+                        if (e.key === 'Escape') setEditingThreadId(null);
+                      }}
+                      onBlur={commitRename}
+                      aria-label="Thread name"
+                      className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-sm text-text focus:outline-none"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setActiveId(t.id)}
+                      className="flex-1 min-w-0 text-left rounded-lg px-3 py-2.5"
+                    >
+                      <p className="text-sm text-text truncate pr-2">{t.title}</p>
+                      <p className="text-xs text-text-dim mt-0.5">
+                        {fmtRel(t.createdAt)} {'\u00B7'} {t.messages.length} msgs
+                      </p>
+                    </button>
+                  )}
+                  {/* F-19b: threads live only in this browser (localStorage) —
+                      rename/delete are honest local operations. */}
+                  {editingThreadId !== t.id && (
+                    <div className="flex shrink-0 pr-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <button
+                        aria-label={'Rename thread ' + t.title}
+                        title="Rename"
+                        onClick={() => {
+                          setEditingThreadId(t.id);
+                          setEditingTitle(t.title);
+                        }}
+                        className="p-1.5 text-xs text-text-muted hover:text-text"
+                      >
+                        {'\u270E'}
+                      </button>
+                      <button
+                        aria-label={'Delete thread ' + t.title}
+                        title="Delete (from this browser)"
+                        onClick={() => {
+                          const nextThreads = threads.filter((x) => x.id !== t.id);
+                          setThreads(nextThreads);
+                          if (activeId === t.id) setActiveId(nextThreads[0]?.id ?? null);
+                        }}
+                        className="p-1.5 text-xs text-text-muted hover:text-error"
+                      >
+                        {'\u2715'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
         </div>
         <div className="p-3 border-t border-border/40">
-          <p className="text-xs text-text-dim leading-relaxed">
-            BYOK → <span className="font-mono text-text">Settings → API Keys</span>
+          <p className="text-[11px] text-text-dim leading-relaxed">
+            Threads are stored in this browser only.
           </p>
         </div>
       </aside>
@@ -927,11 +1037,17 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               </svg>
             </button>
             <h1 className="text-sm font-medium text-text">Chat</h1>
+            <span
+              className="hidden md:inline text-[10px] font-mono uppercase tracking-wider text-text-dim border border-border/60 rounded-full px-2 py-0.5"
+              title="Messages are generated by AI agents and may contain mistakes. Consequential actions always require your approval."
+            >
+              AI assistant
+            </span>
             <span className="hidden sm:inline text-xs text-text-dim font-mono">
               · {workspaceId.slice(0, 8)}
             </span>
             <span
-              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${selected === 'auto' ? 'border-border/50 text-text-dim' : 'bg-white text-black border-white'}`}
+              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${selected === 'auto' ? 'border-border/50 text-text-dim' : 'bg-action text-action-fg border-primary'}`}
             >
               <span
                 className={`w-1.5 h-1.5 rounded-full ${selected === 'auto' ? 'bg-text-dim' : 'bg-black'}`}
@@ -954,7 +1070,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           <div className="max-w-[768px] w-full mx-auto px-4 md:px-6 py-8">
             {messages.length === 0 && !loading ? (
               <div className="py-10 md:py-16 text-center">
-                <div className="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center mx-auto text-sm font-bold">
+                <div className="w-10 h-10 rounded-xl bg-surface-200 text-text flex items-center justify-center mx-auto text-sm font-bold">
                   V
                 </div>
                 <h2 className="mt-4 text-xl font-medium text-text">How can we help?</h2>
@@ -1001,7 +1117,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                       />
                     )}
                     <div
-                      className={`${m.role === 'user' ? 'max-w-[75%] bg-white text-black rounded-2xl px-4 py-3' : 'flex-1 min-w-0'}`}
+                      className={`${m.role === 'user' ? 'max-w-[75%] bg-action text-action-fg rounded-2xl px-4 py-3' : 'flex-1 min-w-0'}`}
                     >
                       {m.role === 'agent' && (
                         <div className="flex items-center gap-2 mb-1.5">
@@ -1011,7 +1127,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                           <span className="text-xs text-text-dim">{fmtTime(m.timestamp)}</span>
                           {m.confidence !== undefined && (
                             <span
-                              className={`text-xs font-mono px-1.5 py-0.5 rounded border ${m.confidence >= 0.9 ? 'border-emerald-500/20 text-emerald-400' : m.confidence >= 0.7 ? 'border-amber-500/20 text-amber-400' : 'border-red-500/20 text-red-400'}`}
+                              className={`text-xs font-mono px-1.5 py-0.5 rounded border ${m.confidence >= 0.9 ? 'border-success/30 text-success' : m.confidence >= 0.7 ? 'border-warning/30 text-warning' : 'border-error/30 text-error'}`}
                             >
                               {Math.round(m.confidence * 100)}%
                             </span>
@@ -1036,7 +1152,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                               {m.toolCalls.map((t, i) => (
                                 <div key={i} className="flex items-center gap-2 text-xs font-mono">
                                   <span
-                                    className={`w-1.5 h-1.5 rounded-full ${t.status === 'done' ? 'bg-emerald-500' : t.status === 'error' ? 'bg-red-500' : 'bg-amber-500'}`}
+                                    className={`w-1.5 h-1.5 rounded-full ${t.status === 'done' ? 'bg-success' : t.status === 'error' ? 'bg-error' : 'bg-warning'}`}
                                   />
                                   {t.name}
                                   <span className="text-text-dim">
@@ -1070,7 +1186,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                 return (
                                   <div
                                     key={i}
-                                    className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"
+                                    className="rounded-xl border border-warning/30 bg-warning/10 p-3"
                                   >
                                     <p className="text-sm font-medium text-text">{p.title}</p>
                                     {p.detail && (
@@ -1082,8 +1198,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                         onClick={() => handleProposalDecision(m.id, i, 'approve')}
                                         className={`flex-1 rounded-full text-xs py-1.5 ${
                                           p.status === 'approved'
-                                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 cursor-default'
-                                            : 'bg-white text-black hover:opacity-90 disabled:opacity-40 disabled:cursor-default'
+                                            ? 'bg-success/15 text-success border border-success/30 cursor-default'
+                                            : 'bg-action text-action-fg hover:bg-action-hover disabled:opacity-40 disabled:cursor-default'
                                         }`}
                                       >
                                         {p.status === 'approved' ? 'Approved' : 'Approve'}
@@ -1093,7 +1209,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                         onClick={() => handleProposalDecision(m.id, i, 'reject')}
                                         className={`flex-1 rounded-full text-xs py-1.5 disabled:opacity-40 disabled:cursor-default ${
                                           p.status === 'rejected'
-                                            ? 'bg-red-500/15 text-red-300 border border-red-500/30 cursor-default'
+                                            ? 'bg-error/15 text-error-fg border border-error/30 cursor-default'
                                             : 'border border-border'
                                         }`}
                                       >
@@ -1104,7 +1220,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                       <p className="text-xs text-text-dim mt-2">Expired</p>
                                     )}
                                     {p.status === 'error' && (
-                                      <p className="text-xs text-red-400 mt-2">
+                                      <p className="text-xs text-error mt-2">
                                         Action failed — pending approvals live in Notifications
                                       </p>
                                     )}
@@ -1156,7 +1272,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                     <div className="w-7 h-7 rounded-full bg-zinc-700 shrink-0" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 text-xs text-text-dim">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
                         Thinking · routing + QA
                       </div>
                       <div className="mt-2 flex gap-1">
@@ -1218,7 +1334,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               <div className="mb-2 flex items-center gap-2 text-xs border border-border/50 rounded-full px-3 py-1.5 bg-surface">
                 <span className="truncate">{attached.name}</span>
                 <button onClick={() => setAttached(null)} className="ml-auto">
-                  ✕
+                  âœ•
                 </button>
               </div>
             )}
@@ -1246,7 +1362,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                   className="hidden"
                   onChange={(e) => setAttached(e.target.files?.[0] || null)}
                 />
-                ＋
+                ï¼‹
               </label>
               <textarea
                 ref={inputRef}
@@ -1263,17 +1379,28 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                   t.style.height = Math.min(t.scrollHeight, 120) + 'px';
                 }}
               />
-              <button
-                aria-label="Send message"
-                onClick={() => void handleSend()}
-                disabled={loading || (!input.trim() && !attached)}
-                className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-zinc-200"
-              >
-                ↑
-              </button>
+              {streamingId ? (
+                <button
+                  aria-label="Stop generating"
+                  title="Stop generating"
+                  onClick={() => abortRef.current?.abort()}
+                  className="w-8 h-8 rounded-full bg-error text-white flex items-center justify-center shrink-0 hover:brightness-110"
+                >
+                  <span aria-hidden className="block w-2.5 h-2.5 bg-current rounded-[2px]" />
+                </button>
+              ) : (
+                <button
+                  aria-label="Send message"
+                  onClick={() => void handleSend()}
+                  disabled={loading || (!input.trim() && !attached)}
+                  className="w-8 h-8 rounded-full bg-action text-action-fg flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-action-hover"
+                >
+                  ↑
+                </button>
+              )}
             </div>
             <p className="mt-2 text-center text-xs text-text-dim">
-              ⏎ send · ⇧⏎ newline · <span className="font-mono">@</span> agents ·{' '}
+              âŽ send · â‡§âŽ newline · <span className="font-mono">@</span> agents ·{' '}
               <span className="font-mono">/</span> commands · {input.length}/10000
             </p>
           </div>
@@ -1282,7 +1409,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
 
       {showAgents && (
         <button
-          aria-label="close"
+          aria-label="Close chat threads"
           onClick={() => setShowAgents(false)}
           className="md:hidden fixed inset-0 bg-black/30 z-20"
         />

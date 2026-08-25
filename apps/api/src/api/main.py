@@ -7,6 +7,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
+# ── P1-37: pfi 7.1.0 crashes on FastAPI 0.141 _IncludedRouter (no .path) —
+# every request 500s. Upstream fixed in pfi 8.0.1 (2026-06-22) but 8.x
+# requires starlette>=1.0 which conflicts with pinned starlette==0.50.0 +
+# FastAPI 0.141. Patch the helper defensively until the coordinated
+# FastAPI/starlette/pfi upgrade lands.
+try:
+    import prometheus_fastapi_instrumentator.routing as _pfi_routing
+
+    _orig_get_route_name = _pfi_routing.get_route_name
+
+    def _patched_get_route_name(request):  # type: ignore[no-untyped-def]
+        try:
+            return _orig_get_route_name(request)
+        except Exception:
+            return "unknown"
+
+    _pfi_routing.get_route_name = _patched_get_route_name  # type: ignore[attr-defined]
+except Exception:
+    pass  # prometheus not installed in some test envs
+
 if "sqlite" in __import__("os").environ.get("DATABASE__URL", ""):
     import sqlalchemy.types as sa_types
     from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
@@ -118,7 +138,8 @@ async def lifespan(app: FastAPI):
 
         from alembic import command
         # Use absolute path to alembic.ini relative to this file
-        alembic_ini = os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
+        # (main.py is at apps/api/src/api/main.py → 3 dirnames up = apps/api/)
+        alembic_ini = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "alembic.ini")
         if not os.path.exists(alembic_ini):
             # Fallback: try relative to current working directory
             alembic_ini = "alembic.ini"
@@ -140,8 +161,42 @@ async def lifespan(app: FastAPI):
         logger.info("Background daemon started")
     except Exception as e:
         logger.warning(f"Background daemon failed to start (non-fatal): {e}")
+
+    # ── MCP bridge warm-up (fire-and-forget, never blocks boot) ──────
+    import asyncio as _asyncio
+
+    def _spawn_mcp_warmup():
+        async def _warm():
+            try:
+                from sqlalchemy import select as _select
+
+                from .database import async_session_factory
+                from .models.schema import Connector
+                from .services.mcp_client_service import mcp_client_service
+            except Exception as e:
+                logger.warning("MCP warm-up imports failed (non-fatal): %s", e)
+                return
+
+            async with async_session_factory() as session:
+                rows = await session.execute(_select(Connector).where(Connector.type == "mcp"))
+                for c in rows.scalars():
+                    try:
+                        names = await mcp_client_service.bridge_connector_tools(c.id, None, session)
+                        logger.info("MCP bridge ready: %s → %d tools", c.name, len(names))
+                    except Exception as e:  # noqa: BLE001 - one bad server must not block others
+                        logger.warning("MCP bridge skipped for %s: %s", c.name, e)
+
+        return _asyncio.create_task(_warm())
+
+    _mcp_task = None
+    try:
+        _mcp_task = _spawn_mcp_warmup()
+    except Exception as e:
+        logger.warning(f"MCP bridge warm-up failed to schedule (non-fatal): {e}")
     yield
     # ── Stop background daemon ──────────────────────────────────────
+    if _mcp_task:
+        _mcp_task.cancel()
     try:
         from .infrastructure.background_daemon import stop_background_daemon
         stop_background_daemon()

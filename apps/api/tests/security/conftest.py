@@ -200,12 +200,19 @@ async def db_session(db_path):
             await conn.execute(text(q))
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
-    async with session_factory() as session:
-        yield session
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+    try:
+        async with session_factory() as session:
+            yield session
+    finally:
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+        except Exception:
+            pass
+        try:
+            await engine.dispose()
+        except Exception:
+            pass
 
 
 @pytest_asyncio.fixture

@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaeloom-queue-worker
+  namespace: vaeloom
+  labels:
+    app.kubernetes.io/name: queue-worker
+    app.kubernetes.io/component: backend-worker
+spec:
+  # ADR-033: durable background execution (schedules + events queues).
+  # Scale horizontally — Redis claim keys + zrem promotion prevent duplicate work.
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: queue-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: queue-worker
+    spec:
+      containers:
+        - name: queue-worker
+          image: vaeloom/api:latest
+          imagePullPolicy: Always
+          command: ['python', '-m', 'api.workers.queue_worker']
+          env:
+            - name: SERVICE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: vaeloom-config
+                  key: SERVICE_ENVIRONMENT
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: vaeloom-config
+                  key: LOG_LEVEL
+            - name: DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: vaeloom-db-secret
+                  key: DATABASE_URL
+            - name: REDIS__URL
+              value: redis://redis:6379/0
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vaeloom-db-secret
+                  key: JWT_SECRET
+                  optional: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          # No HTTP probes — worker has no port. Liveness = process up.
+          livenessProbe:
+            exec:
+              command:
+                [
+                  'python',
+                  '-c',
+                  "import redis, os; r = redis.from_url(os.environ['REDIS__URL'], socket_connect_timeout=2); r.ping()",
+                ]
+            initialDelaySeconds: 20
+            periodSeconds: 30

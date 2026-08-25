@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -63,9 +63,9 @@ function formatDate(iso?: string): string {
 }
 
 const statusStyles: Record<string, string> = {
-  connected: 'border-green-500/50 text-green-400 bg-green-950/20',
-  syncing: 'border-yellow-500/50 text-yellow-400 bg-yellow-950/20',
-  error: 'border-red-500/50 text-red-400 bg-red-950/20',
+  connected: 'border-success/50 text-success bg-success/10',
+  syncing: 'border-warning/50 text-warning bg-warning/10',
+  error: 'border-error/50 text-error bg-error/10',
   disconnected: 'border-border text-text-muted bg-surface',
 };
 
@@ -234,11 +234,11 @@ export default function ConnectorsPage() {
                   </div>
                   {conn.status === 'syncing' && (
                     <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-hover">
-                      <div className="h-full w-2/3 animate-pulse bg-yellow-500/60" />
+                      <div className="h-full w-2/3 animate-pulse bg-warning/60" />
                     </div>
                   )}
                   {(conn as unknown as Record<string, unknown>)['errorDetail'] ? (
-                    <p className="text-xs text-red-400 mb-3" role="alert">
+                    <p className="text-xs text-error mb-3" role="alert">
                       {String((conn as unknown as Record<string, unknown>)['errorDetail'])}
                     </p>
                   ) : null}

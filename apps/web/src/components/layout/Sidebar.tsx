@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import Link from 'next/link';
@@ -277,8 +277,18 @@ function groupLinks(workspaceId: string): NavGroup[] {
           name: 'Approvals',
           path: ws('/approvals'),
           icon: (
-            <svg className={iconClass} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className={iconClass}
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           ),
         },
@@ -478,11 +488,11 @@ export function Sidebar({
       }`}
     >
       <div className="px-4 h-14 border-b border-border flex items-center justify-between shrink-0">
-        <h1 className="text-lg font-display font-semibold text-primary">Vaeloom</h1>
+        <div className="text-lg font-display font-semibold text-primary">Vaeloom</div>
         <button
           onClick={onClose}
           aria-label="Close navigation"
-          className="md:hidden text-text-muted hover:text-text transition-colors"
+          className="md:hidden p-2 -m-2 text-text-muted hover:text-text transition-colors"
         >
           <svg
             className="w-5 h-5"

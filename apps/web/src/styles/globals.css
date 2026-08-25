@@ -1,6 +1,160 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ * Vaeloom dual-theme design tokens (Phase 02A / Wave 03)
+ *
+ * DARK (default): deep navy enterprise foundation. Pure black is reserved for
+ * scrims, graph voids, code surfaces and shadows â€” never the app background.
+ * LIGHT: premium near-white enterprise surfaces with refined indigo accents.
+ *
+ * Values are R G B triplets consumed by tailwind.config.ts with alpha support.
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
+
+:root,
+.dark {
+  /* App canvas + surface hierarchy */
+  --bg: 9 11 37;               /* #090B25 */
+  --surface: 11 13 38;         /* #0B0D26 */
+  --surface-elevated: 17 20 50; /* #111432 */
+  --surface-50: 13 15 42;
+  --surface-100: 17 19 48;
+  --surface-200: 23 26 58;
+  --surface-300: 37 41 74;     /* #25294A */
+  --surface-400: 52 58 96;
+  --surface-500: 90 97 134;
+  --surface-900: 13 15 42;
+  --surface-hover: 22 26 58;   /* #161A3A */
+  --surface-active: 30 35 70;
+  --surface-selected: 40 45 88;
+
+  /* Text */
+  --text: 245 247 255;          /* #F5F7FF */
+  --text-secondary: 183 189 214; /* #B7BDD6 */
+  --text-muted: 133 140 170;    /* #858CAA */
+  --text-dim: 124 131 163;
+  --text-200: 228 232 245;
+  --text-300: 203 209 231;
+  --text-400: 183 189 214;
+  --text-500: 158 165 194;
+  --text-600: 124 131 163;
+
+  /* Borders */
+  --border: 37 41 74;           /* #25294A */
+  --border-subtle: 28 32 60;
+  --border-strong: 56 62 104;
+
+  /* Primary = LINK/brand text color (theme-aware, AA on navy surfaces).
+     Action = solid button background (fixed indigo, white label). */
+  --primary: 165 180 252;       /* #A5B4FC ≈ 8.9:1 on #090B25 */
+  --primary-300: 165 180 252;
+  --primary-400: 129 140 248;
+  --action: 79 70 229;          /* #4F46E5 */
+  --action-hover: 67 56 202;    /* #4338CA */
+  --action-active: 55 48 163;   /* #3730A3 */
+  --action-fg: 255 255 255;
+
+  /* Accent */
+  --accent: 129 140 248;
+  --accent-300: 165 180 252;
+  --accent-400: 129 140 248;
+  --accent-hover: 165 180 252;
+  --accent-active: 99 102 241;
+
+  /* Semantic status (dark-tuned bright hues) */
+  --success: 52 211 153;        /* #34D399 */
+  --success-muted: 110 231 183;
+  --success-fg: 110 231 183;
+  --warning: 251 191 36;        /* #FBBF24 */
+  --warning-muted: 253 230 138;
+  --warning-fg: 253 230 138;
+  --error: 248 113 113;         /* #F87171 */
+  --error-muted: 252 165 165;
+  --error-fg: 252 165 165;
+  --info: 125 211 252;          /* #7DD3FC */
+  --info-muted: 186 230 253;
+  --info-fg: 186 230 253;
+
+  /* Scrim / overlay (intentional near-black usage) */
+  --overlay: 5 6 20;
+
+  /* Elevation */
+  --shadow-card: 0 2px 8px rgb(2 4 18 / 0.55), 0 1px 2px rgb(2 4 18 / 0.4);
+  --shadow-card-hover: 0 4px 16px rgb(2 4 18 / 0.65), 0 2px 4px rgb(2 4 18 / 0.4);
+  --shadow-elevated: 0 8px 32px rgb(2 4 18 / 0.7);
+  --shadow-inner-highlight: rgb(255 255 255 / 0.04);
+}
+
+.light {
+  --bg: 247 248 252;            /* #F7F8FC */
+  --surface: 255 255 255;
+  --surface-elevated: 255 255 255;
+  --surface-50: 250 250 253;
+  --surface-100: 243 244 249;
+  --surface-200: 236 238 245;
+  --surface-300: 226 229 239;
+  --surface-400: 214 218 231;
+  --surface-500: 154 161 185;
+  --surface-900: 23 26 43;
+  --surface-hover: 241 243 249; /* #F1F3F9 */
+  --surface-active: 232 236 246;
+  --surface-selected: 228 231 247;
+
+  --text: 23 26 43;             /* #171A2B */
+  --text-secondary: 79 86 111;  /* #4F566F */
+  /* Muted/dim tuned to clear WCAG AA (â‰¥5.0:1) on every real surface,
+     including tinted #F7F8FC canvas and #F1F3F9 hover fills. */
+  --text-muted: 88 97 123;      /* #58617B â‰ˆ 5.6:1 */
+  --text-dim: 98 107 131;       /* #626B83 â‰ˆ 5.1:1 */
+  --text-200: 55 60 92;
+  --text-300: 79 86 111;
+  --text-400: 98 107 131;
+  --text-500: 108 117 140;
+  --text-600: 146 153 176;
+
+  --border: 226 229 239;        /* #E2E5EF */
+  --border-subtle: 236 238 245;
+  --border-strong: 199 205 222;
+
+  --primary: 67 56 202;         /* #4338CA ≈ 7.9:1 on white */
+  --primary-300: 79 70 229;
+  --primary-400: 67 56 202;
+  --action: 79 70 229;
+  --action-hover: 67 56 202;
+  --action-active: 55 48 163;
+  --action-fg: 255 255 255;
+
+  --accent: 67 56 202;
+  --accent-300: 79 70 229;
+  --accent-400: 67 56 202;
+  --accent-hover: 55 48 163;
+  --accent-active: 49 46 129;
+
+  /* Semantic status (light-tuned deep hues, AA on white surfaces AND on
+     their own /10–/20 alpha tints — axe color-contrast verified):
+       warning #92400E  = 6.2:1 on warning/10, 7.1:1 on white
+       success-muted #065F46 = 5.4:1 on success/20 (DiffViewer <ins>) */
+  --success: 6 95 70;           /* #065F46 — 6.3:1 on success/10 tint */
+  --success-muted: 6 95 70;     /* #065F46 — 5.4:1 on success/20 (DiffViewer <ins>) */
+  --success-fg: 6 95 70;
+  --warning: 146 64 14;         /* #92400E */
+  --warning-muted: 146 64 14;
+  --warning-fg: 146 64 14;
+  --error: 185 28 28;           /* #B91C1C */
+  --error-muted: 220 38 38;
+  --error-fg: 185 28 28;
+  --info: 3 105 161;            /* #0369A1 */
+  --info-muted: 2 132 199;
+  --info-fg: 3 105 161;
+
+  --overlay: 23 26 43;
+
+  --shadow-card: 0 1px 3px rgb(23 26 43 / 0.08), 0 1px 2px rgb(23 26 43 / 0.05);
+  --shadow-card-hover: 0 6px 16px rgb(23 26 43 / 0.12), 0 2px 4px rgb(23 26 43 / 0.06);
+  --shadow-elevated: 0 12px 32px rgb(23 26 43 / 0.14);
+  --shadow-inner-highlight: rgb(255 255 255 / 0.6);
+}
 
 @layer base {
   body {
@@ -13,7 +167,7 @@
   }
 
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-primary;
+    @apply outline-2 outline-offset-2 outline-accent;
   }
 
   * {
@@ -22,15 +176,21 @@
 
   html {
     scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
   }
 }
 
 @layer components {
+  /* Canonical primary action â€” one family for the whole product. */
   .btn-primary {
-    @apply bg-white text-black font-semibold px-6 py-3 rounded-lg
-           hover:bg-neutral-200 active:bg-neutral-300
+    @apply bg-action text-action-fg font-semibold px-6 py-3 rounded-lg
+           hover:bg-action-hover active:bg-action-active disabled:opacity-50
            transition-all duration-150 ease-out
-           focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black;
+           focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .btn-primary:active {
@@ -43,7 +203,7 @@
            active:bg-surface-400
            transition-all duration-150 ease-out
            border border-border
-           focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black;
+           focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .btn-ghost {
@@ -57,15 +217,22 @@
     @apply bg-accent text-white font-semibold px-6 py-3 rounded-lg
            hover:bg-accent-hover active:bg-accent-active
            transition-all duration-150 ease-out
-           focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black;
+           focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .btn-danger {
+    @apply bg-error text-white font-semibold px-6 py-3 rounded-lg
+           hover:brightness-110 active:brightness-95
+           transition-all duration-150 ease-out
+           focus-visible:ring-2 focus-visible:ring-error focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .card {
-    @apply bg-surface rounded-xl border border-border p-6;
+    @apply bg-surface rounded-xl border border-border p-6 shadow-card;
   }
 
   .card-hover {
-    @apply card hover:border-surface-300 hover:bg-surface-100 transition-all duration-150;
+    @apply card hover:border-surface-300 hover:shadow-card-hover transition-all duration-150;
   }
 
   .glass {
@@ -93,11 +260,11 @@
   }
 
   .input-error {
-    @apply border-red-500 focus:border-red-500 focus:ring-red-500/20;
+    @apply border-error focus:border-error focus:ring-error/20;
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-white via-text-300 to-text-400 
+    @apply bg-gradient-to-r from-text via-text-300 to-accent-300
            bg-clip-text text-transparent;
   }
 
@@ -109,7 +276,7 @@
 
   .skip-link {
     @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100]
-           focus:px-4 focus:py-2 focus:rounded-lg focus:bg-white focus:text-black focus:font-medium;
+           focus:px-4 focus:py-2 focus:rounded-lg focus:bg-action focus:text-action-fg focus:font-medium;
   }
 
   .toast-enter {
@@ -129,6 +296,11 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Intentional pure-black surfaces (graph voids, media, code). */
+  .bg-void {
+    background-color: #000000;
   }
 }
 
