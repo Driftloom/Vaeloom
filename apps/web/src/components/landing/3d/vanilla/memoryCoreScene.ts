@@ -15,9 +15,11 @@ const STREAMS = [
   { angle: 0.65, tilt: -0.25, color: '#818cf8' },
   { angle: 1.4, tilt: -0.18, color: '#6366f1' },
   { angle: 2.1, tilt: 0.2, color: '#e879f9' },
-  { angle: 3.6, tilt: -0.35, color: '#22d3ee' },
+  // Bottom stream — now truly vertical, connects to sphere bottom
+  { angle: 4.71, tilt: 0, color: '#22d3ee' },
   { angle: 4.9, tilt: 0.28, color: '#818cf8' },
   { angle: 5.6, tilt: 0.22, color: '#a5b4fc' },
+  { angle: 3.2, tilt: -0.32, color: '#22d3ee' },
 ] as const;
 
 type Cfg = {
@@ -72,8 +74,8 @@ export function mountMemoryCore({ container, theme, density, streams = true }: C
   );
   scene.add(inner);
 
-  /* Motes — ~5x denser, clustered, layered depth ------------------- */
-  const moteCount = Math.round(1100 * density);
+  /* Motes — ultra dense, clustered, layered depth ------------------- */
+  const moteCount = Math.round(1800 * density);
   const motePos = new Float32Array(moteCount * 3);
   const moteSizes = new Float32Array(moteCount);
   // Mote clusters around the core and in the surrounding volume
@@ -158,8 +160,8 @@ export function mountMemoryCore({ container, theme, density, streams = true }: C
   motes.frustumCulled = false;
   scene.add(motes);
 
-  /* Streams ------------------------------------------------------------- */
-  const streamCount = Math.round(110 * density);
+  /* Streams — denser for richer data flows -------------------------- */
+  const streamCount = Math.round(180 * density);
   const streamsList = streams
     ? STREAMS.map((cfg) => {
         const progress = new Float32Array(streamCount);

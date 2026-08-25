@@ -13,8 +13,8 @@ type Cfg = {
   density: number;
 };
 
-// Base count 950 at density 1.0 (was 650) — ~5.6x original, ~1.46x current
-const BASE_COUNT = 950;
+// Base count 1800 at density 1.0 — ultra dense for immersive field
+const BASE_COUNT = 1800;
 
 // Size tiers: 70% very small, 20% small, 8% medium-small, 2% emphasized
 const SIZE_TIERS = [
@@ -74,8 +74,8 @@ export function mountDustField({ container, theme, density }: Cfg): SceneHandle 
         z = (Math.random() - 0.5) * 6;
       }
 
-      // Reduce density behind heading: skip 55% of particles in that zone
-      if (isBehindHeading(x, y, z) && Math.random() < 0.55) {
+      // Reduce density behind heading: skip 30% (was 55%) for richer feel
+      if (isBehindHeading(x, y, z) && Math.random() < 0.3) {
         // Try again with uniform distribution outside the zone
         x = (Math.random() - 0.5) * 22;
         // Push to outer region if still in the zone, bias to outer
