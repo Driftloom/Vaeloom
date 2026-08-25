@@ -46,7 +46,7 @@ function applyTheme(theme: Theme): void {
 }
 
 const THEME_BG: Record<Theme, string> = {
-  dark: '#090B25',
+  dark: '#000000',
   light: '#F7F8FC',
 };
 

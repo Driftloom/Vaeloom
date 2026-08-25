@@ -116,7 +116,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="Vaeloom" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#090B25" />
+        <meta name="theme-color" content="#000000" />
       </head>
       <body className="antialiased min-h-screen bg-background text-text">
         <ErrorTrackingBoundary>

@@ -5,8 +5,8 @@
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  * Vaeloom dual-theme design tokens (Phase 02A / Wave 03)
  *
- * DARK (default): deep navy enterprise foundation. Pure black is reserved for
- * scrims, graph voids, code surfaces and shadows â€” never the app background.
+ * DARK (default): PURE BLACK canvas (#000000, brand reference) with a
+ * neutral near-black surface ramp. Indigo action/accent unchanged.
  * LIGHT: premium near-white enterprise surfaces with refined indigo accents.
  *
  * Values are R G B triplets consumed by tailwind.config.ts with alpha support.
@@ -14,26 +14,26 @@
 
 :root,
 .dark {
-  /* App canvas + surface hierarchy */
-  --bg: 9 11 37;               /* #090B25 */
-  --surface: 11 13 38;         /* #0B0D26 */
-  --surface-elevated: 17 20 50; /* #111432 */
-  --surface-50: 13 15 42;
-  --surface-100: 17 19 48;
-  --surface-200: 23 26 58;
-  --surface-300: 37 41 74;     /* #25294A */
-  --surface-400: 52 58 96;
-  --surface-500: 90 97 134;
-  --surface-900: 13 15 42;
-  --surface-hover: 22 26 58;   /* #161A3A */
-  --surface-active: 30 35 70;
-  --surface-selected: 40 45 88;
+  /* App canvas + surface hierarchy — PURE BLACK canvas, neutral ramp */
+  --bg: 0 0 0;                  /* #000000 — brand black */
+  --surface: 8 8 10;            /* #08080A */
+  --surface-elevated: 14 14 17; /* #0E0E11 */
+  --surface-50: 10 10 12;
+  --surface-100: 14 14 17;
+  --surface-200: 20 20 24;
+  --surface-300: 32 32 38;      /* #202026 */
+  --surface-400: 45 45 53;
+  --surface-500: 82 82 94;
+  --surface-900: 10 10 12;
+  --surface-hover: 18 18 22;
+  --surface-active: 26 26 32;
+  --surface-selected: 36 36 46;
 
   /* Text */
   --text: 245 247 255;          /* #F5F7FF */
   --text-secondary: 183 189 214; /* #B7BDD6 */
-  --text-muted: 133 140 170;    /* #858CAA */
-  --text-dim: 124 131 163;
+  --text-muted: 138 142 158;    /* #8A8E9E */
+  --text-dim: 128 132 148;
   --text-200: 228 232 245;
   --text-300: 203 209 231;
   --text-400: 183 189 214;
@@ -41,13 +41,13 @@
   --text-600: 124 131 163;
 
   /* Borders */
-  --border: 37 41 74;           /* #25294A */
-  --border-subtle: 28 32 60;
-  --border-strong: 56 62 104;
+  --border: 34 34 40;           /* #222228 */
+  --border-subtle: 24 24 28;
+  --border-strong: 54 54 64;
 
-  /* Primary = LINK/brand text color (theme-aware, AA on navy surfaces).
+  /* Primary = LINK/brand text color (theme-aware, AA on black surfaces).
      Action = solid button background (fixed indigo, white label). */
-  --primary: 165 180 252;       /* #A5B4FC ≈ 8.9:1 on #090B25 */
+  --primary: 165 180 252;       /* #A5B4FC ≈ 10:1 on #000000 */
   --primary-300: 165 180 252;
   --primary-400: 129 140 248;
   --action: 79 70 229;          /* #4F46E5 */
@@ -76,13 +76,13 @@
   --info-muted: 186 230 253;
   --info-fg: 186 230 253;
 
-  /* Scrim / overlay (intentional near-black usage) */
-  --overlay: 5 6 20;
+  /* Scrim / overlay */
+  --overlay: 0 0 0;
 
-  /* Elevation */
-  --shadow-card: 0 2px 8px rgb(2 4 18 / 0.55), 0 1px 2px rgb(2 4 18 / 0.4);
-  --shadow-card-hover: 0 4px 16px rgb(2 4 18 / 0.65), 0 2px 4px rgb(2 4 18 / 0.4);
-  --shadow-elevated: 0 8px 32px rgb(2 4 18 / 0.7);
+  /* Elevation — pure black shadows on black canvas */
+  --shadow-card: 0 2px 8px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-card-hover: 0 4px 16px rgb(0 0 0 / 0.7), 0 2px 4px rgb(0 0 0 / 0.5);
+  --shadow-elevated: 0 8px 32px rgb(0 0 0 / 0.8);
   --shadow-inner-highlight: rgb(255 255 255 / 0.04);
 }
 
@@ -301,6 +301,139 @@
   /* Intentional pure-black surfaces (graph voids, media, code). */
   .bg-void {
     background-color: #000000;
+  }
+}
+
+/* ============================================================
+   LANDING — "The Living Second Brain"
+   Layered on top of the app tokens. Both themes designed
+   intentionally; 3D scenes read these vars at render time.
+   ============================================================ */
+
+:root,
+.dark {
+  --landing-grid: 165 180 252;          /* primary-300 grid lines */
+  --landing-glow-a: 99 102 241;         /* indigo core */
+  --landing-glow-b: 34 211 238;         /* cyan data streams */
+  --landing-glow-c: 217 70 239;         /* fuchsia memory links */
+  --landing-canvas-veil: 0 0 0;         /* pure black behind WebGL */
+  --landing-node-person: #ec4899;
+  --landing-node-skill: #8b5cf6;
+  --landing-node-document: #f59e0b;
+  --landing-node-topic: #10b981;
+  --landing-node-org: #6366f1;
+  --landing-node-event: #f97316;
+  --landing-node-project: #3b82f6;
+  --landing-node-entity: #06b6d4;
+}
+
+.light {
+  --landing-grid: 67 56 202;            /* indigo-700 lines, low alpha */
+  --landing-glow-a: 79 70 229;
+  --landing-glow-b: 8 145 178;
+  --landing-glow-c: 192 38 211;
+  --landing-canvas-veil: 247 248 252;
+  /* Node hues deepened for AA contrast on light surfaces. */
+  --landing-node-person: #be185d;
+  --landing-node-skill: #7c3aed;
+  --landing-node-document: #b45309;
+  --landing-node-topic: #047857;
+  --landing-node-org: #4338ca;
+  --landing-node-event: #c2410c;
+  --landing-node-project: #1d4ed8;
+  --landing-node-entity: #0e7490;
+}
+
+@layer components {
+  /* Faint engineering grid backdrop for hero/CTA bands. */
+  .landing-grid-bg {
+    background-image:
+      linear-gradient(to right, rgb(var(--landing-grid) / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--landing-grid) / 0.05) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 75%);
+  }
+
+  .light .landing-grid-bg {
+    background-image:
+      linear-gradient(to right, rgb(var(--landing-grid) / 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--landing-grid) / 0.07) 1px, transparent 1px);
+  }
+
+  /* Ambient aurora behind hero — theme-aware, cheap (no animation loop). */
+  .landing-aurora::before,
+  .landing-aurora::after {
+    content: '';
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(90px);
+    pointer-events: none;
+  }
+  .landing-aurora::before {
+    width: 42rem;
+    height: 42rem;
+    left: -12rem;
+    top: -14rem;
+    background: rgb(var(--landing-glow-a) / 0.16);
+  }
+  .landing-aurora::after {
+    width: 36rem;
+    height: 36rem;
+    right: -10rem;
+    top: 22%;
+    background: rgb(var(--landing-glow-b) / 0.10);
+  }
+  :root:not(.dark) .landing-aurora::before { background: rgb(var(--landing-glow-a) / 0.10); }
+  :root:not(.dark) .landing-aurora::after { background: rgb(var(--landing-glow-b) / 0.08); }
+
+  /* Glass panel tuned per theme (app .glass is dark-tuned). */
+  .landing-panel {
+    background: rgb(var(--surface-elevated) / 0.55);
+    border: 1px solid rgb(var(--border-subtle));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  :root:not(.dark) .landing-panel {
+    background: rgb(255 255 255 / 0.72);
+    border-color: rgb(var(--border));
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Gradient headline accent. */
+  .landing-gradient-text {
+    background-image: linear-gradient(
+      100deg,
+      rgb(var(--primary-300)) 0%,
+      rgb(var(--accent-400)) 45%,
+      rgb(var(--landing-glow-b)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Section eyebrow label. */
+  .landing-eyebrow {
+    font-family: var(--font-ibm-plex-mono), monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgb(var(--accent-400));
+  }
+  :root:not(.dark) .landing-eyebrow { color: rgb(var(--primary-700)); }
+
+  /* Flowing dashed connector line (SVG stroke uses currentColor). */
+  .landing-flow-line {
+    stroke-dasharray: 4 20;
+    animation: flowDash 1.4s linear infinite;
+  }
+
+  /* Compounding density bars. */
+  .landing-density-bar {
+    background: linear-gradient(to top,
+      rgb(var(--landing-glow-a) / 0.25),
+      rgb(var(--landing-glow-a) / 0.9));
   }
 }
 
