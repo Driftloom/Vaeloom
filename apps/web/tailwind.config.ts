@@ -146,6 +146,10 @@ const config: Config = {
         'scale-in': 'scaleIn 0.3s ease-out',
         'glow-pulse': 'glowPulse 3s ease-in-out infinite',
         float: 'float 6s ease-in-out infinite',
+        // Landing system
+        'spin-slow': 'spin 24s linear infinite',
+        breathe: 'breathe 7s ease-in-out infinite',
+        flow: 'flowDash 1.6s linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -171,6 +175,13 @@ const config: Config = {
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-10px)' },
+        },
+        breathe: {
+          '0%, 100%': { opacity: '0.5', transform: 'scale(1)' },
+          '50%': { opacity: '1', transform: 'scale(1.04)' },
+        },
+        flowDash: {
+          to: { strokeDashoffset: '-24' },
         },
       },
       borderRadius: {

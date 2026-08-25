@@ -304,6 +304,139 @@
   }
 }
 
+/* ============================================================
+   LANDING — "The Living Second Brain"
+   Layered on top of the app tokens. Both themes designed
+   intentionally; 3D scenes read these vars at render time.
+   ============================================================ */
+
+:root,
+.dark {
+  --landing-grid: 165 180 252;          /* primary-300 grid lines */
+  --landing-glow-a: 99 102 241;         /* indigo core */
+  --landing-glow-b: 34 211 238;         /* cyan data streams */
+  --landing-glow-c: 217 70 239;         /* fuchsia memory links */
+  --landing-canvas-veil: 5 6 20;        /* veil behind WebGL */
+  --landing-node-person: #ec4899;
+  --landing-node-skill: #8b5cf6;
+  --landing-node-document: #f59e0b;
+  --landing-node-topic: #10b981;
+  --landing-node-org: #6366f1;
+  --landing-node-event: #f97316;
+  --landing-node-project: #3b82f6;
+  --landing-node-entity: #06b6d4;
+}
+
+.light {
+  --landing-grid: 67 56 202;            /* indigo-700 lines, low alpha */
+  --landing-glow-a: 79 70 229;
+  --landing-glow-b: 8 145 178;
+  --landing-glow-c: 192 38 211;
+  --landing-canvas-veil: 247 248 252;
+  /* Node hues deepened for AA contrast on light surfaces. */
+  --landing-node-person: #be185d;
+  --landing-node-skill: #7c3aed;
+  --landing-node-document: #b45309;
+  --landing-node-topic: #047857;
+  --landing-node-org: #4338ca;
+  --landing-node-event: #c2410c;
+  --landing-node-project: #1d4ed8;
+  --landing-node-entity: #0e7490;
+}
+
+@layer components {
+  /* Faint engineering grid backdrop for hero/CTA bands. */
+  .landing-grid-bg {
+    background-image:
+      linear-gradient(to right, rgb(var(--landing-grid) / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--landing-grid) / 0.05) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 75%);
+  }
+
+  .light .landing-grid-bg {
+    background-image:
+      linear-gradient(to right, rgb(var(--landing-grid) / 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--landing-grid) / 0.07) 1px, transparent 1px);
+  }
+
+  /* Ambient aurora behind hero — theme-aware, cheap (no animation loop). */
+  .landing-aurora::before,
+  .landing-aurora::after {
+    content: '';
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(90px);
+    pointer-events: none;
+  }
+  .landing-aurora::before {
+    width: 42rem;
+    height: 42rem;
+    left: -12rem;
+    top: -14rem;
+    background: rgb(var(--landing-glow-a) / 0.16);
+  }
+  .landing-aurora::after {
+    width: 36rem;
+    height: 36rem;
+    right: -10rem;
+    top: 22%;
+    background: rgb(var(--landing-glow-b) / 0.10);
+  }
+  :root:not(.dark) .landing-aurora::before { background: rgb(var(--landing-glow-a) / 0.10); }
+  :root:not(.dark) .landing-aurora::after { background: rgb(var(--landing-glow-b) / 0.08); }
+
+  /* Glass panel tuned per theme (app .glass is dark-tuned). */
+  .landing-panel {
+    background: rgb(var(--surface-elevated) / 0.55);
+    border: 1px solid rgb(var(--border-subtle));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  :root:not(.dark) .landing-panel {
+    background: rgb(255 255 255 / 0.72);
+    border-color: rgb(var(--border));
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Gradient headline accent. */
+  .landing-gradient-text {
+    background-image: linear-gradient(
+      100deg,
+      rgb(var(--primary-300)) 0%,
+      rgb(var(--accent-400)) 45%,
+      rgb(var(--landing-glow-b)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Section eyebrow label. */
+  .landing-eyebrow {
+    font-family: var(--font-ibm-plex-mono), monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgb(var(--accent-400));
+  }
+  :root:not(.dark) .landing-eyebrow { color: rgb(var(--primary-700)); }
+
+  /* Flowing dashed connector line (SVG stroke uses currentColor). */
+  .landing-flow-line {
+    stroke-dasharray: 4 20;
+    animation: flowDash 1.4s linear infinite;
+  }
+
+  /* Compounding density bars. */
+  .landing-density-bar {
+    background: linear-gradient(to top,
+      rgb(var(--landing-glow-a) / 0.25),
+      rgb(var(--landing-glow-a) / 0.9));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

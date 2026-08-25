@@ -4,8 +4,8 @@
   "description": "Memory-first enterprise intelligence platform",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0f",
-  "theme_color": "#8b9af0",
+  "background_color": "#090B25",
+  "theme_color": "#4F46E5",
   "icons": [
     {
       "src": "/icon-192.png",
