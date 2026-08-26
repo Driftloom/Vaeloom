@@ -75,7 +75,9 @@ export function runLoop(
 
   function frame(): void {
     raf = requestAnimationFrame(frame);
-    if (!running) return;
+    // Pause work while the tab is hidden — applies to every scene, so no
+    // scene keeps burning GPU/CPU in the background.
+    if (!running || document.hidden) return;
     const dt = Math.min(clock.getDelta(), 0.05);
     const t = clock.elapsedTime;
     for (const cb of onFrameCallbacks) cb(dt, t);

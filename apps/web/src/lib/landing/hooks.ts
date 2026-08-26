@@ -11,7 +11,7 @@
  *   capable         -> full scene, DPR capped at 1.75
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useReducedMotionPref(): boolean {
   const [reduced, setReduced] = useState(false);
@@ -94,14 +94,18 @@ export function densityForTier(tier: QualityTier): number {
 export function useInView<T extends HTMLElement>(
   margin = '200px',
 ): {
-  ref: React.RefObject<T>;
+  ref: (node: T | null) => void;
   inView: boolean;
 } {
-  const ref = useRef<T>(null);
+  const [node, setNode] = useState<T | null>(null);
   const [inView, setInView] = useState(false);
+  // Stable callback ref so the observer is (re)created whenever the element
+  // actually mounts — even if it appears after an initial `webglReady` gate
+  // (the element's <div ref> is absent on first render). Without this, the
+  // observer never attaches and inView stays false forever.
+  const setRef = useCallback((n: T | null) => setNode(n), []);
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    if (!node) return;
     const obs = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
@@ -109,8 +113,8 @@ export function useInView<T extends HTMLElement>(
       },
       { rootMargin: margin },
     );
-    obs.observe(el);
+    obs.observe(node);
     return () => obs.disconnect();
-  }, [margin]);
-  return { ref, inView };
+  }, [node, margin]);
+  return { ref: setRef, inView };
 }
