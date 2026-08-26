@@ -2,21 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
-import { HERO, HERO_SOURCES } from '@/lib/landing/copy';
+import { HERO } from '@/lib/landing/copy';
 import { ButtonLink, Icon, PillBadge } from '@/components/landing/shared/LandingKit';
 import { MemoryCoreScene } from '@/components/landing/3d/SceneShell';
 import { StaticMemoryCore } from '@/components/landing/3d/StaticScenes';
 import { useTheme } from '@/hooks/useTheme';
-
-const CHIP_POS_IMMERSIVE = [
-  'left-[4%] top-[18%]',
-  'right-[6%] top-[22%]',
-  'left-[8%] bottom-[24%]',
-  'right-[10%] bottom-[18%]',
-  'left-[42%] top-[8%]',
-  'left-[18%] top-[52%]',
-  'right-[18%] top-[52%]',
-] as const;
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -80,22 +70,6 @@ export default function HeroSection() {
           <div className="landing-grid-bg absolute inset-0 opacity-60" />
           {/* Aurora — soft, not competing with text */}
           <div className="absolute inset-0 landing-aurora opacity-80" />
-          {/* Chips distributed across the full environment */}
-          <ul className="pointer-events-none absolute inset-0 hidden sm:block">
-            {HERO_SOURCES.map((src, i) => (
-              <li key={src.id} className={`absolute ${CHIP_POS_IMMERSIVE[i]}`}>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-background/60 px-2.5 py-1 text-[11px] font-medium text-text-secondary backdrop-blur-md">
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{
-                      background: ['#22d3ee', '#818cf8', '#e879f9', '#22d3ee', '#818cf8'][i],
-                    }}
-                  />
-                  {src.label}
-                </span>
-              </li>
-            ))}
-          </ul>
         </motion.div>
 
         {/* Readability overlay — subtle, keeps heading legible without killing depth */}
