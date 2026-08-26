@@ -94,6 +94,44 @@ export function glowTexture(color: string): HTMLCanvasElement {
   return canvas;
 }
 
+/**
+ * Multi-stop radial glow — hot core falling off through the tint color.
+ * Used for the plasma core's layered "fake bloom" sprites. Cached per
+ * color/hot pair; the cache owns the canvas, callers never dispose.
+ */
+let glowStopsCache: Map<string, HTMLCanvasElement> | null = null;
+
+export function glowTextureStops(color: string, hot?: string): HTMLCanvasElement {
+  const key = `${color}|${hot ?? ''}`;
+  if (!glowStopsCache) glowStopsCache = new Map();
+  const hit = glowStopsCache.get(key);
+  if (hit) return hit;
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    const c = size / 2;
+    const g = ctx.createRadialGradient(c, c, 0, c, c, c);
+    if (hot) {
+      g.addColorStop(0, hot);
+      g.addColorStop(0.22, color);
+      g.addColorStop(0.45, `${color}66`);
+      g.addColorStop(0.75, `${color}22`);
+    } else {
+      g.addColorStop(0, color);
+      g.addColorStop(0.3, `${color}88`);
+      g.addColorStop(0.65, `${color}2e`);
+    }
+    g.addColorStop(1, `${color}00`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }
+  glowStopsCache.set(key, canvas);
+  return canvas;
+}
+
 /** Deterministic PRNG so layouts are stable between renders/builds. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;

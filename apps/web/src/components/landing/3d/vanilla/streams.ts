@@ -75,10 +75,10 @@ export function createStreams(
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(perStream * 3), 3));
       const mat = new THREE.PointsMaterial({
-        size: 0.035,
+        size: 0.045,
         color: cfg.color,
         transparent: true,
-        opacity: 0.85,
+        opacity: 0.95,
         sizeAttenuation: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
