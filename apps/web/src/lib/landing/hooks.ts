@@ -14,7 +14,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useReducedMotionPref(): boolean {
-  const [reduced, setReduced] = useState(false);
+  // Resolve synchronously on first render (client-only modules) so we never
+  // flash the WebGL scene and then swap to the static fallback.
+  const [reduced, setReduced] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReduced(mq.matches);
@@ -25,20 +31,27 @@ export function useReducedMotionPref(): boolean {
   return reduced;
 }
 
-export function useWebGLSupport(): boolean | null {
-  const [supported, setSupported] = useState<boolean | null>(null);
-  useEffect(() => {
+let cachedWebGL: boolean | null = null;
+export function useWebGLSupport(): boolean {
+  // Resolve synchronously on first render (these scene modules are client-only,
+  // loaded via dynamic(ssr:false)) so the canvas mounts immediately instead of
+  // flashing the static fallback for one paint. Cached so the 7 scenes share
+  // a single probe.
+  const [supported] = useState<boolean>(() => {
+    if (cachedWebGL !== null) return cachedWebGL;
+    if (typeof document === 'undefined') return true;
     try {
       const canvas = document.createElement('canvas');
       const gl =
         canvas.getContext('webgl2') ||
         canvas.getContext('webgl') ||
         canvas.getContext('experimental-webgl');
-      setSupported(Boolean(gl));
+      cachedWebGL = Boolean(gl);
     } catch {
-      setSupported(false);
+      cachedWebGL = false;
     }
-  }, []);
+    return cachedWebGL;
+  });
   return supported;
 }
 
@@ -98,7 +111,11 @@ export function useInView<T extends HTMLElement>(
   inView: boolean;
 } {
   const [node, setNode] = useState<T | null>(null);
-  const [inView, setInView] = useState(false);
+  // Default to visible so in-view scenes (e.g. the hero) animate from the
+  // first frame instead of pausing on a static first paint until the
+  // IntersectionObserver fires. Off-screen scenes are corrected to false
+  // immediately by the observer.
+  const [inView, setInView] = useState(true);
   // Stable callback ref so the observer is (re)created whenever the element
   // actually mounts — even if it appears after an initial `webglReady` gate
   // (the element's <div ref> is absent on first render). Without this, the
