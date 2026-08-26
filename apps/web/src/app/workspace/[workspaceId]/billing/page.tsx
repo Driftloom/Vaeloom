@@ -1,6 +1,8 @@
 'use client';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import React, { useState, useEffect } from 'react';
+import useSWR from 'swr';
+import { useParams } from 'next/navigation';
 import { Button, Card, Modal } from '@vaeloom/ui-kit';
 import { Table, type Column } from '@/components/shared/Table';
 import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
@@ -53,6 +55,14 @@ const plans = [
   },
 ];
 
+const mockInvoices: Invoice[] = [
+  { id: 'inv_2026_07', date: '2026-07-01', amount: '$99.00', status: 'paid', description: 'Professional plan — July 2026' },
+  { id: 'inv_2026_06', date: '2026-06-01', amount: '$99.00', status: 'paid', description: 'Professional plan — June 2026' },
+  { id: 'inv_2026_05', date: '2026-05-01', amount: '$29.00', status: 'paid', description: 'Starter plan — May 2026' },
+];
+
+const mockUsage = { apiCalls: 3421, storage: 3.7, users: 8, agents: 6 };
+
 const invoiceColors: Record<string, StatusVariant> = {
   paid: 'success',
   pending: 'warning',
@@ -61,77 +71,97 @@ const invoiceColors: Record<string, StatusVariant> = {
 
 const invColor = (s: string): StatusVariant => invoiceColors[s] ?? 'neutral';
 
+const STORAGE_KEY_BASE = 'vaeloom.billing.selectedPlan';
+
 export default function BillingPage() {
+  // ── Hooks must be BEFORE early return guard (no conditional hooks) ─────────
   const { toast } = useToast();
+  const params = useParams();
+  const workspaceId = (params?.['workspaceId'] as string | undefined) ?? null;
+  const storageKey = workspaceId ? `${STORAGE_KEY_BASE}:${workspaceId}` : STORAGE_KEY_BASE;
+
   const [selectedPlan, setSelectedPlan] = useState('pro');
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [pendingPlan, setPendingPlan] = useState('pro');
   const [changingPlan, setChangingPlan] = useState(false);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [usage, setUsage] = useState<{
-    apiCalls: number;
-    storage: number;
-    users: number;
-    agents: number;
-  }>({ apiCalls: 0, storage: 0, users: 0, agents: 0 });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  // Live fetches with mock fallback — never throw, return null on backend unavailable
+  const { data: subscriptionData, isLoading: subLoading } = useSWR(
+    'billing-subscription',
+    () => billingApi.subscription().catch(() => null),
+    { revalidateOnFocus: false },
+  );
+  const { data: usageRecords, isLoading: usageLoading } = useSWR(
+    'billing-usage',
+    () => billingApi.usage().catch(() => null),
+    { revalidateOnFocus: false },
+  );
+
+  // Hydrate selectedPlan from localStorage per workspace / global fallback
   useEffect(() => {
-    const fetchBillingData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Fetch subscription
-        try {
-          const subscription = await billingApi.subscription();
-          setSelectedPlan(subscription.plan);
-        } catch (e) {
-          if (e instanceof ApiClientError && (e.status === 403 || e.status === 404)) {
-            // No subscription yet, keep default
-          } else {
-            throw e;
-          }
-        }
-
-        // Fetch usage
-        const usageRecords = await billingApi.usage();
-        const usageData = { apiCalls: 0, storage: 0, users: 0, agents: 0 };
-        usageRecords.forEach((record) => {
-          switch (record.metric) {
-            case 'api_calls':
-              usageData.apiCalls = record.value;
-              break;
-            case 'storage':
-              usageData.storage = record.value;
-              break;
-            case 'users':
-              usageData.users = record.value;
-              break;
-            case 'agents':
-              usageData.agents = record.value;
-              break;
-          }
-        });
-        setUsage(usageData);
-
-        // For invoices, we'll show a placeholder since there's no invoice endpoint
-        setInvoices([]);
-      } catch (e) {
-        if (e instanceof ApiClientError && (e.status === 403 || e.status === 404)) {
-          setError('This feature requires an Enterprise license. Contact sales@vaeloom.app.');
-        } else {
-          setError('Failed to load billing data. Please try again later.');
-        }
-        console.error('Billing data fetch error:', e);
-      } finally {
-        setLoading(false);
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null;
+      if (raw && plans.some((p) => p.id === raw)) {
+        setSelectedPlan(raw);
+        setPendingPlan(raw);
       }
-    };
+    } catch {
+      // ignore storage errors (SSR / privacy mode)
+    }
+  }, [storageKey]);
 
-    fetchBillingData();
-  }, []);
+  // Persist selectedPlan to localStorage on change
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey, selectedPlan);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedPlan, storageKey]);
+
+  // Map live subscription -> selectedPlan (backend wins when present)
+  useEffect(() => {
+    if (subscriptionData && typeof (subscriptionData as { plan?: string }).plan === 'string') {
+      const livePlan = (subscriptionData as { plan: string }).plan;
+      if (plans.some((p) => p.id === livePlan)) {
+        setSelectedPlan(livePlan);
+        setPendingPlan(livePlan);
+      }
+    }
+  }, [subscriptionData]);
+
+  const hasLiveSubscription = !!subscriptionData;
+  const hasLiveUsage = Array.isArray(usageRecords) && usageRecords.length > 0;
+  const isLive = hasLiveSubscription || hasLiveUsage;
+
+  const liveUsage = React.useMemo(() => {
+    if (!hasLiveUsage) return null;
+    const base = { apiCalls: 0, storage: 0, users: 0, agents: 0 };
+    for (const r of usageRecords as Array<{ metric: string; value: number }>) {
+      switch (r.metric) {
+        case 'api_calls':
+          base.apiCalls = r.value;
+          break;
+        case 'storage':
+          base.storage = r.value;
+          break;
+        case 'users':
+          base.users = r.value;
+          break;
+        case 'agents':
+          base.agents = r.value;
+          break;
+        default:
+          break;
+      }
+    }
+    return base;
+  }, [usageRecords, hasLiveUsage]);
+
+  const displayUsage = liveUsage ?? mockUsage;
+  const displayInvoices = mockInvoices;
 
   const invoiceColumns: Column<Invoice>[] = [
     { key: 'date', header: 'Date', className: 'text-text-muted' },
@@ -145,7 +175,7 @@ export default function BillingPage() {
     {
       key: 'id',
       header: '',
-      render: (inv) => (
+      render: () => (
         <Button variant="ghost" size="sm" onClick={() => window.open('#')}>
           Download
         </Button>
@@ -154,38 +184,44 @@ export default function BillingPage() {
     },
   ];
 
-  if (loading) {
+  const isLoading = subLoading || usageLoading;
+
+  // Enterprise gate — MUST stay after all hooks (no conditional hooks before)
+  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Billing" />;
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-text-muted">Loading billing data...</div>
+        <div className="text-text-muted">Loading billing data…</div>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono uppercase tracking-widest text-text-dim mb-4">
-          Enterprise — Gated
-        </div>
-        <h1 className="text-2xl font-display font-medium text-text mb-2">Billing</h1>
-        <p className="text-text-muted max-w-lg">{error}</p>
-        <div className="mt-6 flex gap-3">
-          <a href="mailto:sales@vaeloom.app" className="btn-secondary">
-            Contact sales
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Billing" />;
 
   return (
     <div className="space-y-8">
       <header>
         <h1 className="text-3xl font-display font-medium text-text mb-2">Billing</h1>
-        <p className="text-text-muted">Manage your subscription, usage, and payment methods.</p>
+        <p className="text-text-muted">
+          Manage your subscription, usage, and payment methods.{' '}
+          <span className={isLive ? 'text-success' : 'text-text-dim'}>
+            {isLive ? 'Live data from backend' : '(mock data — backend unavailable, enable ENTERPRISE_ROUTES_ENABLED)'}
+          </span>
+        </p>
+        {!isLive && (
+          <p className="mt-2 text-xs font-mono text-text-dim">
+            Data source: mock fallback — backend /billing/* not reachable. Set{' '}
+            <code className="rounded bg-surface px-1 py-0.5 border border-border">ENTERPRISE_ROUTES_ENABLED=true</code> on the API.
+          </p>
+        )}
+        {isLive && (
+          <p className="mt-2 text-xs font-mono text-text-dim">
+            Data source:{' '}
+            <span className="text-success">
+              {hasLiveSubscription ? 'GET /billing/subscription (live)' : 'GET /billing/subscription (no subscription yet)'} +{' '}
+              {hasLiveUsage ? 'GET /billing/usage (live)' : 'GET /billing/usage (empty)'}
+            </span>
+          </p>
+        )}
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -219,6 +255,10 @@ export default function BillingPage() {
                 </li>
               ))}
           </ul>
+          <p className="mt-3 text-xs text-text-dim font-mono">
+            Selected plan persisted to <code className="bg-surface px-1 border border-border rounded">{storageKey}</code>
+            {hasLiveSubscription ? ' · live subscription overrides local value when present' : ' · mock / local'}
+          </p>
           <Button
             variant="secondary"
             fullWidth
@@ -235,43 +275,46 @@ export default function BillingPage() {
         <Card padding="lg">
           <h2 className="text-lg font-display font-medium text-text mb-4">Usage This Month</h2>
           <div className="space-y-4">
-            <ProgressBar value={usage.apiCalls} max={10000} label="API Calls" color="primary" />
-            <ProgressBar value={usage.storage} max={10} label="Storage Used (GB)" color="accent" />
-            <ProgressBar value={usage.users} max={25} label="Active Users" color="success" />
-            <ProgressBar value={usage.agents} max={25} label="Agents Deployed" color="warning" />
+            <ProgressBar value={displayUsage.apiCalls} max={10000} label="API Calls" color="primary" />
+            <ProgressBar value={displayUsage.storage} max={10} label="Storage Used (GB)" color="accent" />
+            <ProgressBar value={displayUsage.users} max={25} label="Active Users" color="success" />
+            <ProgressBar value={displayUsage.agents} max={25} label="Agents Deployed" color="warning" />
           </div>
+          <p className="mt-4 text-xs font-mono text-text-dim">
+            {hasLiveUsage ? (
+              <span className="text-success">Live usage from GET /billing/usage — {Array.isArray(usageRecords) ? usageRecords.length : 0} record(s)</span>
+            ) : (
+              <span>Mock usage — backend unavailable (showing {mockUsage.apiCalls} API calls, {mockUsage.storage} GB)</span>
+            )}
+          </p>
+          {!hasLiveUsage && (
+            <p className="text-[11px] text-text-dim mt-1">Enable ENTERPRISE_ROUTES_ENABLED to see real usage records.</p>
+          )}
         </Card>
       </div>
 
       <Card padding="lg">
         <h2 className="text-lg font-display font-medium text-text mb-4">Invoice History</h2>
-        <Table columns={invoiceColumns} data={invoices} keyExtractor={(inv) => inv.id} />
+        <Table columns={invoiceColumns} data={displayInvoices} keyExtractor={(inv) => inv.id} />
+        <p className="mt-3 text-xs text-text-dim font-mono">
+          Source: <span>mockInvoices fallback — no /billing/invoices endpoint yet; enable ENTERPRISE_ROUTES_ENABLED when available</span>
+          {isLive && ' · subscription is live, invoices remain mock until endpoint exists'}
+        </p>
       </Card>
 
       <Card padding="lg">
         <h2 className="text-lg font-display font-medium text-text mb-4">Payment Method</h2>
-        {/* F-02: previously displayed a fictional "Visa ending in 4242".
-            No payment-method backend exists yet — honest state shown. */}
         <div className="flex items-center gap-4 p-4 bg-background rounded-lg border border-border">
           <div>
             <p className="text-text">No payment method on file</p>
-            <p className="text-text-muted text-sm">
-              Payment collection is not configured for this environment.
-            </p>
+            <p className="text-text-muted text-sm">Payment collection is not configured for this environment.</p>
           </div>
         </div>
       </Card>
 
-      <Modal
-        isOpen={showChangeModal}
-        onClose={() => setShowChangeModal(false)}
-        title="Change Plan"
-        size="lg"
-      >
+      <Modal isOpen={showChangeModal} onClose={() => setShowChangeModal(false)} title="Change Plan" size="lg">
         <div className="space-y-4">
-          <p className="text-text-muted text-sm">
-            Select a new plan. Changes take effect next billing cycle.
-          </p>
+          <p className="text-text-muted text-sm">Select a new plan. Changes take effect next billing cycle.</p>
           <div className="grid grid-cols-1 gap-4">
             {plans.map((plan) => (
               <button
@@ -283,9 +326,7 @@ export default function BillingPage() {
                   <div>
                     <span className="font-medium text-text">{plan.name}</span>
                     {plan.popular && (
-                      <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                        Most Popular
-                      </span>
+                      <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Most Popular</span>
                     )}
                   </div>
                   <span className="text-text-muted font-mono">{plan.price}</span>
@@ -310,7 +351,6 @@ export default function BillingPage() {
                 if (!pendingPlan) return;
                 setChangingPlan(true);
                 try {
-                  // F-03: persist the plan change to the real billing API.
                   await billingApi.createSubscription(pendingPlan);
                   setSelectedPlan(pendingPlan);
                   setShowChangeModal(false);
@@ -323,10 +363,7 @@ export default function BillingPage() {
                   toast({
                     tone: 'error',
                     title: 'Plan change failed',
-                    detail:
-                      err instanceof ApiClientError
-                        ? err.message
-                        : 'The billing service could not complete the change. No changes were applied.',
+                    detail: err instanceof ApiClientError ? err.message : 'The billing service could not complete the change. No changes were applied.',
                   });
                 } finally {
                   setChangingPlan(false);
