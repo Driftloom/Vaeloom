@@ -11,6 +11,7 @@ import { createRenderer, runLoop, type SceneHandle } from './engine';
 import { createIntelligenceCore } from './intelligenceCoreScene';
 import { createParticleField } from './particleField';
 import { createStreams } from './streams';
+import { createFlowStreams } from './flowStreams';
 import { dprForTier, type QualityTier } from '@/lib/landing/hooks';
 
 export type Pointer = { x: number; y: number };
@@ -50,6 +51,10 @@ export function mountMemoryCore({
   const dataStreams = createStreams(theme, density, { outward: streams });
   dataStreams.objects.forEach((o) => scene.add(o));
 
+  /* Subtle inbound flow from lower-left/right corners toward the core */
+  const flowStreams = streams ? createFlowStreams(theme, density) : null;
+  if (flowStreams) scene.add(flowStreams.points);
+
   const prefersReducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -86,6 +91,9 @@ export function mountMemoryCore({
 
         // ---- streams --------------------------------------------------
         dataStreams.update(t, dt, rm);
+
+        // ---- inbound flow streams ------------------------------------
+        if (flowStreams) flowStreams.update(t, dt, rm);
       },
     },
     dprForTier(tier)[1],
