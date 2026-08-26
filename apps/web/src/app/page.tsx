@@ -28,8 +28,9 @@ import {
 } from '@/components/landing/sections/ClosingSections';
 
 // W-14: landing is statically renderable — real page metadata.
+// Page-specific title only; layout `title.template` appends " | Vaeloom".
 export const metadata: Metadata = {
-  title: SEO.title,
+  title: 'Enterprise AI operating system',
   description: SEO.description,
   alternates: { canonical: SEO.url },
   openGraph: {
@@ -87,7 +88,7 @@ export default function LandingPage() {
       <AuthRedirectProbe />
       <LandingNav />
       <DustField />
-      <main id="main-content" className="relative z-10 overflow-x-clip">
+      <div className="relative z-10 overflow-x-clip">
         <HeroSection />
         <PrinciplesStrip />
         <ProductDifference />
@@ -104,7 +105,7 @@ export default function LandingPage() {
         <ProductPreview />
         <EnterpriseSection />
         <FinalCTA />
-      </main>
+      </div>
       <LandingFooter />
     </>
   );

@@ -11,6 +11,7 @@ import { createRenderer, runLoop, type SceneHandle } from './engine';
 import { createIntelligenceCore } from './intelligenceCoreScene';
 import { createParticleField } from './particleField';
 import { createStreams } from './streams';
+import { dprForTier, type QualityTier } from '@/lib/landing/hooks';
 
 export type Pointer = { x: number; y: number };
 
@@ -18,6 +19,8 @@ type Cfg = {
   container: HTMLElement;
   theme: 'dark' | 'light';
   density: number;
+  /** quality tier — drives the DPR cap so fragment cost stays predictable */
+  tier: QualityTier;
   /** false -> calm variant (no streams, used behind the final CTA) */
   streams?: boolean;
   /** normalized pointer (-1..1); drives subtle parallax */
@@ -28,6 +31,7 @@ export function mountMemoryCore({
   container,
   theme,
   density,
+  tier,
   streams = true,
   pointer,
 }: Cfg): SceneHandle {
@@ -84,7 +88,7 @@ export function mountMemoryCore({
         dataStreams.update(t, dt, rm);
       },
     },
-    theme === 'light' ? 1.75 : 1.75,
+    dprForTier(tier)[1],
   );
   return handle;
 }

@@ -30,6 +30,7 @@ export default function MemoryCoreCanvas({
       container: el,
       theme,
       density: densityForTier(tier),
+      tier,
       pointer: pointerRef.current,
     });
     handleRef.current = handle;

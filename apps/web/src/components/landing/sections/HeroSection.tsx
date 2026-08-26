@@ -25,6 +25,7 @@ export default function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const isMobile = useIsMobile();
+  const isLight = theme === 'light';
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -50,7 +51,7 @@ export default function HeroSection() {
   return (
     <div ref={containerRef} className="relative h-[130vh] w-full">
       <motion.section
-        style={{ opacity }}
+        style={{ opacity, height: '100dvh' }}
         className="sticky top-0 flex h-screen w-full flex-col overflow-hidden"
         aria-labelledby="hero-title"
       >
@@ -72,18 +73,27 @@ export default function HeroSection() {
           <div className="absolute inset-0 landing-aurora opacity-80" />
         </motion.div>
 
-        {/* Readability overlay — subtle, keeps heading legible without killing depth */}
+        {/* Readability overlay — subtle, keeps heading legible without killing depth.
+            Dark mode darkens; light mode lightens so dark text keeps WCAG AA contrast. */}
         <motion.div
           style={{ opacity: shouldReduceMotion ? 0 : overlayOpacity }}
-          className="absolute inset-0 z-[1] bg-gradient-to-b from-black/20 via-black/5 to-black/30 pointer-events-none"
+          className={`absolute inset-0 z-[1] pointer-events-none ${
+            isLight
+              ? 'bg-gradient-to-b from-white/20 via-white/5 to-white/30'
+              : 'bg-gradient-to-b from-black/20 via-black/5 to-black/30'
+          }`}
           aria-hidden="true"
+          suppressHydrationWarning
         />
-        {/* Center wash behind text — low contrast area for typography */}
+        {/* Center wash behind text — low contrast area for typography.
+            Inverted color only (alpha preserved) so each theme stays balanced. */}
         <div
           className="absolute inset-0 z-[1] pointer-events-none"
+          suppressHydrationWarning
           style={{
-            background:
-              'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(0,0,0,0.45) 0%, transparent 70%)',
+            background: isLight
+              ? 'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(255,255,255,0.45) 0%, transparent 70%)'
+              : 'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(0,0,0,0.45) 0%, transparent 70%)',
           }}
           aria-hidden="true"
         />

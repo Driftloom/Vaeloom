@@ -28,6 +28,7 @@ export default function DustFieldCanvas({
         container: ref.current,
         theme,
         density: densityForTier(tier),
+        tier,
       });
       disposeFn = handle.dispose;
     });

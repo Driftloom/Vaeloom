@@ -6,11 +6,14 @@
 
 import * as THREE from 'three';
 import { createRenderer, runLoop, type SceneHandle } from './engine';
+import { dprForTier, type QualityTier } from '@/lib/landing/hooks';
 
 type Cfg = {
   container: HTMLElement;
   theme: 'dark' | 'light';
   density: number;
+  /** quality tier — drives the DPR cap so fragment cost stays predictable */
+  tier: QualityTier;
 };
 
 // Base count 1800 at density 1.0 — ultra dense for immersive field
@@ -40,7 +43,7 @@ function isBehindHeading(x: number, y: number, z: number): boolean {
   return x > -2.5 && x < 2.5 && y > -0.8 && y < 1.8 && z > -0.5 && z < 1.5;
 }
 
-export function mountDustField({ container, theme, density }: Cfg): SceneHandle {
+export function mountDustField({ container, theme, density, tier }: Cfg): SceneHandle {
   const { renderer, scene, camera } = createRenderer(container);
   camera.position.set(0, 0, 10);
 
@@ -189,13 +192,19 @@ export function mountDustField({ container, theme, density }: Cfg): SceneHandle 
         points.rotation.z = Math.sin(t * 0.04) * 0.015;
       },
     },
-    theme === 'light' ? 1.25 : 1.5,
+    dprForTier(tier)[1],
   );
+
+  const onVisibility = (): void => {
+    handle.setRunning(!document.hidden);
+  };
+  document.addEventListener('visibilitychange', onVisibility);
 
   return {
     setRunning: handle.setRunning,
     dispose(): void {
       window.removeEventListener('scroll', onScroll);
+      document.removeEventListener('visibilitychange', onVisibility);
       handle.dispose();
     },
   };

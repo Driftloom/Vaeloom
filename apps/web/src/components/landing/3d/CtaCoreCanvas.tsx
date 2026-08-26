@@ -30,6 +30,7 @@ export default function CtaCoreCanvas({
         container: ref.current,
         theme,
         density: densityForTier(tier) * 0.8,
+        tier,
         streams: false,
       });
       handleRef.current = handle;
