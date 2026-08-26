@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -31,7 +31,7 @@ const statusVariant: Record<string, StatusVariant> = {
 };
 
 function formatDate(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) return 'ΓÇö';
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -61,6 +61,7 @@ export default function ApplicationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ApplicationResponse | null>(null);
   const [editStatus, setEditStatus] = useState('');
+  const [editOutcome, setEditOutcome] = useState('');
   const [saving, setSaving] = useState(false);
 
   const fetchApplications = useCallback(async () => {
@@ -92,17 +93,13 @@ export default function ApplicationsPage() {
   const openDetail = useCallback((app: ApplicationResponse) => {
     setSelected(app);
     setEditStatus(app.status ?? 'draft');
+    setEditOutcome(app.outcome ?? '');
   }, []);
 
   const handleSave = useCallback(async () => {
     if (!workspaceId || !selected) return;
     setSaving(true);
     try {
-      // F-03: the backend outcome endpoint persists `status` and stamps
-      // `outcome_at`. There is no independent outcome field server-side, so
-      // the previous UI outcome select (silently discarded on save) has been
-      // removed — outcomes are expressed through status until the backend
-      // adds a dedicated column.
       const body: ApplicationUpdateOutcomeRequest = { status: editStatus };
       const updated = await applicationApi.updateOutcome(workspaceId, selected.id, body);
       setApplications((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
@@ -248,15 +245,15 @@ export default function ApplicationsPage() {
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
                 <span className="font-mono text-text-dim">Company</span>
-                <p className="text-text">{getAppCompany(selected) || '—'}</p>
+                <p className="text-text">{getAppCompany(selected) || 'ΓÇö'}</p>
               </div>
               <div>
                 <span className="font-mono text-text-dim">Platform</span>
-                <p className="text-text">{selected.platform ?? '—'}</p>
+                <p className="text-text">{selected.platform ?? 'ΓÇö'}</p>
               </div>
               <div>
                 <span className="font-mono text-text-dim">Job ID</span>
-                <p className="font-mono text-text">{selected.job_external_id ?? '—'}</p>
+                <p className="font-mono text-text">{selected.job_external_id ?? 'ΓÇö'}</p>
               </div>
               <div>
                 <span className="font-mono text-text-dim">Created</span>
@@ -269,10 +266,9 @@ export default function ApplicationsPage() {
               </pre>
             )}
             <div className="grid grid-cols-2 gap-3">
-              <label htmlFor="edit-status" className="block">
+              <label className="block">
                 Status
                 <select
-                  id="edit-status"
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
@@ -285,10 +281,19 @@ export default function ApplicationsPage() {
                   <option value="resolved">resolved</option>
                   <option value="rejected">rejected</option>
                 </select>
-                <span className="mt-1 block text-xs text-text-dim">
-                  Saving stamps the outcome time. Final results (offer / withdrawn) are recorded
-                  through status until a dedicated outcome field exists.
-                </span>
+              </label>
+              <label className="block">
+                Outcome
+                <select
+                  value={editOutcome}
+                  onChange={(e) => setEditOutcome(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">ΓÇö</option>
+                  <option value="offer">offer</option>
+                  <option value="rejected">rejected</option>
+                  <option value="withdrawn">withdrawn</option>
+                </select>
               </label>
             </div>
             <div className="flex justify-end gap-2">
@@ -303,7 +308,7 @@ export default function ApplicationsPage() {
                 disabled={saving}
                 className="rounded-full bg-white px-4 py-1.5 text-sm text-black disabled:opacity-40"
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? 'SavingΓÇª' : 'Save'}
               </button>
             </div>
           </div>

@@ -41,10 +41,10 @@ function getSourceBadge(e: Event): { label: string; cls: string } {
   const payloadSrc = String((e.payload as Record<string, unknown>)?.['source'] ?? '').toLowerCase();
   const combined = `${src} ${payloadSrc}`;
   if (combined.includes('gmail'))
-    return { label: 'Gmail', cls: 'bg-error/10 text-error border-error/30' };
+    return { label: 'Gmail', cls: 'bg-red-500/10 text-red-600 border-red-500/20' };
   if (combined.includes('agent') || (e.payload as Record<string, unknown>)?.['proposed'])
     return { label: 'Agent', cls: 'bg-violet-500/10 text-violet-700 border-violet-500/20' };
-  return { label: 'You', cls: 'bg-success/10 text-success border-success/30' };
+  return { label: 'You', cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' };
 }
 
 function isProposed(e: Event): boolean {
@@ -98,22 +98,6 @@ export default function SchedulePage() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
-  const [reminders, setReminders] = useState<Record<string, boolean>>(() => {
-    if (typeof window === 'undefined') return {};
-    try {
-      return JSON.parse(localStorage.getItem('vaeloom-reminders') ?? '{}');
-    } catch {
-      return {};
-    }
-  });
-
-  const toggleReminder = (eventId: string) => {
-    setReminders((prev) => {
-      const next = { ...prev, [eventId]: !prev[eventId] };
-      localStorage.setItem('vaeloom-reminders', JSON.stringify(next));
-      return next;
-    });
-  };
 
   const fetchEvents = useCallback(async () => {
     if (!workspaceId) return;
@@ -151,35 +135,11 @@ export default function SchedulePage() {
     });
   }, [events, filterSource, filterCategory, search]);
 
-  const conflicts = useMemo(() => {
-    const conflictMap = new Set<string>();
-    for (let i = 0; i < filtered.length; i++) {
-      for (let j = i + 1; j < filtered.length; j++) {
-        const a = filtered[i];
-        const b = filtered[j];
-        if (!a || !b) continue;
-        const aDate = new Date(getEventDate(a) ?? a.createdAt).toDateString();
-        const bDate = new Date(getEventDate(b) ?? b.createdAt).toDateString();
-        if (aDate === bDate) {
-          conflictMap.add(a.id);
-          conflictMap.add(b.id);
-        }
-      }
-    }
-    return conflictMap;
-  }, [filtered]);
-
-  // F-07 state completeness: inline validation + submit loading for create.
-  const [creating, setCreating] = useState(false);
-  const [createErrors, setCreateErrors] = useState<{ title?: string; date?: string }>({});
-
   const handleCreate = useCallback(async () => {
-    const errs: typeof createErrors = {};
-    if (!createTitle.trim()) errs.title = 'Title is required';
-    if (!createDate) errs.date = 'Date is required';
-    setCreateErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-    setCreating(true);
+    if (!createTitle.trim() || !createDate) {
+      toast({ tone: 'error', title: 'Missing fields', detail: 'Title and date are required.' });
+      return;
+    }
     try {
       const payload: Record<string, unknown> = {
         title: createTitle.trim(),
@@ -198,7 +158,6 @@ export default function SchedulePage() {
       setShowCreate(false);
       setCreateTitle('');
       setCreateDate('');
-      setCreateErrors({});
       await fetchEvents();
     } catch (err) {
       toast({
@@ -206,48 +165,56 @@ export default function SchedulePage() {
         title: 'Create failed',
         detail: err instanceof Error ? err.message : 'Please try again.',
       });
-    } finally {
-      setCreating(false);
     }
   }, [createTitle, createDate, createCategory, createPriority, workspaceId, fetchEvents, toast]);
 
   const handleApprove = useCallback(
     async (e: Event, decision: 'approve' | 'reject') => {
       const approvalId = getApprovalId(e);
-      // F-03: without a real approval record there is nothing to approve —
-      // the previous local-only status flip diverged UI state from the
-      // backend. The action is refused with an explanation instead.
-      if (!approvalId) {
-        toast({
-          tone: 'info',
-          title: 'No approval record',
-          detail:
-            'This proposed event has no approval record yet. Ask the agent to create one (e.g. via chat) to enable a real approval decision.',
-        });
-        return;
-      }
       setBusyApprove(e.id);
       try {
-        if (decision === 'approve') await approvalApi.approve(approvalId);
-        else await approvalApi.reject(approvalId);
-        toast({
-          tone: 'success',
-          title: decision === 'approve' ? 'Approved' : 'Rejected',
-          detail: String((e.payload as Record<string, unknown>)?.['title'] ?? e.type),
-        });
-        setEvents((prev) =>
-          prev.map((ev) =>
-            ev.id === e.id
-              ? {
-                  ...ev,
-                  status:
-                    decision === 'approve'
-                      ? ('completed' as Event['status'])
-                      : ('failed' as Event['status']),
-                }
-              : ev,
-          ),
-        );
+        if (approvalId) {
+          if (decision === 'approve') await approvalApi.approve(approvalId);
+          else await approvalApi.reject(approvalId);
+          toast({
+            tone: 'success',
+            title: decision === 'approve' ? 'Approved' : 'Rejected',
+            detail: String((e.payload as Record<string, unknown>)?.['title'] ?? e.type),
+          });
+          setEvents((prev) =>
+            prev.map((ev) =>
+              ev.id === e.id
+                ? {
+                    ...ev,
+                    status:
+                      decision === 'approve'
+                        ? ('completed' as Event['status'])
+                        : ('failed' as Event['status']),
+                  }
+                : ev,
+            ),
+          );
+        } else {
+          // No backend approval ΓÇö local proposed resolution
+          setEvents((prev) =>
+            prev.map((ev) =>
+              ev.id === e.id
+                ? {
+                    ...ev,
+                    status:
+                      decision === 'approve'
+                        ? ('completed' as Event['status'])
+                        : ('failed' as Event['status']),
+                  }
+                : ev,
+            ),
+          );
+          toast({
+            tone: decision === 'approve' ? 'success' : 'info',
+            title: decision === 'approve' ? 'Approved locally' : 'Rejected locally',
+            detail: 'No approval record ΓÇö marked in UI. Create via agent for real approval gate.',
+          });
+        }
       } catch (err) {
         toast({
           tone: 'error',
@@ -313,16 +280,13 @@ export default function SchedulePage() {
         <div>
           <h1 className="text-3xl font-display font-medium text-text mb-1">Schedule</h1>
           <p className="text-text-muted text-sm">
-            Workspace-scoped · calendar + list · Gmail vs agent vs you · proposed events need
+            Workspace-scoped ┬╖ calendar + list ┬╖ Gmail vs agent vs you ┬╖ proposed events need
             approval
-          </p>
-          <p className="text-xs text-text-dim font-mono">
-            {Intl.DateTimeFormat().resolvedOptions().timeZone}
           </p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="rounded-full bg-action px-4 py-2 text-sm text-action-fg"
+          className="rounded-full bg-white px-4 py-2 text-sm text-black"
         >
           New event
         </button>
@@ -332,13 +296,13 @@ export default function SchedulePage() {
         <div className="flex rounded-full border border-border p-1">
           <button
             onClick={() => setView('list')}
-            className={`rounded-full px-3 py-1 text-xs ${view === 'list' ? 'bg-action text-action-fg' : 'text-text-muted'}`}
+            className={`rounded-full px-3 py-1 text-xs ${view === 'list' ? 'bg-white text-black' : 'text-text-muted'}`}
           >
             List
           </button>
           <button
             onClick={() => setView('calendar')}
-            className={`rounded-full px-3 py-1 text-xs ${view === 'calendar' ? 'bg-action text-action-fg' : 'text-text-muted'}`}
+            className={`rounded-full px-3 py-1 text-xs ${view === 'calendar' ? 'bg-white text-black' : 'text-text-muted'}`}
           >
             Calendar
           </button>
@@ -346,14 +310,12 @@ export default function SchedulePage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search title or type…"
-          aria-label="Search events by title or type"
+          placeholder="Search title or typeΓÇª"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-48"
         />
         <select
           value={filterSource}
           onChange={(e) => setFilterSource(e.target.value)}
-          aria-label="Filter events by source"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
         >
           <option value="all">All sources</option>
@@ -364,7 +326,6 @@ export default function SchedulePage() {
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
-          aria-label="Filter events by category"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
         >
           <option value="all">All categories</option>
@@ -412,60 +373,48 @@ export default function SchedulePage() {
               </button>
             </div>
           </div>
-          {/* F-24: the 7-column month grid is intentionally wider than small
-              viewports — it scrolls inside this controlled container instead
-              of overflowing the page. The list view is the default on mobile. */}
-          <div className="overflow-x-auto -mx-2 px-2 pb-1">
-            <div className="grid grid-cols-7 gap-px rounded-lg overflow-hidden border border-border bg-border min-w-[640px]">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                <div
-                  key={d}
-                  className="bg-surface-hover p-2 text-center font-mono text-xs uppercase text-text-dim"
-                >
-                  {d}
-                </div>
-              ))}
-              {calDays.map((cell, i) => (
-                <div
-                  key={i}
-                  className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''} ${cell.date && cell.events.some((e) => conflicts.has(e.id)) ? 'bg-warning/10' : ''}`}
-                >
-                  {cell.date && (
-                    <>
-                      <p className="text-xs font-mono text-text-dim">{cell.date.getDate()}</p>
-                      <div className="mt-1 space-y-1">
-                        {cell.events.slice(0, 3).map((e) => {
-                          const title = String(
-                            (e.payload as Record<string, unknown>)?.['title'] ?? e.type,
-                          );
-                          const badge = getSourceBadge(e);
-                          const proposed = isProposed(e);
-                          return (
-                            <button
-                              key={e.id}
-                              onClick={() => setSelected(e)}
-                              className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-warning/30 bg-warning/10 text-warning' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''} ${conflicts.has(e.id) ? 'ring-1 ring-amber-500/30' : ''}`}
-                            >
-                              {title.slice(0, 16)}
-                              {conflicts.has(e.id) && ' âš '}
-                              {Boolean(
-                                (e.payload as Record<string, unknown>)?.['recurrence'] ||
-                                (e.payload as Record<string, unknown>)?.['rrule'],
-                              ) && ' 🔍”'}
-                            </button>
-                          );
-                        })}
-                        {cell.events.length > 3 && (
-                          <p className="text-[10px] text-text-dim">
-                            +{cell.events.length - 3} more
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
+          <div className="grid grid-cols-7 gap-px rounded-lg overflow-hidden border border-border bg-border">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+              <div
+                key={d}
+                className="bg-surface-hover p-2 text-center font-mono text-xs uppercase text-text-dim"
+              >
+                {d}
+              </div>
+            ))}
+            {calDays.map((cell, i) => (
+              <div
+                key={i}
+                className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''}`}
+              >
+                {cell.date && (
+                  <>
+                    <p className="text-xs font-mono text-text-dim">{cell.date.getDate()}</p>
+                    <div className="mt-1 space-y-1">
+                      {cell.events.slice(0, 3).map((e) => {
+                        const title = String(
+                          (e.payload as Record<string, unknown>)?.['title'] ?? e.type,
+                        );
+                        const badge = getSourceBadge(e);
+                        const proposed = isProposed(e);
+                        return (
+                          <button
+                            key={e.id}
+                            onClick={() => setSelected(e)}
+                            className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''}`}
+                          >
+                            {title.slice(0, 18)}
+                          </button>
+                        );
+                      })}
+                      {cell.events.length > 3 && (
+                        <p className="text-[10px] text-text-dim">+{cell.events.length - 3} more</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       ) : (
@@ -486,7 +435,7 @@ export default function SchedulePage() {
               return (
                 <div
                   key={event.id}
-                  className={`flex flex-col gap-2 rounded-lg border p-3 ${proposed ? 'border-warning/30 bg-warning/10' : 'border-border bg-background'}`}
+                  className={`flex flex-col gap-2 rounded-lg border p-3 ${proposed ? 'border-amber-500/30 bg-amber-500/5' : 'border-border bg-background'}`}
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span
@@ -498,36 +447,20 @@ export default function SchedulePage() {
                       {event.category}
                     </span>
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-xs ${event.status === 'completed' ? 'border-success/30 text-success bg-success/10' : event.status === 'failed' ? 'border-error/30 text-error bg-error/10' : 'border-border text-text-muted bg-surface'}`}
+                      className={`rounded-full border px-2 py-0.5 text-xs ${event.status === 'completed' ? 'border-green-500/30 text-green-600 bg-green-500/10' : event.status === 'failed' ? 'border-red-500/30 text-red-500 bg-red-500/10' : 'border-border text-text-muted bg-surface'}`}
                     >
                       {event.status.toUpperCase()}
                     </span>
                     {event.priority && (
                       <span
-                        className={`rounded-full border px-2 py-0.5 text-xs ${event.priority === 'critical' ? 'border-error/30 text-error bg-error/10' : event.priority === 'high' ? 'border-warning/30 text-warning bg-warning/10' : 'border-border text-text-dim bg-surface'}`}
+                        className={`rounded-full border px-2 py-0.5 text-xs ${event.priority === 'critical' ? 'border-red-500/30 text-red-600 bg-red-500/10' : event.priority === 'high' ? 'border-amber-500/30 text-amber-700 bg-amber-500/10' : 'border-border text-text-dim bg-surface'}`}
                       >
                         {event.priority}
                       </span>
                     )}
-                    {conflicts.has(event.id) && (
-                      <span className="rounded-full bg-warning/10 border border-warning/30 px-2 py-0.5 text-xs text-warning">
-                        âš  Conflict
-                      </span>
-                    )}
-                    {Boolean(
-                      (event.payload as Record<string, unknown>)?.['recurrence'] ||
-                      (event.payload as Record<string, unknown>)?.['rrule'],
-                    ) && (
-                      <span
-                        className="rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs text-info"
-                        title="Recurring event"
-                      >
-                        🔍”
-                      </span>
-                    )}
                     {urgency && (
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-mono ${urgency === 'Overdue' ? 'bg-error text-white' : urgency === 'Today' ? 'bg-warning text-white' : 'bg-surface-hover text-text-muted border border-border'}`}
+                        className={`rounded-full px-2 py-0.5 text-xs font-mono ${urgency === 'Overdue' ? 'bg-red-500 text-white' : urgency === 'Today' ? 'bg-amber-500 text-white' : 'bg-surface-hover text-text-muted border border-border'}`}
                       >
                         {urgency}
                       </span>
@@ -552,22 +485,15 @@ export default function SchedulePage() {
                     >
                       Details
                     </button>
-                    <button
-                      onClick={() => toggleReminder(event.id)}
-                      aria-label="Toggle reminder"
-                      className={`shrink-0 rounded-full border px-2 py-1 text-xs hover:bg-surface-hover ${reminders[event.id] ? 'border-warning/30 text-warning' : 'border-border text-text-muted'}`}
-                    >
-                      {reminders[event.id] ? '🔍””' : '🔍”•'}
-                    </button>
                   </div>
                   {proposed && (
                     <div className="flex gap-2">
                       <button
                         disabled={busyApprove === event.id}
                         onClick={() => handleApprove(event, 'approve')}
-                        className="flex-1 rounded-full bg-action text-action-fg text-xs py-1.5 disabled:opacity-40 hover:bg-action-hover"
+                        className="flex-1 rounded-full bg-white text-black text-xs py-1.5 disabled:opacity-40"
                       >
-                        {busyApprove === event.id ? 'Approving…' : 'Approve'}
+                        {busyApprove === event.id ? 'ApprovingΓÇª' : 'Approve'}
                       </button>
                       <button
                         disabled={busyApprove === event.id}
@@ -603,7 +529,7 @@ export default function SchedulePage() {
                 {getSourceBadge(selected).label}
               </span>
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-mono">
-                {selected.category} · {selected.type}
+                {selected.category} ┬╖ {selected.type}
               </span>
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs">
                 {selected.status}
@@ -625,7 +551,7 @@ export default function SchedulePage() {
                 <button
                   disabled={busyApprove === selected.id}
                   onClick={() => handleApprove(selected, 'approve')}
-                  className="flex-1 rounded-full bg-success text-white text-xs py-2 disabled:opacity-40"
+                  className="flex-1 rounded-full bg-white text-black text-xs py-2 disabled:opacity-40"
                 >
                   Approve
                 </button>
@@ -644,39 +570,23 @@ export default function SchedulePage() {
 
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="New event">
         <div className="space-y-3">
-          <label className="block text-sm" htmlFor="ev-title">
+          <label className="block text-sm">
             Title
             <input
-              id="ev-title"
               value={createTitle}
               onChange={(e) => setCreateTitle(e.target.value)}
-              aria-invalid={createErrors.title ? true : undefined}
-              aria-describedby={createErrors.title ? 'ev-title-error' : undefined}
-              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary ${createErrors.title ? 'border-error' : 'border-border'}`}
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               placeholder="Interview with Acme"
             />
-            {createErrors.title && (
-              <span id="ev-title-error" role="alert" className="mt-1 block text-xs text-error">
-                {createErrors.title}
-              </span>
-            )}
           </label>
-          <label className="block text-sm" htmlFor="ev-date">
+          <label className="block text-sm">
             Date & time
             <input
-              id="ev-date"
               type="datetime-local"
               value={createDate}
               onChange={(e) => setCreateDate(e.target.value)}
-              aria-invalid={createErrors.date ? true : undefined}
-              aria-describedby={createErrors.date ? 'ev-date-error' : undefined}
-              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary ${createErrors.date ? 'border-error' : 'border-border'}`}
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
             />
-            {createErrors.date && (
-              <span id="ev-date-error" role="alert" className="mt-1 block text-xs text-error">
-                {createErrors.date}
-              </span>
-            )}
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">
@@ -715,20 +625,19 @@ export default function SchedulePage() {
               Cancel
             </button>
             <button
-              onClick={() => void handleCreate()}
-              disabled={creating}
-              className="rounded-full bg-action px-4 py-1.5 text-sm text-action-fg disabled:opacity-50"
+              onClick={handleCreate}
+              className="rounded-full bg-white px-4 py-1.5 text-sm text-black"
             >
-              {creating ? 'Creating…' : 'Create'}
+              Create
             </button>
           </div>
         </div>
       </Modal>
 
       <p className="text-xs text-text-dim mt-3">
-        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) —
-        migrated 2026-08-21; Gmail-extracted events are read via Gmail connector, agent-proposed
-        events via the scheduler/gmail agents.
+        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) ΓÇö migrated 2026-08-21;
+        Gmail-extracted events are read via Gmail connector, agent-proposed events via the
+        scheduler/gmail agents.
       </p>
     </div>
   );

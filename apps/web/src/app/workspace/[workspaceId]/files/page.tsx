@@ -25,7 +25,7 @@ function formatDate(iso: string): string {
 
 function formatSize(bytes: unknown): string {
   const n = typeof bytes === 'number' ? bytes : Number(bytes ?? 0);
-  if (!n) return '—';
+  if (!n) return 'ΓÇö';
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
@@ -108,8 +108,6 @@ export default function WorkspaceFilesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const PAGE_SIZE = 25;
@@ -166,23 +164,6 @@ export default function WorkspaceFilesPage() {
     fetchDocuments(showArchived, page);
   }, [fetchDocuments, page, showArchived]);
 
-  const filteredDocs = documents.filter((doc) => {
-    const matchesSearch =
-      !searchQuery || getFileName(doc.path).toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType =
-      typeFilter === 'all' ||
-      (typeFilter === 'pdf' && doc.type === 'pdf') ||
-      (typeFilter === 'docx' && doc.type === 'docx') ||
-      (typeFilter === 'text' && TEXT_TYPES.has(doc.type)) ||
-      (typeFilter === 'image' && IMAGE_TYPES.has(doc.type)) ||
-      (typeFilter === 'other' &&
-        !TEXT_TYPES.has(doc.type) &&
-        !IMAGE_TYPES.has(doc.type) &&
-        doc.type !== 'pdf' &&
-        doc.type !== 'docx');
-    return matchesSearch && matchesType;
-  });
-
   const startUpload = useCallback(
     async (file: File) => {
       if (!workspaceId) return;
@@ -215,10 +196,7 @@ export default function WorkspaceFilesPage() {
 
   const openViewer = useCallback(
     async (doc: DocumentResponse) => {
-      if (viewerUrlRef.current) {
-        URL.revokeObjectURL(viewerUrlRef.current);
-        viewerUrlRef.current = null;
-      }
+      if (viewerUrlRef.current) { URL.revokeObjectURL(viewerUrlRef.current); viewerUrlRef.current = null; }
       if (viewerContent?.url) URL.revokeObjectURL(viewerContent.url);
       setViewer(doc);
       setViewerContent(null);
@@ -252,10 +230,7 @@ export default function WorkspaceFilesPage() {
   );
 
   const closeViewer = useCallback(() => {
-    if (viewerUrlRef.current) {
-      URL.revokeObjectURL(viewerUrlRef.current);
-      viewerUrlRef.current = null;
-    }
+    if (viewerUrlRef.current) { URL.revokeObjectURL(viewerUrlRef.current); viewerUrlRef.current = null; }
     if (viewerContent?.url) URL.revokeObjectURL(viewerContent.url);
     setViewer(null);
     setViewerContent(null);
@@ -267,25 +242,17 @@ export default function WorkspaceFilesPage() {
     const oldPath = renaming.path;
     // Propose via Organization Agent for audit trail (non-blocking fallback to direct rename)
     try {
-      await agentApi
-        .chat({
-          workspaceId,
-          message: `propose rename document ${renaming.id} from "${oldPath}" to "${newPath}"`,
-          agentName: 'organization',
-        })
-        .catch(() => null);
-    } catch {
-      /* fallback to direct */
-    }
+      await agentApi.chat({
+        workspaceId,
+        message: `propose rename document ${renaming.id} from "${oldPath}" to "${newPath}"`,
+        agentName: 'organization',
+      }).catch(() => null);
+    } catch { /* fallback to direct */ }
     try {
       const updated = await documentApi.rename(renaming.id, workspaceId, newPath);
       setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
       setRenaming(null);
-      toast({
-        tone: 'success',
-        title: 'Renamed (reversible)',
-        detail: `${oldPath} → ${updated.path} — undo via History`,
-      });
+      toast({ tone: 'success', title: 'Renamed (reversible)', detail: `${oldPath} ΓåÆ ${updated.path} ΓÇö undo via History` });
     } catch (err) {
       toast({
         tone: 'error',
@@ -382,7 +349,7 @@ export default function WorkspaceFilesPage() {
   const actionLabel = (a: DocumentAction): string => {
     switch (actionType(a)) {
       case 'document_rename':
-        return `Renamed ${actionOldPath(a) ?? ''} → ${actionNewPath(a) ?? ''}`;
+        return `Renamed ${actionOldPath(a) ?? ''} ΓåÆ ${actionNewPath(a) ?? ''}`;
       case 'document_archive':
         return 'Archived';
       case 'document_restore':
@@ -426,23 +393,20 @@ export default function WorkspaceFilesPage() {
           {dragOver ? 'Drop to upload' : 'Drop a file here or click to browse'}
         </p>
         <p className="text-xs text-text-muted">
-          PDF, DOCX, TXT, MD, CSV, images — stored in your workspace
+          PDF, DOCX, TXT, MD, CSV, images ΓÇö stored in your workspace
         </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="sr-only"
+          aria-label="Choose file to upload"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void startUpload(file);
+            e.target.value = '';
+          }}
+        />
       </div>
-      {/* F-11: the file input is a sibling of the role=button dropzone —
-          nesting a native input inside a button-role element is invalid
-          nested-interactive semantics (axe). */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="sr-only"
-        aria-label="Choose file to upload"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) void startUpload(file);
-          e.target.value = '';
-        }}
-      />
 
       {upload.phase !== 'idle' && (
         <div className="card mb-6 p-4" role="status" aria-live="polite">
@@ -461,11 +425,11 @@ export default function WorkspaceFilesPage() {
             </div>
           )}
           {upload.phase === 'processing' && (
-            <p className="text-xs text-text-muted">Storing content…</p>
+            <p className="text-xs text-text-muted">Storing contentΓÇª</p>
           )}
           {upload.phase === 'error' && (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-error">Failed: {upload.message}</p>
+              <p className="text-xs text-red-400">Failed: {upload.message}</p>
               <button
                 onClick={() => void startUpload(upload.file)}
                 className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover"
@@ -477,33 +441,7 @@ export default function WorkspaceFilesPage() {
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setPage(1);
-          }}
-          placeholder="Search files…"
-          aria-label="Search files by name"
-          className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-48"
-        />
-        <select
-          value={typeFilter}
-          onChange={(e) => {
-            setTypeFilter(e.target.value);
-            setPage(1);
-          }}
-          aria-label="Filter files by type"
-          className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
-        >
-          <option value="all">All types</option>
-          <option value="pdf">PDF</option>
-          <option value="docx">DOCX</option>
-          <option value="text">Text</option>
-          <option value="image">Image</option>
-          <option value="other">Other</option>
-        </select>
+      <div className="mb-4 flex items-center justify-between">
         <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
           <input
             type="checkbox"
@@ -531,11 +469,6 @@ export default function WorkspaceFilesPage() {
               : 'Upload your resume, transcripts, or cover letters to get started.'
           }
         />
-      ) : filteredDocs.length === 0 ? (
-        <EmptyState
-          title="No matching files"
-          description="Try adjusting your search or filter criteria."
-        />
       ) : (
         <div className="hidden md:block card overflow-x-auto">
           <table className="w-full text-left">
@@ -559,25 +492,22 @@ export default function WorkspaceFilesPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredDocs.map((doc) => {
+              {documents.map((doc) => {
                 const archived = Boolean(docDeletedAt(doc));
                 return (
                   <tr
                     key={doc.id}
-                    className={`border-b border-border/50 transition-colors ${
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`View ${getFileName(doc.path)}`}
+                    onClick={() => void openViewer(doc)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void openViewer(doc); } }}
+                    className={`border-b border-border/50 transition-colors focus:outline-none focus:bg-background/50 ${
                       archived ? 'opacity-50 hover:opacity-80' : 'hover:bg-background/50'
-                    }`}
+                    } cursor-pointer`}
                   >
                     <td className="py-3">
-                      {/* F-a11y: the row itself is NOT interactive (buttons live
-                          in the Actions cell); the file name is the open affordance
-                          so no role=button wraps interactive children. */}
-                      <button
-                        onClick={() => void openViewer(doc)}
-                        className="font-medium text-text hover:text-primary-as-link focus:outline-none focus-visible:ring-2 focus-visible:ring-action rounded"
-                      >
-                        {getFileName(doc.path)}
-                      </button>
+                      <span className="font-medium text-text">{getFileName(doc.path)}</span>
                       {archived && (
                         <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs text-text-dim">
                           archived
@@ -603,7 +533,7 @@ export default function WorkspaceFilesPage() {
                         {archived ? (
                           <button
                             onClick={() => void handleRestore(doc)}
-                            className="rounded-full border border-success/30 px-3 py-1 text-xs text-success hover:bg-success/10"
+                            className="rounded-full border border-emerald-500/30 px-3 py-1 text-xs text-emerald-300 hover:bg-emerald-500/10"
                           >
                             Restore
                           </button>
@@ -630,43 +560,21 @@ export default function WorkspaceFilesPage() {
           </table>
         </div>
       )}
-      {filteredDocs.length > 0 && (
+      {documents.length > 0 && (
         <div className="md:hidden mt-4 space-y-3">
-          {filteredDocs.map((doc) => (
-            <div key={`card-${doc.id}`} className="card p-4 flex flex-col gap-2">
+          {documents.map((doc) => (
+            <div key={`card-${doc.id}`} role="button" tabIndex={0} onClick={() => void openViewer(doc)} onKeyDown={(e) => { if(e.key==='Enter'||e.key===' '){e.preventDefault(); void openViewer(doc);}}} className="card p-4 flex flex-col gap-2 cursor-pointer hover:border-primary/30">
               <div className="flex items-center justify-between gap-2">
-                <button
-                  onClick={() => void openViewer(doc)}
-                  className="font-medium text-text truncate hover:text-primary-as-link focus:outline-none focus-visible:ring-2 focus-visible:ring-action rounded"
-                >
-                  {getFileName(doc.path)}
-                </button>
+                <span className="font-medium text-text truncate">{getFileName(doc.path)}</span>
                 <span className="text-xs font-mono text-text-muted">{doc.type}</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-text-muted">
-                <span>{formatSize(docMetaSize(doc))}</span>
-                <span>·</span>
-                <span>{formatDate(docCreatedAt(doc))}</span>
-                {Boolean(docDeletedAt(doc)) && (
-                  <span className="rounded-full border border-border px-2 py-0.5">archived</span>
-                )}
+                <span>{formatSize(docMetaSize(doc))}</span><span>┬╖</span><span>{formatDate(docCreatedAt(doc))}</span>
+                {Boolean(docDeletedAt(doc)) && <span className="rounded-full border border-border px-2 py-0.5">archived</span>}
               </div>
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={() => {
-                    setRenaming(doc);
-                    setRenameValue(getFileName(doc.path));
-                  }}
-                  className="flex-1 rounded-full border border-border px-3 py-1 text-xs"
-                >
-                  Rename
-                </button>
-                <button
-                  onClick={() => void openViewer(doc)}
-                  className="flex-1 rounded-full bg-action text-action-fg px-3 py-1 text-xs"
-                >
-                  View
-                </button>
+              <div className="flex gap-2 pt-1" onClick={(e)=>e.stopPropagation()}>
+                <button onClick={()=>{setRenaming(doc); setRenameValue(getFileName(doc.path));}} className="flex-1 rounded-full border border-border px-3 py-1 text-xs">Rename</button>
+                <button onClick={()=> void openViewer(doc)} className="flex-1 rounded-full bg-white text-black px-3 py-1 text-xs">View</button>
               </div>
             </div>
           ))}
@@ -674,24 +582,10 @@ export default function WorkspaceFilesPage() {
       )}
       {total > PAGE_SIZE && (
         <div className="flex items-center justify-between mt-4 text-sm">
-          <span className="text-xs font-mono text-text-muted">
-            Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, total)} of {total}
-          </span>
+          <span className="text-xs font-mono text-text-muted">Showing {(page-1)*PAGE_SIZE+1}-{Math.min(page*PAGE_SIZE, total)} of {total}</span>
           <div className="flex gap-2">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover"
-            >
-              Previous
-            </button>
-            <button
-              disabled={page * PAGE_SIZE >= total}
-              onClick={() => setPage((p) => p + 1)}
-              className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover"
-            >
-              Next
-            </button>
+            <button disabled={page<=1} onClick={() => setPage((p)=>Math.max(1,p-1))} className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover">Previous</button>
+            <button disabled={page*PAGE_SIZE>=total} onClick={() => setPage((p)=>p+1)} className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover">Next</button>
           </div>
         </div>
       )}
@@ -705,9 +599,9 @@ export default function WorkspaceFilesPage() {
           <div className="flex max-h-[70vh] flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
               <span className="font-mono uppercase">{viewer.type}</span>
-              <span>·</span>
+              <span>┬╖</span>
               <span>{formatSize(docMetaSize(viewer))}</span>
-              <span>·</span>
+              <span>┬╖</span>
               <span>{formatDate(docCreatedAt(viewer))}</span>
               <div className="ml-auto flex gap-2" onClick={(e) => e.stopPropagation()}>
                 <button
@@ -722,7 +616,7 @@ export default function WorkspaceFilesPage() {
                 {docDeletedAt(viewer) ? (
                   <button
                     onClick={() => void handleRestore(viewer)}
-                    className="rounded-full border border-success/30 px-3 py-1 text-success hover:bg-success/10"
+                    className="rounded-full border border-emerald-500/30 px-3 py-1 text-emerald-300 hover:bg-emerald-500/10"
                   >
                     Restore
                   </button>
@@ -805,10 +699,8 @@ export default function WorkspaceFilesPage() {
           {renaming && renameValue.trim() && renaming.path !== renameValue.trim() && (
             <DiffViewer oldText={renaming.path} newText={renameValue.trim()} />
           )}
-          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text-muted">
-            <span className="font-medium text-warning">Organization Agent suggestion</span> — this
-            rename is logged and reversible via <span className="font-mono">History → Undo</span>.
-            An approval record is created for traceability.
+          <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-text-muted">
+            <span className="font-medium text-amber-700">Organization Agent suggestion</span> ΓÇö this rename is logged and reversible via <span className="font-mono">History ΓåÆ Undo</span>. An approval record is created for traceability.
           </div>
           <div className="flex justify-end gap-2">
             <button
@@ -821,7 +713,7 @@ export default function WorkspaceFilesPage() {
             <button
               type="submit"
               disabled={!renameValue.trim()}
-              className="rounded-full bg-action px-4 py-1.5 text-sm text-action-fg disabled:opacity-40"
+              className="rounded-full bg-white px-4 py-1.5 text-sm text-black disabled:opacity-40"
             >
               Save
             </button>
@@ -832,7 +724,7 @@ export default function WorkspaceFilesPage() {
       <Modal
         isOpen={Boolean(history)}
         onClose={() => setHistory(null)}
-        title={`History — ${history ? getFileName(history.path) : ''}`}
+        title={`History ΓÇö ${history ? getFileName(history.path) : ''}`}
       >
         <div className="flex max-h-[60vh] flex-col gap-3 overflow-auto">
           {actionsLoading ? (
@@ -853,7 +745,7 @@ export default function WorkspaceFilesPage() {
                     <div>
                       <p className="text-sm font-medium text-text">{actionLabel(a)}</p>
                       <p className="text-xs text-text-muted">
-                        {new Date(actionCreatedAt(a)).toLocaleString()} ·{' '}
+                        {new Date(actionCreatedAt(a)).toLocaleString()} ┬╖{' '}
                         {undone ? 'undone' : actionType(a)}
                       </p>
                     </div>
@@ -863,7 +755,7 @@ export default function WorkspaceFilesPage() {
                         onClick={() => void handleUndo(a, history!)}
                         className="shrink-0 rounded-full border border-primary/40 px-3 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-40"
                       >
-                        {busyAction === a.id ? 'Undoing…' : 'Undo'}
+                        {busyAction === a.id ? 'UndoingΓÇª' : 'Undo'}
                       </button>
                     )}
                   </div>

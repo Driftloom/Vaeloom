@@ -6,7 +6,6 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
 import { api } from '../../../../lib/api';
 import { useToast } from '@/components/shared/Toast';
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Modal } from '@vaeloom/ui-kit';
 import type { Connector, ConnectorProvider } from '@vaeloom/shared-types';
 
@@ -63,9 +62,9 @@ function formatDate(iso?: string): string {
 }
 
 const statusStyles: Record<string, string> = {
-  connected: 'border-success/50 text-success bg-success/10',
-  syncing: 'border-warning/50 text-warning bg-warning/10',
-  error: 'border-error/50 text-error bg-error/10',
+  connected: 'border-green-500/50 text-green-400 bg-green-950/20',
+  syncing: 'border-yellow-500/50 text-yellow-400 bg-yellow-950/20',
+  error: 'border-red-500/50 text-red-400 bg-red-950/20',
   disconnected: 'border-border text-text-muted bg-surface',
 };
 
@@ -75,7 +74,6 @@ export default function ConnectorsPage() {
   const { connectors, isLoading, isError, mutate } = useWorkspaceConnectors(workspaceId);
   const { toast } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
-  const [connectorToRevoke, setConnectorToRevoke] = useState<Connector | null>(null);
   const [pendingProvider, setPendingProvider] = useState<ConnectorProvider | null>(null);
 
   const byProvider = useMemo(() => new Map(connectors.map((c) => [c.provider, c])), [connectors]);
@@ -86,17 +84,26 @@ export default function ConnectorsPage() {
     const meta = PROVIDER_META[provider];
     setBusy(`connect-${provider}`);
     try {
-      // F-01: OAuth consent-install for connectors is not supported by the
-      // backend yet (no integration OAuth install/callback endpoints exist).
-      // The previous flow redirected users into the LOGIN sso flow under a
-      // "Connect" label — removed per no-fake-state rule. Connections are
-      // registered directly via integrations.create.
+      // Try real OAuth redirect first for providers that support SSO
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      try {
+        const res = await api.request<{ auth_url?: string; authUrl?: string }>(
+          `/auth/sso/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`,
+        );
+        const url = (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      } catch {
+        // fallback to legacy integration create if SSO not configured for this provider
+      }
       await api.integrations.create({ name: meta?.name ?? provider, provider });
       await mutate();
       toast({
         tone: 'success',
         title: 'Connector created',
-        detail: `${meta?.name ?? provider} — ${meta?.scopes.join(', ')}`,
+        detail: `${meta?.name ?? provider} ΓÇö ${meta?.scopes.join(', ')}`,
       });
       setPendingProvider(null);
     } catch (err) {
@@ -111,17 +118,15 @@ export default function ConnectorsPage() {
   };
 
   const handleRevoke = async (connector: Connector) => {
+    const proceed = window.confirm(`Revoke ${PROVIDER_META[connector.provider]?.name ?? connector.provider}? This will remove the connection and stop future syncs. You can reconnect anytime.`);
+    if (!proceed) return;
     setBusy(`revoke-${connector.id}`);
     try {
       await api.request(`/integrations/${connector.id}`, { method: 'DELETE' });
       await mutate();
       toast({ tone: 'success', title: 'Revoked', detail: `${connector.provider} disconnected` });
     } catch (err) {
-      toast({
-        tone: 'error',
-        title: 'Revoke failed',
-        detail: err instanceof Error ? err.message : 'Please try again.',
-      });
+      toast({ tone: 'error', title: 'Revoke failed', detail: err instanceof Error ? err.message : 'Please try again.' });
     } finally {
       setBusy(null);
     }
@@ -180,7 +185,7 @@ export default function ConnectorsPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-display font-medium text-text mb-2">Connectors</h1>
         <p className="text-text-muted">
-          Least-privilege OAuth. Each connector shows the exact scopes granted — review before
+          Least-privilege OAuth. Each connector shows the exact scopes granted ΓÇö review before
           connecting. Sync progress and errors surface inline with retry.
         </p>
       </header>
@@ -216,7 +221,7 @@ export default function ConnectorsPage() {
                         {meta?.name ?? conn.provider}
                       </h3>
                       <p className="text-xs font-mono text-text-muted">
-                        {conn.provider} · {meta?.scopes.join(', ') ?? '—'}
+                        {conn.provider} ┬╖ {meta?.scopes.join(', ') ?? 'ΓÇö'}
                       </p>
                     </div>
                   </div>
@@ -234,11 +239,11 @@ export default function ConnectorsPage() {
                   </div>
                   {conn.status === 'syncing' && (
                     <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-hover">
-                      <div className="h-full w-2/3 animate-pulse bg-warning/60" />
+                      <div className="h-full w-2/3 animate-pulse bg-yellow-500/60" />
                     </div>
                   )}
                   {(conn as unknown as Record<string, unknown>)['errorDetail'] ? (
-                    <p className="text-xs text-error mb-3" role="alert">
+                    <p className="text-xs text-red-400 mb-3" role="alert">
                       {String((conn as unknown as Record<string, unknown>)['errorDetail'])}
                     </p>
                   ) : null}
@@ -249,14 +254,14 @@ export default function ConnectorsPage() {
                       disabled={isBusy}
                       onClick={() => handleSync(conn)}
                     >
-                      {isBusy ? 'Syncing…' : 'Sync Now'}
+                      {isBusy ? 'SyncingΓÇª' : 'Sync Now'}
                     </button>
                     <button
                       className="btn-ghost border border-border flex-1 text-sm"
                       disabled={busy === `revoke-${conn.id}`}
-                      onClick={() => setConnectorToRevoke(conn)}
+                      onClick={() => handleRevoke(conn)}
                     >
-                      {busy === `revoke-${conn.id}` ? 'Revoking…' : 'Revoke'}
+                      {busy === `revoke-${conn.id}` ? 'RevokingΓÇª' : 'Revoke'}
                     </button>
                   </div>
                 </div>
@@ -311,7 +316,7 @@ export default function ConnectorsPage() {
                   disabled={isBusy}
                   onClick={() => setPendingProvider(provider)}
                 >
-                  {isBusy ? 'Connecting…' : 'Connect'}
+                  {isBusy ? 'ConnectingΓÇª' : 'Connect'}
                 </button>
               </div>
             );
@@ -355,24 +360,12 @@ export default function ConnectorsPage() {
                 disabled={busy === `connect-${pendingProvider}`}
                 onClick={() => handleConnect(pendingProvider)}
               >
-                {busy === `connect-${pendingProvider}` ? 'Connecting…' : 'Continue to OAuth'}
+                {busy === `connect-${pendingProvider}` ? 'ConnectingΓÇª' : 'Continue to OAuth'}
               </button>
             </div>
           </div>
         )}
       </Modal>
-
-      <ConfirmDialog
-        isOpen={!!connectorToRevoke}
-        onClose={() => setConnectorToRevoke(null)}
-        onConfirm={() => {
-          if (connectorToRevoke) handleRevoke(connectorToRevoke);
-        }}
-        title={`Revoke ${connectorToRevoke ? (PROVIDER_META[connectorToRevoke.provider]?.name ?? connectorToRevoke.provider) : ''}?`}
-        message="This will remove the connection and stop future syncs. You can reconnect anytime."
-        confirmLabel="Revoke"
-        variant="danger"
-      />
     </div>
   );
 }

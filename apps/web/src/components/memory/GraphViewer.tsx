@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { knowledgeGraphApi } from '@/lib/api-client';
@@ -227,14 +227,13 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
         <div>
           <h1 className="text-3xl font-display font-medium text-text mb-1">Memory Graph</h1>
           <p className="text-text-muted text-sm">
-            {filteredNodes.length} of {nodes.length} nodes · {filteredEdges.length} edges · drag to
-            pan · scroll to zoom
+            {filteredNodes.length} of {nodes.length} nodes ┬╖ {filteredEdges.length} edges ┬╖ drag to
+            pan ┬╖ scroll to zoom
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input
-            placeholder="Filter nodes…"
-            aria-label="Filter graph nodes by name"
+            placeholder="Filter nodesΓÇª"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-40"
@@ -242,7 +241,6 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            aria-label="Filter graph nodes by type"
             className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
           >
             <option value="all">All types</option>
@@ -397,7 +395,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                       className="fill-text text-xs font-medium"
                       style={{ fontSize: 11 }}
                     >
-                      {node.label.length > 18 ? `${node.label.slice(0, 18)}…` : node.label}
+                      {node.label.length > 18 ? `${node.label.slice(0, 18)}ΓÇª` : node.label}
                     </text>
                     <text
                       textAnchor="middle"
@@ -413,12 +411,8 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           </svg>
           <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-1 text-xs text-text-dim">
             <span>{Math.round(transform.k * 100)}%</span>
-            <span>·</span>
-            <span>
-              {visibleNodes.length === filteredNodes.length
-                ? `${filteredNodes.length} nodes`
-                : `${visibleNodes.length}/${filteredNodes.length} visible`}
-            </span>
+            <span>┬╖</span>
+            <span>{visibleNodes.length === filteredNodes.length ? `${filteredNodes.length} nodes` : `${visibleNodes.length}/${filteredNodes.length} visible`}</span>
           </div>
         </div>
       )}
@@ -436,7 +430,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                   {selected.type}
                 </span>
                 <span className="text-xs text-text-dim">
-                  · importance {Math.round((selected.importance ?? 0) * 100)}%
+                  ┬╖ importance {Math.round((selected.importance ?? 0) * 100)}%
                 </span>
               </div>
               <h3 className="text-lg font-medium text-text mt-1">{selected.label}</h3>
@@ -455,7 +449,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                   .map((e) => {
                     const otherId = e.sourceId === selected.id ? e.targetId : e.sourceId;
                     const other = nodeMap.get(otherId);
-                    const dir = e.sourceId === selected.id ? '→' : '←';
+                    const dir = e.sourceId === selected.id ? 'ΓåÆ' : 'ΓåÉ';
                     return (
                       <span
                         key={e.id}

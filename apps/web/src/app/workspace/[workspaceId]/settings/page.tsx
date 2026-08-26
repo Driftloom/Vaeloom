@@ -6,7 +6,6 @@ import { api, clearToken, clearRefreshToken } from '../../../../lib/api';
 import { consentApi, gdprApi } from '../../../../lib/api-client';
 import { ProviderKeysSection } from '@/components/settings/ProviderKeysSection';
 import { ErrorState } from '@/components/shared/ErrorState';
-import { useAuth } from '../../../../hooks/useAuth';
 import type { Agent, PaginatedResponse } from '@vaeloom/shared-types';
 
 type IntegrationData = Record<string, unknown> & {
@@ -26,11 +25,6 @@ export default function SettingsPage() {
   const params = useParams();
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const router = useRouter();
-
-  // F-16: consume the shared auth session instead of a third /auth/me fetch.
-  const { user, me, loading: meLoading, error: meError } = useAuth();
-
-  const userWorkspaces = me?.workspaces ?? [];
 
   const {
     data: agentsRes,
@@ -67,44 +61,6 @@ export default function SettingsPage() {
   const [consentState, setConsentState] = useState<Record<string, boolean>>({});
   const [consentLoading, setConsentLoading] = useState(false);
 
-  const [notifEmail, setNotifEmail] = useState(true);
-  const [notifInApp, setNotifInApp] = useState(true);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('vaeloom-notif-prefs');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (typeof parsed.email === 'boolean') setNotifEmail(parsed.email);
-        if (typeof parsed.inApp === 'boolean') setNotifInApp(parsed.inApp);
-      } catch {}
-    }
-  }, []);
-
-  const persistNotifPrefs = (email: boolean, inApp: boolean) => {
-    localStorage.setItem('vaeloom-notif-prefs', JSON.stringify({ email, inApp }));
-  };
-
-  const handleNotifToggle = (key: 'email' | 'inApp') => {
-    if (key === 'email') {
-      const next = !notifEmail;
-      setNotifEmail(next);
-      persistNotifPrefs(next, notifInApp);
-    } else {
-      const next = !notifInApp;
-      setNotifInApp(next);
-      persistNotifPrefs(notifEmail, next);
-    }
-  };
-
-  const handleSignOut = () => {
-    clearToken();
-    clearRefreshToken();
-    router.replace('/login');
-  };
-
-  const userInitial = (user?.displayName ?? user?.email ?? '?').charAt(0).toUpperCase();
-
   useEffect(() => {
     consentApi
       .me()
@@ -124,8 +80,7 @@ export default function SettingsPage() {
     const perms: Record<string, { read: boolean; write: boolean }> = {};
     for (const integration of integrations) {
       const id = integration['id'];
-      const config = (integration as Record<string, unknown>)['config'] as
-        Record<string, unknown> | undefined;
+      const config = (integration as Record<string, unknown>)['config'] as Record<string, unknown> | undefined;
       const permissions = config?.['permissions'] as Record<string, unknown> | undefined;
       perms[id] = {
         read: (permissions?.['read'] as boolean) ?? true,
@@ -230,7 +185,7 @@ export default function SettingsPage() {
     } catch (err) {
       // revert on failure
       setConnectorPerms((prev) => ({ ...prev, [id]: current }));
-      setSaveError(err instanceof Error ? err.message : 'Failed to update permission — reverted');
+      setSaveError(err instanceof Error ? err.message : 'Failed to update permission ΓÇö reverted');
     }
   };
 
@@ -282,182 +237,6 @@ export default function SettingsPage() {
       <div className="space-y-8">
         <section>
           <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
-            Profile
-          </h2>
-          <p className="text-sm text-text-muted mb-4">
-            Your account information and profile details.
-          </p>
-          {meLoading ? (
-            <div className="card animate-pulse space-y-3">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 bg-border rounded-full" />
-                <div className="space-y-2">
-                  <div className="h-4 bg-border rounded w-32" />
-                  <div className="h-3 bg-border rounded w-48" />
-                </div>
-              </div>
-            </div>
-          ) : meError ? (
-            <p className="text-sm text-text-muted">Could not load profile information.</p>
-          ) : user ? (
-            <div className="card">
-              <div className="flex items-center gap-4">
-                <div
-                  className="h-12 w-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-lg font-display font-medium text-primary"
-                  aria-hidden
-                >
-                  {userInitial}
-                </div>
-                <div>
-                  <h3 className="font-medium text-text">{user.displayName || 'No name set'}</h3>
-                  <p className="text-sm text-text-muted">{user.email}</p>
-                  <p className="text-xs text-text-muted mt-0.5">
-                    Member since {new Date(user.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-text-muted">No user data available.</p>
-          )}
-        </section>
-
-        <section>
-          <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
-            Account
-          </h2>
-          <p className="text-sm text-text-muted mb-4">
-            Manage your password, session, and account access.
-          </p>
-          <div className="space-y-4">
-            <div className="card flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-text">Password</h3>
-                <p className="text-xs text-text-muted mt-0.5">
-                  {user?.authProvider === 'local'
-                    ? 'Change your account password'
-                    : 'Your account uses SSO — password is managed externally'}
-                </p>
-              </div>
-              <button
-                className="btn-secondary text-sm"
-                onClick={() => router.push('/forgot-password')}
-                disabled={user?.authProvider !== 'local'}
-              >
-                Change Password
-              </button>
-            </div>
-
-            <div className="card flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-text">Current Session</h3>
-                <p className="text-xs text-text-muted mt-0.5">You are signed in as {user?.email}</p>
-              </div>
-              <button className="btn-secondary text-sm" onClick={handleSignOut}>
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
-            Workspace
-          </h2>
-          <p className="text-sm text-text-muted mb-4">
-            Information about the currently active workspace.
-          </p>
-          <div className="card space-y-2">
-            {meLoading ? (
-              <div className="animate-pulse space-y-2">
-                <div className="h-4 bg-border rounded w-40" />
-                <div className="h-3 bg-border rounded w-56" />
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-muted">Workspace Name</span>
-                  <span className="text-sm font-medium text-text">
-                    {userWorkspaces.find((ws) => ws.id === workspaceId)?.name ??
-                      'Unnamed Workspace'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-muted">Workspace ID</span>
-                  <span className="text-xs font-mono text-text-muted bg-muted px-2 py-0.5 rounded">
-                    {workspaceId}
-                  </span>
-                </div>
-                {userWorkspaces.length > 1 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-text-muted">Total Workspaces</span>
-                    <span className="text-sm text-text">{userWorkspaces.length}</span>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
-            Notifications
-          </h2>
-          <p className="text-sm text-text-muted mb-4">
-            Control how you receive updates from Vaeloom.
-          </p>
-          <div className="space-y-3">
-            <label className="card flex items-center justify-between cursor-pointer">
-              <div>
-                <h3 className="font-medium text-text">Email Notifications</h3>
-                <p className="text-xs text-text-muted mt-0.5">
-                  Receive email summaries and alerts for important activity.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={notifEmail}
-                onClick={() => handleNotifToggle('email')}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-border transition-colors ${
-                  notifEmail ? 'bg-primary' : 'bg-border'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    notifEmail ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </label>
-            <label className="card flex items-center justify-between cursor-pointer">
-              <div>
-                <h3 className="font-medium text-text">In-App Notifications</h3>
-                <p className="text-xs text-text-muted mt-0.5">
-                  Show notifications within the dashboard for agent actions and updates.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={notifInApp}
-                onClick={() => handleNotifToggle('inApp')}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-border transition-colors ${
-                  notifInApp ? 'bg-primary' : 'bg-border'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    notifInApp ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </label>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
             Agent Autonomy Levels
           </h2>
           <p className="text-sm text-text-muted mb-4">
@@ -466,7 +245,7 @@ export default function SettingsPage() {
 
           {saveError && (
             <div
-              className="mb-4 p-3 text-sm text-error bg-error/10 dark:text-error dark:bg-error/10 rounded border border-error/50"
+              className="mb-4 p-3 text-sm text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/20 rounded border border-red-500/50"
               role="alert"
             >
               {saveError}
@@ -522,7 +301,7 @@ export default function SettingsPage() {
           </p>
 
           {integrationsError ? (
-            <p className="text-sm text-error">
+            <p className="text-sm text-red-600">
               Failed to load integrations.{' '}
               <button className="underline" onClick={() => mutateIntegrations()}>
                 Retry
@@ -582,13 +361,13 @@ export default function SettingsPage() {
             delete it.
           </p>
           <p className="text-sm text-text-muted mb-2">
-            Consent version: <span className="font-mono">v1</span> — granted at signup, revocable
+            Consent version: <span className="font-mono">v1</span> ΓÇö granted at signup, revocable
             anytime.
           </p>
           <div className="space-y-3">
             <label className="card flex items-center justify-between cursor-pointer">
               <div>
-                <h3 className="font-medium text-text">Gmail — read (draft-only)</h3>
+                <h3 className="font-medium text-text">Gmail ΓÇö read (draft-only)</h3>
                 <p className="text-xs text-text-muted mt-0.5">
                   Watch for job emails and extract deadlines. Vaeloom never sends email without your
                   approval.
@@ -621,7 +400,7 @@ export default function SettingsPage() {
             </label>
             <label className="card flex items-center justify-between cursor-pointer opacity-60">
               <div>
-                <h3 className="font-medium text-text">Email send (T3 — gated)</h3>
+                <h3 className="font-medium text-text">Email send (T3 ΓÇö gated)</h3>
                 <p className="text-xs text-text-muted mt-0.5">
                   Disabled by default. Only enabled after legal review and explicit approval (phase
                   13).
@@ -639,7 +418,7 @@ export default function SettingsPage() {
 
         <section>
           <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
-            API Keys — Bring Your Own Key
+            API Keys ΓÇö Bring Your Own Key
           </h2>
           <ProviderKeysSection workspaceId={workspaceId} />
         </section>

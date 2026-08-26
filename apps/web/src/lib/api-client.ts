@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   ApiResponse,
   PaginatedResponse,
   AuthResponse,
@@ -16,9 +16,8 @@ import type {
   KnowledgeGraphEdge,
 } from '@vaeloom/shared-types';
 
-import { api, ApiError, getToken, transformKeys, API_BASE, API_PREFIX } from './api';
+export { ApiError } from './api';
 export {
-  ApiError,
   getToken,
   setToken,
   clearToken,
@@ -26,32 +25,46 @@ export {
   setRefreshToken,
   clearRefreshToken,
 } from './api';
-import { CSRF_HEADER, getCsrfToken, resetCsrfToken } from './csrf';
+import { CSRF_HEADER, getCsrfToken, isMutatingMethod, resetCsrfToken } from './csrf';
 
-export const ApiClientError = ApiError;
+const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000';
+const API_PREFIX = '/api/v1';
 
-function encodeParams(
-  params: Record<string, string | number | boolean | undefined | null>,
-): string {
-  const parts: string[] = [];
-  for (const [k, v] of Object.entries(params)) {
-    if (v != null) {
-      parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
-    }
+export class ApiClient {
+  private baseUrl: string;
+
+  constructor(baseUrl = `${API_BASE}${API_PREFIX}`) {
+    this.baseUrl = baseUrl;
   }
-  return parts.join('&');
-}
 
-class ApiClient {
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
-    return api.request<T>(path, init);
+  protected transformKeys<T>(obj: unknown): T {
+    if (obj === null || obj === undefined) return obj as T;
+    if (Array.isArray(obj)) return obj.map((v) => this.transformKeys(v)) as T;
+    if (typeof obj === 'object') {
+      return Object.fromEntries(
+        Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+          k.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()),
+          this.transformKeys(v),
+        ]),
+      ) as T;
+    }
+    return obj as T;
+  }
+
+  private getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem('vaeloom.accessToken');
+  }
+
+  get baseURL(): string {
+    return this.baseUrl;
   }
 
   async get<T>(
     path: string,
     params?: Record<string, string | number | boolean | undefined | null>,
   ): Promise<T> {
-    const qs = params ? '?' + encodeParams(params) : '';
+    const qs = params ? '?' + this.encodeParams(params) : '';
     return this.request<T>(`${path}${qs}`, { method: 'GET' });
   }
 
@@ -66,7 +79,7 @@ class ApiClient {
     path: string,
     params?: Record<string, string | number | boolean | undefined | null>,
   ): Promise<T> {
-    const qs = params ? '?' + encodeParams(params) : '';
+    const qs = params ? '?' + this.encodeParams(params) : '';
     return this.request<T>(`${path}${qs}`, { method: 'POST' });
   }
 
@@ -87,11 +100,127 @@ class ApiClient {
   async delete<T = void>(path: string): Promise<T> {
     return this.request<T>(path, { method: 'DELETE' });
   }
+
+  private encodeParams(
+    params: Record<string, string | number | boolean | undefined | null>,
+  ): string {
+    const parts: string[] = [];
+    for (const [k, v] of Object.entries(params)) {
+      if (v != null) {
+        parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+      }
+    }
+    return parts.join('&');
+  }
+
+  private async request<T>(path: string, init: RequestInit): Promise<T> {
+    const token = this.getToken();
+    const mutating = isMutatingMethod(init.method);
+    const headers: Record<string, string> = {
+      'X-Requested-With': 'XMLHttpRequest',
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.headers as Record<string, string> | undefined),
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (mutating) {
+      const csrf = await getCsrfToken();
+      if (csrf) headers[CSRF_HEADER] = csrf;
+    }
+
+    const fetchWith = () =>
+      fetch(`${this.baseUrl}${path}`, { ...init, credentials: 'include', headers });
+
+    let res = await fetchWith();
+
+    // CSRF token may have expired server-side (1h TTL) ΓÇö refresh and retry once.
+    if (res.status === 403 && mutating && headers[CSRF_HEADER]) {
+      resetCsrfToken();
+      const fresh = await getCsrfToken();
+      if (fresh) {
+        headers[CSRF_HEADER] = fresh;
+        res = await fetchWith();
+      }
+    }
+
+    if (res.status === 401 && token) {
+      const newToken = await this.tryRefresh();
+      if (newToken) {
+        headers['Authorization'] = `Bearer ${newToken}`;
+        res = await fetchWith();
+      }
+    }
+
+    if (!res.ok) {
+      let message = `Request failed (${res.status})`;
+      let code: string | undefined;
+      try {
+        const body = (await res.json()) as {
+          error?: { message?: string; code?: string };
+          detail?: string;
+        };
+        if (body.error) {
+          message = body.error.message ?? message;
+          code = body.error.code;
+        } else if ((body as { detail?: string }).detail) {
+          message = (body as { detail: string }).detail;
+        }
+      } catch {}
+      throw new ApiClientError(res.status, message, code);
+    }
+
+    return res.status === 204 ? (undefined as unknown as T) : this.transformKeys(await res.json());
+  }
+
+  private async tryRefresh(): Promise<string | null> {
+    const refresh =
+      typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.refreshToken') : null;
+    if (!refresh) return null;
+    try {
+      const res = await fetch(`${this.baseUrl}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refresh }),
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        this.clearTokens();
+        return null;
+      }
+      const data = this.transformKeys<AuthResponse>(await res.json());
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('vaeloom.accessToken', data.accessToken);
+        if (data.refreshToken)
+          window.localStorage.setItem('vaeloom.refreshToken', data.refreshToken);
+      }
+      return data.accessToken;
+    } catch {
+      this.clearTokens();
+      return null;
+    }
+  }
+
+  private clearTokens(): void {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('vaeloom.accessToken');
+      window.localStorage.removeItem('vaeloom.refreshToken');
+    }
+  }
+}
+
+export class ApiClientError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'ApiClientError';
+  }
 }
 
 const apiClient = new ApiClient();
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Auth ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export const authApi = {
   signup(body: SignupRequest): Promise<AuthResponse> {
@@ -115,7 +244,7 @@ export const authApi = {
   },
 };
 
-// ─── Workspace ───────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Workspace ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface CreateWorkspaceRequest {
   name?: string;
@@ -153,7 +282,7 @@ export const workspaceApi = {
   },
 };
 
-// ─── Memory ─────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Memory ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface MemoryCreateRequest {
   type: string;
@@ -233,7 +362,7 @@ export const memoryApi = {
   },
 };
 
-// ─── Agent ───────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Agent ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface AgentCreateRequest {
   name: string;
@@ -335,75 +464,9 @@ export const agentApi = {
   chat(body: ChatMessage): Promise<{ reply?: string } & Record<string, unknown>> {
     return apiClient.post('/agents/chat', body);
   },
-  async chatStream(
-    body: ChatMessage,
-    onEvent: (event: string, data: Record<string, unknown>) => void,
-    signal?: AbortSignal,
-  ): Promise<void> {
-    const token = getToken();
-    const csrf = await getCsrfToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-      'X-Requested-With': 'XMLHttpRequest',
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (csrf) headers[CSRF_HEADER] = csrf;
-    const res = await fetch(`${API_BASE}${API_PREFIX}/agents/chat/stream`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      credentials: 'include',
-      signal,
-    });
-    if (!res.ok) {
-      let msg = `Stream failed (${res.status})`;
-      try {
-        const j = (await res.json()) as { message?: string; error?: { message?: string } };
-        msg =
-          (j as { error?: { message?: string } }).error?.message ||
-          (j as { message?: string }).message ||
-          msg;
-      } catch {}
-      throw new ApiError(res.status, msg);
-    }
-    if (!res.body) throw new ApiError(500, 'No stream body');
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
-    const emit = (raw: string) => {
-      if (!raw.trim()) return;
-      const lines = raw.split('\n');
-      let ev = 'message';
-      let dataStr = '';
-      for (const line of lines) {
-        if (line.startsWith('event:')) ev = line.slice(6).trim();
-        else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
-      }
-      if (!dataStr) return;
-      try {
-        const data = JSON.parse(dataStr) as Record<string, unknown>;
-        onEvent(ev, data);
-      } catch {
-        onEvent(ev, { raw: dataStr });
-      }
-    };
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx: number;
-      while ((idx = buf.indexOf('\n\n')) !== -1) {
-        const chunk = buf.slice(0, idx);
-        buf = buf.slice(idx + 2);
-        emit(chunk);
-      }
-    }
-    if (buf.trim()) emit(buf);
-  },
 };
 
-// ─── Knowledge Graph ─────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Knowledge Graph ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface KGCreateNodeRequest {
   label: string;
@@ -532,7 +595,7 @@ export const knowledgeGraphApi = {
   },
 };
 
-// ─── Document ────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Document ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface DocumentResponse {
   id: string;
@@ -579,7 +642,8 @@ export const documentApi = {
   upload(file: File, workspaceId: string): Promise<DocumentResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    const token = getToken();
+    const token =
+      typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
     return getCsrfToken().then(async (csrf) => {
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       if (csrf) headers[CSRF_HEADER] = csrf;
@@ -602,7 +666,7 @@ export const documentApi = {
       }
       if (!res.ok) throw new ApiClientError(res.status, 'Upload failed');
       return (res.json() as Promise<Record<string, unknown>>).then(
-        (j) => transformKeys(j) as DocumentResponse,
+        (j) => apiClient['transformKeys'](j) as DocumentResponse,
       );
     });
   },
@@ -619,14 +683,17 @@ export const documentApi = {
           `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`,
         );
         xhr.withCredentials = true;
-        const token = getToken();
+        const token =
+          typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
         if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         if (csrf) xhr.setRequestHeader(CSRF_HEADER, csrf);
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
         };
         const parseDoc = (text: string): DocumentResponse =>
-          transformKeys(JSON.parse(text) as Record<string, unknown>) as DocumentResponse;
+          apiClient['transformKeys'](
+            JSON.parse(text) as Record<string, unknown>,
+          ) as DocumentResponse;
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
@@ -717,7 +784,8 @@ export const documentApi = {
     );
   },
   async getContent(id: string, workspaceId: string): Promise<Blob> {
-    const token = getToken();
+    const token =
+      typeof window !== 'undefined' ? window.localStorage.getItem('vaeloom.accessToken') : null;
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const res = await fetch(contentUrl(id, workspaceId), {
       headers,
@@ -752,16 +820,16 @@ export interface AgentActionHistory {
   createdAt: string | null;
 }
 
-// ─── Resume ──────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Resume ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface ResumeResponse {
   id: string;
-  workspaceId: string;
-  variantType: string;
+  workspace_id: string;
+  variant_type: string;
   content: Record<string, unknown>;
   version: number;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface GenerateResumeRequest {
@@ -769,131 +837,6 @@ export interface GenerateResumeRequest {
   job_description?: string;
   target_role?: string;
   company?: string;
-}
-
-export interface ResumeTemplate {
-  slug: string;
-  name: string;
-  category: string;
-  description: string;
-  bestFor: string[];
-  atsCompatibility: number;
-  accentColor: string;
-  fontStack: string;
-  layout: string;
-}
-
-export interface ResumeArtifact {
-  id: string;
-  workspaceId: string;
-  resumeId: string;
-  artifactKind: string;
-  templateSlug: string | null;
-  format: string;
-  filename: string;
-  mediaType: string;
-  fileSize: number;
-  createdAt: string;
-}
-
-export interface TailorResumeRequest {
-  job_description: string;
-  target_role?: string;
-  company?: string;
-}
-
-export interface CompileResumeRequest {
-  template_slug: string;
-  format?: 'pdf' | 'docx' | 'html';
-  max_pages?: number;
-}
-
-export interface CoverLetterRequest {
-  body: string;
-  template_slug: string;
-  format?: 'pdf' | 'docx' | 'html';
-  recipient?: string;
-  company?: string;
-  role?: string;
-}
-
-export interface ResumeSource {
-  id: string;
-  resumeId: string;
-  workspaceId: string;
-  path: string;
-  content: string;
-  lang: string;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface UpdateSourceRequest {
-  content: string;
-  path?: string;
-  lang?: 'typst' | 'latex' | 'html';
-}
-
-export interface CompileTypstRequest {
-  template_slug?: string;
-  typst_source?: string;
-  format?: 'pdf' | 'html';
-  max_pages?: number;
-}
-
-export interface InlineAiRequest {
-  start_line: number;
-  end_line: number;
-  intent: 'tailor' | 'xyz' | 'condense' | 'ats_fix';
-  target_jd?: string;
-  selected_text?: string;
-}
-
-export interface InlineAiResponse {
-  diff: Array<{
-    op: string;
-    oldText: string;
-    newText: string;
-    rationale: string;
-    confidence: number;
-    provenance?: string[];
-  }>;
-  suggestions: Array<{ type: string; severity: string; detail: string; fix: string }>;
-  ats_score?: Record<string, unknown> | null;
-}
-
-/** Fetch a compiled artifact as a Blob (bearer auth; GET needs no CSRF token). */
-export async function fetchArtifactBlob(workspaceId: string, artifactId: string): Promise<Blob> {
-  const token = getToken();
-  const res = await fetch(
-    `${API_BASE}${API_PREFIX}/resumes/artifacts/${artifactId}/download?workspace_id=${encodeURIComponent(workspaceId)}`,
-    {
-      credentials: 'include',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-    },
-  );
-  if (!res.ok) {
-    throw new ApiError(res.status, `Failed to download artifact (${res.status})`);
-  }
-  return res.blob();
-}
-
-/** Trigger a browser download of a compiled artifact. */
-export async function downloadArtifact(
-  workspaceId: string,
-  artifact: Pick<ResumeArtifact, 'id' | 'filename'>,
-): Promise<void> {
-  const blob = await fetchArtifactBlob(workspaceId, artifact.id);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = artifact.filename || 'resume';
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export const resumeApi = {
@@ -906,83 +849,9 @@ export const resumeApi = {
   generate(resumeId: string, body: GenerateResumeRequest): Promise<ResumeResponse> {
     return apiClient.post<ResumeResponse>(`/resumes/${resumeId}/generate`, body);
   },
-  listTemplates(): Promise<ResumeTemplate[]> {
-    return apiClient.get<ResumeTemplate[]>('/resumes/templates');
-  },
-  tailor(
-    resumeId: string,
-    workspaceId: string,
-    body: TailorResumeRequest,
-  ): Promise<ResumeResponse> {
-    return apiClient.post<ResumeResponse>(
-      `/resumes/${resumeId}/tailor?workspace_id=${encodeURIComponent(workspaceId)}`,
-      body,
-    );
-  },
-  compile(
-    resumeId: string,
-    workspaceId: string,
-    body: CompileResumeRequest,
-  ): Promise<ResumeArtifact> {
-    return apiClient.post<ResumeArtifact>(
-      `/resumes/${resumeId}/compile?workspace_id=${encodeURIComponent(workspaceId)}`,
-      body,
-    );
-  },
-  coverLetter(
-    resumeId: string,
-    workspaceId: string,
-    body: CoverLetterRequest,
-  ): Promise<ResumeArtifact> {
-    return apiClient.post<ResumeArtifact>(
-      `/resumes/${resumeId}/cover-letter?workspace_id=${encodeURIComponent(workspaceId)}`,
-      body,
-    );
-  },
-  listArtifacts(resumeId: string, workspaceId: string): Promise<ResumeArtifact[]> {
-    return apiClient.get<ResumeArtifact[]>(`/resumes/${resumeId}/artifacts`, {
-      workspace_id: workspaceId,
-    });
-  },
-  // ── Overleaf-style source (Typst/LaTeX) — hybrid WASM + Tectonic ──
-  getSource(resumeId: string, workspaceId: string): Promise<ResumeSource> {
-    return apiClient.get<ResumeSource>(`/resumes/${resumeId}/source`, {
-      workspace_id: workspaceId,
-    });
-  },
-  updateSource(
-    resumeId: string,
-    workspaceId: string,
-    body: UpdateSourceRequest,
-  ): Promise<ResumeSource> {
-    return apiClient.put<ResumeSource>(
-      `/resumes/${resumeId}/source?workspace_id=${encodeURIComponent(workspaceId)}`,
-      body,
-    );
-  },
-  compileTypst(
-    resumeId: string,
-    workspaceId: string,
-    body: CompileTypstRequest,
-  ): Promise<ResumeArtifact> {
-    return apiClient.post<ResumeArtifact>(
-      `/resumes/${resumeId}/compile-typst?workspace_id=${encodeURIComponent(workspaceId)}`,
-      body,
-    );
-  },
-  inlineAi(
-    resumeId: string,
-    workspaceId: string,
-    body: InlineAiRequest,
-  ): Promise<InlineAiResponse> {
-    return apiClient.post<InlineAiResponse>(
-      `/resumes/${resumeId}/ai/inline?workspace_id=${encodeURIComponent(workspaceId)}`,
-      body,
-    );
-  },
 };
 
-// ─── Application ─────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Application ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface ApplicationCreateRequest {
   job_external_id?: string;
@@ -1041,7 +910,7 @@ export const applicationApi = {
   },
 };
 
-// ─── Connector ───────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Connector ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface ConnectorCreateRequest {
   name: string;
@@ -1109,7 +978,7 @@ export const connectorApi = {
   },
 };
 
-// ─── Consent / Data rights (DPDP) ───────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Consent / Data rights (DPDP) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface ConsentScope {
   scope: string;
@@ -1173,7 +1042,7 @@ export const gdprApi = {
   },
 };
 
-// ─── Approval ───────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Approval ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface ApprovalItem {
   id: string;
@@ -1220,7 +1089,7 @@ export const approvalApi = {
   },
 };
 
-// ─── Notification ────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Notification ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface SendNotificationRequest {
   channel: string;
@@ -1295,7 +1164,7 @@ export const notificationApi = {
   },
 };
 
-// ─── Scheduler ───────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Scheduler ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface CreateJobRequest {
   name: string;
@@ -1387,7 +1256,7 @@ export const schedulerApi = {
   },
 };
 
-// ─── Search ──────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Search ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface SearchRequest {
   query: string;
@@ -1415,7 +1284,7 @@ export const searchApi = {
   },
 };
 
-// ─── Event ───────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Event ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface PublishEventRequest {
   type: string;
@@ -1449,7 +1318,7 @@ export const eventApi = {
   },
 };
 
-// ─── Integration ─────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Integration ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface IntegrationCreateRequest {
   name: string;
@@ -1492,7 +1361,7 @@ export const integrationApi = {
   },
 };
 
-// ─── Analytics ───────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Analytics ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface UsageTimePoint {
   date: string;
@@ -1551,7 +1420,7 @@ export const analyticsApi = {
   },
 };
 
-// ─── Audit ───────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Audit ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface RecordAuditEventRequest {
   actor_id: string;
@@ -1614,7 +1483,7 @@ export const auditApi = {
   },
 };
 
-// ─── IAM ─────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ IAM ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface IAMCreateUserRequest {
   email: string;
@@ -1677,7 +1546,7 @@ export const iamApi = {
   },
 };
 
-// ─── Plugin ──────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Plugin ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface RegisterPluginRequest {
   name: string;
@@ -1792,7 +1661,7 @@ export const pluginApi = {
   },
 };
 
-// ─── Chat ────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Chat ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export const chatApi = {
   send(
@@ -1803,7 +1672,7 @@ export const chatApi = {
   },
 };
 
-// ─── Billing ─────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Billing ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface UsageRecordResponse {
   id: string;
@@ -1843,7 +1712,7 @@ export const billingApi = {
   },
 };
 
-// ─── BYOK Provider Keys (Bring Your Own Key) ─────────────────────────────
+// ΓöÇΓöÇΓöÇ BYOK Provider Keys (Bring Your Own Key) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface ProviderKeyResponse {
   id: string;
@@ -1916,7 +1785,7 @@ export const providerKeysApi = {
   },
 };
 
-// ─── Agents Catalog ───────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Agents Catalog ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface CatalogToolDef {
   name: string;
@@ -1950,7 +1819,7 @@ export const agentCatalogApi = {
   },
 };
 
-// ─── Memory Feed / Lineage ────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Memory Feed / Lineage ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface MemoryFeedItem {
   kind: string;
