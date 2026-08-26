@@ -22,7 +22,7 @@
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-resizable-panels": "^4.12.3",
-    "swr": "^2.2.0",
+    "swr": "^2.5.1",
     "three": "0.170.0"
   },
   "devDependencies": {
