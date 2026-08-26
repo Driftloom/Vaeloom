@@ -30,7 +30,7 @@ export function createIntelligenceCore(
       time: { value: 0 },
       colorA: { value: new THREE.Color(palette.core) },
       colorB: { value: new THREE.Color('#ffffff') },
-      opacity: { value: theme === 'light' ? 0.55 : 0.72 },
+      opacity: { value: theme === 'light' ? 0.62 : 0.82 },
     },
     vertexShader: `
       varying vec3 vPos;
@@ -40,8 +40,8 @@ export function createIntelligenceCore(
         vPos = position;
         vNormal = normal;
         vec3 p = position;
-        // subtle noise deformation
-        p += normal * 0.015 * sin(position.x * 8.0 + time * 1.4) * cos(position.y * 6.0 + time * 0.9);
+        // subtle noise deformation — the core is never perfectly still
+        p += normal * 0.018 * sin(position.x * 8.0 + time * 1.4) * cos(position.y * 6.0 + time * 0.9);
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }
     `,
@@ -52,17 +52,22 @@ export function createIntelligenceCore(
       uniform float opacity;
       varying vec3 vPos;
       varying vec3 vNormal;
-      // simple fbm-ish
+      // evolving density field
       float noise(vec3 p) {
         return sin(p.x*4.0 + time*0.7)*0.5 + cos(p.y*5.0 - time*0.6)*0.5 + sin(p.z*3.0 + time*0.5)*0.5;
       }
       void main() {
-        float n = noise(vPos * 2.2);
+        // slowly drifting internal field — computation happening inside
+        float n = noise(vPos * 2.5 + vec3(0.0, time * 0.18, 0.0));
+        // curved energy strands that flow through the core
+        float flow = sin(vPos.x*6.0 + time*1.6)
+                   * sin(vPos.y*5.0 - time*1.2)
+                   * sin(vPos.z*4.0 + time*0.9);
         float fresnel = pow(1.0 - max(0.0, dot(normalize(vNormal), vec3(0.0,0.0,1.0))), 2.0);
-        vec3 col = mix(colorA, colorB, fresnel * 0.45 + n * 0.15);
-        // internal flow
-        col += vec3(0.08) * sin(n*6.0 + time*1.2);
-        gl_FragColor = vec4(col, opacity * (0.85 + fresnel*0.3));
+        vec3 col = mix(colorA, colorB, clamp(fresnel*0.5 + n*0.2 + 0.1, 0.0, 1.0));
+        col += colorB * (0.14 + 0.14 * flow);                 // luminous internal energy
+        col += colorA * (0.12 * sin(n*6.0 + time*1.4));       // evolving density
+        gl_FragColor = vec4(col, opacity * (0.9 + fresnel*0.35));
       }
     `,
     transparent: true,
@@ -145,6 +150,36 @@ export function createIntelligenceCore(
   netLines.scale.setScalar(1.45);
   group.add(netLines);
 
+  // Layer C2 — outer translucent shell (slower, coordinated breathing)
+  const outerShellGeo = new THREE.IcosahedronGeometry(1.5, 3);
+  const outerShellOrig = Float32Array.from(
+    (outerShellGeo.getAttribute('position') as THREE.BufferAttribute).array as Float32Array,
+  );
+  const outerShellMesh = new THREE.Mesh(
+    outerShellGeo,
+    new THREE.MeshPhysicalMaterial({
+      color: palette.core,
+      transparent: true,
+      opacity: theme === 'light' ? 0.05 : 0.08,
+      transmission: theme === 'light' ? 0.5 : 0.65,
+      roughness: 0.2,
+      metalness: 0.1,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  );
+  group.add(outerShellMesh);
+
+  // Layer C3 — far network veil (gives the system more spatial layers)
+  const outerNetGeo = new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(2.15, 1));
+  const outerNetMat = new THREE.LineBasicMaterial({
+    color: palette.structure,
+    transparent: true,
+    opacity: theme === 'light' ? 0.1 : 0.16,
+  });
+  const outerNet = new THREE.LineSegments(outerNetGeo, outerNetMat);
+  group.add(outerNet);
+
   // Halo
   const haloMat = new THREE.SpriteMaterial({
     map: new THREE.CanvasTexture(
@@ -178,6 +213,14 @@ export function createIntelligenceCore(
     { radius: 1.42, tilt: -24, speed: 0.11, color: '#22d3ee', opacity: 0.32, segments: 96 }, // <-- shifted accent
     { radius: 1.68, tilt: 32, speed: -0.06, color: palette.structure, opacity: 0.18, segments: 96 },
     { radius: 1.92, tilt: -12, speed: 0.045, color: palette.core, opacity: 0.15, segments: 96 },
+    {
+      radius: 2.35,
+      tilt: 40,
+      speed: -0.035,
+      color: palette.structure,
+      opacity: 0.12,
+      segments: 96,
+    },
   ];
   orbitDefs.forEach((def) => {
     const curve = new THREE.EllipseCurve(
@@ -247,14 +290,14 @@ export function createIntelligenceCore(
       innerStruct.scale.setScalar(1 + breathe * 0.6);
       shellMesh.scale.setScalar(1 + breathe * 0.35);
       netLines.scale.setScalar(1.45 + breathe * 0.18);
-      halo.scale.setScalar(4.4 + Math.sin(t * 1.4) * 0.12 * s);
+      halo.scale.setScalar(4.6 + Math.sin(t * 1.4) * 0.14 * s);
 
       // Internal energy time
       (coreMat.uniforms as any)['time'].value = t * 0.9;
       (coreMat.uniforms as any)['opacity'].value =
         theme === 'light'
-          ? 0.52 + Math.sin(t * 0.6) * 0.08 * s
-          : 0.68 + Math.sin(t * 0.6) * 0.12 * s;
+          ? 0.6 + Math.sin(t * 0.6) * 0.08 * s
+          : 0.78 + Math.sin(t * 0.6) * 0.12 * s;
 
       // Inner points drift
       const ipos = innerGeo.getAttribute('position') as THREE.BufferAttribute;
@@ -286,28 +329,53 @@ export function createIntelligenceCore(
       netLines.rotation.y += dt * 0.04 * s;
       netLines.rotation.z = Math.sin(t * 0.06) * 0.05 * s;
 
+      // Outer shell — slower counter-motion, gives the system more depth
+      outerShellMesh.scale.setScalar(1 + breathe * 0.25);
+      outerShellMesh.rotation.y -= dt * 0.03 * s;
+      outerShellMesh.rotation.x = Math.sin(t * 0.05) * 0.05 * s;
+      outerNet.rotation.y -= dt * 0.025 * s;
+      outerNet.rotation.z = Math.sin(t * 0.04) * 0.04 * s;
+
       // Shell deformation — very subtle electromagnetic breathing
       if (!rm) {
-        const pos = shellPosAttr;
-        const arr2 = pos.array as Float32Array;
-        for (let i = 0; i < arr2.length; i += 3) {
-          const ox = shellOrig[i]!;
-          const oy = shellOrig[i + 1]!;
-          const oz = shellOrig[i + 2]!;
-          const n = new THREE.Vector3(ox, oy, oz).normalize();
-          const deform =
-            Math.sin(t * 0.5 + ox * 3.0) * 0.012 + Math.cos(t * 0.4 + oy * 2.0) * 0.008;
-          arr2[i] = ox + n.x * deform;
-          arr2[i + 1] = oy + n.y * deform;
-          arr2[i + 2] = oz + n.z * deform;
-        }
-        pos.needsUpdate = true;
-        shellGeo.computeVertexNormals();
+        const deformShell = (
+          posAttr: THREE.BufferAttribute,
+          orig: Float32Array,
+          geo: THREE.BufferGeometry,
+          phase: number,
+        ) => {
+          const arr2 = posAttr.array as Float32Array;
+          for (let i = 0; i < arr2.length; i += 3) {
+            const ox = orig[i]!;
+            const oy = orig[i + 1]!;
+            const oz = orig[i + 2]!;
+            const n = new THREE.Vector3(ox, oy, oz).normalize();
+            const deform =
+              Math.sin(t * 0.5 + ox * 3.0 + phase) * 0.012 +
+              Math.cos(t * 0.4 + oy * 2.0 + phase) * 0.008;
+            arr2[i] = ox + n.x * deform;
+            arr2[i + 1] = oy + n.y * deform;
+            arr2[i + 2] = oz + n.z * deform;
+          }
+          posAttr.needsUpdate = true;
+          geo.computeVertexNormals();
+        };
+        deformShell(shellPosAttr, shellOrig, shellGeo, 0);
+        deformShell(
+          outerShellGeo.getAttribute('position') as THREE.BufferAttribute,
+          outerShellOrig,
+          outerShellGeo,
+          1.7,
+        );
         // Opacity pulse only slightly, not synced to heartbeat
         (netMat as any).opacity =
           theme === 'light'
             ? 0.14 + Math.sin(t * 0.55) * 0.04 * s
             : 0.22 + Math.sin(t * 0.55) * 0.06 * s;
+        (outerNetMat as any).opacity =
+          theme === 'light'
+            ? 0.1 + Math.sin(t * 0.47) * 0.03 * s
+            : 0.16 + Math.sin(t * 0.47) * 0.05 * s;
       }
 
       // Orbits — each has its own tilt and speed, all slow
@@ -333,6 +401,10 @@ export function createIntelligenceCore(
       (shellMesh.material as any).dispose?.();
       netGeo.dispose();
       (netLines.material as any).dispose?.();
+      outerShellGeo.dispose();
+      (outerShellMesh.material as any).dispose?.();
+      outerNetGeo.dispose();
+      (outerNetMat as any).dispose?.();
       (haloMat.map as THREE.CanvasTexture)?.dispose?.();
       (haloMat as any).dispose?.();
       orbits.forEach((o) => {
