@@ -39,7 +39,8 @@ SAMPLE_CONTENT = {
 class TestTemplateRegistry:
     def test_exactly_five_templates(self):
         templates = resume_templates.list_templates()
-        assert len(templates) == 5
+        # Overleaf twins added (ADR-034 + Overleaf Studio): 5 HTML + 5 Typst = 10
+        assert len(templates) == 10
 
     def test_expected_slugs(self):
         slugs = {t.slug for t in resume_templates.list_templates()}
@@ -49,6 +50,11 @@ class TestTemplateRegistry:
             "executive-leadership",
             "minimalist-clean",
             "creative-portfolio",
+            "jakes-resume",
+            "deedy-resume",
+            "moderncv-classic",
+            "awesome-cv",
+            "harvard-cv",
         }
 
     def test_all_metadata_complete(self):
@@ -102,6 +108,18 @@ class TestRendering:
         assert "Jane Doe" in html
         assert "Acme" in html
         assert len(html) > 2000
+
+    @pytest.mark.parametrize(
+        "slug",
+        ["jakes-resume", "deedy-resume", "moderncv-classic", "awesome-cv", "harvard-cv"],
+    )
+    async def test_render_resume_typst_all_templates(self, slug):
+        typst = resume_templates.render_resume_typst(slug, SAMPLE_CONTENT)
+        # Some twins split or upper-case the name (awesome-cv: "Jane" + " Doe", harvard: "JANE DOE")
+        assert "Jane" in typst or "JANE" in typst
+        assert "Doe" in typst or "DOE" in typst
+        assert "Acme" in typst
+        assert len(typst) > 500
 
     async def test_render_escapes_html_injection(self):
         malicious = dict(SAMPLE_CONTENT)

@@ -29,6 +29,9 @@ class ApplicationAgent(BaseAgent):
         Tool(name="query_graph", description="Query career knowledge graph"),
         Tool(name="verify_application_link", description="Validate the application URL is live before submitting"),
         Tool(name="scrape_company_insights", description="Company intel for tailored applications and interviews"),
+        Tool(name="compile_cover_letter", description="Compile a tailored cover letter via template engine"),
+        Tool(name="compile_resume_pdf", description="Compile tailored resume to PDF for submission"),
+        Tool(name="calculate_semantic_ats_score", description="ATS check before submission"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["career", "timeline"],

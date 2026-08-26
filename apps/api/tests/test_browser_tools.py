@@ -364,7 +364,11 @@ class TestRegistryWiring:
     def test_tool_count_now_28(self):
         from api.tools.definitions import ALL_TOOLS
 
-        assert len(ALL_TOOLS) == 28
+        assert len(ALL_TOOLS) == 31
+        # compile pipeline tools added in ADR-037
+        for name in ("compile_resume_pdf", "compile_resume_docx", "compile_cover_letter"):
+            assert name in ALL_TOOLS
+            assert ALL_TOOLS[name].required_scope == "system.document.compile"
 
     def test_new_tools_present_with_scope(self):
         from api.tools.definitions import ALL_TOOLS

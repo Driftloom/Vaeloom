@@ -20,11 +20,14 @@ logger = logging.getLogger(__name__)
 # ── Heuristics: which agents can run in parallel vs sequential ──────────
 # Resume -> ATS -> Application is a sequential pipeline (each needs previous output).
 # Gmail, Scheduler, Organization are independent and can run in parallel.
-PARALLEL_SAFE = {"gmail", "scheduler", "organization", "memory", "research", "github"}
+# ADR-037 extends chains to cover common continuations (memory↔resume, github↔coding)
+PARALLEL_SAFE = {"gmail", "scheduler", "organization", "memory", "research", "github", "analytics", "recommendation"}
 SEQUENTIAL_CHAINS = [
-    ["resume", "ats", "application"],
+    ["memory", "resume", "ats", "application"],
     ["career", "learning"],
     ["planning", "research"],
+    ["github", "coding"],
+    ["organization", "memory"],
 ]
 
 # Minimum thresholds for multi-agent detection
@@ -144,6 +147,65 @@ def is_multi_agent_request(message: str) -> bool:
     return matching_cats >= MULTI_AGENT_MIN_CATEGORIES
 
 
+async def _try_llm_planner(message: str, candidates: list[str]) -> list[list[str]] | None:
+    """Optional LLM-powered DAG planner (SUPERVISOR_LLM_PLANNER=1).
+
+    Asks the LLM to order the given candidate agents into execution layers.
+    Falls back to heuristic on any failure (offline, no key, parse error).
+    """
+    import os as _os
+
+    if _os.environ.get("SUPERVISOR_LLM_PLANNER", "").lower() not in ("1", "true", "yes"):
+        return None
+    try:
+        from ..config import settings as _settings
+
+        if not _settings.llm_api_key:
+            return None
+        from ..services.llm_service import llm_service
+
+        # Keep prompt tiny and deterministic — only ordering, not new agents
+        prompt = (
+            "You are a DAG planner. Given the user request and candidate agents, "
+            "return ONLY JSON: {\"layers\": [[\"agent\",...], ...]} where layers are "
+            "sequential batches and agents inside one layer run in parallel. "
+            "Use only agents from the candidate list, preserve all, order dependencies "
+            f"(resume before ats, ats before application). Candidates: {candidates}\n\n"
+            f"User request: {message[:600]}"
+        )
+        resp = await llm_service.generate_completion(
+            [{"role": "user", "content": prompt}], temperature=0.1, max_tokens=300
+        )
+        import json as _json
+        import re as _re
+        txt = resp.get("content", "") or ""
+        # Extract first JSON object
+        m = _re.search(r"\{.*\}", txt, _re.DOTALL)
+        if not m:
+            return None
+        data = _json.loads(m.group(0))
+        layers = data.get("layers")
+        if not isinstance(layers, list) or not layers:
+            return None
+        # Validate: all are lists of known candidates, no invented agents
+        flat = []
+        for layer in layers:
+            if not isinstance(layer, list):
+                return None
+            for ag in layer:
+                if ag not in candidates:
+                    return None
+                flat.append(ag)
+        if set(flat) != set(candidates):
+            return None
+        # Must respect known sequential dependencies (heuristic safeguard)
+        logger.info(f"SUPERVISOR LLM planner succeeded: {layers}")
+        return layers
+    except Exception as e:
+        logger.debug(f"SUPERVISOR LLM planner fallback to heuristic ({e})")
+        return None
+
+
 async def run_supervisor(message: str, workspace_id: str, request_id: str | None = None) -> dict[str, Any]:
     """Execute multi-agent DAG and return merged response."""
     request_id = request_id or str(uuid.uuid4())
@@ -156,8 +218,16 @@ async def run_supervisor(message: str, workspace_id: str, request_id: str | None
         single = await _run_single_agent(top_agent, message, workspace_id, request_id)
         return single
 
-    layers = _build_dag(subtasks)
-    logger.info(f"SUPERVISOR DAG: {layers} from subtasks {subtasks}")
+    # Try LLM planner first when enabled, fallback to heuristic
+    candidate_names = [a for a, _ in subtasks]
+    llm_layers = await _try_llm_planner(message, candidate_names)
+    if llm_layers is not None:
+        layers = llm_layers
+        planner = "llm"
+    else:
+        layers = _build_dag(subtasks)
+        planner = "heuristic"
+    logger.info(f"SUPERVISOR DAG: {layers} from subtasks {subtasks} (planner={planner})")
 
     context: dict[str, Any] = {}
     all_proposals: list[dict[str, Any]] = []
@@ -255,8 +325,16 @@ async def run_supervisor_stream(message: str, workspace_id: str, request_id: str
         yield {"event": "done", "data": result}
         return
 
-    layers = _build_dag(subtasks)
-    yield {"event": "supervisor_start", "data": {"dag": layers, "subtasks": [a for a, _ in subtasks]}}
+    candidate_names = [a for a, _ in subtasks]
+    llm_layers = await _try_llm_planner(message, candidate_names)
+    if llm_layers is not None:
+        layers = llm_layers
+        planner = "llm"
+    else:
+        layers = _build_dag(subtasks)
+        planner = "heuristic"
+    logger.info(f"SUPERVISOR stream DAG: {layers} (planner={planner})")
+    yield {"event": "supervisor_start", "data": {"dag": layers, "subtasks": [a for a, _ in subtasks], "planner": planner}}
 
     context: dict[str, Any] = {}
     all_proposals: list[dict[str, Any]] = []
@@ -264,7 +342,7 @@ async def run_supervisor_stream(message: str, workspace_id: str, request_id: str
     summaries: list[str] = []
 
     for layer_idx, layer in enumerate(layers):
-        yield {"event": "supervisor_layer_start", "data": {"layer": layer_idx, "agents": layer}}
+        yield {"event": "supervisor_layer_start", "data": {"layer": layer_idx, "agents": layer, "planner": planner}}
         if len(layer) == 1:
             result = await _run_single_agent(layer[0], message, workspace_id, request_id, context)
             results = [result]

@@ -85,8 +85,12 @@ class Settings(BaseSettings):
     prompt_dir: str = ""
     mvp_scope_enforced: bool = True
     enterprise_routes_enabled: bool = False
-    # ReAct (LLM-driven dynamic tool calling) is opt-in — static dispatch stays
-    # the deterministic primary path. Enable per environment via AGENT_REACT_ENABLED=1
+    # ReAct (LLM-driven dynamic tool calling) — opt-in per ADR-033.
+    # Static dispatch is the deterministic primary path. Enable via
+    # AGENT_REACT_ENABLED=1 (set in prod overlay; keep 0 in local/.env.example
+    # for determinism and offline tests). When True but LLM_API_KEY missing,
+    # _try_react_loop gracefully falls back to static, so ON is safe.
+    # Convergence (ADR-037): both tiers now share executor audit/timeout.
     agent_react_enabled: bool = False
     # Browser/scraping tools (browse_job_page etc.) — network-heavy fetches are
     # quota-limited per workspace (sliding hour window).

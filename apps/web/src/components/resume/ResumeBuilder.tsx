@@ -9,6 +9,7 @@ import {
   type ResumeResponse,
   type ResumeTemplate,
 } from '@/lib/api-client';
+import Link from 'next/link';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { ProvenanceBadge } from '@/components/shared/ProvenanceBadge';
@@ -500,6 +501,12 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
                       >
                         JSON
                       </button>
+                      <Link
+                        href={`/workspace/${workspaceId}/resume/${masterResume.id}/edit`}
+                        className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-white text-xs !px-3 !py-1.5 text-center"
+                      >
+                        ✎ Overleaf Edit
+                      </Link>
                     </div>
                   </div>
                   <pre className="flex-1 bg-transparent text-text p-6 overflow-y-auto font-sans text-sm leading-relaxed whitespace-pre-wrap">
@@ -579,6 +586,12 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
                       >
                         JSON
                       </button>
+                      <Link
+                        href={`/workspace/${workspaceId}/resume/${v.id}/edit`}
+                        className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-700 hover:bg-emerald-100"
+                      >
+                        ✎ Overleaf
+                      </Link>
                       {masterResume && (
                         <button
                           onClick={() => openDiff(masterResume, v)}

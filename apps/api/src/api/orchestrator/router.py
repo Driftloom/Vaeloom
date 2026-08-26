@@ -236,6 +236,7 @@ async def classify_intent(message: str) -> tuple[str, float]:
 MVP_CANONICAL_AGENTS = frozenset({
     "organization", "memory", "resume", "ats", "job_search",
     "application", "gmail", "scheduler", "planning", "research",
+    "connector",
 })
 
 # Categories that map only to canonical agents
@@ -247,6 +248,7 @@ MVP_CATEGORY_AGENT_MAP = {
     "schedule_time": ["scheduler"],
     "memory_extraction": ["memory"],
     "planning_research": ["planning", "research"],
+    "integrations": ["connector"],
 }
 
 

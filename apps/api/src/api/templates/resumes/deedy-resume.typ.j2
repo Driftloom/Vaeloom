@@ -1,0 +1,68 @@
+{# Deedy Resume — two-column high density, sidebar skills #}
+#set page(paper: "a4", margin: 0pt)
+#set text(font: "Helvetica", size: 9pt, fill: rgb("#1f2937"))
+#set par(leading: 0.5em)
+
+#grid(columns: (65%, 35%), gutter: 0pt)[
+  #block(inset: (x: 14pt, y: 12pt))[
+    #text(size: 16pt, weight: "bold", fill: rgb("#111827"))[{{ name }}]
+    {% if title %}#text(size: 9pt, style: "italic", fill: rgb("#4b5563"))[{{ title }}] \ {% endif %}
+    #text(size: 8pt, fill: rgb("#6b7280"))[
+      {% if email %}{{ email }} · {% endif %}{% if phone %}{{ phone }} · {% endif %}{% if location %}{{ location }}{% endif %}
+    ]
+    #v(6pt)
+    #line(length: 100%, stroke: 1pt + rgb("#2563eb"))
+
+    {% if summary %}
+    #heading(level: 2, outlined: false)[#text(size: 9pt, weight: "bold", fill: rgb("#2563eb"))[SUMMARY]]
+    #text(size: 8.5pt)[{{ summary }}]
+    #v(4pt)
+    {% endif %}
+
+    {% if experience %}
+    #heading(level: 2, outlined: false)[#text(size: 9pt, weight: "bold", fill: rgb("#2563eb"))[EXPERIENCE]]
+    {% for e in experience %}
+// provenance: {{ e.get('source_document_id','manual') }}
+    #block(below: 5pt)[
+      #text(weight: "bold", size: 9pt)[{{ e.role }}] #h(1fr) #text(size: 8pt, style: "italic")[{{ e.start }} – {{ e.end or "Present" }}] \
+      #text(size: 8.5pt, style: "italic")[{{ e.company }}{% if e.location %}, {{ e.location }}{% endif %}] \
+      {% if e.bullets %}#list(marker: [▸], indent: 8pt)[{% for b in e.bullets %}#list.item[#text(size: 8.5pt)[{{ b }}]]{% endfor %}]{% endif %}
+    ]
+    {% endfor %}
+    {% endif %}
+
+    {% if education %}
+    #heading(level: 2, outlined: false)[#text(size: 9pt, weight: "bold", fill: rgb("#2563eb"))[EDUCATION]]
+    {% for ed in education %}
+    #block(below: 3pt)[#text(weight: "bold", size: 8.5pt)[{{ ed.institution }}] #h(1fr) #text(size: 7.5pt)[{{ ed.start }} – {{ ed.end }}] \ #text(size: 8pt)[{{ ed.degree }}]]
+    {% endfor %}
+    {% endif %}
+  ]
+][
+  #block(fill: rgb("#1f2937"), inset: 12pt, height: 100%)[
+    #text(fill: white, size: 9pt, weight: "bold")[CONTACT] \ #v(4pt)
+    #text(fill: rgb("#d1d5db"), size: 7.5pt)[
+      {% if email %}{{ email }} \ {% endif %}{% if phone %}{{ phone }} \ {% endif %}{% if links.github %}{{ links.github }} \ {% endif %}{% if links.linkedin %}{{ links.linkedin }} \ {% endif %}
+    ]
+    #v(8pt)
+    {% if skills %}
+    #text(fill: white, size: 9pt, weight: "bold")[SKILLS] \ #v(4pt)
+    {% for g in skills %}
+    #text(fill: rgb("#93c5fd"), size: 7.5pt, weight: "bold")[{{ g.category | upper }}] \ 
+    #text(fill: white, size: 7.5pt)[{{ g['items'] | map(attribute='name') | join(" · ") }}] \ #v(3pt)
+    {% endfor %}
+    {% endif %}
+
+    {% if certifications %}
+    #text(fill: white, size: 9pt, weight: "bold")[CERTIFICATIONS] \ #v(4pt)
+    #text(fill: white, size: 7.5pt)[{% for c in certifications %}• {{ c }} \ {% endfor %}]
+    {% endif %}
+
+    {% if projects %}
+    #text(fill: white, size: 9pt, weight: "bold")[PROJECTS] \ #v(4pt)
+    {% for p in projects %}
+    #text(fill: white, size: 7.5pt, weight: "bold")[{{ p.name }}] \ #text(fill: rgb("#d1d5db"), size: 7pt)[{{ p.description | default("") }}] \ #v(2pt)
+    {% endfor %}
+    {% endif %}
+  ]
+]

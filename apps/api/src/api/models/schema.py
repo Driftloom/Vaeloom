@@ -123,6 +123,7 @@ class Workspace(Base):
     memory_records: Mapped[list["MemoryRecord"]] = relationship("MemoryRecord", back_populates="workspace", cascade="all, delete-orphan")
     entities: Mapped[list["Entity"]] = relationship("Entity", back_populates="workspace", cascade="all, delete-orphan")
     resumes: Mapped[list["Resume"]] = relationship("Resume", back_populates="workspace", cascade="all, delete-orphan")
+    resume_sources: Mapped[list["ResumeSource"]] = relationship("ResumeSource", back_populates="workspace", cascade="all, delete-orphan")
     applications: Mapped[list["Application"]] = relationship("Application", back_populates="workspace", cascade="all, delete-orphan")
     schedule_events: Mapped[list["ScheduleEvent"]] = relationship("ScheduleEvent", back_populates="workspace", cascade="all, delete-orphan")
     agent_actions: Mapped[list["AgentAction"]] = relationship("AgentAction", back_populates="workspace", cascade="all, delete-orphan")
@@ -396,6 +397,7 @@ class Resume(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="resumes")
+    sources: Mapped[list["ResumeSource"]] = relationship("ResumeSource", back_populates="resume", cascade="all, delete-orphan")
 
     __table_args__ = (Index("idx_resumes_workspace_id", "workspace_id"),)
 
@@ -423,6 +425,38 @@ class ResumeArtifact(Base):
     __table_args__ = (
         Index("idx_resume_artifacts_resume_id", "resume_id"),
         Index("idx_resume_artifacts_workspace_id", "workspace_id"),
+    )
+
+
+class ResumeSource(Base):
+    """Overleaf-style source file for a resume (Typst/LaTeX/HTML).
+
+    Stores the raw markup that powers the split-pane Monaco editor.
+    Canonical JSON `Resume.content` stays the structured source of truth;
+    this table holds the transpiled Typst/LaTeX text for live WASM compile.
+    One resume can have multiple source files (main.typ + includes) but MVP
+    uses a single `main.typ` / `main.tex` file.
+    """
+
+    __tablename__ = "resume_sources"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resume_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    path: Mapped[str] = mapped_column(String(500), default="main.typ")
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    lang: Mapped[str] = mapped_column(String(20), default="typst")  # typst | latex | html
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    resume: Mapped["Resume"] = relationship("Resume", back_populates="sources")
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="resume_sources")
+
+    __table_args__ = (
+        Index("idx_resume_sources_resume_id", "resume_id"),
+        Index("idx_resume_sources_workspace_id", "workspace_id"),
+        Index("idx_resume_sources_resume_path", "resume_id", "path"),
     )
 
 

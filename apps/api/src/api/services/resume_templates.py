@@ -2,10 +2,14 @@
 Resume template registry — industry-standard templates agents can select
 autonomously or the user can pick explicitly.
 
-Each template is a self-contained Jinja2 HTML document (inline CSS) rendered to:
-- HTML live preview (iframe in web UI)
-- PDF via Playwright Chromium (services/document_builder.py)
+Each template is a self-contained Jinja2 document rendered to:
+- HTML live preview (iframe in web UI) — 5 classic HTML templates
+- Typst live preview (WASM 50ms) — 5 Overleaf-grade Typst twins (Jake's, Deedy, ModernCV, Awesome-CV, Harvard)
+- PDF via Playwright Chromium (services/document_builder.py) or Typst WASM / Tectonic fallback
 - matching DOCX structure (python-docx)
+
+HTML templates: classic-harvard, tech-modern, minimalist-clean, executive-leadership, creative-portfolio
+Typst twins:    jakes-resume, deedy-resume, moderncv-classic, awesome-cv, harvard-cv
 
 Normalized resume data contract (see normalize_resume_content):
     name/email/phone/location/links/summary
@@ -99,6 +103,62 @@ class ResumeTemplateRegistry:
                 font_stack="'DM Sans', 'Outfit', 'Segoe UI', sans-serif",
                 layout="two-column",
             ),
+            # — Overleaf-grade Typst twins (WASM live, 50ms) —
+            ResumeTemplate(
+                slug="jakes-resume",
+                name="Jake's Resume",
+                category="Overleaf Classic — Single Column",
+                description="Gold-standard single-column with horizontal rules and bullet hierarchy. Most forked resume on Overleaf.",
+                best_for=["Software Engineering", "DevOps", "Product Management", "Data Science"],
+                ats_compatibility=100,
+                accent_color="#0f172a",
+                font_stack="Linux Libertine, Georgia, serif",
+                layout="single-column",
+            ),
+            ResumeTemplate(
+                slug="deedy-resume",
+                name="Deedy Resume",
+                category="Overleaf Two-Column",
+                description="High-density two-column: sidebar skills/coursework, main experience. For research & CS students.",
+                best_for=["Research", "CS Students", "Multi-Disciplinary", "Academia"],
+                ats_compatibility=96,
+                accent_color="#2563eb",
+                font_stack="Helvetica, Arial, sans-serif",
+                layout="two-column",
+            ),
+            ResumeTemplate(
+                slug="moderncv-classic",
+                name="ModernCV Classic",
+                category="Overleaf Corporate — Banking",
+                description="Elegant tabular alignment with subtle accent bars. Corporate & finance ready.",
+                best_for=["Finance", "Consulting", "Corporate", "Management"],
+                ats_compatibility=99,
+                accent_color="#0f766e",
+                font_stack="Source Sans Pro, Helvetica, sans-serif",
+                layout="single-column",
+            ),
+            ResumeTemplate(
+                slug="awesome-cv",
+                name="Awesome-CV",
+                category="Overleaf Modern — Color Accent",
+                description="Modern typography with FontAwesome icons and Emerald/Ruby/Slate accents.",
+                best_for=["Senior Engineers", "Tech Leads", "Modern Startups", "Design"],
+                ats_compatibility=95,
+                accent_color="#7c3aed",
+                font_stack="Roboto, Inter, sans-serif",
+                layout="single-column",
+            ),
+            ResumeTemplate(
+                slug="harvard-cv",
+                name="Harvard CV",
+                category="Overleaf Academic — Serif",
+                description="Classic serif, conservative single-spaced academic formatting.",
+                best_for=["Law", "Academia", "Government", "Executive"],
+                ats_compatibility=100,
+                accent_color="#1a1a1a",
+                font_stack="Garamond, Georgia, serif",
+                layout="single-column",
+            ),
         ]
 
     @classmethod
@@ -130,7 +190,30 @@ class ResumeTemplateRegistry:
         if tpl is None:
             raise ValueError(f"Unknown resume template: {slug}")
         data = normalize_resume_content(content)
-        jinja = self._env.get_template(f"resumes/{slug}.html.j2")
+        # HTML templates have .html.j2, Typst twins have .typ.j2 — route accordingly
+        ext = "typ.j2" if slug in {"jakes-resume", "deedy-resume", "moderncv-classic", "awesome-cv", "harvard-cv"} and (TEMPLATES_DIR / f"resumes/{slug}.typ.j2").exists() else "html.j2"
+        # Use same env; Typst is not HTML so disable autoescape for .typ
+        jinja = self._env.get_template(f"resumes/{slug}.{ext}")
+        return jinja.render(**data, template=tpl.model_dump())
+
+    def render_resume_typst(self, slug: str, content: dict) -> str:
+        """Render Typst source (for WASM live or Tectonic fallback). Never HTML-escapes."""
+        tpl = self.get_template(slug)
+        if tpl is None:
+            raise ValueError(f"Unknown resume template: {slug}")
+        data = normalize_resume_content(content)
+        # Typst templates are .typ.j2 — use a non-autoescaping env to preserve Typst syntax
+        typ_env = Environment(
+            loader=FileSystemLoader(str(TEMPLATES_DIR)),
+            autoescape=False,
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
+        # Fallback to HTML template if Typst twin missing (graceful)
+        typ_path = f"resumes/{slug}.typ.j2"
+        html_path = f"resumes/{slug}.html.j2"
+        chosen = typ_path if (TEMPLATES_DIR / typ_path).exists() else html_path
+        jinja = typ_env.get_template(chosen)
         return jinja.render(**data, template=tpl.model_dump())
 
     def render_cover_letter_html(self, slug: str, content: dict, body: str,

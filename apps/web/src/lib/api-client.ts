@@ -817,6 +817,52 @@ export interface CoverLetterRequest {
   role?: string;
 }
 
+export interface ResumeSource {
+  id: string;
+  resumeId: string;
+  workspaceId: string;
+  path: string;
+  content: string;
+  lang: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateSourceRequest {
+  content: string;
+  path?: string;
+  lang?: 'typst' | 'latex' | 'html';
+}
+
+export interface CompileTypstRequest {
+  template_slug?: string;
+  typst_source?: string;
+  format?: 'pdf' | 'html';
+  max_pages?: number;
+}
+
+export interface InlineAiRequest {
+  start_line: number;
+  end_line: number;
+  intent: 'tailor' | 'xyz' | 'condense' | 'ats_fix';
+  target_jd?: string;
+  selected_text?: string;
+}
+
+export interface InlineAiResponse {
+  diff: Array<{
+    op: string;
+    oldText: string;
+    newText: string;
+    rationale: string;
+    confidence: number;
+    provenance?: string[];
+  }>;
+  suggestions: Array<{ type: string; severity: string; detail: string; fix: string }>;
+  ats_score?: Record<string, unknown> | null;
+}
+
 /** Fetch a compiled artifact as a Blob (bearer auth; GET needs no CSRF token). */
 export async function fetchArtifactBlob(workspaceId: string, artifactId: string): Promise<Blob> {
   const token = getToken();
@@ -897,6 +943,42 @@ export const resumeApi = {
     return apiClient.get<ResumeArtifact[]>(`/resumes/${resumeId}/artifacts`, {
       workspace_id: workspaceId,
     });
+  },
+  // ── Overleaf-style source (Typst/LaTeX) — hybrid WASM + Tectonic ──
+  getSource(resumeId: string, workspaceId: string): Promise<ResumeSource> {
+    return apiClient.get<ResumeSource>(`/resumes/${resumeId}/source`, {
+      workspace_id: workspaceId,
+    });
+  },
+  updateSource(
+    resumeId: string,
+    workspaceId: string,
+    body: UpdateSourceRequest,
+  ): Promise<ResumeSource> {
+    return apiClient.put<ResumeSource>(
+      `/resumes/${resumeId}/source?workspace_id=${encodeURIComponent(workspaceId)}`,
+      body,
+    );
+  },
+  compileTypst(
+    resumeId: string,
+    workspaceId: string,
+    body: CompileTypstRequest,
+  ): Promise<ResumeArtifact> {
+    return apiClient.post<ResumeArtifact>(
+      `/resumes/${resumeId}/compile-typst?workspace_id=${encodeURIComponent(workspaceId)}`,
+      body,
+    );
+  },
+  inlineAi(
+    resumeId: string,
+    workspaceId: string,
+    body: InlineAiRequest,
+  ): Promise<InlineAiResponse> {
+    return apiClient.post<InlineAiResponse>(
+      `/resumes/${resumeId}/ai/inline?workspace_id=${encodeURIComponent(workspaceId)}`,
+      body,
+    );
   },
 };
 

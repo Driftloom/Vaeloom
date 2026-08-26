@@ -1,0 +1,77 @@
+{# Jake's Resume — Gold Standard single-column, horizontal rules, bullet hierarchy #}
+#set page(paper: "a4", margin: (x: 1.8cm, y: 1.5cm))
+#set text(font: "Linux Libertine", size: 10pt, fill: rgb("#1a1a1a"))
+#set par(justify: false, leading: 0.55em)
+
+#align(center)[
+  #text(size: 18pt, weight: "bold", tracking: 0.8pt)[{{ name | upper }}]
+  {% if title %}
+  #text(size: 10pt, style: "italic", fill: rgb("#444"))[{{ title }}]
+  {% endif %}
+  #v(4pt)
+  #text(size: 8.5pt)[
+    {% if email %}{{ email }}{% endif %}{% if phone %} | {{ phone }}{% endif %}{% if location %} | {{ location }}{% endif %}
+    {% if links.linkedin %} | {{ links.linkedin }}{% endif %}{% if links.github %} | {{ links.github }}{% endif %}{% if links.portfolio %} | {{ links.portfolio }}{% endif %}
+  ]
+]
+
+#line(length: 100%, stroke: 1.2pt + rgb("#1a1a1a"))
+#v(6pt)
+
+{% if summary %}
+#heading(level: 2, outlined: false)[PROFESSIONAL SUMMARY]
+#line(length: 100%, stroke: 0.6pt)
+#text(size: 9.5pt)[{{ summary }}]
+#v(6pt)
+{% endif %}
+
+{% if experience %}
+#heading(level: 2, outlined: false)[EXPERIENCE]
+#line(length: 100%, stroke: 0.6pt)
+{% for e in experience %}
+// provenance: {{ e.get('source_document_id', 'manual') }}
+#block(below: 6pt)[
+  #grid(columns: (1fr, auto), [#text(weight: "bold")[{{ e.company }}{% if e.location %}, {{ e.location }}{% endif %}]] , [#text(style: "italic", size: 9pt)[{% if e.start %}{{ e.start }} – {{ e.end or "Present" }}{% endif %}]])
+  #text(style: "italic", size: 9.5pt)[{{ e.role }}]
+  {% if e.bullets %}
+  #list(marker: [•])[
+    {% for b in e.bullets %}#list.item[{{ b }}] // provenance: doc_{{ loop.index }}
+    {% endfor %}
+  ]
+  {% endif %}
+]
+{% endfor %}
+{% endif %}
+
+{% if education %}
+#heading(level: 2, outlined: false)[EDUCATION]
+#line(length: 100%, stroke: 0.6pt)
+{% for ed in education %}
+#block(below: 4pt)[
+  #grid(columns: (1fr, auto), [#text(weight: "bold")[{{ ed.institution }}]], [#text(size: 9pt, style: "italic")[{% if ed.start %}{{ ed.start }} – {{ ed.end }}{% endif %}]])
+  #text(style: "italic")[{{ ed.degree }}{% if ed.details %} — {{ ed.details }}{% endif %}]
+]
+{% endfor %}
+{% endif %}
+
+{% if skills %}
+#heading(level: 2, outlined: false)[SKILLS]
+#line(length: 100%, stroke: 0.6pt)
+{% for g in skills %}
+#text(weight: "bold")[{{ g.category }}:] {{ g['items'] | map(attribute='name') | join(", ") }} \
+{% endfor %}
+{% endif %}
+
+{% if certifications %}
+#heading(level: 2, outlined: false)[CERTIFICATIONS]
+#line(length: 100%, stroke: 0.6pt)
+#list(marker: [•])[{% for c in certifications %}#list.item[{{ c }}]{% endfor %}]
+{% endif %}
+
+{% if projects %}
+#heading(level: 2, outlined: false)[PROJECTS]
+#line(length: 100%, stroke: 0.6pt)
+{% for p in projects %}
+#block(below: 4pt)[#text(weight: "bold")[{{ p.name }}]{% if p.link %} — #link("{{ p.link }}")[{{ p.link }}]{% endif %}{% if p.description %} \ {{ p.description }}{% endif %}]
+{% endfor %}
+{% endif %}

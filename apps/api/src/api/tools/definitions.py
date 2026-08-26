@@ -543,6 +543,66 @@ EXECUTE_CODE_SANDBOX = ToolDefinition(
 )
 
 
+# ── Document Compilation Tools (ReAct-exposed, service-backed) ───────
+# Agents can now compile resume/cover-letter via executor rather than only via
+# HTTP POST /resumes/{id}/compile . Handlers delegate to services/document_builder.
+COMPILE_RESUME_PDF = ToolDefinition(
+    name="compile_resume_pdf",
+    description="Compile structured resume JSON into a styled PDF (via Playwright Chromium, template-aware, page-fit). Returns artifact bytes metadata or simulation when Chromium unavailable.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "template_slug": {"type": "string", "description": "One of classic-harvard, tech-modern, executive-leadership, minimalist-clean, creative-portfolio", "default": "minimalist-clean"},
+            "resume_content": {"type": "object", "description": "Canonical resume_content dict (normalize_resume_content schema). If omitted, master resume for workspace is used"},
+            "resume_id": {"type": "string", "description": "Optional resume ID to load content from DB when resume_content not supplied"},
+            "max_pages": {"type": "integer", "default": 2, "description": "Page budget for auto-shrink fit loop"},
+        },
+        "required": [],
+    },
+    output_schema={"type": "object", "properties": {"media_type": {"type": "string"}, "extension": {"type": "string"}, "size_bytes": {"type": "integer"}, "template": {"type": "string"}}},
+    required_scope="system.document.compile",
+    category="system",
+)
+
+COMPILE_RESUME_DOCX = ToolDefinition(
+    name="compile_resume_docx",
+    description="Compile structured resume JSON into an editable Word .docx (python-docx, ATS-parseable).",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "template_slug": {"type": "string", "default": "minimalist-clean"},
+            "resume_content": {"type": "object", "description": "Canonical resume_content dict. If omitted, master resume for workspace is used"},
+            "resume_id": {"type": "string"},
+        },
+        "required": [],
+    },
+    output_schema={"type": "object", "properties": {"media_type": {"type": "string"}, "extension": {"type": "string"}, "size_bytes": {"type": "integer"}}},
+    required_scope="system.document.compile",
+    category="system",
+)
+
+COMPILE_COVER_LETTER = ToolDefinition(
+    name="compile_cover_letter",
+    description="Compile a cover letter (resume header + body) into PDF/DOCX/HTML via the resume template engine.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "template_slug": {"type": "string", "default": "minimalist-clean"},
+            "resume_content": {"type": "object"},
+            "resume_id": {"type": "string"},
+            "body": {"type": "string", "description": "Letter body text (paragraphs separated by blank lines)"},
+            "company": {"type": "string"},
+            "role": {"type": "string"},
+            "recipient": {"type": "string"},
+            "format": {"type": "string", "enum": ["pdf", "docx", "html"], "default": "pdf"},
+        },
+        "required": [],
+    },
+    output_schema={"type": "object"},
+    required_scope="system.document.compile",
+    category="system",
+)
+
 # ── System Tools ───────────────────────────────────────────────────
 
 NOTIFY_USER = ToolDefinition(
@@ -572,6 +632,7 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
         SEARCH_GMAIL, SEARCH_JOBS, LIST_CALENDAR_EVENTS,
         RENAME_FILE, MOVE_FILE, DRAFT_EMAIL, CREATE_CALENDAR_EVENT,
         NOTIFY_USER,
+        COMPILE_RESUME_PDF, COMPILE_RESUME_DOCX, COMPILE_COVER_LETTER,
         WEB_SEARCH, PARSE_DOCUMENT_OCR, CALCULATE_ATS_DIFF,
         CALCULATE_SEMANTIC_ATS_SCORE, EXTRACT_MISSING_HARD_SKILLS,
         AUDIT_ATS_FORMATTING,

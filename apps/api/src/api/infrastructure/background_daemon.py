@@ -41,6 +41,18 @@ CLAIM_TTL_SECONDS = 120          # dedup claim per slot; expires so a crashed en
 REDIS_CACHE_SECONDS = 30.0       # how long a failed Redis probe stays cached
 MAX_CATCHUP_MINUTES = 24 * 60    # bounded missed-run catch-up window on startup
 
+# ── Prod strictness: fail-closed when Redis unavailable in non-local ──────
+def _durable_required() -> bool:
+    """True in staging/prod (non-local) — inline degraded would risk double-run without dedup."""
+    try:
+        return getattr(settings, "service_environment", "local") != "local"
+    except Exception:
+        return False
+
+
+def _degraded_inline_allowed() -> bool:
+    return not _durable_required()
+
 
 # ── Redis helpers (best-effort; None → inline degraded mode) ────────
 
@@ -295,9 +307,16 @@ async def _run_due_agent_schedules(now: datetime) -> int:
                                 with contextlib.suppress(Exception):
                                     await r.delete(f"vaeloom:daemon:claim:{dedup_key}")
                     else:
-                        # Degraded inline mode (no Redis) — execute directly
-                        await execute_agent_schedule_job(str(sched.id), str(sched.agent_id), sched.input or {})
-                        ran = True
+                        if _degraded_inline_allowed():
+                            # Degraded inline mode (local/dev/tests) — execute directly
+                            await execute_agent_schedule_job(str(sched.id), str(sched.agent_id), sched.input or {})
+                            ran = True
+                        else:
+                            logger.error(
+                                f"DAEMON durable required but Redis unavailable — skipping agent_schedule {sched.id} (prod fail-closed). "
+                                "Deploy queue-worker with REDIS__URL or set service_environment=local for degraded mode."
+                            )
+                            continue
                     if ran:
                         # Track last_run_at immediately at enqueue time too (worker re-stamps post-run)
                         try:
@@ -389,9 +408,15 @@ async def _run_due_scheduled_jobs(now: datetime) -> int:
                                 with contextlib.suppress(Exception):
                                     await r.delete(f"vaeloom:daemon:claim:{dedup_key}")
                     else:
-                        exec_res = await execute_scheduled_job_row(job_data)
-                        await _record_job_execution(db, str(job_id), exec_res["status"], exec_res["error"], now)
-                        ran = True
+                        if _degraded_inline_allowed():
+                            exec_res = await execute_scheduled_job_row(job_data)
+                            await _record_job_execution(db, str(job_id), exec_res["status"], exec_res["error"], now)
+                            ran = True
+                        else:
+                            logger.error(
+                                f"DAEMON durable required but Redis unavailable — skipping scheduled_job {job_id} (prod fail-closed)"
+                            )
+                            continue
 
                     if ran:
                         await db.execute(
@@ -550,8 +575,13 @@ async def _dispatch_daily_watcher(name: str, hour_utc: int, now: datetime) -> in
             # Enqueue failed after claim → release claim, fall through to inline
             with contextlib.suppress(Exception):
                 await r.delete(f"vaeloom:daemon:claim:{dedup_key}")
-    scan = WATCHER_REGISTRY.get(name)
-    return await scan() if scan else 0
+    if _degraded_inline_allowed():
+        scan = WATCHER_REGISTRY.get(name)
+        return await scan() if scan else 0
+    logger.error(
+        f"DAEMON durable required but Redis unavailable — skipping watcher '{name}' (prod fail-closed)"
+    )
+    return 0
 
 
 async def _run_gmail_watcher(now: datetime) -> int:
@@ -624,8 +654,12 @@ async def catch_up_missed_runs(now: datetime) -> int:
                             if await enqueue_daemon_job(r, "schedule.agent_run", data):
                                 ran = True
                     else:
-                        await execute_agent_schedule_job(str(sched.id), str(sched.agent_id), sched.input or {})
-                        ran = True
+                        if _degraded_inline_allowed():
+                            await execute_agent_schedule_job(str(sched.id), str(sched.agent_id), sched.input or {})
+                            ran = True
+                        else:
+                            logger.error(f"DAEMON catch-up: Redis unavailable in non-local — skipping catch-up for schedule {sched.id} (prod fail-closed)")
+                            continue
                     if ran:
                         try:
                             sched.last_run_at = now

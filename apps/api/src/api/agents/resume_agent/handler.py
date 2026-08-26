@@ -32,6 +32,10 @@ class ResumeAgent(BaseAgent):
     tools = [
         Tool(name="search_documents", description="Search user documents for achievements"),
         Tool(name="query_graph", description="Query knowledge graph for career data"),
+        Tool(name="calculate_semantic_ats_score", description="Semantic ATS scoring for tailoring"),
+        Tool(name="audit_ats_formatting", description="ATS formatting audit before export"),
+        Tool(name="compile_resume_pdf", description="Compile resume to PDF via template engine"),
+        Tool(name="compile_resume_docx", description="Compile resume to editable DOCX"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["career", "skills", "achievements", "education", "timeline"],

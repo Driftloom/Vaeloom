@@ -1,0 +1,66 @@
+{# Awesome-CV — modern typography, FontAwesome icons, accent color #}
+#set page(paper: "a4", margin: (x: 1.7cm, y: 1.5cm))
+#set text(font: "Roboto", size: 9.5pt, fill: rgb("#2d2d2d"))
+#set par(leading: 0.6em)
+
+#let accent = rgb("{{ template.accent_color | default('#2563eb') }}")
+
+#align(left)[
+  #text(size: 22pt, weight: "bold", fill: accent)[{{ name.split(' ')[0] | default(name) }}] #text(size: 22pt, weight: "light")[ {{ name.split(' ')[1:] | join(' ') }}] \
+  {% if title %}#text(size: 10pt, fill: rgb("#64748b"))[{{ title }}] \ {% endif %}
+  #v(2pt)
+  #text(size: 8pt, fill: rgb("#64748b"))[
+    {% if email %}#text(fill: accent)[✉] {{ email }} #h(8pt){% endif %}
+    {% if phone %}#text(fill: accent)[☎] {{ phone }} #h(8pt){% endif %}
+    {% if location %}#text(fill: accent)[📍] {{ location }} #h(8pt){% endif %}
+    {% if links.github %}#text(fill: accent)[] {{ links.github }} #h(8pt){% endif %}
+    {% if links.linkedin %}#text(fill: accent)[] {{ links.linkedin }}{% endif %}
+  ]
+]
+#v(4pt)
+#line(length: 100%, stroke: 0.8pt + accent)
+
+{% if summary %}
+#v(4pt)
+#text(size: 9pt, style: "italic")[{{ summary }}]
+{% endif %}
+
+{% if experience %}
+#heading(level: 2, outlined: false)[#text(size: 11pt, fill: accent, weight: "bold")[Experience] #box(width: 1fr, height: 0.6pt, fill: accent)]
+{% for e in experience %}
+// provenance: {{ e.get('source_document_id','manual') }}
+#block(below: 6pt, above: 4pt)[
+  #grid(columns: (1fr, auto), gutter: 8pt)[
+    #text(weight: "bold", size: 10pt)[{{ e.role }}] \
+    #text(size: 9pt, fill: accent)[{{ e.company }} {% if e.location %}· {{ e.location }}{% endif %}]
+  ][
+    #text(size: 8pt, fill: rgb("#64748b"), style: "italic")[{{ e.start }} – {{ e.end or "Present" }}]
+  ]
+  {% if e.bullets %}#list(marker: text(fill: accent)[▸], indent: 12pt)[{% for b in e.bullets %}#list.item[#text(size: 9pt)[{{ b }}]]{% endfor %}]{% endif %}
+]
+{% endfor %}
+{% endif %}
+
+{% if education %}
+#heading(level: 2, outlined: false)[#text(size: 11pt, fill: accent, weight: "bold")[Education] #box(width: 1fr, height: 0.6pt, fill: accent)]
+{% for ed in education %}
+#grid(columns: (1fr, auto))[#text(weight: "bold")[{{ ed.degree }}] — {{ ed.institution }}][#text(size: 8pt, fill: rgb("#64748b"))[{{ ed.start }} – {{ ed.end }}]]
+{% endfor %}
+{% endif %}
+
+{% if skills %}
+#heading(level: 2, outlined: false)[#text(size: 11pt, fill: accent, weight: "bold")[Skills] #box(width: 1fr, height: 0.6pt, fill: accent)]
+#columns(2, gutter: 12pt)[
+{% for g in skills %}
+#text(weight: "bold", size: 8.5pt, fill: accent)[{{ g.category }}] \
+#text(size: 8.5pt)[{{ g['items'] | map(attribute='name') | join(", ") }}] \ #v(4pt)
+{% endfor %}
+]
+{% endif %}
+
+{% if projects %}
+#heading(level: 2, outlined: false)[#text(size: 11pt, fill: accent, weight: "bold")[Projects] #box(width: 1fr, height: 0.6pt, fill: accent)]
+{% for p in projects %}
+#text(weight: "bold", size: 9pt)[{{ p.name }}]{% if p.link %} — #link("{{ p.link }}")[#text(size: 8pt, fill: accent)[{{ p.link }}]]{% endif %} \ #text(size: 8.5pt)[{{ p.description | default("") }}] \
+{% endfor %}
+{% endif %}

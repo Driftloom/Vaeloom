@@ -458,9 +458,18 @@ async def _try_react_loop(
                         args = {}
                 if not isinstance(args, dict):
                     args = {}
-                td = ALL_TOOLS.get(tname)
+                # Merged lookup: static ALL_TOOLS ∪ dynamic MCP — fixes bug where mcp__* tools
+                # were offered in tool_schemas but missed here (were incorrectly skipped).
+                try:
+                    from ..tools.executor import get_tool_definition as _get_td
+                    td = _get_td(tname)
+                except Exception:
+                    td = ALL_TOOLS.get(tname)
                 if not td:
                     logger.warning(f"ReAct: unknown tool '{tname}' requested by LLM — skipping")
+                    # Feed back an error so LLM can self-correct in next round
+                    messages.append({"role": "assistant", "content": content_str or None, "tool_calls": [tc]})
+                    messages.append({"role": "tool", "tool_call_id": tc.get("id", tname), "content": json.dumps({"status": "error", "tool": tname, "result": f"Unknown tool '{tname}' — not in available tool list"})[:4000]})
                     continue
                 # Enforce least-privilege: LLM output is untrusted, check against agent's allowed scopes (PATI/OWASP LLM06)
                 from ..tools.executor import check_permission
@@ -533,19 +542,40 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any =
             logger.warning(f"ReAct dispatch failed, falling back to static: {e}")
 
     # ── Circuit breaker + timeout (static dispatch fallback) ─────
+    # Convergence note (ADR-037): static path now mirrors executor audit/timeout
+    # semantics so both tiers share permission + observability. Future: route
+    # static via execute_tool with a synthetic ToolDefinition per agent.
     cb = _get_circuit_breaker(agent_name)
     timeout = settings.agent_timeout_seconds
+    import time as _time
+
+    _static_start = _time.monotonic()
+    # Helper to emit unified audit (mirrors executor._audit_log)
+    def _audit_static(success: bool, err: str | None = None):
+        try:
+            from ..tools.executor import _audit_log as _exec_audit
+            _exec_audit(agent_name, f"agent:{agent_type}", request.workspace_id, success, int((_time.monotonic() - _static_start) * 1000), err)
+        except Exception:
+            pass
 
     try:
         result = await asyncio.wait_for(
             cb.call(_dispatch_agent(agent_type, agent, message, request)),
             timeout=timeout,
         )
+        # Audit success — log action + summary size, never payload
+        try:
+            _audit_static(True, None)
+            logger.info(f"AUDIT static_success agent={agent_name} type={agent_type} action={result.get('action')} workspace={request.workspace_id}")
+        except Exception:
+            pass
         return result
     except CircuitBreakerOpenError:
+        _audit_static(False, "circuit_open")
         logger.warning(f"Circuit breaker OPEN for {agent_name}, using fallback")
         return await agent.fallback()
     except TimeoutError:
+        _audit_static(False, f"timeout_{timeout}s")
         logger.error(f"Agent {agent_name} timed out after {timeout}s")
         return {
             "agent_name": agent_name,
@@ -559,6 +589,7 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any =
             },
         }
     except AgentRateLimitError:
+        _audit_static(False, "rate_limited")
         return {
             "agent_name": agent_name,
             "action": "error",
@@ -571,6 +602,7 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any =
             },
         }
     except Exception as exc:
+        _audit_static(False, str(exc)[:200])
         logger.exception(f"ACT phase failed: {exc}")
         return {
             "agent_name": agent_name,

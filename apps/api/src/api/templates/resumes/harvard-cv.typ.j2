@@ -1,0 +1,76 @@
+{# Harvard Extension — classic serif, conservative academic #}
+#set page(paper: "a4", margin: (x: 2.2cm, y: 1.8cm))
+#set text(font: "Garamond", size: 10.5pt, fill: rgb("#1a1a1a"))
+#set par(justify: true, leading: 0.65em, first-line-indent: 0pt)
+#set heading(numbering: none)
+
+#align(center)[
+  #text(size: 16pt, weight: "bold", tracking: 1.2pt)[{{ name | upper }}] \
+  {% if title %}#text(size: 10pt, style: "italic")[{{ title }}] \ {% endif %}
+  #text(size: 8.5pt)[
+    {{ email }}{% if phone %} · {{ phone }}{% endif %}{% if location %} · {{ location }}{% endif %} \
+    {% if links.linkedin %}{{ links.linkedin }}{% endif %}{% if links.github %} · {{ links.github }}{% endif %}
+  ]
+]
+
+#v(6pt)
+#line(length: 100%, stroke: 0.6pt + rgb("#1a1a1a"))
+#v(8pt)
+
+{% if summary %}
+#text(size: 10pt)[{{ summary }}]
+#v(6pt)
+{% endif %}
+
+#let h2(body) = {
+  text(size: 10pt, weight: "bold", tracking: 1pt)[#upper(body)]
+  v(2pt)
+  line(length: 100%, stroke: 0.4pt + rgb("#1a1a1a"))
+  v(4pt)
+}
+
+{% if experience %}
+#h2[Professional Experience]
+{% for e in experience %}
+// provenance: {{ e.get('source_document_id','manual') }}
+#block(below: 6pt)[
+  #grid(columns: (1fr, auto), gutter: 6pt)[
+    #text(weight: "bold")[{{ e.company }} — {{ e.role }}]
+  ][
+    #text(size: 9pt, style: "italic")[{{ e.start }} – {{ e.end or "Present" }}{% if e.location %} · {{ e.location }}{% endif %}]
+  ]
+  {% if e.bullets %}#list(marker: [•], indent: 14pt)[{% for b in e.bullets %}#list.item[#text(size: 10pt)[{{ b }}]]{% endfor %}]{% endif %}
+]
+{% endfor %}
+{% endif %}
+
+{% if education %}
+#h2[Education]
+{% for ed in education %}
+#grid(columns: (1fr, auto))[
+  #text(weight: "bold")[{{ ed.institution }}] — {{ ed.degree }}{% if ed.details %} ({{ ed.details }}){% endif %}
+][
+  #text(size: 9pt, style: "italic")[{{ ed.start }} – {{ ed.end }}]
+]
+#v(3pt)
+{% endfor %}
+{% endif %}
+
+{% if skills %}
+#h2[Skills]
+{% for g in skills %}
+#text(weight: "bold")[{{ g.category }}:] {{ g['items'] | map(attribute='name') | join(", ") }} \
+{% endfor %}
+{% endif %}
+
+{% if certifications %}
+#h2[Certifications]
+#list(marker: [•])[{% for c in certifications %}#list.item[{{ c }}]{% endfor %}]
+{% endif %}
+
+{% if projects %}
+#h2[Projects]
+{% for p in projects %}
+#text(weight: "bold")[{{ p.name }}]{% if p.link %} — {{ p.link }}{% endif %} \ {{ p.description | default("") }} \
+{% endfor %}
+{% endif %}

@@ -1,0 +1,67 @@
+{# ModernCV Classic — elegant tabular, accent bars #}
+#set page(paper: "a4", margin: (x: 1.6cm, y: 1.4cm))
+#set text(font: "Source Sans Pro", size: 9.5pt, fill: rgb("#1e293b"))
+#set par(leading: 0.55em)
+
+#rect(fill: rgb("#0f766e"), width: 100%, height: 3pt)
+#v(8pt)
+#grid(columns: (1fr, auto), gutter: 12pt)[
+  #block[
+    #text(size: 20pt, weight: "light", tracking: 1pt)[{{ name | upper }}] \
+    {% if title %}#text(size: 10pt, fill: rgb("#0f766e"), weight: "medium")[{{ title }}] \ {% endif %}
+    #text(size: 8pt, fill: rgb("#64748b"))[{% if email %}{{ email }} · {% endif %}{% if phone %}{{ phone }} · {% endif %}{% if location %}{{ location }}{% endif %}]
+  ]
+][
+  #box(fill: rgb("#f1f5f9"), inset: 6pt, radius: 4pt)[
+    #text(size: 7.5pt, fill: rgb("#475569"))[
+      {% if links.linkedin %}in/{{ links.linkedin | replace("https://","") | replace("http://","") }} \ {% endif %}
+      {% if links.github %}gh/{{ links.github | replace("https://","") | replace("http://","") }}{% endif %}
+    ]
+  ]
+]
+#v(6pt)
+
+{% if summary %}
+#block(fill: rgb("#f8fafc"), stroke: (left: 3pt + rgb("#0f766e")), inset: 8pt)[
+  #text(size: 9pt, style: "italic")[{{ summary }}]
+]
+#v(4pt)
+{% endif %}
+
+{% for sec, color in [("EXPERIENCE", "#0f766e"), ("EDUCATION", "#0f766e"), ("SKILLS", "#0f766e")] %}
+{% endfor %}
+
+{% if experience %}
+#heading(level: 2, outlined: false)[#text(size: 9pt, fill: rgb("#0f766e"), weight: "bold")[EXPERIENCE] #h(1fr) #line(length: 60%, stroke: 0.5pt + rgb("#e2e8f0"))]
+#v(4pt)
+{% for e in experience %}
+// provenance: {{ e.get('source_document_id','manual') }}
+#grid(columns: (120pt, 1fr), gutter: 8pt)[
+  #text(size: 8pt, fill: rgb("#64748b"), style: "italic")[{{ e.start }} – {{ e.end or "Present" }} \ {{ e.location | default("") }}]
+][
+  #text(weight: "bold", size: 9.5pt)[{{ e.role }}] — #text(size: 9pt)[{{ e.company }}] \
+  {% if e.bullets %}#list(marker: text(fill: rgb("#0f766e"))[—], indent: 10pt)[{% for b in e.bullets %}#list.item[#text(size: 9pt)[{{ b }}]]{% endfor %}]{% endif %}
+  #v(4pt)
+]
+{% endfor %}
+{% endif %}
+
+{% if education %}
+#heading(level: 2, outlined: false)[#text(size: 9pt, fill: rgb("#0f766e"), weight: "bold")[EDUCATION] #h(1fr) #line(length: 60%, stroke: 0.5pt + rgb("#e2e8f0"))]
+{% for ed in education %}
+#grid(columns: (120pt, 1fr), gutter: 8pt)[
+  #text(size: 8pt, fill: rgb("#64748b"))[{{ ed.start }} – {{ ed.end }}]
+][
+  #text(weight: "bold")[{{ ed.degree }}] \ #text(size: 8.5pt)[{{ ed.institution }}{% if ed.details %} — {{ ed.details }}{% endif %}]
+]
+{% endfor %}
+{% endif %}
+
+{% if skills %}
+#heading(level: 2, outlined: false)[#text(size: 9pt, fill: rgb("#0f766e"), weight: "bold")[SKILLS] #h(1fr) #line(length: 60%, stroke: 0.5pt + rgb("#e2e8f0"))]
+#v(2pt)
+{% for g in skills %}
+#grid(columns: (90pt, 1fr), gutter: 6pt)[#text(size: 8.5pt, weight: "bold", fill: rgb("#334155"))[{{ g.category }}]][#text(size: 8.5pt)[{{ g['items'] | map(attribute='name') | join(", ") }}]]
+#v(2pt)
+{% endfor %}
+{% endif %}
