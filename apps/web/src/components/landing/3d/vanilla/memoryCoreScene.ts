@@ -5,7 +5,8 @@
 
 import * as THREE from 'three';
 import { createRenderer, runLoop, type SceneHandle } from './engine';
-import { glowTexture, scenePalette } from '../scene-utils';
+import { scenePalette } from '../scene-utils';
+import { createIntelligenceCore } from './intelligenceCoreScene';
 
 const STREAM_RADIUS = 5.2;
 const CORE_RADIUS = 0.85;
@@ -35,44 +36,11 @@ export function mountMemoryCore({ container, theme, density, streams = true }: C
   const { renderer, scene, camera } = createRenderer(container);
   camera.position.set(0, 0.9, 7.4);
 
-  /* Core ---------------------------------------------------------------- */
-  const haloTex = new THREE.CanvasTexture(glowTexture(palette.core));
-  const halo = new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: haloTex,
-      transparent: true,
-      opacity: 0.55,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    }),
-  );
-  halo.scale.setScalar(4.4);
-  scene.add(halo);
-
-  const shell = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(CORE_RADIUS, 1),
-    new THREE.MeshBasicMaterial({
-      color: palette.core,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.5,
-    }),
-  );
-  scene.add(shell);
-
-  const latticeGeo = new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(CORE_RADIUS, 2));
-  const lattice = new THREE.LineSegments(
-    latticeGeo,
-    new THREE.LineBasicMaterial({ color: palette.structure, transparent: true, opacity: 0.28 }),
-  );
-  lattice.scale.setScalar(1.45);
-  scene.add(lattice);
-
-  const inner = new THREE.Mesh(
-    new THREE.SphereGeometry(CORE_RADIUS * 0.42, 24, 24),
-    new THREE.MeshBasicMaterial({ color: palette.core, transparent: true, opacity: 0.9 }),
-  );
-  scene.add(inner);
+  /* Living Intelligence Core — replaces the 4-layer static core */
+  const intelligenceCore = createIntelligenceCore(theme, {
+    reducedMotion: false,
+  });
+  scene.add(intelligenceCore.group);
 
   /* Motes — ultra dense, clustered, layered depth ------------------- */
   const moteCount = Math.round(1800 * density);
@@ -193,6 +161,9 @@ export function mountMemoryCore({ container, theme, density, streams = true }: C
       })
     : [];
 
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const handle = runLoop(
     container,
     renderer,
@@ -201,16 +172,13 @@ export function mountMemoryCore({ container, theme, density, streams = true }: C
     {
       cameraZ: 7.4,
       tick: (dt, t) => {
-        // gentle camera drift
+        // gentle camera drift — preserved
         camera.position.x = Math.sin(t * 0.08) * 0.35;
         camera.position.y = 0.15 + Math.sin(t * 0.06) * 0.12;
         camera.lookAt(0, 0, 0);
 
-        shell.rotation.y = t * 0.12;
-        shell.rotation.x = Math.sin(t * 0.1) * 0.18;
-        const s = 1 + Math.sin(t * 1.4) * 0.06;
-        inner.scale.setScalar(s);
-        (halo.material as THREE.SpriteMaterial).opacity = 0.5 + Math.sin(t * 1.4) * 0.12;
+        // Living core — coordinated, not just rotating
+        intelligenceCore.update(t, dt, { reducedMotion: prefersReducedMotion });
 
         motes.rotation.y += dt * 0.07;
 
