@@ -41,7 +41,7 @@ jobs:
       - name: Format check
         run: pnpm format:check
       - name: Markdown lint
-        uses: DavidAnson/markdownlint-cli2-action@v16
+        uses: DavidAnson/markdownlint-cli2-action@v24
         with:
           globs: 'docs/**/*.md'
 
