@@ -9,11 +9,12 @@
 
 export const NAV_LINKS = [
   { label: 'Product', href: '#product' },
+  { label: 'Problem', href: '#problem' },
   { label: 'How it works', href: '#how-it-works' },
   { label: 'Memory', href: '#memory' },
   { label: 'Agents', href: '#agents' },
   { label: 'Career', href: '#career' },
-  { label: 'Enterprise', href: '#enterprise' },
+  { label: 'FAQ', href: '#faq' },
 ] as const;
 
 export const HERO = {
@@ -34,6 +35,33 @@ export const HERO_SOURCES = [
   { id: 'files', label: 'Documents' },
   { id: 'vscode', label: 'VS Code' },
 ] as const;
+
+export const PROBLEM = {
+  eyebrow: 'The problem',
+  title: 'Your knowledge is scattered, so it keeps starting from zero.',
+  intro:
+    'The work that defines your education and career lives in a dozen places — and almost none of it is connected, reusable, or remembered.',
+  steps: [
+    {
+      title: 'Fragmented information',
+      body: 'Files in Drive, code on GitHub, deadlines in mail, certificates on your desktop. Nothing speaks to the rest.',
+    },
+    {
+      title: 'Lost context',
+      body: 'Every tool forgets what you did elsewhere. You re-explain yourself to each one, repeatedly.',
+    },
+    {
+      title: 'Repeated work',
+      body: 'Resumes get rebuilt from memory, projects get re-described, evidence gets re-hunted before every application.',
+    },
+    {
+      title: 'Missed opportunities',
+      body: 'Roles that fit pass by because nothing ranked them against what you actually know and did.',
+    },
+  ],
+  resolution:
+    'Vaeloom turns that scattered work into one living memory — so every next step starts smarter.',
+} as const;
 
 export const PRINCIPLES = [
   {
@@ -466,6 +494,29 @@ export const TRUST = {
     },
   ],
   quote: 'Passive by default. Active on request.',
+  /** Factual controls verified in the implementation — no certifications claimed. */
+  facts: [
+    {
+      title: 'Workspace-scoped isolation',
+      body: 'Every record is fenced to your workspace with row-level security. One workspace’s data is never visible to another.',
+    },
+    {
+      title: 'Append-only audit trail',
+      body: 'Proposals, approvals, grants, and revocations are written to a log you can review on the History page.',
+    },
+    {
+      title: 'Approval-gated actions',
+      body: 'Writing, sending, submitting, and moving are gated behind explicit per-action approval — not assumed.',
+    },
+    {
+      title: 'Reversible by design',
+      body: 'Vaeloom archives instead of deleting, so organized or changed items can be restored from their audit entry.',
+    },
+    {
+      title: 'Encrypted connection secrets',
+      body: 'Connector tokens are stored encrypted in a secrets manager — never in plaintext.',
+    },
+  ],
 } as const;
 
 export const COMPOUNDING = {
@@ -495,51 +546,54 @@ export const PREVIEW = {
   ],
 } as const;
 
-export const ENTERPRISE = {
-  eyebrow: 'Platform direction',
-  badge: 'Vision — beyond today’s MVP',
-  title: 'Built to grow from personal intelligence to organizational intelligence.',
-  intro:
-    'The architecture you just saw — typed memory, permission model, agent roster — is designed for additive growth. Here is where the platform is heading, clearly labeled as direction, not shipping features.',
-  shipped: [
-    {
-      name: 'Workspace-scoped isolation',
-      note: 'Row-level security enforced across the entire schema today.',
-    },
-    {
-      name: 'Approval & audit infrastructure',
-      note: 'Append-only action log with undo references already in place.',
-    },
-    {
-      name: 'MCP connectors',
-      note: 'External tool servers bridge into the agent registry under approval gates — available now.',
-    },
-  ],
-  vision: [
-    {
-      name: 'Organizations & multi-tenancy',
-      body: 'Team workspaces with institutional policy — provisioned accounts whose individual memory stays private by consent.',
-    },
-    {
-      name: 'RBAC & permission engine',
-      body: 'Formalized role-based access across connectors, agents, and plugins.',
-    },
-    {
-      name: 'Plugin ecosystem',
-      body: 'A public SDK and marketplace extending the agent roster — growth by addition, never replacement.',
-    },
-    {
-      name: 'Compliance posture',
-      body: 'Configurable retention, data residency, and compliance exports for institutional deployment.',
-    },
-  ],
-} as const;
-
 export const FINAL_CTA = {
   title: 'Stop managing your digital life manually.',
   subtitle: 'Connect once. Let memory compound. Start building your second brain today.',
   primary: { label: 'Get started — free', href: '/signup' },
   secondary: { label: 'Explore how it works', href: '#how-it-works' },
+} as const;
+
+export const FAQ = {
+  eyebrow: 'Questions',
+  title: 'Honest answers to the obvious questions.',
+  items: [
+    {
+      q: 'What exactly is Vaeloom?',
+      a: 'Vaeloom is a memory-first personal intelligence system for education and career. You connect your files, email, and code; it builds a knowledge graph of your work and uses specialized agents to keep a living master resume, surface matched roles, and organize your workspace — with your approval.',
+    },
+    {
+      q: 'Is Vaeloom a chatbot?',
+      a: 'No. A chatbot resets every conversation. Vaeloom builds one persistent memory from everything you connect, so each answer starts from what it already knows about you instead of from zero.',
+    },
+    {
+      q: 'What does the memory system remember?',
+      a: 'Documents, skills, projects, organizations, certificates, jobs, and events — linked in a knowledge graph with vector search. Today’s sources include Gmail, GitHub, Google Drive, a local folder, and VS Code, plus MCP servers you choose to bring in.',
+    },
+    {
+      q: 'Can agents act without my approval?',
+      a: 'No. Actions that write, send, submit, or move are approval-gated. Many agents are suggest-only or read-only; any earned autonomy is per-agent, per-action-type, and revocable at any time.',
+    },
+    {
+      q: 'Does Vaeloom send applications or emails automatically?',
+      a: 'No. The Gmail agent drafts replies for your review and never sends. Application submissions happen only with explicit, per-application consent.',
+    },
+    {
+      q: 'Can I delete or undo things?',
+      a: 'Vaeloom archives instead of deleting and keeps an append-only log of proposals, approvals, and grants — so actions are reversible and auditable.',
+    },
+    {
+      q: 'What happens to my data?',
+      a: 'Connectors start read-only and scoped per source. Tokens are stored encrypted in a secrets manager, and workspaces are isolated with row-level security. Nothing is shared without your grant.',
+    },
+    {
+      q: 'Is Vaeloom free?',
+      a: 'Vaeloom is in active MVP and free to start building your second brain. We’ll be transparent about any future plans as the product matures.',
+    },
+    {
+      q: 'Who is Vaeloom for?',
+      a: 'Students, early-career professionals, and anyone managing their education, projects, and job search across scattered tools who wants that work to accumulate into one living memory.',
+    },
+  ],
 } as const;
 
 export const FOOTER = {
@@ -558,7 +612,7 @@ export const FOOTER = {
     {
       title: 'Company',
       links: [
-        { label: 'Enterprise', href: '#enterprise' },
+        { label: 'FAQ', href: '#faq' },
         { label: 'Sign in', href: '/login' },
         { label: 'Create account', href: '/signup' },
         { label: 'System status', href: '/status' },

@@ -48,7 +48,7 @@ export default function HeroSection() {
   const opacity = shouldReduceMotion ? 1 : heroOpacity;
 
   return (
-    <div ref={containerRef} className="relative h-[130vh] w-full">
+    <div ref={containerRef} id="hero" className="relative h-[130vh] w-full">
       <motion.section
         style={{ opacity, height: '100dvh' }}
         className="sticky top-0 flex h-screen w-full flex-col overflow-hidden"

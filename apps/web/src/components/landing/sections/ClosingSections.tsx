@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { ENTERPRISE, FINAL_CTA, FOOTER } from '@/lib/landing/copy';
+import { FINAL_CTA, FOOTER } from '@/lib/landing/copy';
 import {
   ButtonLink,
   Container,
   LogoMark,
-  PillBadge,
   Reveal,
   Section,
   SectionHeading,
@@ -14,65 +13,6 @@ import {
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { CtaCoreScene, useSceneAvailable } from '@/components/landing/3d/SceneShell';
 import { useTheme } from '@/hooks/useTheme';
-
-/* ------------------------------- Enterprise -------------------------------- */
-
-export function EnterpriseSection() {
-  return (
-    <Section id="enterprise" labelledBy="enterprise-title" className="bg-surface-50/60">
-      <Container>
-        <div className="mx-auto max-w-3xl text-center">
-          <PillBadge>{ENTERPRISE.badge}</PillBadge>
-        </div>
-        <SectionHeading
-          id="enterprise-title"
-          eyebrow={ENTERPRISE.eyebrow}
-          title={ENTERPRISE.title}
-          intro={ENTERPRISE.intro}
-          align="center"
-        />
-        <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_1.4fr]">
-          {/* Shipping today */}
-          <Reveal>
-            <div className="h-full rounded-2xl border border-success/25 bg-background/70 p-6">
-              <p className="font-mono text-xs uppercase tracking-widest text-success-fg">
-                In the product today
-              </p>
-              <ul className="mt-5 space-y-4">
-                {ENTERPRISE.shipped.map((s) => (
-                  <li key={s.name}>
-                    <p className="text-sm font-bold text-text">{s.name}</p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-text-muted">{s.note}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </Reveal>
-
-          {/* Vision */}
-          <Reveal delay={0.12}>
-            <div className="h-full rounded-2xl border border-primary-500/30 bg-surface-elevated p-6 shadow-glow">
-              <p className="font-mono text-xs uppercase tracking-widest text-accent-400">
-                Platform direction
-              </p>
-              <ul className="mt-5 grid gap-4 sm:grid-cols-2">
-                {ENTERPRISE.vision.map((v) => (
-                  <li
-                    key={v.name}
-                    className="rounded-xl border border-border-subtle bg-background/60 p-4"
-                  >
-                    <p className="text-sm font-bold text-text">{v.name}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-text-muted">{v.body}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </Reveal>
-        </div>
-      </Container>
-    </Section>
-  );
-}
 
 /* -------------------------------- Final CTA -------------------------------- */
 

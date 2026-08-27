@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AGENTS } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
 import { AgentOrbitScene } from '@/components/landing/3d/SceneShell';
@@ -16,6 +16,22 @@ export default function AgentSection() {
     0,
     AGENTS.list.findIndex((a) => a.id === selectedId),
   );
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const onTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    const idx = AGENTS.list.findIndex((a) => a.id === selectedId);
+    let next = idx;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % AGENTS.list.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp')
+      next = (idx - 1 + AGENTS.list.length) % AGENTS.list.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = AGENTS.list.length - 1;
+    else return;
+    e.preventDefault();
+    const id = AGENTS.list[next]!.id;
+    setSelectedId(id);
+    tabRefs.current[next]?.focus();
+  };
 
   return (
     <Section id="agents" labelledBy="agents-title" className="bg-surface-50/60">
@@ -56,14 +72,19 @@ export default function AgentSection() {
               <div
                 role="tablist"
                 aria-label="Select an agent"
+                onKeyDown={onTabKeyDown}
                 className="mt-2 flex flex-wrap justify-center gap-1.5 border-t border-border-subtle pt-4"
               >
-                {AGENTS.list.map((a) => (
+                {AGENTS.list.map((a, i) => (
                   <button
                     key={a.id}
+                    ref={(el) => {
+                      tabRefs.current[i] = el;
+                    }}
                     role="tab"
                     type="button"
                     aria-selected={a.id === selectedId}
+                    tabIndex={a.id === selectedId ? 0 : -1}
                     onClick={() => setSelectedId(a.id)}
                     className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
                       a.id === selectedId

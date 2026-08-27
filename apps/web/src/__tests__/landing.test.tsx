@@ -58,7 +58,7 @@ HTMLCanvasElement.prototype.getContext = function (type: string) {
 } as typeof HTMLCanvasElement.prototype.getContext;
 
 // ---- Product truth --------------------------------------------------------
-import { AGENTS, CONNECTORS, ENTERPRISE, HERO, TRUST } from '@/lib/landing/copy';
+import { AGENTS, CONNECTORS, HERO, TRUST } from '@/lib/landing/copy';
 
 describe('landing copy product truth', () => {
   it('positions Vaeloom as a memory system, not a chatbot', () => {
@@ -91,10 +91,6 @@ describe('landing copy product truth', () => {
     const names = CONNECTORS.items.map((c) => c.name);
     ['Gmail', 'GitHub', 'Google Drive', 'VS Code'].forEach((n) => expect(names).toContain(n));
     expect(JSON.stringify(CONNECTORS.items)).not.toMatch(/slack|notion|linkedin/i);
-  });
-
-  it('labels enterprise features as vision, not shipped', () => {
-    expect(ENTERPRISE.badge.toLowerCase()).toContain('vision');
   });
 
   it('makes no compliance certification claims', () => {
@@ -150,8 +146,8 @@ describe('landing static scenes', () => {
 
     // Nav anchors resolve to real section ids (dead-link guard)
     const ids = new Set(Array.from(container.querySelectorAll('[id]')).map((el) => el.id));
-    ['#how-it-works', '#memory', '#agents', '#career', '#enterprise', '#trust'].forEach((hash) =>
-      expect(ids.has(hash.slice(1))).toBe(true),
+    ['#problem', '#how-it-works', '#memory', '#agents', '#career', '#trust', '#faq'].forEach(
+      (hash) => expect(ids.has(hash.slice(1))).toBe(true),
     );
     // Old dead pricing anchor must be gone
     expect(container.querySelector('a[href="#pricing"]')).toBeNull();

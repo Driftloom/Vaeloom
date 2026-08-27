@@ -21,16 +21,14 @@ import {
   CompoundingSection,
 } from '@/components/landing/sections/TrustCompoundingSections';
 import ProductPreview from '@/components/landing/sections/ProductPreview';
-import {
-  EnterpriseSection,
-  FinalCTA,
-  LandingFooter,
-} from '@/components/landing/sections/ClosingSections';
+import ProblemSection from '@/components/landing/sections/ProblemSection';
+import FAQSection from '@/components/landing/sections/FAQSection';
+import { FinalCTA, LandingFooter } from '@/components/landing/sections/ClosingSections';
 
 // W-14: landing is statically renderable — real page metadata.
 // Page-specific title only; layout `title.template` appends " | Vaeloom".
 export const metadata: Metadata = {
-  title: 'Enterprise AI operating system',
+  title: 'Your second brain for education and career',
   description: SEO.description,
   alternates: { canonical: SEO.url },
   openGraph: {
@@ -90,6 +88,7 @@ export default function LandingPage() {
       <DustField />
       <div className="relative z-10 overflow-x-clip">
         <HeroSection />
+        <ProblemSection />
         <PrinciplesStrip />
         <ProductDifference />
         <HowItWorks />
@@ -101,9 +100,9 @@ export default function LandingPage() {
         <CareerSection />
         <SchedulerSection />
         <TrustSection />
-        <CompoundingSection />
         <ProductPreview />
-        <EnterpriseSection />
+        <CompoundingSection />
+        <FAQSection />
         <FinalCTA />
       </div>
       <LandingFooter />

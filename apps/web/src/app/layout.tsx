@@ -33,18 +33,21 @@ const siteUrl = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://vaeloom.app';
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Vaeloom | Enterprise AI operating system',
+    default: 'Vaeloom | Your second brain for education and career',
     template: '%s | Vaeloom',
   },
   description:
-    'Memory-first enterprise intelligence platform. Connect your data, deploy AI agents, and automate workflows securely.',
+    'A memory-first personal intelligence system for education and career. Connect your files, email, and code; Vaeloom builds a knowledge graph of your work, keeps a living master resume, surfaces matched roles, and organizes your workspace. Agents suggest — you approve.',
   keywords: [
-    'AI',
-    'enterprise',
+    'second brain',
+    'education',
+    'career',
     'knowledge graph',
     'AI agents',
-    'workflow automation',
-    'memory platform',
+    'resume builder',
+    'job search',
+    'memory system',
+    'students',
     'Vaeloom',
   ],
   authors: [{ name: 'Vaeloom' }],
@@ -60,23 +63,23 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: siteUrl,
     siteName: 'Vaeloom',
-    title: 'Vaeloom | Enterprise AI operating system',
+    title: 'Vaeloom | Your second brain for education and career',
     description:
-      'Memory-first enterprise intelligence platform. Connect your data, deploy AI agents, and automate workflows.',
+      'A memory-first personal intelligence system for education and career. Connect your work; Vaeloom builds a knowledge graph, keeps a living resume, and surfaces matched roles. Agents suggest — you approve.',
     images: [
       {
         url: `${siteUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'Vaeloom — Enterprise AI operating system',
+        alt: 'Vaeloom — Your second brain for education and career',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vaeloom | Enterprise AI operating system',
+    title: 'Vaeloom | Your second brain for education and career',
     description:
-      'Memory-first enterprise intelligence platform. Connect your data, deploy AI agents, and automate workflows.',
+      'A memory-first personal intelligence system for education and career. Connect your work; Vaeloom builds a knowledge graph and keeps a living resume. Agents suggest — you approve.',
     images: [`${siteUrl}/og-image.png`],
     creator: '@vaeloom',
   },

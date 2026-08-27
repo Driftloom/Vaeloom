@@ -50,6 +50,19 @@ export function TrustSection() {
         <p className="mt-8 text-center font-display text-lg italic text-text-secondary">
           “{TRUST.quote}”
         </p>
+        <Reveal className="mx-auto mt-12 max-w-4xl">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {TRUST.facts.map((f) => (
+              <li
+                key={f.title}
+                className="rounded-2xl border border-border-subtle bg-background/60 p-5"
+              >
+                <p className="text-sm font-semibold text-text">{f.title}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-text-muted">{f.body}</p>
+              </li>
+            ))}
+          </ul>
+        </Reveal>
       </Container>
     </Section>
   );

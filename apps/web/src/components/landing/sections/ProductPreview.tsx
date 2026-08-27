@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { PREVIEW } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
 import { StaticGraph } from '@/components/landing/3d/StaticScenes';
@@ -216,6 +216,23 @@ const TAB_VIEWS: Record<string, { title: string; view: React.ReactNode }> = {
 
 export default function ProductPreview() {
   const [tab, setTab] = useState('dashboard');
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const onTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    const idx = PREVIEW.tabs.findIndex((t) => t.id === tab);
+    let next = idx;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % PREVIEW.tabs.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp')
+      next = (idx - 1 + PREVIEW.tabs.length) % PREVIEW.tabs.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = PREVIEW.tabs.length - 1;
+    else return;
+    e.preventDefault();
+    const id = PREVIEW.tabs[next]!.id;
+    setTab(id);
+    tabRefs.current[next]?.focus();
+  };
+
   return (
     <Section labelledBy="preview-title">
       <Container>
@@ -229,14 +246,19 @@ export default function ProductPreview() {
           <div
             role="tablist"
             aria-label="Product surfaces"
+            onKeyDown={onTabKeyDown}
             className="mb-4 flex flex-wrap justify-center gap-1.5"
           >
-            {PREVIEW.tabs.map((t) => (
+            {PREVIEW.tabs.map((t, i) => (
               <button
                 key={t.id}
+                ref={(el) => {
+                  tabRefs.current[i] = el;
+                }}
                 role="tab"
                 type="button"
                 aria-selected={tab === t.id}
+                tabIndex={tab === t.id ? 0 : -1}
                 onClick={() => setTab(t.id)}
                 className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${
                   tab === t.id
