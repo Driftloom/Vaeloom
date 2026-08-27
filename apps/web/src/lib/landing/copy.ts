@@ -20,8 +20,7 @@ export const HERO = {
   eyebrow: 'A memory system, not a chatbot',
   titleA: 'Your second brain for',
   titleB: 'education and career.',
-  subtitle:
-    'Vaeloom reads what you create — documents, code, email, certificates — and turns it into living memory. A knowledge graph of your skills, projects, and milestones that specialized agents use to build your resume, find your next role, and keep your work organized.',
+  subtitle: '',
   primaryCta: { label: 'Start building — free', href: '/signup' },
   secondaryCta: { label: 'See how it works', href: '#how-it-works' },
   credibility: 'Memory-first by design · Private by default · Nothing acts without your approval',

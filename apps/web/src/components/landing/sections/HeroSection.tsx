@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import { HERO } from '@/lib/landing/copy';
-import { ButtonLink, Icon, PillBadge } from '@/components/landing/shared/LandingKit';
 import { MemoryCoreScene } from '@/components/landing/3d/SceneShell';
 import { StaticMemoryCore } from '@/components/landing/3d/StaticScenes';
 import { useTheme } from '@/hooks/useTheme';
@@ -98,33 +97,17 @@ export default function HeroSection() {
           aria-hidden="true"
         />
 
-        {/* Foreground — centered, integrated into the 3D world */}
+        {/* Foreground — heading as the hero unit, lifted above the core */}
         <motion.div
           style={{ y: fgY }}
-          className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 text-center will-change-transform"
+          className="relative z-10 flex flex-1 flex-col items-center justify-start px-4 pt-[7vh] text-center will-change-transform sm:pt-[9vh] lg:pt-[11vh]"
         >
-          <PillBadge dot>{HERO.eyebrow}</PillBadge>
           <h1
             id="hero-title"
-            className="mt-6 max-w-4xl font-display text-4xl font-bold leading-[1.08] tracking-tight text-text sm:text-5xl lg:text-6xl"
+            className="mt-[1.2cm] max-w-4xl font-display text-4xl font-bold leading-[1.08] tracking-tight text-text sm:text-5xl lg:text-6xl"
           >
             {HERO.titleA} <span className="landing-gradient-text">{HERO.titleB}</span>
           </h1>
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-text-secondary sm:text-lg">
-            {HERO.subtitle}
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <ButtonLink href={HERO.primaryCta.href}>
-              {HERO.primaryCta.label}
-              <Icon name="arrow" className="h-4 w-4" />
-            </ButtonLink>
-            <ButtonLink href={HERO.secondaryCta.href} variant="secondary">
-              {HERO.secondaryCta.label}
-            </ButtonLink>
-          </div>
-          <p className="mt-6 text-xs font-medium tracking-wide text-text-muted sm:text-sm">
-            {HERO.credibility}
-          </p>
         </motion.div>
       </motion.section>
     </div>

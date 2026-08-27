@@ -172,9 +172,7 @@ export function LandingFooter() {
           ))}
         </div>
         <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-border-subtle pt-6 sm:flex-row sm:items-center">
-          <p className="text-xs text-text-dim">
-            © {new Date().getFullYear()} Vaeloom. A memory system, not a chatbot.
-          </p>
+          <p className="text-xs text-text-dim">© {new Date().getFullYear()} Vaeloom.</p>
           <p className="font-mono text-[11px] text-text-dim">
             Passive by default · active on request
           </p>

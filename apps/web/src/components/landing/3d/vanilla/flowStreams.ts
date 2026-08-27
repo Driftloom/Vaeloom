@@ -18,14 +18,17 @@ export type FlowStreamsHandle = {
   dispose: () => void;
 };
 
-const OUT_RATIO = 0.32; // OUT count relative to IN_LEFT count
-const IN_RIGHT_RATIO = 0.875; // slightly fewer on the right -> asymmetry
+const OUT_RATIO = 0.36; // OUT count relative to IN_LEFT count
+const IN_RIGHT_RATIO = 1.0; // right not reduced; left is the stronger inlet (see LEFT_BASE)
 const OUT_START_R = 0.5;
 const OUT_END_R = 3.0;
 
-// corner spawn points (world space; camera looks at origin from (0,0.9,7.4))
-const SL = { x: -3.2, y: -2.3, z: -0.2 };
-const SR = { x: 3.0, y: -1.9, z: 0.2 };
+// corner spawn points (world space). The hero canvas is 130% tall and shifted
+// up 15% (HeroSection), so the bottom ~15% of the frustum is below the fold —
+// keep spawns inside the visible lower band (world y ~ -1.5) near the left/right
+// edges so the streams read as on-screen corner inlets, not off-screen sources.
+const SL = { x: -4.3, y: -1.6, z: -0.2 };
+const SR = { x: 4.1, y: -1.3, z: 0.2 };
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
@@ -49,9 +52,9 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
   const cCore = new THREE.Color(palette.core);
   const cDust = new THREE.Color(palette.dust);
 
-  const inLeft = Math.max(20, Math.round(80 * density));
-  const inRight = Math.max(18, Math.round(80 * density * IN_RIGHT_RATIO));
-  const outCount = Math.max(8, Math.round(inLeft * OUT_RATIO));
+  const inLeft = Math.max(40, Math.round(170 * density));
+  const inRight = Math.max(36, Math.round(110 * density * IN_RIGHT_RATIO));
+  const outCount = Math.max(10, Math.round(inLeft * OUT_RATIO));
   const count = inLeft + inRight + outCount;
 
   const positions = new Float32Array(count * 3);
@@ -107,12 +110,12 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
     phase[i] = Math.random() * Math.PI * 2;
     z0[i] = -1.6 + Math.random() * 3.2;
     kZ[i] = 1.0 + Math.random() * 1.5;
-    baseAlpha[i] = 0.3 + Math.random() * 0.2;
+    baseAlpha[i] = 0.78 + Math.random() * 0.22;
     prog[i] = Math.random();
     isOut[i] = 0;
     pickColor(i, 'in');
     const sr = Math.random();
-    sizes[i] = sr < 0.75 ? 0.03 + Math.random() * 0.014 : 0.05 + Math.random() * 0.016;
+    sizes[i] = sr < 0.75 ? 0.07 + Math.random() * 0.03 : 0.1 + Math.random() * 0.03;
   }
   // ---- IN_RIGHT (slightly faster + phase-offset -> coordinated, not symmetric) ----
   for (let n = 0; n < inRight; n++, i++) {
@@ -125,12 +128,12 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
     phase[i] = Math.random() * Math.PI * 2 + 0.7;
     z0[i] = -1.6 + Math.random() * 3.2;
     kZ[i] = 1.0 + Math.random() * 1.5;
-    baseAlpha[i] = 0.3 + Math.random() * 0.2;
+    baseAlpha[i] = 0.6 + Math.random() * 0.3;
     prog[i] = Math.random();
     isOut[i] = 0;
     pickColor(i, 'in');
     const sr = Math.random();
-    sizes[i] = sr < 0.75 ? 0.03 + Math.random() * 0.014 : 0.05 + Math.random() * 0.016;
+    sizes[i] = sr < 0.75 ? 0.05 + Math.random() * 0.025 : 0.08 + Math.random() * 0.025;
   }
   // ---- OUT (processed output leaves subtly) ----
   for (let n = 0; n < outCount; n++, i++) {
@@ -236,8 +239,9 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
           posData[i * 3] = bx + pathAmpX[i]! * lateral;
           posData[i * 3 + 1] = by + pathAmpY[i]! * lateral;
           posData[i * 3 + 2] = bz + z;
-          // fade in at the corner, merge into the core glow near the end
-          alphaData[i] = baseAlpha[i]! * smoothstep(0, 0.12, np) * (1 - smoothstep(0.82, 1.0, np));
+          // Visible from the corner along the whole path, merging only into
+          // the core glow at the very end (reads as a directed inbound streak).
+          alphaData[i] = baseAlpha[i]! * smoothstep(0, 0.03, np) * (1 - smoothstep(0.82, 1.0, np));
         }
       }
 

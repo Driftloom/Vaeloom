@@ -11,24 +11,23 @@
  *   capable         -> full scene, DPR capped at 1.75
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 export function useReducedMotionPref(): boolean {
-  // Resolve synchronously on first render (client-only modules) so we never
-  // flash the WebGL scene and then swap to the static fallback.
-  const [reduced, setReduced] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
-  useEffect(() => {
+  // useSyncExternalStore with a server snapshot of `false` keeps hydration in
+  // sync with SSR: the scene gate renders the WebGL branch during the first
+  // client render (matching the server), so React never throws a hydration
+  // mismatch (#418 under prefers-reduced-motion). The real preference is then
+  // applied immediately after hydration, swapping reduced-motion users to the
+  // static fallback — no visual change for capable clients.
+  const subscribe = useCallback((onChange: () => void) => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduced(mq.matches);
-    const onChange = (e: MediaQueryListEvent): void => setReduced(e.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
-  return reduced;
+  const getSnapshot = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const getServerSnapshot = (): boolean => false;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 let cachedWebGL: boolean | null = null;
