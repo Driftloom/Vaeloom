@@ -108,7 +108,7 @@ def validate_mcp_config(config: dict) -> dict:
             # Validate header names are plausible (RFC 7230 token)
             _hdr_name_re = re.compile(r"^[A-Za-z0-9!#$%&'*+.\-^_`|~]+$")
             for hk, hv in headers.items():
-                if not _hdr_name_re.match(hk):
+                if not _hdr_name_re.fullmatch(hk):
                     raise McpConfigError(f"Invalid header name: {hk!r}")
                 if "\n" in hv or "\r" in hv:
                     raise McpConfigError(f"Header value for {hk!r} contains line break")
