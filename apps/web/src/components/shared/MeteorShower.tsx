@@ -209,9 +209,9 @@ export default function MeteorShower({
     };
 
     const targetCount = () => {
-      let base = ((width * height) / 16000) * density;
-      if (isMobile()) base *= 0.5;
-      return Math.round(Math.max(10, Math.min(120, base)));
+      let base = ((width * height) / 10500) * density;
+      if (isMobile()) base *= 0.55;
+      return Math.round(Math.max(12, Math.min(180, base)));
     };
 
     const rebuildMeteors = () => {
