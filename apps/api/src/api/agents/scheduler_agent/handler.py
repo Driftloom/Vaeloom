@@ -30,8 +30,10 @@ class ScheduleEvent(BaseModel):
 class SchedulerAgent(BaseAgent):
     mission = "Maintain deadlines, detect conflicts, manage schedule"
     tools = [
-        Tool(name="create_calendar_event", description="Create calendar event"),
-        Tool(name="list_calendar_events", description="List calendar events"),
+        Tool(name="create_calendar_event", description="Create calendar event (Google)"),
+        Tool(name="list_calendar_events", description="List calendar events (Google)"),
+        Tool(name="create_outlook_calendar_event", description="Create Outlook calendar event (Graph)"),
+        Tool(name="list_outlook_calendar_events", description="List Outlook calendar events (Graph)"),
         Tool(name="search_documents", description="Search for deadline sources"),
         Tool(name="notify_user", description="Send reminder notification"),
     ]

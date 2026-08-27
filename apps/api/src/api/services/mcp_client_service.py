@@ -99,6 +99,30 @@ def validate_mcp_config(config: dict) -> dict:
             raise McpConfigError("http:// URLs require allow_insecure=true (dev only)")
         if parsed.scheme not in ("http", "https") or not parsed.hostname:
             raise McpConfigError("http transport requires a valid 'url'")
+        headers = cfg.get("headers", None)
+        if headers is not None:
+            if not isinstance(headers, dict) or not all(
+                isinstance(k, str) and isinstance(v, str) for k, v in headers.items()
+            ):
+                raise McpConfigError("'headers' must be a dict of strings")
+            # Validate header names are plausible (RFC 7230 token)
+            _hdr_name_re = re.compile(r"^[A-Za-z0-9!#$%&'*+.\-^_`|~]+$")
+            for hk, hv in headers.items():
+                if not _hdr_name_re.match(hk):
+                    raise McpConfigError(f"Invalid header name: {hk!r}")
+                if "\n" in hv or "\r" in hv:
+                    raise McpConfigError(f"Header value for {hk!r} contains line break")
+                if len(hv) > 4096:
+                    raise McpConfigError(f"Header value for {hk!r} too large")
+            # Also reject shell metachars in values? Bearer tokens are safe alphanum
+            # but we enforce size bound only — tokens may contain -. Underscore.
+        # also handle env for http (optional)
+        env = cfg.get("env", None)
+        if env is not None:
+            if not isinstance(env, dict) or not all(
+                isinstance(k, str) and isinstance(v, str) for k, v in env.items()
+            ):
+                raise McpConfigError("'env' must be a dict of strings for http transport")
     return cfg
 
 
@@ -186,11 +210,22 @@ class _McpClientService:
         else:
             from mcp.client.streamable_http import streamable_http_client
 
-            async with streamable_http_client(cfg["url"]) as streams:
-                read, write = streams[0], streams[1]
-                async with ClientSession(read, write) as session:
-                    await session.initialize()
-                    return await operation(session)
+            headers = cfg.get("headers")
+            if headers:
+                from mcp.shared._httpx_utils import create_mcp_http_client
+
+                async with create_mcp_http_client(headers=headers) as http_client:
+                    async with streamable_http_client(cfg["url"], http_client=http_client) as streams:
+                        read, write = streams[0], streams[1]
+                        async with ClientSession(read, write) as session:
+                            await session.initialize()
+                            return await operation(session)
+            else:
+                async with streamable_http_client(cfg["url"]) as streams:
+                    read, write = streams[0], streams[1]
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        return await operation(session)
 
     # ── Connector access ──────────────────────────────────────────────
     async def _load_mcp_connector(self, connector_id, tenant_id: str | None, db) -> tuple[Any, dict]:

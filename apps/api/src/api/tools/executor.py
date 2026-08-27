@@ -51,6 +51,21 @@ TOOL_TIMEOUT_OVERRIDES = {
     "compile_resume_pdf": 30,
     "compile_resume_docx": 15,
     "compile_cover_letter": 30,
+    "search_github_repos": 10,
+    "get_github_profile": 10,
+    "list_github_issues": 10,
+    "read_github_file": 10,
+    "create_github_pull_request": 15,
+    "search_greenhouse_jobs": 10,
+    "search_lever_jobs": 10,
+    "search_jobs_board": 15,
+    "search_outlook_mail": 10,
+    "draft_outlook_mail": 10,
+    "list_outlook_calendar_events": 10,
+    "create_outlook_calendar_event": 10,
+    "list_onedrive_files": 10,
+    "search_onedrive": 10,
+    "download_onedrive_file": 15,
 }
 
 # Per-workspace scraping quota (sliding window, in-process; matches the
@@ -81,8 +96,9 @@ DYNAMIC_TOOL_DEFS: dict[str, ToolDefinition] = {}
 _DYNAMIC_APPROVAL_GATED: set[str] = set()
 
 _BASE_APPROVAL_GATED = frozenset({
-    "create_github_issue", "send_slack_message", "create_calendar_event",
-    "draft_email", "rename_file", "move_file", "categorize_document",
+    "create_github_issue", "create_github_pull_request", "send_slack_message", "create_calendar_event",
+    "create_outlook_calendar_event", "draft_email", "draft_outlook_mail",
+    "rename_file", "move_file", "categorize_document",
     "create_entity", "merge_entities",
 })
 
@@ -824,6 +840,417 @@ async def _execute_list_calendar_events(params: dict[str, Any], workspace_id: st
         return {"status": "error", "tool": "list_calendar_events", "result": str(e)}
 
 
+async def _execute_list_drive_files(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    query = params.get("query", "trashed = false")
+    page_size = params.get("page_size", 50)
+    try:
+        from api.clients.drive_client import DriveClient
+    except ImportError as e:
+        return {"status": "error", "result": f"Drive client import failed: {e}"}
+    try:
+        client = DriveClient()
+        files = await client.list_files(page_size=page_size, query=query)
+        if files is None:
+            return {
+                "status": "success",
+                "tool": "list_drive_files",
+                "result": [
+                    {"id": f"mock_{i}", "name": f"Mock Drive File {i}.pdf", "mimeType": "application/pdf", "size": "12345", "modifiedTime": "2025-01-01T00:00:00Z"}
+                    for i in range(min(page_size, 3))
+                ],
+                "count": min(page_size, 3),
+                "note": "Drive API unavailable — returned mock data",
+            }
+        return {"status": "success", "tool": "list_drive_files", "result": files, "count": len(files)}
+    except Exception as e:
+        logger.error(f"list_drive_files failed: {e}")
+        return {"status": "error", "tool": "list_drive_files", "result": str(e)}
+
+
+async def _execute_search_drive(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    query = params.get("query", "")
+    page_size = params.get("page_size", 20)
+    if not query:
+        return {"status": "error", "tool": "search_drive", "result": "query is required"}
+    try:
+        from api.clients.drive_client import DriveClient
+    except ImportError as e:
+        return {"status": "error", "result": f"Drive client import failed: {e}"}
+    try:
+        client = DriveClient()
+        files = await client.search_files(query=query, page_size=page_size)
+        if files is None:
+            return {
+                "status": "success",
+                "tool": "search_drive",
+                "result": [
+                    {"id": f"mock_search_{i}", "name": f"Mock Result {i} for '{query}'.pdf", "mimeType": "application/pdf", "size": "9999", "modifiedTime": "2025-01-01T00:00:00Z"}
+                    for i in range(min(page_size, 3))
+                ],
+                "count": min(page_size, 3),
+                "note": "Drive API unavailable — returned mock data",
+            }
+        return {"status": "success", "tool": "search_drive", "result": files, "count": len(files)}
+    except Exception as e:
+        logger.error(f"search_drive failed: {e}")
+        return {"status": "error", "tool": "search_drive", "result": str(e)}
+
+
+async def _execute_download_drive_file(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    import base64
+
+    file_id = params.get("file_id", "")
+    mime_type = params.get("mime_type", "application/pdf")
+    if not file_id:
+        return {"status": "error", "tool": "download_drive_file", "result": "file_id is required"}
+    try:
+        from api.clients.drive_client import DriveClient
+    except ImportError as e:
+        return {"status": "error", "result": f"Drive client import failed: {e}"}
+    try:
+        client = DriveClient()
+        # Try metadata first for name
+        meta = await client.get_file(file_id) if hasattr(client, "get_file") else None
+        name = (meta or {}).get("name", f"{file_id}.bin")
+        mt = (meta or {}).get("mimeType", "")
+        if mt.startswith("application/vnd.google-apps."):
+            content = await client.export_file(file_id, mime_type=mime_type)
+        else:
+            content = await client.download_file(file_id)
+        if content is None:
+            # mock content
+            mock = f"Mock content for Drive file {file_id} ({name})".encode()
+            return {
+                "status": "success",
+                "tool": "download_drive_file",
+                "result": {"file_id": file_id, "name": name, "size_bytes": len(mock), "content_base64": base64.b64encode(mock).decode(), "mime_type": mime_type},
+                "note": "Drive API unavailable — returned mock content",
+            }
+        return {
+            "status": "success",
+            "tool": "download_drive_file",
+            "result": {"file_id": file_id, "name": name, "size_bytes": len(content), "content_base64": base64.b64encode(content).decode(), "mime_type": mime_type},
+        }
+    except Exception as e:
+        logger.error(f"download_drive_file failed: {e}")
+        return {"status": "error", "tool": "download_drive_file", "result": str(e)}
+
+
+async def _execute_search_greenhouse_jobs(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    board_token = params.get("board_token", "")
+    keywords = params.get("keywords", [])
+    location = params.get("location")
+    limit = params.get("limit", 20)
+    if not board_token:
+        return {"status": "error", "tool": "search_greenhouse_jobs", "result": "board_token is required"}
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    try:
+        from api.clients.greenhouse_client import GreenhouseClient
+
+        client = GreenhouseClient()
+        jobs = await client.search_jobs(board_token=board_token, keywords=keywords, location=location)
+        if jobs is None:
+            return {
+                "status": "success",
+                "tool": "search_greenhouse_jobs",
+                "result": [
+                    {"id": f"mock_gh_{i}", "title": f"Mock Greenhouse Role {i}", "company": board_token, "location": location or "Remote", "apply_url": f"https://boards.greenhouse.io/{board_token}/jobs/mock{i}"}
+                    for i in range(min(limit, 3))
+                ],
+                "count": min(limit, 3),
+                "note": "Greenhouse API unavailable — returned mock data",
+            }
+        return {"status": "success", "tool": "search_greenhouse_jobs", "result": jobs[:limit], "count": min(len(jobs), limit)}
+    except Exception as e:
+        logger.error(f"search_greenhouse_jobs failed: {e}")
+        return {"status": "error", "tool": "search_greenhouse_jobs", "result": str(e)}
+
+
+async def _execute_search_lever_jobs(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    company = params.get("company", "")
+    keywords = params.get("keywords", [])
+    location = params.get("location")
+    limit = params.get("limit", 20)
+    if not company:
+        return {"status": "error", "tool": "search_lever_jobs", "result": "company (Lever slug) is required"}
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    try:
+        from api.clients.lever_client import LeverClient
+
+        client = LeverClient()
+        jobs = await client.search_jobs(company=company, keywords=keywords, location=location)
+        if jobs is None:
+            return {
+                "status": "success",
+                "tool": "search_lever_jobs",
+                "result": [
+                    {"id": f"mock_lv_{i}", "title": f"Mock Lever Role {i}", "company": company, "location": location or "Remote", "apply_url": f"https://jobs.lever.co/{company}/mock{i}"}
+                    for i in range(min(limit, 3))
+                ],
+                "count": min(limit, 3),
+                "note": "Lever API unavailable — returned mock data",
+            }
+        return {"status": "success", "tool": "search_lever_jobs", "result": jobs[:limit], "count": min(len(jobs), limit)}
+    except Exception as e:
+        logger.error(f"search_lever_jobs failed: {e}")
+        return {"status": "error", "tool": "search_lever_jobs", "result": str(e)}
+
+
+async def _execute_search_jobs_board(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    board_token = params.get("board_token")
+    company = params.get("company")
+    keywords = params.get("keywords", [])
+    location = params.get("location")
+    limit = params.get("limit", 20)
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    aggregated: list[dict[str, Any]] = []
+    sources: dict[str, str] = {}
+    # Greenhouse path
+    if board_token:
+        try:
+            res = await _execute_search_greenhouse_jobs({"board_token": board_token, "keywords": keywords, "location": location, "limit": limit}, workspace_id)
+            if res.get("status") == "success":
+                jobs = res.get("result", [])
+                aggregated.extend(jobs)
+                sources["greenhouse"] = "live" if "mock" not in str(res.get("note", "")).lower() else "mock"
+        except Exception as e:
+            logger.warning(f"jobs_board greenhouse fan-out failed: {e}")
+            sources["greenhouse"] = "error"
+    # Lever path
+    if company:
+        try:
+            res = await _execute_search_lever_jobs({"company": company, "keywords": keywords, "location": location, "limit": limit}, workspace_id)
+            if res.get("status") == "success":
+                jobs = res.get("result", [])
+                aggregated.extend(jobs)
+                sources["lever"] = "live" if "mock" not in str(res.get("note", "")).lower() else "mock"
+        except Exception as e:
+            logger.warning(f"jobs_board lever fan-out failed: {e}")
+            sources["lever"] = "error"
+    # Generic board fallback (if neither supplied but keywords exist, try generic JobBoardClient)
+    if not board_token and not company and keywords:
+        try:
+            res = await _execute_search_jobs({"keywords": keywords, "location": location, "limit": limit}, workspace_id)
+            if res.get("status") == "success":
+                aggregated.extend(res.get("result", []))
+                sources["generic"] = "live" if "mock" not in str(res.get("note", "")).lower() else "mock"
+        except Exception as e:
+            logger.warning(f"jobs_board generic fan-out failed: {e}")
+            sources["generic"] = "error"
+    # If still empty and we had at least one source, try to at least return mock aggregate
+    if not aggregated:
+        # deterministic mock aggregate
+        kw = (keywords[0] if keywords else "Role")
+        aggregated = [
+            {"id": f"mock_agg_{i}", "title": f"Mock Aggregated {kw} {i}", "company": company or board_token or "MockCo", "location": location or "Remote", "apply_url": f"https://example.com/jobs/mock{i}", "source": "mock"}
+            for i in range(min(limit, 3))
+        ]
+        sources["fallback"] = "mock"
+    # dedup by apply_url
+    seen = set()
+    deduped = []
+    for j in aggregated:
+        key = j.get("apply_url") or j.get("id")
+        if key not in seen:
+            seen.add(key)
+            deduped.append(j)
+        if len(deduped) >= limit:
+            break
+    return {"status": "success", "tool": "search_jobs_board", "result": deduped, "count": len(deduped), "sources": sources}
+
+
+async def _execute_search_outlook_mail(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    query = params.get("query", "")
+    max_results = params.get("max_results", 20)
+    if not query:
+        return {"status": "error", "tool": "search_outlook_mail", "result": "query is required"}
+    try:
+        from api.clients.graph_client import GraphClient
+
+        client = GraphClient()
+        mails = await client.search_mail(query=query, max_results=max_results)
+        if mails is None:
+            return {
+                "status": "success",
+                "tool": "search_outlook_mail",
+                "result": [{"id": f"mock_outlk_{i}", "subject": f"Mock Outlook Mail {i}", "sender": "mock@outlook.com", "body": "Graph API not configured"} for i in range(min(max_results, 3))],
+                "note": "Graph API unavailable — returned mock data",
+            }
+        return {"status": "success", "tool": "search_outlook_mail", "result": mails, "count": len(mails)}
+    except Exception as e:
+        logger.error(f"search_outlook_mail failed: {e}")
+        return {"status": "error", "tool": "search_outlook_mail", "result": str(e)}
+
+
+async def _execute_draft_outlook_mail(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    to = params.get("to", "")
+    subject = params.get("subject", "")
+    body = params.get("body", "")
+    if not to or not subject or not body:
+        return {"status": "error", "tool": "draft_outlook_mail", "result": "to, subject, and body are required"}
+    try:
+        from api.clients.graph_client import GraphClient
+
+        client = GraphClient()
+        draft = await client.create_draft(to=to, subject=subject, body=body)
+        if draft is None:
+            mock_id = f"draft_outlk_mock_{uuid_lib.uuid4().hex[:8]}"
+            return {
+                "status": "success",
+                "tool": "draft_outlook_mail",
+                "result": {"draft_id": mock_id, "to": to, "subject": subject, "status": "draft_simulated"},
+                "note": "Graph API unavailable — draft simulated",
+            }
+        return {
+            "status": "success",
+            "tool": "draft_outlook_mail",
+            "result": {"draft_id": draft.get("id", ""), "to": to, "subject": subject, "status": "draft_created"},
+        }
+    except Exception as e:
+        logger.error(f"draft_outlook_mail failed: {e}")
+        return {"status": "error", "tool": "draft_outlook_mail", "result": str(e)}
+
+
+async def _execute_list_outlook_calendar_events(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    start_date = params.get("start_date", "")
+    end_date = params.get("end_date", "")
+    try:
+        from api.clients.graph_client import GraphClient
+
+        client = GraphClient()
+        events = await client.list_events(time_min=start_date or None, time_max=end_date or None)
+        if events is None:
+            return {
+                "status": "success",
+                "tool": "list_outlook_calendar_events",
+                "result": [
+                    {"id": f"mock_outlk_ev_{i}", "title": f"Mock Outlook Event {i}", "start_time": start_date or "2025-01-01T09:00:00Z", "end_time": end_date or "2025-01-01T10:00:00Z", "source": "outlook_calendar"}
+                    for i in range(3)
+                ],
+                "note": "Graph API unavailable — returned mock data",
+            }
+        return {"status": "success", "tool": "list_outlook_calendar_events", "result": events, "count": len(events)}
+    except Exception as e:
+        logger.error(f"list_outlook_calendar_events failed: {e}")
+        return {"status": "error", "tool": "list_outlook_calendar_events", "result": str(e)}
+
+
+async def _execute_create_outlook_calendar_event(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    title = params.get("title", "")
+    start_time = params.get("start_time", "")
+    end_time = params.get("end_time")
+    description = params.get("description", "")
+    if not title or not start_time:
+        return {"status": "error", "tool": "create_outlook_calendar_event", "result": "title and start_time are required"}
+    try:
+        from api.clients.graph_client import GraphClient
+
+        client = GraphClient()
+        event = await client.create_event(summary=title, start_time=start_time, end_time=end_time or start_time, description=description)
+        if event is None:
+            mock_id = f"event_outlk_mock_{uuid_lib.uuid4().hex[:8]}"
+            return {
+                "status": "success",
+                "tool": "create_outlook_calendar_event",
+                "result": {"event_id": mock_id, "title": title, "start_time": start_time, "end_time": end_time or start_time, "status": "event_simulated"},
+                "note": "Graph API unavailable — event simulated",
+            }
+        return {
+            "status": "success",
+            "tool": "create_outlook_calendar_event",
+            "result": {"event_id": event.get("id", ""), "title": title, "start_time": start_time, "end_time": end_time or start_time, "status": "event_created"},
+        }
+    except Exception as e:
+        logger.error(f"create_outlook_calendar_event failed: {e}")
+        return {"status": "error", "tool": "create_outlook_calendar_event", "result": str(e)}
+
+
+async def _execute_list_onedrive_files(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    query = params.get("query", "")
+    page_size = params.get("page_size", 50)
+    try:
+        from api.clients.graph_client import GraphClient
+
+        client = GraphClient()
+        files = await client.list_files(page_size=page_size, query=query or None)
+        if files is None:
+            return {
+                "status": "success",
+                "tool": "list_onedrive_files",
+                "result": [
+                    {"id": f"mock_od_{i}", "name": f"Mock OneDrive File {i}.pdf", "mimeType": "application/pdf", "size": "12345", "modifiedTime": "2025-01-01T00:00:00Z"}
+                    for i in range(min(page_size, 3))
+                ],
+                "count": min(page_size, 3),
+                "note": "Graph API unavailable — returned mock data",
+            }
+        return {"status": "success", "tool": "list_onedrive_files", "result": files, "count": len(files)}
+    except Exception as e:
+        logger.error(f"list_onedrive_files failed: {e}")
+        return {"status": "error", "tool": "list_onedrive_files", "result": str(e)}
+
+
+async def _execute_search_onedrive(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    query = params.get("query", "")
+    page_size = params.get("page_size", 20)
+    if not query:
+        return {"status": "error", "tool": "search_onedrive", "result": "query is required"}
+    try:
+        from api.clients.graph_client import GraphClient
+
+        client = GraphClient()
+        files = await client.search_files(query=query, page_size=page_size)
+        if files is None:
+            return {
+                "status": "success",
+                "tool": "search_onedrive",
+                "result": [
+                    {"id": f"mock_od_search_{i}", "name": f"Mock OneDrive Result {i} for '{query}'.pdf", "mimeType": "application/pdf", "size": "9999", "modifiedTime": "2025-01-01T00:00:00Z"}
+                    for i in range(min(page_size, 3))
+                ],
+                "count": min(page_size, 3),
+                "note": "Graph API unavailable — returned mock data",
+            }
+        return {"status": "success", "tool": "search_onedrive", "result": files, "count": len(files)}
+    except Exception as e:
+        logger.error(f"search_onedrive failed: {e}")
+        return {"status": "error", "tool": "search_onedrive", "result": str(e)}
+
+
+async def _execute_download_onedrive_file(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    import base64
+
+    file_id = params.get("file_id", "")
+    if not file_id:
+        return {"status": "error", "tool": "download_onedrive_file", "result": "file_id is required"}
+    try:
+        from api.clients.graph_client import GraphClient
+
+        client = GraphClient()
+        meta = await client.get_file(file_id) if hasattr(client, "get_file") else None
+        name = (meta or {}).get("name", f"{file_id}.bin")
+        content = await client.download_file(file_id)
+        if content is None:
+            mock = f"Mock content for OneDrive file {file_id} ({name})".encode()
+            return {
+                "status": "success",
+                "tool": "download_onedrive_file",
+                "result": {"file_id": file_id, "name": name, "size_bytes": len(mock), "content_base64": base64.b64encode(mock).decode()},
+                "note": "Graph API unavailable — returned mock content",
+            }
+        return {
+            "status": "success",
+            "tool": "download_onedrive_file",
+            "result": {"file_id": file_id, "name": name, "size_bytes": len(content), "content_base64": base64.b64encode(content).decode()},
+        }
+    except Exception as e:
+        logger.error(f"download_onedrive_file failed: {e}")
+        return {"status": "error", "tool": "download_onedrive_file", "result": str(e)}
+
+
 async def _execute_rename_file(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     document_id = params.get("document_id", "")
     new_name = params.get("new_name", "")
@@ -1443,6 +1870,187 @@ async def _execute_create_github_issue(params: dict[str, Any], workspace_id: str
     return {"status": "success", "tool": "create_github_issue", "result": {"issue_id": mock_id, "url": f"https://github.com/{repo}/issues/mock", "title": title, "status": "simulated_requires_approval"}, "note": "GitHub API unavailable — issue creation simulated (approval-gated)"}
 
 
+def _github_headers() -> dict[str, str]:
+    import os
+
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_KEY") or ""
+    headers = {"Accept": "application/vnd.github+json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+async def _execute_search_github_repos(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    query = params.get("query", "")
+    sort = params.get("sort", "stars")
+    order = params.get("order", "desc")
+    limit = params.get("limit", 10)
+    if not query:
+        return {"status": "error", "tool": "search_github_repos", "result": "query is required"}
+    try:
+        import httpx
+
+        headers = _github_headers()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.github.com/search/repositories",
+                headers=headers,
+                params={"q": query, "sort": sort, "order": order, "per_page": min(limit, 100)},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get("items", [])[:limit]
+                return {"status": "success", "tool": "search_github_repos", "result": items, "count": len(items), "total_count": data.get("total_count", 0)}
+            if resp.status_code in (401, 403):
+                logger.warning(f"GitHub search 401/403: {resp.text[:200]}")
+            else:
+                logger.warning(f"GitHub search {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        logger.warning(f"search_github_repos live call failed: {e}")
+    # mock fallback
+    return {
+        "status": "success",
+        "tool": "search_github_repos",
+        "result": [{"full_name": f"mock/{query.replace(' ', '-')}-{i}", "description": f"Mock repo for {query}", "stargazers_count": 100 - i} for i in range(min(limit, 3))],
+        "count": min(limit, 3),
+        "note": "GitHub API unavailable — returned mock data",
+    }
+
+
+async def _execute_get_github_profile(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    username = params.get("username", "")
+    if not username:
+        return {"status": "error", "tool": "get_github_profile", "result": "username is required"}
+    try:
+        import httpx
+
+        headers = _github_headers()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"https://api.github.com/users/{username}", headers=headers)
+            if resp.status_code == 200:
+                profile = resp.json()
+                # fetch repos summary
+                repos_resp = await client.get(f"https://api.github.com/users/{username}/repos", headers=headers, params={"per_page": 5, "sort": "updated"})
+                repos = repos_resp.json() if repos_resp.status_code == 200 else []
+                profile["top_repos"] = repos if isinstance(repos, list) else []
+                return {"status": "success", "tool": "get_github_profile", "result": profile}
+            if resp.status_code == 404:
+                return {"status": "error", "tool": "get_github_profile", "result": f"GitHub user {username} not found"}
+            logger.warning(f"GitHub profile {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        logger.warning(f"get_github_profile live call failed: {e}")
+    return {
+        "status": "success",
+        "tool": "get_github_profile",
+        "result": {"login": username, "name": "Mock User", "public_repos": 8, "followers": 42, "top_repos": [{"name": "mock-repo", "stargazers_count": 10}]},
+        "note": "GitHub API unavailable — returned mock data",
+    }
+
+
+async def _execute_list_github_issues(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    repo = params.get("repo", "")
+    state = params.get("state", "open")
+    limit = params.get("limit", 20)
+    if not repo:
+        return {"status": "error", "tool": "list_github_issues", "result": "repo (owner/name) is required"}
+    try:
+        import httpx
+
+        headers = _github_headers()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"https://api.github.com/repos/{repo}/issues",
+                headers=headers,
+                params={"state": state, "per_page": min(limit, 100)},
+            )
+            if resp.status_code == 200:
+                return {"status": "success", "tool": "list_github_issues", "result": resp.json(), "count": len(resp.json()) if isinstance(resp.json(), list) else 0}
+            logger.warning(f"GitHub list issues {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        logger.warning(f"list_github_issues live call failed: {e}")
+    return {
+        "status": "success",
+        "tool": "list_github_issues",
+        "result": [{"id": i, "title": f"Mock Issue {i} for {repo}", "state": state} for i in range(min(limit, 3))],
+        "count": min(limit, 3),
+        "note": "GitHub API unavailable — returned mock data",
+    }
+
+
+async def _execute_read_github_file(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    import base64
+
+    repo = params.get("repo", "")
+    path = params.get("path", "")
+    ref = params.get("ref", "")
+    if not repo or not path:
+        return {"status": "error", "tool": "read_github_file", "result": "repo and path are required"}
+    try:
+        import httpx
+
+        headers = _github_headers()
+        url = f"https://api.github.com/repos/{repo}/contents/{path.lstrip('/')}"
+        q = {"ref": ref} if ref else {}
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, headers=headers, params=q)
+            if resp.status_code == 200:
+                data = resp.json()
+                content_b64 = data.get("content", "")
+                # decode if base64
+                try:
+                    decoded = base64.b64decode(content_b64).decode("utf-8", errors="replace")[:5000] if content_b64 else ""
+                except Exception:
+                    decoded = content_b64[:5000]
+                return {
+                    "status": "success",
+                    "tool": "read_github_file",
+                    "result": {"path": path, "content": decoded, "encoding": data.get("encoding", "base64"), "sha": data.get("sha", ""), "size": data.get("size", 0)},
+                }
+            if resp.status_code == 404:
+                return {"status": "error", "tool": "read_github_file", "result": f"File {path} not found in {repo}"}
+            logger.warning(f"GitHub read file {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        logger.warning(f"read_github_file live call failed: {e}")
+    mock_content = f"# Mock file {path}\nMock content for {repo}/{path} — GitHub API unavailable."
+    return {
+        "status": "success",
+        "tool": "read_github_file",
+        "result": {"path": path, "content": mock_content, "encoding": "utf-8", "sha": "mocksha"},
+        "note": "GitHub API unavailable — returned mock data",
+    }
+
+
+async def _execute_create_github_pull_request(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    repo = params.get("repo", "")
+    title = params.get("title", "")
+    body = params.get("body", "")
+    head = params.get("head", "")
+    base = params.get("base", "main")
+    draft = params.get("draft", True)
+    if not repo or not title or not head:
+        return {"status": "error", "tool": "create_github_pull_request", "result": "repo, title, and head are required"}
+    try:
+        import os
+
+        import httpx
+
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_KEY")
+        if token:
+            headers = {"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}"}
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                payload: dict[str, Any] = {"title": title, "body": body, "head": head, "base": base, "draft": draft}
+                resp = await client.post(f"https://api.github.com/repos/{repo}/pulls", headers=headers, json=payload)
+                if resp.status_code in (200, 201):
+                    data = resp.json()
+                    return {"status": "success", "tool": "create_github_pull_request", "result": {"pr_id": str(data.get("id", "")), "url": data.get("html_url", ""), "number": data.get("number")}}
+                logger.warning(f"GitHub create PR {resp.status_code}: {resp.text[:300]}")
+                return {"status": "error", "tool": "create_github_pull_request", "result": f"GitHub API error {resp.status_code}: {resp.text[:300]}"}
+    except Exception as e:
+        logger.warning(f"create_github_pull_request live call failed: {e}")
+    mock_id = f"pr_mock_{uuid_lib.uuid4().hex[:8]}"
+    return {"status": "success", "tool": "create_github_pull_request", "result": {"pr_id": mock_id, "url": f"https://github.com/{repo}/pull/mock", "title": title, "status": "simulated_requires_approval"}, "note": "GitHub API unavailable — PR creation simulated (approval-gated)"}
+
+
 async def _execute_send_slack_message(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     channel = params.get("channel", "")
     text = params.get("text", "")
@@ -1843,6 +2451,10 @@ TOOL_DISPATCH: dict[str, Any] = {
     "search_gmail": _execute_search_gmail,
     "search_jobs": _execute_search_jobs,
     "list_calendar_events": _execute_list_calendar_events,
+    "list_drive_files": _execute_list_drive_files,
+    "search_drive": _execute_search_drive,
+    "download_drive_file": _execute_download_drive_file,
+    "download_file": _execute_download_drive_file,  # legacy alias
     "rename_file": _execute_rename_file,
     "move_file": _execute_move_file,
     "draft_email": _execute_draft_email,
@@ -1858,6 +2470,21 @@ TOOL_DISPATCH: dict[str, Any] = {
     "verify_application_link": _execute_verify_application_link,
     "fetch_github_repo": _execute_fetch_github_repo,
     "create_github_issue": _execute_create_github_issue,
+    "search_github_repos": _execute_search_github_repos,
+    "get_github_profile": _execute_get_github_profile,
+    "list_github_issues": _execute_list_github_issues,
+    "read_github_file": _execute_read_github_file,
+    "create_github_pull_request": _execute_create_github_pull_request,
+    "search_greenhouse_jobs": _execute_search_greenhouse_jobs,
+    "search_lever_jobs": _execute_search_lever_jobs,
+    "search_jobs_board": _execute_search_jobs_board,
+    "search_outlook_mail": _execute_search_outlook_mail,
+    "draft_outlook_mail": _execute_draft_outlook_mail,
+    "list_outlook_calendar_events": _execute_list_outlook_calendar_events,
+    "create_outlook_calendar_event": _execute_create_outlook_calendar_event,
+    "list_onedrive_files": _execute_list_onedrive_files,
+    "search_onedrive": _execute_search_onedrive,
+    "download_onedrive_file": _execute_download_onedrive_file,
     "send_slack_message": _execute_send_slack_message,
     "sync_notion_pages": _execute_sync_notion_pages,
     "execute_code_sandbox": _execute_execute_code_sandbox,

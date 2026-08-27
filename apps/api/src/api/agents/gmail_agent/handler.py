@@ -31,6 +31,8 @@ class GmailAgent(BaseAgent):
     tools = [
         Tool(name="search_gmail", description="Search Gmail inbox"),
         Tool(name="draft_email", description="Draft email (never sends)"),
+        Tool(name="search_outlook_mail", description="Search Outlook inbox via Graph"),
+        Tool(name="draft_outlook_mail", description="Draft Outlook mail (never sends)"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["communications"],

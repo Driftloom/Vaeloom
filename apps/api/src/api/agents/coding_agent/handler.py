@@ -20,6 +20,8 @@ class CodingAgent(BaseAgent):
         Tool(name="generate_practice", description="Generate practice problems for interview prep"),
         Tool(name="execute_code_sandbox", description="Safe sandboxed Python/JS execution for coding problems"),
         Tool(name="fetch_github_repo", description="Fetch repository context for code review"),
+        Tool(name="read_github_file", description="Read file from GitHub repo for review"),
+        Tool(name="search_github_repos", description="Search GitHub repos for examples"),
         Tool(name="web_search", description="Real-time web search for coding docs and solutions"),
     ]
     memory_scopes = MemoryScopes(

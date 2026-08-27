@@ -29,24 +29,25 @@ curl $API/api/v1/connectors/<id>/mcp/tools -H "Authorization: Bearer $TOKEN"
 
 ## Recommended servers
 
-| Purpose                 | Transport | Command / URL                                                   | Notes                                                                        |
-| ----------------------- | --------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| **Browser automation**  | stdio     | `npx -y @modelcontextprotocol/server-puppeteer`                 | Screenshots + JS-rendered DOM; complements native `browse_job_page`          |
-| **Postgres / pgvector** | stdio     | `npx -y @modelcontextprotocol/server-postgres postgresql://...` | Read-only semantic search over the knowledge graph                           |
-| **GitHub**              | http      | `https://api.githubcopilot.com/mcp/` (PAT via `env`)            | Native GitHub tools already exist — prefer those; use MCP for advanced flows |
-| **Google Drive**        | stdio     | `npx -y @modelcontextprotocol/server-gdrive`                    | Read-only docs search                                                        |
-| **Obsidian**            | stdio     | `npx -y mcp-obsidian <vault-path>`                              | Sync interview prep notes / roadmaps                                         |
+| Purpose                 | Transport | Command / URL                                                          | Notes                                                                                                                                                                 |
+| ----------------------- | --------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Browser automation**  | stdio     | `npx -y @modelcontextprotocol/server-puppeteer`                        | Screenshots + JS-rendered DOM; complements native `browse_job_page`                                                                                                   |
+| **Postgres / pgvector** | stdio     | `npx -y @modelcontextprotocol/server-postgres postgresql://...`        | Read-only semantic search over the knowledge graph                                                                                                                    |
+| **GitHub**              | http      | `https://api.githubcopilot.com/mcp/` (PAT via `headers.Authorization`) | Native GitHub tools already exist — prefer those; use MCP for advanced flows. For http transports use `headers: {Authorization: "Bearer <PAT>"}` (encrypted at rest). |
+| **Google Drive**        | stdio     | `npx -y @modelcontextprotocol/server-gdrive`                           | Read-only docs search                                                                                                                                                 |
+| **Obsidian**            | stdio     | `npx -y mcp-obsidian <vault-path>`                                     | Sync interview prep notes / roadmaps                                                                                                                                  |
 
 ## Config reference
 
-| Field            | stdio    | http     | Description                                     |
-| ---------------- | -------- | -------- | ----------------------------------------------- |
-| `transport`      | required | required | `"stdio"` \| `"http"`                           |
-| `command`        | required | —        | Executable (shell interpreters denied)          |
-| `args`           | optional | —        | argv list, no shell metacharacters              |
-| `url`            | —        | required | Server endpoint                                 |
-| `allow_insecure` | —        | optional | Set `true` only for local dev http:// endpoints |
-| `env`            | optional | optional | Extra env vars — each value encrypted at rest   |
+| Field            | stdio    | http     | Description                                                        |
+| ---------------- | -------- | -------- | ------------------------------------------------------------------ |
+| `transport`      | required | required | `"stdio"` \| `"http"`                                              |
+| `command`        | required | —        | Executable (shell interpreters denied)                             |
+| `args`           | optional | —        | argv list, no shell metacharacters                                 |
+| `url`            | —        | required | Server endpoint                                                    |
+| `allow_insecure` | —        | optional | Set `true` only for local dev http:// endpoints                    |
+| `env`            | optional | optional | Extra env vars — each value encrypted at rest                      |
+| `headers`        | —        | optional | HTTP headers — each value encrypted at rest (e.g. `Authorization`) |
 
 ## Safety model
 

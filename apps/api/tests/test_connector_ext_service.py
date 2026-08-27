@@ -274,7 +274,12 @@ class TestConnectorExtService:
             mock_get.return_value = conn
             with patch('api.services.connector_ext_service.datetime') as mock_dt:
                 mock_dt.now.return_value = now
-                result = await service.trigger_sync(conn.id, None, mock_db)
+                # New sync does authenticated GET for rest connectors — mock it
+                with patch('httpx.AsyncClient') as mock_client:
+                    inst = AsyncMock()
+                    inst.get = AsyncMock(return_value=MagicMock(status_code=200))
+                    mock_client.return_value.__aenter__.return_value = inst
+                    result = await service.trigger_sync(conn.id, None, mock_db)
                 assert result["status"] == "synced"
                 assert result["error"] is None
                 assert result["synced_at"] == now
@@ -287,6 +292,9 @@ class TestConnectorExtService:
         class _FailConn:
             id = uuid.uuid4()
             status = "disconnected"
+            type = "rest"
+            config = {"url": "https://api.example.com"}
+            token_ref = None
             last_synced_at = property(
                 fget=lambda self: None,
                 fset=lambda self, v: (_ for _ in ()).throw(Exception("sync fail")),
@@ -295,7 +303,12 @@ class TestConnectorExtService:
         conn = _FailConn()
         with patch.object(service, 'get', new=AsyncMock()) as mock_get:
             mock_get.return_value = conn
-            result = await service.trigger_sync(conn.id, None, mock_db)
+            # mock httpx for rest sync path before the setter throws (validation passes, then GET then setter)
+            with patch('httpx.AsyncClient') as mock_client:
+                inst = AsyncMock()
+                inst.get = AsyncMock(return_value=MagicMock(status_code=200))
+                mock_client.return_value.__aenter__.return_value = inst
+                result = await service.trigger_sync(conn.id, None, mock_db)
             assert result["error"] == "sync_failed"
 
     # ── get_sync_status ─────────────────────────────────────────────

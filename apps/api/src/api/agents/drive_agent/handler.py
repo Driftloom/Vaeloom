@@ -14,8 +14,11 @@ class DriveAgent(BaseAgent):
     mission = "Sync Google Drive files, download new/changed content, and ingest into the knowledge base"
     tools = [
         Tool(name="list_drive_files", description="List recent files in Google Drive"),
-        Tool(name="download_file", description="Download a file by its Drive file ID"),
+        Tool(name="download_drive_file", description="Download a file by its Drive file ID"),
         Tool(name="search_drive", description="Full-text search across Drive files"),
+        Tool(name="list_onedrive_files", description="List OneDrive files via Graph"),
+        Tool(name="search_onedrive", description="Search OneDrive files via Graph"),
+        Tool(name="download_onedrive_file", description="Download OneDrive file via Graph"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["documents"],

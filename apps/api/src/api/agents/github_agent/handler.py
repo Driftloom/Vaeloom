@@ -15,12 +15,18 @@ logger = logging.getLogger(__name__)
 class GitHubAgent(BaseAgent):
     mission = "Analyze GitHub profiles and repositories for skill assessment"
     tools = [
+        Tool(name="fetch_github_repo", description="Fetch commits, PRs, repos, issues from GitHub API"),
+        Tool(name="search_github_repos", description="Search GitHub repositories by query"),
+        Tool(name="get_github_profile", description="Get public GitHub profile and top repos"),
+        Tool(name="list_github_issues", description="List issues for a repo"),
+        Tool(name="read_github_file", description="Read a file from a GitHub repo"),
+        Tool(name="create_github_issue", description="Create GitHub issues (approval-gated)"),
+        Tool(name="create_github_pull_request", description="Create GitHub PRs (approval-gated)"),
+        Tool(name="web_search", description="Real-time web search for GitHub and tech trends"),
+        # legacy logical tools retained for backwards compat (mock-fallback via LLM)
         Tool(name="analyze_profile", description="Analyze a GitHub user's profile for skills and activity"),
         Tool(name="get_repo_stats", description="Get statistics and analysis for a repository"),
         Tool(name="assess_skills", description="Assess technical skills based on GitHub activity"),
-        Tool(name="fetch_github_repo", description="Fetch commits, PRs, repos, issues from GitHub API"),
-        Tool(name="create_github_issue", description="Create GitHub issues/PRs (approval-gated)"),
-        Tool(name="web_search", description="Real-time web search for GitHub and tech trends"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["github", "skills", "repositories", "contributions"],

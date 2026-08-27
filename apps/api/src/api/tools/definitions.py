@@ -173,6 +173,225 @@ LIST_CALENDAR_EVENTS = ToolDefinition(
 )
 
 
+LIST_DRIVE_FILES = ToolDefinition(
+    name="list_drive_files",
+    description="List files in Google Drive (name, mimeType, size, modifiedTime)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Drive query (e.g. \"trashed = false\")", "default": "trashed = false"},
+            "page_size": {"type": "integer", "default": 50},
+        },
+        "required": [],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.drive.read",
+    category="connector_read",
+)
+
+SEARCH_DRIVE = ToolDefinition(
+    name="search_drive",
+    description="Full-text search across Google Drive files",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search terms for fullText search"},
+            "page_size": {"type": "integer", "default": 20},
+        },
+        "required": ["query"],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.drive.read",
+    category="connector_read",
+)
+
+DOWNLOAD_DRIVE_FILE = ToolDefinition(
+    name="download_drive_file",
+    description="Download a Google Drive file by file ID (binary content; Google Docs auto-exported as PDF)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "file_id": {"type": "string", "description": "Drive file ID"},
+            "mime_type": {"type": "string", "description": "Export MIME for Google Docs (default application/pdf)"},
+        },
+        "required": ["file_id"],
+    },
+    output_schema={"type": "object", "properties": {"file_id": {"type": "string"}, "name": {"type": "string"}, "size_bytes": {"type": "integer"}, "content_base64": {"type": "string"}}},
+    required_scope="connector.drive.read",
+    category="connector_read",
+)
+
+
+SEARCH_GREENHOUSE_JOBS = ToolDefinition(
+    name="search_greenhouse_jobs",
+    description="Search Greenhouse boards (public, no auth) — supply board_token (e.g. 'openai', 'datadog')",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "board_token": {"type": "string", "description": "Greenhouse board token / company slug"},
+            "keywords": {"type": "array", "items": {"type": "string"}},
+            "location": {"type": "string"},
+            "limit": {"type": "integer", "default": 20},
+        },
+        "required": ["board_token"],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.jobs.read",
+    category="connector_read",
+)
+
+SEARCH_LEVER_JOBS = ToolDefinition(
+    name="search_lever_jobs",
+    description="Search Lever postings (public, no auth) — supply company slug (e.g. 'lever', 'netflix')",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "company": {"type": "string", "description": "Lever company slug"},
+            "keywords": {"type": "array", "items": {"type": "string"}},
+            "location": {"type": "string"},
+            "limit": {"type": "integer", "default": 20},
+        },
+        "required": ["company"],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.jobs.read",
+    category="connector_read",
+)
+
+SEARCH_JOBS_BOARD = ToolDefinition(
+    name="search_jobs_board",
+    description="Unified job board search — fans out to Greenhouse + Lever (public) + generic board; aggregates results",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "board_token": {"type": "string", "description": "Optional Greenhouse board; if omitted uses Lever company fallback"},
+            "company": {"type": "string", "description": "Optional Lever company slug"},
+            "keywords": {"type": "array", "items": {"type": "string"}},
+            "location": {"type": "string"},
+            "limit": {"type": "integer", "default": 20},
+        },
+        "required": [],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.jobs.read",
+    category="connector_read",
+)
+
+SEARCH_OUTLOOK_MAIL = ToolDefinition(
+    name="search_outlook_mail",
+    description="Search Outlook mail via Microsoft Graph (/me/messages, $search)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "max_results": {"type": "integer", "default": 20},
+        },
+        "required": ["query"],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.outlook.read",
+    category="connector_read",
+)
+
+DRAFT_OUTLOOK_MAIL = ToolDefinition(
+    name="draft_outlook_mail",
+    description="Draft Outlook mail via Graph (never sends — user approves in Outlook)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "to": {"type": "string"},
+            "subject": {"type": "string"},
+            "body": {"type": "string"},
+        },
+        "required": ["to", "subject", "body"],
+    },
+    output_schema={"type": "object", "properties": {"draft_id": {"type": "string"}}},
+    required_scope="connector.outlook.write",
+    category="connector_write",
+)
+
+LIST_OUTLOOK_CALENDAR_EVENTS = ToolDefinition(
+    name="list_outlook_calendar_events",
+    description="List Outlook calendar events in a date range via Microsoft Graph",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "start_date": {"type": "string", "format": "date"},
+            "end_date": {"type": "string", "format": "date"},
+        },
+        "required": ["start_date", "end_date"],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.calendar.read",
+    category="connector_read",
+)
+
+CREATE_OUTLOOK_CALENDAR_EVENT = ToolDefinition(
+    name="create_outlook_calendar_event",
+    description="Create Outlook calendar event via Graph (approval-gated)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "start_time": {"type": "string", "format": "date-time"},
+            "end_time": {"type": "string", "format": "date-time"},
+            "description": {"type": "string"},
+        },
+        "required": ["title", "start_time"],
+    },
+    output_schema={"type": "object", "properties": {"event_id": {"type": "string"}}},
+    required_scope="connector.calendar.write",
+    category="connector_write",
+)
+
+LIST_ONEDRIVE_FILES = ToolDefinition(
+    name="list_onedrive_files",
+    description="List OneDrive files via Microsoft Graph (/me/drive/root/children)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "default": ""},
+            "page_size": {"type": "integer", "default": 50},
+        },
+        "required": [],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.drive.read",
+    category="connector_read",
+)
+
+SEARCH_ONEDRIVE = ToolDefinition(
+    name="search_onedrive",
+    description="Full-text search OneDrive via Graph (/me/drive/root/search)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "page_size": {"type": "integer", "default": 20},
+        },
+        "required": ["query"],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.drive.read",
+    category="connector_read",
+)
+
+DOWNLOAD_ONEDRIVE_FILE = ToolDefinition(
+    name="download_onedrive_file",
+    description="Download OneDrive file by item ID via Graph (/me/drive/items/{id}/content)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "file_id": {"type": "string"},
+        },
+        "required": ["file_id"],
+    },
+    output_schema={"type": "object", "properties": {"file_id": {"type": "string"}, "name": {"type": "string"}, "size_bytes": {"type": "integer"}, "content_base64": {"type": "string"}}},
+    required_scope="connector.drive.read",
+    category="connector_read",
+)
+
+
 # ── Connector Write Tools ──────────────────────────────────────────
 
 RENAME_FILE = ToolDefinition(
@@ -488,6 +707,93 @@ CREATE_GITHUB_ISSUE = ToolDefinition(
     category="connector_write",
 )
 
+SEARCH_GITHUB_REPOS = ToolDefinition(
+    name="search_github_repos",
+    description="Search GitHub repositories by query (stars, topic, language)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query, e.g. 'fastapi stars:>1000'"},
+            "sort": {"type": "string", "enum": ["stars", "forks", "updated"], "default": "stars"},
+            "order": {"type": "string", "enum": ["asc", "desc"], "default": "desc"},
+            "limit": {"type": "integer", "default": 10},
+        },
+        "required": ["query"],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="connector.github.read",
+    category="connector_read",
+)
+
+GET_GITHUB_PROFILE = ToolDefinition(
+    name="get_github_profile",
+    description="Get public GitHub profile, repos stats and contribution summary",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "username": {"type": "string", "description": "GitHub username"},
+        },
+        "required": ["username"],
+    },
+    output_schema={"type": "object"},
+    required_scope="connector.github.read",
+    category="connector_read",
+)
+
+LIST_GITHUB_ISSUES = ToolDefinition(
+    name="list_github_issues",
+    description="List issues for a repo (open/closed/all) with pagination",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "repo": {"type": "string", "description": "owner/repo"},
+            "state": {"type": "string", "enum": ["open", "closed", "all"], "default": "open"},
+            "limit": {"type": "integer", "default": 20},
+        },
+        "required": ["repo"],
+    },
+    output_schema={"type": "array"},
+    required_scope="connector.github.read",
+    category="connector_read",
+)
+
+READ_GITHUB_FILE = ToolDefinition(
+    name="read_github_file",
+    description="Read a file's content from a GitHub repo (branch aware, base64 decoded)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "repo": {"type": "string", "description": "owner/repo"},
+            "path": {"type": "string", "description": "File path within repo, e.g. 'README.md'"},
+            "ref": {"type": "string", "description": "Branch/tag/commit (default default branch)"},
+        },
+        "required": ["repo", "path"],
+    },
+    output_schema={"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}, "encoding": {"type": "string"}}},
+    required_scope="connector.github.read",
+    category="connector_read",
+)
+
+CREATE_GITHUB_PULL_REQUEST = ToolDefinition(
+    name="create_github_pull_request",
+    description="Create a GitHub pull request (approval-gated)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "repo": {"type": "string", "description": "owner/repo"},
+            "title": {"type": "string"},
+            "body": {"type": "string"},
+            "head": {"type": "string", "description": "Source branch"},
+            "base": {"type": "string", "description": "Target branch (default main)"},
+            "draft": {"type": "boolean", "default": True},
+        },
+        "required": ["repo", "title", "head"],
+    },
+    output_schema={"type": "object", "properties": {"pr_id": {"type": "string"}, "url": {"type": "string"}}},
+    required_scope="connector.github.write",
+    category="connector_write",
+)
+
 SEND_SLACK_MESSAGE = ToolDefinition(
     name="send_slack_message",
     description="Send Slack alerts and notifications to workspaces",
@@ -630,6 +936,10 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
         SEARCH_DOCUMENTS, QUERY_GRAPH, GET_ENTITY,
         CREATE_ENTITY, MERGE_ENTITIES, CATEGORIZE_DOCUMENT,
         SEARCH_GMAIL, SEARCH_JOBS, LIST_CALENDAR_EVENTS,
+        LIST_DRIVE_FILES, SEARCH_DRIVE, DOWNLOAD_DRIVE_FILE,
+        SEARCH_GREENHOUSE_JOBS, SEARCH_LEVER_JOBS, SEARCH_JOBS_BOARD,
+        SEARCH_OUTLOOK_MAIL, DRAFT_OUTLOOK_MAIL, LIST_OUTLOOK_CALENDAR_EVENTS, CREATE_OUTLOOK_CALENDAR_EVENT,
+        LIST_ONEDRIVE_FILES, SEARCH_ONEDRIVE, DOWNLOAD_ONEDRIVE_FILE,
         RENAME_FILE, MOVE_FILE, DRAFT_EMAIL, CREATE_CALENDAR_EVENT,
         NOTIFY_USER,
         COMPILE_RESUME_PDF, COMPILE_RESUME_DOCX, COMPILE_COVER_LETTER,
@@ -637,10 +947,15 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
         CALCULATE_SEMANTIC_ATS_SCORE, EXTRACT_MISSING_HARD_SKILLS,
         AUDIT_ATS_FORMATTING,
         BROWSE_JOB_PAGE, SCRAPE_COMPANY_INSIGHTS, VERIFY_APPLICATION_LINK,
-        FETCH_GITHUB_REPO, CREATE_GITHUB_ISSUE, SEND_SLACK_MESSAGE,
+        FETCH_GITHUB_REPO, CREATE_GITHUB_ISSUE, SEARCH_GITHUB_REPOS, GET_GITHUB_PROFILE, LIST_GITHUB_ISSUES, READ_GITHUB_FILE, CREATE_GITHUB_PULL_REQUEST,
+        SEND_SLACK_MESSAGE,
         SYNC_NOTION_PAGES, EXECUTE_CODE_SANDBOX,
     ]
 }
+
+
+# Legacy alias: DriveAgent originally declared "download_file"
+ALL_TOOLS["download_file"] = DOWNLOAD_DRIVE_FILE.model_copy(update={"name": "download_file"})
 
 
 def get_tools_for_agent(tool_names: list[str]) -> list[ToolDefinition]:

@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     google_refresh_token: str = ""
     google_calendar_id: str = "primary"
 
+    ms_graph_client_id: str = ""
+    ms_graph_client_secret: str = ""
+    ms_graph_refresh_token: str = ""
+    ms_graph_tenant_id: str = "common"
+
     job_board_api_url: str = ""
     job_board_api_key: str = ""
 
@@ -102,6 +107,23 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         secret_manager = kwargs.pop("secret_manager", None)
         super().__init__(**kwargs)
+        # Alias: MICROSOFT_* → MS_GRAPH_* (both accepted)
+        if not self.ms_graph_client_id:
+            alias = os.environ.get("MICROSOFT_CLIENT_ID") or os.environ.get("MICROSOFT_GRAPH_CLIENT_ID") or ""
+            if alias:
+                object.__setattr__(self, "ms_graph_client_id", alias)
+        if not self.ms_graph_client_secret:
+            alias = os.environ.get("MICROSOFT_CLIENT_SECRET") or os.environ.get("MICROSOFT_GRAPH_CLIENT_SECRET") or ""
+            if alias:
+                object.__setattr__(self, "ms_graph_client_secret", alias)
+        if not self.ms_graph_refresh_token:
+            alias = os.environ.get("MICROSOFT_REFRESH_TOKEN") or os.environ.get("MICROSOFT_GRAPH_REFRESH_TOKEN") or ""
+            if alias:
+                object.__setattr__(self, "ms_graph_refresh_token", alias)
+        if not self.ms_graph_tenant_id or self.ms_graph_tenant_id == "common":
+            alias = os.environ.get("MICROSOFT_TENANT_ID") or os.environ.get("MS_TENANT_ID") or ""
+            if alias:
+                object.__setattr__(self, "ms_graph_tenant_id", alias)
         # Auto-wire Infisical when INFISICAL_ENABLED (fixes dead code 2026-08-21)
         if secret_manager is None and os.environ.get("INFISICAL_ENABLED", "").lower() in ("1", "true", "yes"):
             try:

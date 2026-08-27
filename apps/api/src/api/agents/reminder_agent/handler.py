@@ -19,8 +19,11 @@ class ReminderAgent(BaseAgent):
         Tool(name="schedule_followup", description="Schedule follow-up reminders for tasks"),
         Tool(name="sort_by_priority", description="Sort and prioritize pending items"),
         Tool(name="list_calendar_events", description="List calendar events in a date range"),
-        Tool(name="create_calendar_event", description="Create calendar events (approval-gated)"),
+        Tool(name="create_calendar_event", description="Create calendar events (Google, approval-gated)"),
+        Tool(name="list_outlook_calendar_events", description="List Outlook calendar events (Graph)"),
+        Tool(name="create_outlook_calendar_event", description="Create Outlook calendar events (Graph)"),
         Tool(name="search_gmail", description="Search Gmail for deadline-related emails"),
+        Tool(name="search_outlook_mail", description="Search Outlook mail for deadline-related emails"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["tasks", "deadlines", "schedule", "priorities"],

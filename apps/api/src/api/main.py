@@ -162,6 +162,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Background daemon failed to start (non-fatal): {e}")
 
+    # ── Provider registry (ADR-037) — pluggable native providers ──
+    try:
+        from .integrations.registry import provider_registry
+
+        count = provider_registry.discover_and_register()
+        logger.info(f"Provider registry ready: {count} providers")
+    except Exception as e:
+        logger.warning(f"Provider registry failed (non-fatal): {e}")
+
     # ── MCP bridge warm-up (fire-and-forget, never blocks boot) ──────
     import asyncio as _asyncio
 
