@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { ApiError, api } from '../../../lib/api';
+import MeteorShower from '../../../components/shared/MeteorShower';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_RE = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/;
@@ -123,6 +124,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex">
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-surface">
+        <MeteorShower />
         <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-primary/5" />
         <div className="absolute top-1/3 -right-20 w-96 h-96 bg-accent-500/15 rounded-full blur-[120px] animate-glow-pulse" />
         <div
