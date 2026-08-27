@@ -122,23 +122,9 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-surface">
+    <div className="min-h-screen flex bg-black">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
         <MeteorShower />
-        <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-primary/5" />
-        <div className="absolute top-1/3 -right-20 w-96 h-96 bg-accent-500/15 rounded-full blur-[120px] animate-glow-pulse" />
-        <div
-          className="absolute bottom-1/4 left-10 w-80 h-80 bg-primary/10 rounded-full blur-[100px] animate-glow-pulse"
-          style={{ animationDelay: '1.5s' }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
         <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
           <div className="mb-12 animate-fade-in">
             <div className="flex items-center gap-3 mb-2">
@@ -178,8 +164,7 @@ export default function SignupPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-8 bg-background relative">
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-accent/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
+      <div className="flex-1 flex items-center justify-center p-8 bg-black relative">
         <div className="w-full max-w-[420px] relative z-10">
           <div className="lg:hidden text-center mb-10">
             <div className="inline-flex items-center gap-2 mb-4">
@@ -195,7 +180,7 @@ export default function SignupPage() {
             <p className="text-text-muted">Get started in seconds</p>
           </div>
 
-          <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card">
+          <div className="bg-[#0a0a0a] border border-zinc-800 rounded-2xl p-8 shadow-card">
             <form onSubmit={onSubmit} className="space-y-5">
               <div className="space-y-2">
                 <label htmlFor="displayName" className="input-label">
@@ -349,7 +334,7 @@ export default function SignupPage() {
                 <div className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-surface-50 text-text-dim">or sign up with</span>
+                <span className="px-4 bg-[#0a0a0a] text-zinc-400">or sign up with</span>
               </div>
             </div>
 

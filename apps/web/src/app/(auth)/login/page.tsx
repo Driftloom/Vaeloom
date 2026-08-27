@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { ApiError, api as apiClient } from '../../../lib/api';
 import { useToast } from '@/components/shared/Toast';
+import MeteorShower from '../../../components/shared/MeteorShower';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -112,23 +113,8 @@ function LoginForm() {
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-surface">
-        {/* Gradient mesh background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/20 rounded-full blur-[120px] animate-glow-pulse" />
-        <div
-          className="absolute bottom-1/4 right-0 w-80 h-80 bg-accent/10 rounded-full blur-[100px] animate-glow-pulse"
-          style={{ animationDelay: '1.5s' }}
-        />
-
-        {/* Grid pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
-          }}
-        />
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+        <MeteorShower />
 
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
@@ -169,10 +155,7 @@ function LoginForm() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background relative overflow-hidden">
-        {/* Subtle gradient orb */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
-
+      <div className="flex-1 flex items-center justify-center p-8 bg-black relative overflow-hidden">
         <div className="w-full max-w-[400px] relative z-10">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-10">
@@ -421,7 +404,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="min-h-screen flex items-center justify-center bg-black">
           <div className="flex flex-col items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center animate-pulse">
               <span className="text-white font-bold text-lg">V</span>
