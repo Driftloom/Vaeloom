@@ -119,8 +119,7 @@ function ResetPasswordForm() {
   if (resetComplete) {
     return (
       <div className="min-h-screen flex">
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-surface">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
@@ -135,7 +134,7 @@ function ResetPasswordForm() {
             </p>
           </div>
         </div>
-        <div className="flex-1 flex items-center justify-center p-8 bg-background">
+        <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-[400px]">
             <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
               <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">
@@ -156,8 +155,7 @@ function ResetPasswordForm() {
   if (sent) {
     return (
       <div className="min-h-screen flex">
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-surface">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
@@ -171,7 +169,7 @@ function ResetPasswordForm() {
             </p>
           </div>
         </div>
-        <div className="flex-1 flex items-center justify-center p-8 bg-background">
+        <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-[400px]">
             <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
               <p className="text-text">
@@ -194,21 +192,7 @@ function ResetPasswordForm() {
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-surface">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/5" />
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/20 rounded-full blur-[120px] animate-glow-pulse" />
-        <div
-          className="absolute bottom-1/4 right-0 w-80 h-80 bg-accent/10 rounded-full blur-[100px] animate-glow-pulse"
-          style={{ animationDelay: '1.5s' }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
           <div className="mb-12 animate-fade-in">
             <div className="flex items-center gap-3 mb-2">
@@ -230,9 +214,7 @@ function ResetPasswordForm() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
-
+      <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden">
         <div className="w-full max-w-[400px] relative z-10">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-10">

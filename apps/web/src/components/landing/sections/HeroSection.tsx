@@ -99,7 +99,7 @@ export default function HeroSection() {
         />
 
         {/* Meteor shower — subtle shooting stars across the hero sky */}
-        <MeteorShower />
+        <MeteorShower density={0.45} />
 
         {/* Foreground — heading as the hero unit, lifted above the core */}
         <motion.div

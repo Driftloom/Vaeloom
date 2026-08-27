@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { ApiError, api as apiClient } from '../../../lib/api';
 import { useToast } from '@/components/shared/Toast';
-import MeteorShower from '../../../components/shared/MeteorShower';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -113,9 +112,7 @@ function LoginForm() {
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-        <MeteorShower />
-
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
           {/* Logo */}
@@ -155,7 +152,7 @@ function LoginForm() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-black relative overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden">
         <div className="w-full max-w-[400px] relative z-10">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-10">
