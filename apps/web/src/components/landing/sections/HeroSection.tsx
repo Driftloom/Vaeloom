@@ -5,7 +5,6 @@ import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { HERO } from '@/lib/landing/copy';
 import { MemoryCoreScene } from '@/components/landing/3d/SceneShell';
 import { StaticMemoryCore } from '@/components/landing/3d/StaticScenes';
-import MeteorShower from '@/components/shared/MeteorShower';
 import { useTheme } from '@/hooks/useTheme';
 
 function useIsMobile() {
@@ -97,9 +96,6 @@ export default function HeroSection() {
           }}
           aria-hidden="true"
         />
-
-        {/* Meteor shower — subtle shooting stars across the hero sky */}
-        <MeteorShower density={0.45} />
 
         {/* Foreground — heading as the hero unit, lifted above the core */}
         <motion.div
