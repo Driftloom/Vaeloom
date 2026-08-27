@@ -6,8 +6,8 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/shared/Toast';
-import { documentApi, agentApi } from '@/lib/api-client';
-import type { DocumentResponse, DocumentAction } from '@/lib/api-client';
+import { documentApi, agentApi, temporalApi } from '@/lib/api-client';
+import type { DocumentResponse, DocumentAction, TemporalWorkflowStatus } from '@/lib/api-client';
 import { DiffViewer } from '@/components/shared/DiffViewer';
 
 function getFileName(path: string): string {
@@ -137,6 +137,12 @@ export default function WorkspaceFilesPage() {
   const [actionsLoading, setActionsLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
+  // Temporal ingest workflow status per document (polling, not fake spinner)
+  const [ingestMap, setIngestMap] = useState<
+    Record<string, TemporalWorkflowStatus | { status: string; error?: string }>
+  >({});
+  const [ingestBusy, setIngestBusy] = useState<string | null>(null);
+
   const fetchDocuments = useCallback(
     async (includeArchived = showArchived, pageNum = page) => {
       if (!workspaceId) return;
@@ -164,6 +170,94 @@ export default function WorkspaceFilesPage() {
     fetchDocuments(showArchived, page);
   }, [fetchDocuments, page, showArchived]);
 
+  const startIngest = useCallback(
+    async (doc: DocumentResponse) => {
+      if (!workspaceId) return;
+      const docId = doc.id;
+      setIngestBusy(docId);
+      try {
+        const res = await temporalApi.startIngest({
+          workspace_id: workspaceId,
+          document_id: docId,
+        });
+        const wid = res.workflow_id;
+        // immediate status fetch
+        try {
+          const st = await temporalApi.getStatus(wid);
+          setIngestMap((m) => ({ ...m, [docId]: st }));
+        } catch {
+          setIngestMap((m) => ({ ...m, [docId]: { workflow_id: wid, status: res.status } }));
+        }
+        toast({ tone: 'success', title: 'Ingest started', detail: wid });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Temporal ingest start failed';
+        // 503 means temporal disabled locally — not an error, just degraded
+        if (msg.includes('503') || (err as { status?: number })?.status === 503) {
+          setIngestMap((m) => ({
+            ...m,
+            [docId]: { workflow_id: '', status: 'temporal_disabled' },
+          }));
+        } else {
+          toast({ tone: 'error', title: 'Ingest failed', detail: msg });
+        }
+      } finally {
+        setIngestBusy(null);
+      }
+    },
+    [workspaceId, toast],
+  );
+
+  const cancelIngest = useCallback(
+    async (docId: string, workflowId: string) => {
+      setIngestBusy(docId);
+      try {
+        await temporalApi.cancel(workflowId);
+        setIngestMap((m) => ({
+          ...m,
+          [docId]: { workflow_id: workflowId, status: 'cancel_requested' },
+        }));
+        toast({ tone: 'info', title: 'Cancel requested', detail: workflowId });
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: 'Cancel failed',
+          detail: err instanceof Error ? err.message : 'Please try again.',
+        });
+      } finally {
+        setIngestBusy(null);
+      }
+    },
+    [toast],
+  );
+
+  // Live polling for running ingest workflows (real query, not fake spinner)
+  useEffect(() => {
+    const running = Object.entries(ingestMap).filter(([, v]) => {
+      const s = (v?.status || '').toLowerCase();
+      const qs = (v as TemporalWorkflowStatus)?.query?.status?.toLowerCase() ?? '';
+      return (
+        s === 'running' ||
+        s === 'accepted' ||
+        s === 'queued' ||
+        qs === 'running' ||
+        qs === 'parsing' ||
+        qs === 'extracting'
+      );
+    });
+    if (running.length === 0) return;
+    const interval = setInterval(async () => {
+      for (const [docId, v] of running) {
+        const wid = (v as TemporalWorkflowStatus)?.workflow_id;
+        if (!wid) continue;
+        try {
+          const st = await temporalApi.getStatus(wid);
+          setIngestMap((m) => ({ ...m, [docId]: st }));
+        } catch {}
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [ingestMap]);
+
   const startUpload = useCallback(
     async (file: File) => {
       if (!workspaceId) return;
@@ -175,6 +269,8 @@ export default function WorkspaceFilesPage() {
         setUpload({ phase: 'processing', name: file.name });
         setDocuments((prev) => [doc, ...prev]);
         toast({ tone: 'success', title: 'Upload complete', detail: doc.path });
+        // Auto-start durable ingest (best-effort, fail-open if temporal disabled)
+        void startIngest(doc).catch(() => {});
       } catch (err) {
         setUpload({
           phase: 'error',
@@ -191,12 +287,15 @@ export default function WorkspaceFilesPage() {
         setTimeout(() => setUpload({ phase: 'idle' }), 1200);
       }
     },
-    [workspaceId, toast],
+    [workspaceId, toast, startIngest],
   );
 
   const openViewer = useCallback(
     async (doc: DocumentResponse) => {
-      if (viewerUrlRef.current) { URL.revokeObjectURL(viewerUrlRef.current); viewerUrlRef.current = null; }
+      if (viewerUrlRef.current) {
+        URL.revokeObjectURL(viewerUrlRef.current);
+        viewerUrlRef.current = null;
+      }
       if (viewerContent?.url) URL.revokeObjectURL(viewerContent.url);
       setViewer(doc);
       setViewerContent(null);
@@ -230,7 +329,10 @@ export default function WorkspaceFilesPage() {
   );
 
   const closeViewer = useCallback(() => {
-    if (viewerUrlRef.current) { URL.revokeObjectURL(viewerUrlRef.current); viewerUrlRef.current = null; }
+    if (viewerUrlRef.current) {
+      URL.revokeObjectURL(viewerUrlRef.current);
+      viewerUrlRef.current = null;
+    }
     if (viewerContent?.url) URL.revokeObjectURL(viewerContent.url);
     setViewer(null);
     setViewerContent(null);
@@ -242,17 +344,25 @@ export default function WorkspaceFilesPage() {
     const oldPath = renaming.path;
     // Propose via Organization Agent for audit trail (non-blocking fallback to direct rename)
     try {
-      await agentApi.chat({
-        workspaceId,
-        message: `propose rename document ${renaming.id} from "${oldPath}" to "${newPath}"`,
-        agentName: 'organization',
-      }).catch(() => null);
-    } catch { /* fallback to direct */ }
+      await agentApi
+        .chat({
+          workspaceId,
+          message: `propose rename document ${renaming.id} from "${oldPath}" to "${newPath}"`,
+          agentName: 'organization',
+        })
+        .catch(() => null);
+    } catch {
+      /* fallback to direct */
+    }
     try {
       const updated = await documentApi.rename(renaming.id, workspaceId, newPath);
       setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
       setRenaming(null);
-      toast({ tone: 'success', title: 'Renamed (reversible)', detail: `${oldPath} ΓåÆ ${updated.path} ΓÇö undo via History` });
+      toast({
+        tone: 'success',
+        title: 'Renamed (reversible)',
+        detail: `${oldPath} ΓåÆ ${updated.path} ΓÇö undo via History`,
+      });
     } catch (err) {
       toast({
         tone: 'error',
@@ -487,6 +597,9 @@ export default function WorkspaceFilesPage() {
                   Created
                 </th>
                 <th scope="col" className="pb-3 font-normal">
+                  Ingest
+                </th>
+                <th scope="col" className="pb-3 font-normal">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
@@ -494,6 +607,18 @@ export default function WorkspaceFilesPage() {
             <tbody>
               {documents.map((doc) => {
                 const archived = Boolean(docDeletedAt(doc));
+                const ingest = ingestMap[doc.id] as TemporalWorkflowStatus | undefined;
+                const ingestLabel = ingest
+                  ? (ingest.query?.status || ingest.status || '').toLowerCase()
+                  : null;
+                const isRunning =
+                  ingestLabel === 'running' ||
+                  ingestLabel === 'parsing' ||
+                  ingestLabel === 'extracting' ||
+                  ingestLabel === 'queued' ||
+                  ingestLabel === 'accepted';
+                const isDone = ingestLabel === 'completed';
+                const isFailed = ingestLabel === 'failed' || ingestLabel === 'expired';
                 return (
                   <tr
                     key={doc.id}
@@ -501,7 +626,12 @@ export default function WorkspaceFilesPage() {
                     role="button"
                     aria-label={`View ${getFileName(doc.path)}`}
                     onClick={() => void openViewer(doc)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void openViewer(doc); } }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        void openViewer(doc);
+                      }
+                    }}
                     className={`border-b border-border/50 transition-colors focus:outline-none focus:bg-background/50 ${
                       archived ? 'opacity-50 hover:opacity-80' : 'hover:bg-background/50'
                     } cursor-pointer`}
@@ -519,8 +649,44 @@ export default function WorkspaceFilesPage() {
                     <td className="py-3 text-text-muted text-sm">
                       {formatDate(docCreatedAt(doc))}
                     </td>
+                    <td className="py-3 text-xs">
+                      {ingest ? (
+                        <span
+                          className={`rounded-full px-2 py-0.5 border ${isDone ? 'border-emerald-500/30 text-emerald-400' : isFailed ? 'border-red-500/30 text-red-400' : isRunning ? 'border-amber-400/40 text-amber-300' : 'border-border text-text-muted'}`}
+                          title={ingest.workflow_id}
+                        >
+                          {ingest.query?.step
+                            ? `${ingestLabel} (${ingest.query.step})`
+                            : ingestLabel}
+                        </span>
+                      ) : (
+                        <span className="text-text-dim">—</span>
+                      )}
+                    </td>
                     <td className="py-3">
                       <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        {!ingest || isDone || isFailed ? (
+                          <button
+                            disabled={ingestBusy === doc.id}
+                            onClick={() => void startIngest(doc)}
+                            className="rounded-full border border-primary/30 px-3 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-40"
+                          >
+                            {ingestBusy === doc.id ? 'Starting…' : 'Ingest'}
+                          </button>
+                        ) : (
+                          <button
+                            disabled={ingestBusy === doc.id}
+                            onClick={() =>
+                              void cancelIngest(
+                                doc.id,
+                                (ingest as TemporalWorkflowStatus).workflow_id,
+                              )
+                            }
+                            className="rounded-full border border-amber-500/30 px-3 py-1 text-xs text-amber-300 hover:bg-amber-500/10 disabled:opacity-40"
+                          >
+                            Cancel
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setRenaming(doc);
@@ -562,30 +728,109 @@ export default function WorkspaceFilesPage() {
       )}
       {documents.length > 0 && (
         <div className="md:hidden mt-4 space-y-3">
-          {documents.map((doc) => (
-            <div key={`card-${doc.id}`} role="button" tabIndex={0} onClick={() => void openViewer(doc)} onKeyDown={(e) => { if(e.key==='Enter'||e.key===' '){e.preventDefault(); void openViewer(doc);}}} className="card p-4 flex flex-col gap-2 cursor-pointer hover:border-primary/30">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-text truncate">{getFileName(doc.path)}</span>
-                <span className="text-xs font-mono text-text-muted">{doc.type}</span>
+          {documents.map((doc) => {
+            const ingest = ingestMap[doc.id] as TemporalWorkflowStatus | undefined;
+            const ingestLabel = ingest
+              ? (ingest.query?.status || ingest.status || '').toLowerCase()
+              : null;
+            const isRunning =
+              ingestLabel === 'running' ||
+              ingestLabel === 'parsing' ||
+              ingestLabel === 'extracting' ||
+              ingestLabel === 'queued' ||
+              ingestLabel === 'accepted';
+            return (
+              <div
+                key={`card-${doc.id}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => void openViewer(doc)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    void openViewer(doc);
+                  }
+                }}
+                className="card p-4 flex flex-col gap-2 cursor-pointer hover:border-primary/30"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-text truncate">{getFileName(doc.path)}</span>
+                  <span className="text-xs font-mono text-text-muted">{doc.type}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-text-muted">
+                  <span>{formatSize(docMetaSize(doc))}</span>
+                  <span>┬╖</span>
+                  <span>{formatDate(docCreatedAt(doc))}</span>
+                  {Boolean(docDeletedAt(doc)) && (
+                    <span className="rounded-full border border-border px-2 py-0.5">archived</span>
+                  )}
+                  {ingest && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 border text-xs ${ingestLabel === 'completed' ? 'border-emerald-500/30 text-emerald-400' : isRunning ? 'border-amber-400/40 text-amber-300' : 'border-border text-text-muted'}`}
+                    >
+                      {ingest.query?.step ? `${ingestLabel} (${ingest.query.step})` : ingestLabel}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => {
+                      setRenaming(doc);
+                      setRenameValue(getFileName(doc.path));
+                    }}
+                    className="flex-1 rounded-full border border-border px-3 py-1 text-xs"
+                  >
+                    Rename
+                  </button>
+                  {ingest && isRunning ? (
+                    <button
+                      disabled={ingestBusy === doc.id}
+                      onClick={() => void cancelIngest(doc.id, ingest.workflow_id)}
+                      className="flex-1 rounded-full border border-amber-500/30 px-3 py-1 text-xs text-amber-300"
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    <button
+                      disabled={ingestBusy === doc.id}
+                      onClick={() => void startIngest(doc)}
+                      className="flex-1 rounded-full border border-primary/30 px-3 py-1 text-xs text-primary"
+                    >
+                      {ingestBusy === doc.id ? '…' : 'Ingest'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => void openViewer(doc)}
+                    className="flex-1 rounded-full bg-white text-black px-3 py-1 text-xs"
+                  >
+                    View
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-text-muted">
-                <span>{formatSize(docMetaSize(doc))}</span><span>┬╖</span><span>{formatDate(docCreatedAt(doc))}</span>
-                {Boolean(docDeletedAt(doc)) && <span className="rounded-full border border-border px-2 py-0.5">archived</span>}
-              </div>
-              <div className="flex gap-2 pt-1" onClick={(e)=>e.stopPropagation()}>
-                <button onClick={()=>{setRenaming(doc); setRenameValue(getFileName(doc.path));}} className="flex-1 rounded-full border border-border px-3 py-1 text-xs">Rename</button>
-                <button onClick={()=> void openViewer(doc)} className="flex-1 rounded-full bg-white text-black px-3 py-1 text-xs">View</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       {total > PAGE_SIZE && (
         <div className="flex items-center justify-between mt-4 text-sm">
-          <span className="text-xs font-mono text-text-muted">Showing {(page-1)*PAGE_SIZE+1}-{Math.min(page*PAGE_SIZE, total)} of {total}</span>
+          <span className="text-xs font-mono text-text-muted">
+            Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, total)} of {total}
+          </span>
           <div className="flex gap-2">
-            <button disabled={page<=1} onClick={() => setPage((p)=>Math.max(1,p-1))} className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover">Previous</button>
-            <button disabled={page*PAGE_SIZE>=total} onClick={() => setPage((p)=>p+1)} className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover">Next</button>
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover"
+            >
+              Previous
+            </button>
+            <button
+              disabled={page * PAGE_SIZE >= total}
+              onClick={() => setPage((p) => p + 1)}
+              className="rounded-full border border-border px-3 py-1 text-xs disabled:opacity-40 hover:bg-surface-hover"
+            >
+              Next
+            </button>
           </div>
         </div>
       )}
@@ -700,7 +945,10 @@ export default function WorkspaceFilesPage() {
             <DiffViewer oldText={renaming.path} newText={renameValue.trim()} />
           )}
           <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-text-muted">
-            <span className="font-medium text-amber-700">Organization Agent suggestion</span> ΓÇö this rename is logged and reversible via <span className="font-mono">History ΓåÆ Undo</span>. An approval record is created for traceability.
+            <span className="font-medium text-amber-700">Organization Agent suggestion</span> ΓÇö
+            this rename is logged and reversible via{' '}
+            <span className="font-mono">History ΓåÆ Undo</span>. An approval record is created for
+            traceability.
           </div>
           <div className="flex justify-end gap-2">
             <button

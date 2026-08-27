@@ -54,6 +54,8 @@ resources:
   - ../../infra/resource-quotas.yaml
   - ../../infra/service-accounts.yaml
   - ../../infra/configmap.yaml
+  - ../../apps/temporal/deployment.yaml
+  - ../../apps/temporal/service.yaml
 configMapGenerator:
   - name: vaeloom-config
     behavior: merge

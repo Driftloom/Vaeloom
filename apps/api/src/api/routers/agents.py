@@ -463,4 +463,27 @@ async def schedule_agent(
     schedule = await agent_service.schedule_agent(
         agent_id=agent_id, cron=dto.cron, input=dto.input, enabled=dto.enabled, db=db,
     )
+    await db.commit()
+    # Shadow Temporal schedule (fail-open)
+    try:
+        from ..temporal.schedules import create_or_update_schedule
+        import asyncio as _aio
+
+        ws = None
+        try:
+            # Try to derive workspace from agent row
+            from sqlalchemy import select as _sel
+            from ..models.schema import Agent as _Agent
+
+            r = await db.execute(_sel(_Agent.workspace_id).where(_Agent.id == agent_id))
+            row = r.first()
+            if row and row[0]:
+                ws = str(row[0])
+        except Exception:
+            ws = None
+        if not ws and isinstance(dto.input, dict):
+            ws = dto.input.get("workspace_id") or dto.input.get("workspaceId")  # type: ignore[union-attr]
+        _aio.create_task(create_or_update_schedule(str(schedule.id), dto.cron, ws, payload={"agent_id": str(agent_id), "input": dto.input or {}}))
+    except Exception:
+        pass
     return ScheduleResponse.model_validate(schedule)

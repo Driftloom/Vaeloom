@@ -109,6 +109,7 @@ from .routers import (
     resumes,
     scheduler,
     search,
+    temporal as temporal_router,
     webhooks,
     workspaces,
 )
@@ -202,6 +203,16 @@ async def lifespan(app: FastAPI):
         _mcp_task = _spawn_mcp_warmup()
     except Exception as e:
         logger.warning(f"MCP bridge warm-up failed to schedule (non-fatal): {e}")
+    # ── Temporal client warm-up (fail-open when disabled) ──────────────
+    try:
+        from .temporal.client import get_temporal_client
+
+        if getattr(settings, "temporal_enabled", False):
+            import asyncio as _aio2
+
+            _aio2.create_task(get_temporal_client())
+    except Exception:
+        pass
     yield
     # ── Stop background daemon ──────────────────────────────────────
     if _mcp_task:
@@ -314,6 +325,7 @@ app.include_router(approval_router, prefix="/api/v1", tags=["approvals"])
 app.include_router(agent_costs_router, prefix="/api/v1", tags=["agents"])
 app.include_router(gmail.router, prefix="/api/v1", tags=["gmail"])
 app.include_router(provider_keys.router, prefix="/api/v1/provider-keys", tags=["provider-keys"])
+app.include_router(temporal_router.router, prefix="/api/v1/temporal", tags=["temporal"])
 
 # ── Enterprise routes (CF-06 / R6) ──────────────────────────────────
 # Out of MVP scope. Mounted only when explicitly enabled via

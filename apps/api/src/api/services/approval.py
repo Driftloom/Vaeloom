@@ -324,6 +324,67 @@ async def _ingest_feedback_preference(
 
 approval_manager = ApprovalManager()
 
+
+async def _maybe_start_approval_workflow(approval_id: str, workspace_id: str | None, timeout_seconds: int = 3600) -> None:
+    """Best-effort: start the durable ApprovalWorkflow when Temporal is enabled.
+
+    Must never block approval creation. Fail-open: log and continue if Temporal
+    unavailable — the DB row remains the source of truth (§12).
+    """
+    try:
+        from ..config import settings as _settings
+        if not getattr(_settings, "temporal_enabled", False):
+            return
+        from ..temporal.client import get_temporal_client
+        from ..temporal.queues import queue_name
+
+        client = await get_temporal_client()
+        if client is None:
+            return
+        wid = f"approval:{workspace_id or 'global'}:{approval_id}"
+        from ..temporal.workflows import ApprovalWorkflowInput
+
+        from temporalio.common import WorkflowIDReusePolicy as _WIDP2  # type: ignore
+
+        from datetime import timedelta as _td2
+        await client.start_workflow(
+            "ApprovalWorkflow",
+            ApprovalWorkflowInput(approval_id=approval_id, timeout_seconds=timeout_seconds),
+            id=wid,
+            task_queue=queue_name("approvals"),
+            id_reuse_policy=_WIDP2.REJECT_DUPLICATE,
+            execution_timeout=_td2(hours=2),
+        )
+        try:
+            from ..temporal.metrics import _inc_workflow_started
+
+            _inc_workflow_started("ApprovalWorkflow", queue_name("approvals"))
+        except Exception:
+            pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug(f"ApprovalWorkflow start skipped for {approval_id}: {e}")
+
+
+async def _maybe_signal_approval_workflow(approval_id: str, workspace_id: str | None, decision: str, actor: str, note: str | None) -> None:
+    """Best-effort: signal the waiting ApprovalWorkflow with the human decision."""
+    try:
+        from ..config import settings as _settings
+        if not getattr(_settings, "temporal_enabled", False):
+            return
+        from ..temporal.client import get_temporal_client
+
+        client = await get_temporal_client()
+        if client is None:
+            return
+        wid = f"approval:{workspace_id or 'global'}:{approval_id}"
+        handle = client.get_workflow_handle(wid)
+        await handle.signal("decision", {"decision": decision, "actor": actor, "note": note or "", "approval_id": approval_id})
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug(f"ApprovalWorkflow signal skipped for {approval_id}: {e}")
+
+
 router = APIRouter()
 
 
@@ -356,6 +417,12 @@ async def request_approval(
         db=db,
     )
     await db.commit()
+    # Fire-and-forget Temporal wait workflow (non-blocking, fail-open)
+    try:
+        import asyncio as _aio
+        _aio.create_task(_maybe_start_approval_workflow(str(approval.id), str(approval.workspace_id) if approval.workspace_id else None))
+    except Exception:
+        pass
     return approval
 
 
@@ -422,6 +489,11 @@ async def approve_approval(
     except Exception:
         pass
     await db.commit()
+    try:
+        import asyncio as _aio2
+        _aio2.create_task(_maybe_signal_approval_workflow(str(approval.id), str(approval.workspace_id) if approval.workspace_id else None, "APPROVED", actor, dto.note if dto else None))
+    except Exception:
+        pass
     return approval
 
 
@@ -458,4 +530,9 @@ async def reject_approval(
     except Exception:
         pass
     await db.commit()
+    try:
+        import asyncio as _aio3
+        _aio3.create_task(_maybe_signal_approval_workflow(str(approval.id), str(approval.workspace_id) if approval.workspace_id else None, "REJECTED", actor, dto.note if dto else None))
+    except Exception:
+        pass
     return approval

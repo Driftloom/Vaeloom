@@ -275,6 +275,16 @@ async def _run_due_agent_schedules(now: datetime) -> int:
     Degraded mode (no Redis): execute inline (single-instance behavior).
     Returns count triggered.
     """
+    # Temporal shadow guard (§18): when Temporal schedules are enabled, daemon skips
+    # agent_schedules polling to avoid double-fire. Guard is fail-open (returns 0, logs).
+    try:
+        from ..temporal.client import is_temporal_enabled
+
+        if is_temporal_enabled():
+            logger.debug("DAEMON _run_due_agent_schedules skipped — temporal schedules enabled")
+            return 0
+    except Exception:
+        pass
     triggered = 0
     r = get_daemon_redis()
     try:
@@ -376,6 +386,14 @@ async def _record_job_execution(db: Any, job_id: str, exec_status: str, exec_err
 
 async def _run_due_scheduled_jobs(now: datetime) -> int:
     """Raw scheduled_jobs table poller — claim + enqueue (durable) or execute inline."""
+    try:
+        from ..temporal.client import is_temporal_enabled
+
+        if is_temporal_enabled():
+            logger.debug("DAEMON _run_due_scheduled_jobs skipped — temporal schedules enabled")
+            return 0
+    except Exception:
+        pass
     r = get_daemon_redis()
     triggered = 0
     try:
@@ -608,6 +626,14 @@ async def catch_up_missed_runs(now: datetime) -> int:
     slot per schedule. Uses the same Redis claim keys as normal ticks so concurrent
     instances can't double-fire; falls back to inline execution without Redis.
     """
+    try:
+        from ..temporal.client import is_temporal_enabled
+
+        if is_temporal_enabled():
+            logger.debug("DAEMON catch_up_missed_runs skipped — temporal schedules enabled")
+            return 0
+    except Exception:
+        pass
     triggered = 0
     r = get_daemon_redis()
     try:

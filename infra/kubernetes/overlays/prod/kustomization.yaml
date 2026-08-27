@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: vaeloom
 resources:
   - ../../base
+  - hpa.yaml
 patches:
   - target:
       kind: Deployment

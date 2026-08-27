@@ -102,6 +102,21 @@ class Settings(BaseSettings):
     browser_tools_enabled: bool = True
     scrape_quota_per_hour: int = 20
 
+    # ── Temporal durable execution (ADR-038) ──────────────────────────
+    temporal_enabled: bool = False
+    temporal_host: str = "localhost:7233"
+    temporal_namespace: str = "default"
+    temporal_task_queue_ingest: str = "vaeloom-ingest-q"
+    temporal_task_queue_agent: str = "vaeloom-agent-q"
+    temporal_task_queue_connectors: str = "vaeloom-connectors-q"
+    temporal_task_queue_schedules: str = "vaeloom-schedules-q"
+    temporal_task_queue_approvals: str = "vaeloom-approvals-q"
+    temporal_task_queue_documents: str = "vaeloom-documents-q"
+    temporal_task_queue_memory: str = "vaeloom-memory-q"
+    temporal_task_queue_events: str = "vaeloom-events-q"
+    temporal_api_key: str = ""  # for Temporal Cloud; empty = self-hosted mTLS/none
+    temporal_tls: bool = False
+
     model_config = {"env_prefix": "", "case_sensitive": False}
 
     def __init__(self, **kwargs):
@@ -201,6 +216,9 @@ def validate_settings() -> dict[str, list[str]]:
 
     if not settings.storage_endpoint or "localhost" in settings.storage_endpoint:
         warnings.append("STORAGE_ENDPOINT is set to localhost — verify this is intentional for non-production")
+
+    if settings.temporal_enabled and not settings.temporal_host:
+        errors.append("TEMPORAL_HOST must be set when TEMPORAL_ENABLED is true")
 
     if settings.service_environment != "local":
         localhost_origins = [o for o in settings.allowed_origins if "localhost" in o]

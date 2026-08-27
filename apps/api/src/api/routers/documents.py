@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,6 +69,53 @@ async def upload_document(
         raise HTTPException(status_code=401, detail="Not authenticated")
     await _verify_workspace_access(workspace_id, _user_id(current_user), db)
     doc = await document_service.upload(file=file, workspace_id=workspace_id, user_id=_user_id(current_user), db=db)
+    await db.commit()
+    await db.refresh(doc)
+    # Auto-start Temporal ingest workflow (fail-open — DB row is source of truth)
+    try:
+        from ..config import settings as _settings
+        if getattr(_settings, "temporal_enabled", False):
+            import asyncio as _aio
+            import hashlib as _hash
+
+            content_hash = _hash.sha256(doc.content or b"").hexdigest()[:16] if getattr(doc, "content", None) else doc.id.hex[:12]
+
+            async def _start() -> None:
+                try:
+                    from ..temporal.client import get_temporal_client
+                    from ..temporal.queues import queue_name
+                    from ..temporal.workflows import IngestInput
+                    from ..temporal.metrics import _inc_workflow_started
+
+                    # T-001/T-008: validate no secrets / size before history
+                    try:
+                        from ..temporal.validation import validate_no_secrets, validate_payload_size
+
+                        validate_no_secrets({"workspace_id": workspace_id, "document_id": str(doc.id), "content_hash": content_hash})
+                        validate_payload_size({"workspace_id": workspace_id, "document_id": str(doc.id)}, label="ingest payload")
+                    except ValueError:
+                        return
+                    client = await get_temporal_client()
+                    if client is None:
+                        return
+                    wid = f"ingest:{workspace_id}:{content_hash}:{doc.id}"
+                    from temporalio.common import WorkflowIDReusePolicy as _WIDP3  # type: ignore
+
+                    await client.start_workflow(
+                        "IngestDocumentWorkflow",
+                        IngestInput(workspace_id=workspace_id, document_id=str(doc.id), content_hash=content_hash, requested_by=_user_id(current_user), correlation_id=str(doc.id)),
+                        id=wid,
+                        task_queue=queue_name("ingest"),
+                        id_reuse_policy=_WIDP3.REJECT_DUPLICATE,
+                        execution_timeout=timedelta(hours=2),
+                    )
+                    _inc_workflow_started("IngestDocumentWorkflow", queue_name("ingest"))
+                except Exception:
+                    pass
+
+            _aio.create_task(_start())
+    except Exception:
+        pass
     return DocumentResponse.model_validate(doc)
 
 

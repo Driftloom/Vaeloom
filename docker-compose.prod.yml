@@ -28,6 +28,10 @@ volumes:
     driver: local
   minio-data:
     driver: local
+  temporal-db-data:
+    driver: local
+  temporal-visibility-data:
+    driver: local
 
 services:
   # ─── Reverse Proxy ────────────────────────────────────────────────────
@@ -246,6 +250,121 @@ services:
         reservations:
           cpus: '0.25'
           memory: '64M'
+    <<: *service-base
+
+  # ─── Temporal (durable execution, ADR-038) ───────────────────────────
+  temporal-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: temporal
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?err}
+    volumes:
+      - temporal-db-data:/var/lib/postgresql/data
+    expose: ['5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U temporal']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        { limits: { cpus: '0.5', memory: '256M' }, reservations: { cpus: '0.25', memory: '128M' } }
+    <<: *service-base
+
+  temporal-visibility-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: temporal_visibility
+      POSTGRES_USER: temporal_visibility
+      POSTGRES_PASSWORD: temporal_visibility
+    volumes:
+      - temporal-visibility-data:/var/lib/postgresql/data
+    expose: ['5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U temporal_visibility']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        { limits: { cpus: '0.5', memory: '256M' }, reservations: { cpus: '0.25', memory: '128M' } }
+    <<: *service-base
+
+  temporal:
+    image: temporalio/auto-setup:1.26
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: ${POSTGRES_PASSWORD:?err}
+      POSTGRES_SEEDS: temporal-db
+      VISIBILITY_DB: postgres12
+      VISIBILITY_POSTGRES_USER: temporal_visibility
+      VISIBILITY_POSTGRES_PWD: temporal_visibility
+      VISIBILITY_SEEDS: temporal-visibility-db
+      DYNAMIC_CONFIG_VALUE: frontend.enableClientVersionCheck.enabled=false
+    expose: ['7233', '8233']
+    depends_on:
+      temporal-db: { condition: service_healthy }
+      temporal-visibility-db: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'tctl --address temporal:7233 namespace list || temporal operator namespace list',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        { limits: { cpus: '1.0', memory: '1G' }, reservations: { cpus: '0.5', memory: '512M' } }
+    <<: *service-base
+
+  temporal-ui:
+    image: temporalio/ui:2.35
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ALLOW_ORIGINS: https://app.vaeloom.app,https://api.vaeloom.app
+    expose: ['8080']
+    depends_on: { temporal: { condition: service_healthy } }
+    deploy:
+      resources:
+        { limits: { cpus: '0.5', memory: '256M' }, reservations: { cpus: '0.25', memory: '128M' } }
+    <<: *service-base
+
+  temporal-worker:
+    build: { context: apps/api, dockerfile: Dockerfile }
+    command: ['python', '-m', 'api.temporal.worker']
+    env_file: [.env.production]
+    environment:
+      SERVICE_NAME: vaeloom-temporal-worker
+      SERVICE_ENVIRONMENT: production
+      TEMPORAL_ENABLED: 'true'
+      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_NAMESPACE: default
+    depends_on:
+      postgres: { condition: service_healthy }
+      temporal: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import asyncio,os; from temporalio.client import Client; asyncio.run(Client.connect(os.environ.get('TEMPORAL_HOST','temporal:7233')))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        { limits: { cpus: '1.0', memory: '1G' }, reservations: { cpus: '0.5', memory: '512M' } }
     <<: *service-base
 
   # ─── MinIO (S3-compatible Object Storage) ────────────────────────────

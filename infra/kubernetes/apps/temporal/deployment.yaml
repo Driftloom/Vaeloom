@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaeloom-temporal
+  namespace: vaeloom
+  labels:
+    app.kubernetes.io/name: temporal
+    app.kubernetes.io/component: temporal-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: temporal
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: temporal
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: temporal
+          image: temporalio/auto-setup:1.26
+          env:
+            - name: DB
+              value: postgres12
+            - name: POSTGRES_USER
+              value: temporal
+            - name: POSTGRES_PWD
+              valueFrom: { secretKeyRef: { name: vaeloom-db-secret, key: TEMPORAL_DB_PASSWORD } }
+            - name: POSTGRES_SEEDS
+              value: temporal-db
+            - name: VISIBILITY_DB
+              value: postgres12
+            - name: VISIBILITY_POSTGRES_USER
+              value: temporal_visibility
+            - name: VISIBILITY_POSTGRES_PWD
+              valueFrom:
+                { secretKeyRef: { name: vaeloom-db-secret, key: TEMPORAL_VISIBILITY_PASSWORD } }
+            - name: VISIBILITY_SEEDS
+              value: temporal-visibility-db
+            - name: DYNAMIC_CONFIG_VALUE
+              value: frontend.enableClientVersionCheck.enabled=false
+          ports:
+            - containerPort: 7233
+              name: grpc
+            - containerPort: 8233
+              name: frontend
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { cpu: '1', memory: 1Gi }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaeloom-temporal-worker
+  namespace: vaeloom
+  labels:
+    app.kubernetes.io/name: temporal-worker
+    app.kubernetes.io/component: backend-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: temporal-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: temporal-worker
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: temporal-worker
+          image: vaeloom/api:latest
+          imagePullPolicy: Always
+          command: ['python', '-m', 'api.temporal.worker']
+          ports:
+            - containerPort: 9090
+              name: metrics
+          env:
+            - name: SERVICE_ENVIRONMENT
+              valueFrom: { configMapKeyRef: { name: vaeloom-config, key: SERVICE_ENVIRONMENT } }
+            - name: TEMPORAL_HOST
+              value: vaeloom-temporal.vaeloom.svc.cluster.local:7233
+            - name: TEMPORAL_NAMESPACE
+              value: default
+            - name: TEMPORAL_ENABLED
+              value: 'true'
+            - name: DATABASE__URL
+              valueFrom: { secretKeyRef: { name: vaeloom-db-secret, key: DATABASE_URL } }
+            - name: REDIS__URL
+              value: redis://redis:6379/0
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          livenessProbe:
+            exec:
+              command:
+                [
+                  'python',
+                  '-c',
+                  "import asyncio,os; from temporalio.client import Client; asyncio.run(Client.connect(os.environ.get('TEMPORAL_HOST','temporal:7233')))",
+                ]
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command:
+                [
+                  'python',
+                  '-c',
+                  "import urllib.request; urllib.request.urlopen('http://localhost:9090/', timeout=2).read()",
+                ]
+            initialDelaySeconds: 10
+            periodSeconds: 10

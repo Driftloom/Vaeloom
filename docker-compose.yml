@@ -22,6 +22,8 @@ volumes:
   redis-data:
   pgadmin-data:
   minio-data:
+  temporal-db-data:
+  temporal-visibility-data:
 
 services:
   # ─── Infrastructure ───
@@ -161,6 +163,111 @@ services:
       - '6432:6432'
     depends_on:
       - postgres
+    <<: *service-base
+
+  # ─── Temporal durable execution (ADR-038) — opt-in via profile `temporal` ───
+  temporal-db:
+    image: postgres:16-alpine
+    container_name: vaeloom-temporal-db
+    environment:
+      POSTGRES_DB: temporal
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    volumes:
+      - temporal-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U temporal']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles: ['temporal']
+    <<: *service-base
+
+  temporal-visibility-db:
+    image: postgres:16-alpine
+    container_name: vaeloom-temporal-visibility
+    environment:
+      POSTGRES_DB: temporal_visibility
+      POSTGRES_USER: temporal_visibility
+      POSTGRES_PASSWORD: temporal_visibility
+    volumes:
+      - temporal-visibility-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U temporal_visibility']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles: ['temporal']
+    <<: *service-base
+
+  temporal:
+    image: temporalio/auto-setup:1.26
+    container_name: vaeloom-temporal
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      POSTGRES_SEEDS: temporal-db
+      VISIBILITY_DB: postgres12
+      VISIBILITY_POSTGRES_USER: temporal_visibility
+      VISIBILITY_POSTGRES_PWD: temporal_visibility
+      VISIBILITY_SEEDS: temporal-visibility-db
+      DYNAMIC_CONFIG_VALUE: frontend.enableClientVersionCheck.enabled=false
+    ports:
+      - '7233:7233'
+      - '8233:8233'
+    depends_on:
+      temporal-db:
+        condition: service_healthy
+      temporal-visibility-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'tctl --address temporal:7233 namespace list || temporal operator namespace list',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles: ['temporal']
+    <<: *service-base
+
+  temporal-ui:
+    image: temporalio/ui:2.35
+    container_name: vaeloom-temporal-ui
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ALLOW_ORIGINS: http://localhost:3000,http://localhost:8233
+    ports:
+      - '8233:8080'
+    depends_on:
+      temporal:
+        condition: service_healthy
+    profiles: ['temporal']
+    <<: *service-base
+
+  temporal-worker:
+    build: ./apps/api
+    container_name: vaeloom-temporal-worker
+    command: ['python', '-m', 'api.temporal.worker']
+    environment:
+      SERVICE_NAME: vaeloom-temporal-worker
+      SERVICE_VERSION: '0.2.0'
+      SERVICE_ENVIRONMENT: development
+      DATABASE__URL: postgresql+asyncpg://vaeloom:vaeloom_dev@postgres:5432/vaeloom
+      REDIS__URL: redis://redis:6379/0
+      TEMPORAL_ENABLED: 'true'
+      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      JWT_SECRET: dev-jwt-secret-not-for-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+    profiles: ['temporal']
     <<: *service-base
 
   # ─── Tools (opt-in via profiles) ───

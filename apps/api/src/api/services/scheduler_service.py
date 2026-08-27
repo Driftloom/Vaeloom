@@ -23,6 +23,17 @@ class SchedulerService:
         return row
 
     async def create_job(self, dto, tenant_id: str | None, db: AsyncSession = None):
+        # T-008 + T-001: payload size and secret validation
+        try:
+            from ..temporal.validation import validate_no_secrets, validate_payload_size
+            if dto.payload is not None:
+                validate_no_secrets(dto.payload)
+                validate_payload_size(dto.payload, label="schedule payload")
+            if dto.headers is not None:
+                validate_no_secrets(dto.headers)
+                validate_payload_size(dto.headers, label="schedule headers")
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
         job_id = uuid.uuid4()
         now = datetime.now(UTC)
         await db.execute(
@@ -51,7 +62,17 @@ class SchedulerService:
             text("SELECT * FROM scheduled_jobs WHERE id = :id"),  # nosec B608
             {"id": job_id},
         )
-        return SchedulerService._fix_json_fields(result.mappings().first())
+        row = SchedulerService._fix_json_fields(result.mappings().first())
+        # Shadow Temporal schedule (fail-open — DB remains source of truth)
+        try:
+            from ..temporal.schedules import create_or_update_schedule
+
+            import asyncio as _aio
+
+            _aio.create_task(create_or_update_schedule(str(job_id), dto.cron, tenant_id, payload=dto.payload))
+        except Exception:
+            pass
+        return row
 
     async def list_jobs(
         self,
@@ -100,6 +121,18 @@ class SchedulerService:
         return SchedulerService._fix_json_fields(row)
 
     async def update_job(self, job_id: uuid.UUID, dto, db: AsyncSession = None):
+        # T-008 + T-001: validate payload size and secrets
+        try:
+            from ..temporal.validation import validate_no_secrets, validate_payload_size
+
+            if dto.payload is not None:
+                validate_no_secrets(dto.payload)
+                validate_payload_size(dto.payload, label="schedule payload")
+            if dto.headers is not None:
+                validate_no_secrets(dto.headers)
+                validate_payload_size(dto.headers, label="schedule headers")
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
         await self.get_job(job_id, db)
         sets = []
         params: dict[str, Any] = {"id": job_id}
@@ -126,26 +159,54 @@ class SchedulerService:
             params,
         )
         await db.commit()
-        return await self.get_job(job_id, db)
+        row = await self.get_job(job_id, db)
+        # Shadow update to Temporal if cron/payload changed
+        try:
+            if dto.cron is not None or dto.payload is not None:
+                from ..temporal.schedules import create_or_update_schedule
+
+                import asyncio as _aio
+
+                cron = dto.cron or row.get("cron")  # type: ignore[assignment]
+                _aio.create_task(create_or_update_schedule(str(job_id), cron, row.get("tenant_id"), payload=dto.payload if dto.payload is not None else row.get("payload")))
+        except Exception:
+            pass
+        return row
 
     async def pause_job(self, job_id: uuid.UUID, db: AsyncSession = None):
-        await self.get_job(job_id, db)
+        row_before = await self.get_job(job_id, db)
         now = datetime.now(UTC)
         await db.execute(
             text("UPDATE scheduled_jobs SET status = :status, updated_at = :updated_at WHERE id = :id"),  # nosec B608
             {"status": "paused", "updated_at": now, "id": job_id},
         )
         await db.commit()
+        try:
+            from ..temporal.schedules import pause_schedule
+
+            import asyncio as _aio
+
+            _aio.create_task(pause_schedule(str(job_id), row_before.get("tenant_id")))
+        except Exception:
+            pass
         return await self.get_job(job_id, db)
 
     async def resume_job(self, job_id: uuid.UUID, db: AsyncSession = None):
-        await self.get_job(job_id, db)
+        row_before = await self.get_job(job_id, db)
         now = datetime.now(UTC)
         await db.execute(
             text("UPDATE scheduled_jobs SET status = :status, updated_at = :updated_at WHERE id = :id"),  # nosec B608
             {"status": "active", "updated_at": now, "id": job_id},
         )
         await db.commit()
+        try:
+            from ..temporal.schedules import resume_schedule
+
+            import asyncio as _aio
+
+            _aio.create_task(resume_schedule(str(job_id), row_before.get("tenant_id")))
+        except Exception:
+            pass
         return await self.get_job(job_id, db)
 
     async def trigger_job(self, job_id: uuid.UUID, db: AsyncSession = None):
@@ -159,12 +220,20 @@ class SchedulerService:
         return {"triggered": True, "job_id": str(job_id), "triggered_at": now.isoformat()}
 
     async def delete_job(self, job_id: uuid.UUID, db: AsyncSession = None):
-        await self.get_job(job_id, db)
+        row_before = await self.get_job(job_id, db)
         await db.execute(
             text("DELETE FROM scheduled_jobs WHERE id = :id"),  # nosec B608
             {"id": job_id},
         )
         await db.commit()
+        try:
+            from ..temporal.schedules import delete_schedule
+
+            import asyncio as _aio
+
+            _aio.create_task(delete_schedule(str(job_id), row_before.get("tenant_id")))
+        except Exception:
+            pass
         return True
 
     async def list_executions(self, job_id: uuid.UUID, db: AsyncSession = None):

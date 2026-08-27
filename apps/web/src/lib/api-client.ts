@@ -2004,3 +2004,58 @@ export const memoryFeedApi = {
     return apiClient.get<MemoryLineageResponse>(`/memories/${memoryId}/lineage`);
   },
 };
+
+// ─── Temporal durable workflows ───────────────────────────────────────
+
+export interface TemporalWorkflowStatus {
+  workflow_id: string;
+  run_id?: string | null;
+  status: string;
+  query?:
+    | ({
+        status?: string;
+        step?: string;
+        progress?: number;
+        handled?: string;
+        error?: string | null;
+      } & Record<string, unknown>)
+    | null;
+}
+
+export const temporalApi = {
+  getStatus(workflowId: string): Promise<TemporalWorkflowStatus> {
+    return apiClient.get<TemporalWorkflowStatus>(
+      `/temporal/workflows/${encodeURIComponent(workflowId)}`,
+    );
+  },
+  cancel(workflowId: string): Promise<{ workflow_id: string; status: string }> {
+    return apiClient.post<{ workflow_id: string; status: string }>(
+      `/temporal/workflows/${encodeURIComponent(workflowId)}/cancel`,
+    );
+  },
+  signal(
+    workflowId: string,
+    signalName: string,
+    payload?: Record<string, unknown>,
+  ): Promise<{ workflow_id: string; signal: string; status: string }> {
+    return apiClient.post(
+      `/temporal/workflows/${encodeURIComponent(workflowId)}/signal/${encodeURIComponent(signalName)}`,
+      payload,
+    );
+  },
+  startIngest(body: {
+    workspace_id: string;
+    document_id: string;
+    content_hash?: string;
+    correlation_id?: string;
+  }): Promise<{ workflow_id: string; run_id?: string | null; status: string }> {
+    return apiClient.post('/temporal/workflows/ingest', body);
+  },
+  startConnectorSync(body: {
+    workspace_id: string;
+    connector_id: string;
+    sync_token?: string;
+  }): Promise<{ workflow_id: string; run_id?: string | null; status: string }> {
+    return apiClient.post('/temporal/workflows/connector-sync', body);
+  },
+};

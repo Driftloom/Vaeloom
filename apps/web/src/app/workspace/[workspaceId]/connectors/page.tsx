@@ -1,10 +1,12 @@
 ﻿'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
 import { api } from '../../../../lib/api';
+import { temporalApi } from '../../../../lib/api-client';
+import type { TemporalWorkflowStatus } from '../../../../lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { Modal } from '@vaeloom/ui-kit';
 import type { Connector, ConnectorProvider } from '@vaeloom/shared-types';
@@ -75,6 +77,10 @@ export default function ConnectorsPage() {
   const { toast } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
   const [pendingProvider, setPendingProvider] = useState<ConnectorProvider | null>(null);
+  const [syncMap, setSyncMap] = useState<
+    Record<string, TemporalWorkflowStatus | { status: string }>
+  >({});
+  const [syncBusy, setSyncBusy] = useState<string | null>(null);
 
   const byProvider = useMemo(() => new Map(connectors.map((c) => [c.provider, c])), [connectors]);
   const connected = useMemo(() => connectors, [connectors]);
@@ -90,7 +96,8 @@ export default function ConnectorsPage() {
         const res = await api.request<{ auth_url?: string; authUrl?: string }>(
           `/auth/sso/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`,
         );
-        const url = (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
+        const url =
+          (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
         if (url) {
           window.location.href = url;
           return;
@@ -118,7 +125,9 @@ export default function ConnectorsPage() {
   };
 
   const handleRevoke = async (connector: Connector) => {
-    const proceed = window.confirm(`Revoke ${PROVIDER_META[connector.provider]?.name ?? connector.provider}? This will remove the connection and stop future syncs. You can reconnect anytime.`);
+    const proceed = window.confirm(
+      `Revoke ${PROVIDER_META[connector.provider]?.name ?? connector.provider}? This will remove the connection and stop future syncs. You can reconnect anytime.`,
+    );
     if (!proceed) return;
     setBusy(`revoke-${connector.id}`);
     try {
@@ -126,22 +135,50 @@ export default function ConnectorsPage() {
       await mutate();
       toast({ tone: 'success', title: 'Revoked', detail: `${connector.provider} disconnected` });
     } catch (err) {
-      toast({ tone: 'error', title: 'Revoke failed', detail: err instanceof Error ? err.message : 'Please try again.' });
+      toast({
+        tone: 'error',
+        title: 'Revoke failed',
+        detail: err instanceof Error ? err.message : 'Please try again.',
+      });
     } finally {
       setBusy(null);
     }
   };
 
   const handleSync = async (connector: Connector) => {
+    if (!workspaceId) return;
+    // Prefer durable Temporal sync (heartbeat-guarded, cancellable) — fallback to legacy
+    setSyncBusy(connector.id);
     setBusy(`sync-${connector.id}`);
     try {
-      const res = await api.integrations.sync(connector.id);
+      try {
+        const res = await temporalApi.startConnectorSync({
+          workspace_id: workspaceId,
+          connector_id: connector.id,
+          sync_token: connector.id.slice(0, 8),
+        });
+        const wid = res.workflow_id;
+        try {
+          const st = await temporalApi.getStatus(wid);
+          setSyncMap((m) => ({ ...m, [connector.id]: st }));
+        } catch {
+          setSyncMap((m) => ({ ...m, [connector.id]: { workflow_id: wid, status: res.status } }));
+        }
+        toast({ tone: 'success', title: 'Durable sync started', detail: wid });
+      } catch (e: unknown) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        if ((e as { status?: number })?.status === 503 || errMsg.includes('503')) {
+          const res = await api.integrations.sync(connector.id);
+          toast({
+            tone: 'success',
+            title: 'Sync started',
+            detail: (res as { message?: string })?.message ?? 'Sync requested',
+          });
+        } else {
+          throw e;
+        }
+      }
       await mutate();
-      toast({
-        tone: 'success',
-        title: 'Sync started',
-        detail: (res as { message?: string })?.message ?? 'Sync requested',
-      });
     } catch (err) {
       toast({
         tone: 'error',
@@ -150,8 +187,53 @@ export default function ConnectorsPage() {
       });
     } finally {
       setBusy(null);
+      setSyncBusy(null);
     }
   };
+
+  const handleCancelSync = useCallback(
+    async (connectorId: string, workflowId: string) => {
+      setSyncBusy(connectorId);
+      try {
+        await temporalApi.cancel(workflowId);
+        setSyncMap((m) => ({
+          ...m,
+          [connectorId]: { workflow_id: workflowId, status: 'cancel_requested' },
+        }));
+        toast({ tone: 'info', title: 'Cancel requested', detail: workflowId });
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: 'Cancel failed',
+          detail: err instanceof Error ? err.message : 'Please try again.',
+        });
+      } finally {
+        setSyncBusy(null);
+      }
+    },
+    [toast],
+  );
+
+  // Live polling for running connector sync workflows (heartbeat progress)
+  useEffect(() => {
+    const running = Object.entries(syncMap).filter(([, v]) => {
+      const s = (v?.status || '').toLowerCase();
+      const qs = (v as TemporalWorkflowStatus)?.query?.status?.toLowerCase() ?? '';
+      return s === 'running' || s === 'syncing' || qs === 'running' || qs === 'syncing';
+    });
+    if (running.length === 0) return;
+    const id = setInterval(async () => {
+      for (const [cid, v] of running) {
+        const wid = (v as TemporalWorkflowStatus)?.workflow_id;
+        if (!wid) continue;
+        try {
+          const st = await temporalApi.getStatus(wid);
+          setSyncMap((m) => ({ ...m, [cid]: st }));
+        } catch {}
+      }
+    }, 3000);
+    return () => clearInterval(id);
+  }, [syncMap]);
 
   if (isLoading) {
     return (
@@ -237,10 +319,29 @@ export default function ConnectorsPage() {
                       Last sync: {formatDate(conn.lastSyncAt)}
                     </span>
                   </div>
-                  {conn.status === 'syncing' && (
+                  {(conn.status === 'syncing' ||
+                    (syncMap[conn.id] as TemporalWorkflowStatus)?.status?.toLowerCase() ===
+                      'running' ||
+                    (syncMap[conn.id] as TemporalWorkflowStatus)?.status?.toLowerCase() ===
+                      'syncing') && (
                     <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-hover">
                       <div className="h-full w-2/3 animate-pulse bg-yellow-500/60" />
                     </div>
+                  )}
+                  {syncMap[conn.id] && (
+                    <p className="text-xs font-mono mb-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 border text-xs ${((syncMap[conn.id] as TemporalWorkflowStatus)?.query?.status || (syncMap[conn.id] as TemporalWorkflowStatus)?.status || (syncMap[conn.id] as { status: string }).status || '').toLowerCase() === 'completed' ? 'border-emerald-500/30 text-emerald-400' : (syncMap[conn.id] as TemporalWorkflowStatus)?.status === 'running' || (syncMap[conn.id] as unknown as Record<string, unknown>)['status'] === 'syncing' ? 'border-amber-400/40 text-amber-300' : 'border-border text-text-muted'}`}
+                      >
+                        durable:{' '}
+                        {(syncMap[conn.id] as TemporalWorkflowStatus)?.query?.status ||
+                          (syncMap[conn.id] as TemporalWorkflowStatus)?.status ||
+                          (syncMap[conn.id] as { status: string }).status}
+                        {(syncMap[conn.id] as any)?.query?.progress != null
+                          ? ` ${(syncMap[conn.id] as any)?.query?.progress}%`
+                          : ''}
+                      </span>
+                    </p>
                   )}
                   {(conn as unknown as Record<string, unknown>)['errorDetail'] ? (
                     <p className="text-xs text-red-400 mb-3" role="alert">
@@ -248,14 +349,33 @@ export default function ConnectorsPage() {
                     </p>
                   ) : null}
                   <div className="flex gap-2">
-                    <button
-                      data-testid="sync-button"
-                      className="btn-secondary flex-1 text-sm"
-                      disabled={isBusy}
-                      onClick={() => handleSync(conn)}
-                    >
-                      {isBusy ? 'SyncingΓÇª' : 'Sync Now'}
-                    </button>
+                    {(() => {
+                      const sm = syncMap[conn.id] as TemporalWorkflowStatus | undefined;
+                      const s = (sm?.status || '').toLowerCase();
+                      const isRunning =
+                        s === 'running' ||
+                        s === 'syncing' ||
+                        (sm?.query?.status || '').toLowerCase() === 'running';
+                      return isRunning ? (
+                        <button
+                          data-testid="sync-button"
+                          className="btn-secondary flex-1 text-sm border-amber-400/40 text-amber-300"
+                          disabled={syncBusy === conn.id}
+                          onClick={() => handleCancelSync(conn.id, sm!.workflow_id!)}
+                        >
+                          {syncBusy === conn.id ? 'Canceling…' : 'Cancel Sync'}
+                        </button>
+                      ) : (
+                        <button
+                          data-testid="sync-button"
+                          className="btn-secondary flex-1 text-sm"
+                          disabled={isBusy}
+                          onClick={() => handleSync(conn)}
+                        >
+                          {isBusy ? 'Syncing…' : 'Sync Now'}
+                        </button>
+                      );
+                    })()}
                     <button
                       className="btn-ghost border border-border flex-1 text-sm"
                       disabled={busy === `revoke-${conn.id}`}

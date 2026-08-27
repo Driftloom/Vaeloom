@@ -14,7 +14,7 @@ scrape_configs:
   - job_name: 'vaeloom-api'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['api:4000']
+      - targets: ['api:8000']
         labels:
           service: 'api'
 
@@ -25,12 +25,19 @@ scrape_configs:
         labels:
           service: 'web'
 
-  - job_name: 'vaeloom-ai-service'
+  - job_name: 'vaeloom-temporal-worker'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['ai-service:8000']
+      - targets: ['temporal-worker:9090']
         labels:
-          service: 'ai-service'
+          service: 'temporal-worker'
+
+  - job_name: 'temporal'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['temporal:9090']
+        labels:
+          service: 'temporal'
 
   - job_name: 'postgres'
     static_configs:

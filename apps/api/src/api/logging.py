@@ -13,10 +13,10 @@ user_id_var: ContextVar[str] = ContextVar("user_id", default="")
 
 _REDACT_KEYS = frozenset({
     "password", "passwordhash", "password_hash",
-    "token", "access_token", "accesstoken",
-    "refresh_token", "refreshtoken",
-    "authorization", "cookie", "set-cookie",
-    "api_key", "apikey", "secret",
+    "token", "access_token", "accesstoken", "refresh_token", "refreshtoken",
+    "authorization", "cookie", "set-cookie", "bearer", "jwt",
+    "api_key", "apikey", "api-key", "secret", "client_secret", "client_id",
+    "oauth", "oauth_token", "credential", "credentials", "private_key", "session", "sso",
 })
 
 
