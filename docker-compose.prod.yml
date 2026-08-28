@@ -326,7 +326,7 @@ services:
     <<: *service-base
 
   temporal-ui:
-    image: temporalio/ui:2.35
+    image: temporalio/ui:latest
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       TEMPORAL_CORS_ALLOW_ORIGINS: https://app.vaeloom.app,https://api.vaeloom.app

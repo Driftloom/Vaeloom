@@ -28,7 +28,7 @@ if cur and tonumber(cur) + tonumber(ARGV[1]) > tonumber(ARGV[2]) then
 end
 local new = redis.call('INCRBY', KEYS[1], ARGV[1])
 if new == tonumber(ARGV[1]) then
-  redis.call('EXPIRE', KEYS[1], ARGV[2])
+  redis.call('EXPIRE', KEYS[1], ARGV[3])
 end
 return {1, new}
 """

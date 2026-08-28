@@ -48,7 +48,7 @@ async def create_or_update_schedule(
         from ..temporal.client import get_temporal_client
         from datetime import timedelta
         try:
-            from temporalio.client import Schedule, ScheduleActionStartWorkflow, ScheduleSpec, ScheduleState, SchedulePolicy  # type: ignore
+            from temporalio.client import Schedule, ScheduleActionStartWorkflow, ScheduleOverlapPolicy, ScheduleSpec, ScheduleState, SchedulePolicy  # type: ignore
             from temporalio.common import RetryPolicy  # type: ignore
         except Exception as e:
             logger.debug(f"schedules: SDK import failed ({e})")
@@ -70,6 +70,12 @@ async def create_or_update_schedule(
             task_queue=q,
             retry_policy=RetryPolicy(maximum_attempts=3),
             execution_timeout=timedelta(minutes=30),
+        )
+        sched = Schedule(
+            action=action,
+            spec=spec,
+            state=ScheduleState(note=f"vaeloom schedule {schedule_id}"),
+            policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.SKIP, catchup_window=timedelta(hours=24)),
         )
         sched = Schedule(
             action=action,

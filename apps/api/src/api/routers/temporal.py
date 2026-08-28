@@ -229,9 +229,10 @@ async def start_ingest_workflow(
 
         return {"workflow_id": handle.id, "run_id": handle.result_run_id if hasattr(handle, "result_run_id") else None, "status": "accepted", "accepted_at": datetime.now(UTC).isoformat(), "correlation_id": correlation_id}
     except Exception as e:
-        # Idempotency: already started → return existing id
+        # Idempotency: already started → return existing id (case-insensitive, handles "Workflow execution already started")
         msg = str(e)
-        if "AlreadyStarted" in msg or "WorkflowExecutionAlreadyStarted" in msg:
+        low = msg.lower()
+        if "already" in low and "started" in low:
             return {"workflow_id": workflow_id, "status": "already_started"}
         raise HTTPException(status_code=500, detail=msg[:500])
 
@@ -312,6 +313,7 @@ async def start_connector_sync(
         return {"workflow_id": handle.id, "run_id": handle.result_run_id if hasattr(handle, "result_run_id") else None, "status": "accepted"}
     except Exception as e:
         msg = str(e)
-        if "AlreadyStarted" in msg or "WorkflowExecutionAlreadyStarted" in msg:
+        low = msg.lower()
+        if "already" in low and "started" in low:
             return {"workflow_id": workflow_id, "status": "already_started"}
         raise HTTPException(status_code=500, detail=msg[:500])

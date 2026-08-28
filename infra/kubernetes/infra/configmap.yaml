@@ -4,8 +4,11 @@ metadata:
   name: vaeloom-config
   namespace: vaeloom
 data:
-  NODE_ENV: "production"
-  LOG_LEVEL: "info"
-  API_RATE_LIMIT: "100"
-  SERVICE_ENVIRONMENT: "production"
-  TZ: "UTC"
+  NODE_ENV: 'production'
+  LOG_LEVEL: 'info'
+  API_RATE_LIMIT: '5000'
+  RATE_LIMIT_REQUESTS: '5000'
+  RATE_LIMIT_WINDOW: '60'
+  RATE_LIMIT_REDIS_URL: 'redis://redis:6379/1'
+  SERVICE_ENVIRONMENT: 'production'
+  TZ: 'UTC'

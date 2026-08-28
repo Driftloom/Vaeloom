@@ -28,9 +28,7 @@ volumes:
 services:
   # ─── Infrastructure ───
   postgres:
-    build:
-      context: ./infra/docker/postgres
-      dockerfile: Dockerfile
+    image: pgvector/pgvector:pg16
     container_name: vaeloom-postgres
     environment:
       POSTGRES_DB: vaeloom
@@ -85,6 +83,9 @@ services:
       LOG_LEVEL: DEBUG
       DATABASE__URL: postgresql+asyncpg://vaeloom:vaeloom_dev@postgres:5432/vaeloom
       REDIS__URL: redis://redis:6379/0
+      RATE_LIMIT_REDIS_URL: redis://redis:6379/1
+      RATE_LIMIT_REQUESTS: '5000'
+      RATE_LIMIT_WINDOW: '60'
       JWT_SECRET: dev-jwt-secret-not-for-production
       JWT_ALGORITHM: HS256
       ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8000
@@ -93,6 +94,9 @@ services:
       STORAGE_SECRET_KEY: vaeloom_dev_minio
       STORAGE_BUCKET: vaeloom-storage
       STORAGE_REGION: us-east-1
+      TEMPORAL_ENABLED: 'true'
+      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_NAMESPACE: default
     ports:
       - '8000:8000'
     depends_on:
@@ -114,6 +118,8 @@ services:
       LOG_LEVEL: DEBUG
       DATABASE__URL: postgresql+asyncpg://vaeloom:vaeloom_dev@postgres:5432/vaeloom
       REDIS__URL: redis://redis:6379/0
+      RATE_LIMIT_REDIS_URL: redis://redis:6379/1
+      RATE_LIMIT_REQUESTS: '5000'
       JWT_SECRET: dev-jwt-secret-not-for-production
       JWT_ALGORITHM: HS256
     depends_on:
@@ -235,13 +241,13 @@ services:
     <<: *service-base
 
   temporal-ui:
-    image: temporalio/ui:2.35
+    image: temporalio/ui:latest
     container_name: vaeloom-temporal-ui
     environment:
       TEMPORAL_ADDRESS: temporal:7233
-      TEMPORAL_CORS_ALLOW_ORIGINS: http://localhost:3000,http://localhost:8233
+      TEMPORAL_CORS_ALLOW_ORIGINS: http://localhost:3000,http://localhost:8234
     ports:
-      - '8233:8080'
+      - '8234:8080'
     depends_on:
       temporal:
         condition: service_healthy
@@ -258,6 +264,8 @@ services:
       SERVICE_ENVIRONMENT: development
       DATABASE__URL: postgresql+asyncpg://vaeloom:vaeloom_dev@postgres:5432/vaeloom
       REDIS__URL: redis://redis:6379/0
+      RATE_LIMIT_REDIS_URL: redis://redis:6379/1
+      RATE_LIMIT_REQUESTS: '5000'
       TEMPORAL_ENABLED: 'true'
       TEMPORAL_HOST: temporal:7233
       TEMPORAL_NAMESPACE: default

@@ -20,7 +20,7 @@ TASK_QUEUES: dict[str, QueueDef] = {
     "ingest": QueueDef(
         name=getattr(settings, "temporal_task_queue_ingest", "vaeloom-ingest-q"),
         description="Document ingest: parse→extract→memory-write→index",
-        max_concurrent_activities=10,
+        max_concurrent_activities=20,
     ),
     "documents": QueueDef(
         name=getattr(settings, "temporal_task_queue_documents", "vaeloom-documents-q"),

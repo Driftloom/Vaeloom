@@ -275,6 +275,9 @@ if HAS_TEMPORAL:
             # but workflow must also fail closed if secret reaches history (e.g., direct Temporal client)
             try:
                 from .validation import validate_no_secrets
+                import temporalio.workflow as _wf2
+
+                _wf2.logger.info(f"Durable payload check keys: {list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__}")
 
                 validate_no_secrets(payload)
             except ValueError as ve:
