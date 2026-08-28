@@ -96,6 +96,11 @@ export default function BillingPage() {
     () => billingApi.usage().catch(() => null),
     { revalidateOnFocus: false },
   );
+  const { data: invoicesData, isLoading: invoicesLoading } = useSWR(
+    'billing-invoices',
+    () => billingApi.invoices().catch(() => null),
+    { revalidateOnFocus: false },
+  );
 
   // Hydrate selectedPlan from localStorage per workspace / global fallback
   useEffect(() => {
@@ -161,7 +166,16 @@ export default function BillingPage() {
   }, [usageRecords, hasLiveUsage]);
 
   const displayUsage = liveUsage ?? mockUsage;
-  const displayInvoices = mockInvoices;
+  const hasLiveInvoices = Array.isArray(invoicesData) && invoicesData.length > 0;
+  const displayInvoices: Invoice[] = hasLiveInvoices
+    ? (invoicesData as unknown as Array<{ id: string; plan: string; amount: number; status: string; periodStart: string }>)!.map((inv) => ({
+        id: inv.id,
+        date: inv.periodStart ? new Date(inv.periodStart).toISOString().slice(0, 10) : inv.id,
+        amount: `$${Number(inv.amount).toFixed(2)}`,
+        status: inv.status as Invoice['status'],
+        description: `${inv.plan} plan — ${inv.periodStart ? new Date(inv.periodStart).toLocaleDateString() : inv.id}`,
+      }))
+    : mockInvoices;
 
   const invoiceColumns: Column<Invoice>[] = [
     { key: 'date', header: 'Date', className: 'text-text-muted' },
@@ -175,8 +189,25 @@ export default function BillingPage() {
     {
       key: 'id',
       header: '',
-      render: () => (
-        <Button variant="ghost" size="sm" onClick={() => window.open('#')}>
+      render: (inv) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={async () => {
+            if (hasLiveInvoices) {
+              try {
+                const dl = await billingApi.downloadInvoice(inv.id);
+                window.open(dl.download_url || `/api/v1/billing/invoices/${inv.id}/download`, '_blank');
+                toast({ tone: 'success', title: 'Invoice download ready', detail: inv.id });
+              } catch (e) {
+                toast({ tone: 'error', title: 'Download failed', detail: e instanceof ApiClientError ? e.message : 'Could not fetch invoice' });
+              }
+            } else {
+              window.open('#');
+              toast({ tone: 'info', title: 'Mock invoice', detail: 'No live invoice — enable ENTERPRISE_ROUTES_ENABLED' });
+            }
+          }}
+        >
           Download
         </Button>
       ),
@@ -184,7 +215,7 @@ export default function BillingPage() {
     },
   ];
 
-  const isLoading = subLoading || usageLoading;
+  const isLoading = subLoading || usageLoading || invoicesLoading;
 
   // Enterprise gate — MUST stay after all hooks (no conditional hooks before)
   if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Billing" />;
@@ -297,8 +328,12 @@ export default function BillingPage() {
         <h2 className="text-lg font-display font-medium text-text mb-4">Invoice History</h2>
         <Table columns={invoiceColumns} data={displayInvoices} keyExtractor={(inv) => inv.id} />
         <p className="mt-3 text-xs text-text-dim font-mono">
-          Source: <span>mockInvoices fallback — no /billing/invoices endpoint yet; enable ENTERPRISE_ROUTES_ENABLED when available</span>
-          {isLive && ' · subscription is live, invoices remain mock until endpoint exists'}
+          Source:{' '}
+          {hasLiveInvoices ? (
+            <span className="text-success">GET /billing/invoices (live) — {displayInvoices.length} invoice(s)</span>
+          ) : (
+            <span>mockInvoices fallback — no subscription/invoices yet; create a subscription to generate live invoices</span>
+          )}
         </p>
       </Card>
 

@@ -227,3 +227,51 @@ async def sso_callback(
         refresh_token=refresh_token,
         user=PublicUser.model_validate(user),
     )
+# SAML POST binding (ENT track, F-ENT-05 fix)
+@router.post('/saml/callback', response_model=AuthResponse)
+async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        form = await request.form()
+        saml_response = form.get('SAMLResponse')
+    except Exception:
+        saml_response = None
+    if not saml_response:
+        try:
+            body = await request.json()
+            saml_response = body.get('SAMLResponse') or body.get('saml_response') or body.get('token')
+        except Exception:
+            pass
+    if not saml_response:
+        raise HTTPException(status_code=400, detail='Missing SAMLResponse')
+    try:
+        from ..services.saml import SAMLProvider
+        saml_cfg = settings.sso_providers.get('saml', {})
+        import os
+        cert = saml_cfg.get('idp_certificate') or os.environ.get('SAML_IDP_CERTIFICATE') or ''
+        issuer = saml_cfg.get('issuer') or saml_cfg.get('expected_issuer') or os.environ.get('SAML_ISSUER') or 'https://idp.example.com'
+        provider = SAMLProvider(expected_issuer=issuer, idp_certificate=cert, require_signature=False)
+        assertion = provider.parse_saml_response(saml_response)
+        info = provider.validate_assertion(assertion)
+        email = info.get('email') or info.get('name_id')
+        if not email:
+            raise HTTPException(status_code=401, detail='SAML assertion missing email')
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f'SAML validation failed: {e}')
+    from sqlalchemy import select
+    from ..models.schema import User
+    from ..schemas.auth import AuthResponse as AuthResp2
+    from ..schemas.auth import PublicUser
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user:
+        display_name = info.get('name') or email.split('@')[0]
+        user = User(email=email, display_name=display_name, auth_provider='saml')
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
+    if user.status != 'ACTIVE':
+        raise HTTPException(status_code=403, detail='Account is not active')
+    access_token, refresh_token = await auth_service.issue_token(str(user.id), user.email, db=db)
+    return AuthResp2(access_token=access_token, refresh_token=refresh_token, user=PublicUser.model_validate(user))

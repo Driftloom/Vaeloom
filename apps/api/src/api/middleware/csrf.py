@@ -46,7 +46,7 @@ def _get_redis():
 
 MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc", "/metrics", "/csrf-token"})
-SKIP_PREFIXES = frozenset({"/api/v1/auth"})
+SKIP_PREFIXES = frozenset({"/api/v1/auth", "/scim"})
 
 
 def _sign_token(token: str, secret: str) -> str:

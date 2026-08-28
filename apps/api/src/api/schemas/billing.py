@@ -35,3 +35,18 @@ class SubscriptionResponse(BaseModel):
 
 class CreateSubscriptionRequest(BaseModel):
     plan: str = Field(..., min_length=1)
+
+
+class InvoiceResponse(BaseModel):
+    id: str
+    subscription_id: str | None = None
+    plan: str
+    amount: float
+    currency: str = "USD"
+    status: str  # paid, pending, draft
+    period_start: datetime
+    period_end: datetime
+    issued_at: datetime
+    download_url: str | None = None
+
+    model_config = {"from_attributes": True}

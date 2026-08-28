@@ -1677,6 +1677,15 @@ export const iamApi = {
   },
 };
 
+export const adminApi = {
+  servicesHealth(): Promise<{ services: Array<{ name: string; status: string; uptime: string; latency_ms?: number; error?: string }>; checked_at: number }> {
+    return apiClient.get('/admin/services/health');
+  },
+  runAction(action: string): Promise<{ action: string; status: string; message?: string; diagnostics?: unknown }> {
+    return apiClient.post(`/admin/actions/${action}`, {});
+  },
+};
+
 // ΓöÇΓöÇΓöÇ Plugin ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 export interface RegisterPluginRequest {
@@ -1841,7 +1850,26 @@ export const billingApi = {
   createSubscription(plan: string): Promise<SubscriptionResponse> {
     return apiClient.post<SubscriptionResponse>('/billing/subscription', { plan });
   },
+  invoices(): Promise<InvoiceResponse[]> {
+    return apiClient.get<InvoiceResponse[]>('/billing/invoices');
+  },
+  downloadInvoice(invoiceId: string): Promise<{ invoice_id: string; download_url: string }> {
+    return apiClient.get<{ invoice_id: string; download_url: string }>(`/billing/invoices/${invoiceId}/download`);
+  },
 };
+
+export interface InvoiceResponse {
+  id: string;
+  subscriptionId: string | null;
+  plan: string;
+  amount: number;
+  currency: string;
+  status: string;
+  periodStart: string;
+  periodEnd: string;
+  issuedAt: string;
+  downloadUrl: string | null;
+}
 
 // ΓöÇΓöÇΓöÇ BYOK Provider Keys (Bring Your Own Key) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 

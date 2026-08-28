@@ -8,7 +8,7 @@ import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import useSWR from 'swr';
-import { iamApi, auditApi, analyticsApi } from '@/lib/api-client';
+import { iamApi, auditApi, analyticsApi, adminApi } from '@/lib/api-client';
 import { api } from '@/lib/api';
 
 type UserRole = 'admin' | 'member' | 'viewer';
@@ -83,6 +83,7 @@ export default function AdminPage() {
 
   const { data: iamRes, isLoading: iamLoading, error: iamError } = useSWR('admin-iam-users', () => iamApi.listUsers({ page: 1, page_size: 20 }).catch(() => null), { revalidateOnFocus: false });
   const { data: auditRes, isLoading: auditLoading } = useSWR('admin-audit-events', () => auditApi.queryEvents({ page: 1, page_size: 20 }).catch(() => null), { revalidateOnFocus: false });
+  const { data: healthRes, isLoading: healthLoading } = useSWR('admin-health', () => adminApi.servicesHealth().catch(() => null), { revalidateOnFocus: false });
 
   useEffect(() => {
     if (iamRes?.items?.length) {
@@ -111,6 +112,24 @@ export default function AdminPage() {
       setAuditLog(mapped);
     }
   }, [auditRes]);
+
+  useEffect(() => {
+    if (healthRes?.services?.length) {
+      const mapStatus = (s: string): Service['status'] => {
+        if (s === 'healthy' || s === 'operational') return 'operational';
+        if (s === 'degraded') return 'degraded';
+        if (s === 'down' || s === 'unhealthy') return 'down';
+        return 'operational';
+      };
+      const mapped: Service[] = healthRes.services.map((svc: { name: string; status: string; uptime: string }) => ({
+        id: svc.name,
+        name: svc.name,
+        status: mapStatus(svc.status),
+        uptime: svc.uptime,
+      }));
+      setServices(mapped);
+    }
+  }, [healthRes]);
 
   if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Admin" />;
 
@@ -189,11 +208,62 @@ export default function AdminPage() {
       <section>
         <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">Quick Actions</h2>
         <div className="flex flex-wrap gap-4">
-          <Button variant="secondary" onClick={() => showToast('Cache cleared successfully.')}>Clear Cache</Button>
-          <Button variant="secondary" onClick={() => showToast('Backup triggered. This may take a few minutes.')}>Trigger Backup</Button>
-          <Button variant="secondary" onClick={() => showToast('System health check started.')}>Run Diagnostics</Button>
-          <Button variant="secondary" onClick={() => showToast('Restart scheduled.')}>Restart Services</Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const r = await adminApi.runAction('clear_cache');
+                showToast(r.message || 'Cache cleared successfully.');
+              } catch (e) {
+                showToast('Cache clear failed — ' + (e as Error).message);
+              }
+            }}
+          >
+            Clear Cache
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const r = await adminApi.runAction('trigger_backup');
+                showToast(r.message || 'Backup triggered.');
+              } catch (e) {
+                showToast('Backup failed — ' + (e as Error).message);
+              }
+            }}
+          >
+            Trigger Backup
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const r = await adminApi.runAction('run_diagnostics');
+                showToast('Diagnostics: ' + JSON.stringify(r.diagnostics || r).slice(0, 80));
+              } catch (e) {
+                showToast('Diagnostics failed — ' + (e as Error).message);
+              }
+            }}
+          >
+            Run Diagnostics
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const r = await adminApi.runAction('restart_services');
+                showToast(r.message || 'Restart scheduled.');
+              } catch (e) {
+                showToast('Restart failed — ' + (e as Error).message);
+              }
+            }}
+          >
+            Restart Services
+          </Button>
         </div>
+        <p className="text-xs text-text-dim mt-2 font-mono">
+          Source: {healthRes?.services ? 'GET /admin/services/health (live)' : 'mockServices fallback — enable ENTERPRISE_ROUTES_ENABLED'} · Quick Actions call POST /admin/actions/&#123;action&#125; (live)
+        </p>
       </section>
     </div>
   );

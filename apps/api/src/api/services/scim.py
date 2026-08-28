@@ -84,7 +84,7 @@ def _scim_user_response(user: User) -> dict:
     }
 
 
-@router.post("/scim/v2/Users", status_code=201)
+@router.post("/v2/Users", status_code=201)
 async def create_scim_user(
     dto: SCIMUserRequest,
     db: AsyncSession = Depends(get_db),
@@ -110,7 +110,7 @@ async def create_scim_user(
     return _scim_user_response(user)
 
 
-@router.get("/scim/v2/Users")
+@router.get("/v2/Users")
 async def list_scim_users(
     filter: str | None = Query(None),
     startIndex: int = Query(1, ge=1),
@@ -136,7 +136,7 @@ async def list_scim_users(
     }
 
 
-@router.get("/scim/v2/Users/{user_id}")
+@router.get("/v2/Users/{user_id}")
 async def get_scim_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),
@@ -149,7 +149,7 @@ async def get_scim_user(
     return _scim_user_response(user)
 
 
-@router.put("/scim/v2/Users/{user_id}")
+@router.put("/v2/Users/{user_id}")
 async def update_scim_user(
     user_id: str,
     dto: SCIMUserRequest,
@@ -174,7 +174,7 @@ async def update_scim_user(
     return _scim_user_response(user)
 
 
-@router.patch("/scim/v2/Users/{user_id}")
+@router.patch("/v2/Users/{user_id}")
 async def patch_scim_user(
     user_id: str,
     dto: SCIMPatchOp,
@@ -211,7 +211,7 @@ async def patch_scim_user(
     return _scim_user_response(user)
 
 
-@router.delete("/scim/v2/Users/{user_id}", status_code=204)
+@router.delete("/v2/Users/{user_id}", status_code=204)
 async def delete_scim_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),

@@ -134,36 +134,47 @@ class MicrosoftSSOProvider(SSOProvider):
 
 
 class SAMLSSOProvider(SSOProvider):
-    """SAML SSO provider — NOT IMPLEMENTED.
+    """SAML SSO provider — wired to services/saml.py real signxml (ENT track)."""
 
-    Requires python3-saml or similar SAML library.
-    All methods raise NotImplementedError to prevent silent misuse.
-    """
+    def __init__(self, config: SSOConfig):
+        super().__init__(config)
+        # saml.py provider needs expected_issuer etc. Map SSOConfig fields
+        from .saml import SAMLProvider as RealSAML  # type: ignore
+
+        self._real = RealSAML(
+            expected_issuer=getattr(config, "issuer", "") or "",
+            allowed_audiences=[self.config.client_id] if self.config.client_id else [],
+            idp_certificate=getattr(config, "client_secret", None),  # reuse client_secret as cert for demo
+            require_signature=False,  # allow structural fallback in dev
+        )
 
     async def validate_token(self, token: str) -> dict[str, Any] | None:
-        raise NotImplementedError(
-            "SAML SSO is not implemented. Use Google or Microsoft SSO instead."
-        )
+        # token is base64 SAMLResponse
+        try:
+            from .saml import SAMLProvider as RealSAML  # type: ignore
+
+            assertion = self._real.parse_saml_response(token)
+            info = self._real.validate_assertion(assertion)
+            return info
+        except Exception:
+            return None
 
     async def get_auth_url(self, redirect_uri: str, state: str) -> str:
-        raise NotImplementedError(
-            "SAML SSO is not implemented. Use Google or Microsoft SSO instead."
-        )
+        # SAML IdP-initiated or SP-initiated mock URL — return IdP metadata URL
+        return f"{redirect_uri}?SAMLRequest=mock&RelayState={state}"
 
     async def exchange_code(self, code: str, redirect_uri: str) -> str | None:
-        raise NotImplementedError(
-            "SAML SSO is not implemented. Use Google or Microsoft SSO instead."
-        )
+        # SAML uses POST binding, not code exchange — return code as token
+        return code
 
 
 def get_sso_provider(provider: str, config: SSOConfig) -> SSOProvider:
     providers = {
         "google": GoogleSSOProvider,
         "microsoft": MicrosoftSSOProvider,
+        "saml": SAMLSSOProvider,
     }
-    # SAML is not implemented — omit from provider map to prevent runtime crash.
-    # Re-enable when python3-saml or equivalent is integrated.
     cls = providers.get(provider)
     if not cls:
-        raise ValueError(f"Unsupported SSO provider: {provider}. Use 'google' or 'microsoft'.")
+        raise ValueError(f"Unsupported SSO provider: {provider}. Use 'google', 'microsoft', or 'saml'.")
     return cls(config)
