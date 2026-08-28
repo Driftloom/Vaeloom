@@ -43,14 +43,15 @@ class SchedulerAgent(BaseAgent):
     )
     default_autonomy = "full"
 
-    def __init__(self):
+    def __init__(self, workspace_id: str | None = None):
         super().__init__()
+        self.workspace_id = workspace_id
         self._client = None
 
-    async def _get_client(self):
+    async def _get_client(self, workspace_id: str | None = None):
         if self._client is None:
             from api.clients.calendar_client import CalendarClient
-            self._client = CalendarClient()
+            self._client = CalendarClient(workspace_id=workspace_id or self.workspace_id)
         return self._client
 
     async def fallback(self) -> Any:
@@ -67,19 +68,19 @@ class SchedulerAgent(BaseAgent):
         }
 
     async def fetch_events(
-        self, days_ahead: int = 14
+        self, days_ahead: int = 14, workspace_id: str | None = None
     ) -> list[dict[str, Any]] | None:
-        client = await self._get_client()
+        client = await self._get_client(workspace_id=workspace_id)
         now = datetime.now(UTC)
         time_min = now.isoformat()
         time_max = (now + timedelta(days=days_ahead)).isoformat()
         return await client.list_events(time_min=time_min, time_max=time_max)
 
     async def check_conflicts(
-        self, events: list[dict[str, Any]], has_approval: bool = False
+        self, events: list[dict[str, Any]], has_approval: bool = False, workspace_id: str | None = None
     ) -> dict[str, Any]:
         if not events:
-            api_events = await self.fetch_events()
+            api_events = await self.fetch_events(workspace_id=workspace_id)
             if api_events:
                 events = api_events
 

@@ -40,14 +40,15 @@ class GmailAgent(BaseAgent):
     )
     default_autonomy = "suggest"
 
-    def __init__(self):
+    def __init__(self, workspace_id: str | None = None):
         super().__init__()
+        self.workspace_id = workspace_id
         self._client = None
 
-    async def _get_client(self):
+    async def _get_client(self, workspace_id: str | None = None):
         if self._client is None:
             from api.clients.gmail_client import GmailClient
-            self._client = GmailClient()
+            self._client = GmailClient(workspace_id=workspace_id or self.workspace_id)
         return self._client
 
     async def fallback(self) -> Any:
@@ -64,16 +65,16 @@ class GmailAgent(BaseAgent):
         }
 
     async def fetch_emails(
-        self, query: str | None = None, max_results: int = 20
+        self, query: str | None = None, max_results: int = 20, workspace_id: str | None = None
     ) -> list[dict[str, Any]] | None:
-        client = await self._get_client()
+        client = await self._get_client(workspace_id=workspace_id)
         return await client.fetch_emails(max_results=max_results, query=query)
 
     async def classify_emails(
-        self, emails: list[dict[str, Any]], trigger: str = "scheduled"
+        self, emails: list[dict[str, Any]], trigger: str = "scheduled", workspace_id: str | None = None
     ) -> dict[str, Any]:
         if not emails:
-            api_emails = await self.fetch_emails()
+            api_emails = await self.fetch_emails(workspace_id=workspace_id)
             if api_emails:
                 emails = api_emails
 

@@ -1,12 +1,12 @@
 # Finding: Alembic Migration References Non-Existent Columns
 
-| Metadata     | Value                                   |
-| ------------ | --------------------------------------- |
-| **ID**       | FIND-RLS-002                            |
-| **Severity** | P0-CRITICAL                             |
-| **Status**   | OPEN                                    |
-| **Source**   | RLS Audit                               |
-| **File**     | `alembic/versions/0005_rls_expanded.py` |
+| Metadata     | Value                                                                    |
+| ------------ | ------------------------------------------------------------------------ |
+| **ID**       | FIND-RLS-002                                                             |
+| **Severity** | P0-CRITICAL                                                              |
+| **Status**   | RESOLVED (verified 2026-08-28 — superseded by 0013/0019/0020; RLS 42/42) |
+| **Source**   | RLS Audit                                                                |
+| **File**     | `alembic/versions/0005_rls_expanded.py`                                  |
 
 ## Description
 

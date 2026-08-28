@@ -50,6 +50,10 @@ dependencies = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Explicit loop scope removes pytest-asyncio/xdist async-generator teardown
+# ambiguity that caused the full-suite deadlock (finding 39). All async fixtures
+# are function-scoped, so "function" is safe and matches the prior default.
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 # Memory-friendly: 4 workers (each ~300MB, total ~1.2GB). -n auto (16) ≈ 4-5GB and can OOM on 16GB laptops.
 # Use --dist loadfile only for large suites if you want file-level grouping; for 2-file small runs it can be slower.

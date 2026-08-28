@@ -15,16 +15,16 @@
 
 ## Quick Commands
 
-| Action                 | Command                                                                                             | Time                                                               |
-| ---------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **Frontend dev**       | **`pnpm dev:web`**                                                                                  | **2-5s**                                                           |
-| Frontend dev (direct)  | `make dev-web`                                                                                      | **2-5s**                                                           |
-| API dev                | `pnpm dev:be`                                                                                       | instant                                                            |
-| Install deps           | `pnpm install`                                                                                      | **2.2s**                                                           |
-| Backend tests          | `cd apps/api && uv run --project apps/api python -m pytest -q`                                      | ~3-5min (xdist 4 workers, mem-friendly; 16 workers ≈ 4-5GB)        |
-| Backend tests (fast)   | `cd apps/api && uv run --project apps/api python -m pytest -q -o addopts="-n auto --dist loadfile"` | ~2-3min (16 workers, needs 32GB; `--dist loadfile` groups by file) |
-| Backend tests (serial) | `cd apps/api && uv run --project apps/api python -m pytest -q -o addopts=""`                        | ~8-10min                                                           |
-| ALL tests w/ cov       | `cd apps/api && uv run --project apps/api python -m pytest --cov=api --cov-report=term -q`          | ~4-6min                                                            |
+| Action                 | Command                                                                                             | Time                                                                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend dev**       | **`pnpm dev:web`**                                                                                  | **2-5s**                                                                                                                                                                         |
+| Frontend dev (direct)  | `make dev-web`                                                                                      | **2-5s**                                                                                                                                                                         |
+| API dev                | `pnpm dev:be`                                                                                       | instant                                                                                                                                                                          |
+| Install deps           | `pnpm install`                                                                                      | **2.2s**                                                                                                                                                                         |
+| Backend tests          | `cd apps/api && uv run --project apps/api python -m pytest -q`                                      | **Full suite currently hangs/crashes under xdist — see finding 39.** Per-file runs or serial (`-o addopts=""`) ~8-10min are reliable. 4 workers mem-friendly; 16 workers ≈ 4-5GB |
+| Backend tests (fast)   | `cd apps/api && uv run --project apps/api python -m pytest -q -o addopts="-n auto --dist loadfile"` | ~2-3min (16 workers, needs 32GB; `--dist loadfile` groups by file)                                                                                                               |
+| Backend tests (serial) | `cd apps/api && uv run --project apps/api python -m pytest -q -o addopts=""`                        | ~8-10min                                                                                                                                                                         |
+| ALL tests w/ cov       | `cd apps/api && uv run --project apps/api python -m pytest --cov=api --cov-report=term -q`          | ~4-6min                                                                                                                                                                          |
 
 ## CRITICAL: Never use `pnpm dev`
 

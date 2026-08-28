@@ -23,7 +23,9 @@ class JobBoardClient:
         self,
         api_url: str = "",
         api_key: str = "",
+        workspace_id: str | None = None,
     ):
+        self.workspace_id = workspace_id
         self.api_url = api_url or settings.job_board_api_url
         self.api_key = api_key or settings.job_board_api_key
         self._configured = bool(self.api_url and self.api_key)

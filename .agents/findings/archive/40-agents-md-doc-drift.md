@@ -1,6 +1,12 @@
 # 40 — [P2] AGENTS.md / EXECUTION-STATUS documentation drift (verified against reality 2026-08-23)
 
-**Date:** 2026-08-23 · **Severity: P2** · **Status: OPEN**
+**Date:** 2026-08-23 · **Severity: P2** · **Status: RESOLVED (verified
+2026-08-28)** — AGENTS.md already reflects current reality: 2731 tests collected
+(line 50), OpenAPI 110 paths (lines 56/137), 60 e2e (line 136), and references
+finding 39 for the suite hang. Only remaining drift was the "~3-5min" runtime
+claim (line 24), now corrected to point at finding 39. The Prometheus/OTel
+`main.py:167/168` refs and the `2661`/`106 paths` figures cited in this finding
+are already updated in the live AGENTS.md.
 
 Zero-trust re-measurement of every checkable claim:
 

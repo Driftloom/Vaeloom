@@ -28,7 +28,9 @@ class GmailClient:
         client_id: str = "",
         client_secret: str = "",
         refresh_token: str = "",
+        workspace_id: str | None = None,
     ):
+        self.workspace_id = workspace_id
         self.client_id = client_id or settings.google_client_id
         self.client_secret = client_secret or settings.google_client_secret
         self.refresh_token = refresh_token or settings.google_refresh_token

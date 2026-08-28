@@ -1,12 +1,12 @@
 # Finding: Silent Exception Swallowing in set_rls_session_vars
 
-| Metadata     | Value                                         |
-| ------------ | --------------------------------------------- |
-| **ID**       | FIND-RLS-005                                  |
-| **Severity** | P2-MEDIUM                                     |
-| **Status**   | OPEN                                          |
-| **Source**   | RLS Audit                                     |
-| **File**     | `apps/api/src/api/middleware/tenant.py:58-59` |
+| Metadata     | Value                                                     |
+| ------------ | --------------------------------------------------------- |
+| **ID**       | FIND-RLS-005                                              |
+| **Severity** | P2-MEDIUM                                                 |
+| **Status**   | RESOLVED (verified 2026-08-28 — tenant.py now logs debug) |
+| **Source**   | RLS Audit                                                 |
+| **File**     | `apps/api/src/api/middleware/tenant.py:58-59`             |
 
 ## Description
 

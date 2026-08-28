@@ -1,7 +1,10 @@
 # 38 — [P1] main.py resolves the wrong alembic.ini path → alembic never applies outside apps/api CWD
 
-**Date:** 2026-08-23 · **Severity: P1** · **Status: OPEN (frontend e2e shim
-works around)**
+**Date:** 2026-08-23 · **Severity: P1** · **Status: RESOLVED (verified
+2026-08-28)** — `apps/api/src/api/main.py:143` already uses three `dirname`
+calls (`os.path.dirname(os.path.dirname(os.path.dirname(__file__)))`), correctly
+resolving `apps/api/alembic.ini` from repo-root boots. The CWD fallback remains
+for local launches.
 
 ## Evidence
 

@@ -1,6 +1,10 @@
 # 43 — [P2] Signup page displays fabricated marketing stats ("10K+ users", "99.9% uptime")
 
-**Date:** 2026-08-23 · **Severity: P2** · **Status: OPEN**
+**Date:** 2026-08-23 · **Severity: P2** · **Status: RESOLVED (verified
+2026-08-28)** — `apps/web/src/app/(auth)/signup/page.tsx` no longer renders
+"10K+ users", "8 AI Agents", or "99.9% uptime"; the hero now shows
+product-principle copy only (verified by repo-wide grep — no fabricated
+marketing stats remain on the signup page).
 
 ## Evidence
 

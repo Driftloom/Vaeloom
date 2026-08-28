@@ -1,12 +1,12 @@
 # Finding: get_current_tenant / require_workspace_access Never Imported
 
-| Metadata     | Value                                          |
-| ------------ | ---------------------------------------------- |
-| **ID**       | FIND-RLS-006                                   |
-| **Severity** | P2-MEDIUM                                      |
-| **Status**   | OPEN                                           |
-| **Source**   | RLS Audit                                      |
-| **File**     | `apps/api/src/api/middleware/tenant.py:81-139` |
+| Metadata     | Value                                                   |
+| ------------ | ------------------------------------------------------- |
+| **ID**       | FIND-RLS-006                                            |
+| **Severity** | P2-MEDIUM                                               |
+| **Status**   | RESOLVED (verified 2026-08-28 — dead functions removed) |
+| **Source**   | RLS Audit                                               |
+| **File**     | `apps/api/src/api/middleware/tenant.py:81-139`          |
 
 ## Description
 

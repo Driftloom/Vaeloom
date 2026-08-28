@@ -45,14 +45,15 @@ class JobSearchAgent(BaseAgent):
     )
     default_autonomy = "suggest"
 
-    def __init__(self):
+    def __init__(self, workspace_id: str | None = None):
         super().__init__()
+        self.workspace_id = workspace_id
         self._client = None
 
-    async def _get_client(self):
+    async def _get_client(self, workspace_id: str | None = None):
         if self._client is None:
             from api.clients.job_board_client import JobBoardClient
-            self._client = JobBoardClient()
+            self._client = JobBoardClient(workspace_id=workspace_id or self.workspace_id)
         return self._client
 
     async def fallback(self) -> Any:
@@ -77,10 +78,11 @@ class JobSearchAgent(BaseAgent):
         user_skills: list[str],
         rejected_job_ids: list[str],
         location: str | None = None,
+        workspace_id: str | None = None,
     ) -> dict[str, Any]:
         raw_jobs = None
 
-        client = await self._get_client()
+        client = await self._get_client(workspace_id=workspace_id)
         if client._configured:
             api_jobs = await client.search_jobs(keywords, location)
             if api_jobs:

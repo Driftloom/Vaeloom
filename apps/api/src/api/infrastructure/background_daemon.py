@@ -480,7 +480,7 @@ async def gmail_watcher_scan() -> int:
             count = 0
             for ws_id, tenant_id in workspaces:
                 try:
-                    agent = GmailAgent()
+                    agent = GmailAgent(workspace_id=str(ws_id))
                     # Real fetch — GmailClient will return None if not configured, then we classify real emails
                     emails = None
                     try:
@@ -521,7 +521,7 @@ async def calendar_monitor_scan() -> int:
             count = 0
             for ws_id, tenant_id in workspaces:
                 try:
-                    agent = SchedulerAgent()
+                    agent = SchedulerAgent(workspace_id=str(ws_id))
                     # Real fetch — CalendarClient will return None if not configured
                     events = None
                     try:
@@ -558,7 +558,7 @@ async def job_finder_scan() -> int:
             count = 0
             for ws_id, tenant_id in workspaces:
                 try:
-                    agent = JobSearchAgent()
+                    agent = JobSearchAgent(workspace_id=str(ws_id))
                     # Use tenant-scoped search; keywords could be derived from workspace memory in future
                     await agent.search(keywords=["software", "engineer"], user_skills=[], rejected_job_ids=[])
                     count += 1

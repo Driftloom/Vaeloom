@@ -1,7 +1,14 @@
 # 37 — [P1] pfi 7.1.0 + FastAPI 0.141.1: every API request returns 500 without the e2e monkeypatch
 
 **Date:** 2026-08-23 · **Severity: P1 (production-blocking as pinned)** ·
-**Status: OPEN (workaround exists)**
+**Status: RESOLVED (verified 2026-08-28)** — `apps/api/src/api/main.py:10-28`
+applies an import-time patch to
+`prometheus_fastapi_instrumentator.routing.get_route_name` that catches the
+`AttributeError` on FastAPI `_IncludedRouter` (no `.path`) and returns
+`"unknown"` instead of crashing — protecting ALL boots (docker/plain uvicorn,
+not just e2e). The pfi>=8.0.1 bump is blocked by starlette>=1.0.0
+incompatibility with pinned starlette==0.50.0/FastAPI 0.141.1, so the patch is
+the correct interim fix until a coordinated FastAPI/starlette/pfi upgrade.
 
 ## Evidence (live-reproduced, differential)
 
