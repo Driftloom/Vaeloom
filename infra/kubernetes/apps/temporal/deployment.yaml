@@ -90,6 +90,12 @@ spec:
               value: default
             - name: TEMPORAL_ENABLED
               value: 'true'
+            - name: LANGGRAPH_ENABLED
+              valueFrom: { configMapKeyRef: { name: vaeloom-config, key: LANGGRAPH_ENABLED } }
+            - name: LANGGRAPH_VERSION
+              valueFrom: { configMapKeyRef: { name: vaeloom-config, key: LANGGRAPH_VERSION } }
+            - name: LANGGRAPH_SHADOW_MODE
+              valueFrom: { configMapKeyRef: { name: vaeloom-config, key: LANGGRAPH_SHADOW_MODE } }
             - name: DATABASE__URL
               valueFrom: { secretKeyRef: { name: vaeloom-db-secret, key: DATABASE_URL } }
             - name: REDIS__URL

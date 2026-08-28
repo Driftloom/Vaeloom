@@ -16,7 +16,7 @@ class CircuitState(enum.Enum):
 class CircuitBreaker:
     def __init__(
         self,
-        failure_threshold: int = 5,
+        failure_threshold: int = 3,
         recovery_timeout: float = 30.0,
         half_open_max_calls: int = 3,
         name: str = "default",

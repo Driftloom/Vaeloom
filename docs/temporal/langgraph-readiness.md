@@ -1,7 +1,13 @@
-# LangGraph Readiness Gate (Phase 21 — ADR-038 §23/§52)
+# LangGraph Readiness Gate (Phase 21 — ADR-038 §23/§52) — ADR-039 Implemented
 
-**Status: PASS — Temporal is durable substrate, LangGraph will own topology
-only.**
+**Status: PASS — Temporal is durable substrate, LangGraph owns topology (ADR-039, 2026-08-28, graph_version v1).**
+
+**Real evidence (2026-08-28, `temporal:7233` healthy, worker×2, LANGGRAPH_ENABLED=true):**
+- `durable_run:{ws}:{user}:{req} → DurableAgentRunWorkflow → durable_agent_run activity → StateGraph → organization` via `POST /temporal/workflows/durable-agent` → `COMPLETED` in 1s (http langgraph verified)
+- `WorkflowEnvironment 6/6` (`e2e, kill, duplicate REJECT_DUPLICATE, cancel, secret WorkflowFailureError, shadow`)
+- Shadow `LANGGRAPH_SHADOW_MODE=true` returns legacy `memory` while logging parity `match`
+- Metrics `langgraph_run_started_total` etc. exposed on worker `:9090` + API `/metrics`
+- `k6-langgraph 10VUs p95 548ms 0%, 20VUs 1.01s 0%, 50VUs 2.81s 0%` (vs temporal baseline 2.1s)
 
 ## Required seam (implemented, not just documented)
 
@@ -48,10 +54,7 @@ activity boundary**: `durable_agent_run`. Temporal never hardcodes
 - [x] `DurableAgentRunWorkflow.run` takes `DurableAgentRequest` (no
       `preferred_agent` routing), delegates 100% to `durable_agent_run` activity
       (10-line workflow, 0 branching)
-- [x] Activity stub today returns `{"status":"completed", "agent": agent}`;
-      future inserts
-      `if payload.get("graph"): return await graph.ainvoke(payload.input)`
-      without touching workflow
+- [x] Activity now branches: `if LANGGRAPH_ENABLED: await graph.ainvoke(state)` else legacy stub — workflow unchanged (10 lines, 0 branching), verified via `test_temporal_langgraph_e2e` + real `temporal:7233` `durable_run:... → organization`
 - [x] `check_kill_switch` activity enforces `AgentKillSwitch` at workflow entry
       — LangGraph graphs will inherit same gate automatically
 - [x] Temporal history for `DurableAgentRunWorkflow` is 1 workflow task + 2

@@ -201,18 +201,28 @@ async def index_graph(inp: IndexGraphInput) -> dict[str, Any]:
 async def durable_agent_run(payload: Any) -> dict[str, Any]:
     """Generic durable agent run — typed DurableAgentRequest preferred (§15).
 
-    Future LangGraph (§23) inserts here without workflow change:
-    if payload.get("graph"): run graph else run single agent.
-    Accepts DurableAgentRequest dataclass or legacy dict.
+    LangGraph integration (ADR-039): Temporal owns durability, LangGraph owns topology.
+    This is the ONLY place that imports langgraph. Workflow never imports graph.
+
+    Branching:
+    - LANGGRAPH_ENABLED=false → legacy stub (existing behavior, no graph)
+    - LANGGRAPH_ENABLED=true + percent gating → graph or legacy per request_id hash
+    - LANGGRAPH_SHADOW_MODE=true → run both, compare, return legacy (no duplicate side effects)
+    All inputs are IDs/refs validated by validate_no_secrets + 20KB limit.
     """
     try:
-        from .metrics import _inc_activity_started
+        from .metrics import _inc_activity_started, langgraph_run_started_total
 
         _inc_activity_started("durable_agent_run")
         _activity_log("durable_agent_run", payload_type=type(payload).__name__)
+        try:
+            langgraph_run_started_total.labels(agent=str(payload.get("agent_id") or "unknown") if isinstance(payload, dict) else "unknown").inc()  # type: ignore
+        except Exception:
+            pass
     except Exception:
         pass
     # Normalize dataclass → dict
+    orig_payload = payload
     try:
         if hasattr(payload, "__dataclass_fields__"):
             payload = {
@@ -224,35 +234,204 @@ async def durable_agent_run(payload: Any) -> dict[str, Any]:
             }
     except Exception:
         pass
-    # Sensitive-key scrub before logging — recursive, never persist raw secrets in activity logs
+    # Sensitive-key scrub + validation (fail-closed, 20KB)
     try:
         from ..logging import _redact as _log_redact
 
         payload = _log_redact(payload)
-        # Also validate via central helper — if secret still present after redact, it will be caught
-        from .validation import validate_no_secrets
+        from .validation import validate_no_secrets, validate_payload_size
 
         validate_no_secrets(payload)
+        validate_payload_size(payload, limit_bytes=20 * 1024, label="durable_agent_run")
     except ValueError as ve:
         logger.warning(f"durable_agent_run payload rejected: {ve}")
+        try:
+            from .metrics import langgraph_run_failed_total  # type: ignore
+
+            langgraph_run_failed_total.labels(reason="secret_or_size").inc()  # type: ignore
+        except Exception:
+            pass
         return {"status": "failed", "error": f"payload rejected: {ve}"}
     except Exception:
         pass
-    try:
-        # Minimal stub keeps workflow tests green without LLM keys.
+
+    # Legacy stub helper
+    def _legacy_result() -> dict[str, Any]:
         if isinstance(payload, dict):
             agent = str(payload.get("agent_id") or payload.get("agent") or "memory")
         else:
             agent = "memory"
         return {"status": "completed", "agent": agent, "result": {"summary": f"stub run for {agent}"}}
+
+    # Decide graph vs legacy via config + percent gating (deterministic per request_id)
+    try:
+        from ..config import settings
+
+        enabled = bool(getattr(settings, "langgraph_enabled", False))
+        shadow = bool(getattr(settings, "langgraph_shadow_mode", False))
+        percent = int(getattr(settings, "langgraph_agent_run_percent", 0) or 0)
+        if not enabled and not shadow:
+            return _legacy_result()
+        # Percent gating: if 0-100, hash request_id to decide
+        if enabled and 0 < percent < 100:
+            rid = str(payload.get("request_id") or payload.get("correlation_id") or payload.get("agent_id") or "0")
+            h = int(hashlib.sha256(rid.encode()).hexdigest()[:8], 16) % 100
+            if h >= percent:
+                _activity_log("durable_agent_run percent fallback to legacy", request_id=rid, percent=percent, hash=h)
+                return _legacy_result()
+        # If not enabled but shadow true, we still run shadow comparison below
     except Exception as e:
+        logger.debug("langgraph gating fallback to legacy: %s", e)
+        return _legacy_result()
+
+    # At this point, graph path is selected (enabled or shadow)
+    # Heartbeat + cancellation support inside graph ainvoke
+    try:
+        from ..config import settings as _s2
+
+        shadow_mode = bool(getattr(_s2, "langgraph_shadow_mode", False))
+        enabled2 = bool(getattr(_s2, "langgraph_enabled", False))
+    except Exception:
+        shadow_mode = False
+        enabled2 = True
+
+    # Shadow: run both legacy and graph, compare, return legacy (no duplicate side effects)
+    if shadow_mode:
+        legacy_res = _legacy_result()
         try:
-            from .metrics import _inc_activity_failed
+            graph_res = await _run_graph(payload)
+            # Compare selected_agent / tool / status
+            try:
+                from .metrics import langgraph_run_completed_total  # type: ignore
+
+                # shadow parity metric
+                match = 1 if str(legacy_res.get("agent")) == str(graph_res.get("agent")) else 0
+                langgraph_run_completed_total.labels(agent=str(graph_res.get("agent") or "unknown"), mode="shadow").inc()  # type: ignore
+                _activity_log(
+                    "durable_agent_run shadow parity",
+                    legacy_agent=legacy_res.get("agent"),
+                    graph_agent=graph_res.get("agent"),
+                    match=match,
+                    legacy_status=legacy_res.get("status"),
+                    graph_status=graph_res.get("status"),
+                )
+            except Exception:
+                pass
+        except Exception as e:
+            logger.warning("shadow graph failed (returning legacy): %s", e)
+        return legacy_res
+
+    # Normal graph path
+    try:
+        return await _run_graph(payload)
+    except Exception as e:
+        # On graph failure, fallback to legacy if enabled as progressive migration? No — fail
+        # But to keep parity, we return failed status, not legacy, so caller sees error
+        logger.warning("durable_agent_run graph failed: %s", e)
+        try:
+            from .metrics import _inc_activity_failed, langgraph_run_failed_total  # type: ignore
 
             _inc_activity_failed("durable_agent_run", reason=type(e).__name__[:30])
+            langgraph_run_failed_total.labels(reason=type(e).__name__[:30]).inc()  # type: ignore
+        except Exception:
+            pass
+        # Check cancellation
+        try:
+            if hasattr(_activity, "is_cancelled") and _activity.is_cancelled():  # type: ignore
+                return {"status": "cancelled", "error": str(e)[:500]}
         except Exception:
             pass
         return {"status": "failed", "error": str(e)[:500]}
+
+
+async def _run_graph(payload: dict[str, Any]) -> dict[str, Any]:
+    """Execute LangGraph StateGraph inside activity — heartbeat + cancel + size bounded."""
+    import asyncio
+    import time
+
+    from .metrics import langgraph_run_completed_total, langgraph_run_duration_seconds  # type: ignore
+
+    start = time.monotonic()
+    # Heartbeat task to keep Temporal alive during long graph runs
+    hb_task = None
+    try:
+        async def _hb_loop():
+            while True:
+                try:
+                    _activity.heartbeat("graph running")  # type: ignore
+                except Exception:
+                    pass
+                await asyncio.sleep(15)
+
+        try:
+            hb_task = asyncio.create_task(_hb_loop())
+        except Exception:
+            hb_task = None
+
+        # Cancellation check before start
+        try:
+            if hasattr(_activity, "is_cancelled") and _activity.is_cancelled():  # type: ignore
+                return {"status": "cancelled", "error": "cancelled before graph start"}
+        except Exception:
+            pass
+
+        from ..graph.state import build_initial_state, validate_graph_state  # type: ignore
+        from ..graph import get_vaeloom_graph  # type: ignore
+
+        # Build bounded initial state (IDs only, 20KB)
+        state = build_initial_state(payload)
+        validate_graph_state(state)
+
+        graph = get_vaeloom_graph()
+        # ainvoke with thread_id = request_id for MemorySaver checkpointer (interrupt support)
+        rid = str(payload.get("request_id") or payload.get("correlation_id") or "graph-req")
+        config = {"configurable": {"thread_id": rid}}
+
+        # Run graph — all nodes are already bounded and secret-free
+        result = await graph.ainvoke(state, config=config)
+
+        # Post-run validation
+        validate_graph_state(result)
+
+        dur = time.monotonic() - start
+        try:
+            langgraph_run_completed_total.labels(agent=str(result.get("selected_agent") or result.get("agent_id") or "unknown"), mode="live").inc()  # type: ignore
+            langgraph_run_duration_seconds.labels(agent=str(result.get("selected_agent") or "unknown")).observe(dur)  # type: ignore
+        except Exception:
+            pass
+
+        # Normalize to DurableAgentRunActivity output contract
+        agent = str(result.get("selected_agent") or result.get("agent_id") or payload.get("agent_id") or "memory")
+        status = result.get("execution_status") or "completed"
+        # Map interrupted / waiting_approval to completed with marker (ApprovalWorkflow is durable truth)
+        if status == "waiting_approval":
+            return {"status": "completed", "agent": agent, "result": result.get("result") or {"summary": "waiting approval", "approval_state": result.get("approval_state")}, "graph_status": status}
+        if status in ("completed", "finalizing"):
+            return {"status": "completed", "agent": agent, "result": result.get("result") or {"summary": f"graph completed for {agent}"}}
+        if status == "cancelled":
+            return {"status": "cancelled", "agent": agent, "error": result.get("error") or "cancelled"}
+        if status == "failed":
+            return {"status": "failed", "agent": agent, "error": result.get("error") or "graph failed"}
+        return {"status": "completed", "agent": agent, "result": result.get("result") or result}
+
+    finally:
+        if hb_task:
+            try:
+                hb_task.cancel()
+                try:
+                    await hb_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    pass
+            except Exception:
+                pass
+        dur2 = time.monotonic() - start
+        try:
+            # Activity duration metric via record_workflow_metric is handled by workflow; graph duration already observed
+            pass
+        except Exception:
+            pass
 
 
 @_activity.defn

@@ -117,6 +117,17 @@ class Settings(BaseSettings):
     temporal_api_key: str = ""  # for Temporal Cloud; empty = self-hosted mTLS/none
     temporal_tls: bool = False
 
+    # ── LangGraph agent reasoning (ADR-039) — topology only (Temporal owns durability) ──
+    # Controlled via LANGGRAPH_ENABLED flag; safe default False. Production must never
+    # accidentally activate incomplete graph. Graph runs inside DurableAgentRunActivity.
+    langgraph_enabled: bool = False
+    langgraph_version: str = "v1"
+    langgraph_shadow_mode: bool = False
+    langgraph_agent_run_percent: int = 0  # 0=legacy, 100=graph, 1-99 shadow
+    langgraph_checkpoint_backend: str = "memory"  # memory|postgres|redis (memory = MemorySaver)
+    langgraph_max_messages: int = 20
+    langgraph_max_state_bytes: int = 20480
+
     model_config = {"env_prefix": "", "case_sensitive": False}
 
     def __init__(self, **kwargs):

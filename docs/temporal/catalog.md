@@ -4,13 +4,14 @@
 
 | Queue                  | Env var                          | Purpose                             | Concurrency |
 | ---------------------- | -------------------------------- | ----------------------------------- | ----------- |
-| `vaeloom-ingest-q`     | `TEMPORAL_TASK_QUEUE_INGEST`     | ingest parse→extract→write→index    | 10          |
+| `vaeloom-ingest-q`     | `TEMPORAL_TASK_QUEUE_INGEST`     | ingest parse→extract→write→index    | 20          |
 | `vaeloom-documents-q`  | `TEMPORAL_TASK_QUEUE_DOCUMENTS`  | Playwright compiles                 | 2           |
 | `vaeloom-agent-q`      | `TEMPORAL_TASK_QUEUE_AGENT`      | durable agent runs (LangGraph seam) | 8           |
 | `vaeloom-connectors-q` | `TEMPORAL_TASK_QUEUE_CONNECTORS` | connector sync/fetch                | 6           |
 | `vaeloom-schedules-q`  | `TEMPORAL_TASK_QUEUE_SCHEDULES`  | schedule dispatcher                 | 4           |
 | `vaeloom-approvals-q`  | `TEMPORAL_TASK_QUEUE_APPROVALS`  | human approval signal wait          | 20          |
 | `vaeloom-memory-q`     | `TEMPORAL_TASK_QUEUE_MEMORY`     | nightly consolidation               | 2           |
+| `vaeloom-events-q`     | `TEMPORAL_TASK_QUEUE_EVENTS`     | event-triggered durable execution   | 8           |
 
 ## Workflows
 

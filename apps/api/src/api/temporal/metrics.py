@@ -17,6 +17,16 @@ try:
     temporal_approval_wait_seconds = Histogram("temporal_approval_wait_seconds", "Approval signal wait", buckets=(5, 30, 60, 300, 900, 3600))
     temporal_workflow_duration_seconds = Histogram("temporal_workflow_duration_seconds", "Workflow duration", ["workflow_type"], buckets=(0.1, 1, 5, 10, 30, 60, 120, 300))
     temporal_active_workflows = Gauge("temporal_active_workflows", "Active workflows by queue", ["task_queue"])
+
+    # LangGraph (ADR-039) — bounded labels: agent, mode, node, reason only (no secrets)
+    langgraph_run_started_total = Counter("langgraph_run_started_total", "LangGraph runs started", ["agent"])
+    langgraph_run_completed_total = Counter("langgraph_run_completed_total", "LangGraph runs completed", ["agent", "mode"])
+    langgraph_run_failed_total = Counter("langgraph_run_failed_total", "LangGraph runs failed", ["reason"])
+    langgraph_node_execution_total = Counter("langgraph_node_execution_total", "LangGraph node executions", ["node"])
+    langgraph_tool_execution_total = Counter("langgraph_tool_execution_total", "LangGraph tool executions", ["tool"])
+    langgraph_interrupt_total = Counter("langgraph_interrupt_total", "LangGraph interrupts", ["reason"])
+    langgraph_run_duration_seconds = Histogram("langgraph_run_duration_seconds", "LangGraph run duration", ["agent"], buckets=(0.1, 0.5, 1, 2, 5, 10, 30, 60))
+    langgraph_node_duration_seconds = Histogram("langgraph_node_duration_seconds", "LangGraph node duration", ["node"], buckets=(0.05, 0.1, 0.5, 1, 2, 5))
     HAS_METRICS = True
 
     def _inc_workflow_started(workflow_type: str, task_queue: str) -> None:
@@ -49,6 +59,9 @@ except Exception:  # pragma: no cover
     temporal_activity_started = temporal_activity_failed = temporal_activity_retried = None  # type: ignore
     temporal_schedule_executions = None  # type: ignore
     temporal_approval_wait_seconds = temporal_workflow_duration_seconds = temporal_active_workflows = None  # type: ignore
+    langgraph_run_started_total = langgraph_run_completed_total = langgraph_run_failed_total = None  # type: ignore
+    langgraph_node_execution_total = langgraph_tool_execution_total = langgraph_interrupt_total = None  # type: ignore
+    langgraph_run_duration_seconds = langgraph_node_duration_seconds = None  # type: ignore
 
     def _inc_workflow_started(workflow_type: str, task_queue: str) -> None:  # type: ignore[no-redef]
         return None

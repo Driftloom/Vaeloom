@@ -94,9 +94,13 @@ services:
       STORAGE_SECRET_KEY: vaeloom_dev_minio
       STORAGE_BUCKET: vaeloom-storage
       STORAGE_REGION: us-east-1
-      TEMPORAL_ENABLED: 'true'
+      TEMPORAL_ENABLED: '${TEMPORAL_ENABLED:-false}'
       TEMPORAL_HOST: temporal:7233
       TEMPORAL_NAMESPACE: default
+      LANGGRAPH_ENABLED: '${LANGGRAPH_ENABLED:-false}'
+      LANGGRAPH_VERSION: 'v1'
+      LANGGRAPH_SHADOW_MODE: '${LANGGRAPH_SHADOW_MODE:-false}'
+      LANGGRAPH_AGENT_RUN_PERCENT: '${LANGGRAPH_AGENT_RUN_PERCENT:-0}'
     ports:
       - '8000:8000'
     depends_on:
@@ -269,6 +273,10 @@ services:
       TEMPORAL_ENABLED: 'true'
       TEMPORAL_HOST: temporal:7233
       TEMPORAL_NAMESPACE: default
+      LANGGRAPH_ENABLED: '${LANGGRAPH_ENABLED:-false}'
+      LANGGRAPH_VERSION: 'v1'
+      LANGGRAPH_SHADOW_MODE: '${LANGGRAPH_SHADOW_MODE:-false}'
+      LANGGRAPH_AGENT_RUN_PERCENT: '${LANGGRAPH_AGENT_RUN_PERCENT:-0}'
       JWT_SECRET: dev-jwt-secret-not-for-production
     depends_on:
       postgres:

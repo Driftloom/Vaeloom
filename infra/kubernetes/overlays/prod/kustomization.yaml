@@ -22,3 +22,11 @@ patches:
         value:
           cpu: "500m"
           memory: "1Gi"
+  # Temporal server is stateful singleton (Recreate) — must stay 1, not 3
+  - target:
+      kind: Deployment
+      name: vaeloom-temporal
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1

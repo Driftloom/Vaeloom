@@ -37,6 +37,31 @@ spec:
                 configMapKeyRef:
                   name: vaeloom-config
                   key: NODE_ENV
+            - name: TEMPORAL_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: vaeloom-config
+                  key: TEMPORAL_ENABLED
+            - name: TEMPORAL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: vaeloom-config
+                  key: TEMPORAL_HOST
+            - name: TEMPORAL_NAMESPACE
+              valueFrom:
+                configMapKeyRef:
+                  name: vaeloom-config
+                  key: TEMPORAL_NAMESPACE
+            - name: LANGGRAPH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: vaeloom-config
+                  key: LANGGRAPH_ENABLED
+            - name: LANGGRAPH_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: vaeloom-config
+                  key: LANGGRAPH_VERSION
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

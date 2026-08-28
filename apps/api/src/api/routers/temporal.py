@@ -317,3 +317,95 @@ async def start_connector_sync(
         if "already" in low and "started" in low:
             return {"workflow_id": workflow_id, "status": "already_started"}
         raise HTTPException(status_code=500, detail=msg[:500])
+
+
+@router.post("/workflows/durable-agent")
+async def start_durable_agent(
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Start DurableAgentRunWorkflow — LangGraph executes inside DurableAgentRunActivity (ADR-039).
+
+    Temporal owns durability, LangGraph owns topology. Input is IDs/refs only; secrets rejected.
+    Used by k6-langgraph and agent chat.
+    """
+    _require_temporal()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    workspace_id = str(body.get("workspace_id") or body.get("workspaceId") or "")
+    agent_id = str(body.get("agent_id") or body.get("agentId") or "memory")
+    request_id = str(body.get("request_id") or body.get("requestId") or body.get("correlation_id") or body.get("correlationId") or __import__("uuid").uuid4().hex)  # type: ignore
+    inp = body.get("input") or body.get("message") or {}
+    if isinstance(inp, str):
+        inp = {"message": inp}
+    if not workspace_id:
+        raise HTTPException(status_code=400, detail="workspace_id required")
+    # Workspace auth
+    try:
+        from sqlalchemy import select as _sel2
+        from ..models.schema import Workspace, WorkspaceUser
+        from uuid import UUID as _UUID2
+
+        ws_uuid, uid = _UUID2(workspace_id), _UUID2(str(current_user.get("sub") or current_user.get("user_id")))
+        q1 = await db.execute(_sel2(Workspace).where(Workspace.id == ws_uuid, Workspace.user_id == uid))
+        if not q1.scalar_one_or_none():
+            q2 = await db.execute(_sel2(WorkspaceUser).where(WorkspaceUser.workspace_id == ws_uuid, WorkspaceUser.user_id == uid))
+            if not q2.scalar_one_or_none():
+                raise HTTPException(status_code=404, detail="Workspace not found")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+    # Validation
+    try:
+        from ..temporal.validation import validate_no_secrets, validate_payload_size
+
+        validate_no_secrets(body)
+        validate_payload_size(body, label="durable-agent payload")
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    user_id = str(current_user.get("sub") or current_user.get("user_id"))
+    workflow_id = f"durable_run:{workspace_id}:{user_id}:{request_id}"
+    try:
+        from ..temporal.client import get_temporal_client
+        from ..temporal.queues import queue_name
+
+        client = await get_temporal_client()
+        if client is None:
+            raise HTTPException(status_code=503, detail="Temporal client unavailable")
+        from temporalio.common import WorkflowIDReusePolicy as _WIDP  # type: ignore
+
+        payload = {
+            "workspace_id": workspace_id,
+            "user_id": user_id,
+            "agent_id": agent_id,
+            "input": inp,
+            "request_id": request_id,
+            "correlation_id": request_id,
+        }
+        handle = await client.start_workflow(
+            "DurableAgentRunWorkflow",
+            payload,
+            id=workflow_id,
+            task_queue=queue_name("agent"),
+            id_reuse_policy=_WIDP.REJECT_DUPLICATE,
+            execution_timeout=timedelta(minutes=10),
+        )
+        try:
+            from ..temporal.metrics import _inc_workflow_started
+
+            _inc_workflow_started("DurableAgentRunWorkflow", queue_name("agent"))
+        except Exception:
+            pass
+        from datetime import UTC, datetime
+
+        return {"workflow_id": handle.id, "run_id": handle.result_run_id if hasattr(handle, "result_run_id") else None, "status": "accepted", "accepted_at": datetime.now(UTC).isoformat()}
+    except Exception as e:
+        msg = str(e)
+        low = msg.lower()
+        if "already" in low and "started" in low:
+            return {"workflow_id": workflow_id, "status": "already_started"}
+        if "payload rejected" in low or "secret" in low or "forbidden" in low:
+            raise HTTPException(status_code=400, detail=msg[:500])
+        raise HTTPException(status_code=500, detail=msg[:500])
