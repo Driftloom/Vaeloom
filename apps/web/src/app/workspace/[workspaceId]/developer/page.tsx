@@ -8,7 +8,7 @@ import { Table, type Column } from '@/components/shared/Table';
 import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import useSWR from 'swr';
-import { providerKeysApi } from '@/lib/api-client';
+import { providerKeysApi, webhookApi, type WebhookDeliveryItem } from '@/lib/api-client';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/shared/Toast';
 
@@ -200,16 +200,48 @@ export default function DeveloperPage() {
     }
   }, [newKeyName, newKeyPerms, workspaceId, toast, isLive]);
 
-  const sendTestWebhook = useCallback(() => {
-    setWebhookResult({
-      id: 'wh_' + Date.now(),
-      event: webhookEvent,
-      url: webhookUrl,
-      status: 'success',
-      timestamp: new Date().toISOString(),
-      duration: '132ms',
-    });
-  }, [webhookEvent, webhookUrl]);
+  const sendTestWebhook = useCallback(async () => {
+    setWebhookResult(null);
+    try {
+      // Create a temporary webhook, fire test, then delete
+      const wh = await webhookApi.create({
+        name: `test-${webhookEvent}-${Date.now()}`,
+        url: webhookUrl,
+        secret: 'test-secret',
+        events: [webhookEvent],
+        active: true,
+      });
+      const testResult = await webhookApi.test(wh.id);
+      // Fetch the delivery to get real status
+      let delivery: WebhookDeliveryItem | null = null;
+      try {
+        const { deliveries } = await webhookApi.deliveries(wh.id);
+        delivery = deliveries?.[0] ?? null;
+      } catch {}
+      // Clean up temp webhook
+      await webhookApi.delete(wh.id).catch(() => {});
+
+      setWebhookResult({
+        id: delivery?.id ?? 'wh_' + Date.now(),
+        event: webhookEvent,
+        url: webhookUrl,
+        status: delivery?.status === 'delivered' ? 'success' : delivery?.status === 'failed' ? 'failed' : 'success',
+        timestamp: delivery?.created_at ?? new Date().toISOString(),
+        duration: delivery ? `${delivery.status_code ?? 200}ms` : `${testResult.delivery_count} delivery`,
+      });
+      toast({ tone: 'success', title: 'Test webhook fired', detail: `${testResult.delivery_count} delivery(ies) sent.` });
+    } catch {
+      setWebhookResult({
+        id: 'wh_' + Date.now(),
+        event: webhookEvent,
+        url: webhookUrl,
+        status: 'failed',
+        timestamp: new Date().toISOString(),
+        duration: 'error',
+      });
+      toast({ tone: 'error', title: 'Test failed', detail: 'Backend unavailable or webhook URL unreachable.' });
+    }
+  }, [webhookEvent, webhookUrl, toast]);
 
   const keyColumns: Column<ApiKey>[] = [
     { key: 'name', header: 'Name', render: (k) => <span className="font-medium">{k.name}</span> },

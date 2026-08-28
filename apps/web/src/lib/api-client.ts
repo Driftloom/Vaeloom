@@ -2087,3 +2087,105 @@ export const temporalApi = {
     return apiClient.post('/temporal/workflows/connector-sync', body);
   },
 };
+
+export interface FeatureFlagItem {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  rollout_percentage: number;
+  category: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const featureFlagsApi = {
+  list(workspaceId: string): Promise<FeatureFlagItem[]> {
+    return apiClient.get<FeatureFlagItem[]>(
+      `/feature-flags?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  create(
+    workspaceId: string,
+    body: { name: string; description?: string; enabled?: boolean; rollout_percentage?: number; category?: string },
+  ): Promise<FeatureFlagItem> {
+    return apiClient.post<FeatureFlagItem>(
+      `/feature-flags?workspace_id=${encodeURIComponent(workspaceId)}`,
+      body,
+    );
+  },
+  update(
+    flagId: string,
+    body: { name?: string; description?: string; enabled?: boolean; rollout_percentage?: number; category?: string },
+  ): Promise<FeatureFlagItem> {
+    return apiClient.put<FeatureFlagItem>(`/feature-flags/${flagId}`, body);
+  },
+  toggle(flagId: string): Promise<FeatureFlagItem> {
+    return apiClient.post<FeatureFlagItem>(`/feature-flags/${flagId}/toggle`);
+  },
+  delete(flagId: string): Promise<void> {
+    return apiClient.delete(`/feature-flags/${flagId}`);
+  },
+};
+
+export interface WebhookItem {
+  id: string;
+  name: string;
+  url: string;
+  events: string[];
+  active: boolean;
+  retry_count: number;
+  timeout_ms: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookDeliveryItem {
+  id: string;
+  webhook_id: string;
+  event_type: string;
+  status: string;
+  status_code: number | null;
+  response_body: string | null;
+  attempt: number;
+  max_attempts: number;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export const webhookApi = {
+  list(): Promise<{ webhooks: WebhookItem[]; total: number }> {
+    return apiClient.get<{ webhooks: WebhookItem[]; total: number }>('/webhooks');
+  },
+  create(body: {
+    name: string;
+    url: string;
+    secret: string;
+    events?: string[];
+    active?: boolean;
+    retry_count?: number;
+    timeout_ms?: number;
+  }): Promise<WebhookItem> {
+    return apiClient.post<WebhookItem>('/webhooks', body);
+  },
+  get(id: string): Promise<WebhookItem> {
+    return apiClient.get<WebhookItem>(`/webhooks/${encodeURIComponent(id)}`);
+  },
+  update(id: string, body: Partial<{ name: string; url: string; active: boolean; events: string[] }>): Promise<WebhookItem> {
+    return apiClient.put<WebhookItem>(`/webhooks/${encodeURIComponent(id)}`, body);
+  },
+  delete(id: string): Promise<void> {
+    return apiClient.delete(`/webhooks/${encodeURIComponent(id)}`);
+  },
+  test(id: string): Promise<{ status: string; delivery_count: number }> {
+    return apiClient.post<{ status: string; delivery_count: number }>(
+      `/webhooks/test/${encodeURIComponent(id)}`,
+    );
+  },
+  deliveries(id: string): Promise<{ deliveries: WebhookDeliveryItem[]; total: number }> {
+    return apiClient.get<{ deliveries: WebhookDeliveryItem[]; total: number }>(
+      `/webhooks/${encodeURIComponent(id)}/deliveries`,
+    );
+  },
+};

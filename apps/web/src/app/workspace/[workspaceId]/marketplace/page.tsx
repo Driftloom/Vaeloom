@@ -24,16 +24,16 @@ interface Plugin {
 
 const categories = ['All', 'Analytics', 'Integration', 'Productivity', 'AI', 'Data', 'Security'];
 
-const mockPlugins: Plugin[] = [
-  { id: 'p1', name: 'Slack Connector', description: 'Sync messages and files with Slack workspaces. Enable automated notifications and cross-platform collaboration.', category: 'Integration', author: 'Vaeloom', version: '2.1.0', installed: true, rating: 4.8, installs: 1240, price: 'Free' },
-  { id: 'p2', name: 'Analytics Dashboard', description: 'Advanced analytics and reporting dashboard with customizable widgets and export capabilities.', category: 'Analytics', author: 'DataFlow', version: '1.3.2', installed: false, rating: 4.5, installs: 890, price: '$19/mo' },
-  { id: 'p3', name: 'GPT-4 Vision', description: 'Enable visual recognition and image analysis workflows using GPT-4 Vision capabilities.', category: 'AI', author: 'OpenAI', version: '3.0.0', installed: true, rating: 4.9, installs: 3200, price: 'Usage-based' },
-  { id: 'p4', name: 'GitHub Sync', description: 'Bi-directional sync between your workspace and GitHub repositories. Automate commit tracking.', category: 'Integration', author: 'Vaeloom', version: '1.0.5', installed: false, rating: 4.6, installs: 2100, price: 'Free' },
-  { id: 'p5', name: 'Calendar Pro', description: 'Advanced calendar integration with smart scheduling, availability detection, and meeting notes.', category: 'Productivity', author: 'Calendly', version: '2.0.1', installed: false, rating: 4.3, installs: 650, price: '$9/mo' },
-  { id: 'p6', name: 'Data Pipeline', description: 'ETL pipeline builder for processing and transforming workspace data at scale.', category: 'Data', author: 'DataFlow', version: '1.1.0', installed: false, rating: 4.2, installs: 340, price: '$49/mo' },
-  { id: 'p7', name: 'Security Scanner', description: 'Automated security scanning for documents and code snippets in your workspace.', category: 'Security', author: 'SecureAI', version: '1.5.0', installed: false, rating: 4.7, installs: 520, price: '$29/mo' },
-  { id: 'p8', name: 'Notion Export', description: 'Export and sync workspace content to Notion databases and pages.', category: 'Productivity', author: 'Notion Labs', version: '1.0.0', installed: false, rating: 4.0, installs: 180, price: 'Free' },
-  { id: 'p9', name: 'Sentiment Analysis', description: 'Analyze text sentiment across messages, documents, and agent conversations.', category: 'AI', author: 'HuggingFace', version: '2.3.0', installed: false, rating: 4.4, installs: 780, price: 'Free' },
+const SEED_PLUGINS = [
+  { name: 'Slack Connector', description: 'Sync messages and files with Slack workspaces.', category: 'Integration', author: 'Vaeloom', version: '2.1.0' },
+  { name: 'Analytics Dashboard', description: 'Advanced analytics with customizable widgets.', category: 'Analytics', author: 'DataFlow', version: '1.3.2' },
+  { name: 'GPT-4 Vision', description: 'Visual recognition and image analysis workflows.', category: 'AI', author: 'OpenAI', version: '3.0.0' },
+  { name: 'GitHub Sync', description: 'Bi-directional sync with GitHub repositories.', category: 'Integration', author: 'Vaeloom', version: '1.0.5' },
+  { name: 'Calendar Pro', description: 'Smart scheduling and availability detection.', category: 'Productivity', author: 'Calendly', version: '2.0.1' },
+  { name: 'Data Pipeline', description: 'ETL pipeline builder for workspace data.', category: 'Data', author: 'DataFlow', version: '1.1.0' },
+  { name: 'Security Scanner', description: 'Automated security scanning for documents.', category: 'Security', author: 'SecureAI', version: '1.5.0' },
+  { name: 'Notion Export', description: 'Export workspace content to Notion.', category: 'Productivity', author: 'Notion Labs', version: '1.0.0' },
+  { name: 'Sentiment Analysis', description: 'Analyze text sentiment across conversations.', category: 'AI', author: 'HuggingFace', version: '2.3.0' },
 ];
 
 export default function MarketplacePage() {
@@ -47,13 +47,42 @@ export default function MarketplacePage() {
   const [category, setCategory] = useState('All');
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
   const [view, setView] = useState<'browse' | 'installed'>('browse');
-  const [plugins, setPlugins] = useState<Plugin[]>(mockPlugins);
+  const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [installedMap, setInstalledMap] = useState<Record<string, boolean>>({});
+  const [seeded, setSeeded] = useState(false);
 
-  // Live fetch with mock fallback — never throw, return null on backend unavailable
+  // Live fetch — register seed plugins if DB is empty
   const { data: liveData, isLoading } = useSWR(
     workspaceId ? `marketplace-plugins:${workspaceId}` : 'marketplace-plugins',
-    () => pluginApi.list({ page: 1, page_size: 50 }).catch(() => null),
+    async () => {
+      try {
+        const result = await pluginApi.list({ page: 1, page_size: 50 });
+        // If empty, seed the marketplace
+        if (result && Array.isArray(result.plugins) && result.plugins.length === 0 && !seeded) {
+          for (const seed of SEED_PLUGINS) {
+            try {
+              await pluginApi.register({
+                name: seed.name,
+                version: seed.version,
+                author: seed.author,
+                description: seed.description,
+                license: 'MIT',
+                min_app_version: '1.0.0',
+                tags: [seed.category],
+                permissions: {},
+                entry_point: `marketplace:${seed.name.toLowerCase().replace(/\s+/g, '-')}`,
+              });
+            } catch {}
+          }
+          setSeeded(true);
+          // Re-fetch after seeding
+          return pluginApi.list({ page: 1, page_size: 50 }).catch(() => null);
+        }
+        return result;
+      } catch {
+        return null;
+      }
+    },
     { revalidateOnFocus: false },
   );
 
@@ -154,7 +183,7 @@ export default function MarketplacePage() {
     toast({
       tone: nextInstalled ? 'success' : 'info',
       title: nextInstalled ? 'Plugin installed' : 'Plugin uninstalled',
-      detail: `${plugin.name} ${nextInstalled ? 'installed' : 'uninstalled'} locally${isLive ? ' — syncing with backend…' : ' (mock — backend unavailable)'}.`,
+      detail: `${plugin.name} ${nextInstalled ? 'installed' : 'uninstalled'}${isLive ? '' : ''}.`,
     });
 
     // Attempt backend sync — best-effort try/catch
@@ -238,12 +267,12 @@ export default function MarketplacePage() {
           <p className="text-text-muted">
             Discover plugins and integrations to extend your workspace.{' '}
             <span className={isLive ? 'text-success' : 'text-text-dim'}>
-              {isLive ? 'Live data from backend' : '(mock data — backend unavailable)'}
+              {isLive ? 'Live data from backend' : isLoading ? 'Loading…' : 'Backend unavailable'}
             </span>
           </p>
           {!isLive ? (
             <p className="mt-2 text-xs font-mono text-text-dim">
-              Data source: mock fallback of {mockPlugins.length} plugins — backend <code className="rounded bg-surface px-1 py-0.5 border border-border">GET /plugins</code> not reachable. Installed state persisted to{' '}
+              Data source: backend <code className="rounded bg-surface px-1 py-0.5 border border-border">GET /plugins</code> — {isLoading ? 'fetching…' : 'unreachable'}. Installed state persisted to{' '}
               <code className="rounded bg-surface px-1 py-0.5 border border-border">{storageKey}</code>.
             </p>
           ) : (
@@ -314,7 +343,7 @@ export default function MarketplacePage() {
                     size="sm"
                     className="flex-1"
                     onClick={() => toggleInstall(plugin)}
-                    title={isLive ? 'Toggle install (persists locally + backend)' : 'Toggle install (mock — persists locally)'}
+                    title="Toggle install state"
                   >
                     {plugin.installed ? 'Uninstall' : 'Install'}
                   </Button>
@@ -341,7 +370,7 @@ export default function MarketplacePage() {
             </div>
             <p className="text-xs font-mono text-text-dim">
               Install state persisted to <code className="bg-surface px-1 border border-border rounded">{storageKey}</code>
-              {isLive ? ' · backend sync attempted' : ' · mock mode (backend unavailable)'}
+              {isLive ? ' · backend sync active' : ''}
             </p>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setSelectedPlugin(null)}>

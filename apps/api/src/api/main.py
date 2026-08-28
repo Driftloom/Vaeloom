@@ -113,6 +113,7 @@ from .routers import (
     webhooks,
     workspaces,
 )
+from .routers import feature_flags
 from .services.agent_costs import router as agent_costs_router
 from .services.approval import router as approval_router
 from .services.consent import router as consent_router
@@ -340,3 +341,4 @@ if settings.enterprise_routes_enabled:
     app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
     app.include_router(admin_console.router, prefix="", tags=["admin"])
     app.include_router(scim_router, prefix="/scim", tags=["scim"])
+    app.include_router(feature_flags.router, prefix="/api/v1/feature-flags", tags=["feature-flags"])
