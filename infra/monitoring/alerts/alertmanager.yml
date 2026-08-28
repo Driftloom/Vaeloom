@@ -27,9 +27,10 @@ route:
 
 receivers:
   - name: default
-    email_configs:
-      - to: '{{ .ExternalURL }}'
+    webhook_configs:
+      - url: 'http://localhost:9095/alertmanager'
         send_resolved: true
+        max_alerts: 10
 
   - name: slack-critical
     slack_configs:

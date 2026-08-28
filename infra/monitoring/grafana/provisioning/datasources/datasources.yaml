@@ -1,0 +1,13 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://vaeloom-otelcol:8889
+    isDefault: true
+    editable: true
+  - name: Alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://vaeloom-alertmanager:9093
+    editable: true

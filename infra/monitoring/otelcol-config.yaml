@@ -1,0 +1,37 @@
+# OpenTelemetry Collector configuration for Vaeloom (F-OBS-01)
+# Receives: OTLP (gRPC :4317, HTTP :4318) from FastAPI + Temporal
+# Exports: Prometheus (:8889) for Grafana, Jaeger optional
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: vaeloom
+  logging:
+    loglevel: warn
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [logging]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus, logging]

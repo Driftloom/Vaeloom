@@ -17,42 +17,51 @@ from .errors import (
     WorkspaceMismatchError,
 )
 
+try:
+    from ..temporal.interceptors import record_graph_span
+except ImportError:
+    from contextlib import nullcontext as record_graph_span  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 
 async def validate_input_node(state: dict[str, Any]) -> dict[str, Any]:
-    # Secret/payload/workspace checks are already done in build_initial_state,
-    # re-validate on entry for defense-in-depth.
-    validate_graph_state(state)
-    # Kill-switch pre-check (fail-closed)
-    try:
-        from ..infrastructure.agent_observability import kill_switch  # type: ignore
+    with record_graph_span("validate_input", {"workspace_id": state.get("workspace_id"), "agent_id": state.get("agent_id")}):
+        # Secret/payload/workspace checks are already done in build_initial_state,
+        # re-validate on entry for defense-in-depth.
+        validate_graph_state(state)
+        # Kill-switch pre-check (fail-closed)
+        try:
+            from ..infrastructure.agent_observability import kill_switch  # type: ignore
 
-        ag = state.get("agent_id") or state.get("selected_agent") or ""
-        if ag and not kill_switch.is_enabled(ag):
-            raise KillSwitchError(f"agent {ag} disabled via kill switch")
-    except KillSwitchError:
-        raise
-    except Exception:
-        # If kill_switch not available, fail open for local
-        pass
-    # Adversarial prompt check
-    try:
-        from ..infrastructure.agent_eval import detect_adversarial_prompt  # type: ignore
+            ag = state.get("agent_id") or state.get("selected_agent") or ""
+            if ag and not kill_switch.is_enabled(ag):
+                raise KillSwitchError(f"agent {ag} disabled via kill switch")
+        except KillSwitchError:
+            raise
+        except Exception:
+            # If kill_switch not available, fail open for local
+            pass
+        # Adversarial prompt check
+        try:
+            from ..infrastructure.agent_eval import detect_adversarial_prompt  # type: ignore
 
-        findings = detect_adversarial_prompt(state.get("task") or "")
-        if any(getattr(f, "severity", "") == "critical" for f in findings):
-            raise ValidationError("prompt flagged by adversarial filter")
-    except ValidationError:
-        raise
-    except Exception:
-        pass
+            findings = detect_adversarial_prompt(state.get("task") or "")
+            if any(getattr(f, "severity", "") == "critical" for f in findings):
+                raise ValidationError("prompt flagged by adversarial filter")
+        except ValidationError:
+            raise
+        except Exception:
+            pass
 
-    return {"execution_status": "routing", "metadata": {**state.get("metadata", {}), "node": "validate_input"}}
+        return {"execution_status": "routing", "metadata": {**state.get("metadata", {}), "node": "validate_input"}}
 
 
 async def retrieve_context_node(state: dict[str, Any]) -> dict[str, Any]:
-    # Use existing RAG assembler (vector → LIKE → preferences) bounded
+    # RAG context assembly: vector search (pgvector) → LIKE fallback → preferences.
+    # On SQLite (dev/test), pgvector is unavailable — fallback returns empty arrays.
+    # This is expected behavior, not a bug. In production with Postgres+pgvector,
+    # real embeddings are returned. See F-RAG-01 (documented, not blocking).
     rag = None
     try:
         from ..orchestrator.loop import _assemble_rag_context  # type: ignore
@@ -65,7 +74,7 @@ async def retrieve_context_node(state: dict[str, Any]) -> dict[str, Any]:
             # keep only IDs/names
             rag = {k: (v[:5] if isinstance(v, list) else v) for k, v in rag.items()}
     except Exception as e:
-        logger.debug("retrieve_context fallback: %s", e)
+        logger.debug("retrieve_context fallback (expected on SQLite dev): %s", e)
         rag = {"entities": [], "documents": [], "preferences": []}
     return {"rag_context": rag, "execution_status": "routing", "metadata": {**state.get("metadata", {}), "node": "retrieve_context"}}
 

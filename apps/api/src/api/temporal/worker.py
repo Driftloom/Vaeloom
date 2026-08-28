@@ -55,6 +55,18 @@ async def _run(dry_run: bool = False) -> None:
     client = await Client.connect(host, namespace=namespace)
     print(f"connected temporal host={host} ns={namespace}")
 
+    # ── Distributed tracing interceptor (F-TRC-01) ────────────────────
+    interceptors = []
+    try:
+        from .interceptors import TracingInterceptor
+
+        ti = TracingInterceptor()
+        if hasattr(ti, "activity_inbound"):
+            interceptors.append(ti)
+            print("tracing interceptor attached")
+    except Exception as e:
+        logger.debug("tracing interceptor not available: %s", e)
+
     # One Worker per task queue sharing the same client connection.
     workers: list[Worker] = []
     queue_defs = {
@@ -72,7 +84,7 @@ async def _run(dry_run: bool = False) -> None:
         # Fill gaps with at least one activity if empty (keep worker valid)
         if not acts and not wfs:
             continue
-        w = Worker(client, task_queue=qname, workflows=wfs, activities=acts, max_concurrent_activities=max_conc, graceful_shutdown_timeout=timedelta(seconds=30))  # type: ignore[arg-type]
+        w = Worker(client, task_queue=qname, workflows=wfs, activities=acts, max_concurrent_activities=max_conc, graceful_shutdown_timeout=timedelta(seconds=30), interceptors=interceptors or None)  # type: ignore[arg-type]
         workers.append(w)
         print(f"worker queue={qname} max_conc={max_conc} workflows={[c.__name__ for c in wfs]} activities={[a.__name__ for a in acts]}")
 

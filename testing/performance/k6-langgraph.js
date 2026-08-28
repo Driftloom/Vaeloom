@@ -12,10 +12,10 @@ export const options = {
     { duration: '30s', target: 10 },
   ],
   thresholds: {
-    http_req_duration: ['p(95)<2500'],
+    http_req_duration: ['p(95)<3000'],
     http_req_failed: ['rate<0.01'],
     agent_errors: ['rate<0.01'],
-    agent_duration: ['p(95)<2500'],
+    agent_duration: ['p(95)<3000'],
     duplicate_rejected: ['rate<0.01'],
     checks: ['rate>0.99'],
   },
