@@ -7,47 +7,47 @@
 
 ```mermaid
 graph TD
-    classDef tier fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef workflow fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef metric fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef tier fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef workflow fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef metric fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Tiers["📋 Support Tiers"]
-        T1["Self-service · All users<br/>docs/FAQ/In-app help · Instant"]
-        T2["Community · Free users<br/>Discord/GitHub · < 24h"]
-        T3["Standard · Pro users<br/>Email/Chat · < 8h"]
-        T4["Priority · Enterprise<br/>Dedicated Slack/Phone · < 1h"]
-    end
+ subgraph Tiers["Support Tiers"]
+ T1["Self-service · All users<br/>docs/FAQ/In-app help · Instant"]
+ T2["Community · Free users<br/>Discord/GitHub · < 24h"]
+ T3["Standard · Pro users<br/>Email/Chat · < 8h"]
+ T4["Priority · Enterprise<br/>Dedicated Slack/Phone · < 1h"]
+ end
 
-    subgraph Workflow["🔄 Escalation Workflow"]
-        W1["User submits ticket"]
-        W2["Auto-categorization + Priority"]
-        W3["Tier 1: Self-service resolution"]
-        W4["Tier 2: Support team (standard issues)"]
-        W5["Tier 3: Engineering (bugs/escalations)"]
-        W6["Resolution confirmation"]
-    end
+ subgraph Workflow["Escalation Workflow"]
+ W1["User submits ticket"]
+ W2["Auto-categorization + Priority"]
+ W3["Tier 1: Self-service resolution"]
+ W4["Tier 2: Support team (standard issues)"]
+ W5["Tier 3: Engineering (bugs/escalations)"]
+ W6["Resolution confirmation"]
+ end
 
-    subgraph Escalation["📊 Escalation Matrix"]
-        E1["Bug reports: Triage-->Investigate-->Fix"]
-        E2["Feature requests: Log-->Prioritize-->Implement"]
-        E3["Data issues: Scope-->Recover-->Root cause"]
-        E4["Security: Immediate escalate-->Fix-->Post-mortem"]
-    end
+ subgraph Escalation["Escalation Matrix"]
+ E1["Bug reports: Triage-->Investigate-->Fix"]
+ E2["Feature requests: Log-->Prioritize-->Implement"]
+ E3["Data issues: Scope-->Recover-->Root cause"]
+ E4["Security: Immediate escalate-->Fix-->Post-mortem"]
+ end
 
-    subgraph Metrics["📈 Support Metrics"]
-        M1["First response: < 1h priority / < 24h standard"]
-        M2["Resolution: < 4h priority / < 48h standard"]
-        M3["CSAT: > 4.5 out of 5.0"]
-        M4["Escalation rate: < 20%"]
-    end
+ subgraph Metrics["Support Metrics"]
+ M1["First response: < 1h priority / < 24h standard"]
+ M2["Resolution: < 4h priority / < 48h standard"]
+ M3["CSAT: > 4.5 out of 5.0"]
+ M4["Escalation rate: < 20%"]
+ end
 
-    Tiers --> Workflow --> Escalation
-    Workflow -.-> Metrics
+ Tiers--> Workflow--> Escalation
+ Workflow -.-> Metrics
 
-    class T1,T2,T3,T4 tier
-    class W1,W2,W3,W4,W5,W6 workflow
-    class E1,E2,E3,E4 escalation
-    class M1,M2,M3,M4 metric
+ class T1,T2,T3,T4 tier
+ class W1,W2,W3,W4,W5,W6 workflow
+ class E1,E2,E3,E4 escalation
+ class M1,M2,M3,M4 metric
 ```
 
 > **Diagram:** Support architecture — **4 tiers** (self-service instant → community 24h → standard 8h → priority 1h) → **6-step workflow** (ticket → categorize → escalate: T1/T2/T3 → resolve) → **escalation matrix** (bugs, features, data, security) → **metrics** (response time, resolution, CSAT, escalation rate).

@@ -1,7 +1,7 @@
-﻿# Database Backups
+# Database Backups
 
 > **Purpose:** Define the backup strategy for Vaeloom's database
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Overview
 
@@ -43,49 +43,49 @@ This document defines the backup schedule, commands, verification procedures, an
 
 ```mermaid
 graph TD
-    classDef postgres fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef storage fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef redis fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef verify fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef postgres fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef storage fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef redis fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef verify fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph PG_Backup["ðŸ--„ï¸ PostgreSQL Backup"]
-        direction TB
-        P1["Daily: pg_dump full<br/>custom format, compress 9"]
-        P2["Continuous WAL archiving<br/>archive_command cp --> /backups/wal/"]
-        P3["Retention: 30 days daily<br/>12 months weekly"]
-    end
+ subgraph PG_Backup["PostgreSQL Backup"]
+ direction TB
+ P1["Daily: pg_dump full<br/>custom format, compress 9"]
+ P2["Continuous WAL archiving<br/>archive_command cp--> /backups/wal/"]
+ P3["Retention: 30 days daily<br/>12 months weekly"]
+ end
 
-    subgraph Storage_Backup["â˜ï¸ Object Storage (S3)"]
-        S1["Built-in 11x9 durability<br/>Cross-region replication<br/>(enterprise)"]
-    end
+ subgraph Storage_Backup["Object Storage (S3)"]
+ S1["Built-in 11x9 durability<br/>Cross-region replication<br/>(enterprise)"]
+ end
 
-    subgraph Redis_Backup["âš¡ Redis Persistence"]
-        R1["AOF persistence enabled<br/>appendonly yes<br/>Rebuildable from PostgreSQL"]
-    end
+ subgraph Redis_Backup["Redis Persistence"]
+ R1["AOF persistence enabled<br/>appendonly yes<br/>Rebuildable from PostgreSQL"]
+ end
 
-    subgraph Verification["âœ… Backup Verification"]
-        direction TB
-        V1["Monthly: Restore backup<br/>in staging, verify data"]
-        V2["Quarterly: Full DR drill<br/>with runbook walkthrough"]
-        V3["Automated: Integrity check<br/>after each backup"]
-    end
+ subgraph Verification["Backup Verification"]
+ direction TB
+ V1["Monthly: Restore backup<br/>in staging, verify data"]
+ V2["Quarterly: Full DR drill<br/>with runbook walkthrough"]
+ V3["Automated: Integrity check<br/>after each backup"]
+ end
 
-    subgraph Restore["ðŸ”„ Restore Procedures"]
-        direction TB
-        RES1["Full restore:<br/>pg_restore --clean backup.dump"]
-        RES2["Point-in-time:<br/>pg_restore --target-time \"2026-07-12 14:30 UTC\""]
-    end
+ subgraph Restore["Restore Procedures"]
+ direction TB
+ RES1["Full restore:<br/>pg_restore --clean backup.dump"]
+ RES2["Point-in-time:<br/>pg_restore --target-time \"2026-07-12 14:30 UTC\""]
+ end
 
-    P1 & P2 --> V1 & V2 & V3
-    S1 --> V1
-    R1 --> V3
-    V1 & V2 --> RES1 & RES2
+ P1 & P2--> V1 & V2 & V3
+ S1--> V1
+ R1--> V3
+ V1 & V2--> RES1 & RES2
 
-    class P1,P2,P3 postgres
-    class S1 storage
-    class R1 redis
-    class V1,V2,V3 verify
-    class RES1,RES2 postgres
+ class P1,P2,P3 postgres
+ class S1 storage
+ class R1 redis
+ class V1,V2,V3 verify
+ class RES1,RES2 postgres
 
 ```
 
@@ -275,29 +275,29 @@ psql -h localhost -U Vaeloom -d Vaeloom_db \
 
 ```mermaid
 sequenceDiagram
-    participant CRON as Cron Scheduler
-    participant PG as PostgreSQL
-    participant DUMP as pg_dump
-    participant S3 as S3 Backup Bucket
-    participant VER as Verify Job
+ participant CRON as Cron Scheduler
+ participant PG as PostgreSQL
+ participant DUMP as pg_dump
+ participant S3 as S3 Backup Bucket
+ participant VER as Verify Job
 
-    CRON->>DUMP: Trigger daily backup (02:00 UTC)
-    DUMP->>PG: pg_dump --format=custom --compress=9
-    PG-->>DUMP: Backup stream
-    DUMP->>DUMP: Write to local file
-    
-    par Upload and Verify
-        DUMP->>S3: aws cp (SSE encrypted)
-        DUMP->>VER: pg_verify_backup integrity check
-    end
-    
-    S3-->>DUMP: Upload complete
-    VER-->>DUMP: Integrity pass
-    
-    DUMP->>CRON: Backup successful (size, duration)
-    
-    Note over PG: Continuous WAL archiving runs 24/7
-    PG->>S3: WAL segments streamed continuously
+ CRON->>DUMP: Trigger daily backup (02:00 UTC)
+ DUMP->>PG: pg_dump --format=custom --compress=9
+ PG-->>DUMP: Backup stream
+ DUMP->>DUMP: Write to local file
+ 
+ par Upload and Verify
+ DUMP->>S3: aws cp (SSE encrypted)
+ DUMP->>VER: pg_verify_backup integrity check
+ end
+ 
+ S3-->>DUMP: Upload complete
+ VER-->>DUMP: Integrity pass
+ 
+ DUMP->>CRON: Backup successful (size, duration)
+ 
+ Note over PG: Continuous WAL archiving runs 24/7
+ PG->>S3: WAL segments streamed continuously
 ```
 
 > **Diagram:** Daily backup workflow — cron triggers pg_dump at 02:00 UTC, backup is written locally then uploaded to S3 with SSE encryption while integrity verification runs in parallel. Continuous WAL archiving runs independently 24/7 for point-in-time recovery.

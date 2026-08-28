@@ -1,7 +1,7 @@
-﻿# Cache Failure Runbook
+# Cache Failure Runbook
 
 > **Purpose:** Step-by-step runbook for detecting Redis cluster failures and operating Vaeloom in degraded cache-miss mode
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
@@ -15,42 +15,42 @@ This runbook covers failure detection, degraded mode operations, cache rebuild p
 
 ```mermaid
 graph TD
-    classDef app fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef redis fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
-    classDef fallback fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef app fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef redis fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
+ classDef fallback fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    subgraph Applications["Application Layer"]
-        API["API Gateway<br/>Rate limit counters"]
-        AUTH["Auth Service<br/>Session cache"]
-        AGENT["Agent Service<br/>Inference cache"]
-        DOC["Document Service<br/>File metadata"]
-    end
+ subgraph Applications["Application Layer"]
+ API["API Gateway<br/>Rate limit counters"]
+ AUTH["Auth Service<br/>Session cache"]
+ AGENT["Agent Service<br/>Inference cache"]
+ DOC["Document Service<br/>File metadata"]
+ end
 
-    subgraph Redis["Redis Cluster -- ElastiCache"]
-        R1["Primary Node<br/>us-east-1a (AZ1)"]
-        R2["Replica Node<br/>us-east-1b (AZ2)"]
-        R3["Replica Node<br/>us-east-1c (AZ3)"]
-    end
+ subgraph Redis["Redis Cluster -- ElastiCache"]
+ R1["Primary Node<br/>us-east-1a (AZ1)"]
+ R2["Replica Node<br/>us-east-1b (AZ2)"]
+ R3["Replica Node<br/>us-east-1c (AZ3)"]
+ end
 
-    subgraph Fallback["Degraded Mode Operation"]
-        F1["Rate Limiting: local<br/>token bucket (in-memory)"]
-        F2["Sessions: database-<br/>backed sessions"]
-        F3["Inference: recompute<br/>every request"]
-        F4["Metadata: direct DB<br/>queries (indexed)"]
-    end
+ subgraph Fallback["Degraded Mode Operation"]
+ F1["Rate Limiting: local<br/>token bucket (in-memory)"]
+ F2["Sessions: database-<br/>backed sessions"]
+ F3["Inference: recompute<br/>every request"]
+ F4["Metadata: direct DB<br/>queries (indexed)"]
+ end
 
-    API & AUTH & AGENT & DOC --> Redis
-    Redis --> R1
-    R1 --> R2 & R3
-    
-    API -.->|Cache miss -->| F1
-    AUTH -.->|Cache miss -->| F2
-    AGENT -.->|Cache miss -->| F3
-    DOC -.->|Cache miss -->| F4
+ API & AUTH & AGENT & DOC--> Redis
+ Redis--> R1
+ R1--> R2 & R3
+ 
+ API -.->|Cache miss-->| F1
+ AUTH -.->|Cache miss-->| F2
+ AGENT -.->|Cache miss-->| F3
+ DOC -.->|Cache miss-->| F4
 
-    class API,AUTH,AGENT,DOC app
-    class R1,R2,R3 redis
-    class F1,F2,F3,F4 fallback
+ class API,AUTH,AGENT,DOC app
+ class R1,R2,R3 redis
+ class F1,F2,F3,F4 fallback
 ```
 
 ## Redis Cache Usage
@@ -156,18 +156,18 @@ const redisClient = new RedisClient({
 
 ```mermaid
 flowchart LR
-    A["Redis restored"] --> B["Warm critical caches first"]
-    B --> C["1. Feature flags<br/>Pre-populate static config"]
-    C --> D["2. Rate limiter counters<br/>Rebuild from recent logs"]
-    D --> E["3. Session cache<br/>Populate active sessions from DB"]
-    E --> F["4. API response cache<br/>Warm by replaying recent requests"]
-    F --> G["5. Inference cache<br/>Warm on next request only"]
-    
-    G --> H["Monitor cache hit rate"]
-    H --> I{"Hit rate > 50%?"}
-    I -->|Yes| J["Resume normal operation"]
-    I -->|No| K["Continue warming<br/>Check TTL config"]
-    K --> H
+ A["Redis restored"]--> B["Warm critical caches first"]
+ B--> C["1. Feature flags<br/>Pre-populate static config"]
+ C--> D["2. Rate limiter counters<br/>Rebuild from recent logs"]
+ D--> E["3. Session cache<br/>Populate active sessions from DB"]
+ E--> F["4. API response cache<br/>Warm by replaying recent requests"]
+ F--> G["5. Inference cache<br/>Warm on next request only"]
+ 
+ G--> H["Monitor cache hit rate"]
+ H--> I{"Hit rate > 50%?"}
+ I-->|Yes| J["Resume normal operation"]
+ I-->|No| K["Continue warming<br/>Check TTL config"]
+ K--> H
 ```
 
 ### Warm-Up Commands
@@ -270,7 +270,7 @@ async function warmCriticalCaches(redis: RedisClient): Promise<void> {
 
 | Dimension | Current Limit | 10x Strategy | 100x Strategy |
 |-----------|--------------|--------------|---------------|
-| Redis cluster size | 1 primary + 2 replicas | 3 shards Ã— 3 replicas (ElastiCache) | 10 shards Ã— 3 replicas (cluster mode) |
+| Redis cluster size | 1 primary + 2 replicas | 3 shards — 3 replicas (ElastiCache) | 10 shards — 3 replicas (cluster mode) |
 | Cache types | 6 | 12: per-service cache namespaces | 30: auto-registered cache namespaces |
 | Degraded mode capacity | 100% query load on DB | 50%: cached queries still served | 20%: local caches + CDN offload |
 | Cache warm-up time | 10 minutes to 50% hit rate | 5 min: pre-warmed key lists | 1 min: real-time cache shadowing |

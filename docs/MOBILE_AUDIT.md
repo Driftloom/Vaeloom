@@ -2,13 +2,13 @@
 
 ## Tested Breakpoints
 
-| Breakpoint | Device Class     |
+| Breakpoint | Device Class |
 |-----------|------------------|
-| 320px     | Small mobile     |
-| 375px     | iPhone SE/8      |
-| 768px     | Tablet (iPad)    |
-| 1024px    | Small desktop    |
-| 1440px    | Large desktop    |
+| 320px | Small mobile |
+| 375px | iPhone SE/8 |
+| 768px | Tablet (iPad) |
+| 1024px | Small desktop |
+| 1440px | Large desktop |
 
 ## Mobile Testing Checklist
 
@@ -68,14 +68,14 @@
 1. Open Chrome DevTools → Device Toolbar (Ctrl+Shift+M)
 2. Test each breakpoint by selecting from the device list
 3. Navigate through all major pages:
-   - Dashboard / workspace home
-   - Chat interface
-   - Memory list & detail
-   - Agent list & config
-   - Settings page
-   - Schedule / calendar
-   - Applications kanban
-   - File browser
+ - Dashboard / workspace home
+ - Chat interface
+ - Memory list & detail
+ - Agent list & config
+ - Settings page
+ - Schedule / calendar
+ - Applications kanban
+ - File browser
 4. Interact with all form elements
 5. Submit at least one form
 6. Verify hamburger menu navigation

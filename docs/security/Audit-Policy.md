@@ -40,33 +40,33 @@ Auditing is the backbone of accountability. Every meaningful action in Vaeloom â
 
 ```mermaid
 graph TD
-    classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pipeline fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef consumer fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pipeline fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef consumer fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Sources["Audit Event Sources"]
-        API["API Actions<br/>(CRUD, auth)"]:::source
-        ADMIN["Admin Actions<br/>(config, provisioning)"]:::source
-        AGENT["Agent Runs<br/>(inference, outputs)"]:::source
-        DATA["Data Access<br/>(reads, exports, deletes)"]:::source
-    end
+ subgraph Sources["Audit Event Sources"]
+ API["API Actions<br/>(CRUD, auth)"]:::source
+ ADMIN["Admin Actions<br/>(config, provisioning)"]:::source
+ AGENT["Agent Runs<br/>(inference, outputs)"]:::source
+ DATA["Data Access<br/>(reads, exports, deletes)"]:::source
+ end
 
-    PIPE["Audit Pipeline<br/>CloudEvents --> enrich --> hash-chain --> encrypt"]:::pipeline
+ PIPE["Audit Pipeline<br/>CloudEvents--> enrich--> hash-chain--> encrypt"]:::pipeline
 
-    subgraph Storage["Audit Storage (Tiered)"]
-        HOT["Hot Tier<br/>Elasticsearch<br/>90 days (searchable)"]:::store
-        WARM["Warm Tier<br/>S3 Standard<br/>1 year"]:::store
-        COLD["Cold Tier<br/>S3 Glacier<br/>7 years (compliance)"]:::store
-    end
+ subgraph Storage["Audit Storage (Tiered)"]
+ HOT["Hot Tier<br/>Elasticsearch<br/>90 days (searchable)"]:::store
+ WARM["Warm Tier<br/>S3 Standard<br/>1 year"]:::store
+ COLD["Cold Tier<br/>S3 Glacier<br/>7 years (compliance)"]:::store
+ end
 
-    SIEM["SIEM<br/>(Datadog / Splunk)"]:::consumer
-    DASH["Audit Dashboard<br/>(admin search + export)"]:::consumer
-    ALERT["Alert Engine<br/>(anomaly detection)"]:::consumer
+ SIEM["SIEM<br/>(Datadog / Splunk)"]:::consumer
+ DASH["Audit Dashboard<br/>(admin search + export)"]:::consumer
+ ALERT["Alert Engine<br/>(anomaly detection)"]:::consumer
 
-    Sources --> PIPE --> HOT --> WARM --> COLD
-    PIPE --> SIEM --> ALERT
-    HOT --> DASH
+ Sources--> PIPE--> HOT--> WARM--> COLD
+ PIPE--> SIEM--> ALERT
+ HOT--> DASH
 ```
 
 > **Diagram:** Audit pipeline. Events flow from all sources through enrichment, hash-chaining, and encryption into tiered storage. Hot tier is searchable; cold tier is for compliance retention. SIEM consumes events for anomaly detection.

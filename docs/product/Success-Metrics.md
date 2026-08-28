@@ -7,13 +7,13 @@
 
 ```mermaid
 pie title User Engagement by Feature (% of weekly active users)
-    "📧 Gmail Connector" : 32
-    "🧠 Memory Graph" : 24
-    "🤖 Agent Proposals" : 19
-    "📄 Resume Generation" : 11
-    "🔌 Connector Management" : 8
-    "⚙️ Settings & Profile" : 4
-    "📊 Analytics Dashboard" : 2
+ "📧 Gmail Connector" : 32
+ " Memory Graph" : 24
+ " Agent Proposals" : 19
+ " Resume Generation" : 11
+ " Connector Management" : 8
+ " Settings & Profile" : 4
+ " Analytics Dashboard" : 2
 ```
 
 > **Chart:** Feature adoption among weekly active users. **Gmail Connector** leads at 32% — email classification is the primary daily driver. **Memory Graph** (24%) and **Agent Proposals** (19%) represent the core AI interaction loop. **Resume Generation** (11%) and **Connector Management** (8%) are secondary workflows. **Settings** (4%) and **Analytics** (2%) are utility surfaces.

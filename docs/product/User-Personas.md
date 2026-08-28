@@ -7,31 +7,31 @@
 
 ```mermaid
 graph TD
-    classDef student fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef seeker fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef prof fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef second fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef student fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef seeker fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef prof fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef second fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Primary["👤 Primary Personas"]
-        direction TB
-        S["🎓 Student (18-24)<br/>Pain: Resume from scratch, missed deadlines<br/>Needs: Auto-org, resume, internship search<br/>Tech: High (native digital)"]
-        J["💼 Job Seeker (22-30)<br/>Pain: Inefficient applying, generic materials<br/>Needs: ATS scoring, tailored apps, tracking<br/>Tech: High"]
-        P["👔 Early-Career Professional (25-35)<br/>Pain: Unnoticed skill atrophy, growth tracking<br/>Needs: Memory system, trajectory tracking<br/>Tech: Medium-high"]
-    end
+ subgraph Primary["Primary Personas"]
+ direction TB
+ S["Student (18-24)<br/>Pain: Resume from scratch, missed deadlines<br/>Needs: Auto-org, resume, internship search<br/>Tech: High (native digital)"]
+ J["Job Seeker (22-30)<br/>Pain: Inefficient applying, generic materials<br/>Needs: ATS scoring, tailored apps, tracking<br/>Tech: High"]
+ P["Early-Career Professional (25-35)<br/>Pain: Unnoticed skill atrophy, growth tracking<br/>Needs: Memory system, trajectory tracking<br/>Tech: Medium-high"]
+ end
 
-    subgraph Secondary["👥 Secondary Personas"]
-        R["🔬 Researcher<br/>Papers, notes, citations"]
-        D["💻 Developer<br/>Code/projects --> career narrative"]
-        F["🔗 Freelancer<br/>Portfolio + pipeline management"]
-        E["🏢 Enterprise Employee<br/>Internal mobility + skills tracking"]
-    end
+ subgraph Secondary["Secondary Personas"]
+ R["Researcher<br/>Papers, notes, citations"]
+ D["Developer<br/>Code/projects--> career narrative"]
+ F["Freelancer<br/>Portfolio + pipeline management"]
+ E["Enterprise Employee<br/>Internal mobility + skills tracking"]
+ end
 
-    Primary --> Secondary
+ Primary--> Secondary
 
-    class S student
-    class J seeker
-    class P prof
-    class R,D,F,E second
+ class S student
+ class J seeker
+ class P prof
+ class R,D,F,E second
 ```
 
 > **Diagram:** Personas — **3 primary personas** (Student 18-24, Job Seeker 22-30, Early-Career Professional 25-35) with age, pain points, needs, and tech comfort → **4 secondary personas** (Researcher, Developer, Freelancer, Enterprise Employee).

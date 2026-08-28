@@ -25,41 +25,41 @@ This document covers the embedding model selection, chunking strategy, storage a
 
 ```mermaid
 graph LR
-    classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef query fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
+ classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef query fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
 
-    subgraph Sources["📄 Content Sources"]
-        D[Documents] --- M[Memory Records] --- C[Conversations]
-    end
+ subgraph Sources["Content Sources"]
+ D[Documents] --- M[Memory Records] --- C[Conversations]
+ end
 
-    subgraph Pipeline["⚙️ Embedding Pipeline"]
-        CH["Chunk text<br/>max 8191 tokens"] --> EM["Embed via API<br/>text-embedding-3-small\n1536 dimensions"]
-        EM --> VV["Store vector + metadata<br/>+ model_version"]
-    end
+ subgraph Pipeline["Embedding Pipeline"]
+ CH["Chunk text<br/>max 8191 tokens"]--> EM["Embed via API<br/>text-embedding-3-small\n1536 dimensions"]
+ EM--> VV["Store vector + metadata<br/>+ model_version"]
+ end
 
-    subgraph Storage["💾 Vector Storage"]
-        PG["( pgvector<br/>MVP: PostgreSQL )"]
-        QD["( Qdrant<br/>Enterprise: Dedicated )"]
-    end
+ subgraph Storage["Vector Storage"]
+ PG["pgvector<br/>MVP: PostgreSQL )"]
+ QD["Qdrant<br/>Enterprise: Dedicated )"]
+ end
 
-    subgraph Query["🔍 Query Flow"]
-        Q["User query"] --> QE["Embed query<br/>same model"]
-        QE --> VS["Vector similarity<br/>search"]
-        VS --> RES["Return top-k<br/>results"]
-    end
+ subgraph Query["Query Flow"]
+ Q["User query"]--> QE["Embed query<br/>same model"]
+ QE--> VS["Vector similarity<br/>search"]
+ VS--> RES["Return top-k<br/>results"]
+ end
 
-    D & M & C --> CH
-    VV --> PG
-    VV --> QD
-    RES --> QD
-    RES --> PG
+ D & M & C--> CH
+ VV--> PG
+ VV--> QD
+ RES--> QD
+ RES--> PG
 
-    class D,M,C source
-    class CH,EM,VV process
-    class PG,QD store
-    class Q,QE,VS,RES query
+ class D,M,C source
+ class CH,EM,VV process
+ class PG,QD store
+ class Q,QE,VS,RES query
 ```
 
 > **Diagram:** Content sources (documents, memories, conversations) flow through the embedding pipeline — chunked, embedded via `text-embedding-3-small`, and stored with `model_version`. Queries are embedded with the same model and searched via vector similarity. MVP uses pgvector; Enterprise upgrades to dedicated Qdrant.
@@ -213,28 +213,28 @@ This document defines the embedding strategy for Vaeloom's AI platform — cover
 
 ```mermaid
 sequenceDiagram
-    participant DOC as Document Service
-    participant CH as Chunker
-    participant EM as Embedder
-    participant VS as Vector Store
-    participant MT as Metadata Store
+ participant DOC as Document Service
+ participant CH as Chunker
+ participant EM as Embedder
+ participant VS as Vector Store
+ participant MT as Metadata Store
 
-    DOC->>CH: New document (doc_id, content)
-    CH->>CH: Split at semantic boundaries
-    CH-->>EM: Batch of chunks (max 20)
-    
-    EM->>EM: Compute content hash
-    EM->>EM: Check if unchanged (skip if same hash)
-    EM->>EM: Call text-embedding-3-small
-    
-    par Store Embeddings
-        EM->>VS: Store vector, model_version
-        EM->>MT: Store chunk metadata, source_id
-    end
-    
-    VS-->>DOC: Confirmation
-    MT-->>DOC: Confirmation
-    DOC-->>DOC: Mark document as indexed
+ DOC->>CH: New document (doc_id, content)
+ CH->>CH: Split at semantic boundaries
+ CH-->>EM: Batch of chunks (max 20)
+ 
+ EM->>EM: Compute content hash
+ EM->>EM: Check if unchanged (skip if same hash)
+ EM->>EM: Call text-embedding-3-small
+ 
+ par Store Embeddings
+ EM->>VS: Store vector, model_version
+ EM->>MT: Store chunk metadata, source_id
+ end
+ 
+ VS-->>DOC: Confirmation
+ MT-->>DOC: Confirmation
+ DOC-->>DOC: Mark document as indexed
 ```
 
 > **Diagram:** Document embedding flow showing chunking, dedup by content hash, batch embedding API call, and parallel storage to vector + metadata stores.

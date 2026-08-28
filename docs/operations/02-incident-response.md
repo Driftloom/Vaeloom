@@ -1,4 +1,4 @@
-﻿# Incident Response Plan
+# Incident Response Plan
 
 > **Purpose:** Standard procedures for detecting, responding to, and recovering from production incidents
 > **Status:** Active
@@ -99,97 +99,97 @@ The incident response lifecycle is a **closed loop** — every incident feeds ba
 
 ```mermaid
 flowchart TB
-    %% â”€â”€ Style definitions â”€â”€
-    classDef detect fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef triage fill:#fff3e0,stroke:#e65100,color:#000
-    classDef mitigate fill:#fce4ec,stroke:#c62828,color:#000
-    classDef recover fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef learn fill:#f3e5f5,stroke:#6a1b9a,color:#000
-    classDef decision fill:#fffde7,stroke:#f9a825,color:#000
-    classDef external fill:#eceff1,stroke:#37474f,color:#000,stroke-dasharray:5 5
+ %% ── Style definitions ──
+ classDef detect fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef triage fill:#fff3e0,stroke:#e65100,color:#000
+ classDef mitigate fill:#fce4ec,stroke:#c62828,color:#000
+ classDef recover fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef learn fill:#f3e5f5,stroke:#6a1b9a,color:#000
+ classDef decision fill:#fffde7,stroke:#f9a825,color:#000
+ classDef external fill:#eceff1,stroke:#37474f,color:#000,stroke-dasharray:5 5
 
-    %% â”€â”€ Subgraph: Detect â”€â”€
-    subgraph Detect["ðŸŸ¦ 1 -- Detect"]
-        direction TB
-        D1[Monitoring Alert] --> D2{Is this real?}
-        D3[User Report] --> D2
-        D2 -->|Yes| D4[Log incident in tracker]
-        D2 -->|False alarm| D5[Resolve & document]
-    end
+  %% Subgraph: Detect
+  subgraph Detect["1 -- Detect"]
+ direction TB
+ D1[Monitoring Alert]--> D2{Is this real?}
+ D3[User Report]--> D2
+ D2-->|Yes| D4[Log incident in tracker]
+ D2-->|False alarm| D5[Resolve & document]
+ end
 
-    %% â”€â”€ Subgraph: Triage â”€â”€
-    subgraph Triage["ðŸŸ§ 2 -- Triage"]
-        direction TB
-        T1[On-call acknowledges] --> T2[Assess severity]
-        T2 -->|SEV-1/2| T3[Declare incident]
-        T2 -->|SEV-3/4| T4[Create ticket]
-        T3 --> T5[Assign roles:
-        IC Â· SME Â· Scribe]
-        T4 --> T6[Handle in sprint]
-    end
+  %% Subgraph: Triage
+  subgraph Triage["2 -- Triage"]
+ direction TB
+ T1[On-call acknowledges]--> T2[Assess severity]
+ T2-->|SEV-1/2| T3[Declare incident]
+ T2-->|SEV-3/4| T4[Create ticket]
+ T3--> T5[Assign roles:
+ IC · SME · Scribe]
+ T4--> T6[Handle in sprint]
+ end
 
-    %% â”€â”€ Subgraph: Mitigate â”€â”€
-    subgraph Mitigate["ðŸŸ¥ 3 -- Mitigate"]
-        direction TB
-        M1[Open #incident-XXX] --> M2{Can we contain?}
-        M2 -->|Rollback| M3[Deploy previous version]
-        M2 -->|Feature flag| M4[Disable affected
-        component]
-        M2 -->|Scale out| M5[Increase capacity]
-        M3 --> M6[Verify health check]
-        M4 --> M6
-        M5 --> M6
-        M6 --> M7{Impact resolved?}
-        M7 -->|Yes| M8[Stabilize]
-        M7 -->|No| M9[Escalate / deep dive]
-        M9 --> M2
-    end
+  %% Subgraph: Mitigate
+  subgraph Mitigate["3 -- Mitigate"]
+ direction TB
+ M1[Open #incident-XXX]--> M2{Can we contain?}
+ M2-->|Rollback| M3[Deploy previous version]
+ M2-->|Feature flag| M4[Disable affected
+ component]
+ M2-->|Scale out| M5[Increase capacity]
+ M3--> M6[Verify health check]
+ M4--> M6
+ M5--> M6
+ M6--> M7{Impact resolved?}
+ M7-->|Yes| M8[Stabilize]
+ M7-->|No| M9[Escalate / deep dive]
+ M9--> M2
+ end
 
-    %% â”€â”€ Subgraph: Recover â”€â”€
-    subgraph Recover["ðŸŸ© 4 -- Recover"]
-        direction TB
-        R1[Apply permanent fix] --> R2[Run smoke tests]
-        R2 --> R3[Re-enable disabled
-        features]
-        R3 --> R4[Monitor for 1 hour]
-    end
+  %% Subgraph: Recover
+  subgraph Recover["4 -- Recover"]
+ direction TB
+ R1[Apply permanent fix]--> R2[Run smoke tests]
+ R2--> R3[Re-enable disabled
+ features]
+ R3--> R4[Monitor for 1 hour]
+ end
 
-    %% â”€â”€ Subgraph: Post-Mortem â”€â”€
-    subgraph PostMortem["ðŸŸª 5 -- Post-Mortem"]
-        direction TB
-        P1[Write post-mortem
-        within 48h] --> P2[Identify root cause
-        5 Whys]
-        P2 --> P3[Define action items]
-        P3 --> P4[Assign owners &
-        deadlines]
-    end
+  %% Subgraph: Post-Mortem
+  subgraph PostMortem["5 -- Post-Mortem"]
+ direction TB
+ P1[Write post-mortem
+ within 48h]--> P2[Identify root cause
+ 5 Whys]
+ P2--> P3[Define action items]
+ P3--> P4[Assign owners &
+ deadlines]
+ end
 
-    %% â”€â”€ Edges â”€â”€
-    D5 -->|False alarm| D1
-    D4 --> T1
-    T3 -->|SEV-1/2| M1
-    T5 --> M1
-    M8 --> R1
-    R4 --> P1
+  %% Edges
+  D5-->|False alarm| D1
+ D4--> T1
+ T3-->|SEV-1/2| M1
+ T5--> M1
+ M8--> R1
+ R4--> P1
 
-    %% â”€â”€ Feedback loop â”€â”€
-    P4 -.->|Action items complete|    I1["Update runbooks<br/>and monitoring"]
-    I1 -.->|Improves detection| D1
-    I1 -.->|Improves mitigation| M2
+  %% Feedback loop
+  P4 -.->|Action items complete| I1["Update runbooks<br/>and monitoring"]
+ I1 -.->|Improves detection| D1
+ I1 -.->|Improves mitigation| M2
 
-    %% â”€â”€ Phase durations â”€â”€
-    I2["â± SLA: SEV-1 &lt; 15m Â· SEV-2 &lt; 30m"]:::external
-    I3["â± Post-mortem within 48 hours"]:::external
+  %% Phase durations
+  I2["SLA: SEV-1 &lt; 15m · SEV-2 &lt; 30m"]:::external
+ I3["Post-mortem within 48 hours"]:::external
 
-    %% Apply styles
-    class D1,D3,D4,D5 detect
-    class T1,T2,T3,T4,T5,T6 triage
-    class M1,M3,M4,M5,M6,M8,M9 mitigate
-    class R1,R2,R3,R4 recover
-    class P1,P2,P3,P4 learn
-    class D2,M2,M7 decision
-    class I1 external
+ %% Apply styles
+ class D1,D3,D4,D5 detect
+ class T1,T2,T3,T4,T5,T6 triage
+ class M1,M3,M4,M5,M6,M8,M9 mitigate
+ class R1,R2,R3,R4 recover
+ class P1,P2,P3,P4 learn
+ class D2,M2,M7 decision
+ class I1 external
 ```
 
 | Phase | Objective | SLA |
@@ -204,13 +204,13 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    A[Alert fires] --> B{Acknowledged?}
-    B -->|Yes| C[Assess severity]
-    B -->|No, 5 min| D[Escalate to secondary]
-    C --> E{Is it real?}
-    E -->|Yes, SEV-1/2| F[Declare incident]
-    E -->|Yes, SEV-3/4| G[Create ticket]
-    E -->|False alarm| H[Resolve alert]
+ A[Alert fires]--> B{Acknowledged?}
+ B-->|Yes| C[Assess severity]
+ B-->|No, 5 min| D[Escalate to secondary]
+ C--> E{Is it real?}
+ E-->|Yes, SEV-1/2| F[Declare incident]
+ E-->|Yes, SEV-3/4| G[Create ticket]
+ E-->|False alarm| H[Resolve alert]
 ```
 
 1. **Alert fires** — via PagerDuty, Slack, or monitoring dashboard
@@ -222,14 +222,14 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Declare incident] --> B[Open incident channel]
-    B --> C[Determine impact]
-    C --> D[Mitigate: rollback / feature flag / disable]
-    D --> E[Verify mitigation]
-    E --> F{Impact resolved?}
-    F -->|Yes| G[Move to recovery]
-    F -->|No| H[Escalate / deep dive]
-    H --> D
+ A[Declare incident]--> B[Open incident channel]
+ B--> C[Determine impact]
+ C--> D[Mitigate: rollback / feature flag / disable]
+ D--> E[Verify mitigation]
+ E--> F{Impact resolved?}
+ F-->|Yes| G[Move to recovery]
+ F-->|No| H[Escalate / deep dive]
+ H--> D
 ```
 
 1. **Open incident channel** — `#incident-XXX` in Slack
@@ -261,7 +261,7 @@ flowchart TD
 ### 4.1 Incident declared (internal)
 
 ```text
-ðŸš¨ INCIDENT DECLARED — SEV-[1/2]
+🚨 INCIDENT DECLARED — SEV-[1/2]
 Incident ID: INC-XXX
 Time: [UTC timestamp]
 Severity: SEV-[1/2]
@@ -278,7 +278,7 @@ Commander: @name
 ### 4.2 Status update (internal)
 
 ```text
-ðŸ”„ INCIDENT UPDATE — INC-XXX
+🔄 INCIDENT UPDATE — INC-XXX
 Time: [UTC timestamp]
 Current status: [investigating / fix in progress / mitigated / resolved]
 
@@ -303,7 +303,7 @@ Estimated resolution: [ETA or "TBD"]
 ### 4.4 Post-resolution summary
 
 ```text
-âœ… INCIDENT RESOLVED — INC-XXX
+✅ INCIDENT RESOLVED — INC-XXX
 Time: [UTC timestamp]
 Duration: [X hours Y minutes]
 
@@ -326,11 +326,11 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. âœ… Check if other agents are also failing (indicates API-level issue vs. per-agent issue)
-2. âœ… Switch to fallback model in model router configuration
-3. âœ… If no fallback model available, disable agent auto-processing, switch to degraded mode
-4. âœ… Notify users: "AI features are temporarily operating in manual mode"
-5. â¬œ Post-mortem: review fallback coverage, add additional model provider
+1. ✅ Check if other agents are also failing (indicates API-level issue vs. per-agent issue)
+2. ✅ Switch to fallback model in model router configuration
+3. ✅ If no fallback model available, disable agent auto-processing, switch to degraded mode
+4. ✅ Notify users: "AI features are temporarily operating in manual mode"
+5. ⬜ Post-mortem: review fallback coverage, add additional model provider
 
 ### 5.2 Database connection pool exhaustion
 
@@ -338,10 +338,10 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. âœ… Kill long-running queries: `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'active' AND now() - query_start > interval '5 minutes'`
-2. âœ… Increase pool size temporarily if running low on total connections
-3. âœ… Restart affected services to clear connection pools
-4. â¬œ Post-mortem: review query patterns, add connection pooling limits
+1. ✅ Kill long-running queries: `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'active' AND now() - query_start > interval '5 minutes'`
+2. ✅ Increase pool size temporarily if running low on total connections
+3. ✅ Restart affected services to clear connection pools
+4. ⬜ Post-mortem: review query patterns, add connection pooling limits
 
 ### 5.3 Memory Agent incorrect merge (data quality)
 
@@ -349,10 +349,10 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. âœ… Identify the scope of incorrect merges (time range, entity types affected)
-2. âœ… Revert merges: restore from most recent backup of entities/relationships tables
-3. âœ… Block the Memory Agent from re-processing those documents until fix is deployed
-4. â¬œ Post-mortem: review merge confidence thresholds, add additional validation
+1. ✅ Identify the scope of incorrect merges (time range, entity types affected)
+2. ✅ Revert merges: restore from most recent backup of entities/relationships tables
+3. ✅ Block the Memory Agent from re-processing those documents until fix is deployed
+4. ⬜ Post-mortem: review merge confidence thresholds, add additional validation
 
 ### 5.4 Queue backlog
 
@@ -360,11 +360,11 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. âœ… Check queue depth in Redis
-2. âœ… Increase worker concurrency if resources allow
-3. âœ… If backlog > 10K items, prioritize by recency (process newest first)
-4. âœ… Consider dropping non-critical queue items (e.g., old file re-processing)
-5. â¬œ Post-mortem: review scaling triggers, add auto-scaling
+1. ✅ Check queue depth in Redis
+2. ✅ Increase worker concurrency if resources allow
+3. ✅ If backlog > 10K items, prioritize by recency (process newest first)
+4. ✅ Consider dropping non-critical queue items (e.g., old file re-processing)
+5. ⬜ Post-mortem: review scaling triggers, add auto-scaling
 
 ### 5.5 Security incident (breach / unauthorized access)
 
@@ -372,12 +372,12 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. âœ… **IMMEDIATE:** Revoke compromised tokens / API keys
-2. âœ… **IMMEDIATE:** Block suspicious IPs at load balancer level
-3. âœ… **IMMEDIATE:** Rotate any secrets the incident touches
-4. âœ… Audit access logs to determine scope of exposure
-5. âœ… Notify affected users within legal requirements
-6. â¬œ Post-mortem: full security review, penetration testing, compliance notification
+1. ✅ **IMMEDIATE:** Revoke compromised tokens / API keys
+2. ✅ **IMMEDIATE:** Block suspicious IPs at load balancer level
+3. ✅ **IMMEDIATE:** Rotate any secrets the incident touches
+4. ✅ Audit access logs to determine scope of exposure
+5. ✅ Notify affected users within legal requirements
+6. ⬜ Post-mortem: full security review, penetration testing, compliance notification
 
 ### 5.6 Connector outage (Gmail, GitHub, etc.)
 
@@ -385,10 +385,10 @@ Full post-mortem: [link to document]
 
 **Response:**
 
-1. âœ… Check if it's a provider-side outage (Google status page, GitHub status page)
-2. âœ… If provider issue: update connector status to "degraded," notify affected users
-3. âœ… If token issue: prompt re-authentication for affected users
-4. â¬œ Post-mortem: review token refresh logic, add earlier warning before expiry
+1. ✅ Check if it's a provider-side outage (Google status page, GitHub status page)
+2. ✅ If provider issue: update connector status to "degraded," notify affected users
+3. ✅ If token issue: prompt re-authentication for affected users
+4. ⬜ Post-mortem: review token refresh logic, add earlier warning before expiry
 
 ---
 
@@ -466,10 +466,10 @@ Full post-mortem: [link to document]
 ## Incident Response Quick Reference Card
 
 ```text
-ðŸ”´ SEV-1: < 15 min response    | ALL hands
-ðŸŸ  SEV-2: < 30 min response    | Feature team
-ðŸŸ¡ SEV-3: < 2 hour response    | Engineering
-ðŸŸ¢ SEV-4: Next business day     | Sprint cycle
+🔴 SEV-1: < 15 min response    | ALL hands
+🟠 SEV-2: < 30 min response    | Feature team
+🟡 SEV-3: < 2 hour response    | Engineering
+🟢 SEV-4: Next business day     | Sprint cycle
 
 1. ACKNOWLEDGE the alert
 2. DECLARE severity in #incidents

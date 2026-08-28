@@ -1,4 +1,4 @@
-﻿# Design System
+# Design System
 
 > **Purpose:** Define the design system for Vaeloom
 > **Status:** ✅ Upgraded to enterprise quality
@@ -10,50 +10,50 @@
 
 ```mermaid
 graph TD
-    classDef prim fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef sem fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef comp fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
-    classDef theme fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
+ classDef prim fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef sem fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef comp fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
+ classDef theme fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
 
-    subgraph Primitive[" Primitive Tokens"]
-        P1["--color-blue-500: #3B82F6"]
-        P2["--color-green-500: #10B981"]
-        P3["--color-amber-500: #F59E0B"]
-        P4["--font-inter: 'Inter', system-ui"]
-        P5["--size-4: 1rem"]
-        P6["--size-6: 1.5rem"]
-    end
+ subgraph Primitive["Primitive Tokens"]
+ P1["color-blue-500: #3B82F6"]
+ P2["color-green-500: #10B981"]
+ P3["color-amber-500: #F59E0B"]
+ P4["font-inter: 'Inter', system-ui"]
+ P5["size-4: 1rem"]
+ P6["size-6: 1.5rem"]
+ end
 
-    subgraph Semantic[" Semantic Tokens"]
-        S1["--accent-primary: var(--color-blue-500)"]
-        S2["--accent-success: var(--color-green-500)"]
-        S3["--accent-warning: var(--color-amber-500)"]
-        S4["--text-body: var(--color-gray-900)"]
-        S5["--bg-surface: var(--color-white)"]
-        S6["--border-default: var(--color-gray-200)"]
-    end
+ subgraph Semantic["Semantic Tokens"]
+ S1["accent-primary: var(--color-blue-500)"]
+ S2["accent-success: var(--color-green-500)"]
+ S3["accent-warning: var(--color-amber-500)"]
+ S4["text-body: var(--color-gray-900)"]
+ S5["bg-surface: var(--color-white)"]
+ S6["border-default: var(--color-gray-200)"]
+ end
 
-    subgraph Component[" Component Tokens"]
-        C1["--card-bg: var(--bg-surface)"]
-        C2["--card-border: var(--border-default)"]
-        C3["--card-radius: var(--radius-lg)"]
-        C4["--btn-primary-bg: var(--accent-primary)"]
-        C5["--input-border: var(--border-default)"]
-        C6["--modal-shadow: var(--shadow-xl)"]
-    end
+ subgraph Component["Component Tokens"]
+ C1["card-bg: var(--bg-surface)"]
+ C2["card-border: var(--border-default)"]
+ C3["card-radius: var(--radius-lg)"]
+ C4["btn-primary-bg: var(--accent-primary)"]
+ C5["input-border: var(--border-default)"]
+ C6["modal-shadow: var(--shadow-xl)"]
+ end
 
-    subgraph Themes[" Theme Output"]
-        T1["Light Theme<br/>[data-theme='light']"]
-        T2["Dark Theme<br/>[data-theme='dark']"]
-    end
+ subgraph Themes["Theme Output"]
+ T1["Light Theme<br/>[data-theme='light']"]
+ T2["Dark Theme<br/>[data-theme='dark']"]
+ end
 
-    Primitive --> Semantic --> Component
-    Component --> Themes
+ Primitive--> Semantic--> Component
+ Component--> Themes
 
-    class P1,P2,P3,P4,P5,P6 prim
-    class S1,S2,S3,S4,S5,S6 sem
-    class C1,C2,C3,C4,C5,C6 comp
-    class T1,T2 theme
+ class P1,P2,P3,P4,P5,P6 prim
+ class S1,S2,S3,S4,S5,S6 sem
+ class C1,C2,C3,C4,C5,C6 comp
+ class T1,T2 theme
 ```
 
 > **Diagram:** Three-layer token architecture — **primitive tokens** hold raw values (hex colors, font stacks, pixel sizes), **semantic tokens** assign meaning by referencing primitives (--accent-primary, --text-body), and **component tokens** scope values to specific UI patterns (--card-bg, --btn-primary-bg). The semantic layer enables instant theme switching by remapping semantic values per `[data-theme]` without touching primitives or components.
@@ -179,22 +179,22 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant DES as Designer (Figma)
-    participant PLUGIN as Token Sync Plugin
-    participant CI as CI Pipeline
-    participant CODE as Codebase
+ participant DES as Designer (Figma)
+ participant PLUGIN as Token Sync Plugin
+ participant CI as CI Pipeline
+ participant CODE as Codebase
 
-    DES->>PLUGIN: Update --color-primary to #2563eb
-    PLUGIN->>PLUGIN: Extract token change
-    PLUGIN->>CI: Open PR with token change
-    CI->>CI: Check contrast ratios (light + dark)
-    alt Contrast passes
-        CI->>CODE: ✅ Token change merged
-        CODE-->>DES: Component previews updated
-    else Contrast fails
-        CI-->>PLUGIN: ❌ Contrast failure report
-        PLUGIN-->>DES: Suggest compliant alternative
-    end
+ DES->>PLUGIN: Update --color-primary to #2563eb
+ PLUGIN->>PLUGIN: Extract token change
+ PLUGIN->>CI: Open PR with token change
+ CI->>CI: Check contrast ratios (light + dark)
+ alt Contrast passes
+ CI->>CODE: ✅ Token change merged
+ CODE-->>DES: Component previews updated
+ else Contrast fails
+ CI-->>PLUGIN: ❌ Contrast failure report
+ PLUGIN-->>DES: Suggest compliant alternative
+ end
 ```
 
 ## Data Flow
@@ -207,11 +207,11 @@ sequenceDiagram
 
 ## APIs
 
-The Design System is a purely client-side concern � it defines CSS custom properties, Tailwind configuration, and component tokens. There are no server-side API endpoints associated with the design system. Token values are compiled at build time into CSS bundles served as static assets.
+The Design System is a purely client-side concern — it defines CSS custom properties, Tailwind configuration, and component tokens. There are no server-side API endpoints associated with the design system. Token values are compiled at build time into CSS bundles served as static assets.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| N/A | N/A | No API endpoints � design tokens are compiled into static CSS at build time |
+| N/A | N/A | No API endpoints — design tokens are compiled into static CSS at build time |
 
 ## Database
 
@@ -219,7 +219,7 @@ The Design System has no dedicated database. Token definitions are stored in CSS
 
 | Entity | Key Fields | Purpose |
 |--------|------------|---------|
-| N/A | N/A | No database entities � tokens are compile-time artifacts, not runtime data |
+| N/A | N/A | No database entities — tokens are compile-time artifacts, not runtime data |
 
 ## Scalability
 
@@ -254,7 +254,7 @@ The Design System has no dedicated database. Token definitions are stored in CSS
 |-------------|----------|----------|-------|
 | Development | CSS hot-reload via Vite/Turbopack | `git revert` + rebuild | Token changes reflect immediately in dev server |
 | Staging | Build-time CSS bundle with PR preview | Automatic rollback on contrast check failure | CI validates all token pairs for WCAG AA |
-| Production | CSS bundle deployed via Vercel static assets | Instant rollback via Vercel dashboard | Tokens immutable at runtime � redeploy to update |
+| Production | CSS bundle deployed via Vercel static assets | Instant rollback via Vercel dashboard | Tokens immutable at runtime — redeploy to update |
 | CDN | Global edge cache (Vercel Edge Network) | Cache purge on deploy | CSS bundle served with immutable cache headers |
 
 ## Configuration

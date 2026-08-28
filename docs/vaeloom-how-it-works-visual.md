@@ -1,15 +1,15 @@
-﻿[What Is It](#intro) [How It Works](#how-it-works) [Architecture](#architecture)
+[What Is It](#intro) [How It Works](#how-it-works) [Architecture](#architecture)
 [Agent Orchestration](#orchestration) [Memory](#memory)
 [Implementation](#implementation) [Roadmap](#roadmap)
 
-Vaeloom Â· Visual Overview
+Vaeloom · Visual Overview
 
-| Metadata         | Value                                                                      |
+| Metadata | Value |
 | ---------------- | -------------------------------------------------------------------------- |
-| **Purpose**      | Visual overview of Vaeloom — what it is, how it works, and how we build it |
-| **Status**       | Living document                                                            |
-| **Owner**        | Product Team                                                               |
-| **Last Updated** | 2026-07-13                                                                 |
+| **Purpose** | Visual overview of Vaeloom — what it is, how it works, and how we build it |
+| **Status** | Living document |
+| **Owner** | Product Team |
+| **Last Updated** | 2026-07-13 |
 
 ## Overview
 
@@ -24,10 +24,10 @@ orchestration, memory system, implementation plan, and roadmap.
 
 - Provide a visual-first walkthrough of the Vaeloom system
 - Explain the problem, architecture, agent orchestration, and memory system in
-  an accessible way
+ an accessible way
 - Communicate the implementation plan and roadmap visually
 - Serve as a high-level overview for stakeholders, new team members, and
-  investors
+ investors
 
 ## Scope
 
@@ -183,31 +183,24 @@ Every layer exists to feed the one at the center. Interfaces and connectors
 bring data in; agents act on it; everything that happens gets written back to
 memory — which is what every layer above ultimately reads from.
 
-01
-
 ### Interface
 
 Where you actually touch the product.
 
-Web AppPrimary surface, all screens
-
-Desktop CompanionScoped local-folder access
-
-VS Code ExtensionWorkspace + git activity
-
-MobileNotifications, quick capture
-
-02
+- **Web App** — Primary surface, all screens
+- **Desktop Companion** — Scoped local-folder access
+- **VS Code Extension** — Workspace + git activity
+- **Mobile** — Notifications, quick capture
 
 ### Connectors & Plugins
 
 Scoped, OAuth-based — read-only until you grant more.
 
-Gmail Â· GitHub Â· DriveOfficial OAuth, scoped tokens
+Gmail · GitHub · Drive — Official OAuth, scoped tokens
 
-Local FolderOne directory, not full disk
+Local Folder — One directory, not full disk
 
-Plugin SDK / MCPThird-party tools, same shape
+Plugin SDK / MCP — Third-party tools, same shape
 
 03
 
@@ -215,66 +208,48 @@ Plugin SDK / MCPThird-party tools, same shape
 
 Turns raw files into something agents can reason about.
 
-Document Parser + OCRPDF, DOCX, images, scans
-
-Code UnderstandingRepo structure, README
-
-Semantic ExtractorEntities, relationships
-
-04
+- **Document Parser + OCR** — PDF, DOCX, images, scans
+- **Code Understanding** — Repo structure, README
+- **Semantic Extractor** — Entities, relationships
 
 ### Agent Orchestration
 
 Specialized agents, each scoped to one job — full detail in the next section.
 
-OrchestratorRoutes every request
+Orchestrator — Routes every request
 
-7 specialist agentsOrganization, Resume, ATS, Job Search”¦
-
-05
+7 specialist agents — Organization, Resume, ATS, Job Search, Gmail, Scheduler, Application
 
 ### Memory & Knowledge — CORE
 
 Everything above reads from and writes to this layer. This is the actual
 product.
 
-Knowledge GraphEntities + relationships
-
-Vector StoreSemantic embeddings
-
-Agentic RAGHybrid retrieval + re-ranking
-
-06
+- **Knowledge Graph** — Entities + relationships
+- **Vector Store** — Semantic embeddings
+- **Agentic RAG** — Hybrid retrieval + re-ranking
 
 ### Events & Realtime
 
 Decouples "something happened" from "who needs to know."
 
-Event BusEvery agent action publishes an event
-
-NotificationsDigests, reminders, alerts
-
-07
+- **Event Bus** — Every agent action publishes an event
+- **Notifications** — Digests, reminders, alerts
 
 ### Data Infrastructure
 
 Keeps interactive requests fast while bulk work happens in the background.
 
-Queues + WorkersIngestion never blocks the app
-
-CacheInvalidated on memory-write, never stale
-
-08
+- **Queues + Workers** — Ingestion never blocks the app
+- **Cache** — Invalidated on memory-write, never stale
 
 ### Storage & Security
 
 The floor every other layer stands on.
 
-Encrypted StorageDocuments & memory at rest
-
-Permission EngineEvery request, checked
-
-Audit LogEvery action, reversible
+- **Encrypted Storage** — Documents & memory at rest
+- **Permission Engine** — Every request, checked
+- **Audit Log** — Every action, reversible
 
 Agent Orchestration
 
@@ -286,41 +261,41 @@ specialist and enforces permissions on the way.
 
 ```mermaid
 graph TD
-    O["ðŸ§  Orchestrator<br/>Routes every request"]
+ O["Orchestrator<br/>Routes every request"]
 
-    OA["ðŸ“ Organization Agent<br/>Names & files documents"]
-    MA["ðŸ§¬ Memory Agent<br/>Extracts & merges into the graph"]
-    RA["ðŸ“„ Resume Agent<br/>Maintains the master resume"]
-    ATS["ðŸ“Š ATS Agent<br/>Scores fit vs. job description"]
-    JS["ðŸ” Job Search Agent<br/>Finds & ranks opportunities"]
-    APP["ðŸ“¤ Application Agent<br/>Tailors & submits, with approval"]
-    GA["âœ‰ï¸ Gmail Agent<br/>Classifies mail, deadlines"]
-    SA["ðŸ“… Scheduler Agent<br/>Deadlines & conflict checks"]
+ OA["Organization Agent<br/>Names & files documents"]
+ MA["Memory Agent<br/>Extracts & merges into the graph"]
+ RA["Resume Agent<br/>Maintains the master resume"]
+ ATS["ATS Agent<br/>Scores fit vs. job description"]
+ JS["Job Search Agent<br/>Finds & ranks opportunities"]
+ APP["Application Agent<br/>Tailors & submits, with approval"]
+ GA["Gmail Agent<br/>Classifies mail, deadlines"]
+ SA["Scheduler Agent<br/>Deadlines & conflict checks"]
 
-    O --> OA
-    O --> MA
-    O --> RA
-    O --> ATS
-    O --> JS
-    O --> APP
-    O --> GA
-    O --> SA
+ O--> OA
+ O--> MA
+ O--> RA
+ O--> ATS
+ O--> JS
+ O--> APP
+ O--> GA
+ O--> SA
 
-    OA -->|Write| MEM["ðŸ’¾ Memory Layer"]
-    MA -->|Read/Write| MEM
-    RA -->|Read| MEM
-    JS -->|Read| MEM
-    APP -->|Read/Write| MEM
-    GA -->|Write| MEM
-    SA -->|Read| MEM
+ OA-->|Write| MEM["Memory Layer"]
+ MA-->|Read/Write| MEM
+ RA-->|Read| MEM
+ JS-->|Read| MEM
+ APP-->|Read/Write| MEM
+ GA-->|Write| MEM
+ SA-->|Read| MEM
 
-    classDef orchestrator fill:#e3f2fd,stroke:#1565c0,stroke-width:3px,rx:10px
-    classDef agent fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,rx:8px
-    classDef memory fill:#fff3e0,stroke:#e65100,stroke-width:3px,rx:8px
+ classDef orchestrator fill:#e3f2fd,stroke:#1565c0,stroke-width:3px,rx:10px
+ classDef agent fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,rx:8px
+ classDef memory fill:#fff3e0,stroke:#e65100,stroke-width:3px,rx:8px
 
-    class O orchestrator
-    class OA,MA,RA,ATS,JS,APP,GA,SA agent
-    class MEM memory
+ class O orchestrator
+ class OA,MA,RA,ATS,JS,APP,GA,SA agent
+ class MEM memory
 ```
 
 Agent Workflow — A Real Sequence
@@ -414,93 +389,75 @@ Every agent reads from and writes to the same underlying graph — this is what
 makes the resume, the job search, and the chat all feel like they "know" the
 same person.
 
-Knowledge Graph
+```mermaid
+graph TD
+ classDef kg fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef mem fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef read fill:#f3e5f5,stroke:#6a1b9a,color:#000
+ classDef write fill:#ffebee,stroke:#c62828,color:#000
 
-the second brain
+ subgraph KG["Knowledge Graph -- The Second Brain"]
+  G["Entities + typed relationships"]
+ end
+ subgraph M["Six Kinds of Memory"]
+  P["Profile<br/>Education, skills"]
+  D["Document<br/>Summary & embedding"]
+  C["Career<br/>Applications, outcomes"]
+  E["Episodic<br/>Events"]
+  R["Preference<br/>Patterns"]
+  W["Working<br/>Session context"]
+ end
+ subgraph RP["Read Path -- Agentic RAG"]
+  R1["Query from agent"] --> R2["Hybrid search<br/>Vector + keyword + graph"]
+  R2 --> R3["Re-rank<br/>Relevance, recency, confidence"]
+  R3 --> R4["Assembled context"]
+ end
+ subgraph WP["Write Path"]
+  W1["New info"] --> W2["Extract entities & facts"]
+  W2 --> W3["Dedup / merge"]
+  W3 --> W4["Write to graph + vector store"]
+ end
+ P & D & C & E & R -.-> G
+ W -.->|session| G
+ G -.->|retrieval| R1
+ W1 --> G
 
-Profile Memory
+ class G kg
+ class P,D,C,E,R,W mem
+ class R1,R2,R3,R4 read
+ class W1,W2,W3,W4 write
+```
 
-education, skills, certifications
-
-Document Memory
-
-per-file summary & embedding
-
-Career Memory
-
-applications, outcomes
-
-Episodic Memory
-
-timestamped events
-
-Preference Memory
-
-inferred & stated patterns
-
-Working Memory
-
-current session context
-
-Read path
+> **Diagram summary:** Six memory types (Profile, Document, Career, Episodic, Preference, Working) connect to the central Knowledge Graph. The read path uses Agentic RAG (hybrid search → re-rank → context), and the write path extracts → deduplicates → writes to graph/vector store. Working Memory is session-scoped; others persist.
 
 ### Agentic RAG retrieval
 
 When an agent needs context, it doesn't run one fixed search — it picks a
-strategy for the question in front of it.
-
-Query from an agent
-
-â†“
-
-Hybrid search — vector + keyword + graph traversal
-
-â†“
-
-Re-rank by relevance, recency, confidence
-
-â†“
-
-Assembled context returned to agent
-
-Write path
+strategy for the question in front of it, as shown in the read path above
+(query → hybrid search → re-rank → assembled context).
 
 ### How memory gets updated
 
-Every agent action is a potential memory update — no manual linking required,
-ever.
+Every agent action is a potential memory update — no manual linking required.
+The write path above flows: new info → extract entities & facts → dedup/merge
+against existing nodes → write to graph + vector store and consolidate over
+time.
 
-New info from any agent
+### Memory lifecycle
 
-â†“
-
-Extract entities & facts
-
-â†“
-
-Dedup / merge against existing nodes
-
-â†“
-
-Write to graph + vector store, consolidate over time
-
-Creation
-
-→
-
-Retrieval
-
-→
-
-Evolution
-
-→
-
-Consolidation
-
-→
-
-Permanence
+```mermaid
+stateDiagram-v2
+ [*] --> Created: Agent extracts
+ Created --> Retrieved: Query matches
+ Retrieved --> Consolidated: 30 days stale
+ Consolidated --> Archived: 90 days stale
+ Archived --> Retrieved: Re-accessed
+ Consolidated --> [*]: User deletes
+ note right of Retrieved
+  Each access updates
+  freshness & confidence
+ end note
+```
 
 How We're Going To Build It
 
@@ -590,13 +547,13 @@ interactive chat request.
 
 CDN / Load Balancer
 
-â†“
+↓
 
 Web App (Next.js)
 
 Core API (FastAPI)
 
-â†“
+↓
 
 AI Service (FastAPI)
 
@@ -604,21 +561,21 @@ Redis (queue + cache)
 
 Postgres (+ graph + vector)
 
-â†“
+↓
 
 Model Provider (Claude API)
 
 ### Tech stack, by layer
 
-FrontendReact Â· Next.js Â· Tailwind Â· TanStack Query
+FrontendReact · Next.js · Tailwind · TanStack Query
 
-Core APIPython Â· FastAPI
+Core APIPython · FastAPI
 
-AI / AgentsPython Â· FastAPI Â· Claude API
+AI / AgentsPython · FastAPI · Claude API
 
 RelationalPostgreSQL
 
-GraphPostgreSQL (relational only) Â· Apache AGE provisioned but unused
+GraphPostgreSQL (relational only) · Apache AGE provisioned but unused
 
 Vectorpgvector → Qdrant at scale
 
@@ -679,7 +636,7 @@ Future
 Personal Digital Twin, Autonomous Career Manager, AI Mentor, Life Timeline
 Intelligence, Personal AI APIs.
 
-Vaeloom Â· VISUAL OVERVIEW Â· WHAT IT IS, HOW IT WORKS, HOW WE BUILD IT
+Vaeloom · VISUAL OVERVIEW · WHAT IT IS, HOW IT WORKS, HOW WE BUILD IT
 
 ---
 
@@ -712,21 +669,21 @@ Vaeloom tutorial export --format pdf --output walkthrough.pdf
 ## Future Improvements
 
 - **Animated flow diagrams** — convert static Mermaid diagrams to animated
-  step-through walkthroughs
+ step-through walkthroughs
 - **Interactive prototype links** — embed clickable prototype hotspots for each
-  major screen
+ major screen
 - **Video narration** — add narrated screencast for each visual section
 - **PDF export** — generate a downloadable PDF version of the visual overview
 - **Localized versions** — translate visual content for international student
-  audiences
+ audiences
 
 ---
 
 ## Related Documents
 
-| Document                                                    | Description                                   |
+| Document | Description |
 | ----------------------------------------------------------- | --------------------------------------------- |
 | [Complete Documentation](Vaeloom-Complete-Documentation.md) | Full linear product and engineering reference |
-| [MVP Product Spec](01-Vaeloom-MVP-Spec.md)                  | v1/MVP product scope                          |
-| [System Architecture](02-system-architecture.md)            | Six-layer architecture diagram                |
-| [Memory & Knowledge Graph](04-memory-knowledge-graph.md)    | Memory system visual breakdown                |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1/MVP product scope |
+| [System Architecture](02-system-architecture.md) | Six-layer architecture diagram |
+| [Memory & Knowledge Graph](04-memory-knowledge-graph.md) | Memory system visual breakdown |

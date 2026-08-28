@@ -1,8 +1,8 @@
-﻿# MVP-P18 — 01. Source Register
+# MVP-P18 — 01. Source Register
 
-> **Phase:** MVP-P18 — Documentation and Knowledge Transfer  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021) + P15 93.1 APPROVED (94.2% 99 paths) + P16 92.8 APPROVED (12 TF 22 K8s SLSA L2) + P17 93.2 APPROVED (OTel traces + 5 SLO 9 rules + 3 Grafana 23 panels + 4 runbooks + 30d)  
-> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P18-documentation-and-knowledge-transfer.md` §1-32 (docs IA, API/user docs, ADRs, training, docs quality/ownership)  
+> **Phase:** MVP-P18 — Documentation and Knowledge Transfer 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021) + P15 93.1 APPROVED (94.2% 99 paths) + P16 92.8 APPROVED (12 TF 22 K8s SLSA L2) + P17 93.2 APPROVED (OTel traces + 5 SLO 9 rules + 3 Grafana 23 panels + 4 runbooks + 30d) 
+> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P18-documentation-and-knowledge-transfer.md` §1-32 (docs IA, API/user docs, ADRs, training, docs quality/ownership) 
 > **Gate Authority:** Technical Writer (accountable) + Developer Experience Lead (backup) + Architecture Owner + Security/Compliance + Support Lead veto
 
 ## Internal Sources

@@ -5,13 +5,13 @@ environment, running the stack, and understanding the architecture.
 
 ## Prerequisites
 
-| Tool           | Version               | Purpose                          |
+| Tool | Version | Purpose |
 | -------------- | --------------------- | -------------------------------- |
-| Node.js        | >=18.x (see `.nvmrc`) | Frontend + tooling               |
-| pnpm           | >=9.x                 | Package management (25 packages) |
-| Python         | >=3.12                | Backend                          |
-| Docker Desktop | Latest                | PostgreSQL, Redis, MinIO         |
-| Git            | Latest                | Version control                  |
+| Node.js | >=18.x (see `.nvmrc`) | Frontend + tooling |
+| pnpm | >=9.x | Package management (25 packages) |
+| Python | >=3.12 | Backend |
+| Docker Desktop | Latest | PostgreSQL, Redis, MinIO |
+| Git | Latest | Version control |
 
 ## Clone & Setup
 
@@ -141,11 +141,11 @@ individual packages.
 ## PR Workflow
 
 1. **Branch**: `git checkout -b feat/your-feature` (prefix: `feat/`, `fix/`,
-   `chore/`, `docs/`)
+ `chore/`, `docs/`)
 2. **Develop**: Write code, add tests, run lint + typecheck
 3. **Lint & Typecheck**
 
-   ```bash
+ ```bash
    pnpm lint           # ESLint across all packages
    pnpm typecheck      # TypeScript type checking
    cd apps/api && ruff check src/ tests/
@@ -155,7 +155,7 @@ individual packages.
 4. **Commit**: Conventional commits — `feat:`, `fix:`, `docs:`, `chore:`
 5. **Push**: `git push -u origin feat/your-feature`
 6. **PR**: Create PR against `main`. CI runs: lint, typecheck, test (backend +
-   frontend), security audit
+ frontend), security audit
 7. **Review**: At least one approval required. Address all comments.
 8. **Merge**: Squash merge with descriptive message.
 
@@ -185,18 +185,18 @@ individual packages.
 
 ### Key Directories
 
-| Path                     | Purpose                                  |
+| Path | Purpose |
 | ------------------------ | ---------------------------------------- |
-| `apps/api/`              | FastAPI backend (Python)                 |
-| `apps/web/`              | Next.js 15 frontend (TypeScript)         |
-| `packages/ui-kit/`       | Shared React components (shadcn/ui)      |
-| `packages/shared-types/` | TypeScript types shared across packages  |
-| `integrations/*/`        | External service integrations            |
-| `connectors/*/`          | Protocol connectors (MCP, REST, GraphQL) |
-| `plugins/*/`             | Sandboxed plugins                        |
-| `sdk/typescript/`        | Public TypeScript SDK                    |
-| `infra/terraform/`       | AWS infrastructure (IaC)                 |
-| `infra/kubernetes/`      | Kubernetes manifests (Kustomize)         |
+| `apps/api/` | FastAPI backend (Python) |
+| `apps/web/` | Next.js 15 frontend (TypeScript) |
+| `packages/ui-kit/` | Shared React components (shadcn/ui) |
+| `packages/shared-types/` | TypeScript types shared across packages |
+| `integrations/*/` | External service integrations |
+| `connectors/*/` | Protocol connectors (MCP, REST, GraphQL) |
+| `plugins/*/` | Sandboxed plugins |
+| `sdk/typescript/` | Public TypeScript SDK |
+| `infra/terraform/` | AWS infrastructure (IaC) |
+| `infra/kubernetes/` | Kubernetes manifests (Kustomize) |
 
 ### Technology Stack
 

@@ -9,12 +9,12 @@ release.
 - [ ] CHANGELOG.md updated with release notes
 - [ ] Version bumped in `apps/api/pyproject.toml` and `apps/web/package.json`
 - [ ] Database migrations reviewed and tested against a staging copy of
-      production data
+ production data
 - [ ] Change log reviewed by at least one other engineer
 - [ ] Environment variables for production updated in Infisical
 - [ ] No unresolved security advisories (`pnpm audit`, `pip-audit`)
 - [ ] Load test results within acceptable thresholds (p99 latency < 2s, error
-      rate < 0.1%)
+ rate < 0.1%)
 
 ## Build and Push Docker Images
 
@@ -183,7 +183,7 @@ kubectl exec -it deployment/vaeloom-api -- alembic downgrade -1
 1. Confirm the rollback resolved the issue
 2. Create a GitHub issue describing what went wrong
 3. If production is blocked, consider reverting the PR and deploying a clean
-   version
+ version
 4. Notify stakeholders via the incident channel
 
 ## Monitoring Post-Deploy
@@ -194,14 +194,14 @@ kubectl exec -it deployment/vaeloom-api -- alembic downgrade -1
 - **LLM API errors**: >5% LLM call failures over 5 minutes → Slack alert
 - **Database connections**: >80% of max_connections → CloudWatch alarm
 - **Pod restarts**: any pod restart in production → investigation ticket
-  auto-created
+ auto-created
 
 ## Deployment Windows
 
-| Environment | Window                   | Approval                       |
+| Environment | Window | Approval |
 | ----------- | ------------------------ | ------------------------------ |
-| Dev         | Any time                 | Self-service                   |
-| Staging     | Mon-Fri, 08:00-20:00 UTC | CI green                       |
-| Production  | Mon-Thu, 09:00-16:00 UTC | 2 approvals + on-call notified |
+| Dev | Any time | Self-service |
+| Staging | Mon-Fri, 08:00-20:00 UTC | CI green |
+| Production | Mon-Thu, 09:00-16:00 UTC | 2 approvals + on-call notified |
 
 **No production deployments on Fridays or before public holidays.**

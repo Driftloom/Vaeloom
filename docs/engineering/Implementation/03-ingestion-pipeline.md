@@ -1,7 +1,7 @@
-﻿# 03 — Ingestion Pipeline (MVP)
+# 03 — Ingestion Pipeline (MVP)
 
 > **Purpose:** Build a queue-driven ingestion pipeline that turns uploaded or synced files into parsed, structured document records ready for memory extraction.
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
@@ -23,43 +23,43 @@ The pipeline stops at "parsed and stored" — entity extraction, embedding gener
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    SOURCE["File Upload / Connector Sync"]:::primary
-    QUEUE["Redis + BullMQ Queue"]:::secondary
-    DETECT["Format Detection"]:::secondary
-    PARSE["Parser Dispatch"]:::primary
-    OCR["OCR (images/scans)"]:::secondary
-    STRUCT["Structure Extraction"]:::secondary
-    DEDUP["Dedup & Version Check"]:::primary
-    WRITE["documents row written"]:::secondary
-    EVENT["ingest.completed event published"]:::primary
+ SOURCE["File Upload / Connector Sync"]:::primary
+ QUEUE["Redis + BullMQ Queue"]:::secondary
+ DETECT["Format Detection"]:::secondary
+ PARSE["Parser Dispatch"]:::primary
+ OCR["OCR (images/scans)"]:::secondary
+ STRUCT["Structure Extraction"]:::secondary
+ DEDUP["Dedup & Version Check"]:::primary
+ WRITE["documents row written"]:::secondary
+ EVENT["ingest.completed event published"]:::primary
 
-    SOURCE --> QUEUE
-    QUEUE --> DETECT
-    DETECT --> PARSE
-    PARSE --> OCR
-    OCR --> STRUCT
-    STRUCT --> DEDUP
-    DEDUP --> WRITE
-    WRITE --> EVENT
+ SOURCE--> QUEUE
+ QUEUE--> DETECT
+ DETECT--> PARSE
+ PARSE--> OCR
+ OCR--> STRUCT
+ STRUCT--> DEDUP
+ DEDUP--> WRITE
+ WRITE--> EVENT
 
-    subgraph Parsers["Parser Modules"]
-        P1["PDF Parser"]
-        P2["DOCX Parser"]
-        P3["PPTX Parser"]
-        P4["XLSX/CSV Parser"]
-        P5["Markdown Parser"]
-        P6["Code Repo Parser"]
-    end
+ subgraph Parsers["Parser Modules"]
+ P1["PDF Parser"]
+ P2["DOCX Parser"]
+ P3["PPTX Parser"]
+ P4["XLSX/CSV Parser"]
+ P5["Markdown Parser"]
+ P6["Code Repo Parser"]
+ end
 
-    PARSE --> P1
-    PARSE --> P2
-    PARSE --> P3
-    PARSE --> P4
-    PARSE --> P5
-    PARSE --> P6
+ PARSE--> P1
+ PARSE--> P2
+ PARSE--> P3
+ PARSE--> P4
+ PARSE--> P5
+ PARSE--> P6
 ```text
 
 ## Context

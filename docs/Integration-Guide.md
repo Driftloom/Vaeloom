@@ -1,9 +1,9 @@
-﻿# Vaeloom Integration Guide
+# Vaeloom Integration Guide
 
 > **Purpose:** Comprehensive guide for integrating third-party services with
 > Vaeloom through the connector framework — covering connector SDK usage, OAuth
 > implementation, webhook setup, data sync, rate limiting, error recovery, and
-> certification **Status:** ðŸ†• New **Owner:** Backend Team **Last Updated:**
+> certification **Status:** New **Owner:** Backend Team **Last Updated:**
 > 2026-07-13 **Canonical source:**
 > [`docs/Integration-Guide.md`](./Integration-Guide.md)
 
@@ -45,13 +45,13 @@ eroded user trust.
 
 - Define the connector integration architecture and component boundaries
 - Establish standards for OAuth 2.0 implementation, token lifecycle, and scope
-  management
+ management
 - Provide implementation patterns for webhook setup, signature verification,
-  idempotency, and retry policies
+ idempotency, and retry policies
 - Document sync strategies (full, incremental, webhook-driven, reconciliation)
-  with performance trade-offs
+ with performance trade-offs
 - Enable operational excellence through rate limiting, error queues, monitoring
-  dashboards, and connector certification
+ dashboards, and connector certification
 
 ---
 
@@ -62,27 +62,27 @@ eroded user trust.
 - Connector SDK structure and usage patterns
 - OAuth 2.0 authorization flows (authorization code, PKCE, client credentials)
 - Webhook endpoint configuration, signature verification, retry policies, and
-  idempotency
+ idempotency
 - Data synchronization strategies — full sync, incremental sync, webhook-driven
-  sync, reconciliation
+ sync, reconciliation
 - Rate limiting — per-connector configuration, queue management, backpressure
-  signals
+ signals
 - Error handling — transient vs permanent errors, retry policies, dead letter
-  queue, alerting
+ queue, alerting
 - Connector manifest format and registration
 - Connector certification requirements and testing
 - Security — credential encryption, scope enforcement, audit logging, connector
-  isolation
+ isolation
 
 ### Out of Scope
 
 - Internal agent-to-agent communication patterns (see
-  [Event Architecture](./Architecture/Event-Architecture.md))
+ [Event Architecture](./Architecture/Event-Architecture.md))
 - Frontend UI for connector configuration and management
 - Database schema migrations for connector storage
 - Third-party API design or documentation
 - Custom enterprise SSO integration (see
-  [Authentication](./Backend/Authentication.md))
+ [Authentication](./Backend/Authentication.md))
 - Connector plugin marketplace (see Future Improvements section)
 
 ---
@@ -91,72 +91,72 @@ eroded user trust.
 
 ````mermaid
 graph TD
-    classDef external fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
-    classDef adapter fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef bus fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef pipeline fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
-    classDef cross fill:#fce4ec,stroke:#c62828,color:#000,stroke-width:1.5px,stroke-dasharray: 5 3
+ classDef external fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
+ classDef adapter fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef bus fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef pipeline fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
+ classDef cross fill:#fce4ec,stroke:#c62828,color:#000,stroke-width:1.5px,stroke-dasharray: 5 3
 
-    subgraph External["ðŸŒ External Services"]
-        E1["Gmail API"]
-        E2["GitHub API"]
-        E3["Slack API"]
-        E4["Outlook API"]
-        E5["Google Calendar API"]
-    end
+ subgraph External["External Services"]
+ E1["Gmail API"]
+ E2["GitHub API"]
+ E3["Slack API"]
+ E4["Outlook API"]
+ E5["Google Calendar API"]
+ end
 
-    subgraph Adapter["ðŸ”Œ Connector Adapter Layer"]
-        direction TB
-        A1["Connector SDK<br/>TypeScript + Python"]
-        A2["OAuth Handler<br/>Token lifecycle"]
-        A3["Webhook Receiver<br/>Signature verification"]
-        A4["Sync Scheduler<br/>Cron / event-driven"]
-        A5["Rate Limiter<br/>Per-connector buckets"]
-    end
+ subgraph Adapter["Connector Adapter Layer"]
+ direction TB
+ A1["Connector SDK<br/>TypeScript + Python"]
+ A2["OAuth Handler<br/>Token lifecycle"]
+ A3["Webhook Receiver<br/>Signature verification"]
+ A4["Sync Scheduler<br/>Cron / event-driven"]
+ A5["Rate Limiter<br/>Per-connector buckets"]
+ end
 
-    subgraph Bus["ðŸ“¨ Event Bus (Redis Streams)"]
-        B1["webhook.gmail.incoming"]
-        B2["sync.github.completed"]
-        B3["connector.degraded"]
-        B4["token.refresh.failed"]
-    end
+ subgraph Bus["Event Bus (Redis Streams)"]
+ B1["webhook.gmail.incoming"]
+ B2["sync.github.completed"]
+ B3["connector.degraded"]
+ B4["token.refresh.failed"]
+ end
 
-    subgraph Pipeline["âš™ï¸ Processing Pipeline"]
-        P1["Event Router"]
-        P2["Classifier<br/>email / notification / event"]
-        P3["Deduplicator<br/>external_id + workspace_id"]
-        P4["Entity Extractor"]
-        P5["Memory Agent<br/>Write to graph"]
-    end
+ subgraph Pipeline["Processing Pipeline"]
+ P1["Event Router"]
+ P2["Classifier<br/>email / notification / event"]
+ P3["Deduplicator<br/>external_id + workspace_id"]
+ P4["Entity Extractor"]
+ P5["Memory Agent<br/>Write to graph"]
+ end
 
-    subgraph Cross["ðŸ›¡ï¸ Cross-Cutting"]
-        C1["Secrets Manager<br/>AES-256 encrypted"]
-        C2["Error Queue<br/>Dead Letter"]
-        C3["Health Dashboard<br/>Prometheus + Grafana"]
-    end
+ subgraph Cross["Cross-Cutting"]
+ C1["Secrets Manager<br/>AES-256 encrypted"]
+ C2["Error Queue<br/>Dead Letter"]
+ C3["Health Dashboard<br/>Prometheus + Grafana"]
+ end
 
-    E1 -->|REST / Webhook| A3
-    E2 -->|GraphQL / Webhook| A3
-    E3 -->|RTM / Webhook| A3
-    E1 -->|Polling| A4
-    E2 -->|Polling| A4
-    A2 -->|OAuth tokens| C1
-    A3 -->|Validated events| B1
-    A4 -->|Sync results| B2
-    B1 --> P1
-    B2 --> P1
-    B3 --> C3
-    B4 --> C2
-    P1 --> P2 --> P3 --> P4 --> P5
-    C2 -->|Alert| C3
-    A5 -->|Backpressure| A4
-    A5 -->|Throttle| A3
+ E1-->|REST / Webhook| A3
+ E2-->|GraphQL / Webhook| A3
+ E3-->|RTM / Webhook| A3
+ E1-->|Polling| A4
+ E2-->|Polling| A4
+ A2-->|OAuth tokens| C1
+ A3-->|Validated events| B1
+ A4-->|Sync results| B2
+ B1--> P1
+ B2--> P1
+ B3--> C3
+ B4--> C2
+ P1--> P2--> P3--> P4--> P5
+ C2-->|Alert| C3
+ A5-->|Backpressure| A4
+ A5-->|Throttle| A3
 
-    class E1,E2,E3,E4,E5 external
-    class A1,A2,A3,A4,A5 adapter
-    class B1,B2,B3,B4 bus
-    class P1,P2,P3,P4,P5 pipeline
-    class C1,C2,C3 cross
+ class E1,E2,E3,E4,E5 external
+ class A1,A2,A3,A4,A5 adapter
+ class B1,B2,B3,B4 bus
+ class P1,P2,P3,P4,P5 pipeline
+ class C1,C2,C3 cross
 ```text
 
 > **Diagram:** Connector architecture showing five layers. **External Services** connect via REST/GraphQL APIs or webhooks. The **Connector Adapter Layer** manages OAuth, webhook reception, sync scheduling, and rate limiting. Validated events publish to the **Event Bus** (Redis Streams) on typed topics. The **Processing Pipeline** routes, classifies, deduplicates, and extracts entities into memory. **Cross-Cutting** concerns include encrypted credential storage, a dead letter error queue, and a health dashboard.
@@ -365,52 +365,52 @@ config:
 
 ```mermaid
 sequenceDiagram
-    participant User as "ðŸ‘¤ User"
-    participant Client as "ðŸŒ Vaeloom Client"
-    participant API as "âš™ï¸ Vaeloom API"
-    participant SM as "ðŸ”‘ Secrets Manager"
-    participant Provider as "ðŸŒ External Provider"
+ participant User as "User"
+ participant Client as "Vaeloom Client"
+ participant API as "Vaeloom API"
+ participant SM as ""' Secrets Manager"
+ participant Provider as "External Provider"
 
-    User->>Client: Click "Connect {Service}"
-    Client->>API: POST /connectors/{id}/auth/initiate
-    API->>API: Generate state + PKCE code_verifier
-    API->>SM: Store state (TTL: 10min), code_verifier (TTL: 10min)
-    API-->>Client: { authorization_url, state }
-    Client->>Provider: Redirect user to authorization_url <br/>+ response_type=code <br/>+ scope={scopes} <br/>+ state={state} <br/>+ code_challenge={S256}
-    Provider->>User: Display consent screen with requested scopes
-    User->>Provider: Approve permissions
+ User->>Client: Click "Connect {Service}"
+ Client->>API: POST /connectors/{id}/auth/initiate
+ API->>API: Generate state + PKCE code_verifier
+ API->>SM: Store state (TTL: 10min), code_verifier (TTL: 10min)
+ API-->>Client: { authorization_url, state }
+ Client->>Provider: Redirect user to authorization_url <br/>+ response_type=code <br/>+ scope={scopes} <br/>+ state={state} <br/>+ code_challenge={S256}
+ Provider->>User: Display consent screen with requested scopes
+ User->>Provider: Approve permissions
 
-    alt âœ… User Approves
-        Provider-->>Client: Redirect to callback <br/>?code={auth_code}&state={state}
-        Client->>API: POST /connectors/{id}/auth/callback <br/>{ code, state }
-        API->>SM: Verify state matches
-        API->>Provider: POST /token <br/>grant_type=authorization_code <br/>code={auth_code} <br/>redirect_uri={callback} <br/>code_verifier={verifier}
-        Provider-->>API: { access_token, refresh_token, expires_in }
-        API->>SM: Encrypt tokens (AES-256-GCM) <br/>Store at secrets/{workspace}/{connector}
-        API->>API: Record expires_at, scopes in DB
-        API-->>Client: { status: "connected" }
-        Client-->>User: âœ… Service connected
+ alt … User Approves
+ Provider-->>Client: Redirect to callback <br/>?code={auth_code}&state={state}
+ Client->>API: POST /connectors/{id}/auth/callback <br/>{ code, state }
+ API->>SM: Verify state matches
+ API->>Provider: POST /token <br/>grant_type=authorization_code <br/>code={auth_code} <br/>redirect_uri={callback} <br/>code_verifier={verifier}
+ Provider-->>API: { access_token, refresh_token, expires_in }
+ API->>SM: Encrypt tokens (AES-256-GCM) <br/>Store at secrets/{workspace}/{connector}
+ API->>API: Record expires_at, scopes in DB
+ API-->>Client: { status: "connected" }
+ Client-->>User: … Service connected
 
-    else âŒ User Denies
-        Provider-->>Client: Redirect to callback <br/>?error=access_denied
-        Client->>User: Show "Authorization denied" message
-    end
+ else Œ User Denies
+ Provider-->>Client: Redirect to callback <br/>?error=access_denied
+ Client->>User: Show "Authorization denied" message
+ end
 
-    Note over API,SM: â”€â”€ Token Refresh â”€â”€
+ Note over API,SM: "€"€ Token Refresh "€"€
 
-    API->>API: Check expires_at < now + 300s
-    API->>SM: Decrypt refresh_token
-    API->>Provider: POST /token <br/>grant_type=refresh_token <br/>refresh_token={token}
-    Provider-->>API: { access_token, expires_in }
+ API->>API: Check expires_at < now + 300s
+ API->>SM: Decrypt refresh_token
+ API->>Provider: POST /token <br/>grant_type=refresh_token <br/>refresh_token={token}
+ Provider-->>API: { access_token, expires_in }
 
-    alt âœ… Refresh Succeeds
-        API->>SM: Encrypt & store new access_token
-        API->>API: Update expires_at
+ alt … Refresh Succeeds
+ API->>SM: Encrypt & store new access_token
+ API->>API: Update expires_at
 
-    else âŒ Refresh Fails (invalid_grant)
-        API->>API: Mark connector degraded
-        API->>Client: Notify user -- re-connect required
-    end
+ else Œ Refresh Fails (invalid_grant)
+ API->>API: Mark connector degraded
+ API->>Client: Notify user -- re-connect required
+ end
 ```text
 
 > **Diagram:** OAuth 2.0 authorization code flow with PKCE. **Top half:** user authorizes via provider consent screen, Vaeloom exchanges the code for tokens, tokens are encrypted and stored in Secrets Manager. **Bottom half:** automatic token refresh when access token is within 5 minutes of expiry — failure marks the connector as degraded.
@@ -550,29 +550,29 @@ async function handleWebhook(
 
 ```mermaid
 flowchart LR
-    classDef init fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef webhook fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef inc fill:#fff3e0,stroke:#e65100,color:#000
-    classDef rec fill:#f3e5f5,stroke:#6a1b9a,color:#000
+ classDef init fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef webhook fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef inc fill:#fff3e0,stroke:#e65100,color:#000
+ classDef rec fill:#f3e5f5,stroke:#6a1b9a,color:#000
 
-    Start["Sync Triggered"] --> First{"First sync<br/>after connect?"}
-    First -->|Yes| Full["ðŸ”µ Full Sync<br/>Fetch all items"]
-    First -->|No| WebhookAvail{"Webhook events<br/>available?"}
-    WebhookAvail -->|Yes & recent| Webhook["ðŸŸ¢ Webhook-Driven<br/>Process live events"]
-    WebhookAvail -->|No / stale| Incremental["ðŸŸ  Incremental Sync<br/>Fetch since last sync_at"]
-    Full --> FullDone["Store all items<br/>Set last_sync_at"]
-    Webhook --> SyncDone
-    Incremental --> SyncDone["âœ… Sync Complete<br/>Update sync metrics"]
-    SyncDone --> Timer{"24h since<br/>last reconciliation?"}
-    Timer -->|Yes| Reconcile["ðŸŸ£ Reconciliation<br/>Compare local vs source"]
-    Timer -->|No| End["â¸ï¸ Wait for next trigger"]
-    Reconcile -->|Items missing| Incremental
-    Reconcile -->|All match| End
+ Start["Sync Triggered"]--> First{"First sync<br/>after connect?"}
+ First-->|Yes| Full["Full Sync<br/>Fetch all items"]
+ First-->|No| WebhookAvail{"Webhook events<br/>available?"}
+ WebhookAvail-->|Yes & recent| Webhook["Webhook-Driven<br/>Process live events"]
+ WebhookAvail-->|No / stale| Incremental["Incremental Sync<br/>Fetch since last sync_at"]
+ Full--> FullDone["Store all items<br/>Set last_sync_at"]
+ Webhook--> SyncDone
+ Incremental--> SyncDone["Sync Complete<br/>Update sync metrics"]
+ SyncDone--> Timer{"24h since<br/>last reconciliation?"}
+ Timer-->|Yes| Reconcile["Reconciliation<br/>Compare local vs source"]
+ Timer-->|No| End["Wait for next trigger"]
+ Reconcile-->|Items missing| Incremental
+ Reconcile-->|All match| End
 
-    class Full init
-    class Webhook webhook
-    class Incremental,Reconcile inc
-    class Start,SyncDone,End rec
+ class Full init
+ class Webhook webhook
+ class Incremental,Reconcile inc
+ class Start,SyncDone,End rec
 ```text
 
 > **Diagram:** Sync strategy decision tree. First sync always does a **full sync**. Subsequent syncs prefer **webhook-driven** updates if recent events exist, falling back to **incremental** polling. A **reconciliation** check runs every 24 hours to catch items missed by webhooks or pagination gaps, triggering an incremental catch-up if discrepancies are found.
@@ -803,33 +803,33 @@ The Connector Health Dashboard (Grafana) displays per-connector and aggregate vi
 
 ```mermaid
 flowchart LR
-    classDef submit fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef review fill:#fff3e0,stroke:#e65100,color:#000
-    classDef test fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef sec fill:#fce4ec,stroke:#c62828,color:#000
-    classDef approve fill:#f3e5f5,stroke:#6a1b9a,color:#000
+ classDef submit fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef review fill:#fff3e0,stroke:#e65100,color:#000
+ classDef test fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef sec fill:#fce4ec,stroke:#c62828,color:#000
+ classDef approve fill:#f3e5f5,stroke:#6a1b9a,color:#000
 
-    Submit["ðŸ“¤ Submit PR<br/>Connector code + manifest"] --> ManifestCheck{"Manifest<br/>validates?"}
-    ManifestCheck -->|Pass| CodeReview["ðŸ” Code Review<br/>Backend team lead"]
-    ManifestCheck -->|Fail| Fix["âœï¸ Fix manifest"]
-    Fix --> ManifestCheck
-    CodeReview --> TestSuite["ðŸ§ª Integration Tests<br/>Sandbox environment"]
-    TestSuite -->|Pass| SecurityReview["ðŸ”’ Security Review<br/>Token handling, scopes"]
-    TestSuite -->|Fail| Fix
-    SecurityReview -->|Pass| Performance["ðŸ“Š Performance Review<br/>Sync latency, quota usage"]
-    SecurityReview -->|Fail| Fix
-    Performance -->|Pass| Docs["ðŸ“ Documentation Review<br/>README, manifest, examples"]
-    Performance -->|Fail| Fix
-    Docs -->|Pass| Staging["ðŸ§ª Staging Deployment<br/>7-day observation"]
-    Docs -->|Fail| Fix
-    Staging -->|Healthy| Approval["âœ… Certified<br/>Register in production"]
-    Staging -->|Degraded| Fix
+ Submit["Submit PR<br/>Connector code + manifest"]--> ManifestCheck{"Manifest<br/>validates?"}
+ ManifestCheck-->|Pass| CodeReview["Code Review<br/>Backend team lead"]
+ ManifestCheck-->|Fail| Fix["Fix manifest"]
+ Fix--> ManifestCheck
+ CodeReview--> TestSuite["Integration Tests<br/>Sandbox environment"]
+ TestSuite-->|Pass| SecurityReview["Security Review<br/>Token handling, scopes"]
+ TestSuite-->|Fail| Fix
+ SecurityReview-->|Pass| Performance["Performance Review<br/>Sync latency, quota usage"]
+ SecurityReview-->|Fail| Fix
+ Performance-->|Pass| Docs["Documentation Review<br/>README, manifest, examples"]
+ Performance-->|Fail| Fix
+ Docs-->|Pass| Staging["Staging Deployment<br/>7-day observation"]
+ Docs-->|Fail| Fix
+ Staging-->|Healthy| Approval["Certified<br/>Register in production"]
+ Staging-->|Degraded| Fix
 
-    class Submit submit
-    class ManifestCheck,CodeReview,Performance,Docs review
-    class TestSuite,Staging test
-    class SecurityReview sec
-    class Approval approve
+ class Submit submit
+ class ManifestCheck,CodeReview,Performance,Docs review
+ class TestSuite,Staging test
+ class SecurityReview sec
+ class Approval approve
 ```text
 
 > **Diagram:** Connector certification pipeline. A PR triggers automated manifest validation, then progresses through code review → integration tests → security review → performance review → documentation review → 7-day staging observation before production certification. Any failure routes back to fixes and re-submission.

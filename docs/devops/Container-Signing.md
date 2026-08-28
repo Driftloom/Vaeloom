@@ -1,7 +1,7 @@
-﻿# Container Signing
+# Container Signing
 
 > **Purpose:** Define the container image signing policy using Cosign, key management via KMS, and verification requirements for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
@@ -15,61 +15,61 @@ This policy covers key generation, signing workflow, verification gates, key rot
 
 ```mermaid
 graph LR
-    classDef build fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef kms fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef reg fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef verify fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
-    classDef deploy fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
+ classDef build fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef kms fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef reg fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef verify fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef deploy fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Build["CI Build Pipeline"]
-        BUILD["Build Container Image<br/>Dockerfile + layers"]
-        SBOM["Generate SBOM<br/>(SPDX 2.3)"]
-        SIGN["Sign Image<br/>Cosign + KMS"]
-        ATTACH["Attach SBOM<br/>Cosign attest"]
-    end
+ subgraph Build["CI Build Pipeline"]
+ BUILD["Build Container Image<br/>Dockerfile + layers"]
+ SBOM["Generate SBOM<br/>(SPDX 2.3)"]
+ SIGN["Sign Image<br/>Cosign + KMS"]
+ ATTACH["Attach SBOM<br/>Cosign attest"]
+ end
 
-    subgraph KMS["Key Management"]
-        KEY1["KMS Key<br/>Primary: Vaeloom-cosign-v1"]
-        KEY2["KMS Key<br/>Secondary: Vaeloom-cosign-v2"]
-        ROTATION["Automatic Rotation<br/>Every 90 days"]
-        ACCESS["IAM Restricted<br/>CI service account only"]
-    end
+ subgraph KMS["Key Management"]
+ KEY1["KMS Key<br/>Primary: Vaeloom-cosign-v1"]
+ KEY2["KMS Key<br/>Secondary: Vaeloom-cosign-v2"]
+ ROTATION["Automatic Rotation<br/>Every 90 days"]
+ ACCESS["IAM Restricted<br/>CI service account only"]
+ end
 
-    subgraph Registry["Container Registry"]
-        IMG["Vaeloom/api:sha-abc123<br/>Container image"]
-        SIG["Vaeloom/api:sha-abc123.sig<br/>Cosign signature"]
-        ATT["Vaeloom/api:sha-abc123.att<br/>SBOM attestation"]
-    end
+ subgraph Registry["Container Registry"]
+ IMG["Vaeloom/api:sha-abc123<br/>Container image"]
+ SIG["Vaeloom/api:sha-abc123.sig<br/>Cosign signature"]
+ ATT["Vaeloom/api:sha-abc123.att<br/>SBOM attestation"]
+ end
 
-    subgraph Verify["Deployment Verification"]
-        POL["Admission Policy<br/>Kyverno / OPA Gatekeeper"]
-        VERIFY_IMG["Cosign Verify<br/>Check signature"]
-        VERIFY_ATT["Cosign Verify-Attestation<br/>Check SBOM"]
-        REJECT["â›” Reject if unsigned<br/>or invalid signature"]
-        APPROVE["âœ… Allow deployment"]
-    end
+ subgraph Verify["Deployment Verification"]
+ POL["Admission Policy<br/>Kyverno / OPA Gatekeeper"]
+ VERIFY_IMG["Cosign Verify<br/>Check signature"]
+ VERIFY_ATT["Cosign Verify-Attestation<br/>Check SBOM"]
+ REJECT["Reject if unsigned<br/>or invalid signature"]
+ APPROVE["Allow deployment"]
+ end
 
-    BUILD --> SIGN --> ATTACH
-    KEY1 & KEY2 --> SIGN
-    SIGN --> SIG
-    ATTACH --> ATT
-    SBOM --> ATTACH
-    SIGN --> IMG
-    SIG --> REGISTRY["Push to Registry"]
-    ATT --> REGISTRY
-    IMG --> REGISTRY
+ BUILD--> SIGN--> ATTACH
+ KEY1 & KEY2--> SIGN
+ SIGN--> SIG
+ ATTACH--> ATT
+ SBOM--> ATTACH
+ SIGN--> IMG
+ SIG--> REGISTRY["Push to Registry"]
+ ATT--> REGISTRY
+ IMG--> REGISTRY
 
-    REGISTRY --> VERIFY_IMG & VERIFY_ATT
-    VERIFY_IMG --> POL
-    VERIFY_ATT --> POL
-    POL --> REJECT
-    POL --> APPROVE
+ REGISTRY--> VERIFY_IMG & VERIFY_ATT
+ VERIFY_IMG--> POL
+ VERIFY_ATT--> POL
+ POL--> REJECT
+ POL--> APPROVE
 
-    class BUILD,SIGN,ATTACH build
-    class KEY1,KEY2,ROTATION,ACCESS kms
-    class IMG,SIG,ATT reg
-    class POL,VERIFY_IMG,VERIFY_ATT verify
-    class REJECT,APPROVE deploy
+ class BUILD,SIGN,ATTACH build
+ class KEY1,KEY2,ROTATION,ACCESS kms
+ class IMG,SIG,ATT reg
+ class POL,VERIFY_IMG,VERIFY_ATT verify
+ class REJECT,APPROVE deploy
 ```
 
 ## Key Management
@@ -149,29 +149,29 @@ spec:
 
 ```mermaid
 sequenceDiagram
-    participant OP as Operator
-    participant TF as Terraform
-    participant KMS as Cloud KMS
-    participant CI as CI Pipeline
-    participant REG as Container Registry
+ participant OP as Operator
+ participant TF as Terraform
+ participant KMS as Cloud KMS
+ participant CI as CI Pipeline
+ participant REG as Container Registry
 
-    OP->>TF: Update Terraform: increment key version
-    TF->>KMS: Create new KMS key (Vaeloom-cosign-v2)
-    KMS-->>TF: New key ARN
-    TF->>CI: Update CI secret with new key ARN
+ OP->>TF: Update Terraform: increment key version
+ TF->>KMS: Create new KMS key (Vaeloom-cosign-v2)
+ KMS-->>TF: New key ARN
+ TF->>CI: Update CI secret with new key ARN
 
-    Note over CI: Next build uses new key
-    CI->>KMS: Sign with Vaeloom-cosign-v2
-    CI->>REG: Push image + v2 signature
+ Note over CI: Next build uses new key
+ CI->>KMS: Sign with Vaeloom-cosign-v2
+ CI->>REG: Push image + v2 signature
 
-    Note over OP: Grace period (7 days)
-    OP->>TF: Update Kyverno policy: add v2 attestor
-    TF->>REG: Add v2 public key to policy
-    Note over REG: Both v1 and v2 signatures accepted
+ Note over OP: Grace period (7 days)
+ OP->>TF: Update Kyverno policy: add v2 attestor
+ TF->>REG: Add v2 public key to policy
+ Note over REG: Both v1 and v2 signatures accepted
 
-    Note over OP: After grace period
-    OP->>TF: Remove v1 attestor from policy
-    TF->>KMS: Schedule v1 key deletion (30 day wait)
+ Note over OP: After grace period
+ OP->>TF: Remove v1 attestor from policy
+ TF->>KMS: Schedule v1 key deletion (30 day wait)
 ```
 
 ## Best Practices

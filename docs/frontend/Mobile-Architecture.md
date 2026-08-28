@@ -1,4 +1,4 @@
-﻿# Mobile Architecture
+# Mobile Architecture
 
 > **Purpose:** Define the React Native mobile companion app architecture for Vaeloom
 > **Status:** ✅ Upgraded to enterprise quality
@@ -15,95 +15,95 @@ The mobile app shares TypeScript types, GraphQL fragments, and core business log
 
 ```mermaid
 graph TD
-    classDef shared fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef native fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef service fill:#fff3e0,stroke:#e65100,color:#000
-    classDef storage fill:#f3e5f5,stroke:#6a1b9a,color:#000
+ classDef shared fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef native fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef service fill:#fff3e0,stroke:#e65100,color:#000
+ classDef storage fill:#f3e5f5,stroke:#6a1b9a,color:#000
 
-    subgraph Monorepo["Shared Packages"]
-        T["@vaeloom/types<br/>TypeScript types & interfaces"]
-        G["@vaeloom/graphql<br/>Fragments & queries"]
-        U["@vaeloom/utils<br/>Business logic, formatting"]
-        D["@vaeloom/design-tokens<br/>Colors, spacing, typography"]
-    end
+ subgraph Monorepo["Shared Packages"]
+ T["vaeloom/types<br/>TypeScript types & interfaces"]
+ G["vaeloom/graphql<br/>Fragments & queries"]
+ U["vaeloom/utils<br/>Business logic, formatting"]
+ D["vaeloom/design-tokens<br/>Colors, spacing, typography"]
+ end
 
-    subgraph MobileApp["React Native App"]
-        Nav["Navigation Layer<br/>React Navigation 7"]
-        Screens["Screen Modules"]
-        Comp["UI Components<br/>RN + Native"]
-        Store["State<br/>Zustand + MMKV"]
-        Offline["Offline Engine<br/>WatermelonDB"]
-    end
+ subgraph MobileApp["React Native App"]
+ Nav["Navigation Layer<br/>React Navigation 7"]
+ Screens["Screen Modules"]
+ Comp["UI Components<br/>RN + Native"]
+ Store["State<br/>Zustand + MMKV"]
+ Offline["Offline Engine<br/>WatermelonDB"]
+ end
 
-    subgraph Screens["Screens"]
-        S1["Dashboard<br/>Summary cards, activity"]
-        S2["Workspace<br/>Documents, folders, search"]
-        S3["Chat<br/>Agent conversations"]
-        S4["Notifications<br/>Push + in-app"]
-        S5["Quick Upload<br/>Camera, files, scanner"]
-    end
+ subgraph Screens["Screens"]
+ S1["Dashboard<br/>Summary cards, activity"]
+ S2["Workspace<br/>Documents, folders, search"]
+ S3["Chat<br/>Agent conversations"]
+ S4["Notifications<br/>Push + in-app"]
+ S5["Quick Upload<br/>Camera, files, scanner"]
+ end
 
-    subgraph Services["Mobile Services"]
-        API["API Client<br/>Apollo GraphQL"]
-        Push["Push Notifications<br/>FCM / APNs"]
-        Bio["Biometric Auth<br/>Face ID / Fingerprint"]
-        Cache["Offline Cache<br/>WatermelonDB + SQLite"]
-    end
+ subgraph Services["Mobile Services"]
+ API["API Client<br/>Apollo GraphQL"]
+ Push["Push Notifications<br/>FCM / APNs"]
+ Bio["Biometric Auth<br/>Face ID / Fingerprint"]
+ Cache["Offline Cache<br/>WatermelonDB + SQLite"]
+ end
 
-    T --> Nav & Screens & Store
-    G --> API
-    U --> Store & Offline
-    D --> Comp
+ T--> Nav & Screens & Store
+ G--> API
+ U--> Store & Offline
+ D--> Comp
 
-    Screens --> Store
-    Screens --> API
-    Screens --> Offline
-    Screens --> Push
-    Screens --> Bio
+ Screens--> Store
+ Screens--> API
+ Screens--> Offline
+ Screens--> Push
+ Screens--> Bio
 
-    API --> Cache
-    Offline --> Cache
+ API--> Cache
+ Offline--> Cache
 
-    class T,G,U,D shared
-    class Nav,Screens,Comp,Store,Offline native
-    class API,Push,Bio,Cache service
+ class T,G,U,D shared
+ class Nav,Screens,Comp,Store,Offline native
+ class API,Push,Bio,Cache service
 ```
 
 ## Screen Architecture
 
 ```mermaid
 graph LR
-    classDef screen fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef auth fill:#fff3e0,stroke:#e65100,color:#000
-    classDef stack fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef screen fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef auth fill:#fff3e0,stroke:#e65100,color:#000
+ classDef stack fill:#e3f2fd,stroke:#1565c0,color:#000
 
-    Auth["Auth Flow<br/>Login / Signup"] --> Tabs["Main Tab Navigator"]
-    
-    subgraph Tabs["Bottom Tab Navigator"]
-        Tab1["Dashboard"]
-        Tab2["Workspace"]
-        Tab3["Chat"]
-        Tab4["Notifications"]
-    end
-    
-    Tabs --> Tab1 & Tab2 & Tab3 & Tab4
-    Tab1 --> D1["Today's Activity"]
-    Tab1 --> D2["Pending Tasks"]
-    Tab1 --> D3["Quick Stats"]
-    Tab2 --> W1["Document List"]
-    Tab2 --> W2["Folder Browser"]
-    Tab2 --> W3["Search"]
-    Tab3 --> C1["Conversation List"]
-    Tab3 --> C2["Chat View"]
-    Tab4 --> N1["Notification List"]
+ Auth["Auth Flow<br/>Login / Signup"]--> Tabs["Main Tab Navigator"]
+ 
+ subgraph Tabs["Bottom Tab Navigator"]
+ Tab1["Dashboard"]
+ Tab2["Workspace"]
+ Tab3["Chat"]
+ Tab4["Notifications"]
+ end
+ 
+ Tabs--> Tab1 & Tab2 & Tab3 & Tab4
+ Tab1--> D1["Today's Activity"]
+ Tab1--> D2["Pending Tasks"]
+ Tab1--> D3["Quick Stats"]
+ Tab2--> W1["Document List"]
+ Tab2--> W2["Folder Browser"]
+ Tab2--> W3["Search"]
+ Tab3--> C1["Conversation List"]
+ Tab3--> C2["Chat View"]
+ Tab4--> N1["Notification List"]
 
-    QuickUpload["FAB: Quick Upload"] --> U1["Camera Capture"]
-    QuickUpload --> U2["File Picker"]
-    QuickUpload --> U3["Document Scanner"]
+ QuickUpload["FAB: Quick Upload"]--> U1["Camera Capture"]
+ QuickUpload--> U2["File Picker"]
+ QuickUpload--> U3["Document Scanner"]
 
-    class Auth auth
-    class Tab1,Tab2,Tab3,Tab4 screen
-    class D1,D2,D3,W1,W2,W3,C1,C2,N1,U1,U2,U3 stack
+ class Auth auth
+ class Tab1,Tab2,Tab3,Tab4 screen
+ class D1,D2,D3,W1,W2,W3,C1,C2,N1,U1,U2,U3 stack
 ```
 
 ## Offline Mode
@@ -123,25 +123,25 @@ interface OfflineStrategy {
 
 ```mermaid
 sequenceDiagram
-    participant U as Device
-    participant P as Push Service
-    participant API as Vaeloom API
-    participant W as WebSocket
+ participant U as Device
+ participant P as Push Service
+ participant API as Vaeloom API
+ participant W as WebSocket
 
-    U->>P: Register device token
-    P-->>API: Store token
-    
-    Note over API,W: Real-time event
-    API->>W: New notification event
-    W-->>U: In-app notification (if active)
-    
-    alt App in background
-        API->>P: Send push via FCM/APNs
-        P-->>U: Display notification
-    end
-    
-    U->>API: Tap notification --> deep link
-    API-->>U: Navigate to target screen
+ U->>P: Register device token
+ P-->>API: Store token
+ 
+ Note over API,W: Real-time event
+ API->>W: New notification event
+ W-->>U: In-app notification (if active)
+ 
+ alt App in background
+ API->>P: Send push via FCM/APNs
+ P-->>U: Display notification
+ end
+ 
+ U->>API: Tap notification--> deep link
+ API-->>U: Navigate to target screen
 ```
 
 ## Best Practices
@@ -204,52 +204,52 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant APP as Mobile App
-    participant WDB as WatermelonDB
-    participant API as Vaeloom API
+ participant U as User
+ participant APP as Mobile App
+ participant WDB as WatermelonDB
+ participant API as Vaeloom API
 
-    U->>APP: Capture document
-    APP->>WDB: Write locally (synced: false)
-    WDB-->>APP: Optimistic UI update
-    Note over APP: Document shows in list instantly
-    
-    alt Online
-        APP->>API: POST /api/documents/upload
-        API-->>APP: 201 Created (server ID)
-        APP->>WDB: Update record (synced: true, server_id)
-    else Offline
-        Note over APP: Queue mutation for later sync
-        APP->>WDB: Add to sync queue
-        Note over APP,WDB: Network reconnects...
-        APP->>API: Batch sync queued mutations
-        API-->>APP: Confirmation responses
-        APP->>WDB: Mark all synced
-    end
+ U->>APP: Capture document
+ APP->>WDB: Write locally (synced: false)
+ WDB-->>APP: Optimistic UI update
+ Note over APP: Document shows in list instantly
+ 
+ alt Online
+ APP->>API: POST /api/documents/upload
+ API-->>APP: 201 Created (server ID)
+ APP->>WDB: Update record (synced: true, server_id)
+ else Offline
+ Note over APP: Queue mutation for later sync
+ APP->>WDB: Add to sync queue
+ Note over APP,WDB: Network reconnects...
+ APP->>API: Batch sync queued mutations
+ API-->>APP: Confirmation responses
+ APP->>WDB: Mark all synced
+ end
 ```
 
 ### App Cold Start & Biometric Auth
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant APP as React Native App
-    participant BIO as Biometric SDK
-    participant API as Vaeloom API
-    participant CACHE as WatermelonDB
+ participant U as User
+ participant APP as React Native App
+ participant BIO as Biometric SDK
+ participant API as Vaeloom API
+ participant CACHE as WatermelonDB
 
-    U->>APP: Open app
-    APP->>APP: Splash screen
-    APP->>BIO: Request biometric auth
-    BIO-->>U: Face ID / Fingerprint prompt
-    U->>BIO: Authenticate
-    BIO-->>APP: Auth success
-    APP->>CACHE: Read cached data
-    CACHE-->>APP: Dashboard data (cache-first)
-    APP->>API: Fetch fresh data (background)
-    API-->>APP: Updated data
-    APP->>CACHE: Update cache
-    APP-->>U: Render dashboard with data
+ U->>APP: Open app
+ APP->>APP: Splash screen
+ APP->>BIO: Request biometric auth
+ BIO-->>U: Face ID / Fingerprint prompt
+ U->>BIO: Authenticate
+ BIO-->>APP: Auth success
+ APP->>CACHE: Read cached data
+ CACHE-->>APP: Dashboard data (cache-first)
+ APP->>API: Fetch fresh data (background)
+ API-->>APP: Updated data
+ APP->>CACHE: Update cache
+ APP-->>U: Render dashboard with data
 ```
 
 ## Data Flow

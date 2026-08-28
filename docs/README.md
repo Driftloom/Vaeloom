@@ -11,31 +11,31 @@
 
 ```mermaid
 graph TD
-    classDef core fill:#e3f2fd,stroke:#1565c0
-    classDef platform fill:#e8f5e9,stroke:#2e7d32
-    classDef product fill:#fff3e0,stroke:#e65100
-    classDef ops fill:#f3e5f5,stroke:#6a1b9a
+ classDef core fill:#e3f2fd,stroke:#1565c0
+ classDef platform fill:#e8f5e9,stroke:#2e7d32
+ classDef product fill:#fff3e0,stroke:#e65100
+ classDef ops fill:#f3e5f5,stroke:#6a1b9a
 
-    DOC["📚 Vaeloom Docs"] --> ARCH["Architecture"]
-    DOC --> AI["AI / Agents"]
-    DOC --> BACKEND["Backend"]
-    DOC --> DB["Database"]
-    DOC --> DEVOPS["DevOps"]
-    DOC --> ENG["Engineering"]
-    DOC --> ENT["Enterprise"]
-    DOC --> FE["Frontend"]
-    DOC --> OPS["Operations"]
-    DOC --> PROD["Product"]
-    DOC --> SEC["Security"]
-    DOC --> TEST["Testing"]
-    DOC --> API["API Reference"]
-    DOC --> GUIDES["Guides"]
-    DOC --> CONTRIB["Contributing"]
+ DOC["Vaeloom Docs"]--> ARCH["Architecture"]
+ DOC--> AI["AI / Agents"]
+ DOC--> BACKEND["Backend"]
+ DOC--> DB["Database"]
+ DOC--> DEVOPS["DevOps"]
+ DOC--> ENG["Engineering"]
+ DOC--> ENT["Enterprise"]
+ DOC--> FE["Frontend"]
+ DOC--> OPS["Operations"]
+ DOC--> PROD["Product"]
+ DOC--> SEC["Security"]
+ DOC--> TEST["Testing"]
+ DOC--> API["API Reference"]
+ DOC--> GUIDES["Guides"]
+ DOC--> CONTRIB["Contributing"]
 
-    class ARCH,AI,BACKEND,DB core
-    class DEVOPS,ENG,ENT platform
-    class FE,OPS,PROD product
-    class SEC,TEST,API,GUIDES,CONTRIB ops
+ class ARCH,AI,BACKEND,DB core
+ class DEVOPS,ENG,ENT platform
+ class FE,OPS,PROD product
+ class SEC,TEST,API,GUIDES,CONTRIB ops
 ```
 
 ## Category Index

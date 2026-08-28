@@ -1,6 +1,6 @@
 # MVP-P14 — 06. Security, Privacy, A11y
 
-> **Phase:** MVP-P14 — Testing and Quality Engineering  
+> **Phase:** MVP-P14 — Testing and Quality Engineering 
 > **Date:** 2026-08-22 · **Baseline:** `a69d7d7` + P14
 
 ## Security (inherited P13 + re-verified P14)

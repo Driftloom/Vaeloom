@@ -26,58 +26,58 @@ This document defines the evaluation pipeline, per-agent accuracy targets, golde
 
 ```mermaid
 graph TD
-    classDef test fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef gate fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef deploy fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef monitor fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef test fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef gate fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef deploy fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef monitor fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Test["🧪 Test Phase"]
-        direction TB
-        T1["Golden Dataset<br/>10-500 examples per agent"]
-        T2["Edge Cases<br/>Empty, ambiguous, adversarial"]
-        T3["Regression Tests<br/>Previously-fixed issues"]
-        T4["Run evals<br/><code>python -m eval.run_all</code>"]
-    end
+ subgraph Test["Test Phase"]
+ direction TB
+ T1["Golden Dataset<br/>10-500 examples per agent"]
+ T2["Edge Cases<br/>Empty, ambiguous, adversarial"]
+ T3["Regression Tests<br/>Previously-fixed issues"]
+ T4["Run evals<br/><code>python -m eval.run_all</code>"]
+ end
 
-    subgraph Gate["🚦 CI Gate Phase"]
-        direction TB
-        G1["PR Gate<br/>Unit + Integration tests"]
-        G2["Staging Gate<br/>All evals must pass"]
-        G3["Production Gate<br/>All evals + regression check"]
-    end
+ subgraph Gate["CI Gate Phase"]
+ direction TB
+ G1["PR Gate<br/>Unit + Integration tests"]
+ G2["Staging Gate<br/>All evals must pass"]
+ G3["Production Gate<br/>All evals + regression check"]
+ end
 
-    subgraph Deploy["🚀 Deploy Phase"]
-        direction TB
-        D1["Deploy to staging<br/>with eval report"]
-        D2["Shadow deploy to prod<br/>compare vs baseline"]
-        D3["Full production rollout<br/>monitor accuracy"]
-    end
+ subgraph Deploy["Deploy Phase"]
+ direction TB
+ D1["Deploy to staging<br/>with eval report"]
+ D2["Shadow deploy to prod<br/>compare vs baseline"]
+ D3["Full production rollout<br/>monitor accuracy"]
+ end
 
-    subgraph Monitor["📊 Monitor Phase"]
-        direction TB
-        M1["Track accuracy<br/>release over release"]
-        M2["Flag regressions<br/>auto-revert if drop > 2%"]
-        M3["Update golden dataset<br/>with new edge cases"]
-    end
+ subgraph Monitor["Monitor Phase"]
+ direction TB
+ M1["Track accuracy<br/>release over release"]
+ M2["Flag regressions<br/>auto-revert if drop > 2%"]
+ M3["Update golden dataset<br/>with new edge cases"]
+ end
 
-    T1 & T2 & T3 --> T4
-    T4 --> G1
-    G1 -->|Pass| G2
-    G1 -->|Fail| T4
-    G2 -->|Pass| G3
-    G2 -->|Fail| T4
-    G3 -->|Pass| D1
-    G3 -->|Fail| T4
-    D1 --> D2 --> D3
-    D3 --> M1 --> M2
-    M2 -->|Revert| T4
-    M2 -->|Stable| M3
-    M3 -.->|Update dataset| T1 & T2 & T3
+ T1 & T2 & T3--> T4
+ T4--> G1
+ G1-->|Pass| G2
+ G1-->|Fail| T4
+ G2-->|Pass| G3
+ G2-->|Fail| T4
+ G3-->|Pass| D1
+ G3-->|Fail| T4
+ D1--> D2--> D3
+ D3--> M1--> M2
+ M2-->|Revert| T4
+ M2-->|Stable| M3
+ M3 -.->|Update dataset| T1 & T2 & T3
 
-    class T1,T2,T3,T4 test
-    class G1,G2,G3 gate
-    class D1,D2,D3 deploy
-    class M1,M2,M3 monitor
+ class T1,T2,T3,T4 test
+ class G1,G2,G3 gate
+ class D1,D2,D3 deploy
+ class M1,M2,M3 monitor
 
 ```
 
@@ -184,29 +184,29 @@ This document defines the AI evaluation framework for Vaeloom — covering golde
 
 ```mermaid
 sequenceDiagram
-    participant DEV as Developer
-    participant CI as CI Pipeline
-    participant EVAL as Eval Runner
-    participant DS as Golden Dataset
-    participant REG as Regression Suite
-    participant DEPLOY as Deployment
+ participant DEV as Developer
+ participant CI as CI Pipeline
+ participant EVAL as Eval Runner
+ participant DS as Golden Dataset
+ participant REG as Regression Suite
+ participant DEPLOY as Deployment
 
-    DEV->>CI: Push prompt change
-    CI->>EVAL: Run fast gate (critical 10%)
-    EVAL->>DS: Load critical examples
-    DS-->>EVAL: Critical test cases
-    EVAL-->>CI: Fast gate: PASS
-    
-    CI->>EVAL: Run full gate (100% dataset)
-    EVAL->>DS: Load full dataset
-    EVAL->>REG: Load regression tests
-    REG-->>EVAL: Previous bug test cases
-    EVAL-->>CI: Full gate: PASS
-    
-    CI->>DEPLOY: Deploy to staging
-    Note over DEPLOY: 24h shadow observation
-    DEPLOY->>CI: Confirm stability
-    CI->>DEPLOY: Deploy to production (10% --> 100%)
+ DEV->>CI: Push prompt change
+ CI->>EVAL: Run fast gate (critical 10%)
+ EVAL->>DS: Load critical examples
+ DS-->>EVAL: Critical test cases
+ EVAL-->>CI: Fast gate: PASS
+ 
+ CI->>EVAL: Run full gate (100% dataset)
+ EVAL->>DS: Load full dataset
+ EVAL->>REG: Load regression tests
+ REG-->>EVAL: Previous bug test cases
+ EVAL-->>CI: Full gate: PASS
+ 
+ CI->>DEPLOY: Deploy to staging
+ Note over DEPLOY: 24h shadow observation
+ DEPLOY->>CI: Confirm stability
+ CI->>DEPLOY: Deploy to production (10%--> 100%)
 ```
 
 > **Diagram:** The eval CI pipeline showing fast gate (critical 10%) → full gate (100% + regression) → staging deploy → production rollout. Any failure at any gate blocks deployment.

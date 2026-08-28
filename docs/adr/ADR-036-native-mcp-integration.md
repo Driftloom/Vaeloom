@@ -27,7 +27,7 @@ validation is fail-closed (`validate_mcp_config`):
 
 - transport ∈ {stdio, http}
 - stdio: command required; shell interpreters (bash/sh/powershell/cmd/pwsh)
-  denied; argv list only; shell metacharacters rejected
+ denied; argv list only; shell metacharacters rejected
 - http: https enforced unless explicit dev-only `allow_insecure`
 - `env` values are encrypted at rest per key
 
@@ -46,12 +46,12 @@ child processes to reap.
 Discovered tools register as `mcp__<ServerSlug>__<ToolSlug>`:
 
 - scope `connector.mcp.execute`, category `connector_read` when the server hints
-  readOnly else `connector_write` (+30s timeout override)
+ readOnly else `connector_write` (+30s timeout override)
 - handlers enforce workspace ownership of the connector **at call time**
 - non-read-only names are added to `approval_gated_tools()` — the ReAct loop now
-  consults that unified function instead of a hardcoded set
+ consults that unified function instead of a hardcoded set
 - ReAct offers bridged definitions alongside the agent's declared tools (bounded
-  by the existing 12-tool cap)
+ by the existing 12-tool cap)
 
 Static-dispatch agent handlers are untouched; MCP tools are reachable through
 ReAct and the operator REST proxy.
@@ -66,15 +66,15 @@ enabled connectors fire-and-forget so a reboot never silently drops bridges.
 ## Consequences
 
 - In-memory discovery cache and bridge registry reset per process — warm-up
-  covers restarts; multi-instance consistency would need shared state later.
+ covers restarts; multi-instance consistency would need shared state later.
 - Quotas/approval semantics apply uniformly: MCP writes require approval just
-  like native write tools.
+ like native write tools.
 - Seed configs documented in `docs/mcp/servers/seed-configs.md`.
 
 ## Verification
 
 - 20 unit tests (validation matrix, slugify, discovery mapping + cache, bridge
-  registration/gating, workspace enforcement, dynamic dispatch through
-  `execute_tool` incl. scope denial)
+ registration/gating, workspace enforcement, dynamic dispatch through
+ `execute_tool` incl. scope denial)
 - 10 integration tests (mcp CRUD w/ env encryption-at-rest, shell-command
-  rejection, update revalidation, sync/call/test routes, non-mcp rejection)
+ rejection, update revalidation, sync/call/test routes, non-mcp rejection)

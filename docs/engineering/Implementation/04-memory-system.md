@@ -1,7 +1,7 @@
-﻿# 04 — Memory System (MVP)
+# 04 — Memory System (MVP)
 
 > **Purpose:** Build the Memory Agent that extracts entities and relationships from parsed documents into a structured, queryable knowledge graph and vector store.
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
@@ -25,62 +25,62 @@ Six memory types are implemented for MVP (profile, document, career, episodic, p
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    subgraph Input["Input"]
-        PARSED["Parsed Documents"]:::primary
-        AGENT_OUT["Other Agent Outputs"]:::secondary
-    end
+ subgraph Input["Input"]
+ PARSED["Parsed Documents"]:::primary
+ AGENT_OUT["Other Agent Outputs"]:::secondary
+ end
 
-    subgraph Extraction["Extraction Pipeline"]
-        EXTRACT["Entity Extraction"]:::primary
-        TYPES["Typed Entities<br/>Skill, Project, Organization, Person..."]:::secondary
-        RELS["Typed Relationships<br/>worked_on, awarded_to..."]:::secondary
-    end
+ subgraph Extraction["Extraction Pipeline"]
+ EXTRACT["Entity Extraction"]:::primary
+ TYPES["Typed Entities<br/>Skill, Project, Organization, Person..."]:::secondary
+ RELS["Typed Relationships<br/>worked_on, awarded_to..."]:::secondary
+ end
 
-    subgraph Merge["Merge & Dedup"]
-        MATCH["String Similarity Check"]:::secondary
-        EMBED_SIM["Embedding Similarity"]:::secondary
-        GRAPH_SIM["Graph-Context Similarity"]:::secondary
-        CONF["Confidence Scoring"]:::primary
-        MERGE["Merge (â‰¥0.8)"]:::secondary
-        NEW["New Entity (<0.8)"]:::secondary
-    end
+ subgraph Merge["Merge & Dedup"]
+ MATCH["String Similarity Check"]:::secondary
+ EMBED_SIM["Embedding Similarity"]:::secondary
+ GRAPH_SIM["Graph-Context Similarity"]:::secondary
+ CONF["Confidence Scoring"]:::primary
+ MERGE["Merge (‰¥0.8)"]:::secondary
+ NEW["New Entity (<0.8)"]:::secondary
+ end
 
-    subgraph Write["Write Path"]
-        ENT_WRITE["entities / relationships (Postgres)"]:::secondary
-        AGE["AGE Graph Projection"]:::secondary
-        VEC["embeddings (pgvector)"]:::secondary
-        EVENT_MEM["memory.updated event"]:::primary
-    end
+ subgraph Write["Write Path"]
+ ENT_WRITE["entities / relationships (Postgres)"]:::secondary
+ AGE["AGE Graph Projection"]:::secondary
+ VEC["embeddings (pgvector)"]:::secondary
+ EVENT_MEM["memory.updated event"]:::primary
+ end
 
-    subgraph Read["Agentic RAG Retrieval"]
-        RET["retrieve()"]:::primary
-        STRAT["Strategy: vector / keyword / graph / hybrid"]:::secondary
-        RESULT["RetrievedMemory (with provenance)"]:::primary
-    end
+ subgraph Read["Agentic RAG Retrieval"]
+ RET["retrieve()"]:::primary
+ STRAT["Strategy: vector / keyword / graph / hybrid"]:::secondary
+ RESULT["RetrievedMemory (with provenance)"]:::primary
+ end
 
-    PARSED --> EXTRACT
-    AGENT_OUT --> EXTRACT
-    EXTRACT --> TYPES
-    EXTRACT --> RELS
-    TYPES --> MATCH
-    RELS --> MATCH
-    MATCH --> EMBED_SIM
-    EMBED_SIM --> GRAPH_SIM
-    GRAPH_SIM --> CONF
-    CONF --> MERGE
-    CONF --> NEW
-    MERGE --> ENT_WRITE
-    NEW --> ENT_WRITE
-    ENT_WRITE --> AGE
-    ENT_WRITE --> VEC
-    AGE --> EVENT_MEM
-    VEC --> EVENT_MEM
-    EVENT_MEM -.-> RET
-    RET --> STRAT
-    STRAT --> RESULT
+ PARSED--> EXTRACT
+ AGENT_OUT--> EXTRACT
+ EXTRACT--> TYPES
+ EXTRACT--> RELS
+ TYPES--> MATCH
+ RELS--> MATCH
+ MATCH--> EMBED_SIM
+ EMBED_SIM--> GRAPH_SIM
+ GRAPH_SIM--> CONF
+ CONF--> MERGE
+ CONF--> NEW
+ MERGE--> ENT_WRITE
+ NEW--> ENT_WRITE
+ ENT_WRITE--> AGE
+ ENT_WRITE--> VEC
+ AGE--> EVENT_MEM
+ VEC--> EVENT_MEM
+ EVENT_MEM -.-> RET
+ RET--> STRAT
+ STRAT--> RESULT
 ```text
 
 ## Context

@@ -1,9 +1,9 @@
-﻿# MVP-P20 — 09. Gate Report
+# MVP-P20 — 09. Gate Report
 
-> **Phase:** MVP-P20 — Post-Deployment Validation  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 93.6 + P20 (synthetic 3 probes 30s + smoke 12 + E2E 39 + p95 120ms + 99.9% SLO 43.2m budget)  
-> **Gate Authority:** SRE Lead (accountable) + QA Lead (backup) + Security Operations + Product Analytics Lead + Incident Commander veto  
-> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P20-post-deployment-validation.md` §28  
+> **Phase:** MVP-P20 — Post-Deployment Validation 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 93.6 + P20 (synthetic 3 probes 30s + smoke 12 + E2E 39 + p95 120ms + 99.9% SLO 43.2m budget) 
+> **Gate Authority:** SRE Lead (accountable) + QA Lead (backup) + Security Operations + Product Analytics Lead + Incident Commander veto 
+> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P20-post-deployment-validation.md` §28 
 > **Predecessor:** `787053a` chain 95.4→87.5/88→93.1→92.8→93.2→93.4→93.6 → this gate **uplifts post-deployment validation** per `02-predecessor-audit.md:94 GO`
 
 ## Weighted Gate (§28 — 12 categories, 100 pts)
@@ -89,7 +89,7 @@ Score 0–10 per category; Weighted = (Score/10) × Weight. **95–100 APPROVED,
 - `pytest tests/security --collect-only -q -o addopts=""` 233 (170 unique)
 - `python -c "from api.services.gdpr import ALLOWED_TABLES; print(len(ALLOWED_TABLES))"` 31
 - `uv run --project apps/api python -m pytest --cov=api --cov-report=term -q -o addopts="-n 4"` → 94.2% 2551/2557 PASS
-- `rg -c "^  /" docs/backend/openapi.yaml` → 99 paths PASS 3.1.0 0.2.0
+- `rg -c "^ /" docs/backend/openapi.yaml` → 99 paths PASS 3.1.0 0.2.0
 - `rg "0\.2\.0" apps/api/src/api/config.py docs/backend/openapi.yaml apps/api/pyproject.toml` → 3 hits 0.2.0 PASS
 - `cat testing/smoke/README.md` → 5 suites 12 cases PASS
 - `rg -c "test\(" apps/web/e2e/basic-smoke.spec.ts` → 8 tests PASS

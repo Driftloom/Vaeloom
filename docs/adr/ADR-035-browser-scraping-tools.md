@@ -25,12 +25,12 @@ approval gate. Write actions remain gated via `APPROVAL_GATED_TOOLS`.
 
 - https only; no credentials in URL; length cap.
 - Literal IPs validated without DNS; hostnames resolved in a worker thread —
-  **every** resolved address must be globally routable (loopback / private /
-  link-local / reserved / multicast denied). `.local`/`.internal`/
-  `metadata.google.internal` names blocked outright.
+ **every** resolved address must be globally routable (loopback / private /
+ link-local / reserved / multicast denied). `.local`/`.internal`/
+ `metadata.google.internal` names blocked outright.
 - Two exception tiers: `UrlBlockedError` (policy) vs `DnsResolutionError` (dead
-  domain). Verify-link maps the latter to an honest `expired_or_error` verdict
-  instead of a scary policy message.
+ domain). Verify-link maps the latter to an honest `expired_or_error` verdict
+ instead of a scary policy message.
 
 ### 3. Engine strategy: chromium first, httpx fallback
 
@@ -63,12 +63,12 @@ deterministic mock fixtures with an explicit note — never silent fabrication
 - No new runtime dependencies (reuses playwright + httpx).
 - Tool count 25 → 28; ReAct path needs no gate changes (read-only).
 - In-memory quotas reset on process restart — acceptable at MVP scale; move to
-  Redis if multi-instance quotas become necessary.
+ Redis if multi-instance quotas become necessary.
 
 ## Verification
 
 - 39 unit tests: guard policy matrix (11 blocked URL shapes), DNS-tier
-  exceptions, quota window, extraction heuristics, handler mocks, registry
-  wiring incl. agent scope derivation.
+ exceptions, quota window, extraction heuristics, handler mocks, registry
+ wiring incl. agent scope derivation.
 - Live smoke: real chromium render of example.com → structured fields; 404 link
-  → `expired_or_error`; dead domain → `expired_or_error`.
+ → `expired_or_error`; dead domain → `expired_or_error`.

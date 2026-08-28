@@ -1,6 +1,6 @@
-﻿# MVP-P16 — 06. Security, Privacy, A11y
+# MVP-P16 — 06. Security, Privacy, A11y
 
-> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
+> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 (42/42 RLS, JWT 32+, GDPR 31) + P16 supply chain (cosign KMS + SBOM spdx + trivy + gitleaks + pip-audit)
 
 ## Security (P13 95.4 retained + P16 supply-chain uplift)

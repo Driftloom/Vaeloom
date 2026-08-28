@@ -1,7 +1,7 @@
-﻿# Business Continuity Plan
+# Business Continuity Plan
 
 > **Purpose:** Define disaster recovery procedures, RTO/RPO targets, recovery strategies, and testing schedule for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
@@ -15,42 +15,42 @@ This document defines recovery strategies per service, the communication plan, a
 
 ```mermaid
 graph TD
-    classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef tier fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef action fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef comms fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef tier fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef action fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef comms fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    T1["Incident Detected<br/>PagerDuty Alert"] --> CMD["Command Center<br/>Establish Incident Command"]
+ T1["Incident Detected<br/>PagerDuty Alert"]--> CMD["Command Center<br/>Establish Incident Command"]
 
-    subgraph Tier["Service Recovery Tiers"]
-        T0["Tier 0 -- Critical<br/>API, Auth, Database<br/>RTO: 1 hour"]
-        T1S["Tier 1 -- High<br/>AI Service, Document Processing<br/>RTO: 2 hours"]
-        T2S["Tier 2 -- Medium<br/>Webhooks, Email, Background Jobs<br/>RTO: 4 hours"]
-        T3S["Tier 3 -- Low<br/>Analytics, Admin Reports<br/>RTO: 24 hours"]
-    end
+ subgraph Tier["Service Recovery Tiers"]
+ T0["Tier 0 -- Critical<br/>API, Auth, Database<br/>RTO: 1 hour"]
+ T1S["Tier 1 -- High<br/>AI Service, Document Processing<br/>RTO: 2 hours"]
+ T2S["Tier 2 -- Medium<br/>Webhooks, Email, Background Jobs<br/>RTO: 4 hours"]
+ T3S["Tier 3 -- Low<br/>Analytics, Admin Reports<br/>RTO: 24 hours"]
+ end
 
-    subgraph Strategies["Recovery Strategies"]
-        S1["Active-Passive<br/>Secondary region (us-west-2)"]
-        S2["Database Failover<br/>PostgreSQL streaming replica"]
-        S3["DNS Cutover<br/>Route53 health checks"]
-        S4["Data Restore<br/>Point-in-time recovery"]
-    end
+ subgraph Strategies["Recovery Strategies"]
+ S1["Active-Passive<br/>Secondary region (us-west-2)"]
+ S2["Database Failover<br/>PostgreSQL streaming replica"]
+ S3["DNS Cutover<br/>Route53 health checks"]
+ S4["Data Restore<br/>Point-in-time recovery"]
+ end
 
-    subgraph Comms["Communication Plan"]
-        C1["Internal: Slack channel<br/>#incident-response"]
-        C2["Status Page: status.Vaeloom.dev<br/>Automated updates"]
-        C3["Customer: Email notification<br/>For outages > 15 minutes"]
-        C4["Post-mortem: Within 5 business days"]
-    end
+ subgraph Comms["Communication Plan"]
+ C1["Internal: Slack channel<br/>#incident-response"]
+ C2["Status Page: status.Vaeloom.dev<br/>Automated updates"]
+ C3["Customer: Email notification<br/>For outages > 15 minutes"]
+ C4["Post-mortem: Within 5 business days"]
+ end
 
-    T0 & T1S & T2S & T3S --> S1 & S2 & S3 & S4
-    CMD --> T0 & T1S & T2S & T3S
-    CMD --> Comms
+ T0 & T1S & T2S & T3S--> S1 & S2 & S3 & S4
+ CMD--> T0 & T1S & T2S & T3S
+ CMD--> Comms
 
-    class T1 trigger
-    class T0,T1S,T2S,T3S tier
-    class S1,S2,S3,S4 action
-    class C1,C2,C3,C4 comms
+ class T1 trigger
+ class T0,T1S,T2S,T3S tier
+ class S1,S2,S3,S4 action
+ class C1,C2,C3,C4 comms
 ```
 
 ## Recovery Strategies by Service
@@ -70,70 +70,70 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant D as Detection (PagerDuty)
-    participant C as Incident Commander
-    participant O as Operations
-    participant DNS as Route53
-    participant DB as Database
-    participant REG as Secondary Region
+ participant D as Detection (PagerDuty)
+ participant C as Incident Commander
+ participant O as Operations
+ participant DNS as Route53
+ participant DB as Database
+ participant REG as Secondary Region
 
-    D->>C: Critical alert: Primary region degraded
+ D->>C: Critical alert: Primary region degraded
 
-    alt Automated failover (no response in 5 min)
-        C->>C: Auto-failover timer expires
-        C->>DNS: Update health check --> failover
-        DNS->>REG: Route traffic to secondary region
-        REG->>DB: Promote streaming replica
-        DB-->>REG: Replica promoted (read-write)
-        REG-->>C: Confirm failover complete
-    else Manual failover
-        C->>O: Declare incident (Slack #incident-response)
-        O->>O: Assess primary region status
-        O->>DNS: Manual DNS cutover to secondary
-        O->>DB: Promote replica + update connection strings
-        O-->>C: Confirm failover
-    end
+ alt Automated failover (no response in 5 min)
+ C->>C: Auto-failover timer expires
+ C->>DNS: Update health check--> failover
+ DNS->>REG: Route traffic to secondary region
+ REG->>DB: Promote streaming replica
+ DB-->>REG: Replica promoted (read-write)
+ REG-->>C: Confirm failover complete
+ else Manual failover
+ C->>O: Declare incident (Slack #incident-response)
+ O->>O: Assess primary region status
+ O->>DNS: Manual DNS cutover to secondary
+ O->>DB: Promote replica + update connection strings
+ O-->>C: Confirm failover
+ end
 
-    C->>C: Update status.Vaeloom.dev
-    C->>C: Notify customers (email if > 15 min)
-    C->>C: Schedule post-mortem
+ C->>C: Update status.Vaeloom.dev
+ C->>C: Notify customers (email if > 15 min)
+ C->>C: Schedule post-mortem
 ```
 
 ## Communication Plan
 
 ```mermaid
 graph LR
-    classDef internal fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef external fill:#fff3e0,stroke:#e65100,color:#000
+ classDef internal fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef external fill:#fff3e0,stroke:#e65100,color:#000
 
-    subgraph Internal["Internal Communications"]
-        I1["Slack: #incident-response"]
-        I2["Slack: #engineering (read-only updates)"]
-        I3["Zoom bridge (on-demand)"]
-        I4["Incident Commander rotation"]
-    end
+ subgraph Internal["Internal Communications"]
+ I1["Slack: #incident-response"]
+ I2["Slack: #engineering (read-only updates)"]
+ I3["Zoom bridge (on-demand)"]
+ I4["Incident Commander rotation"]
+ end
 
-    subgraph External["External Communications"]
-        E1["status.Vaeloom.dev<br/>Automated updates"]
-        E2["Customer email<br/>If outage > 15 min"]
-        E3["Support ticket auto-response"]
-        E4["Post-mortem published<br/>Within 5 business days"]
-    end
+ subgraph External["External Communications"]
+ E1["status.Vaeloom.dev<br/>Automated updates"]
+ E2["Customer email<br/>If outage > 15 min"]
+ E3["Support ticket auto-response"]
+ E4["Post-mortem published<br/>Within 5 business days"]
+ end
 
-    subgraph Templates["Message Templates"]
-        T1["Investigating --<br/>'We are investigating reports...'"]
-        T2["Identified --<br/>'We have identified the cause...'"]
-        T3["Mitigating --<br/>'We are applying a fix...'"]
-        T4["Resolved --<br/>'Service has been restored...'"]
-    end
+ subgraph Templates["Message Templates"]
+ T1["Investigating --<br/>'We are investigating reports...'"]
+ T2["Identified --<br/>'We have identified the cause...'"]
+ T3["Mitigating --<br/>'We are applying a fix...'"]
+ T4["Resolved --<br/>'Service has been restored...'"]
+ end
 
-    Internal --> I1 & I2 & I3 & I4
-    External --> E1 & E2 & E3 & E4
-    E1 --> T1 & T2 & T3 & T4
+ Internal--> I1 & I2 & I3 & I4
+ External--> E1 & E2 & E3 & E4
+ E1--> T1 & T2 & T3 & T4
 
-    class I1,I2,I3,I4 internal
-    class E1,E2,E3,E4 external
-    class T1,T2,T3,T4 external
+ class I1,I2,I3,I4 internal
+ class E1,E2,E3,E4 external
+ class T1,T2,T3,T4 external
 ```
 
 ## Alternate Site Strategy

@@ -23,44 +23,44 @@ A human evaluation hook samples real agent outputs for manual labeling, seeding 
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    subgraph Datasets["Golden Datasets"]
-        ORGDS["Organization Agent<br/>15-30 examples"]:::secondary
-        RADS["Resume Agent<br/>15-30 examples"]:::secondary
-        ATSDS["ATS Agent<br/>15-30 examples"]:::secondary
-        OTHERS["...all 7 agents"]:::secondary
-    end
+ subgraph Datasets["Golden Datasets"]
+ ORGDS["Organization Agent<br/>15-30 examples"]:::secondary
+ RADS["Resume Agent<br/>15-30 examples"]:::secondary
+ ATSDS["ATS Agent<br/>15-30 examples"]:::secondary
+ OTHERS["all 7 agents"]:::secondary
+ end
 
-    RUNNER["Eval Runner (runner.py)"]:::primary
+ RUNNER["Eval Runner (runner.py)"]:::primary
 
-    subgraph Scoring["Scoring Methods"]
-        EXACT["Exact / Fuzzy Match"]:::secondary
-        JUDGE["LLM-as-Judge with Rubric"]:::secondary
-        SAFETY["Safety / Policy Compliance Rate"]:::secondary
-    end
+ subgraph Scoring["Scoring Methods"]
+ EXACT["Exact / Fuzzy Match"]:::secondary
+ JUDGE["LLM-as-Judge with Rubric"]:::secondary
+ SAFETY["Safety / Policy Compliance Rate"]:::secondary
+ end
 
-    subgraph Workflow["Workflow-Level Eval"]
-        E2E["End-to-End Scenario<br/>multi-agent chain scoring"]:::primary
-    end
+ subgraph Workflow["Workflow-Level Eval"]
+ E2E["End-to-End Scenario<br/>multi-agent chain scoring"]:::primary
+ end
 
-    CI["CI Regression Gate"]:::primary
-    BASELINE["Last-Known-Good Baseline"]:::secondary
-    HUMAN["Human Evaluation Hook"]:::secondary
+ CI["CI Regression Gate"]:::primary
+ BASELINE["Last-Known-Good Baseline"]:::secondary
+ HUMAN["Human Evaluation Hook"]:::secondary
 
-    ORGDS --> RUNNER
-    RADS --> RUNNER
-    ATSDS --> RUNNER
-    OTHERS --> RUNNER
-    RUNNER --> EXACT
-    RUNNER --> JUDGE
-    RUNNER --> SAFETY
-    RUNNER --> E2E
-    E2E --> CI
-    RUNNER --> BASELINE
-    BASELINE --> CI
-    RUNNER --> HUMAN
+ ORGDS--> RUNNER
+ RADS--> RUNNER
+ ATSDS--> RUNNER
+ OTHERS--> RUNNER
+ RUNNER--> EXACT
+ RUNNER--> JUDGE
+ RUNNER--> SAFETY
+ RUNNER--> E2E
+ E2E--> CI
+ RUNNER--> BASELINE
+ BASELINE--> CI
+ RUNNER--> HUMAN
 ```
 
 ## Context

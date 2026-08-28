@@ -1,10 +1,10 @@
-﻿# MVP-P19 → MVP-P20 Handoff — PHASE APPROVED — PROCEED (93.6/100)
+# MVP-P19 → MVP-P20 Handoff — PHASE APPROVED — PROCEED (93.6/100)
 
-> **From:** MVP-P19 — Release Readiness and Production Deployment  
-> **To:** MVP-P20 — Post-Deployment Validation  
-> **Date:** 2026-08-22  
-> **Gate:** **93.6/100 honest APPROVED (92-94) / 94.8 waived CONDITIONAL** (was P18 93.4 APPROVED → P19 93.6 APPROVED) — **PHASE APPROVED — PROCEED**  
-> **Baseline:** `787053a` (P13 95.4 APPROVED 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021, 99 OpenAPI v0.2.0) + P15 93.1 (94.2% + p50 45ms p95 120ms <200 budget) + P16 92.8 (12 TF valid, 60 yamls, SLSA L2 cosign KMS) + P17 93.2 (OTel traces + correlation IDs 9 keys + 5 SLO 9 rules + 3 Grafana 23 panels + 4 runbooks + 30d) + P18 93.4 (docs IA 256 docs + 32 ADRs + 99 OpenAPI) + P19 (release v0.2.0 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10 + 3 overlays + 60 yamls + 0021 retention + lifespan daemon + deploy 4 jobs + flags 4)  
+> **From:** MVP-P19 — Release Readiness and Production Deployment 
+> **To:** MVP-P20 — Post-Deployment Validation 
+> **Date:** 2026-08-22 
+> **Gate:** **93.6/100 honest APPROVED (92-94) / 94.8 waived CONDITIONAL** (was P18 93.4 APPROVED → P19 93.6 APPROVED) — **PHASE APPROVED — PROCEED** 
+> **Baseline:** `787053a` (P13 95.4 APPROVED 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021, 99 OpenAPI v0.2.0) + P15 93.1 (94.2% + p50 45ms p95 120ms <200 budget) + P16 92.8 (12 TF valid, 60 yamls, SLSA L2 cosign KMS) + P17 93.2 (OTel traces + correlation IDs 9 keys + 5 SLO 9 rules + 3 Grafana 23 panels + 4 runbooks + 30d) + P18 93.4 (docs IA 256 docs + 32 ADRs + 99 OpenAPI) + P19 (release v0.2.0 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10 + 3 overlays + 60 yamls + 0021 retention + lifespan daemon + deploy 4 jobs + flags 4) 
 > **Status:** PHASE APPROVED — PROCEED — P20 **authorized** with 4 P20 restrictions (per-file 68%, starlette Keep 0.50, chaos/fuzz/visual partial, SLSA L2 only)
 
 ---
@@ -19,7 +19,7 @@
 - **P13 Gate:** `95.4 APPROVED` per `787053a` 42/42 RLS via `0020_rls_remaining_5.py` 5 (34 via 0010 +3 via 0019 +5 via 0020) + `TenantContext` `app.workspace_id`+`app.user_id` `middleware/tenant.py:41` `database.py:30` fail-closed + DPIA v1.2 All Regions + retention `0021` + LLM classifier `services/injection_classifier.py:1` — chain now GO
 - **Deliverables P18:** 5 DELs (01 docs IA 256 docs, 02 API/operator 99 paths + DEPLOYMENT 207 + DISASTER 308 + runbooks 4, 03 ADR index 32, 04 onboarding 216+299, 05 docs quality) VERIFIED `09-gate-report.md:58` P18 + 20 EVDs
 - **Deliverables P19:** 5 DELs (01 release v0.2.0 3 files + LAUNCH-CHECKLIST 178, 02 deployment `docker-compose.prod 239` + `hpa min3 max10` + `kustomization replicas 3` + `base 60` + `deploy 4 jobs`, 03 migration 0021 + lifespan daemon 60s + RTO1h/RPO5m, 04 flags 4 + enterprise off + X-API-Version + rollout 10%→50%→100%, 05 checklist 178 + runbooks 4 + prometheus 15s + alerts 9 + grafana 23) VERIFIED `09-gate-report.md:58` P19 + 20 EVDs
-- **Verification chain:** `787053a` pinned `git rev-parse HEAD` `787053aa6e6f10c6619fc6e4b15c9d45a3825836`, `pytest --collect-only` 2557 verified 12.91s, `security` 233 (170 unique), `ALLOW_TABLES` 31 `python -c`, `rg 0\.2\.0` 3 hits 0.2.0 + `wc -l LAUNCH-CHECKLIST.md` 178 + `docker compose prod config` 239 OK + `terraform validate` 12 s3+DDB + `kubectl dry-run` 60 + `hpa min3 max10` + `rg -c "^  /" openapi.yaml` 99 v0.2.0 + `rg enterprise False` + `rg DEFAULT_FLAGS 4` — no stale baseline
+- **Verification chain:** `787053a` pinned `git rev-parse HEAD` `787053aa6e6f10c6619fc6e4b15c9d45a3825836`, `pytest --collect-only` 2557 verified 12.91s, `security` 233 (170 unique), `ALLOW_TABLES` 31 `python -c`, `rg 0\.2\.0` 3 hits 0.2.0 + `wc -l LAUNCH-CHECKLIST.md` 178 + `docker compose prod config` 239 OK + `terraform validate` 12 s3+DDB + `kubectl dry-run` 60 + `hpa min3 max10` + `rg -c "^ /" openapi.yaml` 99 v0.2.0 + `rg enterprise False` + `rg DEFAULT_FLAGS 4` — no stale baseline
 
 ## What P19 Actually Delivered
 

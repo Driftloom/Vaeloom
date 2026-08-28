@@ -29,59 +29,59 @@ growth reveals problems.
 ## Goals
 
 1. Define and implement all 13 MVP tables with exact columns, types, and
-   constraints
+ constraints
 2. Enable both TypeScript (SQLAlchemy) and Python (SQLAlchemy) ORMs to access an
-   identical, drift-free schema
+ identical, drift-free schema
 3. Install and configure pgvector for vector similarity search and Apache AGE
-   for graph traversal
+ for graph traversal
 4. Create transactional migrations and seed data for local development and CI
 5. Establish explicit indexes on query-critical paths before production data
-   exists
+ exists
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    subgraph Core["Core Tables"]
-        USERS["users"]:::primary
-        WORKSPACES["workspaces"]:::primary
-        CONNECTORS["connectors"]:::secondary
-        DOCUMENTS["documents"]:::secondary
-        DOC_VERSIONS["document_versions"]:::secondary
-    end
+ subgraph Core["Core Tables"]
+ USERS["users"]:::primary
+ WORKSPACES["workspaces"]:::primary
+ CONNECTORS["connectors"]:::secondary
+ DOCUMENTS["documents"]:::secondary
+ DOC_VERSIONS["document_versions"]:::secondary
+ end
 
-    subgraph Memory["Memory Layer"]
-        MEMORY_RECORDS["memory_records"]:::primary
-        ENTITIES["entities"]:::secondary
-        RELATIONSHIPS["relationships"]:::secondary
-        EMBEDDINGS["embeddings (pgvector)"]:::secondary
-        GRAPH["AGE Graph Projection"]:::secondary
-    end
+ subgraph Memory["Memory Layer"]
+ MEMORY_RECORDS["memory_records"]:::primary
+ ENTITIES["entities"]:::secondary
+ RELATIONSHIPS["relationships"]:::secondary
+ EMBEDDINGS["embeddings (pgvector)"]:::secondary
+ GRAPH["AGE Graph Projection"]:::secondary
+ end
 
-    subgraph Agents["Agent & Output Tables"]
-        RESUMES["resumes"]:::secondary
-        APPLICATIONS["applications"]:::secondary
-        SCHEDULE["schedule_events"]:::secondary
-        AGENT_ACTIONS["agent_actions (audit log)"]:::secondary
-        PERMISSIONS["permissions"]:::secondary
-    end
+ subgraph Agents["Agent & Output Tables"]
+ RESUMES["resumes"]:::secondary
+ APPLICATIONS["applications"]:::secondary
+ SCHEDULE["schedule_events"]:::secondary
+ AGENT_ACTIONS["agent_actions (audit log)"]:::secondary
+ PERMISSIONS["permissions"]:::secondary
+ end
 
-    USERS --> WORKSPACES
-    WORKSPACES --> CONNECTORS
-    WORKSPACES --> DOCUMENTS
-    DOCUMENTS --> DOC_VERSIONS
-    WORKSPACES --> MEMORY_RECORDS
-    WORKSPACES --> ENTITIES
-    ENTITIES --> RELATIONSHIPS
-    MEMORY_RECORDS --> EMBEDDINGS
-    ENTITIES --> GRAPH
-    RELATIONSHIPS --> GRAPH
-    WORKSPACES --> RESUMES
-    WORKSPACES --> APPLICATIONS
-    WORKSPACES --> SCHEDULE
-    WORKSPACES --> AGENT_ACTIONS
-    WORKSPACES --> PERMISSIONS
+ USERS--> WORKSPACES
+ WORKSPACES--> CONNECTORS
+ WORKSPACES--> DOCUMENTS
+ DOCUMENTS--> DOC_VERSIONS
+ WORKSPACES--> MEMORY_RECORDS
+ WORKSPACES--> ENTITIES
+ ENTITIES--> RELATIONSHIPS
+ MEMORY_RECORDS--> EMBEDDINGS
+ ENTITIES--> GRAPH
+ RELATIONSHIPS--> GRAPH
+ WORKSPACES--> RESUMES
+ WORKSPACES--> APPLICATIONS
+ WORKSPACES--> SCHEDULE
+ WORKSPACES--> AGENT_ACTIONS
+ WORKSPACES--> PERMISSIONS
 ```
 
 ## Context
@@ -118,7 +118,7 @@ drifted copies.
 - `applications(id, workspace_id, job_external_id, platform, status, resume_version_id, cover_letter, submitted_at, outcome, outcome_at)`
 - `schedule_events(id, workspace_id, source, title, date, type, conflict_flag boolean)`
 - `agent_actions(id, workspace_id, agent_name, action_type, input_ref, output_ref, status, created_at)`
-  — this is the audit log
+ — this is the audit log
 - `permissions(id, workspace_id, connector_id, agent_name, action_type, scope, granted_at, revoked_at)`
 
 **Memory type enum** (used in `memory_records.type`, MVP set only — enterprise
@@ -155,59 +155,59 @@ migration (enterprise upgrade).
 
 - [ ] `prisma migrate dev` (or equivalent) runs cleanly from an empty database.
 - [ ] Both `apps/api` and `apps/api` can read/write the same tables with no
-      schema drift.
+ schema drift.
 - [ ] Seed script produces a workspace with queryable sample data.
 - [ ] A `pgvector` similarity query against the seeded `embeddings` table
-      returns results.
+ returns results.
 - [ ] An AGE graph query traversing seeded `entities`/`relationships` returns
-      the expected path.
+ the expected path.
 
 ## Common Mistakes
 
-| Mistake                                                      | Consequence                                                          |
+| Mistake | Consequence |
 | ------------------------------------------------------------ | -------------------------------------------------------------------- |
-| Schema drift between SQLAlchemy (TS) and SQLAlchemy (Python) | Both services see different columns, causing silent data corruption  |
-| Forgetting indexes on foreign keys                           | JOIN-heavy queries degrade as row counts grow                        |
-| Not using transactional DDL for migrations                   | Partial migration failure leaves the schema in an inconsistent state |
+| Schema drift between SQLAlchemy (TS) and SQLAlchemy (Python) | Both services see different columns, causing silent data corruption |
+| Forgetting indexes on foreign keys | JOIN-heavy queries degrade as row counts grow |
+| Not using transactional DDL for migrations | Partial migration failure leaves the schema in an inconsistent state |
 
 ## Best Practices
 
-| Practice                                                           | Why                                                                      |
+| Practice | Why |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| Run both ORMs' migration checks in CI                              | Catches drift before it reaches staging                                  |
-| Always add `ON DELETE CASCADE` or explicit cleanup logic           | Prevents orphaned rows when a parent workspace is deleted                |
+| Run both ORMs' migration checks in CI | Catches drift before it reaches staging |
+| Always add `ON DELETE CASCADE` or explicit cleanup logic | Prevents orphaned rows when a parent workspace is deleted |
 | Name indexes explicitly with a convention (`idx_tablename_column`) | Makes `EXPLAIN ANALYZE` output readable and index management predictable |
 
 ## Security Considerations
 
-| Concern                                                  | Mitigation                                                                                 |
+| Concern | Mitigation |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Raw SQL in migrations could expose injection paths       | Parameterize all raw migration queries; prefer ORM-generated SQL where possible            |
-| Embedding vectors contain semantic content, not just IDs | Apply same workspace-scoped access control to `embeddings` as to primary tables            |
-| AGE graph extension adds an attack surface               | Restrict AGE function execution to the ai-service database user; never expose to API layer |
+| Raw SQL in migrations could expose injection paths | Parameterize all raw migration queries; prefer ORM-generated SQL where possible |
+| Embedding vectors contain semantic content, not just IDs | Apply same workspace-scoped access control to `embeddings` as to primary tables |
+| AGE graph extension adds an attack surface | Restrict AGE function execution to the ai-service database user; never expose to API layer |
 
 ## Performance Considerations
 
-| Concern                                                                   | Approach                                                                                |
+| Concern | Approach |
 | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| pgvector index build time grows with embedding count                      | Use IVFFlat index with a reasonable `lists` parameter for MVP; plan HNSW for enterprise |
-| Composite indexes can become stale                                        | Monitor query plans via `pg_stat_statements`; rebuild indexes during low-usage windows  |
-| Graph queries via AGE can be slower than relational for simple traversals | Keep canonical data in plain Postgres; use AGE only for multi-hop path queries          |
+| pgvector index build time grows with embedding count | Use IVFFlat index with a reasonable `lists` parameter for MVP; plan HNSW for enterprise |
+| Composite indexes can become stale | Monitor query plans via `pg_stat_statements`; rebuild indexes during low-usage windows |
+| Graph queries via AGE can be slower than relational for simple traversals | Keep canonical data in plain Postgres; use AGE only for multi-hop path queries |
 
 ## Scope
 
 ### In Scope
 
 - 13 core MVP tables: users, workspaces, connectors, documents,
-  document_versions, memory_records, entities, relationships, resumes,
-  applications, schedule_events, agent_actions, permissions
+ document_versions, memory_records, entities, relationships, resumes,
+ applications, schedule_events, agent_actions, permissions
 - pgvector extension for vector similarity search with embeddings table
 - Apache AGE extension for graph projection mirroring entities/relationships
 - SQLAlchemy schema (TypeScript) for apps/api and SQLAlchemy models (Python) for
-  apps/api
+ apps/api
 - Transactional migrations and seed data for local development
 - Required indexes on workspace_id, (type, workspace_id), (workspace_id,
-  created_at), and (source_connector_id)
+ created_at), and (source_connector_id)
 
 ### Out of Scope
 
@@ -216,7 +216,7 @@ migration (enterprise upgrade).
 - Dedicated vector database (Qdrant) migration from pgvector (enterprise)
 - Dedicated graph database (Neo4j) migration from Apache AGE (enterprise)
 - Automated schema-drift detection between SQLAlchemy and SQLAlchemy (planned
-  Q4 2026)
+ Q4 2026)
 
 ---
 
@@ -287,21 +287,21 @@ class MemoryRecord(Base):
 
 ## Future Improvements
 
-| Improvement                                                              | Priority | Complexity | Timeline |
+| Improvement | Priority | Complexity | Timeline |
 | ------------------------------------------------------------------------ | -------- | ---------- | -------- |
-| Read replicas and connection pooling for production scaling              | High     | Medium     | Q4 2026  |
-| Dedicated vector database (Qdrant) migration from pgvector               | Medium   | High       | Q2 2027  |
-| Dedicated graph database (Neo4j) migration from AGE                      | Medium   | High       | Q2 2027  |
-| Table partitioning for time-series data (agent_actions, memory_records)  | Low      | Medium     | Q1 2027  |
-| Automated schema-drift detection in CI between SQLAlchemy and SQLAlchemy | High     | Low        | Q4 2026  |
+| Read replicas and connection pooling for production scaling | High | Medium | Q4 2026 |
+| Dedicated vector database (Qdrant) migration from pgvector | Medium | High | Q2 2027 |
+| Dedicated graph database (Neo4j) migration from AGE | Medium | High | Q2 2027 |
+| Table partitioning for time-series data (agent_actions, memory_records) | Low | Medium | Q1 2027 |
+| Automated schema-drift detection in CI between SQLAlchemy and SQLAlchemy | High | Low | Q4 2026 |
 
 ## Related Documents
 
 - [01 — Foundation Infrastructure](01-foundation-infra.md) — Prerequisite:
-  Postgres running via Docker Compose
+ Postgres running via Docker Compose
 - [03 — Ingestion Pipeline](03-ingestion-pipeline.md) — Next phase: writes to
-  documents and document_versions
+ documents and document_versions
 - [04 — Memory System](04-memory-system.md) — Consumes entities, relationships,
-  embeddings
+ embeddings
 - [13 — API Backend](13-api-backend.md) — Builds the REST API on top of this
-  schema
+ schema

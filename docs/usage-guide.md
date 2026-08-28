@@ -10,10 +10,10 @@
 
 ```mermaid
 graph TD
-    A["docs/README.md\n(Master Index)"] --> B["Category READMEs\n(per directory)"]
-    B --> C["Individual Documents\n(25-section template)"]
-    C --> D["Code References\n(inline docs)"]
-    A --> E["Cross-Reference Map\n(Related Documents section)"]
+ A["docs/README.md\n(Master Index)"]--> B["Category READMEs\n(per directory)"]
+ B--> C["Individual Documents\n(25-section template)"]
+ C--> D["Code References\n(inline docs)"]
+ A--> E["Cross-Reference Map\n(Related Documents section)"]
 ```
 
 ## File Naming Convention
@@ -65,12 +65,12 @@ Every document MUST have this header block:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> New: Draft created
-    New --> Upgraded: Review approved
-    Upgraded --> NeedsUpdate: Content stale
-    NeedsUpdate --> Upgraded: Updated
-    Upgraded --> Deprecated: Superseded
-    Deprecated --> [*]: Archived
+ [*]--> New: Draft created
+ New--> Upgraded: Review approved
+ Upgraded--> NeedsUpdate: Content stale
+ NeedsUpdate--> Upgraded: Updated
+ Upgraded--> Deprecated: Superseded
+ Deprecated--> [*]: Archived
 ```
 
 ## Maintenance Schedule

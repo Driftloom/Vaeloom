@@ -26,29 +26,29 @@ This directory should be cross-referenced with the AI and Engineering directorie
 
 ```mermaid
 graph TD
-    subgraph Principles["🎯 Core Product Principles"]
-        P1["Suggest-Mode by Default<br/>Agents propose, users confirm. Trust is earned."]
-        P2["Memory Before Features<br/>Every feature = read/write against memory."]
-        P3["Never Destructive<br/>Files archive, not delete. Actions reversible."]
-        P4["MCP-Shaped Connectors<br/>All tools share same data shape."]
-    end
+ subgraph Principles["Core Product Principles"]
+ P1["Suggest-Mode by Default<br/>Agents propose, users confirm. Trust is earned."]
+ P2["Memory Before Features<br/>Every feature = read/write against memory."]
+ P3["Never Destructive<br/>Files archive, not delete. Actions reversible."]
+ P4["MCP-Shaped Connectors<br/>All tools share same data shape."]
+ end
 
-    subgraph Docs["📚 Key Documents"]
-        D1["MVP Product Spec"]
-        D2["Features Table"]
-        D3["Screens & Pages"]
-        D4["Workflows"]
-        D5["Roadmap"]
-        D6["Gap Analysis"]
-    end
+ subgraph Docs["Key Documents"]
+ D1["MVP Product Spec"]
+ D2["Features Table"]
+ D3["Screens & Pages"]
+ D4["Workflows"]
+ D5["Roadmap"]
+ D6["Gap Analysis"]
+ end
 
-    Principles --> Docs
+ Principles--> Docs
 
-    classDef principles fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
-    classDef docs fill:#e8f5e9,stroke:#2e7d32
+ classDef principles fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+ classDef docs fill:#e8f5e9,stroke:#2e7d32
 
-    class P1,P2,P3,P4 principles
-    class D1,D2,D3,D4,D5,D6 docs
+ class P1,P2,P3,P4 principles
+ class D1,D2,D3,D4,D5,D6 docs
 ```
 
 ## Key product decisions

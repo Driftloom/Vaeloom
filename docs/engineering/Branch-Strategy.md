@@ -1,44 +1,44 @@
-﻿# Branch Strategy
+# Branch Strategy
 
 > **Purpose:** Define the Git branch strategy for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Branch Architecture
 
 ```mermaid
 graph TD
-    classDef permanent fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef feature fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef fix fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef release fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef permanent fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef feature fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef fix fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef release fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Permanent["â™¾ï¸ Permanent Branches"]
-        MAIN["main<br/>Production-ready<br/>Protected -- no direct commits"]
-        DEV["develop<br/>Integration branch<br/>Protected -- no direct commits"]
-    end
+ subgraph Permanent["Permanent Branches"]
+ MAIN["main<br/>Production-ready<br/>Protected -- no direct commits"]
+ DEV["develop<br/>Integration branch<br/>Protected -- no direct commits"]
+ end
 
-    subgraph Feature["âœ¨ Feature Branches"]
-        F1["feature/document-upload<br/>Base: develop --> Merges to: develop<br/>Lifetime: < 1 week"]
-        F2["feature/ats-scoring<br/>Base: develop --> Merges to: develop"]
-    end
+ subgraph Feature["Feature Branches"]
+ F1["feature/document-upload<br/>Base: develop--> Merges to: develop<br/>Lifetime: < 1 week"]
+ F2["feature/ats-scoring<br/>Base: develop--> Merges to: develop"]
+ end
 
-    subgraph Fix["ðŸ”§ Fix Branches"]
-        X1["fix/entity-merge-null<br/>Base: develop --> Merges to: develop"]
-        X2["hotfix/auth-expiry<br/>Base: main --> Merges to: main + develop"]
-    end
+ subgraph Fix["Fix Branches"]
+ X1["fix/entity-merge-null<br/>Base: develop--> Merges to: develop"]
+ X2["hotfix/auth-expiry<br/>Base: main--> Merges to: main + develop"]
+ end
 
-    subgraph Release["ðŸš€ Release Branches"]
-        R1["release/v1.2.0<br/>Base: develop --> Merges to: main + develop"]
-    end
+ subgraph Release["Release Branches"]
+ R1["release/v1.2.0<br/>Base: develop--> Merges to: main + develop"]
+ end
 
-    DEV --> F1 & F2 & X1
-    MAIN --> X2
-    DEV --> R1 --> MAIN & DEV
+ DEV--> F1 & F2 & X1
+ MAIN--> X2
+ DEV--> R1--> MAIN & DEV
 
-    class MAIN,DEV permanent
-    class F1,F2 feature
-    class X1,X2 fix
-    class R1 release
+ class MAIN,DEV permanent
+ class F1,F2 feature
+ class X1,X2 fix
+ class R1 release
 ```
 
 > **Diagram:** Branch strategy showing **permanent** (main, develop — protected), **feature** (short-lived, from develop), **fix** (from develop or main for hotfixes), and **release** (from develop, merges to both main and develop). All branches merge via PR with code review.

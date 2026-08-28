@@ -1,10 +1,10 @@
-﻿# MVP-P16 → MVP-P17 Handoff — PHASE APPROVED — PROCEED (92.8/100)
+# MVP-P16 → MVP-P17 Handoff — PHASE APPROVED — PROCEED (92.8/100)
 
-> **From:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
-> **To:** MVP-P17 — Observability and Operations  
-> **Date:** 2026-08-22  
-> **Gate:** **92.8/100 honest APPROVED (92-94) / 94.0 waived CONDITIONAL** (was P15 93.1 APPROVED → P16 92.8 APPROVED) — **PHASE APPROVED — PROCEED**  
-> **Baseline:** `787053a` (P13 95.4 APPROVED 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021, 99 OpenAPI) + P15 93.1 (94.2% + p50 45ms p95 120ms CB 3/30s) + P16 (12 TF valid, 22 K8s 60 yamls, 4 workflows green, SLSA L2 cosign KMS SBOM spdx, trivy/ pip-audit)  
+> **From:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
+> **To:** MVP-P17 — Observability and Operations 
+> **Date:** 2026-08-22 
+> **Gate:** **92.8/100 honest APPROVED (92-94) / 94.0 waived CONDITIONAL** (was P15 93.1 APPROVED → P16 92.8 APPROVED) — **PHASE APPROVED — PROCEED** 
+> **Baseline:** `787053a` (P13 95.4 APPROVED 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021, 99 OpenAPI) + P15 93.1 (94.2% + p50 45ms p95 120ms CB 3/30s) + P16 (12 TF valid, 22 K8s 60 yamls, 4 workflows green, SLSA L2 cosign KMS SBOM spdx, trivy/ pip-audit) 
 > **Status:** PHASE APPROVED — PROCEED — P17 **authorized** with 4 P17 restrictions (per-file 68%, starlette Keep 0.50, chaos/fuzz/visual partial, SLSA L2 only)
 
 ---

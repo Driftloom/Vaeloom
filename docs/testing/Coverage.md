@@ -7,46 +7,46 @@
 
 ```mermaid
 graph TD
-    classDef target fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef tool fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef ci fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef exclude fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef target fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef tool fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef ci fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef exclude fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Targets["🎯 Coverage Targets"]
-        direction TB
-        T1["apps/web (components)<br/>Line: 80% | Branch: 70%"]
-        T2["apps/web (pages)<br/>Line: 70% | Branch: 60%"]
-        T3["apps/api (services)<br/>Line: 90% | Branch: 80%"]
-        T4["apps/api (routes)<br/>Line: 85% | Branch: 75%"]
-        T5["apps/api (agents)<br/>Line: 90% | Branch: 80%"]
-        T6["apps/api (retrieval)<br/>Line: 85% | Branch: 75%"]
-    end
+ subgraph Targets["Coverage Targets"]
+ direction TB
+ T1["apps/web (components)<br/>Line: 80% | Branch: 70%"]
+ T2["apps/web (pages)<br/>Line: 70% | Branch: 60%"]
+ T3["apps/api (services)<br/>Line: 90% | Branch: 80%"]
+ T4["apps/api (routes)<br/>Line: 85% | Branch: 75%"]
+ T5["apps/api (agents)<br/>Line: 90% | Branch: 80%"]
+ T6["apps/api (retrieval)<br/>Line: 85% | Branch: 75%"]
+ end
 
-    subgraph Tools["🔧 Coverage Tools"]
-        U1["Frontend: Jest + Istanbul<br/>npm test -- --coverage"]
-        U2["Backend: pytest-cov<br/>--cov=apps/api"]
-    end
+ subgraph Tools["Coverage Tools"]
+ U1["Frontend: Jest + Istanbul<br/>npm test -- --coverage"]
+ U2["Backend: pytest-cov<br/>--cov=apps/api"]
+ end
 
-    subgraph CI["⚙️ CI Enforcement"]
-        C1["GitHub Action:<br/>pytest --cov=apps/api"]
-        C2["Threshold check:<br/>pytest --cov-fail-under=80"]
-    end
+ subgraph CI["CI Enforcement"]
+ C1["GitHub Action:<br/>pytest --cov=apps/api"]
+ C2["Threshold check:<br/>pytest --cov-fail-under=80"]
+ end
 
-    subgraph Exclusions["❌ What NOT to Measure"]
-        E1["Configuration files<br/>Logic-less"]
-        E2["Migration files<br/>One-time execution"]
-        E3["Type definitions<br/>No runtime behavior"]
-        E4["Seed data<br/>Data, not logic"]
-        E5["AI golden datasets<br/>Test data, not code"]
-    end
+ subgraph Exclusions["What NOT to Measure"]
+ E1["Configuration files<br/>Logic-less"]
+ E2["Migration files<br/>One-time execution"]
+ E3["Type definitions<br/>No runtime behavior"]
+ E4["Seed data<br/>Data, not logic"]
+ E5["AI golden datasets<br/>Test data, not code"]
+ end
 
-    Targets --> Tools --> CI
-    Tools -.-> Exclusions
+ Targets--> Tools--> CI
+ Tools -.-> Exclusions
 
-    class T1,T2,T3,T4,T5,T6 target
-    class U1,U2,U3 tool
-    class C1,C2 ci
-    class E1,E2,E3,E4,E5 exclude
+ class T1,T2,T3,T4,T5,T6 target
+ class U1,U2,U3 tool
+ class C1,C2 ci
+ class E1,E2,E3,E4,E5 exclude
 ```
 
 > **Diagram:** Coverage targets vary by module (70-90% line, 60-80% branch).
@@ -58,21 +58,21 @@ graph TD
 
 ## Coverage Targets
 
-| Module                | Line Coverage | Branch Coverage | Rationale           |
+| Module | Line Coverage | Branch Coverage | Rationale |
 | --------------------- | ------------- | --------------- | ------------------- |
-| apps/web (components) | 80%           | 70%             | UI components       |
-| apps/web (pages)      | 70%           | 60%             | Integration heavy   |
-| apps/api (services)   | 90%           | 80%             | Core business logic |
-| apps/api (routes)     | 85%           | 75%             | Request handling    |
-| apps/api (agents)     | 90%           | 80%             | Critical AI logic   |
-| apps/api (retrieval)  | 85%           | 75%             | RAG pipeline        |
+| apps/web (components) | 80% | 70% | UI components |
+| apps/web (pages) | 70% | 60% | Integration heavy |
+| apps/api (services) | 90% | 80% | Core business logic |
+| apps/api (routes) | 85% | 75% | Request handling |
+| apps/api (agents) | 90% | 80% | Critical AI logic |
+| apps/api (retrieval) | 85% | 75% | RAG pipeline |
 
 ## Coverage Tools
 
-| Service             | Tool            | Configuration     |
+| Service | Tool | Configuration |
 | ------------------- | --------------- | ----------------- |
 | Frontend (apps/web) | Jest + Istanbul | `--coverage` flag |
-| Backend (apps/api)  | pytest-cov      | `--cov=apps/api`  |
+| Backend (apps/api) | pytest-cov | `--cov=apps/api` |
 
 ## Coverage in CI
 
@@ -89,13 +89,13 @@ graph TD
 
 ## What NOT to Measure
 
-| Area                | Why Coverage Doesn't Apply |
+| Area | Why Coverage Doesn't Apply |
 | ------------------- | -------------------------- |
-| Configuration files | Logic-less                 |
-| Migration files     | One-time execution         |
-| Type definitions    | No runtime behavior        |
-| Seed data           | Data, not logic            |
-| AI golden datasets  | Test data, not code        |
+| Configuration files | Logic-less |
+| Migration files | One-time execution |
+| Type definitions | No runtime behavior |
+| Seed data | Data, not logic |
+| AI golden datasets | Test data, not code |
 
 ## Coverage Exclusions
 
@@ -114,98 +114,98 @@ module.exports = {
 
 ## Common Mistakes
 
-| Mistake                                            | Consequence                                                 |
+| Mistake | Consequence |
 | -------------------------------------------------- | ----------------------------------------------------------- |
-| Treating 100% coverage as the goal                 | Team writes shallow tests to hit targets, missing real bugs |
-| Measuring coverage only at the end of a sprint     | Too late to improve � coverage debt accumulates             |
-| Ignoring branch coverage in favor of line coverage | Misses untested conditional logic paths                     |
+| Treating 100% coverage as the goal | Team writes shallow tests to hit targets, missing real bugs |
+| Measuring coverage only at the end of a sprint | Too late to improve — coverage debt accumulates |
+| Ignoring branch coverage in favor of line coverage | Misses untested conditional logic paths |
 
 ## Best Practices
 
-| Practice                                  | Rationale                                    |
+| Practice | Rationale |
 | ----------------------------------------- | -------------------------------------------- |
 | Set different coverage targets per module | Business logic needs higher coverage than UI |
-| Enforce coverage thresholds in CI         | Prevent coverage regressions automatically   |
-| Exclude generated code and configuration  | Focus measurement on code that needs testing |
+| Enforce coverage thresholds in CI | Prevent coverage regressions automatically |
+| Exclude generated code and configuration | Focus measurement on code that needs testing |
 
 ## Security Considerations
 
-| Concern                                               | Mitigation                                                |
+| Concern | Mitigation |
 | ----------------------------------------------------- | --------------------------------------------------------- |
-| Coverage tools instrument code at runtime             | Ensure coverage tooling is not deployed to production     |
-| Coverage reports may expose internal module structure | Keep reports internal, avoid publishing                   |
-| Security-critical code should have 90%+ coverage      | Enforce higher thresholds for auth and encryption modules |
+| Coverage tools instrument code at runtime | Ensure coverage tooling is not deployed to production |
+| Coverage reports may expose internal module structure | Keep reports internal, avoid publishing |
+| Security-critical code should have 90%+ coverage | Enforce higher thresholds for auth and encryption modules |
 
 ## Performance Considerations
 
-| Concern                                            | Mitigation                                             |
+| Concern | Mitigation |
 | -------------------------------------------------- | ------------------------------------------------------ |
-| Instrumented code runs slower than production      | Run coverage in CI, not in production                  |
-| Full coverage runs take longer than test-only runs | Use incremental coverage for PRs, full run nightly     |
-| Istanbul and similar tools add overhead            | Disable coverage in watch mode for faster dev feedback |
+| Instrumented code runs slower than production | Run coverage in CI, not in production |
+| Full coverage runs take longer than test-only runs | Use incremental coverage for PRs, full run nightly |
+| Istanbul and similar tools add overhead | Disable coverage in watch mode for faster dev feedback |
 
 ## Workflows
 
 1. **Developer runs tests with coverage**: `npm test -- --coverage` ? Jest
-   instruments code with Istanbul ? tests execute ? coverage report generated ?
-   thresholds checked ? if below targets, CI fails with line/branch numbers ?
-   developer adds missing tests
+ instruments code with Istanbul ? tests execute ? coverage report generated ?
+ thresholds checked ? if below targets, CI fails with line/branch numbers ?
+ developer adds missing tests
 2. **Coverage threshold enforcement in CI**: PR pushed ?
-   `npm run test -- --coverage` runs ? Jest outputs JSON summary ? custom script
-   parses `coverage-summary.json` ? compares line/branch coverage per module
-   against thresholds ? if below, PR blocked with detailed report
+ `npm run test -- --coverage` runs ? Jest outputs JSON summary ? custom script
+ parses `coverage-summary.json` ? compares line/branch coverage per module
+ against thresholds ? if below, PR blocked with detailed report
 3. **Coverage gap analysis**: Quarterly coverage review ? script identifies
-   modules below threshold ? sorts by gap severity ? generates report with
-   specific uncovered lines ? tickets created for critical gaps ? team assigns
-   to sprints
+ modules below threshold ? sorts by gap severity ? generates report with
+ specific uncovered lines ? tickets created for critical gaps ? team assigns
+ to sprints
 4. **Incremental coverage on PR**: CI runs tests on only changed files
-   (`--changedSince`) ? coverage measured only on diff ? incremental coverage
-   must meet module target ? prevents new code from reducing overall coverage
+ (`--changedSince`) ? coverage measured only on diff ? incremental coverage
+ must meet module target ? prevents new code from reducing overall coverage
 
 ## Scalability
 
-| Dimension                           | Current Limit | 10x Strategy                                   | 100x Strategy                                                  |
+| Dimension | Current Limit | 10x Strategy | 100x Strategy |
 | ----------------------------------- | ------------- | ---------------------------------------------- | -------------------------------------------------------------- |
-| Tests with coverage instrumentation | 2,000         | 10,000 with parallel test sharding (4 workers) | 100,000+ with distributed test execution                       |
-| Coverage report generation time     | < 30s         | Incremental coverage for PRs; full run nightly | Stream-based coverage collection without instrumentation pause |
-| Coverage storage (history)          | 100 runs      | 1,000 runs with rollup by release              | Trend dashboard with ML anomaly detection on coverage changes  |
-| Modules with different thresholds   | 6             | 20 modules with per-module config              | Dynamic thresholds adjusted by module complexity score         |
+| Tests with coverage instrumentation | 2,000 | 10,000 with parallel test sharding (4 workers) | 100,000+ with distributed test execution |
+| Coverage report generation time | < 30s | Incremental coverage for PRs; full run nightly | Stream-based coverage collection without instrumentation pause |
+| Coverage storage (history) | 100 runs | 1,000 runs with rollup by release | Trend dashboard with ML anomaly detection on coverage changes |
+| Modules with different thresholds | 6 | 20 modules with per-module config | Dynamic thresholds adjusted by module complexity score |
 
 ## Error Handling
 
-| Scenario                                        | Detection                                   | Mitigation                                                                       | Recovery                                          |
+| Scenario | Detection | Mitigation | Recovery |
 | ----------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Coverage threshold not met                      | CI script compares against target and fails | PR blocked with explicit error: "Coverage 72% (target 80%) in apps/api/services" | Developer adds tests to uncovered code; re-pushes |
-| Coverage tool fails to instrument               | Istanbul throws during test                 | Retry without coverage flag; warn but allow merge                                | Fix instrumentation config in follow-up PR        |
-| Coverage report corrupt                         | JSON parse fails on output                  | Regenerate report; if persistent, clear coverage cache                           | File bug against Jest/Istanbul version            |
-| Threshold config references non-existent module | Script fails to match module path           | Validate threshold config at CI setup time                                       | Fix module path in jest.config.js                 |
+| Coverage threshold not met | CI script compares against target and fails | PR blocked with explicit error: "Coverage 72% (target 80%) in apps/api/services" | Developer adds tests to uncovered code; re-pushes |
+| Coverage tool fails to instrument | Istanbul throws during test | Retry without coverage flag; warn but allow merge | Fix instrumentation config in follow-up PR |
+| Coverage report corrupt | JSON parse fails on output | Regenerate report; if persistent, clear coverage cache | File bug against Jest/Istanbul version |
+| Threshold config references non-existent module | Script fails to match module path | Validate threshold config at CI setup time | Fix module path in jest.config.js |
 
 ## Monitoring
 
-| Metric                                                 | Alert Threshold | Severity | Dashboard                        |
+| Metric | Alert Threshold | Severity | Dashboard |
 | ------------------------------------------------------ | --------------- | -------- | -------------------------------- |
-| Overall line coverage                                  | < 80%           | Warning  | Grafana � Code Quality Dashboard |
-| Branch coverage in critical modules (auth, encryption) | < 90%           | Critical | Grafana � Security Dashboard     |
-| Coverage delta per PR                                  | < -1%           | Warning  | GitHub Checks � Coverage Report  |
-| Modules below threshold                                | > 3 modules     | Warning  | Code Quality � Quarterly Review  |
-| Time since last full coverage run                      | > 7 days        | Info     | CI Pipeline � Coverage Schedule  |
+| Overall line coverage | < 80% | Warning | Grafana — Code Quality Dashboard |
+| Branch coverage in critical modules (auth, encryption) | < 90% | Critical | Grafana — Security Dashboard |
+| Coverage delta per PR | < -1% | Warning | GitHub Checks — Coverage Report |
+| Modules below threshold | > 3 modules | Warning | Code Quality — Quarterly Review |
+| Time since last full coverage run | > 7 days | Info | CI Pipeline — Coverage Schedule |
 
 ## Risks
 
-| Risk                                                           | Likelihood | Impact | Mitigation                                                                    |
+| Risk | Likelihood | Impact | Mitigation |
 | -------------------------------------------------------------- | ---------- | ------ | ----------------------------------------------------------------------------- |
-| Team optimizes for coverage percentage instead of test quality | High       | Medium | Emphasize meaningful tests in code review; measure assertion count per test   |
-| Coverage drops during rapid feature development                | High       | Medium | Enforce incremental coverage on PR; allocate 20% capacity to test improvement |
-| Branch coverage ignored in favor of line coverage              | Medium     | Medium | Set separate branch coverage thresholds; report both in CI                    |
-| Generated code or config inflates coverage artificially        | Medium     | Low    | Maintain exclusion list for auto-generated files, config, and types           |
+| Team optimizes for coverage percentage instead of test quality | High | Medium | Emphasize meaningful tests in code review; measure assertion count per test |
+| Coverage drops during rapid feature development | High | Medium | Enforce incremental coverage on PR; allocate 20% capacity to test improvement |
+| Branch coverage ignored in favor of line coverage | Medium | Medium | Set separate branch coverage thresholds; report both in CI |
+| Generated code or config inflates coverage artificially | Medium | Low | Maintain exclusion list for auto-generated files, config, and types |
 
 ## Limitations
 
-| Limitation                                     | Impact                                                  | Workaround                                                         | Future Resolution                                                   |
+| Limitation | Impact | Workaround | Future Resolution |
 | ---------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| Line coverage doesn't measure test quality     | 100% coverage can still miss bugs                       | Enforce branch coverage thresholds; use mutation testing           | Mutation testing integration (Stryker) for test quality measurement |
-| Istanbul adds ~15% overhead to test runtime    | CI takes longer with coverage enabled                   | Run coverage only on PR merge and nightly; skip for fast dev loops | Native V8 coverage via `--experimental-vm-modules`                  |
-| Coverage cannot measure untested feature paths | New features may have zero coverage until tests written | Use feature flag to track coverage of new vs existing code         | Test Impact Analysis to identify untested code paths per feature    |
+| Line coverage doesn't measure test quality | 100% coverage can still miss bugs | Enforce branch coverage thresholds; use mutation testing | Mutation testing integration (Stryker) for test quality measurement |
+| Istanbul adds ~15% overhead to test runtime | CI takes longer with coverage enabled | Run coverage only on PR merge and nightly; skip for fast dev loops | Native V8 coverage via `--experimental-vm-modules` |
+| Coverage cannot measure untested feature paths | New features may have zero coverage until tests written | Use feature flag to track coverage of new vs existing code | Test Impact Analysis to identify untested code paths per feature |
 
 ## Overview
 
@@ -236,9 +236,9 @@ prevents coverage debt from accumulating during rapid feature development.
 ## Goals
 
 - Maintain 90% line and 80% branch coverage for all backend service modules
-  (apps/api/services)
+ (apps/api/services)
 - Maintain 90% line and 80% branch coverage for all AI agent modules
-  (apps/api/agents)
+ (apps/api/agents)
 - Maintain 80% line and 70% branch coverage for frontend components
 - Enforce zero coverage regression per PR through incremental coverage checking
 - Generate quarterly coverage gap analysis with actionable remediation tickets
@@ -248,18 +248,18 @@ prevents coverage debt from accumulating during rapid feature development.
 ### In Scope
 
 - Per-module coverage targets: apps/web (80% line, 70% branch), apps/api (85-90%
-  line, 75-80% branch)
+ line, 75-80% branch)
 - Jest + Istanbul for TypeScript/JavaScript coverage measurement
 - pytest-cov for Python coverage measurement
 - CI enforcement via pytest-cov thresholds with per-module configuration
 - Coverage exclusion list: config, migrations, types, seeds, fixtures, golden
-  datasets
+ datasets
 - Quarterly coverage gap analysis with automated uncovered-line reporting
 
 ### Out of Scope
 
 - Mutation testing integration (Stryker) for test quality measurement (future
-  improvement)
+ improvement)
 - Test Impact Analysis for selective test execution (future improvement)
 - Automatic test generation for uncovered code paths (future improvement)
 - Coverage trend dashboard with ML anomaly detection (future improvement)
@@ -328,36 +328,36 @@ exclude_lines =
 
 ```mermaid
 sequenceDiagram
-    participant DEV as Developer
-    participant CI as CI Pipeline
-    participant JEST as Jest + Istanbul
-    participant CHECK as Threshold Check
-    participant REPORT as Coverage Report
+ participant DEV as Developer
+ participant CI as CI Pipeline
+ participant JEST as Jest + Istanbul
+ participant CHECK as Threshold Check
+ participant REPORT as Coverage Report
 
-    DEV->>CI: Push PR with code changes
-    CI->>JEST: pytest --cov=apps/api --cov-report=json
-    JEST->>JEST: Instrument code, run tests
-    JEST-->>CHECK: coverage-summary.json
-    CHECK->>CHECK: Compare: lines 82% (target 80%)
-    CHECK->>CHECK: Compare: branches 72% (target 75%)
-    alt All thresholds met
-        CHECK-->>CI: ✅ Coverage passes
-        CI-->>DEV: PR proceeds
-    else Threshold not met
-        CHECK-->>CI: ❌ Branches 72% < target 75%
-        CI-->>REPORT: Generate uncovered lines report
-        REPORT-->>DEV: PR blocked: "Branch coverage 72% in apps/api/services"
-    end
+ DEV->>CI: Push PR with code changes
+ CI->>JEST: pytest --cov=apps/api --cov-report=json
+ JEST->>JEST: Instrument code, run tests
+ JEST-->>CHECK: coverage-summary.json
+ CHECK->>CHECK: Compare: lines 82% (target 80%)
+ CHECK->>CHECK: Compare: branches 72% (target 75%)
+ alt All thresholds met
+ CHECK-->>CI: ✅ Coverage passes
+ CI-->>DEV: PR proceeds
+ else Threshold not met
+ CHECK-->>CI: ❌ Branches 72% < target 75%
+ CI-->>REPORT: Generate uncovered lines report
+ REPORT-->>DEV: PR blocked: "Branch coverage 72% in apps/api/services"
+ end
 ```
 
 ---
 
-| Improvement                                                   | Priority | Complexity | Timeline |
+| Improvement | Priority | Complexity | Timeline |
 | ------------------------------------------------------------- | -------- | ---------- | -------- |
-| Mutation testing integration (Stryker) for test quality       | Medium   | High       | Q3 2027  |
-| Test Impact Analysis � run only tests affected by code change | High     | High       | Q2 2027  |
-| Automatic test generation for uncovered code paths            | Low      | High       | Q4 2027  |
-| Coverage trend dashboard with ML anomaly detection            | Medium   | Medium     | Q2 2027  |
+| Mutation testing integration (Stryker) for test quality | Medium | High | Q3 2027 |
+| Test Impact Analysis — run only tests affected by code change | High | High | Q2 2027 |
+| Automatic test generation for uncovered code paths | Low | High | Q4 2027 |
+| Coverage trend dashboard with ML anomaly detection | Medium | Medium | Q2 2027 |
 
 ## Related Documents
 

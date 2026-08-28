@@ -1,6 +1,6 @@
-﻿# MVP-P15 — 04. Code and Configuration
+# MVP-P15 — 04. Code and Configuration
 
-> **Phase:** MVP-P15 — Performance, Reliability, and Scalability  
+> **Phase:** MVP-P15 — Performance, Reliability, and Scalability 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + ea329dd + P15 perf hardening (k6, circuit breaker 3/30s, p95 120ms)
 
 ## Architecture Preservation (§13)

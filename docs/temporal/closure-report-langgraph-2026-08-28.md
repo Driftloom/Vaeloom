@@ -26,22 +26,58 @@ branch master, working tree clean before Phase 1, verified via git status + ls-r
 
 API → `router.classify_intent` + `supervisor._build_dag` + `loop.py Plan→Act→Observe→Reflect 3iter` + `tools/executor` + `memory` → direct `LoopState` file `~/.vaeloom/state/{req}.json` → no graph, no durable workflow for agent runs (stub).
 
+```mermaid
+flowchart LR
+ API0["API"]--> R["router.classify_intent"]
+ R--> S["supervisor._build_dag"]
+ S--> L["loop.py<br/>Plan-->Act-->Observe-->Reflect"]
+ L--> T["tools/executor"]
+ T--> M["LoopState<br/>~/.vaeloom/state/{req}.json"]
+ M -.->|"no durability<br/>stub only"| X["no Temporal"]
+ style M fill:#7f1d1d,stroke:#f87171,color:#fff
+```
+
 ## 5. Architecture After
 
 ```
 API routers (auth/CSRF/RLS/20KB/secret scrub)
- ↓
+  ↓
 Temporal DurableAgentRunWorkflow (thin shell, REJECT_DUPLICATE, 10m, kill-switch/quota, query getStatus, patched durable-agent-v1)
- ↓
+  ↓
 DurableAgentRunActivity (ONLY place importing langgraph, HAS_LANGGRAPH guard, validate 20KB, heartbeat 15s, shadow/percent gating, MemorySaver thread_id=request_id)
- ↓
+  ↓
 LangGraph StateGraph v1 (10 nodes: validate_input→retrieve_context→route→supervisor→agent→tool_decision→policy_check→tool_execute→evaluate→finalize, conditional edges, bounded 20KB, no secrets)
- ↓
+  ↓
 Policy (workspace binding, approval_gated_tools → waiting_approval, PATI, SecretManager)
- ↓
+  ↓
 Activities/Tools (execute_tool, memory 8/8/5 refs, LLM via llm_service)
- ↓
+  ↓
 Domain state (Postgres/MinIO)
+```
+
+```mermaid
+flowchart TD
+ API["API routers<br/>auth/CSRF/RLS 20KB"]--> WF["DurableAgentRunWorkflow<br/>REJECT_DUPLICATE<br/>patched v1"]
+ WF--> ACT["DurableAgentRunActivity<br/>ONLY langgraph import<br/>heartbeat 15s<br/>shadow/percent"]
+ ACT--> G["StateGraph v1<br/>10 nodes<br/>bounded 20KB"]
+ G--> V1["validate_input"]
+ V1--> RC["retrieve_context<br/>RAG 8/8/5"]
+ RC--> RT["route"]
+ RT--> SUP["supervisor<br/>bounded DAG"]
+ SUP--> AG["agent<br/>quota"]
+ AG--> TD["tool_decision"]
+ TD--> PC["policy_check"]
+ PC--> TE["tool_execute<br/>4KB"]
+ TE--> EV["evaluate"]
+ EV--> FIN["finalize<br/>20KB"]
+ PC -.->|"waiting_approval"| EV
+ FIN--> POL["Policy<br/>PATI / SecretManager"]
+ POL--> TOOLS["Activities/Tools"]
+ TOOLS--> DB[("Postgres / MinIO")]
+
+ style ACT fill:#1e3a5f,stroke:#f59e0b,color:#fff
+ style G fill:#1e1b4b,stroke:#a78bfa,color:#fff
+ style POL fill:#14532d,stroke:#4ade80,color:#fff
 ```
 
 ## 6. Temporal/LangGraph Boundary
@@ -51,6 +87,24 @@ Domain state (Postgres/MinIO)
 ## 7. Graph Topology
 
 Derived from existing `AGENT_REGISTRY 22`, `CATEGORY_KEYWORDS 14`, `PARALLEL_SAFE 8`, `SEQUENTIAL_CHAINS 5`. `route_node` wraps `classify_intent` (async), `supervisor_node` wraps `_detect_subtasks` async + `_build_dag` layers `list[list[str]]`, provenance tag `[from:X untrusted]`. `Send` parallel via layers, `after_route` async conditional checks `supervisor_dag` layers. `agent_node` quota pre-check + stub/ReAct, `tool_decision` → `policy_check` (approval_gated → waiting_approval) → `tool_execute` (execute_tool mock-safe, 4KB truncate) → `evaluate` (qa/reflect) → `finalize`.
+
+```mermaid
+stateDiagram-v2
+ [*]--> validate_input
+ validate_input--> retrieve_context
+ retrieve_context--> route
+ route--> supervisor: dag layers >1
+ route--> agent: single
+ supervisor--> agent
+ agent--> tool_decision
+ tool_decision--> policy_check: selected_tool?
+ tool_decision--> evaluate: no tool
+ policy_check--> tool_execute: executing_tool
+ policy_check--> evaluate: waiting_approval
+ tool_execute--> evaluate
+ evaluate--> finalize
+ finalize--> [*]
+```
 
 ## 8. State Contract
 

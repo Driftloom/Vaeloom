@@ -149,21 +149,21 @@ agent_contract:
 
 ```mermaid
 graph TD
-    classDef loop fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef prompt fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef loop fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef prompt fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    PLAN["Plan<br/>Agent reads mission + memory<br/>Plans approach"]:::loop
-    ACT["Act<br/>Agent calls tools per plan<br/>Tools return results"]:::loop
-    OBSERVE["Observe<br/>Agent processes tool results<br/>Updates understanding"]:::loop
-    REFLECT["Reflect<br/>Agent evaluates progress<br/>Decides next step"]:::loop
-    IMPROVE["Improve<br/>Agent adjusts plan<br/>Writes new memories"]:::loop
+ PLAN["Plan<br/>Agent reads mission + memory<br/>Plans approach"]:::loop
+ ACT["Act<br/>Agent calls tools per plan<br/>Tools return results"]:::loop
+ OBSERVE["Observe<br/>Agent processes tool results<br/>Updates understanding"]:::loop
+ REFLECT["Reflect<br/>Agent evaluates progress<br/>Decides next step"]:::loop
+ IMPROVE["Improve<br/>Agent adjusts plan<br/>Writes new memories"]:::loop
 
-    PROMPT["Agent Prompt<br/>(loaded once at start)"]:::prompt
+ PROMPT["Agent Prompt<br/>(loaded once at start)"]:::prompt
 
-    PROMPT -.->|"guides"| PLAN
-    PLAN --> ACT --> OBSERVE --> REFLECT
-    REFLECT -->|"incomplete"| IMPROVE --> PLAN
-    REFLECT -->|"complete"| DONE["Return Result"]
+ PROMPT -.->|"guides"| PLAN
+ PLAN--> ACT--> OBSERVE--> REFLECT
+ REFLECT-->|"incomplete"| IMPROVE--> PLAN
+ REFLECT-->|"complete"| DONE["Return Result"]
 ```
 
 > **Diagram:** How the agent prompt interacts with the agentic loop. The prompt is loaded once and guides every iteration of Plan → Act → Observe → Reflect → Improve.

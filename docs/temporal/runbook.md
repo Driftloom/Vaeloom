@@ -3,10 +3,10 @@
 ## What is durable?
 
 - **DWW (Temporal history)** stores workflow step/timer/signal/pending-approval
-  lifecycle. Recovery survives worker/API/Temporal restarts.
+ lifecycle. Recovery survives worker/API/Temporal restarts.
 - **Domain state** (application status, memory records, document state, approval
-  row, audit) lives in app Postgres (`api/models/schema`) — source of truth per
-  §45.
+ row, audit) lives in app Postgres (`api/models/schema`) — source of truth per
+ §45.
 
 ## Q: What is running / failed / stuck?
 
@@ -34,24 +34,24 @@ Grafana: panel `Temporal Workflow Duration p95` joins
 
 ## Safe operations
 
-| Action                 | Command                                                                                                        | Who may          |
+| Action | Command | Who may |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------- |
-| cancel ingestion       | `POST /api/v1/temporal/workflows/{id}/cancel` (workspace-scoped, 401/404 else)                                 | owner/approver   |
-| approve/reject         | `POST /api/v1/approvals/{id}/approve` (also signals workflow)                                                  | workspace member |
-| retry failed ingestion | re-POST `POST /api/v1/temporal/workflows/ingest` — deterministic ID returns `already_started` if still durable | owner            |
-| restart worker         | `kubectl rollout restart deploy/vaeloom-temporal-worker` — workflows resume via history                        | SRE              |
+| cancel ingestion | `POST /api/v1/temporal/workflows/{id}/cancel` (workspace-scoped, 401/404 else) | owner/approver |
+| approve/reject | `POST /api/v1/approvals/{id}/approve` (also signals workflow) | workspace member |
+| retry failed ingestion | re-POST `POST /api/v1/temporal/workflows/ingest` — deterministic ID returns `already_started` if still durable | owner |
+| restart worker | `kubectl rollout restart deploy/vaeloom-temporal-worker` — workflows resume via history | SRE |
 
 Never `tctl workflow terminate` from runbook without audit note — prefer API
 cancel path.
 
 ## Failure recovery drills (§28, exercised in tests)
 
-| Drill                                        | Verified in                                                                                 |
+| Drill | Verified in |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | kill worker mid-activity → retry → completed | `tests/temporal/test_ingest_workflow.py::test_worker_restart_resumes` (WorkerEnv time-skip) |
-| Temporal restart mid-workflow                | UI restart + re-hydrate via history                                                         |
-| OAuth revoked during connector sync → PAUSED | activity returns `human_action_required` not retry loop                                     |
-| duplicate ingest `POST`                      | deterministic ID → `AlreadyStarted` → idempotent 200                                        |
+| Temporal restart mid-workflow | UI restart + re-hydrate via history |
+| OAuth revoked during connector sync → PAUSED | activity returns `human_action_required` not retry loop |
+| duplicate ingest `POST` | deterministic ID → `AlreadyStarted` → idempotent 200 |
 
 If a workflow stays `Running` with heartbeat timeout: check worker logs
 (`Failed to heartbeat`), then
@@ -61,7 +61,7 @@ activity.
 ## Rollback (§18 decommission gate not passed — dual-write phase)
 
 - Flip `TEMPORAL_ENABLED=false` → API reverts to `background_daemon` +
-  `queue-worker` for schedules.
+ `queue-worker` for schedules.
 - No data loss: Postgres remains canonical; histories are read-only archival.
 - Remove Temporal only after §43 checklist (all migrated jobs verified, no
-  `bull:{queue}:*` consumer, Grafana stable 7d).
+ `bull:{queue}:*` consumer, Grafana stable 7d).

@@ -36,19 +36,19 @@ So every phase in this document does two distinct things, kept visually
 separate:
 
 1. **Design and specify** — architecture, data model, API contracts, UI/UX,
-   security design, code structure and representative code, test strategy, CI/CD
-   pipeline definitions, observability design, release/runbook procedures. These
-   are produced **in full**, to enterprise depth, because they require no
-   runtime to produce — only decisions, and this document makes them.
+ security design, code structure and representative code, test strategy, CI/CD
+ pipeline definitions, observability design, release/runbook procedures. These
+ are produced **in full**, to enterprise depth, because they require no
+ runtime to produce — only decisions, and this document makes them.
 2. **Verify and execute** — running the tests, the scans, the pipeline, the
-   deployment. Wherever the master prompt calls for this, the **Verification
-   Results** and **Evidence** tables are marked
-   `NOT_EXECUTED — no attached repository/runtime in this session` rather than
-   filled with invented output. The **Final Statement** for
-   implementation-adjacent phases (10, 11, 12, 14, 15, 16, 17, 19, 20) is
-   therefore `PHASE APPROVED WITH NON-BLOCKING ACTIONS` — design complete,
-   execution deferred to the first engineer who attaches a repository — never a
-   fabricated `PHASE APPROVED — PROCEED` on the execution axis.
+ deployment. Wherever the master prompt calls for this, the **Verification
+ Results** and **Evidence** tables are marked
+ `NOT_EXECUTED — no attached repository/runtime in this session` rather than
+ filled with invented output. The **Final Statement** for
+ implementation-adjacent phases (10, 11, 12, 14, 15, 16, 17, 19, 20) is
+ therefore `PHASE APPROVED WITH NON-BLOCKING ACTIONS` — design complete,
+ execution deferred to the first engineer who attaches a repository — never a
+ fabricated `PHASE APPROVED — PROCEED` on the execution axis.
 
 This is what "not fabricating completion" looks like in a documentation-only
 engagement, applied consistently rather than selectively.
@@ -214,52 +214,52 @@ design phases (1–9), four block the release-date line item in Phase 4/19 only.
 
 ### B. Inputs Reviewed
 
-| ID     | Input                                   | What it contributes                                                       | Currency / Reliability                                                                                           |
+| ID | Input | What it contributes | Currency / Reliability |
 | ------ | --------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| SRC-01 | `01-Vaeloom-MVP-Spec.md`                | Canonical MVP scope, 8-agent roster, memory model, phased build plan      | Current, Draft status, primary source                                                                            |
-| SRC-02 | `05-Vaeloom-MVP-Spec.md`                | Alternative formatting of SRC-01                                          | **Superseded duplicate** — confirmed via internal cross-reference; not used as an independent source             |
-| SRC-03 | `02-System-Architecture.md`             | Six-layer architecture, layer contracts                                   | Current, Draft                                                                                                   |
-| SRC-04 | `03-Agent-Workflow.md`                  | End-to-end 10-step agent trace, permission gates                          | Current, Draft                                                                                                   |
-| SRC-05 | `04-Memory-Knowledge-Graph.md`          | 22 memory types, knowledge graph, agentic RAG read/write paths            | Current, Draft                                                                                                   |
-| SRC-06 | `Vaeloom-Complete-Documentation.md`     | Tech stack, DB schema, 7-phase implementation plan, feature/screen tables | Current, "Living document" status                                                                                |
-| SRC-07 | `Vaeloom-Documentation-Site.md`         | Navigable restructuring of SRC-06 — same content, different IA            | Current, redundant with SRC-06 by design (kept as the docs-site view, not treated as an independent fact source) |
-| SRC-08 | `Vaeloom-How-It-Works-Visual.md`        | Visual/narrative restructuring of the same system                         | Current, presentation layer only                                                                                 |
-| SRC-09 | `00-Gap-Analysis-Report.md`             | Prior documentation-completeness audit (74/100 baseline)                  | Current, scoped to **documentation** completeness, not code/SDLC readiness — does not substitute for this phase  |
-| SRC-10 | `00-Documentation-Completion-Report.md` | Record of a prior doc-completion pass (93/100) closing SRC-09's gaps      | Current, same scope caveat as SRC-09                                                                             |
+| SRC-01 | `01-Vaeloom-MVP-Spec.md` | Canonical MVP scope, 8-agent roster, memory model, phased build plan | Current, Draft status, primary source |
+| SRC-02 | `05-Vaeloom-MVP-Spec.md` | Alternative formatting of SRC-01 | **Superseded duplicate** — confirmed via internal cross-reference; not used as an independent source |
+| SRC-03 | `02-System-Architecture.md` | Six-layer architecture, layer contracts | Current, Draft |
+| SRC-04 | `03-Agent-Workflow.md` | End-to-end 10-step agent trace, permission gates | Current, Draft |
+| SRC-05 | `04-Memory-Knowledge-Graph.md` | 22 memory types, knowledge graph, agentic RAG read/write paths | Current, Draft |
+| SRC-06 | `Vaeloom-Complete-Documentation.md` | Tech stack, DB schema, 7-phase implementation plan, feature/screen tables | Current, "Living document" status |
+| SRC-07 | `Vaeloom-Documentation-Site.md` | Navigable restructuring of SRC-06 — same content, different IA | Current, redundant with SRC-06 by design (kept as the docs-site view, not treated as an independent fact source) |
+| SRC-08 | `Vaeloom-How-It-Works-Visual.md` | Visual/narrative restructuring of the same system | Current, presentation layer only |
+| SRC-09 | `00-Gap-Analysis-Report.md` | Prior documentation-completeness audit (74/100 baseline) | Current, scoped to **documentation** completeness, not code/SDLC readiness — does not substitute for this phase |
+| SRC-10 | `00-Documentation-Completion-Report.md` | Record of a prior doc-completion pass (93/100) closing SRC-09's gaps | Current, same scope caveat as SRC-09 |
 
 ### C. Questions and Unknowns
 
-| ID    | Question                                                                                                 | Blocking?                                                       | Disposition                                                                                                                                                                    |
+| ID | Question | Blocking? | Disposition |
 | ----- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Q-0.1 | Legal entity / incorporation jurisdiction                                                                | Non-blocking to design                                          | Phase 13 designs to GDPR-equivalent baseline; **REQUIRES_STAKEHOLDER_DECISION** before incorporation/ToS drafting                                                              |
-| Q-0.2 | Budget ceiling for MVP build                                                                             | Non-blocking to design                                          | Phase 4 cost model uses role-based, not headcount-based, estimates; **REQUIRES_STAKEHOLDER_DECISION** before hiring                                                            |
-| Q-0.3 | Target ship date                                                                                         | Non-blocking to design; blocks the literal calendar in Phase 19 | Phase 4 sequences by dependency, not date; **REQUIRES_STAKEHOLDER_DECISION** for the calendar                                                                                  |
-| Q-0.4 | Cloud vendor (AWS/GCP/Azure)                                                                             | Non-blocking — PaaS-first per source corpus                     | Phase 16 designs vendor-agnostically where the choice doesn't change the architecture, flags the two vendor-specific lines (managed Postgres, object storage) that need a pick |
-| Q-0.5 | Team size/composition available at build time                                                            | Non-blocking to design                                          | Phase 4 RACI uses role placeholders                                                                                                                                            |
-| Q-0.6 | Initial launch geography (data residency default)                                                        | Non-blocking — single-region assumed                            | Assumption A-13.2                                                                                                                                                              |
-| Q-0.7 | Whether the desktop companion ships in MVP week 1 or is fast-followed                                    | Non-blocking                                                    | Assumption A-4.3: ships in Phase 2 of the build plan, matching source corpus                                                                                                   |
-| Q-0.8 | Named job-platform API partners already under negotiation (Indeed, etc.)                                 | Non-blocking                                                    | Assumption A-9 area: none confirmed, Phase 4 treats platform API access as an external dependency risk                                                                         |
-| Q-0.9 | Whether "delete everything" must be legally verifiable (e.g., for a DSAR) or is a UX-only feature at MVP | Non-blocking                                                    | Assumption A-13.4: built as cryptographically verifiable from day one since it's cheap to build right the first time                                                           |
+| Q-0.1 | Legal entity / incorporation jurisdiction | Non-blocking to design | Phase 13 designs to GDPR-equivalent baseline; **REQUIRES_STAKEHOLDER_DECISION** before incorporation/ToS drafting |
+| Q-0.2 | Budget ceiling for MVP build | Non-blocking to design | Phase 4 cost model uses role-based, not headcount-based, estimates; **REQUIRES_STAKEHOLDER_DECISION** before hiring |
+| Q-0.3 | Target ship date | Non-blocking to design; blocks the literal calendar in Phase 19 | Phase 4 sequences by dependency, not date; **REQUIRES_STAKEHOLDER_DECISION** for the calendar |
+| Q-0.4 | Cloud vendor (AWS/GCP/Azure) | Non-blocking — PaaS-first per source corpus | Phase 16 designs vendor-agnostically where the choice doesn't change the architecture, flags the two vendor-specific lines (managed Postgres, object storage) that need a pick |
+| Q-0.5 | Team size/composition available at build time | Non-blocking to design | Phase 4 RACI uses role placeholders |
+| Q-0.6 | Initial launch geography (data residency default) | Non-blocking — single-region assumed | Assumption A-13.2 |
+| Q-0.7 | Whether the desktop companion ships in MVP week 1 or is fast-followed | Non-blocking | Assumption A-4.3: ships in Phase 2 of the build plan, matching source corpus |
+| Q-0.8 | Named job-platform API partners already under negotiation (Indeed, etc.) | Non-blocking | Assumption A-9 area: none confirmed, Phase 4 treats platform API access as an external dependency risk |
+| Q-0.9 | Whether "delete everything" must be legally verifiable (e.g., for a DSAR) or is a UX-only feature at MVP | Non-blocking | Assumption A-13.4: built as cryptographically verifiable from day one since it's cheap to build right the first time |
 
 ### D. Work Completed
 
 **D.1 Existing-state maturity assessment**
 
-| SDLC dimension                      | Maturity                                                                                | Evidence                                                          |
+| SDLC dimension | Maturity | Evidence |
 | ----------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Problem/vision definition           | High                                                                                    | SRC-01 §1–3, SRC-06 §2                                            |
-| Requirements (FR/NFR, user stories) | Low — exists only as narrative prose, no atomic numbered requirements                   | SRC-01 §4–5; formalized in Phase 3                                |
-| Architecture                        | High                                                                                    | SRC-03 (six layers), SRC-06 §4 (eight layers incl. events/queues) |
-| Data model                          | Medium-High — table/column list exists, no DDL, no data dictionary                      | SRC-06 §11                                                        |
-| API contract                        | Low — endpoint list exists as prose, no OpenAPI                                         | SRC-06 §8                                                         |
-| UI/UX                               | Low-Medium — page list and purpose exists, no IA/wireframes/design tokens               | SRC-01 §10, SRC-06 §8                                             |
-| Application code                    | **None**                                                                                | —                                                                 |
-| Test suite                          | **None**                                                                                | —                                                                 |
-| Infrastructure/IaC                  | **None**                                                                                | —                                                                 |
-| CI/CD pipeline                      | **None**                                                                                | —                                                                 |
-| Security design                     | Medium — principles stated (least privilege, suggest-mode, encryption), no threat model | SRC-01 §11                                                        |
-| Observability                       | **None**                                                                                | —                                                                 |
-| Runbooks/on-call                    | **None**                                                                                | —                                                                 |
+| Problem/vision definition | High | SRC-01 §1–3, SRC-06 §2 |
+| Requirements (FR/NFR, user stories) | Low — exists only as narrative prose, no atomic numbered requirements | SRC-01 §4–5; formalized in Phase 3 |
+| Architecture | High | SRC-03 (six layers), SRC-06 §4 (eight layers incl. events/queues) |
+| Data model | Medium-High — table/column list exists, no DDL, no data dictionary | SRC-06 §11 |
+| API contract | Low — endpoint list exists as prose, no OpenAPI | SRC-06 §8 |
+| UI/UX | Low-Medium — page list and purpose exists, no IA/wireframes/design tokens | SRC-01 §10, SRC-06 §8 |
+| Application code | **None** | — |
+| Test suite | **None** | — |
+| Infrastructure/IaC | **None** | — |
+| CI/CD pipeline | **None** | — |
+| Security design | Medium — principles stated (least privilege, suggest-mode, encryption), no threat model | SRC-01 §11 |
+| Observability | **None** | — |
+| Runbooks/on-call | **None** | — |
 
 **D.2 Canonical source resolution.** SRC-01 (`01-Vaeloom-MVP-Spec.md`) is
 declared the single canonical MVP scope document for this execution. SRC-02 is
@@ -274,12 +274,12 @@ fact that determines the Verification/Evidence posture of every phase from Phase
 
 ### E. Deliverables
 
-| Deliverable                           | Location                                     |
+| Deliverable | Location |
 | ------------------------------------- | -------------------------------------------- |
-| Source inventory & reliability rating | §B above                                     |
-| Existing-state maturity matrix        | §D.1 above                                   |
-| Canonical-source resolution           | §D.2 above                                   |
-| Opened unknowns register              | §C above (feeds global register, Appendix A) |
+| Source inventory & reliability rating | §B above |
+| Existing-state maturity matrix | §D.1 above |
+| Canonical-source resolution | §D.2 above |
+| Opened unknowns register | §C above (feeds global register, Appendix A) |
 
 ### F. Code and Configuration Changes
 
@@ -287,11 +287,11 @@ Not applicable to this phase.
 
 ### G. Verification Results
 
-| Check                                  | Method                                  | Result              |
+| Check | Method | Result |
 | -------------------------------------- | --------------------------------------- | ------------------- |
-| All 10 source documents inspected      | Full read, this session                 | ✅ Pass             |
-| Duplicate/canonical conflict resolved  | Cross-reference against SRC-09 findings | ✅ Pass             |
-| No repository falsely assumed to exist | Direct check of session tool access     | ✅ Confirmed absent |
+| All 10 source documents inspected | Full read, this session | ✅ Pass |
+| Duplicate/canonical conflict resolved | Cross-reference against SRC-09 findings | ✅ Pass |
+| No repository falsely assumed to exist | Direct check of session tool access | ✅ Confirmed absent |
 
 ### H. Requirement Traceability
 
@@ -300,19 +300,19 @@ is upstream of the traceability chain.
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                                                               | Likelihood | Impact                              | Mitigation                                                                           | Owner           |
+| ID | Risk | Likelihood | Impact | Mitigation | Owner |
 | -------- | ------------------------------------------------------------------------------------------------------------------ | ---------- | ----------------------------------- | ------------------------------------------------------------------------------------ | --------------- |
-| RISK-0.1 | No code/infra/runtime attached — every downstream "verification" is a design-time check only                       | Certain    | High (scope of what can be claimed) | Explicit dual-track reporting (Design vs. Execution) in every phase from Phase 10 on | Program Manager |
-| RISK-0.2 | Nine stakeholder unknowns (Q-0.1–Q-0.9) could each independently delay Phase 19 if not resolved before build start | Medium     | Medium                              | Tracked as `REQUIRES_STAKEHOLDER_DECISION`, does not block Phases 0–18               | Program Manager |
+| RISK-0.1 | No code/infra/runtime attached — every downstream "verification" is a design-time check only | Certain | High (scope of what can be claimed) | Explicit dual-track reporting (Design vs. Execution) in every phase from Phase 10 on | Program Manager |
+| RISK-0.2 | Nine stakeholder unknowns (Q-0.1–Q-0.9) could each independently delay Phase 19 if not resolved before build start | Medium | Medium | Tracked as `REQUIRES_STAKEHOLDER_DECISION`, does not block Phases 0–18 | Program Manager |
 
 ### J. Quality Gate
 
-| Criterion                                                  | Status |
+| Criterion | Status |
 | ---------------------------------------------------------- | ------ |
-| Requirements understood _(scope, not atomic requirements)_ | ✅     |
-| No unresolved blocking ambiguity for Phase 1               | ✅     |
-| Canonical sources declared                                 | ✅     |
-| **Score: 10/10. Gate: PASSED.**                            |
+| Requirements understood _(scope, not atomic requirements)_ | ✅ |
+| No unresolved blocking ambiguity for Phase 1 | ✅ |
+| Canonical sources declared | ✅ |
+| **Score: 10/10. Gate: PASSED.** |
 
 ### K. Remaining Actions
 
@@ -349,7 +349,7 @@ SRC-01 §1–3, §12; SRC-06 §1–2, §16 (Project Summary).
 
 ### C. Questions and Unknowns
 
-| ID    | Question                                                | Disposition                                                                                                                                                                                                                   |
+| ID | Question | Disposition |
 | ----- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Q-1.1 | What specific approval-rate threshold "earns" autonomy? | SRC-01 §7.4/enterprise paper §7.4 states "e.g., 95%+ over 50 actions" as an example — adopted as **Assumption A-1.1**, a real number rather than an example, since Phase 3/Phase 21 need a concrete threshold to test against |
 
@@ -373,12 +373,12 @@ one of which is a chat interface.
 **D.4 Product philosophy (non-negotiable design constraints carried into every
 later phase).**
 
-| Principle                             | Binding effect downstream                                                                                        |
+| Principle | Binding effect downstream |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Passive by default, active on request | Phase 9: every consequential UI action needs a confirm step; Phase 3: FR-* for autonomy defaults                 |
-| Memory is the product                 | Phase 5: memory layer is architecturally central, not a bolted-on feature                                        |
-| Never destructive                     | Phase 7: no hard-delete columns without an Archive path; Phase 11: no DELETE without soft-state transition       |
-| Earn autonomy                         | Phase 3: FR for per-agent, per-action-type autonomy settings; Phase 21: the approval-rate metric that unlocks it |
+| Passive by default, active on request | Phase 9: every consequential UI action needs a confirm step; Phase 3: FR-* for autonomy defaults |
+| Memory is the product | Phase 5: memory layer is architecturally central, not a bolted-on feature |
+| Never destructive | Phase 7: no hard-delete columns without an Archive path; Phase 11: no DELETE without soft-state transition |
+| Earn autonomy | Phase 3: FR for per-agent, per-action-type autonomy settings; Phase 21: the approval-rate metric that unlocks it |
 
 **D.5 Target users (personas summarized here, detailed in Phase 2).** Student
 (primary wedge), job seeker, early-career professional, researcher, developer,
@@ -386,25 +386,25 @@ freelancer — six personas carried from SRC-06 §2.1 and SRC-08.
 
 **D.6 Business objectives.**
 
-| ID   | Objective                                                                                       |
+| ID | Objective |
 | ---- | ----------------------------------------------------------------------------------------------- |
-| BO-1 | Prove the ingest → organize → remember → assist loop works and is trusted by real users         |
+| BO-1 | Prove the ingest → organize → remember → assist loop works and is trusted by real users |
 | BO-2 | Reach a state where a majority of active users have granted at least one autonomous action type |
-| BO-3 | Establish a memory architecture that requires zero schema migration to reach enterprise scale   |
-| BO-4 | Do this without violating any job platform's terms of service                                   |
+| BO-3 | Establish a memory architecture that requires zero schema migration to reach enterprise scale |
+| BO-4 | Do this without violating any job platform's terms of service |
 
 **D.7 Success metrics — newly authored, numeric.**
 
-| ID    | Metric                                                                | Target                                                                         | Rationale                                                                                                                                                |
+| ID | Metric | Target | Rationale |
 | ----- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SM-01 | Organization Agent proposal approval rate                             | ≥ 90% by end of Phase 2 (build-plan) cohort                                    | Stated directly in SRC-06 Phase 2 milestone                                                                                                              |
-| SM-02 | % of active users granting ≥1 autonomous action type                  | ≥ 80%                                                                          | Stated directly in SRC-06 Roadmap "v1.5" exit criterion                                                                                                  |
-| SM-03 | Time from "find me X" to submitted application                        | < 1 session (single sitting, target < 20 min active time)                      | Derived from SRC-06 Phase 4 milestone ("inside one session")                                                                                             |
-| SM-04 | False-negative rate on urgent-mail classification                     | < 2% of manually-labeled urgent mail missed                                    | New — the source corpus flags missed urgent mail as "the worst failure mode" (SRC-01 §8) without a number; this assumption (**A-1.2**) makes it testable |
-| SM-05 | Resume field-completion rate without silent gap-filling               | 100% (either populated or an explicit question was asked — zero silent blanks) | Derived from the "ask, don't guess" rule (SRC-01 §4.5)                                                                                                   |
-| SM-06 | Wrong-merge rate in the Memory Agent's entity resolution              | < 0.5% of merge decisions, measured against a hand-labeled sample              | New (**A-1.3**) — source corpus states wrong merges are "worse than no merge" qualitatively; this quantifies the bar                                     |
-| SM-07 | New-user time-to-first-value (first correct extracted entity visible) | < 5 minutes from first upload                                                  | New (**A-1.4**), standard PLG benchmark applied here since no other bar was given                                                                        |
-| SM-08 | Zero cross-tenant/cross-user data leakage incidents                   | 0, always                                                                      | Non-negotiable; carried to enterprise as the Phase-7 gate for Phase 7 (enterprise)                                                                       |
+| SM-01 | Organization Agent proposal approval rate | ≥ 90% by end of Phase 2 (build-plan) cohort | Stated directly in SRC-06 Phase 2 milestone |
+| SM-02 | % of active users granting ≥1 autonomous action type | ≥ 80% | Stated directly in SRC-06 Roadmap "v1.5" exit criterion |
+| SM-03 | Time from "find me X" to submitted application | < 1 session (single sitting, target < 20 min active time) | Derived from SRC-06 Phase 4 milestone ("inside one session") |
+| SM-04 | False-negative rate on urgent-mail classification | < 2% of manually-labeled urgent mail missed | New — the source corpus flags missed urgent mail as "the worst failure mode" (SRC-01 §8) without a number; this assumption (**A-1.2**) makes it testable |
+| SM-05 | Resume field-completion rate without silent gap-filling | 100% (either populated or an explicit question was asked — zero silent blanks) | Derived from the "ask, don't guess" rule (SRC-01 §4.5) |
+| SM-06 | Wrong-merge rate in the Memory Agent's entity resolution | < 0.5% of merge decisions, measured against a hand-labeled sample | New (**A-1.3**) — source corpus states wrong merges are "worse than no merge" qualitatively; this quantifies the bar |
+| SM-07 | New-user time-to-first-value (first correct extracted entity visible) | < 5 minutes from first upload | New (**A-1.4**), standard PLG benchmark applied here since no other bar was given |
+| SM-08 | Zero cross-tenant/cross-user data leakage incidents | 0, always | Non-negotiable; carried to enterprise as the Phase-7 gate for Phase 7 (enterprise) |
 
 **D.8 Feasibility.** Technically feasible with the stack in Phase 6 (all
 components are mature, off-the-shelf technologies combined in a novel way, not
@@ -425,7 +425,7 @@ N/A.
 
 ### G. Verification Results
 
-| Check                                                                                                 | Result                             |
+| Check | Result |
 | ----------------------------------------------------------------------------------------------------- | ---------------------------------- |
 | Every success metric traces to either an explicit source-corpus statement or a labeled new assumption | ✅ Pass — see D.7 rationale column |
 
@@ -436,7 +436,7 @@ must cite a BO).
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                     | Mitigation                                                                                                |
+| ID | Risk | Mitigation |
 | -------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
 | RISK-1.1 | SM-04/06/07 numeric targets are newly authored, not stakeholder-approved | Flagged `REQUIRES_STAKEHOLDER_DECISION` for sign-off before being used as a hard release gate in Phase 19 |
 
@@ -480,7 +480,7 @@ SRC-01 §2, §9; SRC-06 §2.1, §1.8 (enterprise paper, referenced for the fulle
 
 ### C. Questions and Unknowns
 
-| ID    | Question                                                                 | Disposition                                                                                                                                                                                                                                                                                                                                                       |
+| ID | Question | Disposition |
 | ----- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Q-2.1 | Are any target users under 18 (e.g., high-school applicants to college)? | Not stated in source corpus. **Assumption A-2.1: target population is 18+ (college students and up)** — carried as a hard constraint into Phase 13 (no minor-specific data handling designed); flagged `REQUIRES_STAKEHOLDER_DECISION` if the product later targets high-schoolers, since that would trigger COPPA/FERPA-class requirements not designed for here |
 
@@ -488,47 +488,47 @@ SRC-01 §2, §9; SRC-06 §2.1, §1.8 (enterprise paper, referenced for the fulle
 
 **D.1 Domain vocabulary (fixed for all downstream phases).**
 
-| Term          | Definition                                                                                                                          |
+| Term | Definition |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Second brain  | A personal, continuously-updated structured memory system, distinct from a note-taking app because the graph is built automatically |
-| Agentic RAG   | Retrieval where the calling agent chooses vector / keyword / graph traversal per query rather than one fixed pipeline               |
-| Suggest-mode  | Default operating mode: agent proposes, human approves, until autonomy is earned                                                    |
-| ATS           | Applicant Tracking System — the automated resume-screening software Vaeloom's ATS Agent scores against                              |
-| Version chain | A detected group of files that are versions of the same underlying document                                                         |
+| Second brain | A personal, continuously-updated structured memory system, distinct from a note-taking app because the graph is built automatically |
+| Agentic RAG | Retrieval where the calling agent chooses vector / keyword / graph traversal per query rather than one fixed pipeline |
+| Suggest-mode | Default operating mode: agent proposes, human approves, until autonomy is earned |
+| ATS | Applicant Tracking System — the automated resume-screening software Vaeloom's ATS Agent scores against |
+| Version chain | A detected group of files that are versions of the same underlying document |
 
 **D.2 Competitive landscape, by category (qualitative — no third-party figures
 are asserted since none were supplied).**
 
-| Category                   | Representative pattern                      | Structural gap Vaeloom targets                      |
+| Category | Representative pattern | Structural gap Vaeloom targets |
 | -------------------------- | ------------------------------------------- | --------------------------------------------------- |
-| Generic AI chatbots        | Session-based, no durable structured memory | No persistent, structured, per-person memory        |
-| Resume builders            | Static templates, manual data entry         | User re-types everything; no link to real activity  |
-| Cloud file storage         | Folder-structure organization               | Organizes by user-defined structure, not by meaning |
-| Note-taking / PKM tools    | Manual linking and tagging                  | All graph-building work is manual                   |
-| Job boards                 | Search + apply                              | No memory of the user beyond a stored PDF           |
-| Career counseling services | High-touch, human                           | Doesn't scale to continuous daily support           |
+| Generic AI chatbots | Session-based, no durable structured memory | No persistent, structured, per-person memory |
+| Resume builders | Static templates, manual data entry | User re-types everything; no link to real activity |
+| Cloud file storage | Folder-structure organization | Organizes by user-defined structure, not by meaning |
+| Note-taking / PKM tools | Manual linking and tagging | All graph-building work is manual |
+| Job boards | Search + apply | No memory of the user beyond a stored PDF |
+| Career counseling services | High-touch, human | Doesn't scale to continuous daily support |
 
 **D.3 Personas (detailed).**
 
-| Persona                   | Primary need                                              | Data they bring                                       | Primary modules                                |
+| Persona | Primary need | Data they bring | Primary modules |
 | ------------------------- | --------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------- |
-| Student                   | Real resume from real activity, never miss an opportunity | Certificates, transcripts, hackathon docs, coursework | Organization, Resume, Job Search, Scheduler    |
-| Job seeker                | Efficient, targeted applications, full tracking           | Resume drafts, JD pastes                              | Career Intelligence, ATS, Application tracking |
-| Early-career professional | Living record of growth across roles                      | Performance docs, project write-ups                   | Memory system, Resume Agent                    |
-| Researcher                | Organize papers/notes/citations, surface connections      | PDFs, citation exports                                | Memory Graph, Document Agent                   |
-| Developer                 | Auto-connect code/projects to a career narrative          | GitHub repos                                          | GitHub Agent, Coding Agent, Resume Agent       |
-| Freelancer                | Portfolio + pipeline across clients                       | Client deliverables, contracts                        | Workspace, Career Memory                       |
+| Student | Real resume from real activity, never miss an opportunity | Certificates, transcripts, hackathon docs, coursework | Organization, Resume, Job Search, Scheduler |
+| Job seeker | Efficient, targeted applications, full tracking | Resume drafts, JD pastes | Career Intelligence, ATS, Application tracking |
+| Early-career professional | Living record of growth across roles | Performance docs, project write-ups | Memory system, Resume Agent |
+| Researcher | Organize papers/notes/citations, surface connections | PDFs, citation exports | Memory Graph, Document Agent |
+| Developer | Auto-connect code/projects to a career narrative | GitHub repos | GitHub Agent, Coding Agent, Resume Agent |
+| Freelancer | Portfolio + pipeline across clients | Client deliverables, contracts | Workspace, Career Memory |
 
 **D.4 Data-source inventory (feeds Phase 7 directly).**
 
-| Source        | Formats                                     | Access pattern                           | Volume characteristics                          | PII sensitivity                               |
+| Source | Formats | Access pattern | Volume characteristics | PII sensitivity |
 | ------------- | ------------------------------------------- | ---------------------------------------- | ----------------------------------------------- | --------------------------------------------- |
-| Direct upload | PDF, DOCX, PPTX, XLSX/CSV, images, Markdown | Push (user-initiated)                    | Bursty — heavy at onboarding, sparse thereafter | High (resumes, certificates, transcripts)     |
-| Gmail         | Email (text/HTML/attachments)               | Pull (scheduled) + push (real-time hook) | Continuous, low-medium daily volume             | Very high (interview content, PII in threads) |
-| GitHub        | Repo metadata, commits, README              | Pull (webhook/poll)                      | Low-medium, spiky around commits                | Low-medium                                    |
-| Google Drive  | Docs/Sheets/Slides                          | Pull (sync)                              | Medium, grows with account age                  | High                                          |
-| Local folder  | Any file type in one scoped directory       | Push (file-watcher)                      | Variable, user-controlled                       | High                                          |
-| VS Code       | Workspace/git activity                      | Pull (extension telemetry)               | Low, diff-sized                                 | Low                                           |
+| Direct upload | PDF, DOCX, PPTX, XLSX/CSV, images, Markdown | Push (user-initiated) | Bursty — heavy at onboarding, sparse thereafter | High (resumes, certificates, transcripts) |
+| Gmail | Email (text/HTML/attachments) | Pull (scheduled) + push (real-time hook) | Continuous, low-medium daily volume | Very high (interview content, PII in threads) |
+| GitHub | Repo metadata, commits, README | Pull (webhook/poll) | Low-medium, spiky around commits | Low-medium |
+| Google Drive | Docs/Sheets/Slides | Pull (sync) | Medium, grows with account age | High |
+| Local folder | Any file type in one scoped directory | Push (file-watcher) | Variable, user-controlled | High |
+| VS Code | Workspace/git activity | Pull (extension telemetry) | Low, diff-sized | Low |
 
 **D.5 Domain constraint carried forward: job-platform ToS.** Most platforms
 (LinkedIn, Naukri, Indeed) restrict scraping/auto-submission. Design constraint
@@ -553,10 +553,10 @@ N/A.
 
 ### G. Verification Results
 
-| Check                                               | Result                                       |
+| Check | Result |
 | --------------------------------------------------- | -------------------------------------------- |
 | No invented market-share/revenue figures introduced | ✅ Confirmed — landscape is qualitative only |
-| Every persona traces to source corpus §2.1          | ✅ Pass                                      |
+| Every persona traces to source corpus §2.1 | ✅ Pass |
 
 ### H. Requirement Traceability
 
@@ -565,10 +565,10 @@ persona).
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                                      | Mitigation                                                                                             |
+| ID | Risk | Mitigation |
 | -------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| RISK-2.1 | Assumption A-2.1 (18+ only) may be wrong if a bootcamp/high-school channel is later added | Flagged for stakeholder review before any under-18 marketing channel opens                             |
-| RISK-2.2 | Job-platform ToS terms can change unilaterally, breaking the deep-link assumption         | Job Search Agent design (Phase 5/11) treats platform integration as a pluggable adapter, not hardcoded |
+| RISK-2.1 | Assumption A-2.1 (18+ only) may be wrong if a bootcamp/high-school channel is later added | Flagged for stakeholder review before any under-18 marketing channel opens |
+| RISK-2.2 | Job-platform ToS terms can change unilaterally, breaking the deep-link assumption | Job Search Agent design (Phase 5/11) treats platform integration as a pluggable adapter, not hardcoded |
 
 ### J. Quality Gate
 
@@ -614,7 +614,7 @@ SRC-01 (all sections), SRC-03, SRC-04, SRC-05, SRC-06 §7 (Features table), Phas
 
 ### C. Questions and Unknowns
 
-| ID    | Question                                                       | Disposition                                                                                 |
+| ID | Question | Disposition |
 | ----- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | Q-3.1 | Exact wording users see when an agent asks a gap-fill question | Not a blocking ambiguity — left as a Phase 9 UX-copy decision, not a requirements-level one |
 
@@ -624,128 +624,128 @@ SRC-01 (all sections), SRC-03, SRC-04, SRC-05, SRC-06 §7 (Features table), Phas
 
 _Module: Onboarding & Connectors_
 
-| ID    | Requirement                                                                                                                                                   | Priority | Traces to              |
+| ID | Requirement | Priority | Traces to |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------- |
-| FR-01 | System shall let a user sign up via email or, if configured, SSO                                                                                              | Must     | BO-1                   |
-| FR-02 | System shall provision an isolated, empty workspace (namespace, default folder taxonomy, blank graph) on signup                                               | Must     | BO-1, BO-3             |
-| FR-03 | System shall let a user connect Gmail, GitHub, Google Drive, a local folder, and VS Code, each as an independent, separately-revocable OAuth/permission grant | Must     | BO-1                   |
-| FR-04 | Every connector shall default to read-only scope; write/organize scope shall require a separate, explicit grant                                               | Must     | Product philosophy D.4 |
-| FR-05 | System shall show a "here's what I found" summary after the first connector sync, before taking any organizing action                                         | Must     | Product philosophy D.4 |
+| FR-01 | System shall let a user sign up via email or, if configured, SSO | Must | BO-1 |
+| FR-02 | System shall provision an isolated, empty workspace (namespace, default folder taxonomy, blank graph) on signup | Must | BO-1, BO-3 |
+| FR-03 | System shall let a user connect Gmail, GitHub, Google Drive, a local folder, and VS Code, each as an independent, separately-revocable OAuth/permission grant | Must | BO-1 |
+| FR-04 | Every connector shall default to read-only scope; write/organize scope shall require a separate, explicit grant | Must | Product philosophy D.4 |
+| FR-05 | System shall show a "here's what I found" summary after the first connector sync, before taking any organizing action | Must | Product philosophy D.4 |
 
 _Module: Ingestion_
 
-| ID    | Requirement                                                                                                                                         | Priority | Traces to                    |
+| ID | Requirement | Priority | Traces to |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------------- |
-| FR-06 | System shall parse PDF, DOCX, PPTX, XLSX/CSV, Markdown, plain text, and common image formats                                                        | Must     | SM-07                        |
-| FR-07 | System shall run OCR on scanned/photographed documents and flag low-confidence extractions for user confirmation rather than silently trusting them | Must     | SM-06                        |
-| FR-08 | System shall parse repository structure (languages, dependency graph, README, commit shape) without ingesting full source verbatim into memory      | Must     | Data minimization principle  |
-| FR-09 | System shall detect duplicate and version-chain relationships across files (including across sources) without user reconciliation                   | Must     | SM-01                        |
-| FR-10 | System shall debounce re-processing — a file is not re-embedded unless its content meaningfully changed                                             | Should   | Cost efficiency (Phase 6/15) |
+| FR-06 | System shall parse PDF, DOCX, PPTX, XLSX/CSV, Markdown, plain text, and common image formats | Must | SM-07 |
+| FR-07 | System shall run OCR on scanned/photographed documents and flag low-confidence extractions for user confirmation rather than silently trusting them | Must | SM-06 |
+| FR-08 | System shall parse repository structure (languages, dependency graph, README, commit shape) without ingesting full source verbatim into memory | Must | Data minimization principle |
+| FR-09 | System shall detect duplicate and version-chain relationships across files (including across sources) without user reconciliation | Must | SM-01 |
+| FR-10 | System shall debounce re-processing — a file is not re-embedded unless its content meaningfully changed | Should | Cost efficiency (Phase 6/15) |
 
 _Module: Organization Agent_
 
-| ID    | Requirement                                                                                                                                                          | Priority | Traces to          |
+| ID | Requirement | Priority | Traces to |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------ |
-| FR-11 | System shall propose a name, destination folder, and tags for every new/changed file                                                                                 | Must     | SM-01              |
-| FR-12 | Every propose action shall be shown as an approvable diff; batch-approve shall be supported                                                                          | Must     | Product philosophy |
-| FR-13 | System shall never hard-delete a file; superseded versions move to a searchable, restorable Archive                                                                  | Must     | Product philosophy |
-| FR-14 | System shall log every organization action with enough detail to undo it                                                                                             | Must     | SM-01              |
-| FR-15 | System shall offer to upgrade specific action types to autonomous once a per-action-type approval-rate threshold is cleared (Assumption A-1.1: 95%+ over 50 actions) | Should   | SM-02              |
+| FR-11 | System shall propose a name, destination folder, and tags for every new/changed file | Must | SM-01 |
+| FR-12 | Every propose action shall be shown as an approvable diff; batch-approve shall be supported | Must | Product philosophy |
+| FR-13 | System shall never hard-delete a file; superseded versions move to a searchable, restorable Archive | Must | Product philosophy |
+| FR-14 | System shall log every organization action with enough detail to undo it | Must | SM-01 |
+| FR-15 | System shall offer to upgrade specific action types to autonomous once a per-action-type approval-rate threshold is cleared (Assumption A-1.1: 95%+ over 50 actions) | Should | SM-02 |
 
 _Module: Memory System_
 
-| ID    | Requirement                                                                                                                                                           | Priority | Traces to          |
+| ID | Requirement | Priority | Traces to |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------ |
-| FR-16 | System shall maintain 22 memory types: Profile, Document, Career, Episodic, Preference, Working                                                                       | Must     | BO-1               |
-| FR-17 | System shall extract entities and typed relationships from every ingested item and write them to a knowledge graph                                                    | Must     | BO-1               |
-| FR-18 | System shall deduplicate/merge entities using a confidence threshold; below-threshold candidates are created as new, unmerged, flagged nodes rather than force-merged | Must     | SM-06              |
-| FR-19 | System shall support hybrid retrieval (vector + keyword + graph traversal) with agent-selected strategy per query                                                     | Must     | BO-1               |
-| FR-20 | System shall re-rank retrieved memory by relevance, recency, and confidence before returning it to a requesting agent                                                 | Must     | BO-1               |
-| FR-21 | Working memory shall be cleared at session end; all other memory types persist by default                                                                             | Must     | Product philosophy |
-| FR-22 | System shall run periodic consolidation to compress low-information, duplicate, or superseded memories                                                                | Should   | Phase 15 (cost)    |
+| FR-16 | System shall maintain 22 memory types: Profile, Document, Career, Episodic, Preference, Working | Must | BO-1 |
+| FR-17 | System shall extract entities and typed relationships from every ingested item and write them to a knowledge graph | Must | BO-1 |
+| FR-18 | System shall deduplicate/merge entities using a confidence threshold; below-threshold candidates are created as new, unmerged, flagged nodes rather than force-merged | Must | SM-06 |
+| FR-19 | System shall support hybrid retrieval (vector + keyword + graph traversal) with agent-selected strategy per query | Must | BO-1 |
+| FR-20 | System shall re-rank retrieved memory by relevance, recency, and confidence before returning it to a requesting agent | Must | BO-1 |
+| FR-21 | Working memory shall be cleared at session end; all other memory types persist by default | Must | Product philosophy |
+| FR-22 | System shall run periodic consolidation to compress low-information, duplicate, or superseded memories | Should | Phase 15 (cost) |
 
 _Module: Resume Agent_
 
-| ID    | Requirement                                                                                                                   | Priority | Traces to              |
+| ID | Requirement | Priority | Traces to |
 | ----- | ----------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------- |
-| FR-23 | System shall maintain one master resume assembled from memory; every variant is generated from it, not maintained in parallel | Must     | SM-03                  |
-| FR-24 | When a required field is missing, system shall ask one specific question rather than guess or leave a silent blank            | Must     | SM-05                  |
-| FR-25 | System shall provide ATS-safe templates (single-column, no tables/graphics, standard fonts)                                   | Must     | SM-03                  |
-| FR-26 | System shall version every resume; every generated variant links back to the master-resume version it was built from          | Must     | Traceability principle |
+| FR-23 | System shall maintain one master resume assembled from memory; every variant is generated from it, not maintained in parallel | Must | SM-03 |
+| FR-24 | When a required field is missing, system shall ask one specific question rather than guess or leave a silent blank | Must | SM-05 |
+| FR-25 | System shall provide ATS-safe templates (single-column, no tables/graphics, standard fonts) | Must | SM-03 |
+| FR-26 | System shall version every resume; every generated variant links back to the master-resume version it was built from | Must | Traceability principle |
 
 _Module: ATS Agent_
 
-| ID    | Requirement                                                                                                    | Priority | Traces to                        |
+| ID | Requirement | Priority | Traces to |
 | ----- | -------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------- |
-| FR-27 | System shall score the master resume against a pasted job description and return a match percentage            | Must     | SM-03                            |
-| FR-28 | System shall flag missing keywords and propose specific rewrites as a diff — never silently rewrite the resume | Must     | Product philosophy               |
-| FR-29 | ATS Agent shall operate read-only; it never edits resume content directly                                      | Must     | Separation-of-concerns principle |
+| FR-27 | System shall score the master resume against a pasted job description and return a match percentage | Must | SM-03 |
+| FR-28 | System shall flag missing keywords and propose specific rewrites as a diff — never silently rewrite the resume | Must | Product philosophy |
+| FR-29 | ATS Agent shall operate read-only; it never edits resume content directly | Must | Separation-of-concerns principle |
 
 _Module: Job Search & Application_
 
-| ID    | Requirement                                                                                                                                               | Priority | Traces to                       |
+| ID | Requirement | Priority | Traces to |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------- |
-| FR-30 | System shall search connected/API-available platforms and return a ranked shortlist with a stated fit reason per role                                     | Must     | SM-03                           |
-| FR-31 | System shall filter out roles the user has already rejected                                                                                               | Must     | BO-1                            |
-| FR-32 | Nothing shall leave the system (no application submitted) until explicit user approval of the specific role                                               | Must     | Product philosophy              |
-| FR-33 | For platforms with an official API, system may submit directly after approval; for others, system shall deep-link with tailored documents ready to attach | Must     | Domain constraint D.5 (Phase 2) |
-| FR-34 | Every application (auto or manual) shall be logged to Career memory with status tracking                                                                  | Must     | SM-03                           |
-| FR-35 | System shall never perform headless-browser scraping/auto-submission against a platform's stated terms of service                                         | Must     | Legal/ToS constraint            |
+| FR-30 | System shall search connected/API-available platforms and return a ranked shortlist with a stated fit reason per role | Must | SM-03 |
+| FR-31 | System shall filter out roles the user has already rejected | Must | BO-1 |
+| FR-32 | Nothing shall leave the system (no application submitted) until explicit user approval of the specific role | Must | Product philosophy |
+| FR-33 | For platforms with an official API, system may submit directly after approval; for others, system shall deep-link with tailored documents ready to attach | Must | Domain constraint D.5 (Phase 2) |
+| FR-34 | Every application (auto or manual) shall be logged to Career memory with status tracking | Must | SM-03 |
+| FR-35 | System shall never perform headless-browser scraping/auto-submission against a platform's stated terms of service | Must | Legal/ToS constraint |
 
 _Module: Gmail Agent_
 
-| ID    | Requirement                                                                                                                        | Priority | Traces to              |
+| ID | Requirement | Priority | Traces to |
 | ----- | ---------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------- |
-| FR-36 | System shall run a scheduled daily classification pass (default 06:00, user-configurable)                                          | Must     | SM-04                  |
-| FR-37 | System shall run a lightweight real-time push hook for high-priority classifiers (interview, deadline-today, urgent-known-contact) | Must     | SM-04                  |
-| FR-38 | Gmail Agent shall draft only; it shall never send mail autonomously                                                                | Must     | Product philosophy     |
-| FR-39 | Every extracted deadline shall be cross-checked against the Scheduler for conflicts before being added                             | Should   | Data-quality principle |
+| FR-36 | System shall run a scheduled daily classification pass (default 06:00, user-configurable) | Must | SM-04 |
+| FR-37 | System shall run a lightweight real-time push hook for high-priority classifiers (interview, deadline-today, urgent-known-contact) | Must | SM-04 |
+| FR-38 | Gmail Agent shall draft only; it shall never send mail autonomously | Must | Product philosophy |
+| FR-39 | Every extracted deadline shall be cross-checked against the Scheduler for conflicts before being added | Should | Data-quality principle |
 
 _Module: Scheduler_
 
-| ID    | Requirement                                                                                                  | Priority | Traces to |
+| ID | Requirement | Priority | Traces to |
 | ----- | ------------------------------------------------------------------------------------------------------------ | -------- | --------- |
-| FR-40 | System shall unify calendar events, Gmail-extracted deadlines, and manually entered events into one schedule | Must     | BO-1      |
-| FR-41 | System shall detect and surface scheduling conflicts                                                         | Must     | SM-04     |
+| FR-40 | System shall unify calendar events, Gmail-extracted deadlines, and manually entered events into one schedule | Must | BO-1 |
+| FR-41 | System shall detect and surface scheduling conflicts | Must | SM-04 |
 
 _Module: Settings, Permissions, Autonomy, Data Control_
 
-| ID    | Requirement                                                                                      | Priority | Traces to             |
+| ID | Requirement | Priority | Traces to |
 | ----- | ------------------------------------------------------------------------------------------------ | -------- | --------------------- |
-| FR-42 | System shall provide per-agent, per-action-type autonomy settings (not one global toggle)        | Must     | Product philosophy    |
-| FR-43 | System shall provide a single "export everything" control producing a complete, portable archive | Must     | SM-08, legal baseline |
-| FR-44 | System shall provide a single "delete everything" control that is immediate and verifiable       | Must     | SM-08, legal baseline |
-| FR-45 | System shall provide a complete, filterable activity/audit log of every agent action             | Must     | FR-14 support         |
+| FR-42 | System shall provide per-agent, per-action-type autonomy settings (not one global toggle) | Must | Product philosophy |
+| FR-43 | System shall provide a single "export everything" control producing a complete, portable archive | Must | SM-08, legal baseline |
+| FR-44 | System shall provide a single "delete everything" control that is immediate and verifiable | Must | SM-08, legal baseline |
+| FR-45 | System shall provide a complete, filterable activity/audit log of every agent action | Must | FR-14 support |
 
 _Module: Pages / UI surface_
 
-| ID    | Requirement                                                                                                                                              | Priority | Traces to  |
+| ID | Requirement | Priority | Traces to |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------- |
-| FR-46 | System shall provide 10 v1 pages: Dashboard, Workspace, Memory Graph, Resume & Career, Jobs & Internships, Chat, Schedule, Connectors, History, Settings | Must     | SRC-01 §10 |
-| FR-47 | System shall provide an in-app viewer for PDF, DOCX, image, and code files                                                                               | Must     | SM-07      |
-| FR-48 | System shall provide a chat interface that can route to the Orchestrator or a specific named agent                                                       | Must     | BO-1       |
-| FR-49 | System shall provide a navigable (not merely illustrative) Memory Graph view                                                                             | Should   | BO-1       |
-| FR-50 | System shall support batch-approve for Organization Agent proposals                                                                                      | Must     | SM-01      |
-| FR-51 | System shall surface per-agent status (recent actions, anything needing attention) on the Dashboard                                                      | Should   | BO-1       |
+| FR-46 | System shall provide 10 v1 pages: Dashboard, Workspace, Memory Graph, Resume & Career, Jobs & Internships, Chat, Schedule, Connectors, History, Settings | Must | SRC-01 §10 |
+| FR-47 | System shall provide an in-app viewer for PDF, DOCX, image, and code files | Must | SM-07 |
+| FR-48 | System shall provide a chat interface that can route to the Orchestrator or a specific named agent | Must | BO-1 |
+| FR-49 | System shall provide a navigable (not merely illustrative) Memory Graph view | Should | BO-1 |
+| FR-50 | System shall support batch-approve for Organization Agent proposals | Must | SM-01 |
+| FR-51 | System shall surface per-agent status (recent actions, anything needing attention) on the Dashboard | Should | BO-1 |
 
 **D.2 Non-Functional Requirements**
 
-| ID     | Category        | Requirement                                   | Target                                                                                                                                                |
+| ID | Category | Requirement | Target |
 | ------ | --------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NFR-01 | Performance     | P95 API response time for read endpoints      | < 300ms (Phase 15 detail)                                                                                                                             |
-| NFR-02 | Performance     | P95 ingestion-to-first-entity-visible latency | < 5 min (= SM-07)                                                                                                                                     |
-| NFR-03 | Availability    | Core API uptime                               | ≥ 99.5% (MVP tier; enterprise raises this, see enterprise document)                                                                                   |
-| NFR-04 | Scalability     | Concurrent workspace capacity at MVP          | Support the Phase-15 capacity model (single-digit-thousands active workspaces) without architecture change                                            |
-| NFR-05 | Security        | Encryption                                    | At-rest and in-transit encryption for all documents and memory stores                                                                                 |
-| NFR-06 | Security        | Secrets handling                              | OAuth tokens/API keys never stored in application DB rows — secrets manager only                                                                      |
-| NFR-07 | Security        | Least privilege                               | Every connector starts read-only; every agent has an explicit, minimal declared tool list                                                             |
-| NFR-08 | Reliability     | Reversibility                                 | Every Organization Agent action must be undoable from the audit log                                                                                   |
-| NFR-09 | Usability       | Accessibility                                 | WCAG 2.1 AA (Assumption A-09.1, Phase 9)                                                                                                              |
-| NFR-10 | Maintainability | Debounced processing                          | No file re-embedded on every touch, only on meaningful content change                                                                                 |
-| NFR-11 | Data integrity  | No silent overwrite                           | Contradictory facts are kept, marked superseded, and surfaced — never silently overwritten                                                            |
-| NFR-12 | Compliance      | Data control                                  | "Export everything" and "delete everything" available from day one, unconditionally                                                                   |
-| NFR-13 | Cost            | AI cost control                               | Tiered model routing + prompt caching + debounced embedding as the primary cost levers (no quality degradation as a lever)                            |
-| NFR-14 | Observability   | Traceability                                  | Every agent action must be traceable end-to-end (agent → tool call → memory write) even though full production observability tooling is Phase 17-only |
+| NFR-01 | Performance | P95 API response time for read endpoints | < 300ms (Phase 15 detail) |
+| NFR-02 | Performance | P95 ingestion-to-first-entity-visible latency | < 5 min (= SM-07) |
+| NFR-03 | Availability | Core API uptime | ≥ 99.5% (MVP tier; enterprise raises this, see enterprise document) |
+| NFR-04 | Scalability | Concurrent workspace capacity at MVP | Support the Phase-15 capacity model (single-digit-thousands active workspaces) without architecture change |
+| NFR-05 | Security | Encryption | At-rest and in-transit encryption for all documents and memory stores |
+| NFR-06 | Security | Secrets handling | OAuth tokens/API keys never stored in application DB rows — secrets manager only |
+| NFR-07 | Security | Least privilege | Every connector starts read-only; every agent has an explicit, minimal declared tool list |
+| NFR-08 | Reliability | Reversibility | Every Organization Agent action must be undoable from the audit log |
+| NFR-09 | Usability | Accessibility | WCAG 2.1 AA (Assumption A-09.1, Phase 9) |
+| NFR-10 | Maintainability | Debounced processing | No file re-embedded on every touch, only on meaningful content change |
+| NFR-11 | Data integrity | No silent overwrite | Contradictory facts are kept, marked superseded, and surfaced — never silently overwritten |
+| NFR-12 | Compliance | Data control | "Export everything" and "delete everything" available from day one, unconditionally |
+| NFR-13 | Cost | AI cost control | Tiered model routing + prompt caching + debounced embedding as the primary cost levers (no quality degradation as a lever) |
+| NFR-14 | Observability | Traceability | Every agent action must be traceable end-to-end (agent → tool call → memory write) even though full production observability tooling is Phase 17-only |
 
 ### E. Deliverables
 
@@ -757,11 +757,11 @@ N/A.
 
 ### G. Verification Results
 
-| Check                                                                              | Result                           |
+| Check | Result |
 | ---------------------------------------------------------------------------------- | -------------------------------- |
-| Every FR traces to a source-corpus section or an explicitly labeled new derivation | ✅ Pass                          |
-| Every FR is independently testable (has a clear pass/fail condition)               | ✅ Pass — verified by inspection |
-| No FR contradicts the product philosophy (D.4, Phase 1)                            | ✅ Pass                          |
+| Every FR traces to a source-corpus section or an explicitly labeled new derivation | ✅ Pass |
+| Every FR is independently testable (has a clear pass/fail condition) | ✅ Pass — verified by inspection |
+| No FR contradicts the product philosophy (D.4, Phase 1) | ✅ Pass |
 
 ### H. Requirement Traceability
 
@@ -770,7 +770,7 @@ is re-referenced (not re-listed) in Phases 5, 7, 8, 9, 14.
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                                              | Mitigation                                                                                         |
+| ID | Risk | Mitigation |
 | -------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | RISK-3.1 | 51 FRs is a lot for a single MVP cohort; scope creep risk if all are treated as equally must-have | Priority column (Must/Should) explicitly separates the build-blocking set from the fast-follow set |
 
@@ -813,25 +813,25 @@ scope-to-phase mapping).
 
 ### C. Questions and Unknowns
 
-| ID    | Question                                                           | Disposition                                                                                                       |
+| ID | Question | Disposition |
 | ----- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| Q-4.1 | Calendar start/end dates                                           | **REQUIRES_STAKEHOLDER_DECISION** — plan below is dependency-sequenced, not date-anchored                         |
-| Q-4.2 | Team headcount and role availability                               | **REQUIRES_STAKEHOLDER_DECISION** — RACI uses role placeholders, not named individuals                            |
+| Q-4.1 | Calendar start/end dates | **REQUIRES_STAKEHOLDER_DECISION** — plan below is dependency-sequenced, not date-anchored |
+| Q-4.2 | Team headcount and role availability | **REQUIRES_STAKEHOLDER_DECISION** — RACI uses role placeholders, not named individuals |
 | Q-4.3 | Whether desktop companion ships with Phase 0–2 or is fast-followed | Assumption **A-4.3**: ships alongside Phase 0/1 (Foundation) since local-folder ingestion is a Phase 1 dependency |
 
 ### D. Work Completed
 
 **D.1 Work Breakdown Structure (7 delivery phases, mapped to FR/NFR coverage).**
 
-| Build Phase                               | Scope (WBS)                                                              | FR/NFR covered     | Exit milestone                                         | Complexity |
+| Build Phase | Scope (WBS) | FR/NFR covered | Exit milestone | Complexity |
 | ----------------------------------------- | ------------------------------------------------------------------------ | ------------------ | ------------------------------------------------------ | ---------- |
-| 0 — Infrastructure & Scaffolding          | Empty API/AI services, Postgres+Redis, CI skeleton, auth                 | Enables all        | Sign up → empty workspace                              | S          |
-| 1 — Ingestion & Memory Foundation         | Upload endpoint, parse/OCR/extract, Memory Agent v1, graph+vector tables | FR-06–10, FR-16–22 | Resume upload → correct queryable entities             | L          |
-| 2 — Organization Agent & Workspace        | Naming/foldering/dedup, approval flow, Archive                           | FR-11–15           | >90% proposal approval (SM-01)                         | M          |
-| 3 — Resume & ATS                          | Resume Agent, ATS Agent, templates                                       | FR-23–29           | Tailored variant in < 1 min                            | M          |
-| 4 — Career Intelligence                   | Job Search Agent, Application Agent, QA gate                             | FR-30–35           | Query → submitted application, one session (SM-03)     | L          |
-| 5 — Communication & Time                  | Gmail Agent, Scheduler Agent                                             | FR-36–41           | Urgent mail surfaced within minutes (SM-04)            | M          |
-| 6 — Polish, Autonomy, Dashboard, Settings | Dashboard, History, autonomy settings, export/delete                     | FR-42–51           | Full first-week journey, zero manual team intervention | M          |
+| 0 — Infrastructure & Scaffolding | Empty API/AI services, Postgres+Redis, CI skeleton, auth | Enables all | Sign up → empty workspace | S |
+| 1 — Ingestion & Memory Foundation | Upload endpoint, parse/OCR/extract, Memory Agent v1, graph+vector tables | FR-06–10, FR-16–22 | Resume upload → correct queryable entities | L |
+| 2 — Organization Agent & Workspace | Naming/foldering/dedup, approval flow, Archive | FR-11–15 | >90% proposal approval (SM-01) | M |
+| 3 — Resume & ATS | Resume Agent, ATS Agent, templates | FR-23–29 | Tailored variant in < 1 min | M |
+| 4 — Career Intelligence | Job Search Agent, Application Agent, QA gate | FR-30–35 | Query → submitted application, one session (SM-03) | L |
+| 5 — Communication & Time | Gmail Agent, Scheduler Agent | FR-36–41 | Urgent mail surfaced within minutes (SM-04) | M |
+| 6 — Polish, Autonomy, Dashboard, Settings | Dashboard, History, autonomy settings, export/delete | FR-42–51 | Full first-week journey, zero manual team intervention | M |
 
 **D.2 Dependency graph.**
 
@@ -846,13 +846,13 @@ if staffed separately.
 
 **D.3 RACI (role-based, not headcount-based per Q-4.2).**
 
-| Activity                                           | Responsible        | Accountable          | Consulted                   | Informed        |
+| Activity | Responsible | Accountable | Consulted | Informed |
 | -------------------------------------------------- | ------------------ | -------------------- | --------------------------- | --------------- |
-| Architecture decisions                             | Solution Architect | Enterprise Architect | Data/Security Architects    | Full team       |
-| Memory Agent extraction quality bar (Phase 1 exit) | AI/ML Engineer     | Product Manager      | Domain Specialist           | Program Manager |
-| Proposal-approval-rate tracking (Phase 2 exit)     | QA Lead            | Product Manager      | UX Lead                     | Program Manager |
-| Platform ToS compliance (Phase 4)                  | Backend Engineer   | Security Architect   | Compliance Specialist       | Program Manager |
-| Release go/no-go (Phase 6 exit)                    | Release Manager    | Program Manager      | QA Lead, Security Architect | Full team       |
+| Architecture decisions | Solution Architect | Enterprise Architect | Data/Security Architects | Full team |
+| Memory Agent extraction quality bar (Phase 1 exit) | AI/ML Engineer | Product Manager | Domain Specialist | Program Manager |
+| Proposal-approval-rate tracking (Phase 2 exit) | QA Lead | Product Manager | UX Lead | Program Manager |
+| Platform ToS compliance (Phase 4) | Backend Engineer | Security Architect | Compliance Specialist | Program Manager |
+| Release go/no-go (Phase 6 exit) | Release Manager | Program Manager | QA Lead, Security Architect | Full team |
 
 **D.4 Change control.** Any change to a **Must**-priority FR (Phase 3) after
 Phase 4 sign-off requires Program Manager + Product Manager joint approval and a
@@ -878,10 +878,10 @@ N/A.
 
 ### G. Verification Results
 
-| Check                                         | Result                           |
+| Check | Result |
 | --------------------------------------------- | -------------------------------- |
-| Every build phase maps to specific FR/NFR IDs | ✅ Pass                          |
-| Dependency graph has no cycles                | ✅ Pass (verified by inspection) |
+| Every build phase maps to specific FR/NFR IDs | ✅ Pass |
+| Dependency graph has no cycles | ✅ Pass (verified by inspection) |
 
 ### H. Requirement Traceability
 
@@ -890,10 +890,10 @@ build sequence.
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                       | Likelihood | Impact                              | Mitigation                                             |
+| ID | Risk | Likelihood | Impact | Mitigation |
 | -------- | -------------------------------------------------------------------------- | ---------- | ----------------------------------- | ------------------------------------------------------ |
-| RISK-4.1 | Phase 1 (memory foundation) quality gate is subjective ("genuinely solid") | Medium     | High — blocks all downstream phases | SM-06 (< 0.5% wrong-merge rate) gives it a numeric bar |
-| RISK-4.2 | No calendar/budget means stakeholder expectation-setting is incomplete     | High       | Medium                              | Explicitly flagged, not silently assumed               |
+| RISK-4.1 | Phase 1 (memory foundation) quality gate is subjective ("genuinely solid") | Medium | High — blocks all downstream phases | SM-06 (< 0.5% wrong-merge rate) gives it a numeric bar |
+| RISK-4.2 | No calendar/budget means stakeholder expectation-setting is incomplete | High | Medium | Explicitly flagged, not silently assumed |
 
 ### J. Quality Gate
 
@@ -946,39 +946,39 @@ None blocking — architecture is fully determined by Phase 1–3 outputs.
 
 ```mermaid
 graph TD
-    subgraph L1["01 · Interface"]
-        I1["Web App (Next.js)"]
-        I2["Desktop Companion"]
-        I3["VS Code Extension"]
-    end
-    subgraph L2["02 · Connectors & Plugins"]
-        C1["Gmail · GitHub · Drive (OAuth)"]
-        C2["Local Folder (scoped)"]
-        C3["Plugin SDK (MCP-shaped)"]
-    end
-    subgraph L3["03 · Ingestion Engine"]
-        G1["Parser · OCR · Code Understanding · Semantic Extractor"]
-    end
-    subgraph L4["04 · Agent Orchestration"]
-        O1["Orchestrator + 8 agents"]
-    end
-    subgraph L5["05 · Memory & Knowledge — CORE"]
-        M1["Knowledge Graph · Vector Store · Structured Memory · Agentic RAG"]
-    end
-    subgraph L6["06 · Storage & Security"]
-        S1["Encrypted Storage · Secrets Manager · Permission Engine · Audit Log"]
-    end
-    L1 --> L2 --> L3 --> L4 --> L5 --> L6
+ subgraph L1["01 · Interface"]
+ I1["Web App (Next.js)"]
+ I2["Desktop Companion"]
+ I3["VS Code Extension"]
+ end
+ subgraph L2["02 · Connectors & Plugins"]
+ C1["Gmail · GitHub · Drive (OAuth)"]
+ C2["Local Folder (scoped)"]
+ C3["Plugin SDK (MCP-shaped)"]
+ end
+ subgraph L3["03 · Ingestion Engine"]
+ G1["Parser · OCR · Code Understanding · Semantic Extractor"]
+ end
+ subgraph L4["04 · Agent Orchestration"]
+ O1["Orchestrator + 8 agents"]
+ end
+ subgraph L5["05 · Memory & Knowledge -- CORE"]
+ M1["Knowledge Graph · Vector Store · Structured Memory · Agentic RAG"]
+ end
+ subgraph L6["06 · Storage & Security"]
+ S1["Encrypted Storage · Secrets Manager · Permission Engine · Audit Log"]
+ end
+ L1--> L2--> L3--> L4--> L5--> L6
 ```
 
 **D.2 Component boundary table.**
 
-| Component                                | Owns                                                | Does not own                                         |
+| Component | Owns | Does not own |
 | ---------------------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
-| Core API (FastAPI)                       | Auth, CRUD, permission enforcement, request routing | Agent reasoning, memory writes                       |
-| AI/Agent Service (FastAPI, same backend) | All 8 agents, Orchestrator, agentic RAG             | User auth, connector token storage                   |
-| Memory Agent (within AI service)         | All writes to knowledge graph + vector store        | Direct DB access by any other agent                  |
-| Permission Engine (within Core API)      | Every connector/agent/action scope check            | Business logic of what an agent does once authorized |
+| Core API (FastAPI) | Auth, CRUD, permission enforcement, request routing | Agent reasoning, memory writes |
+| AI/Agent Service (FastAPI, same backend) | All 8 agents, Orchestrator, agentic RAG | User auth, connector token storage |
+| Memory Agent (within AI service) | All writes to knowledge graph + vector store | Direct DB access by any other agent |
+| Permission Engine (within Core API) | Every connector/agent/action scope check | Business logic of what an agent does once authorized |
 
 **D.3 Integration architecture (connectors as MCP-shaped internal tools).**
 Every connector — hosted (Gmail/GitHub/Drive) or local (folder/VS Code) — is
@@ -989,25 +989,25 @@ rewrite.
 
 **D.4 Architecture Decision Records.**
 
-| ADR     | Decision                                                                                            | Status   | Rationale                                                                                                       | Alternatives rejected                                                                                                                                                        |
+| ADR | Decision | Status | Rationale | Alternatives rejected |
 | ------- | --------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-001 | Single FastAPI monolith (Python) for both Core API and AI/Agent service — not two separate services | Accepted | Python's AI/ML ecosystem materially stronger for embeddings/orchestration; single service simplifies deployment | Two-service NestJS/TS + FastAPI/Python split — rejected: unnecessary operational complexity for MVP scale                                                                    |
-| ADR-002 | All connectors and plugins built MCP-shaped from day one, even before consuming real MCP servers    | Accepted | Makes the eventual move to real MCP a transport change, not an integration rewrite                              | Bespoke per-connector interfaces — rejected: would require a rewrite at enterprise scale (SRC's own Enterprise Paper §5.3 depends on this decision already having been made) |
-| ADR-003 | Postgres + Apache AGE (graph extension) + pgvector at MVP, not a dedicated graph/vector DB          | Accepted | Avoids operating two extra database systems before volume justifies it                                          | Neo4j + Qdrant from day one — rejected: premature operational complexity for MVP-scale data volume                                                                           |
-| ADR-004 | Suggest-mode as an architectural invariant enforced at the Orchestrator, not per-agent              | Accepted | A single enforcement point is auditable; per-agent enforcement risks drift                                      | Trusting each agent's own prompt to self-limit — rejected: unauditable, a prompt is not an access-control boundary                                                           |
-| ADR-005 | Memory Agent is the sole writer to the knowledge graph/vector store; no other agent writes directly | Accepted | Centralizes merge/dedup judgment in one place, avoids silent conflicting writes from concurrent agents          | Each agent writes its own memory subtype directly — rejected: creates race conditions and duplicate entities across agents                                                   |
-| ADR-006 | Archive-only deletion model (no hard delete except the explicit account-level "delete everything")  | Accepted | Matches the non-negotiable product philosophy (Phase 1, D.4); cheap to build right from day one                 | Trash bin with a retention timer — rejected: contradicts "never destructive," and the source corpus explicitly rules this out (SRC-01 §11)                                   |
+| ADR-001 | Single FastAPI monolith (Python) for both Core API and AI/Agent service — not two separate services | Accepted | Python's AI/ML ecosystem materially stronger for embeddings/orchestration; single service simplifies deployment | Two-service NestJS/TS + FastAPI/Python split — rejected: unnecessary operational complexity for MVP scale |
+| ADR-002 | All connectors and plugins built MCP-shaped from day one, even before consuming real MCP servers | Accepted | Makes the eventual move to real MCP a transport change, not an integration rewrite | Bespoke per-connector interfaces — rejected: would require a rewrite at enterprise scale (SRC's own Enterprise Paper §5.3 depends on this decision already having been made) |
+| ADR-003 | Postgres + Apache AGE (graph extension) + pgvector at MVP, not a dedicated graph/vector DB | Accepted | Avoids operating two extra database systems before volume justifies it | Neo4j + Qdrant from day one — rejected: premature operational complexity for MVP-scale data volume |
+| ADR-004 | Suggest-mode as an architectural invariant enforced at the Orchestrator, not per-agent | Accepted | A single enforcement point is auditable; per-agent enforcement risks drift | Trusting each agent's own prompt to self-limit — rejected: unauditable, a prompt is not an access-control boundary |
+| ADR-005 | Memory Agent is the sole writer to the knowledge graph/vector store; no other agent writes directly | Accepted | Centralizes merge/dedup judgment in one place, avoids silent conflicting writes from concurrent agents | Each agent writes its own memory subtype directly — rejected: creates race conditions and duplicate entities across agents |
+| ADR-006 | Archive-only deletion model (no hard delete except the explicit account-level "delete everything") | Accepted | Matches the non-negotiable product philosophy (Phase 1, D.4); cheap to build right from day one | Trash bin with a retention timer — rejected: contradicts "never destructive," and the source corpus explicitly rules this out (SRC-01 §11) |
 
 **D.5 NFR satisfaction matrix.**
 
-| NFR                            | Satisfied by                                                                                              |
+| NFR | Satisfied by |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| NFR-03 (availability)          | Stateless API layer behind a load balancer; AI service scaled independently (ADR-001)                     |
+| NFR-03 (availability) | Stateless API layer behind a load balancer; AI service scaled independently (ADR-001) |
 | NFR-05/06 (encryption/secrets) | L6 Storage & Security layer; secrets manager is architecturally separate from the relational DB (Phase 7) |
-| NFR-07 (least privilege)       | Permission Engine (D.2) is the single enforcement point for every connector/agent/action triple           |
-| NFR-08 (reversibility)         | ADR-006 + Audit Log component                                                                             |
-| NFR-10 (debounced processing)  | Ingestion Engine (L3) content-hash check before re-embedding (detailed in Phase 12)                       |
-| NFR-13 (cost)                  | ADR-001's independent scaling + model routing (Phase 6/12)                                                |
+| NFR-07 (least privilege) | Permission Engine (D.2) is the single enforcement point for every connector/agent/action triple |
+| NFR-08 (reversibility) | ADR-006 + Audit Log component |
+| NFR-10 (debounced processing) | Ingestion Engine (L3) content-hash check before re-embedding (detailed in Phase 12) |
+| NFR-13 (cost) | ADR-001's independent scaling + model routing (Phase 6/12) |
 
 **D.6 Enterprise-extensibility note.** This architecture is designed so the
 enterprise document (companion file) adds layers (Events & Realtime, Data
@@ -1026,10 +1026,10 @@ N/A — architecture phase, no code yet (Phase 10/11).
 
 ### G. Verification Results
 
-| Check                                                                   | Result                                                                        |
+| Check | Result |
 | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Every NFR from Phase 3 has an architectural answer                      | ✅ Pass — D.5                                                                 |
-| No ADR contradicts the product philosophy (Phase 1, D.4)                | ✅ Pass                                                                       |
+| Every NFR from Phase 3 has an architectural answer | ✅ Pass — D.5 |
+| No ADR contradicts the product philosophy (Phase 1, D.4) | ✅ Pass |
 | Architecture is extensible to enterprise scope without L1–L3/L6 rewrite | ✅ Pass — verified against the enterprise document's Phase 5 (companion file) |
 
 ### H. Requirement Traceability
@@ -1039,7 +1039,7 @@ D.4's ADRs are cited by ID in Phases 7, 8, 11, 13, 16.
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                                                                   | Mitigation                                                                                                     |
+| ID | Risk | Mitigation |
 | -------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | RISK-5.1 | ADR-003 (Postgres+AGE+pgvector) may hit traversal-performance limits before enterprise migration to Neo4j is scheduled | Phase 15 defines the specific load threshold that triggers the migration, so it isn't discovered in production |
 
@@ -1084,7 +1084,7 @@ SRC-06 §10 (Tech Stack table), Phase 5 (ADR-001, ADR-003).
 
 ### C. Questions and Unknowns
 
-| ID    | Question                                                                              | Disposition                                                                                                      |
+| ID | Question | Disposition |
 | ----- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Q-6.1 | Specific cloud vendor for managed Postgres/object storage (open since Phase 0, Q-0.4) | Non-blocking — stack below is vendor-agnostic at every layer except these two; **REQUIRES_STAKEHOLDER_DECISION** |
 
@@ -1093,39 +1093,39 @@ SRC-06 §10 (Tech Stack table), Phase 5 (ADR-001, ADR-003).
 **D.1 Stack (MVP column only; enterprise evolution column is in the companion
 document).**
 
-| Layer            | Choice                                          | Why                                                                              |
+| Layer | Choice | Why |
 | ---------------- | ----------------------------------------------- | -------------------------------------------------------------------------------- |
-| Frontend         | React + TypeScript, Next.js                     | SSR for fast first paint; large ecosystem/hiring pool                            |
-| Styling          | Tailwind CSS                                    | Fast iteration without a heavy design-system build                               |
-| Client state     | TanStack Query                                  | Handles cache/sync with backend without hand-rolled logic                        |
-| Core API         | Python (FastAPI)                                | Shared language with frontend; strong async I/O (ADR-001)                        |
-| AI/Agent service | Python (FastAPI)                                | Strongest AI/ML ecosystem for embeddings/orchestration (ADR-001)                 |
-| Agent reasoning  | Anthropic Claude API (tool-calling)             | Native tool-use matches the MCP-shaped connector architecture directly (ADR-002) |
-| Relational DB    | PostgreSQL                                      | Mature, strong JSON support for evolving schemas                                 |
-| Graph            | PostgreSQL + Apache AGE                         | Avoids a second DB system pre-scale (ADR-003)                                    |
-| Vector           | pgvector                                        | Same rationale as graph (ADR-003)                                                |
-| Keyword search   | PostgreSQL FTS (SQL ILIKE)                      | Meilisearch NOT_INSTALLED; SQL ILIKE is sufficient at MVP scale                  |
-| Object storage   | S3-compatible                                   | Industry standard, CDN-friendly                                                  |
-| Auth             | Managed OAuth/SSO provider                      | Avoids rebuilding a security-critical component in-house                         |
-| Queue/event bus  | Redis (BullMQ installed, no consumers deployed) | Simple to operate pre-multi-tenant scale                                         |
-| Scheduler        | Managed cron                                    | Reliable triggers for Gmail/Reflection-style passes without custom infra         |
-| Cache            | Redis                                           | Doubles as queue backend at MVP                                                  |
-| Deployment       | PaaS + Docker                                   | Move fast pre-scale                                                              |
-| Observability    | OpenTelemetry + hosted APM                      | Multi-hop agent chains need distributed tracing from day one                     |
-| CI/CD            | GitHub Actions                                  | Tightly integrated with GitHub, already a first-class connector                  |
+| Frontend | React + TypeScript, Next.js | SSR for fast first paint; large ecosystem/hiring pool |
+| Styling | Tailwind CSS | Fast iteration without a heavy design-system build |
+| Client state | TanStack Query | Handles cache/sync with backend without hand-rolled logic |
+| Core API | Python (FastAPI) | Shared language with frontend; strong async I/O (ADR-001) |
+| AI/Agent service | Python (FastAPI) | Strongest AI/ML ecosystem for embeddings/orchestration (ADR-001) |
+| Agent reasoning | Anthropic Claude API (tool-calling) | Native tool-use matches the MCP-shaped connector architecture directly (ADR-002) |
+| Relational DB | PostgreSQL | Mature, strong JSON support for evolving schemas |
+| Graph | PostgreSQL + Apache AGE | Avoids a second DB system pre-scale (ADR-003) |
+| Vector | pgvector | Same rationale as graph (ADR-003) |
+| Keyword search | PostgreSQL FTS (SQL ILIKE) | Meilisearch NOT_INSTALLED; SQL ILIKE is sufficient at MVP scale |
+| Object storage | S3-compatible | Industry standard, CDN-friendly |
+| Auth | Managed OAuth/SSO provider | Avoids rebuilding a security-critical component in-house |
+| Queue/event bus | Redis (BullMQ installed, no consumers deployed) | Simple to operate pre-multi-tenant scale |
+| Scheduler | Managed cron | Reliable triggers for Gmail/Reflection-style passes without custom infra |
+| Cache | Redis | Doubles as queue backend at MVP |
+| Deployment | PaaS + Docker | Move fast pre-scale |
+| Observability | OpenTelemetry + hosted APM | Multi-hop agent chains need distributed tracing from day one |
+| CI/CD | GitHub Actions | Tightly integrated with GitHub, already a first-class connector |
 
 **D.2 Engineering standards (newly authored).**
 
-| Standard           | Rule                                                                                                                  |
+| Standard | Rule |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| Branching          | Trunk-based with short-lived feature branches; no branch older than 3 working days without rebase                     |
-| Code review        | Every PR requires 1 approving review; PRs touching `permissions/`, `agents/*/handler.py`, or any migration require 2  |
-| Commit convention  | Conventional Commits (`feat:`, `fix:`, `chore:`, etc.) — enables automated changelog generation                       |
-| Versioning         | SemVer for every published package (`shared-types`, `plugin-sdk`); API versioned in the URL (`/v1/...`) per Phase 8   |
-| Dependency policy  | No new runtime dependency without a documented reason in the PR description; Dependabot/Renovate enabled from Phase 0 |
-| Linting/formatting | ESLint + Prettier (TS), Ruff + Black (Python), enforced in CI, not just pre-commit                                    |
-| Test-before-merge  | CI must pass unit tests + type-check before merge is allowed; no direct pushes to `main`                              |
-| Secrets            | Never committed; `.env.example` only in the repo, real values only in the secrets manager (Phase 13)                  |
+| Branching | Trunk-based with short-lived feature branches; no branch older than 3 working days without rebase |
+| Code review | Every PR requires 1 approving review; PRs touching `permissions/`, `agents/*/handler.py`, or any migration require 2 |
+| Commit convention | Conventional Commits (`feat:`, `fix:`, `chore:`, etc.) — enables automated changelog generation |
+| Versioning | SemVer for every published package (`shared-types`, `plugin-sdk`); API versioned in the URL (`/v1/...`) per Phase 8 |
+| Dependency policy | No new runtime dependency without a documented reason in the PR description; Dependabot/Renovate enabled from Phase 0 |
+| Linting/formatting | ESLint + Prettier (TS), Ruff + Black (Python), enforced in CI, not just pre-commit |
+| Test-before-merge | CI must pass unit tests + type-check before merge is allowed; no direct pushes to `main` |
+| Secrets | Never committed; `.env.example` only in the repo, real values only in the secrets manager (Phase 13) |
 
 ### E. Deliverables
 
@@ -1148,10 +1148,10 @@ line-length = 100
 
 ### G. Verification Results
 
-| Check                                                                                                                                | Result  |
+| Check | Result |
 | ------------------------------------------------------------------------------------------------------------------------------------ | ------- |
-| Stack choices consistent with ADR-001/003                                                                                            | ✅ Pass |
-| Every stack item vendor-agnostic except the two flagged in Q-6.1                                                                     | ✅ Pass |
+| Stack choices consistent with ADR-001/003 | ✅ Pass |
+| Every stack item vendor-agnostic except the two flagged in Q-6.1 | ✅ Pass |
 | Config snippets above are **illustrative specification artifacts** — `NOT_EXECUTED` (no repository to lint against in this session). |
 
 ### H. Requirement Traceability
@@ -1161,7 +1161,7 @@ level; full satisfaction demonstrated in Phase 15/16.
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                                                             | Mitigation                                                                              |
+| ID | Risk | Mitigation |
 | -------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | RISK-6.1 | Vendor choice (Q-6.1) left open could cause rework if a vendor-specific managed-service feature is assumed later | Phase 7/16 keep the two vendor-specific integration points isolated behind an interface |
 
@@ -1206,19 +1206,19 @@ None blocking.
 
 ```mermaid
 erDiagram
-    USERS ||--o{ WORKSPACES : owns
-    WORKSPACES ||--o{ CONNECTORS : has
-    WORKSPACES ||--o{ DOCUMENTS : contains
-    DOCUMENTS ||--o{ DOCUMENT_VERSIONS : "version chain"
-    WORKSPACES ||--o{ MEMORY_RECORDS : stores
-    WORKSPACES ||--o{ ENTITIES : "knowledge graph nodes"
-    ENTITIES ||--o{ RELATIONSHIPS : "typed edges"
-    WORKSPACES ||--o{ RESUMES : maintains
-    WORKSPACES ||--o{ APPLICATIONS : tracks
-    APPLICATIONS }o--|| RESUMES : "uses version"
-    WORKSPACES ||--o{ SCHEDULE_EVENTS : has
-    WORKSPACES ||--o{ AGENT_ACTIONS : logs
-    WORKSPACES ||--o{ PERMISSIONS : grants
+ USERS ||--o{ WORKSPACES : owns
+ WORKSPACES ||--o{ CONNECTORS : has
+ WORKSPACES ||--o{ DOCUMENTS : contains
+ DOCUMENTS ||--o{ DOCUMENT_VERSIONS : "version chain"
+ WORKSPACES ||--o{ MEMORY_RECORDS : stores
+ WORKSPACES ||--o{ ENTITIES : "knowledge graph nodes"
+ ENTITIES ||--o{ RELATIONSHIPS : "typed edges"
+ WORKSPACES ||--o{ RESUMES : maintains
+ WORKSPACES ||--o{ APPLICATIONS : tracks
+ APPLICATIONS }o--|| RESUMES : "uses version"
+ WORKSPACES ||--o{ SCHEDULE_EVENTS : has
+ WORKSPACES ||--o{ AGENT_ACTIONS : logs
+ WORKSPACES ||--o{ PERMISSIONS : grants
 ```
 
 **D.2 DDL (PostgreSQL 15+, Apache AGE + pgvector extensions).**
@@ -1373,13 +1373,13 @@ CREATE TABLE permissions (
 **D.3 Data dictionary (excerpt — full field-level dictionary for every column
 above; representative rows shown for the three highest-sensitivity tables).**
 
-| Table.Column                             | Type  | Nullable | Classification                                                      | Retention                                                            |
+| Table.Column | Type | Nullable | Classification | Retention |
 | ---------------------------------------- | ----- | -------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `users.email`                            | TEXT  | No       | PII — High                                                          | Retained until account deletion (FR-44)                              |
-| `memory_records.content`                 | JSONB | No       | PII — High (career/personal facts)                                  | Retained until superseded + consolidation window, or explicit delete |
-| `documents.raw_storage_key`              | TEXT  | No       | Pointer only — object itself is High classification                 | Archived, not deleted, until FR-44 invoked                           |
-| `connectors.token_ref`                   | TEXT  | Yes      | Secret pointer — the token itself never touches this table (NFR-06) | Revoked immediately on disconnect                                    |
-| `agent_actions.input_ref` / `output_ref` | JSONB | Yes      | Medium — may contain excerpted PII                                  | Retained per audit policy (Phase 13)                                 |
+| `users.email` | TEXT | No | PII — High | Retained until account deletion (FR-44) |
+| `memory_records.content` | JSONB | No | PII — High (career/personal facts) | Retained until superseded + consolidation window, or explicit delete |
+| `documents.raw_storage_key` | TEXT | No | Pointer only — object itself is High classification | Archived, not deleted, until FR-44 invoked |
+| `connectors.token_ref` | TEXT | Yes | Secret pointer — the token itself never touches this table (NFR-06) | Revoked immediately on disconnect |
+| `agent_actions.input_ref` / `output_ref` | JSONB | Yes | Medium — may contain excerpted PII | Retained per audit policy (Phase 13) |
 
 **D.4 Classification legend.** **High** = directly identifying or sensitive
 (email, resume content, career history). **Medium** = operational metadata that
@@ -1417,11 +1417,11 @@ DDL in D.2 is the specification artifact for this phase.
 
 ### G. Verification Results
 
-| Check                                                                                                                                 | Result                                                                                                                               |
+| Check | Result |
 | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Every table from SRC-06 §11 represented                                                                                               | ✅ Pass                                                                                                                              |
-| Every FK has an explicit `ON DELETE` policy consistent with ADR-006 (no orphaned hard-cascades that could silently destroy user data) | ✅ Pass — `RESTRICT`/`SET NULL`/`CASCADE` chosen deliberately per relationship, see D.2 comments                                     |
-| DDL syntactically valid PostgreSQL 15                                                                                                 | `NOT_EXECUTED` — no live Postgres instance attached to this session; validated by manual inspection against Postgres 15 grammar only |
+| Every table from SRC-06 §11 represented | ✅ Pass |
+| Every FK has an explicit `ON DELETE` policy consistent with ADR-006 (no orphaned hard-cascades that could silently destroy user data) | ✅ Pass — `RESTRICT`/`SET NULL`/`CASCADE` chosen deliberately per relationship, see D.2 comments |
+| DDL syntactically valid PostgreSQL 15 | `NOT_EXECUTED` — no live Postgres instance attached to this session; validated by manual inspection against Postgres 15 grammar only |
 
 ### H. Requirement Traceability
 
@@ -1432,10 +1432,10 @@ indirection), NFR-11 (`superseded_by` columns, never overwritten).
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                                                               | Mitigation                                                                                                                                     |
+| ID | Risk | Mitigation |
 | -------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| RISK-7.1 | DDL is unexecuted/unvalidated against a live engine                                                                | Flagged explicitly in G; first CI run against a real Postgres instance is the actual validation gate, owned by whoever attaches the repository |
-| RISK-7.2 | `JSONB` content column on `memory_records` trades schema rigidity for flexibility — could hide data-quality issues | Phase 14 test plan includes schema-shape validation tests against the JSONB content, not just "column exists" checks                           |
+| RISK-7.1 | DDL is unexecuted/unvalidated against a live engine | Flagged explicitly in G; first CI run against a real Postgres instance is the actual validation gate, owned by whoever attaches the repository |
+| RISK-7.2 | `JSONB` content column on `memory_records` trades schema rigidity for flexibility — could hide data-quality issues | Phase 14 test plan includes schema-shape validation tests against the JSONB content, not just "column exists" checks |
 
 ### J. Quality Gate
 
@@ -1653,11 +1653,11 @@ OpenAPI YAML (D.2) and JSON schema (D.6) above are the specification artifacts.
 
 ### G. Verification Results
 
-| Check                                                          | Result                                          |
+| Check | Result |
 | -------------------------------------------------------------- | ----------------------------------------------- |
-| OpenAPI excerpt is valid 3.1 syntax                            | ✅ Pass — validated by manual schema inspection |
-| Error envelope used consistently across the 3 sample endpoints | ✅ Pass                                         |
-| `NOT_EXECUTED`: no live server to run contract tests against   | Flagged, not fabricated                         |
+| OpenAPI excerpt is valid 3.1 syntax | ✅ Pass — validated by manual schema inspection |
+| Error envelope used consistently across the 3 sample endpoints | ✅ Pass |
+| `NOT_EXECUTED`: no live server to run contract tests against | Flagged, not fabricated |
 
 ### H. Requirement Traceability
 
@@ -1667,7 +1667,7 @@ deliverable a Backend Engineer expands verbatim in Phase 11.
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                                                       | Mitigation                                                                                                                                            |
+| ID | Risk | Mitigation |
 | -------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | RISK-8.1 | Full 51-endpoint OpenAPI file doesn't exist as a standalone `.yaml` yet (only this representative excerpt) | Explicitly the same finding SRC-09 already recorded ("no OpenAPI artifact — docs-only repo"); resolves the moment Phase 11 starts against a real repo |
 
@@ -1706,7 +1706,7 @@ SRC-01 §10, SRC-06 §8 (Screens table), Phase 3 (FR-46–51), Phase 2 (personas
 
 ### C. Questions and Unknowns
 
-| ID    | Question                           | Disposition                                                                                                                                                |
+| ID | Question | Disposition |
 | ----- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Q-9.1 | No accessibility bar was specified | **Assumption A-09.1: WCAG 2.1 AA**, the industry-standard default, adopted since none lower was requested and a workspace/dashboard-heavy product needs it |
 
@@ -1766,12 +1766,12 @@ across color/type/spacing).**
 **D.3 Key-screen wireframe spec (Dashboard, representative depth — same rigor
 applied to all 10 pages in the full artifact).**
 
-| Region       | Content                                                                                           | Data source                                  | Empty state                                                                        |
+| Region | Content | Data source | Empty state |
 | ------------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Header strip | Memory health card, knowledge growth sparkline                                                    | `GET /dashboard/summary`                     | "Your memory is just getting started — upload or connect something to see it grow" |
-| Left column  | Active applications list, upcoming deadlines strip                                                | `applications`, `schedule_events`            | "No applications yet — try the Jobs page"                                          |
-| Right column | AI suggestions panel (approve/dismiss inline), per-agent status grid                              | Recommendation Agent output, `agent_actions` | "Nothing needs your attention right now"                                           |
-| Interaction  | Every suggestion has an inline approve/dismiss; clicking any widget deep-links to its full screen | —                                            | —                                                                                  |
+| Header strip | Memory health card, knowledge growth sparkline | `GET /dashboard/summary` | "Your memory is just getting started — upload or connect something to see it grow" |
+| Left column | Active applications list, upcoming deadlines strip | `applications`, `schedule_events` | "No applications yet — try the Jobs page" |
+| Right column | AI suggestions panel (approve/dismiss inline), per-agent status grid | Recommendation Agent output, `agent_actions` | "Nothing needs your attention right now" |
+| Interaction | Every suggestion has an inline approve/dismiss; clicking any widget deep-links to its full screen | — | — |
 
 **D.4 Accessibility approach (WCAG 2.1 AA, Assumption A-09.1).** Every
 interactive element keyboard-reachable in a logical tab order; color contrast ≥
@@ -1804,9 +1804,9 @@ Design tokens (D.2) are consumed directly by Phase 10's Tailwind config.
 
 ### G. Verification Results
 
-| Check                                                        | Result                                                                       |
+| Check | Result |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| Every FR-46–51 has a corresponding IA node                   | ✅ Pass                                                                      |
+| Every FR-46–51 has a corresponding IA node | ✅ Pass |
 | Token contrast ratios checked against WCAG AA by calculation | ✅ Pass (manual check: primary text `#F2F3F5` on surface `#0B0D12` ≈ 16.9:1) |
 
 ### H. Requirement Traceability
@@ -1815,7 +1815,7 @@ D.1–D.6 implement FR-46–51 in full; D.4 implements NFR-09.
 
 ### I. Risks and Issues
 
-| ID       | Risk                                                                                    | Mitigation                                                                             |
+| ID | Risk | Mitigation |
 | -------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | RISK-9.1 | Full wireframe depth (D.3) shown for Dashboard only, not all 10 pages, in this document | Pattern is mechanical to repeat; flagged as a Phase 10 pre-work item, not a design gap |
 
@@ -1996,10 +1996,10 @@ D.1–D.3 above — specification-grade code, **not yet part of a real repositor
 
 ### G. Verification Results
 
-| Check                                         | Result                                                                     |
+| Check | Result |
 | --------------------------------------------- | -------------------------------------------------------------------------- |
-| Compiles under TypeScript                     | `NOT_EXECUTED` — no toolchain attached                                     |
-| Unit tests pass                               | `NOT_EXECUTED` — no test runner attached                                   |
+| Compiles under TypeScript | `NOT_EXECUTED` — no toolchain attached |
+| Unit tests pass | `NOT_EXECUTED` — no test runner attached |
 | Manual code review against Phase 6 lint rules | ✅ Pass (visual inspection: no `any`, explicit return-relevant types used) |
 
 ### H. Requirement Traceability
@@ -2008,7 +2008,7 @@ D.2 → FR-12, NFR-09 (accessibility). D.3 → FR-51.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                | Mitigation                                                                                          |
+| ID | Risk | Mitigation |
 | --------- | ----------------------------------- | --------------------------------------------------------------------------------------------------- |
 | RISK-10.1 | Code has never been compiled or run | First CI build against a real repository is the actual gate; this document cannot substitute for it |
 
@@ -2148,10 +2148,10 @@ D.1–D.3 above.
 
 ### G. Verification Results
 
-| Check                                                       | Result                                                                                                        |
+| Check | Result |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Type/syntax correctness                                     | Manual inspection only — `NOT_EXECUTED` (no compiler/interpreter attached)                                    |
-| Unit tests                                                  | `NOT_EXECUTED`                                                                                                |
+| Type/syntax correctness | Manual inspection only — `NOT_EXECUTED` (no compiler/interpreter attached) |
+| Unit tests | `NOT_EXECUTED` |
 | SM-06 threshold (0.82) calibrated against real labeled data | `NOT_EXECUTED` — this is a starting value, to be tuned in Phase 14 against the golden dataset once one exists |
 
 ### H. Requirement Traceability
@@ -2160,7 +2160,7 @@ D.1 → NFR-07, ADR-004. D.2 → FR-11–15. D.3 → FR-18, SM-06.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                 | Mitigation                                                                                                                                                             |
+| ID | Risk | Mitigation |
 | --------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | RISK-11.1 | `MERGE_CONFIDENCE_THRESHOLD = 0.82` is an unvalidated starting guess | Phase 14 test plan requires this to be tuned against a hand-labeled sample before Phase 19 release sign-off — tracked as a release-blocking action, not a nice-to-have |
 
@@ -2230,13 +2230,13 @@ class BaseAgent:
 
 **D.3 Model routing (NFR-13 cost control).**
 
-| Agent                     | Task shape                            | Routed model tier     | Why                                                         |
+| Agent | Task shape | Routed model tier | Why |
 | ------------------------- | ------------------------------------- | --------------------- | ----------------------------------------------------------- |
-| Gmail Agent               | Classification, high volume           | Fast/cheap tier       | High call volume, low reasoning depth per call              |
-| Memory Agent              | Extraction + merge judgment           | Mid tier              | Precision matters more than fluency; structured JSON output |
-| Job Search Agent          | Ranking + reasoning over gap analysis | Strong reasoning tier | Multi-factor ranking with explainability requirement        |
-| ATS Agent                 | Scoring + gap detection               | Mid tier              | Structured, deterministic-leaning task                      |
-| Resume/Application Agents | Generation                            | Strong reasoning tier | User-facing prose quality matters                           |
+| Gmail Agent | Classification, high volume | Fast/cheap tier | High call volume, low reasoning depth per call |
+| Memory Agent | Extraction + merge judgment | Mid tier | Precision matters more than fluency; structured JSON output |
+| Job Search Agent | Ranking + reasoning over gap analysis | Strong reasoning tier | Multi-factor ranking with explainability requirement |
+| ATS Agent | Scoring + gap detection | Mid tier | Structured, deterministic-leaning task |
+| Resume/Application Agents | Generation | Strong reasoning tier | User-facing prose quality matters |
 
 Fallback: each agent has a secondary model configured; a primary-provider outage
 degrades to the fallback rather than failing the request.
@@ -2275,10 +2275,10 @@ D.2, D.4, D.5 above.
 
 ### G. Verification Results
 
-| Check                                       | Result                                                                                                                                          |
+| Check | Result |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Golden dataset actually built and evaluated | `NOT_EXECUTED` — no labeled data exists yet; D.4 is the spec for building it, which is itself a Phase-1-of-build-plan blocking task per Phase 4 |
-| Model routing config                        | Design-complete; `NOT_EXECUTED` against real API calls                                                                                          |
+| Model routing config | Design-complete; `NOT_EXECUTED` against real API calls |
 
 ### H. Requirement Traceability
 
@@ -2287,7 +2287,7 @@ directly.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                     | Mitigation                                                                                                                        |
+| ID | Risk | Mitigation |
 | --------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | RISK-12.1 | No golden dataset exists — SM-06's 0.5% target and RISK-11.1's threshold can't actually be validated yet | Building the golden dataset is the literal Build-Phase-1 exit criterion (Phase 4, D.1) — already gated, not newly discovered here |
 
@@ -2324,7 +2324,7 @@ SRC-01 §11, Phase 5 (ADR-004/006), Phase 7 (D.3/D.4 classification), Phase 2
 
 ### C. Questions and Unknowns
 
-| ID     | Question                                       | Disposition                                                                                                                                  |
+| ID | Question | Disposition |
 | ------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Q-13.1 | Legal jurisdiction for formal DPA/ToS drafting | Carried from Q-0.1 — **REQUIRES_STAKEHOLDER_DECISION**; design below is jurisdiction-agnostic (GDPR-equivalent baseline) so it doesn't block |
 
@@ -2333,40 +2333,40 @@ SRC-01 §11, Phase 5 (ADR-004/006), Phase 7 (D.3/D.4 classification), Phase 2
 **D.1 STRIDE threat model (representative — full model covers every component in
 Phase 5's boundary table).**
 
-| Component                   | Threat                                                                                       | STRIDE category        | Mitigation                                                                                                                                                                                         |
+| Component | Threat | STRIDE category | Mitigation |
 | --------------------------- | -------------------------------------------------------------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OAuth token storage         | Token theft → account takeover of a connected service                                        | Spoofing               | Tokens never in app DB rows, secrets manager only (NFR-06); short-lived, auto-refreshed                                                                                                            |
-| Permission Engine           | An agent or plugin calls an action outside its declared scope                                | Elevation of Privilege | Single enforcement point (ADR-004); every call checked, no bypass path, including internal RPC                                                                                                     |
-| Memory Agent merge logic    | A malicious or buggy document causes a wrong merge that corrupts another user's-looking data | Tampering              | Confidence threshold + flagged-not-forced below threshold (D.3, Phase 12); workspace-scoped queries only, cross-workspace merge is architecturally impossible (every table FK'd to `workspace_id`) |
-| Audit log (`agent_actions`) | An attacker or bug erases evidence of a bad action                                           | Repudiation            | Append-only table, no `UPDATE`/`DELETE` grant for the application role, only `INSERT`/`SELECT`                                                                                                     |
-| API layer                   | Resume/certificate PII exfiltration via an over-broad query                                  | Information Disclosure | Every query scoped by `workspace_id` derived from the authenticated session, never from a client-supplied parameter                                                                                |
-| Ingestion pipeline          | Malformed file (zip bomb, malicious macro doc) used to DoS the parser                        | Denial of Service      | File-size cap, sandboxed parsing worker, macro execution disabled by default in DOCX/XLSX parsing                                                                                                  |
-| Job Search Agent            | Connector credentials reused to scrape beyond the granted scope                              | Elevation of Privilege | Same Permission Engine check as above; connector scopes are additive-only per grant, not assumed                                                                                                   |
+| OAuth token storage | Token theft → account takeover of a connected service | Spoofing | Tokens never in app DB rows, secrets manager only (NFR-06); short-lived, auto-refreshed |
+| Permission Engine | An agent or plugin calls an action outside its declared scope | Elevation of Privilege | Single enforcement point (ADR-004); every call checked, no bypass path, including internal RPC |
+| Memory Agent merge logic | A malicious or buggy document causes a wrong merge that corrupts another user's-looking data | Tampering | Confidence threshold + flagged-not-forced below threshold (D.3, Phase 12); workspace-scoped queries only, cross-workspace merge is architecturally impossible (every table FK'd to `workspace_id`) |
+| Audit log (`agent_actions`) | An attacker or bug erases evidence of a bad action | Repudiation | Append-only table, no `UPDATE`/`DELETE` grant for the application role, only `INSERT`/`SELECT` |
+| API layer | Resume/certificate PII exfiltration via an over-broad query | Information Disclosure | Every query scoped by `workspace_id` derived from the authenticated session, never from a client-supplied parameter |
+| Ingestion pipeline | Malformed file (zip bomb, malicious macro doc) used to DoS the parser | Denial of Service | File-size cap, sandboxed parsing worker, macro execution disabled by default in DOCX/XLSX parsing |
+| Job Search Agent | Connector credentials reused to scrape beyond the granted scope | Elevation of Privilege | Same Permission Engine check as above; connector scopes are additive-only per grant, not assumed |
 
 **D.2 Access control matrix (agent × memory-type, from Phase 3/5, made explicit
 here as the enforceable artifact).**
 
-| Agent        | Profile           | Document | Career              | Episodic | Preference | Working    |
+| Agent | Profile | Document | Career | Episodic | Preference | Working |
 | ------------ | ----------------- | -------- | ------------------- | -------- | ---------- | ---------- |
-| Organization | —                 | Write    | —                   | —        | —          | —          |
-| Memory       | R/W               | R/W      | R/W                 | R/W      | R/W        | R/W        |
-| Resume       | Read              | —        | Read                | —        | —          | —          |
-| ATS          | Read (via Resume) | —        | —                   | —        | —          | —          |
-| Job Search   | —                 | —        | Read/Write(outcome) | —        | Read       | —          |
-| Gmail        | —                 | —        | —                   | Write    | —          | —          |
-| Scheduler    | —                 | —        | —                   | Read     | —          | —          |
-| Orchestrator | —                 | —        | —                   | —        | —          | Read/Write |
+| Organization | — | Write | — | — | — | — |
+| Memory | R/W | R/W | R/W | R/W | R/W | R/W |
+| Resume | Read | — | Read | — | — | — |
+| ATS | Read (via Resume) | — | — | — | — | — |
+| Job Search | — | — | Read/Write(outcome) | — | Read | — |
+| Gmail | — | — | — | Write | — | — |
+| Scheduler | — | — | — | Read | — | — |
+| Orchestrator | — | — | — | — | — | Read/Write |
 
 **D.3 Privacy design (GDPR-equivalent baseline, applied at MVP rather than
 deferred).**
 
-| Right                  | Implementation                                                                                                             |
+| Right | Implementation |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Right to access        | FR-43 "export everything" — structured, portable archive, self-service                                                     |
-| Right to erasure       | FR-44 "delete everything" — immediate, verifiable (cryptographic deletion confirmation per Assumption A-13.4 from Phase 0) |
-| Right to rectification | Memory Graph correction UI (FR-49) lets a user correct/merge entities directly                                             |
-| Data minimization      | Code understanding stores semantic summaries, not raw source verbatim (FR-08)                                              |
-| Purpose limitation     | Permission Engine scopes are purpose-specific (`read`/`write`/`act`), not blanket                                          |
+| Right to access | FR-43 "export everything" — structured, portable archive, self-service |
+| Right to erasure | FR-44 "delete everything" — immediate, verifiable (cryptographic deletion confirmation per Assumption A-13.4 from Phase 0) |
+| Right to rectification | Memory Graph correction UI (FR-49) lets a user correct/merge entities directly |
+| Data minimization | Code understanding stores semantic summaries, not raw source verbatim (FR-08) |
+| Purpose limitation | Permission Engine scopes are purpose-specific (`read`/`write`/`act`), not blanket |
 
 **D.4 Secrets handling.** OAuth tokens and API keys live only in a dedicated
 secrets manager (e.g., a KMS-backed vault); the application database never holds
@@ -2395,11 +2395,11 @@ re-implemented here.
 
 ### G. Verification Results
 
-| Check                                                     | Result                                                  |
+| Check | Result |
 | --------------------------------------------------------- | ------------------------------------------------------- |
-| Every Phase 5 component has at least one STRIDE row       | ✅ Pass                                                 |
-| Access matrix consistent with the agent roster in Phase 3 | ✅ Pass                                                 |
-| Penetration test                                          | `NOT_EXECUTED` — no deployed environment exists to test |
+| Every Phase 5 component has at least one STRIDE row | ✅ Pass |
+| Access matrix consistent with the agent roster in Phase 3 | ✅ Pass |
+| Penetration test | `NOT_EXECUTED` — no deployed environment exists to test |
 
 ### H. Requirement Traceability
 
@@ -2407,10 +2407,10 @@ D.2 → NFR-07. D.3 → FR-43/44, NFR-12. D.4 → NFR-06.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                  | Mitigation                                                                                                                                                  |
+| ID | Risk | Mitigation |
 | --------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RISK-13.1 | STRIDE model above is representative, not yet exhaustive across every minor component | Full model is a mechanical extension of D.1's pattern; tracked as a pre-Phase-19 completion item                                                            |
-| RISK-13.2 | No formal legal review of the GDPR-equivalent baseline has occurred                   | Flagged `REQUIRES_STAKEHOLDER_DECISION` — a qualified privacy counsel review is recommended before public launch regardless of what this document specifies |
+| RISK-13.1 | STRIDE model above is representative, not yet exhaustive across every minor component | Full model is a mechanical extension of D.1's pattern; tracked as a pre-Phase-19 completion item |
+| RISK-13.2 | No formal legal review of the GDPR-equivalent baseline has occurred | Flagged `REQUIRES_STAKEHOLDER_DECISION` — a qualified privacy counsel review is recommended before public launch regardless of what this document specifies |
 
 ### J. Quality Gate
 
@@ -2453,15 +2453,15 @@ None blocking.
 
 **D.1 Test pyramid.**
 
-| Layer       | Scope                                                                      | Target coverage                                                             |
+| Layer | Scope | Target coverage |
 | ----------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Unit        | Pure functions, agent decision logic (e.g., merge-threshold logic)         | ≥ 80% line coverage on `apps/api/agents/*` and `apps/api/permissions/*`     |
-| Integration | API ↔ DB, API ↔ AI-service RPC boundary                                    | Every endpoint in the Phase 8 OpenAPI spec has ≥1 integration test          |
-| Contract    | Core API ↔ AI Service internal RPC                                         | Schema-validated against the shared-types package on every PR               |
-| E2E         | Full user journeys (signup → upload → proposal → approve → memory updated) | The exact journey in SRC-04's 10-step trace, automated as a single E2E test |
-| AI eval     | Golden-dataset metrics (Phase 12, D.4)                                     | Re-run on every prompt/model change; regression blocks merge                |
-| Security    | STRIDE-derived test cases (Phase 13, D.1)                                  | One test per mitigation row, minimum                                        |
-| Load        | Phase 15 capacity model                                                    | Run before every release, not just once                                     |
+| Unit | Pure functions, agent decision logic (e.g., merge-threshold logic) | ≥ 80% line coverage on `apps/api/agents/*` and `apps/api/permissions/*` |
+| Integration | API ↔ DB, API ↔ AI-service RPC boundary | Every endpoint in the Phase 8 OpenAPI spec has ≥1 integration test |
+| Contract | Core API ↔ AI Service internal RPC | Schema-validated against the shared-types package on every PR |
+| E2E | Full user journeys (signup → upload → proposal → approve → memory updated) | The exact journey in SRC-04's 10-step trace, automated as a single E2E test |
+| AI eval | Golden-dataset metrics (Phase 12, D.4) | Re-run on every prompt/model change; regression blocks merge |
+| Security | STRIDE-derived test cases (Phase 13, D.1) | One test per mitigation row, minimum |
+| Load | Phase 15 capacity model | Run before every release, not just once |
 
 **D.2 Representative unit test (merge-threshold logic, RISK-11.1's actual
 validation mechanism).**
@@ -2525,10 +2525,10 @@ D.2, D.4 above.
 
 ### G. Verification Results
 
-| Check                                     | Result                                                      |
+| Check | Result |
 | ----------------------------------------- | ----------------------------------------------------------- |
-| Test pyramid covers every FR/NFR category | ✅ Pass (by inspection against Phase 3's table)             |
-| Tests actually run                        | `NOT_EXECUTED` — no test runner/CI attached to this session |
+| Test pyramid covers every FR/NFR category | ✅ Pass (by inspection against Phase 3's table) |
+| Tests actually run | `NOT_EXECUTED` — no test runner/CI attached to this session |
 
 ### H. Requirement Traceability
 
@@ -2538,7 +2538,7 @@ rows.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                       | Mitigation                                                                       |
+| ID | Risk | Mitigation |
 | --------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | RISK-14.1 | 80% coverage target is a design intent, unverified without a real test run | First CI run is the actual measurement; tracked as a Phase 19 release-gate input |
 
@@ -2586,21 +2586,21 @@ single-digit-thousands of active workspaces (consistent with "prove the loop
 first" from Phase 1, BO-1) before any enterprise decision is made. At that
 scale:
 
-| Resource                               | Estimated load                                                                        | Design margin                                                                                                                          |
+| Resource | Estimated load | Design margin |
 | -------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Postgres (relational + AGE + pgvector) | ~5k workspaces × ~200 documents avg × ~15 entities/doc ≈ 15M entity rows              | Comfortably within single-instance Postgres; AGE traversal latency is the first thing to watch (see D.4 migration trigger)             |
-| API request rate                       | ~5k workspaces × ~20 req/day active-use average                                       | Single FastAPI instance easily handles this; horizontal scaling only needed for burst (e.g., a marketing spike)                        |
-| Ingestion queue                        | Bursty at onboarding (a new user may upload 20–50 files at once)                      | Redis queue + worker pool sized to absorb a 50-file burst without blocking interactive requests (ADR: queue-driven ingestion, Phase 6) |
-| AI service calls                       | Rate-limited to 20 req/min per workspace on agent-triggering endpoints (Phase 8, D.5) | Protects both cost (NFR-13) and third-party connector quotas                                                                           |
+| Postgres (relational + AGE + pgvector) | ~5k workspaces × ~200 documents avg × ~15 entities/doc ≈ 15M entity rows | Comfortably within single-instance Postgres; AGE traversal latency is the first thing to watch (see D.4 migration trigger) |
+| API request rate | ~5k workspaces × ~20 req/day active-use average | Single FastAPI instance easily handles this; horizontal scaling only needed for burst (e.g., a marketing spike) |
+| Ingestion queue | Bursty at onboarding (a new user may upload 20–50 files at once) | Redis queue + worker pool sized to absorb a 50-file burst without blocking interactive requests (ADR: queue-driven ingestion, Phase 6) |
+| AI service calls | Rate-limited to 20 req/min per workspace on agent-triggering endpoints (Phase 8, D.5) | Protects both cost (NFR-13) and third-party connector quotas |
 
 **D.2 SLOs.**
 
-| SLO                                   | Target                                                          | Error budget                                                                |
+| SLO | Target | Error budget |
 | ------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Core API availability                 | 99.5% monthly                                                   | ~3.6 hrs/month                                                              |
-| P95 read-endpoint latency             | < 300ms (NFR-01)                                                | Breach triggers Phase 17 alert                                              |
-| P95 ingestion-to-first-entity latency | < 5 min (NFR-02/SM-07)                                          | Breach triggers investigation, not user-facing failure                      |
-| Agent-triggering endpoint P95         | < 3s to acknowledge (async job started), full result may stream | Matches the "user sees progress, not a black box" principle (source corpus) |
+| Core API availability | 99.5% monthly | ~3.6 hrs/month |
+| P95 read-endpoint latency | < 300ms (NFR-01) | Breach triggers Phase 17 alert |
+| P95 ingestion-to-first-entity latency | < 5 min (NFR-02/SM-07) | Breach triggers investigation, not user-facing failure |
+| Agent-triggering endpoint P95 | < 3s to acknowledge (async job started), full result may stream | Matches the "user sees progress, not a black box" principle (source corpus) |
 
 **D.3 Load-test plan.** Simulate: (a) 50-file burst upload for a single new
 workspace, (b) 500 concurrent workspaces each issuing a dashboard read, (c)
@@ -2610,11 +2610,11 @@ this system). Tooling: k6 or Locust against a staging environment (Phase 16).
 
 **D.4 Explicit scale-migration triggers (resolves RISK-5.1).**
 
-| Trigger                                            | Action                                                                                                          |
+| Trigger | Action |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | AGE graph traversal P95 > 500ms at ≤ 3-hop queries | Migrate graph workload to a dedicated Neo4j cluster (per the enterprise document's tech-stack evolution column) |
-| pgvector query P95 > 200ms at current corpus size  | Migrate vector workload to a dedicated vector DB (Qdrant)                                                       |
-| Redis queue depth sustained > 10k jobs             | Evaluate Kafka migration (durable, replayable event log) ahead of schedule                                      |
+| pgvector query P95 > 200ms at current corpus size | Migrate vector workload to a dedicated vector DB (Qdrant) |
+| Redis queue depth sustained > 10k jobs | Evaluate Kafka migration (durable, replayable event log) ahead of schedule |
 
 **D.5 Caching strategy.** Dashboard aggregates and resume renders cached with
 **explicit invalidation on the relevant memory-write event** (not time-based
@@ -2632,10 +2632,10 @@ N/A — policy phase; k6 scripts are a Phase 16 CI artifact.
 
 ### G. Verification Results
 
-| Check                                            | Result                                           |
+| Check | Result |
 | ------------------------------------------------ | ------------------------------------------------ |
-| Every NFR from Phase 3 has a numeric target here | ✅ Pass                                          |
-| Load tests actually executed                     | `NOT_EXECUTED` — no staging environment attached |
+| Every NFR from Phase 3 has a numeric target here | ✅ Pass |
+| Load tests actually executed | `NOT_EXECUTED` — no staging environment attached |
 
 ### H. Requirement Traceability
 
@@ -2643,7 +2643,7 @@ D.2 → NFR-01, 02, 03. D.4 → ADR-003 (Phase 5), directly resolving RISK-5.1.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                      | Mitigation                                                                                                                   |
+| ID | Risk | Mitigation |
 | --------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | RISK-15.1 | Capacity model rests on Assumption A-15.1 (an estimated cohort size); real usage may differ substantially | D.4's triggers are threshold-based, not date-based, so the system reacts to real load regardless of whether A-15.1 was right |
 
@@ -2788,10 +2788,10 @@ D.2, D.3 above.
 
 ### G. Verification Results
 
-| Check                                                                                          | Result                                                  |
+| Check | Result |
 | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Pipeline references every gate from Phases 12/14/15 (eval regression, unit, integration, load) | ✅ Pass                                                 |
-| Pipeline actually run                                                                          | `NOT_EXECUTED` — no CI runner or cloud account attached |
+| Pipeline references every gate from Phases 12/14/15 (eval regression, unit, integration, load) | ✅ Pass |
+| Pipeline actually run | `NOT_EXECUTED` — no CI runner or cloud account attached |
 
 ### H. Requirement Traceability
 
@@ -2800,7 +2800,7 @@ D.2 → NFR-01–04 (via load test job), Phase 12 D.4 (eval regression job), Pha
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                        | Mitigation                                                                                                            |
+| ID | Risk | Mitigation |
 | --------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | RISK-16.1 | Q-6.1 (vendor) unresolved means D.3's exact resource types are placeholders | Isolated behind Terraform modules so the vendor-specific resource types are swappable without touching pipeline logic |
 
@@ -2846,21 +2846,21 @@ None blocking.
 
 **D.1 The three pillars, concretely.**
 
-| Pillar  | Tooling                             | What's captured                                                                                                                                                                                         |
+| Pillar | Tooling | What's captured |
 | ------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Logs    | Structured JSON → centralized store | Every `agent_actions` write mirrored as a structured log line with `workspace_id`, `agent_name`, `request_id`                                                                                           |
-| Metrics | OpenTelemetry → hosted APM          | Per-SLO metric (Phase 15 D.2), per-agent latency/cost, queue depth, merge-confidence distribution                                                                                                       |
-| Traces  | OpenTelemetry, distributed          | Full agent → tool-call → memory-write chain, correlated by `request_id`, since a single user action can fan out across 3–4 agents (SRC-04's 10-step trace is the canonical example to trace end-to-end) |
+| Logs | Structured JSON → centralized store | Every `agent_actions` write mirrored as a structured log line with `workspace_id`, `agent_name`, `request_id` |
+| Metrics | OpenTelemetry → hosted APM | Per-SLO metric (Phase 15 D.2), per-agent latency/cost, queue depth, merge-confidence distribution |
+| Traces | OpenTelemetry, distributed | Full agent → tool-call → memory-write chain, correlated by `request_id`, since a single user action can fan out across 3–4 agents (SRC-04's 10-step trace is the canonical example to trace end-to-end) |
 
 **D.2 Alert rules (tied directly to Phase 15 SLOs).**
 
-| Alert                             | Condition                                                                     | Severity                                                                                                                                     |
+| Alert | Condition | Severity |
 | --------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| API availability breach           | 5xx rate > 0.5% over 5 min                                                    | Page (SEV-2)                                                                                                                                 |
-| Ingestion latency breach          | P95 > 5 min sustained 15 min                                                  | Ticket (SEV-3)                                                                                                                               |
-| Urgent-mail false-negative signal | A manually-reported missed urgent email                                       | Page (SEV-2) — this is the "worst failure mode" per source corpus, alerted like an incident even though it's a quality signal, not an outage |
-| Merge-confidence drift            | Wrong-merge rate (sampled) exceeds SM-06's 0.5% target for 2 consecutive days | Ticket (SEV-3), routed to AI/ML Engineer                                                                                                     |
-| Queue depth                       | Redis queue depth > 10,000 (Phase 15 D.4 trigger)                             | Ticket (SEV-3) — scale-migration discussion, not an outage                                                                                   |
+| API availability breach | 5xx rate > 0.5% over 5 min | Page (SEV-2) |
+| Ingestion latency breach | P95 > 5 min sustained 15 min | Ticket (SEV-3) |
+| Urgent-mail false-negative signal | A manually-reported missed urgent email | Page (SEV-2) — this is the "worst failure mode" per source corpus, alerted like an incident even though it's a quality signal, not an outage |
+| Merge-confidence drift | Wrong-merge rate (sampled) exceeds SM-06's 0.5% target for 2 consecutive days | Ticket (SEV-3), routed to AI/ML Engineer |
+| Queue depth | Redis queue depth > 10,000 (Phase 15 D.4 trigger) | Ticket (SEV-3) — scale-migration discussion, not an outage |
 
 **D.3 Runbook (representative — "Ingestion latency breach").**
 
@@ -2898,9 +2898,9 @@ alerting config.
 
 ### G. Verification Results
 
-| Check                                         | Result                                            |
+| Check | Result |
 | --------------------------------------------- | ------------------------------------------------- |
-| Every Phase 15 SLO has a corresponding alert  | ✅ Pass                                           |
+| Every Phase 15 SLO has a corresponding alert | ✅ Pass |
 | Alerts actually firing against real telemetry | `NOT_EXECUTED` — no deployed system to instrument |
 
 ### H. Requirement Traceability
@@ -2909,7 +2909,7 @@ D.2 → Phase 15 SLOs directly; D.1 → NFR-14.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                | Mitigation                                                                      |
+| ID | Risk | Mitigation |
 | --------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | RISK-17.1 | Alert thresholds are design-time estimates, not tuned against real traffic patterns | First 30 days post-launch treated as an explicit alert-tuning window (Phase 21) |
 
@@ -2952,29 +2952,29 @@ None.
 
 **D.1 Documentation inventory produced by this execution.**
 
-| Artifact                                      | Location | Audience                       |
+| Artifact | Location | Audience |
 | --------------------------------------------- | -------- | ------------------------------ |
-| Business case & success metrics               | Phase 1  | Product, leadership            |
-| Personas & domain glossary                    | Phase 2  | Product, design, new hires     |
-| Numbered FR/NFR                               | Phase 3  | Everyone — the shared contract |
-| Delivery plan, RACI                           | Phase 4  | Program/delivery               |
-| Architecture + 6 ADRs                         | Phase 5  | Engineering                    |
-| Stack + engineering standards                 | Phase 6  | Engineering                    |
-| ERD + DDL + data dictionary                   | Phase 7  | Backend, data                  |
-| OpenAPI + error/versioning standards          | Phase 8  | Backend, frontend, integrators |
-| IA + design tokens + wireframe spec           | Phase 9  | Design, frontend               |
-| Frontend code samples                         | Phase 10 | Frontend                       |
-| Backend code samples                          | Phase 11 | Backend                        |
-| AI pipeline + agent contract + eval spec      | Phase 12 | AI/ML                          |
-| Threat model + access matrix + privacy design | Phase 13 | Security, compliance           |
-| Test strategy + samples                       | Phase 14 | QA                             |
-| Capacity model + SLOs                         | Phase 15 | SRE, performance               |
-| CI/CD + IaC                                   | Phase 16 | DevOps                         |
-| Observability + runbook                       | Phase 17 | SRE, support                   |
-| This inventory                                | Phase 18 | Everyone                       |
-| Release checklist                             | Phase 19 | Release management             |
-| Post-deploy validation plan                   | Phase 20 | SRE, QA                        |
-| Maintenance calendar + roadmap                | Phase 21 | Everyone                       |
+| Business case & success metrics | Phase 1 | Product, leadership |
+| Personas & domain glossary | Phase 2 | Product, design, new hires |
+| Numbered FR/NFR | Phase 3 | Everyone — the shared contract |
+| Delivery plan, RACI | Phase 4 | Program/delivery |
+| Architecture + 6 ADRs | Phase 5 | Engineering |
+| Stack + engineering standards | Phase 6 | Engineering |
+| ERD + DDL + data dictionary | Phase 7 | Backend, data |
+| OpenAPI + error/versioning standards | Phase 8 | Backend, frontend, integrators |
+| IA + design tokens + wireframe spec | Phase 9 | Design, frontend |
+| Frontend code samples | Phase 10 | Frontend |
+| Backend code samples | Phase 11 | Backend |
+| AI pipeline + agent contract + eval spec | Phase 12 | AI/ML |
+| Threat model + access matrix + privacy design | Phase 13 | Security, compliance |
+| Test strategy + samples | Phase 14 | QA |
+| Capacity model + SLOs | Phase 15 | SRE, performance |
+| CI/CD + IaC | Phase 16 | DevOps |
+| Observability + runbook | Phase 17 | SRE, support |
+| This inventory | Phase 18 | Everyone |
+| Release checklist | Phase 19 | Release management |
+| Post-deploy validation plan | Phase 20 | SRE, QA |
+| Maintenance calendar + roadmap | Phase 21 | Everyone |
 
 **D.2 New-engineer onboarding path.** Read Phase 1 (why this exists) → Phase 5
 (how it's shaped) → Phase 7/8 (the data and contracts you'll actually touch) →
@@ -2997,7 +2997,7 @@ N/A.
 
 ### G. Verification Results
 
-| Check                                                         | Result  |
+| Check | Result |
 | ------------------------------------------------------------- | ------- |
 | Every phase 0–21 has at least one artifact represented in D.1 | ✅ Pass |
 
@@ -3045,18 +3045,18 @@ Consolidated: Q-0.1–0.9, Q-6.1, Q-13.1 — see Appendix A for full status.
 
 **D.1 Release checklist.**
 
-| Item                                                                   | Source     | Status                                                                                                   |
+| Item | Source | Status |
 | ---------------------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
-| Extraction quality "genuinely solid" (Phase 4 D.1 exit gate)           | Phase 4    | Blocking — must be true before Phase 2 of the build plan (Organization Agent) begins exposing real users |
-| `MERGE_CONFIDENCE_THRESHOLD` calibrated against real labeled data      | RISK-11.1  | Blocking                                                                                                 |
-| Golden datasets built and evaluated (SM-01/04/06/07 have real numbers) | RISK-12.1  | Blocking                                                                                                 |
-| Full (non-representative) STRIDE pass complete                         | RISK-13.1  | Blocking                                                                                                 |
-| Legal review of privacy posture                                        | RISK-13.2  | Blocking (pre-public-launch specifically, not pre-internal-cohort)                                       |
-| Load tests executed against staging (Phase 15 D.3)                     | RISK-15.1  | Blocking                                                                                                 |
-| CI pipeline green on `main` (Phase 16)                                 | RISK-16.1  | Blocking                                                                                                 |
-| Alerting live (Phase 17)                                               | RISK-17.1  | Blocking                                                                                                 |
-| Cloud vendor decided (Q-6.1)                                           | Phase 6/16 | Blocking (infra can't provision without it)                                                              |
-| Calendar/budget/headcount (Q-0.2/0.3/4.1/4.2)                          | Phase 0/4  | **Not release-blocking** — affects scheduling, not readiness                                             |
+| Extraction quality "genuinely solid" (Phase 4 D.1 exit gate) | Phase 4 | Blocking — must be true before Phase 2 of the build plan (Organization Agent) begins exposing real users |
+| `MERGE_CONFIDENCE_THRESHOLD` calibrated against real labeled data | RISK-11.1 | Blocking |
+| Golden datasets built and evaluated (SM-01/04/06/07 have real numbers) | RISK-12.1 | Blocking |
+| Full (non-representative) STRIDE pass complete | RISK-13.1 | Blocking |
+| Legal review of privacy posture | RISK-13.2 | Blocking (pre-public-launch specifically, not pre-internal-cohort) |
+| Load tests executed against staging (Phase 15 D.3) | RISK-15.1 | Blocking |
+| CI pipeline green on `main` (Phase 16) | RISK-16.1 | Blocking |
+| Alerting live (Phase 17) | RISK-17.1 | Blocking |
+| Cloud vendor decided (Q-6.1) | Phase 6/16 | Blocking (infra can't provision without it) |
+| Calendar/budget/headcount (Q-0.2/0.3/4.1/4.2) | Phase 0/4 | **Not release-blocking** — affects scheduling, not readiness |
 
 **D.2 Go/no-go criteria.** Release proceeds when every **Blocking** row in D.1
 is ✅ **and** SM-01 (≥90% proposal approval) is observed in the first real
@@ -3096,7 +3096,7 @@ D.1 is itself the rollup of every phase's Remaining Actions column.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                            | Mitigation                                                                                                 |
+| ID | Risk | Mitigation |
 | --------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | RISK-19.1 | Every blocking item is currently open simultaneously since no build has started | Not actually a risk beyond what's already tracked per-item — restated here as the single release-gate view |
 
@@ -3175,7 +3175,7 @@ D.3 → SM-01, SM-07 directly.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                    | Mitigation                                                                                                          |
+| ID | Risk | Mitigation |
 | --------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | RISK-20.1 | Smoke tests are currently only specified, not automated | Automating D.1 as an actual CI-triggerable script is a Phase 16 pipeline addition, tracked here as the owning phase |
 
@@ -3213,22 +3213,22 @@ sections (SRC-06 §14, SRC-01 §14 "deferred to enterprise").
 
 **D.1 Maintenance calendar.**
 
-| Cadence                               | Activity                                                                                                         |
+| Cadence | Activity |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Daily                                 | Automated backup snapshot (Phase 7 D.7)                                                                          |
-| Weekly                                | Golden-dataset regression review (Phase 12 D.4) if any prompt/model change shipped                               |
-| Monthly                               | Dependency update pass (Phase 6 D.2 policy)                                                                      |
-| Quarterly                             | Backup/restore drill into an isolated environment (Phase 7 D.7); alert-threshold re-tuning review (Phase 17 D.4) |
-| Continuous, first 30 days post-launch | Alert-sensitivity tuning window (Phase 17, RISK-17.1)                                                            |
+| Daily | Automated backup snapshot (Phase 7 D.7) |
+| Weekly | Golden-dataset regression review (Phase 12 D.4) if any prompt/model change shipped |
+| Monthly | Dependency update pass (Phase 6 D.2 policy) |
+| Quarterly | Backup/restore drill into an isolated environment (Phase 7 D.7); alert-threshold re-tuning review (Phase 17 D.4) |
+| Continuous, first 30 days post-launch | Alert-sensitivity tuning window (Phase 17, RISK-17.1) |
 
 **D.2 Technical debt register (opened, not yet populated — will accumulate real
 entries once code exists).**
 
-| ID    | Item                                                                     | Source    |
+| ID | Item | Source |
 | ----- | ------------------------------------------------------------------------ | --------- |
-| TD-01 | Full (non-representative) STRIDE pass                                    | RISK-13.1 |
-| TD-02 | Full 51-endpoint OpenAPI file (only representative excerpt exists)       | RISK-8.1  |
-| TD-03 | Wireframe spec extended to all 10 pages (only Dashboard fully specified) | RISK-9.1  |
+| TD-01 | Full (non-representative) STRIDE pass | RISK-13.1 |
+| TD-02 | Full 51-endpoint OpenAPI file (only representative excerpt exists) | RISK-8.1 |
+| TD-03 | Wireframe spec extended to all 10 pages (only Dashboard fully specified) | RISK-9.1 |
 
 **D.3 Roadmap beyond MVP (post-launch, pre-enterprise — carried directly from
 source corpus, not re-litigated here).** v1.5: earned-autonomy rollout,
@@ -3260,7 +3260,7 @@ D.1 → Phase 7 D.7, Phase 17 D.4. D.4 → FR-15 (autonomy earning), SM-06.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                      | Mitigation                                                                                  |
+| ID | Risk | Mitigation |
 | --------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | RISK-21.1 | Technical debt register (D.2) is currently thin because no code exists to accrue debt yet | Expected; the register's structure is what matters at this stage, not its current row count |
 
@@ -3288,67 +3288,67 @@ Vaeloom MVP.**
 
 ## Appendix A — Consolidated Assumptions Register
 
-| ID     | Assumption                                                         | Opened at                              | Owner                    | Validation method                                             |
+| ID | Assumption | Opened at | Owner | Validation method |
 | ------ | ------------------------------------------------------------------ | -------------------------------------- | ------------------------ | ------------------------------------------------------------- |
-| A-1.1  | Autonomy-earning threshold: 95%+ approval over 50 actions          | Phase 1                                | Product Manager          | Validate against real Phase-2-cohort approval data            |
-| A-1.2  | Urgent-mail false-negative target: < 2%                            | Phase 1                                | AI/ML Engineer           | Validate against golden dataset (Phase 12, D.4)               |
-| A-1.3  | Wrong-merge rate target: < 0.5%                                    | Phase 1                                | AI/ML Engineer           | Validate against golden dataset (Phase 12, D.4)               |
-| A-1.4  | Time-to-first-value target: < 5 minutes                            | Phase 1                                | Product Manager          | Validate against real onboarding telemetry                    |
-| A-2.1  | Target population is 18+                                           | Phase 2                                | Product Manager          | Confirm with stakeholder before any under-18 channel opens    |
-| A-4.3  | Desktop companion ships alongside Build Phase 0/1                  | Phase 4                                | Program Manager          | Confirm at build-plan kickoff                                 |
-| A-09.1 | Accessibility bar: WCAG 2.1 AA                                     | Phase 9                                | Accessibility Specialist | Confirm with stakeholder; audit before public launch          |
-| A-13.2 | Single-region data residency at MVP                                | Phase 13 (referenced from Phase 2 D.6) | Security Architect       | Confirm with stakeholder before any non-default-region launch |
-| A-13.4 | "Delete everything" is cryptographically verifiable, not UX-only   | Phase 0                                | Privacy Engineer         | Design review at Phase 13 implementation                      |
-| A-15.1 | MVP cohort reaches low single-digit-thousands of active workspaces | Phase 15                               | Performance Engineer     | Recalibrate against real usage post-launch                    |
+| A-1.1 | Autonomy-earning threshold: 95%+ approval over 50 actions | Phase 1 | Product Manager | Validate against real Phase-2-cohort approval data |
+| A-1.2 | Urgent-mail false-negative target: < 2% | Phase 1 | AI/ML Engineer | Validate against golden dataset (Phase 12, D.4) |
+| A-1.3 | Wrong-merge rate target: < 0.5% | Phase 1 | AI/ML Engineer | Validate against golden dataset (Phase 12, D.4) |
+| A-1.4 | Time-to-first-value target: < 5 minutes | Phase 1 | Product Manager | Validate against real onboarding telemetry |
+| A-2.1 | Target population is 18+ | Phase 2 | Product Manager | Confirm with stakeholder before any under-18 channel opens |
+| A-4.3 | Desktop companion ships alongside Build Phase 0/1 | Phase 4 | Program Manager | Confirm at build-plan kickoff |
+| A-09.1 | Accessibility bar: WCAG 2.1 AA | Phase 9 | Accessibility Specialist | Confirm with stakeholder; audit before public launch |
+| A-13.2 | Single-region data residency at MVP | Phase 13 (referenced from Phase 2 D.6) | Security Architect | Confirm with stakeholder before any non-default-region launch |
+| A-13.4 | "Delete everything" is cryptographically verifiable, not UX-only | Phase 0 | Privacy Engineer | Design review at Phase 13 implementation |
+| A-15.1 | MVP cohort reaches low single-digit-thousands of active workspaces | Phase 15 | Performance Engineer | Recalibrate against real usage post-launch |
 
 ## Appendix B — Consolidated Source Register
 
 _(Full table already presented in Phase 0, §B — reproduced here for
 single-appendix convenience.)_
 
-| ID     | Source                                  | Role in this execution                                   |
+| ID | Source | Role in this execution |
 | ------ | --------------------------------------- | -------------------------------------------------------- |
-| SRC-01 | `01-Vaeloom-MVP-Spec.md`                | Canonical MVP scope                                      |
-| SRC-02 | `05-Vaeloom-MVP-Spec.md`                | Superseded duplicate of SRC-01 — not independently cited |
-| SRC-03 | `02-System-Architecture.md`             | Architecture source                                      |
-| SRC-04 | `03-Agent-Workflow.md`                  | Agent trace source                                       |
-| SRC-05 | `04-Memory-Knowledge-Graph.md`          | Memory system source                                     |
-| SRC-06 | `Vaeloom-Complete-Documentation.md`     | Stack/DB/build-plan source                               |
-| SRC-07 | `Vaeloom-Documentation-Site.md`         | Presentation-layer restructuring of SRC-06               |
-| SRC-08 | `Vaeloom-How-It-Works-Visual.md`        | Presentation-layer restructuring                         |
-| SRC-09 | `00-Gap-Analysis-Report.md`             | Prior doc-completeness baseline (74/100)                 |
-| SRC-10 | `00-Documentation-Completion-Report.md` | Prior doc-completeness closure (93/100)                  |
+| SRC-01 | `01-Vaeloom-MVP-Spec.md` | Canonical MVP scope |
+| SRC-02 | `05-Vaeloom-MVP-Spec.md` | Superseded duplicate of SRC-01 — not independently cited |
+| SRC-03 | `02-System-Architecture.md` | Architecture source |
+| SRC-04 | `03-Agent-Workflow.md` | Agent trace source |
+| SRC-05 | `04-Memory-Knowledge-Graph.md` | Memory system source |
+| SRC-06 | `Vaeloom-Complete-Documentation.md` | Stack/DB/build-plan source |
+| SRC-07 | `Vaeloom-Documentation-Site.md` | Presentation-layer restructuring of SRC-06 |
+| SRC-08 | `Vaeloom-How-It-Works-Visual.md` | Presentation-layer restructuring |
+| SRC-09 | `00-Gap-Analysis-Report.md` | Prior doc-completeness baseline (74/100) |
+| SRC-10 | `00-Documentation-Completion-Report.md` | Prior doc-completeness closure (93/100) |
 
 ## Appendix C — Consolidated Risk Register (all 27 risks raised, by phase)
 
-| ID        | Phase | Risk                                                           | Status                                                |
+| ID | Phase | Risk | Status |
 | --------- | ----- | -------------------------------------------------------------- | ----------------------------------------------------- |
-| RISK-0.1  | 0     | No repository/infra/runtime attached to this session           | Open — structural, resolves when a repo is attached   |
-| RISK-0.2  | 0     | 9 stakeholder unknowns could delay Phase 19's calendar         | Open — non-blocking to design                         |
-| RISK-1.1  | 1     | New numeric SM targets not yet stakeholder-approved            | Open — `REQUIRES_STAKEHOLDER_DECISION`                |
-| RISK-2.1  | 2     | Age-band assumption (A-2.1) could be wrong                     | Open                                                  |
-| RISK-2.2  | 2     | Job-platform ToS terms can change unilaterally                 | Open — mitigated architecturally (pluggable adapter)  |
-| RISK-3.1  | 3     | 51 FRs risk scope creep if not prioritized                     | Mitigated — Priority column exists                    |
-| RISK-4.1  | 4     | Phase-1 build-plan exit gate ("genuinely solid") is subjective | Mitigated — SM-06 gives it a number                   |
-| RISK-4.2  | 4     | No calendar/budget yet                                         | Open — non-blocking                                   |
-| RISK-5.1  | 5     | Postgres+AGE may hit traversal limits pre-enterprise           | Mitigated — explicit triggers defined (Phase 15, D.4) |
-| RISK-6.1  | 6     | Cloud vendor undecided                                         | Open                                                  |
-| RISK-7.1  | 7     | DDL unexecuted against a real engine                           | Open — resolves at first CI run                       |
-| RISK-7.2  | 7     | JSONB flexibility could hide data-quality issues               | Mitigated — schema-shape tests planned (Phase 14)     |
-| RISK-8.1  | 8     | Full OpenAPI file not yet materialized                         | Open — mechanical expansion of existing pattern       |
-| RISK-9.1  | 9     | Wireframe depth shown for 1 of 10 pages                        | Open — tracked as TD-03                               |
-| RISK-10.1 | 10    | Frontend code never compiled/run                               | Open — resolves at first repo attach                  |
-| RISK-11.1 | 11    | Merge-confidence threshold unvalidated                         | Open — release-blocking (Phase 19)                    |
-| RISK-12.1 | 12    | No golden dataset exists yet                                   | Open — release-blocking                               |
-| RISK-13.1 | 13    | STRIDE model representative, not exhaustive                    | Open — tracked as TD-01                               |
-| RISK-13.2 | 13    | No formal legal review of privacy posture                      | Open — release-blocking (pre-public-launch)           |
-| RISK-14.1 | 14    | Coverage targets unverified without a real test run            | Open — resolves at first CI run                       |
-| RISK-15.1 | 15    | Capacity model rests on an estimate (A-15.1)                   | Mitigated — threshold-based triggers, not date-based  |
-| RISK-16.1 | 16    | Vendor-specific IaC resources are placeholders                 | Mitigated — isolated behind swappable modules         |
-| RISK-17.1 | 17    | Alert thresholds untuned against real traffic                  | Open — explicit 30-day tuning window planned          |
-| RISK-19.1 | 19    | All blocking release items open simultaneously                 | Expected — restates per-item risks as one gate view   |
-| RISK-20.1 | 20    | Smoke tests not yet automated                                  | Open — tracked for Phase 16 pipeline                  |
-| RISK-21.1 | 21    | Technical debt register currently thin                         | Expected — no code exists yet to accrue debt          |
+| RISK-0.1 | 0 | No repository/infra/runtime attached to this session | Open — structural, resolves when a repo is attached |
+| RISK-0.2 | 0 | 9 stakeholder unknowns could delay Phase 19's calendar | Open — non-blocking to design |
+| RISK-1.1 | 1 | New numeric SM targets not yet stakeholder-approved | Open — `REQUIRES_STAKEHOLDER_DECISION` |
+| RISK-2.1 | 2 | Age-band assumption (A-2.1) could be wrong | Open |
+| RISK-2.2 | 2 | Job-platform ToS terms can change unilaterally | Open — mitigated architecturally (pluggable adapter) |
+| RISK-3.1 | 3 | 51 FRs risk scope creep if not prioritized | Mitigated — Priority column exists |
+| RISK-4.1 | 4 | Phase-1 build-plan exit gate ("genuinely solid") is subjective | Mitigated — SM-06 gives it a number |
+| RISK-4.2 | 4 | No calendar/budget yet | Open — non-blocking |
+| RISK-5.1 | 5 | Postgres+AGE may hit traversal limits pre-enterprise | Mitigated — explicit triggers defined (Phase 15, D.4) |
+| RISK-6.1 | 6 | Cloud vendor undecided | Open |
+| RISK-7.1 | 7 | DDL unexecuted against a real engine | Open — resolves at first CI run |
+| RISK-7.2 | 7 | JSONB flexibility could hide data-quality issues | Mitigated — schema-shape tests planned (Phase 14) |
+| RISK-8.1 | 8 | Full OpenAPI file not yet materialized | Open — mechanical expansion of existing pattern |
+| RISK-9.1 | 9 | Wireframe depth shown for 1 of 10 pages | Open — tracked as TD-03 |
+| RISK-10.1 | 10 | Frontend code never compiled/run | Open — resolves at first repo attach |
+| RISK-11.1 | 11 | Merge-confidence threshold unvalidated | Open — release-blocking (Phase 19) |
+| RISK-12.1 | 12 | No golden dataset exists yet | Open — release-blocking |
+| RISK-13.1 | 13 | STRIDE model representative, not exhaustive | Open — tracked as TD-01 |
+| RISK-13.2 | 13 | No formal legal review of privacy posture | Open — release-blocking (pre-public-launch) |
+| RISK-14.1 | 14 | Coverage targets unverified without a real test run | Open — resolves at first CI run |
+| RISK-15.1 | 15 | Capacity model rests on an estimate (A-15.1) | Mitigated — threshold-based triggers, not date-based |
+| RISK-16.1 | 16 | Vendor-specific IaC resources are placeholders | Mitigated — isolated behind swappable modules |
+| RISK-17.1 | 17 | Alert thresholds untuned against real traffic | Open — explicit 30-day tuning window planned |
+| RISK-19.1 | 19 | All blocking release items open simultaneously | Expected — restates per-item risks as one gate view |
+| RISK-20.1 | 20 | Smoke tests not yet automated | Open — tracked for Phase 16 pipeline |
+| RISK-21.1 | 21 | Technical debt register currently thin | Expected — no code exists yet to accrue debt |
 
 ## Appendix D — Glossary
 
@@ -3380,30 +3380,30 @@ the phase citations already embedded in each FR/NFR's "Traces to" column
 
 ## Appendix F — Final Project Quality Gate Summary
 
-| Phase                     | Design Axis | Execution Axis         | Overall                    |
+| Phase | Design Axis | Execution Axis | Overall |
 | ------------------------- | ----------- | ---------------------- | -------------------------- |
-| 0 Intake                  | 10/10       | N/A                    | PASSED                     |
-| 1 Discovery               | 10/10       | N/A                    | PASSED                     |
-| 2 Research/Domain         | 9/10        | N/A                    | PASSED                     |
-| 3 Requirements            | 10/10       | N/A                    | PASSED                     |
-| 4 Planning                | 9/10        | N/A                    | PASSED                     |
-| 5 Architecture            | 10/10       | N/A                    | PASSED                     |
-| 6 Tech Stack              | 10/10       | N/A                    | PASSED                     |
-| 7 Data Architecture       | 9/10        | NOT_EXECUTED           | PASSED (design)            |
-| 8 API Design              | 9/10        | NOT_EXECUTED           | PASSED (design)            |
-| 9 UI/UX                   | 9/10        | N/A                    | PASSED                     |
-| 10 Frontend Impl.         | 10/10       | NOT_EXECUTED           | APPROVED WITH ACTIONS      |
-| 11 Backend Impl.          | 10/10       | NOT_EXECUTED           | APPROVED WITH ACTIONS      |
-| 12 AI/ML Impl.            | 10/10       | NOT_EXECUTED           | APPROVED WITH ACTIONS      |
-| 13 Security/Privacy       | 9/10        | NOT_EXECUTED           | APPROVED WITH ACTIONS      |
-| 14 Testing                | 10/10       | NOT_EXECUTED           | APPROVED WITH ACTIONS      |
-| 15 Performance            | 9/10        | NOT_EXECUTED           | APPROVED WITH ACTIONS      |
-| 16 DevOps/CI-CD           | 10/10       | NOT_EXECUTED           | APPROVED WITH ACTIONS      |
-| 17 Observability          | 10/10       | NOT_EXECUTED           | APPROVED WITH ACTIONS      |
-| 18 Documentation          | 10/10       | N/A                    | PASSED                     |
-| 19 Release Readiness      | 10/10       | 0/9 blocking items met | **RELEASE NOT AUTHORIZED** |
-| 20 Post-Deploy Validation | 10/10       | NOT_EXECUTED           | APPROVED WITH ACTIONS      |
-| 21 Maintenance            | 10/10       | N/A                    | PASSED                     |
+| 0 Intake | 10/10 | N/A | PASSED |
+| 1 Discovery | 10/10 | N/A | PASSED |
+| 2 Research/Domain | 9/10 | N/A | PASSED |
+| 3 Requirements | 10/10 | N/A | PASSED |
+| 4 Planning | 9/10 | N/A | PASSED |
+| 5 Architecture | 10/10 | N/A | PASSED |
+| 6 Tech Stack | 10/10 | N/A | PASSED |
+| 7 Data Architecture | 9/10 | NOT_EXECUTED | PASSED (design) |
+| 8 API Design | 9/10 | NOT_EXECUTED | PASSED (design) |
+| 9 UI/UX | 9/10 | N/A | PASSED |
+| 10 Frontend Impl. | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 11 Backend Impl. | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 12 AI/ML Impl. | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 13 Security/Privacy | 9/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 14 Testing | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 15 Performance | 9/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 16 DevOps/CI-CD | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 17 Observability | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 18 Documentation | 10/10 | N/A | PASSED |
+| 19 Release Readiness | 10/10 | 0/9 blocking items met | **RELEASE NOT AUTHORIZED** |
+| 20 Post-Deploy Validation | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 21 Maintenance | 10/10 | N/A | PASSED |
 
 **Average design-axis score: 9.7/10.**
 

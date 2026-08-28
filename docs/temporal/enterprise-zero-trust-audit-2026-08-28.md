@@ -43,6 +43,26 @@ Tools (executor 49 static+MCP, CATEGORY_TIMEOUTS, approval_gated, mock-safe)
  ↓
 Domain state (Postgres documents/entities, Redis quota, MinIO)
 ```
+
+```mermaid
+flowchart TD
+ API["API routers/temporal.py<br/>POST /workflows<br/>workspace auth 20KB"]
+ WC["Temporal Client<br/>deterministic ID<br/>REJECT_DUPLICATE"]
+ WF["Workflows 6<br/>Ingest / DurableAgent<br/>Approval / Connector / Event / Hello<br/>0 langgraph imports"]
+ ACT["DurableAgentRunActivity<br/>ONLY api.graph import<br/>HAS_LANGGRAPH<br/>heartbeat 15s"]
+ G["StateGraph v1<br/>10 nodes<br/>MemorySaver"]
+ POL["Policy<br/>approval_gated--> waiting_approval<br/>SecretManager"]
+ TOOLS["Tools<br/>49 + MCP<br/>4KB truncate"]
+ DB[("Domain<br/>Postgres / Redis / MinIO")]
+
+ API--> WC--> WF--> ACT--> G--> POL--> TOOLS--> DB
+ TOOLS -.-> WF
+
+ style WF fill:#0f172a,stroke:#38bdf8,color:#fff
+ style ACT fill:#1e3a5f,stroke:#f59e0b,color:#fff
+ style G fill:#1e1b4b,stroke:#a78bfa,color:#fff
+```
+
 Counts: `langgraph 60, StateGraph 4, MemorySaver 6, AGENT_REGISTRY 18, _build_dag 6, classify_intent 11, durable_agent_run 13`
 
 ## 5. Temporal Boundary
@@ -52,6 +72,24 @@ Counts: `langgraph 60, StateGraph 4, MemorySaver 6, AGENT_REGISTRY 18, _build_da
 ## 6. LangGraph Boundary
 
 **LangGraph owns:** routing (`classify_intent` 14 categories + secondary tie-break), agent selection (`AGENT_REGISTRY`, `supervisor_dag` `SEQUENTIAL_CHAINS 5`, `PARALLEL_SAFE 8`), branching (`Send layers`), tool decision (`selected_tool`), graph state (`VaeloomGraphState`), evaluation (`qa 3 tries + reflect`), interrupt topology (`waiting_approval`), finalization. **Verified graph executes, not wraps:** `test_graph_runtime 6` real `ainvoke` (organize→organization, multi-agent DAG, tool search_documents, interrupt approval_gated, secret rejection, no secret in state) + `get_vaeloom_graph() → CompiledStateGraph` + `real temporal durable_run:organization`.
+
+```mermaid
+flowchart LR
+ V["validate_input<br/>secret 20KB<br/>kill-switch"]--> RAG["retrieve_context<br/>RAG 8/8/5"]
+ RAG--> RT["route<br/>classify"]
+ RT--> SUP["supervisor<br/>DAG"]
+ SUP--> AG["agent<br/>quota"]
+ AG--> TD["tool_decision"]
+ TD--> PC["policy_check<br/>approval gate"]
+ PC--> TE["tool_execute<br/>4KB"]
+ TE--> EV["evaluate"]
+ EV--> FIN["finalize<br/>20KB"]
+ PC -.->|"waiting_approval"| EV
+
+ style V fill:#7f1d1d,stroke:#f87171,color:#fff
+ style PC fill:#14532d,stroke:#4ade80,color:#fff
+ style TE fill:#7c2d12,stroke:#fb923c,color:#fff
+```
 
 ## 7. Graph Node Audit
 
@@ -165,6 +203,25 @@ OTel `opentelemetry-distro` `FastAPI` auto-instrumentation `api.main:app` (`OTEL
 ## 31. Chaos
 
 `worker kill` (kill worker-1 `137` → worker-2 completes `organization` via retry, no duplicate side effect, `quota` not bypassed, `approval` not lost), `Temporal restart` (`docker restart temporal` → `healthy` `temporal workflow list` still `1251` Total, `schedules` persist), `Redis restart` (`docker restart redis` → `PONG`, quota `fail_open` still allows `allowed true`), `Postgres restart` (`docker restart postgres` → `healthy`, RAG fallback `[]` still `completed`), `LLM timeout` (mock `llm_service` timeout `60s` → `LLMTransientError` retry `1×`), `tool timeout` (`search_documents 5s` → `ToolExecutionError`), `connector failure` (`connector not found` → `ApplicationError`), `RAG failure` (`password auth` → fallback `[]`), `network failure` (heartbeat 15s covers), `duplicate request` (`REJECT_DUPLICATE`), `cancel during execution` (`handle.cancel → CANCELLED`), `kill-switch during execution` (next validate fails), `approval timeout` (`ApprovalWorkflow 1s → expired`).
+
+```mermaid
+sequenceDiagram
+ participant WF as Workflow<br/>DurableAgent
+ participant ACT as Activity<br/>durable_agent_run
+ participant G as LangGraph<br/>10 nodes
+ participant P as Policy
+ participant T as Tool<br/>execute_tool
+ WF->>ACT: 120s hb30s 2×<br/>validate 20KB
+ ACT->>G: ainvoke thread_id=request_id<br/>validate_input--> retrieve
+ G->>G: route--> supervisor--> agent<br/>quota check
+ G->>P: policy_check<br/>approval_gated?
+ P-->>G: waiting_approval / executing_tool
+ G->>T: tool_execute 4KB<br/>SecretManager
+ T-->>G: result
+ G->>G: evaluate--> finalize 20KB
+ G-->>ACT: validate_graph_state
+ ACT-->>WF: completed + rag_status
+```
 
 ## 32. Performance
 

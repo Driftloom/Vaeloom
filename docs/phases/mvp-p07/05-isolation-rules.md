@@ -15,22 +15,22 @@ identity for any row to be visible.
 **Invariant:** A missing scope key can never leak data. If either key is NULL,
 the row is invisible to all queries (fail-closed by design).
 
-| Component      | Role                                                                                                             |
+| Component | Role |
 | -------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `tenant_id`    | Identifies the organizational tenant. Every scoped table carries this column.                                    |
-| `workspace_id` | Identifies the workspace within a tenant. Provides the second axis of isolation.                                 |
-| Session GUCs   | `SET app.tenant_id`, `SET app.workspace_id` — set per-request from verified JWT claims, never from client input. |
+| `tenant_id` | Identifies the organizational tenant. Every scoped table carries this column. |
+| `workspace_id` | Identifies the workspace within a tenant. Provides the second axis of isolation. |
+| Session GUCs | `SET app.tenant_id`, `SET app.workspace_id` — set per-request from verified JWT claims, never from client input. |
 
 **Key design decisions:**
 
 - Both keys are **UUID NOT NULL** on new/affected tables. Migration 0005
-  enforces composite NOT NULL constraints where they exist.
+ enforces composite NOT NULL constraints where they exist.
 - Some legacy tables (Memory, Connector, Agent, Event) have **nullable**
-  `tenant_id`. RLS policies on these tables return zero rows for NULL values
-  (correct fail-closed behavior), but this must be documented and eventually
-  remediated.
+ `tenant_id`. RLS policies on these tables return zero rows for NULL values
+ (correct fail-closed behavior), but this must be documented and eventually
+ remediated.
 - The composite key is **tenant-scoped first**: `tenant_id` narrows to the
-  organizational boundary, then `workspace_id` narrows within that boundary.
+ organizational boundary, then `workspace_id` narrows within that boundary.
 
 ---
 
@@ -38,45 +38,45 @@ the row is invisible to all queries (fail-closed by design).
 
 ### What actually exists today
 
-| Layer                 | Mechanism                                                                                         | Status                                                         |
+| Layer | Mechanism | Status |
 | --------------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| **Application-level** | `TenantContext` middleware (reads `X-Tenant-ID` / `X-Workspace-ID` headers, stores in ContextVar) | ✅ Implemented                                                 |
-| **Application-level** | `TenantAwareRepository` base class (adds `tenant_id` filter to queries)                           | ✅ Implemented but **unused by most agents/services**          |
-| **Database-level**    | RLS on **34 tables** (31 from 0005 + 3 from 0007)                                                 | ✅ Implemented                                                 |
-| **RLS policy**        | Composite `workspace_id` + `tenant_id` filter (not just tenant_id)                                | ✅ Implemented                                                 |
-| **Session GUCs**      | `SET LOCAL app.tenant_id` / `SET LOCAL app.workspace_id` (transaction-scoped)                     | ✅ **Implemented** in `middleware/tenant.py` and `database.py` |
-| **PgBouncer safety**  | Uses `SET LOCAL` (not `SET`) — safe with transaction pooling                                      | ✅ **Implemented** — no cross-tenant leak via connection reuse |
-| **FORCE RLS**         | `ALTER TABLE ... FORCE ROW LEVEL SECURITY` on all 34 RLS tables                                   | ✅ **Implemented** via migration 0010                          |
-| **PostgreSQL roles**  | `vaeloom_app` (app), `vaeloom_migrator` (BYPASSRLS), `vaeloom_readonly` (analytics)               | ✅ **Implemented** via migration 0010                          |
-| **CI isolation test** | `tests/test_rls_isolation.py` — 4 tests verifying cross-tenant isolation                          | ✅ **Implemented**                                             |
+| **Application-level** | `TenantContext` middleware (reads `X-Tenant-ID` / `X-Workspace-ID` headers, stores in ContextVar) | ✅ Implemented |
+| **Application-level** | `TenantAwareRepository` base class (adds `tenant_id` filter to queries) | ✅ Implemented but **unused by most agents/services** |
+| **Database-level** | RLS on **34 tables** (31 from 0005 + 3 from 0007) | ✅ Implemented |
+| **RLS policy** | Composite `workspace_id` + `tenant_id` filter (not just tenant_id) | ✅ Implemented |
+| **Session GUCs** | `SET LOCAL app.tenant_id` / `SET LOCAL app.workspace_id` (transaction-scoped) | ✅ **Implemented** in `middleware/tenant.py` and `database.py` |
+| **PgBouncer safety** | Uses `SET LOCAL` (not `SET`) — safe with transaction pooling | ✅ **Implemented** — no cross-tenant leak via connection reuse |
+| **FORCE RLS** | `ALTER TABLE ... FORCE ROW LEVEL SECURITY` on all 34 RLS tables | ✅ **Implemented** via migration 0010 |
+| **PostgreSQL roles** | `vaeloom_app` (app), `vaeloom_migrator` (BYPASSRLS), `vaeloom_readonly` (analytics) | ✅ **Implemented** via migration 0010 |
+| **CI isolation test** | `tests/test_rls_isolation.py` — 4 tests verifying cross-tenant isolation | ✅ **Implemented** |
 
 ### Remaining gaps
 
 1. **TenantAwareRepository not widely adopted.** Most agents and services query
-   tables directly without going through the repository layer, bypassing the
-   application-level tenant filter. RLS provides DB-level safety net.
+ tables directly without going through the repository layer, bypassing the
+ application-level tenant filter. RLS provides DB-level safety net.
 
 2. **Nullable tenant_id on legacy tables.** `Memory`, `Connector`, `Agent`, and
-   `Event` have nullable `tenant_id`. RLS USING clause returns no rows for NULL
-   (correct fail-closed), but existing data in those tables may be invisible
-   once RLS is enforced. if RLS is actually enabled on the table. For the 4
-   tables with RLS, queries return zero rows unless the session variables are
-   set. For the other ~26 tables, no RLS exists at all.
+ `Event` have nullable `tenant_id`. RLS USING clause returns no rows for NULL
+ (correct fail-closed), but existing data in those tables may be invisible
+ once RLS is enforced. if RLS is actually enabled on the table. For the 4
+ tables with RLS, queries return zero rows unless the session variables are
+ set. For the other ~26 tables, no RLS exists at all.
 
 3. **tenant_id-only filter in RLS (custom runner only).** The custom runner
-   (`migrations/0005_rls.py`) uses tenant_id-only policies on 4 tables.
-   The Alembic system (`alembic/versions/0005_rls_expanded.py`) uses composite
-   `workspace_id` + `tenant_id` policies on 31 tables. Two workspaces within
-   the same tenant can see each other's rows via the custom runner path.
+ (`migrations/0005_rls.py`) uses tenant_id-only policies on 4 tables.
+ The Alembic system (`alembic/versions/0005_rls_expanded.py`) uses composite
+ `workspace_id` + `tenant_id` policies on 31 tables. Two workspaces within
+ the same tenant can see each other's rows via the custom runner path.
 
 4. **TenantAwareRepository is not widely adopted.** Most agents and services
-   query tables directly without going through the repository layer, bypassing
-   the application-level tenant filter.
+ query tables directly without going through the repository layer, bypassing
+ the application-level tenant filter.
 
 5. **Nullable tenant_id on legacy tables.** `Memory`, `Connector`, `Agent`, and
-   `Event` have nullable `tenant_id`. RLS USING clause returns no rows for NULL
-   (correct fail-closed), but this means existing data in those tables may be
-   invisible once RLS is enforced.
+ `Event` have nullable `tenant_id`. RLS USING clause returns no rows for NULL
+ (correct fail-closed), but this means existing data in those tables may be
+ invisible once RLS is enforced.
 
 ---
 
@@ -89,48 +89,48 @@ Each gets a composite policy matching both `workspace_id` and `tenant_id`.
 
 **Full table list (target):**
 
-| Table                 | Notes                                                   |
+| Table | Notes |
 | --------------------- | ------------------------------------------------------- |
-| `workspaces`          | Workspace boundary table                                |
-| `workspace_users`     | Membership — scoped to workspace                        |
-| `documents`           | User documents                                          |
-| `document_versions`   | Version history                                         |
-| `memories`            | Memory entries (nullable tenant_id — remediate)         |
-| `memory_records`      | Memory sub-records                                      |
-| `resumes`             | Resume data                                             |
-| `applications`        | Job applications                                        |
-| `approval_request`    | Approval workflows                                      |
-| `approval_decision`   | Approval decisions                                      |
-| `schedule_events`     | Calendar/schedule                                       |
-| `connectors`          | Integration connectors (nullable tenant_id — remediate) |
-| `events`              | System events (nullable tenant_id — remediate)          |
-| `event_subscriptions` | Event subscriptions                                     |
-| `dead_letter_events`  | Failed event processing                                 |
-| `notifications`       | User notifications                                      |
-| `agent_executions`    | Agent run history                                       |
-| `agent_actions`       | Agent action log                                        |
-| `api_keys`            | API key storage                                         |
-| `auth_sessions`       | Authentication sessions                                 |
-| `usage_records`       | Usage/metering                                          |
-| `webhooks`            | Webhook definitions                                     |
-| `webhook_deliveries`  | Webhook delivery log                                    |
-| `subscriptions`       | Subscription records                                    |
-| `integrations`        | Integration configs                                     |
-| `plugins`             | Plugin registry                                         |
-| `plugin_executions`   | Plugin run history                                      |
-| `agent_schedules`     | Scheduled agent runs                                    |
-| `embeddings`          | Vector embeddings                                       |
-| `entities`            | Knowledge graph entities                                |
-| `relationships`       | Knowledge graph relationships                           |
+| `workspaces` | Workspace boundary table |
+| `workspace_users` | Membership — scoped to workspace |
+| `documents` | User documents |
+| `document_versions` | Version history |
+| `memories` | Memory entries (nullable tenant_id — remediate) |
+| `memory_records` | Memory sub-records |
+| `resumes` | Resume data |
+| `applications` | Job applications |
+| `approval_request` | Approval workflows |
+| `approval_decision` | Approval decisions |
+| `schedule_events` | Calendar/schedule |
+| `connectors` | Integration connectors (nullable tenant_id — remediate) |
+| `events` | System events (nullable tenant_id — remediate) |
+| `event_subscriptions` | Event subscriptions |
+| `dead_letter_events` | Failed event processing |
+| `notifications` | User notifications |
+| `agent_executions` | Agent run history |
+| `agent_actions` | Agent action log |
+| `api_keys` | API key storage |
+| `auth_sessions` | Authentication sessions |
+| `usage_records` | Usage/metering |
+| `webhooks` | Webhook definitions |
+| `webhook_deliveries` | Webhook delivery log |
+| `subscriptions` | Subscription records |
+| `integrations` | Integration configs |
+| `plugins` | Plugin registry |
+| `plugin_executions` | Plugin run history |
+| `agent_schedules` | Scheduled agent runs |
+| `embeddings` | Vector embeddings |
+| `entities` | Knowledge graph entities |
+| `relationships` | Knowledge graph relationships |
 
 **Tables excluded from RLS:**
 
-| Table                       | Reason                                                        |
+| Table | Reason |
 | --------------------------- | ------------------------------------------------------------- |
-| `users`                     | Global identity — access via authz only, not tenant-scoped    |
-| `tenants`                   | Global identity — tenant registry itself is not tenant-scoped |
-| `audit_events`              | Operator-only — separate role, enterprise-gated router        |
-| `telemetry_*` / `metrics_*` | No personal data — dashboard role, not tenant-scoped          |
+| `users` | Global identity — access via authz only, not tenant-scoped |
+| `tenants` | Global identity — tenant registry itself is not tenant-scoped |
+| `audit_events` | Operator-only — separate role, enterprise-gated router |
+| `telemetry_*` / `metrics_*` | No personal data — dashboard role, not tenant-scoped |
 
 ### 3.2 Session Variable Setup
 
@@ -158,10 +158,10 @@ behavior — no data leaks, no information disclosure via error messages.
 
 ### 3.3 PostgreSQL Roles
 
-| Role       | Purpose                          | Grants                                                             |
+| Role | Purpose | Grants |
 | ---------- | -------------------------------- | ------------------------------------------------------------------ |
-| `app`      | Runtime application queries      | SELECT/INSERT/UPDATE/DELETE on scoped tables. RLS active. No DDL.  |
-| `migrator` | Schema migrations (Alembic)      | DDL (CREATE/ALTER/DROP). No app connections in production.         |
+| `app` | Runtime application queries | SELECT/INSERT/UPDATE/DELETE on scoped tables. RLS active. No DDL. |
+| `migrator` | Schema migrations (Alembic) | DDL (CREATE/ALTER/DROP). No app connections in production. |
 | `reporter` | Read-only analytics (enterprise) | SELECT only. RLS applies — sees only data within the role's scope. |
 
 Role creation and grant statements belong in the migration that enables RLS
@@ -247,7 +247,7 @@ This must happen:
 - After JWT validation (tenant_id and workspace_id are verified claims)
 - Before any database query on scoped tables
 - On every request (GUCs are connection-scoped, not transaction-scoped by
-  default)
+ default)
 
 ### 5.2 PgBouncer Transaction Mode
 
@@ -262,12 +262,12 @@ connection. This is **unsafe** for multi-tenant deployments. Always use
 
 ### 5.3 Fail-Closed Behavior
 
-| Scenario                | `current_setting('app.tenant_id', true)` | RLS result                       |
+| Scenario | `current_setting('app.tenant_id', true)` | RLS result |
 | ----------------------- | ---------------------------------------- | -------------------------------- |
-| GUC set correctly       | `<uuid>`                                 | Rows matching tenant + workspace |
-| GUC never set           | `NULL`                                   | Zero rows (fail-closed)          |
-| GUC set to invalid UUID | Error at `::uuid` cast                   | Query fails (no data leak)       |
-| GUC set to empty string | Error at `::uuid` cast                   | Query fails (no data leak)       |
+| GUC set correctly | `<uuid>` | Rows matching tenant + workspace |
+| GUC never set | `NULL` | Zero rows (fail-closed) |
+| GUC set to invalid UUID | Error at `::uuid` cast | Query fails (no data leak) |
+| GUC set to empty string | Error at `::uuid` cast | Query fails (no data leak) |
 
 **Never** use `current_setting('app.tenant_id', false)` (the `false` variant
 raises an exception if the setting is missing). Always use `true` (return NULL)
@@ -312,11 +312,11 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 ### 6.3 Production Constraints
 
 - The `migrator` role must **never** be used by the application at runtime. Its
-  credentials should exist only in the migration CI pipeline.
+ credentials should exist only in the migration CI pipeline.
 - The `app` role must not have DDL privileges. Schema changes go through the
-  `migrator` role via Alembic.
+ `migrator` role via Alembic.
 - The `reporter` role is enterprise-only. RLS applies to it — it sees only data
-  within the scope set by its session GUCs.
+ within the scope set by its session GUCs.
 
 ---
 
@@ -326,22 +326,22 @@ Isolation is enforced at four layers. Each layer independently blocks cross-
 tenant/cross-workspace access. A breach of one layer does not compromise the
 others.
 
-| Layer       | Mechanism                   | Scope   | Failure Mode                                                                               |
+| Layer | Mechanism | Scope | Failure Mode |
 | ----------- | --------------------------- | ------- | ------------------------------------------------------------------------------------------ |
-| **Layer 1** | JWT authentication          | Request | Invalid/expired JWT → 401. No query executed.                                              |
-| **Layer 2** | `require_workspace_access`  | Request | Workspace not in JWT → 403. No query executed.                                             |
-| **Layer 3** | Service-level tenant filter | Query   | `TenantAwareRepository` adds WHERE clause. Missing filter → app-level leak (not DB-level). |
-| **Layer 4** | RLS (database)              | Row     | Session GUCs not set → zero rows. Composite mismatch → zero rows.                          |
+| **Layer 1** | JWT authentication | Request | Invalid/expired JWT → 401. No query executed. |
+| **Layer 2** | `require_workspace_access` | Request | Workspace not in JWT → 403. No query executed. |
+| **Layer 3** | Service-level tenant filter | Query | `TenantAwareRepository` adds WHERE clause. Missing filter → app-level leak (not DB-level). |
+| **Layer 4** | RLS (database) | Row | Session GUCs not set → zero rows. Composite mismatch → zero rows. |
 
 **How they work together:**
 
 1. JWT provides `tenant_id` and `workspace_id` as verified claims.
 2. `require_workspace_access` verifies the caller has access to the requested
-   workspace (prevents JWT replay across workspaces).
+ workspace (prevents JWT replay across workspaces).
 3. Service layer adds `tenant_id` / `workspace_id` filters to queries (defense
-   against RLS misconfiguration).
+ against RLS misconfiguration).
 4. RLS enforces the same filters at the database level (defense against
-   application bugs).
+ application bugs).
 
 **Important:** Layer 3 (service-level) is currently incomplete — most agents do
 not use `TenantAwareRepository`. This means Layer 4 (RLS) is the **only**
@@ -428,21 +428,21 @@ SELECT * FROM memories WHERE id = '<erased-id>';
 
 ## 9. Risk Register
 
-| Risk                                                                                                                                                                                                  | Severity | Mitigation                                                                                           |
+| Risk | Severity | Mitigation |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| **RLS breaks existing queries.** SQLite tests do not exercise RLS. Queries that work in SQLite may fail or return unexpected results in Postgres with RLS enabled.                                    | High     | Run Postgres integration tests in CI (docker-compose). Add RLS-specific test suite in P14.           |
-| **No `SET app.*` mechanism exists.** RLS is currently inert — policies exist but session variables are never set, so queries on RLS-enabled tables return zero rows or errors.                        | Critical | Implement session GUC middleware in P07. Block P07 completion until middleware is verified.          |
-| **Nullable tenant_id on legacy tables.** `Memory`, `Connector`, `Agent`, `Event` have nullable `tenant_id`. RLS returns zero rows for NULL (correct fail-closed), but existing data may be invisible. | Medium   | Add data migration to backfill `tenant_id` on existing rows. Add NOT NULL constraint after backfill. |
-| **TenantAwareRepository not widely adopted.** Most agents query tables directly, bypassing application-level tenant filtering.                                                                        | High     | Audit all query paths. Wrap or migrate direct queries to use `TenantAwareRepository` or equivalent.  |
-| **PgBouncer session-mode leak.** If PgBouncer runs in session mode without `DISCARD ALL`, GUCs persist across requests, potentially leaking tenant context.                                           | High     | Enforce `pool_mode = transaction` in production config. Verify `server_reset_query = DISCARD ALL`.   |
-| **Operator role bypass.** If the `operator` role is granted to the `app` role (or vice versa), isolation boundaries collapse.                                                                         | Medium   | Document role hierarchy. Add CI check: `app` must not be a member of `operator`.                     |
+| **RLS breaks existing queries.** SQLite tests do not exercise RLS. Queries that work in SQLite may fail or return unexpected results in Postgres with RLS enabled. | High | Run Postgres integration tests in CI (docker-compose). Add RLS-specific test suite in P14. |
+| **No `SET app.*` mechanism exists.** RLS is currently inert — policies exist but session variables are never set, so queries on RLS-enabled tables return zero rows or errors. | Critical | Implement session GUC middleware in P07. Block P07 completion until middleware is verified. |
+| **Nullable tenant_id on legacy tables.** `Memory`, `Connector`, `Agent`, `Event` have nullable `tenant_id`. RLS returns zero rows for NULL (correct fail-closed), but existing data may be invisible. | Medium | Add data migration to backfill `tenant_id` on existing rows. Add NOT NULL constraint after backfill. |
+| **TenantAwareRepository not widely adopted.** Most agents query tables directly, bypassing application-level tenant filtering. | High | Audit all query paths. Wrap or migrate direct queries to use `TenantAwareRepository` or equivalent. |
+| **PgBouncer session-mode leak.** If PgBouncer runs in session mode without `DISCARD ALL`, GUCs persist across requests, potentially leaking tenant context. | High | Enforce `pool_mode = transaction` in production config. Verify `server_reset_query = DISCARD ALL`. |
+| **Operator role bypass.** If the `operator` role is granted to the `app` role (or vice versa), isolation boundaries collapse. | Medium | Document role hierarchy. Add CI check: `app` must not be a member of `operator`. |
 
 ---
 
 ## 10. Acceptance Mapping
 
-| Requirement                     | How Closed                                                                 |
+| Requirement | How Closed |
 | ------------------------------- | -------------------------------------------------------------------------- |
-| NFR-15/h15 (isolation)          | Passing P14 isolation suite + RLS evidence                                 |
-| FR-h60..66 (authz)              | Layers 1-4 enforced, invariant tests pass                                  |
+| NFR-15/h15 (isolation) | Passing P14 isolation suite + RLS evidence |
+| FR-h60..66 (authz) | Layers 1-4 enforced, invariant tests pass |
 | RISK-P05-03 (cross-tenant leak) | RLS composite policy + session GUC middleware + Postgres integration tests |

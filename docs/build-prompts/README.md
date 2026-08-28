@@ -23,49 +23,49 @@ This folder does not contain the build prompts themselves — they live in their
 
 ```mermaid
 graph LR
-    subgraph Foundation["🏗️ Foundation"]
-        F1["01 · Foundation Infra"]
-        F2["02 · Database Schema"]
-    end
-    subgraph Core["⚙️ Core System"]
-        C1["03 · Ingestion Pipeline"]
-        C2["04 · Memory System"]
-        C3["05 · Agent Harness"]
-        C4["06 · RAG Retrieval"]
-        C5["07 · MCP Tools"]
-    end
-    subgraph Agents["🤖 Agent Layer"]
-        A1["08 · Specialist Agents"]
-        A2["09 · AI Gateway"]
-    end
-    subgraph Quality["✅ Quality & Safety"]
-        Q1["10 · Evaluation"]
-        Q2["11 · Guardrails"]
-        Q3["12 · Observability"]
-    end
-    subgraph Delivery["🚀 Delivery"]
-        D1["13 · API Backend"]
-        D2["14 · Frontend"]
-        D3["15 · Security"]
-        D4["16 · Deployment"]
-    end
+ subgraph Foundation["Foundation"]
+ F1["01 · Foundation Infra"]
+ F2["02 · Database Schema"]
+ end
+ subgraph Core["Core System"]
+ C1["03 · Ingestion Pipeline"]
+ C2["04 · Memory System"]
+ C3["05 · Agent Harness"]
+ C4["06 · RAG Retrieval"]
+ C5["07 · MCP Tools"]
+ end
+ subgraph Agents["Agent Layer"]
+ A1["08 · Specialist Agents"]
+ A2["09 · AI Gateway"]
+ end
+ subgraph Quality["Quality & Safety"]
+ Q1["10 · Evaluation"]
+ Q2["11 · Guardrails"]
+ Q3["12 · Observability"]
+ end
+ subgraph Delivery["Delivery"]
+ D1["13 · API Backend"]
+ D2["14 · Frontend"]
+ D3["15 · Security"]
+ D4["16 · Deployment"]
+ end
 
-    F1 --> F2 --> C1 --> C2 --> C3 --> C4 --> C5
-    C5 --> A1 --> A2
-    A2 --> Q1 --> Q2 --> Q3
-    Q3 --> D1 --> D2 --> D3 --> D4
+ F1--> F2--> C1--> C2--> C3--> C4--> C5
+ C5--> A1--> A2
+ A2--> Q1--> Q2--> Q3
+ Q3--> D1--> D2--> D3--> D4
 
-    classDef foundation fill:#e3f2fd,stroke:#1565c0
-    classDef core fill:#e8f5e9,stroke:#2e7d32
-    classDef agent fill:#fff3e0,stroke:#e65100
-    classDef quality fill:#f3e5f5,stroke:#7b1fa2
-    classDef delivery fill:#e0f2f1,stroke:#00695c
+ classDef foundation fill:#e3f2fd,stroke:#1565c0
+ classDef core fill:#e8f5e9,stroke:#2e7d32
+ classDef agent fill:#fff3e0,stroke:#e65100
+ classDef quality fill:#f3e5f5,stroke:#7b1fa2
+ classDef delivery fill:#e0f2f1,stroke:#00695c
 
-    class F1,F2 foundation
-    class C1,C2,C3,C4,C5 core
-    class A1,A2 agent
-    class Q1,Q2,Q3 quality
-    class D1,D2,D3,D4 delivery
+ class F1,F2 foundation
+ class C1,C2,C3,C4,C5 core
+ class A1,A2 agent
+ class Q1,Q2,Q3 quality
+ class D1,D2,D3,D4 delivery
 ```
 
 ## Build order (MVP)

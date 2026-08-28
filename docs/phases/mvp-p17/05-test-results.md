@@ -1,22 +1,22 @@
-﻿# MVP-P17 â€” 05. Test Results
+# MVP-P17 — 05. Test Results
 
-> **Phase:** MVP-P17 â€” Observability and Operations  
-> **Date:** 2026-08-22 Â· **Baseline:** `787053a` + P16 92.8 + P17 (OTel traces + correlation IDs + 5 SLO alerts + 3 Grafana dashboards + 4 runbooks)  
+> **Phase:** MVP-P17 — Observability and Operations 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 (OTel traces + correlation IDs + 5 SLO alerts + 3 Grafana dashboards + 4 runbooks) 
 > **Env:** `tmp_path` NullPool `mock_llm` `mock_connector_test` Python 3.12.13 `uv` + `pytest-xdist -n 4` sqlite + `httpx.AsyncClient(app)`; `terraform 1.8.0` + `docker buildx v4` + `k6 v0.54` + `trivy` + `gitleaks` + `cosign 2.2.4` + `syft` + `promtool` + `grafana` + `OTel 1.27`
 
 ## Summary
 
 | Suite | Collected/Scanned | Passed | Skipped | XFailed | Failed | Result | Time |
 |---|---|---|---|---|---|---|---|
-| Full `pytest --collect-only -q -o addopts=""` | 2557 | â€” | â€” | â€” | â€” | 2557 (12.91s) | 12.91s |
-| `pytest tests/security --collect-only -q` | 233 | â€” | â€” | â€” | â€” | 233 (170 unique F-02) | 2.80s |
+| Full `pytest --collect-only -q -o addopts=""` | 2557 | — | — | — | — | 2557 (12.91s) | 12.91s |
+| `pytest tests/security --collect-only -q` | 233 | — | — | — | — | 233 (170 unique F-02) | 2.80s |
 | Full suite `pytest -q -o addopts="-n 4"` | 2557 | 2551 | 4 | 2 | 0 | **PASS 99.8%** | ~3.5min |
 | `--cov=api --cov-report=term -q -o addopts="-n 4"` | 2557 | 2551 | 4 | 2 | 0 | **94.2% total** (retained P16) | ~4.2min |
 | `pnpm --filter web test -- src/__tests__/a11y.test.tsx` | 2 | 2 | 0 | 0 | 0 | PASS 0 critical | 3.2s |
-| `k6 baseline 20 RPS 50 VUs/5m` | 50 VUs | â€” | â€” | â€” | â€” | p50 45ms p95 120ms p99 210ms error 0.2% PASS <200 budget | 5m |
-| `k6 stress 200 RPS 200 VUs/6m` | 200 VUs | â€” | â€” | â€” | â€” | p50 85ms p95 480ms error 0.4% PASS | 6m |
-| `k6 load-test-gate 10 VUs/30s` | 10 VUs | â€” | â€” | â€” | â€” | PASS `deploy.yml:111` thresholds p95<500 rate<0.01 p95 115ms | 30s |
-| `test_circuit_breaker.py 3/30s` | 12 | 12 | 0 | 0 | 0 | PASS 3â†’OPEN 30sâ†’HALFâ†’CLOSED | 1.1s |
+| `k6 baseline 20 RPS 50 VUs/5m` | 50 VUs | — | — | — | — | p50 45ms p95 120ms p99 210ms error 0.2% PASS <200 budget | 5m |
+| `k6 stress 200 RPS 200 VUs/6m` | 200 VUs | — | — | — | — | p50 85ms p95 480ms error 0.4% PASS | 6m |
+| `k6 load-test-gate 10 VUs/30s` | 10 VUs | — | — | — | — | PASS `deploy.yml:111` thresholds p95<500 rate<0.01 p95 115ms | 30s |
+| `test_circuit_breaker.py 3/30s` | 12 | 12 | 0 | 0 | 0 | PASS 3→OPEN 30s→HALF→CLOSED | 1.1s |
 | `promtool check rules infra/ops/monitoring/alerts.yml` | 9 rules 3 groups | 9 | 0 | 0 | 0 | **PASS** `alerts.yml:1` | 0.5s |
 | `promtool check rules infra/monitoring/alerts/vaeloom-alerts.yml` | 4 rules | 4 | 0 | 0 | 0 | **PASS** `vaeloom-alerts.yml:1` | 0.5s |
 | `grafana dashboards JSON` | 3 files 23 panels | 3 | 0 | 0 | 0 | **PASS** backend 8 + latency 8 + agents 7 lint `json.tool` | 1s |
@@ -26,17 +26,17 @@
 | `terraform plan -out=tfplan` | 1 plan | 1 | 0 | 0 | 0 | PASS artifact `deploy.yml:22` | 45s |
 | `docker compose config` dev+prod | 2 files | 2 | 0 | 0 | 0 | PASS 149+228 lines | 1s |
 | `docker buildx` api+web | 2 images | 2 | 0 | 0 | 0 | PASS multi-stage cached gha | ~2min |
-| `gitleaks` secret scan | 1 | 0 leaks | â€” | â€” | 0 | PASS `security-scan.yml:6` fetch0 | 8s |
-| `codeql` SAST js-ts+python | 2 langs | 0 HIGH | â€” | â€” | 0 | PASS `security-scan.yml:12` | ~3min |
-| `trivy fs` | 1 | 0 CRITICAL | â€” | â€” | 0 | PASS SARIF `security-scan.yml:19` | 12s |
-| `trivy image` api+web | 2 | 0 CRITICAL | â€” | â€” | 0 | PASS `security-scan.yml:36` | 25s |
-| `syft sbom spdx-json` | 1 | 1 | â€” | â€” | 0 | PASS `security-scan.yml:26` `sbom.spdx.json` 420KB | 5s |
-| `cosign sign` KMS | 2 images | 2 | â€” | â€” | 0 | PASS `deploy.yml:92` awskms | 10s |
-| `cosign attestation` spdx | 2 | 2 | â€” | â€” | 0 | PASS `deploy.yml:103` spdx | 5s |
-| `pnpm audit --audit-level=high` | 1 | 0 high | â€” | â€” | 0 | PASS `security-audit.yml:12` | 6s |
-| `pip-audit` | 1 | 0 high | â€” | â€” | 0 | PASS `security-audit.yml:24` | 7s |
-| `bandit -r apps/api/src/api -ll` | â€” | â€” | â€” | â€” | 0 HIGH / 38 MEDIUM B608 FP | PASS DEC-P13-07 | 4s |
-| `ruff check` + `mypy` | 2 | 2 | â€” | â€” | 0 | PASS `ci.yml:python-checks` | 8s |
+| `gitleaks` secret scan | 1 | 0 leaks | — | — | 0 | PASS `security-scan.yml:6` fetch0 | 8s |
+| `codeql` SAST js-ts+python | 2 langs | 0 HIGH | — | — | 0 | PASS `security-scan.yml:12` | ~3min |
+| `trivy fs` | 1 | 0 CRITICAL | — | — | 0 | PASS SARIF `security-scan.yml:19` | 12s |
+| `trivy image` api+web | 2 | 0 CRITICAL | — | — | 0 | PASS `security-scan.yml:36` | 25s |
+| `syft sbom spdx-json` | 1 | 1 | — | — | 0 | PASS `security-scan.yml:26` `sbom.spdx.json` 420KB | 5s |
+| `cosign sign` KMS | 2 images | 2 | — | — | 0 | PASS `deploy.yml:92` awskms | 10s |
+| `cosign attestation` spdx | 2 | 2 | — | — | 0 | PASS `deploy.yml:103` spdx | 5s |
+| `pnpm audit --audit-level=high` | 1 | 0 high | — | — | 0 | PASS `security-audit.yml:12` | 6s |
+| `pip-audit` | 1 | 0 high | — | — | 0 | PASS `security-audit.yml:24` | 7s |
+| `bandit -r apps/api/src/api -ll` | — | — | — | — | 0 HIGH / 38 MEDIUM B608 FP | PASS DEC-P13-07 | 4s |
+| `ruff check` + `mypy` | 2 | 2 | — | — | 0 | PASS `ci.yml:python-checks` | 8s |
 
 ## Coverage Retained (P15 94.2% not regressed by observability)
 
@@ -74,7 +74,7 @@ $ python -c "from api.logging import _redact; print(_redact({'password':'x','tok
 | **Alerts 5 SLO** | HighErrorRate 5% 5m + HighLatency p95>1s 5m + ServiceDown probe 1m + DatabasePool >80 5m + AgentFailureRate 10% all runbook-linked | PASS 9 total 5 SLO + infra 4 extra `alerts.yml:1` + 4 `vaeloom-alerts.yml:1` =13 rules |
 | **Grafana 3 dashboards** | backend 8 + latency 8 + agents 7 =23 panels refresh 30s p50/p95/p99 + workspace Top10 | PASS 3 json lint `json.tool` OK, uid vaeloom-backend/latency/agents |
 | **Performance budget** | `performance-budget.json:52` p95_read 200 (120<200 PASS) lighthouse bundles 200KB cap | PASS `k6 baseline` p50 45ms p95 120ms on 20 RPS <200 budget, stress 480ms <500 |
-| **Synthetic 3 probes** | `check-health.sh` 3 probes liveness/readiness/startup interval 30s `curl --max-time 5 status 200/204` 3 failures â†’ `alert-on-failure.sh` | PASS `bash -n` syntax OK + `curl -f /health` 200 expected |
+| **Synthetic 3 probes** | `check-health.sh` 3 probes liveness/readiness/startup interval 30s `curl --max-time 5 status 200/204` 3 failures → `alert-on-failure.sh` | PASS `bash -n` syntax OK + `curl -f /health` 200 expected |
 | **Runbooks 4** | high-latency + high-error-rate + service-down + db-pool-exhaustion each Severity + Triage + Causes + Resolution + Post-Incident | PASS 4 files runbook annotation in `alerts.yml:18,30,42,79` |
 | **Incident/SLO** | SEV1 15m SEV2 30m 7-day rotation + 5 SLO p50<100 p95<500 99.9% error<1% RPO1h RTO15m burn 0.04% | PASS `INCIDENT-RESPONSE.md:1` + `slo-dr.md:1` |
 | **Retention 30d** | `structured-logging.md:1` Standard Fields + `json-file max-size 10m max-file 3` + prometheus 15s for:5m windows | PASS 30d log/metrics retention via rotation |
@@ -119,8 +119,8 @@ $ k6 run --vus 10 --duration 30s infra/ops/load-test/k6-script.js
 
 ## Determinism Controls
 
-- `conftest.py:9` JWT 32+ `test-jwt-secret-for-ci-only-32-chars-long!!` â€” 0 InsecureKeyLengthWarning
-- `test_noauth_private.py:90` sorted(PUBLIC_PATHS) avoids xdist frozensetâ†’list drift
+- `conftest.py:9` JWT 32+ `test-jwt-secret-for-ci-only-32-chars-long!!` — 0 InsecureKeyLengthWarning
+- `test_noauth_private.py:90` sorted(PUBLIC_PATHS) avoids xdist frozenset→list drift
 - `ci.yml:7` concurrency `group: ${{ github.workflow }}-${{ github.ref }}` cancel-in-progress deterministic
 - `prometheus.yml:4` scrape 15s + evaluation 15s burn 2x/5x deterministic windows
 - `alerts.yml` `for: 5m/1m/10m` + `interval: 30s/60s` deterministic burn

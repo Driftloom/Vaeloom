@@ -1,7 +1,7 @@
-﻿# AI Service Outage Runbook
+# AI Service Outage Runbook
 
 > **Purpose:** Step-by-step runbook for detecting, mitigating, and recovering from AI service outages in Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 
@@ -18,48 +18,48 @@ The AI service is a critical Vaeloom component responsible for agent inference, 
 
 ```mermaid
 graph TD
-    classDef upstream fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
-    classDef service fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef fallback fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef circuit fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef upstream fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
+ classDef service fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef fallback fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef circuit fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Upstream["Upstream Providers"]
-        ANTHROPIC["Anthropic Claude API<br/>Primary provider"]
-        OPENAI["OpenAI GPT-4o<br/>Fallback provider"]
-    end
+ subgraph Upstream["Upstream Providers"]
+ ANTHROPIC["Anthropic Claude API<br/>Primary provider"]
+ OPENAI["OpenAI GPT-4o<br/>Fallback provider"]
+ end
 
-    subgraph AI["AI Service -- Fly.io"]
-        ROUTER["Model Router<br/>Smart request distribution"]
-        CB1["Circuit Breaker: Anthropic<br/>5% error --> half-open --> open"]
-        CB2["Circuit Breaker: OpenAI<br/>5% error --> half-open --> open"]
-        AGENTS["Agent Executors<br/>Resume, Cover Letter, ATS..."]
-        EMBED["Embedding Service<br/>Text --> vector embeddings"]
-        CACHE["Inference Cache<br/>Semantic cache (Redis)"]
-    end
+ subgraph AI["AI Service -- Fly.io"]
+ ROUTER["Model Router<br/>Smart request distribution"]
+ CB1["Circuit Breaker: Anthropic<br/>5% error--> half-open--> open"]
+ CB2["Circuit Breaker: OpenAI<br/>5% error--> half-open--> open"]
+ AGENTS["Agent Executors<br/>Resume, Cover Letter, ATS..."]
+ EMBED["Embedding Service<br/>Text--> vector embeddings"]
+ CACHE["Inference Cache<br/>Semantic cache (Redis)"]
+ end
 
-    subgraph Fallback["Fallback Flow"]
-        F1["Model Router detects failure"]
-        F2["Circuit breaker opens"]
-        F3["Fallback provider activated"]
-        F4["Degraded mode: cached results"]
-    end
+ subgraph Fallback["Fallback Flow"]
+ F1["Model Router detects failure"]
+ F2["Circuit breaker opens"]
+ F3["Fallback provider activated"]
+ F4["Degraded mode: cached results"]
+ end
 
-    ANTHROPIC --> ROUTER
-    OPENAI --> ROUTER
-    ROUTER --> CB1 & CB2
-    CB1 --> ANTHROPIC
-    CB2 --> OPENAI
-    ROUTER --> AGENTS & EMBED
-    AGENTS --> CACHE
-    EMBED --> CACHE
+ ANTHROPIC--> ROUTER
+ OPENAI--> ROUTER
+ ROUTER--> CB1 & CB2
+ CB1--> ANTHROPIC
+ CB2--> OPENAI
+ ROUTER--> AGENTS & EMBED
+ AGENTS--> CACHE
+ EMBED--> CACHE
 
-    CB1 -.->|Open --> fallback| F3
-    CB2 -.->|Open --> fallback| F3
-    CACHE --> F4
+ CB1 -.->|Open--> fallback| F3
+ CB2 -.->|Open--> fallback| F3
+ CACHE--> F4
 
-    class ANTHROPIC,OPENAI upstream
-    class ROUTER,CB1,CB2,AGENTS,EMBED,CACHE service
-    class F1,F2,F3,F4 fallback
+ class ANTHROPIC,OPENAI upstream
+ class ROUTER,CB1,CB2,AGENTS,EMBED,CACHE service
+ class F1,F2,F3,F4 fallback
 ```
 
 ## Detection
@@ -160,16 +160,16 @@ Components: AI Agent Processing
 
 ```mermaid
 flowchart LR
-    A["Monitor provider status<br/>Check Anthropic status page"] --> B{"Provider healthy?"}
-    B -->|Yes| C["Close circuit breaker<br/>Half-open --> probe --> close"]
-    C --> D["Verify inference quality<br/>Compare fallback vs primary results"]
-    D --> E["Restore primary provider<br/>Flip feature flag"]
-    E --> F["Monitor 30 minutes<br/>Error rate < 1%"]
-    
-    B -->|No| G["Wait: check every 5 min<br/>Update status page"]
-    G --> B
-    
-    F --> H[Resolved]
+ A["Monitor provider status<br/>Check Anthropic status page"]--> B{"Provider healthy?"}
+ B-->|Yes| C["Close circuit breaker<br/>Half-open--> probe--> close"]
+ C--> D["Verify inference quality<br/>Compare fallback vs primary results"]
+ D--> E["Restore primary provider<br/>Flip feature flag"]
+ E--> F["Monitor 30 minutes<br/>Error rate < 1%"]
+ 
+ B-->|No| G["Wait: check every 5 min<br/>Update status page"]
+ G--> B
+ 
+ F--> H[Resolved]
 ```
 
 ### Recovery Commands

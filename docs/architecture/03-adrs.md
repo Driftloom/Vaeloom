@@ -29,32 +29,32 @@ quarterly to ensure they remain valid as the project evolves.
 
 ```mermaid
 graph TD
-    classDef current fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pending fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef current fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pending fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    subgraph Accepted["✅ Accepted ADRs"]
-        A1["ADR-001: Monolithic Backend<br/>FastAPI (apps/api)<br/>Single service for API + AI"]
-        A2["ADR-002: MCP-Shaped Tools<br/>Adopt MCP tool shape from Day 1<br/>Transport layer swap later"]
-        A3["ADR-003: Suggest-Mode Default<br/>Agents propose, users approve<br/>Autonomy earned via accuracy"]
-        A4["ADR-004: Memory Before Features<br/>Features = memory read/write<br/>No memory sync step"]
-        A5["ADR-005: PG Extensions at MVP<br/>AGE (graph) + pgvector (vectors)<br/>Dedicated systems later"]
-        A6["ADR-006: Agent Contract Uniformity<br/>Every agent: prompt.py, tools.py,<br/>handler.py, permissions.py"]
-    end
+ subgraph Accepted["Accepted ADRs"]
+ A1["ADR-001: Monolithic Backend<br/>FastAPI (apps/api)<br/>Single service for API + AI"]
+ A2["ADR-002: MCP-Shaped Tools<br/>Adopt MCP tool shape from Day 1<br/>Transport layer swap later"]
+ A3["ADR-003: Suggest-Mode Default<br/>Agents propose, users approve<br/>Autonomy earned via accuracy"]
+ A4["ADR-004: Memory Before Features<br/>Features = memory read/write<br/>No memory sync step"]
+ A5["ADR-005: PG Extensions at MVP<br/>AGE (graph) + pgvector (vectors)<br/>Dedicated systems later"]
+ A6["ADR-006: Agent Contract Uniformity<br/>Every agent: prompt.py, tools.py,<br/>handler.py, permissions.py"]
+ end
 
-    subgraph Pending["📋 Pending ADRs"]
-        P1["ADR-007: Embedding model selection"]
-        P2["ADR-008: Graph DB engine timing"]
-        P3["ADR-009: Event bus technology"]
-        P4["ADR-010: Auth provider selection"]
-        P5["ADR-011: Frontend state management"]
-        P6["ADR-012: Plugin sandboxing approach"]
-        P7["ADR-013: Tenant isolation strategy"]
-    end
+ subgraph Pending["Pending ADRs"]
+ P1["ADR-007: Embedding model selection"]
+ P2["ADR-008: Graph DB engine timing"]
+ P3["ADR-009: Event bus technology"]
+ P4["ADR-010: Auth provider selection"]
+ P5["ADR-011: Frontend state management"]
+ P6["ADR-012: Plugin sandboxing approach"]
+ P7["ADR-013: Tenant isolation strategy"]
+ end
 
-    Accepted --> Pending
+ Accepted--> Pending
 
-    class A1,A2,A3,A4,A5,A6 current
-    class P1,P2,P3,P4,P5,P6,P7 pending
+ class A1,A2,A3,A4,A5,A6 current
+ class P1,P2,P3,P4,P5,P6,P7 pending
 ```
 
 > **Diagram:** Architecture Decision Records — **6 accepted ADRs** (two-service
@@ -101,8 +101,8 @@ graph TD
 
 ## ADR-001: Monolithic Backend
 
-**Status:** Accepted  
-**Date:** 2026-Q1  
+**Status:** Accepted 
+**Date:** 2026-Q1 
 **Source:** [`/docs/Engineering/Implementation/00-master-build-order.md`](../../docs/Engineering/Implementation/00-master-build-order.md)
 
 ### Context
@@ -117,7 +117,7 @@ deploy.
 Use a single FastAPI service (`apps/api`) that owns all backend logic:
 
 - **`apps/api`** (FastAPI, Python 3.12) — owns auth, CRUD, permissions, agents,
-  memory, retrieval, model routing, event publishing
+ memory, retrieval, model routing, event publishing
 
 All logic runs within one deployable service. No inter-service RPC boundary.
 
@@ -130,8 +130,8 @@ All logic runs within one deployable service. No inter-service RPC boundary.
 
 ## ADR-002: MCP-Shaped Tool Definitions from Day One
 
-**Status:** Accepted  
-**Date:** 2026-Q1  
+**Status:** Accepted 
+**Date:** 2026-Q1 
 **Source:** [`/docs/01-Vaeloom-MVP-Spec.md#6-connector--plugin-architecture`](../../docs/01-Vaeloom-MVP-Spec.md#6-connector--plugin-architecture)
 
 ### Context
@@ -150,14 +150,14 @@ the eventual move to real MCP a transport change, not a rewrite.
 
 - Easier: future MCP adoption is a transport-layer swap, not a re-architecture
 - Harder: slightly more abstraction in the short term for connections that may
-  never need MCP
+ never need MCP
 
 ---
 
 ## ADR-003: Suggest-Mode by Default
 
-**Status:** Accepted  
-**Date:** 2026-Q1  
+**Status:** Accepted 
+**Date:** 2026-Q1 
 **Source:** [`/docs/01-Vaeloom-MVP-Spec.md#3-product-philosophy`](../../docs/01-Vaeloom-MVP-Spec.md#3-product-philosophy)
 
 ### Context
@@ -181,8 +181,8 @@ demonstrates sufficient accuracy (configurable threshold).
 
 ## ADR-004: Memory Before Features Architecture
 
-**Status:** Accepted  
-**Date:** 2026-Q1  
+**Status:** Accepted 
+**Date:** 2026-Q1 
 **Source:** [`/docs/Vaeloom-Complete-Documentation.md#6-memory-system-in-depth`](../../docs/Vaeloom-Complete-Documentation.md#6-memory-system-in-depth)
 
 ### Context
@@ -200,16 +200,16 @@ store/structured memory, it should be questioned before being built.
 ### Consequences
 
 - Easier: features automatically benefit from better memory; no separate "memory
-  sync" step
+ sync" step
 - Harder: some features require more thought to express cleanly as memory
-  operations
+ operations
 
 ---
 
 ## ADR-005: PostgreSQL with Extensions at MVP, Dedicated Systems Later
 
-**Status:** Accepted  
-**Date:** 2026-Q1  
+**Status:** Accepted 
+**Date:** 2026-Q1 
 **Source:** [`/docs/Vaeloom-Complete-Documentation.md#10-tech-stack`](../../docs/Vaeloom-Complete-Documentation.md#10-tech-stack)
 
 ### Context
@@ -227,16 +227,16 @@ performance and embedding volume demand it.
 ### Consequences
 
 - Easier: one database to operate at MVP; migration path to dedicated systems is
-  additive
+ additive
 - Harder: AGE and pgvector have performance limits that will eventually require
-  migration
+ migration
 
 ---
 
 ## ADR-006: Agent Contract Uniformity
 
-**Status:** Accepted  
-**Date:** 2026-Q1  
+**Status:** Accepted 
+**Date:** 2026-Q1 
 **Source:** [`/docs/Vaeloom-Complete-Documentation.md#51-shared-agent-contract`](../../docs/Vaeloom-Complete-Documentation.md#51-shared-agent-contract)
 
 ### Context
@@ -267,55 +267,55 @@ all agents.
 
 Planned ADR topics (to be written as decisions are made):
 
-| #   | Topic                                                 | Status  |
+| # | Topic | Status |
 | --- | ----------------------------------------------------- | ------- |
-| 007 | Embedding model selection                             | Pending |
-| 008 | Graph DB engine decision (AGE vs. Neo4j timing)       | Pending |
+| 007 | Embedding model selection | Pending |
+| 008 | Graph DB engine decision (AGE vs. Neo4j timing) | Pending |
 | 009 | Event bus technology (Redis/BullMQ vs. Kafka trigger) | Pending |
-| 010 | Auth provider selection                               | Pending |
-| 011 | Frontend state management pattern                     | Pending |
-| 012 | Plugin sandboxing approach                            | Pending |
-| 013 | Tenant isolation strategy                             | Pending |
+| 010 | Auth provider selection | Pending |
+| 011 | Frontend state management pattern | Pending |
+| 012 | Plugin sandboxing approach | Pending |
+| 013 | Tenant isolation strategy | Pending |
 
 ---
 
 ## Goals
 
 - **Formalize decision governance** — provide a structured, auditable record of
-  every significant architectural decision made for the Vaeloom platform,
-  including context, options considered, and rationale
+ every significant architectural decision made for the Vaeloom platform,
+ including context, options considered, and rationale
 - **Prevent regression** — ensure that once a decision is made (service
-  boundaries, database choices, auth model), it is documented and can be
-  revisited with full context rather than re-litigated blindly
+ boundaries, database choices, auth model), it is documented and can be
+ revisited with full context rather than re-litigated blindly
 - **Reduce onboarding risk** — give new engineers a clear, chronological history
-  of architectural decisions so they understand _why_ the system is built the
-  way it is, not just _what_ was built
+ of architectural decisions so they understand _why_ the system is built the
+ way it is, not just _what_ was built
 - **Establish review cadence** — embed quarterly ADR review into engineering
-  workflow so decisions stay current and stale or superseded ADRs are flagged
-  before they cause downstream issues
+ workflow so decisions stay current and stale or superseded ADRs are flagged
+ before they cause downstream issues
 
 ## Scope
 
 ### In Scope
 
 - ADR format and template: context → options considered → decision →
-  consequences
+ consequences
 - Accepted ADRs 001–006 covering agent contract, data pipeline, Graph DB,
-  GraphQL schema, search/reranking, and audit trail
+ GraphQL schema, search/reranking, and audit trail
 - Pending ADRs 007–013 covering embedding model, graph DB engine timing, event
-  bus, auth provider, frontend state, plugin sandboxing, and tenant isolation
+ bus, auth provider, frontend state, plugin sandboxing, and tenant isolation
 - ADR lifecycle: proposal → review → accepted / superseded → quarterly
-  re-evaluation
+ re-evaluation
 - Cross-references to system architecture and implementation master build order
 
 ### Out of Scope
 
 - Implementation-level decisions that are easily reversible (port assignments,
-  library patch versions, naming conventions)
+ library patch versions, naming conventions)
 - RFCs or lightweight decision records that do not warrant formal ADR treatment
 - Per-service design documents (covered in Backend/, Frontend/, AI/ docs)
 - Code-level API contracts and interface definitions (covered in SDK and
-  Backend/API-Reference.md)
+ Backend/API-Reference.md)
 
 ---
 
@@ -344,53 +344,53 @@ Vaeloom adr approve --id ADR-007 --reviewer "Architecture Team"
 
 ## Future Improvements
 
-| Improvement                                  | Priority | Complexity | Timeline |
+| Improvement | Priority | Complexity | Timeline |
 | -------------------------------------------- | -------- | ---------- | -------- |
-| ADR decision tracking with status automation | High     | Medium     | Q1 2027  |
-| ADR template CI enforcement on new decisions | Medium   | Low        | Q4 2026  |
-| Stale ADR review reminder system             | Medium   | Low        | Q4 2026  |
+| ADR decision tracking with status automation | High | Medium | Q1 2027 |
+| ADR template CI enforcement on new decisions | Medium | Low | Q4 2026 |
+| Stale ADR review reminder system | Medium | Low | Q4 2026 |
 
 ## Related Documents
 
 - [System Architecture](../02-system-architecture.md) — The 8-layer system
-  architecture these ADRs govern
+ architecture these ADRs govern
 - [Master Build Order](../Engineering/Implementation/00-master-build-order.md) —
-  Implementation plan referencing ADR decisions
+ Implementation plan referencing ADR decisions
 - [Complete Documentation](../Vaeloom-Complete-Documentation.md) — Comprehensive
-  project documentation
+ project documentation
 - [Enterprise Architecture](../Enterprise/Enterprise-Architecture.md) —
-  Enterprise-scale architecture decisions
+ Enterprise-scale architecture decisions
 
 ## Common Mistakes
 
-| Mistake                                               | Why It's a Problem                                                                                                                                                                                                      |
+| Mistake | Why It's a Problem |
 | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Not recording why alternatives were rejected          | An ADR that says "chose Option A" without explaining why Options B and C were rejected leaves future engineers unable to understand the reasoning — they may reopen settled decisions                                   |
-| Letting ADRs become stale after the decision is made  | An ADR accepted in quarter 1 may no longer be valid in quarter 3 if requirements changed — ADRs need a periodic review (quarterly) to flag decisions that should be revisited                                           |
-| Writing ADRs at the wrong level of detail             | Too high-level ("we'll use microservices") provides no actionable guidance; too low-level ("port 8080 for service X") buries important decisions in implementation trivia — aim for the "why this, not that" sweet spot |
-| Treating ADRs as documentation rather than governance | An ADR that is written, approved, and never referenced again is a historical note, not a governance tool — ADRs should be reviewed during design discussions and referenced in code comments                            |
+| Not recording why alternatives were rejected | An ADR that says "chose Option A" without explaining why Options B and C were rejected leaves future engineers unable to understand the reasoning — they may reopen settled decisions |
+| Letting ADRs become stale after the decision is made | An ADR accepted in quarter 1 may no longer be valid in quarter 3 if requirements changed — ADRs need a periodic review (quarterly) to flag decisions that should be revisited |
+| Writing ADRs at the wrong level of detail | Too high-level ("we'll use microservices") provides no actionable guidance; too low-level ("port 8080 for service X") buries important decisions in implementation trivia — aim for the "why this, not that" sweet spot |
+| Treating ADRs as documentation rather than governance | An ADR that is written, approved, and never referenced again is a historical note, not a governance tool — ADRs should be reviewed during design discussions and referenced in code comments |
 
 ## Best Practices
 
-| Practice                                                                   | Rationale                                                                                                                                                                                   |
+| Practice | Rationale |
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Record both the chosen option and the rejected alternatives with rationale | A decision without alternatives is a decree, not an ADR — documenting rejected options and their trade-offs is what makes the ADR useful for future decision-makers                         |
-| Review all ADRs quarterly and flag outdated decisions for re-evaluation    | Technology and requirements change — a quarterly ADR review ensures that decisions made 6+ months ago are still valid and flags those that need revisiting                                  |
-| Keep ADRs at the architectural decision level, not implementation level    | An ADR should answer "why this service boundary?" not "what port does this service run on?" — the former is an architectural decision; the latter is an implementation detail               |
-| Link ADRs to code and vice versa                                           | Code comments referencing the relevant ADR number (e.g., `// See ADR-004`) make the decision accessible where it matters — and the ADR remains a living reference, not a forgotten document |
+| Record both the chosen option and the rejected alternatives with rationale | A decision without alternatives is a decree, not an ADR — documenting rejected options and their trade-offs is what makes the ADR useful for future decision-makers |
+| Review all ADRs quarterly and flag outdated decisions for re-evaluation | Technology and requirements change — a quarterly ADR review ensures that decisions made 6+ months ago are still valid and flags those that need revisiting |
+| Keep ADRs at the architectural decision level, not implementation level | An ADR should answer "why this service boundary?" not "what port does this service run on?" — the former is an architectural decision; the latter is an implementation detail |
+| Link ADRs to code and vice versa | Code comments referencing the relevant ADR number (e.g., `// See ADR-004`) make the decision accessible where it matters — and the ADR remains a living reference, not a forgotten document |
 
 ## Security
 
-| Concern                                               | Mitigation                                                                                                                                                                                         |
+| Concern | Mitigation |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADRs revealing security architecture publicly         | ADRs that document security decisions (encryption algorithms, key rotation, auth patterns) should not be shared outside the engineering team — mark security-sensitive ADRs with a sensitivity tag |
-| Superseded ADRs containing outdated security guidance | An old ADR recommending a deprecated encryption algorithm could be cited by a new team member unaware it was superseded — clearly mark superseded ADRs and link to the replacement                 |
-| Pending ADRs delaying critical security decisions     | Using "Pending" ADR status as a way to defer security decisions (e.g., "ADR-013: Tenant isolation strategy — Pending") creates risk — security ADRs should have a hard deadline                    |
+| ADRs revealing security architecture publicly | ADRs that document security decisions (encryption algorithms, key rotation, auth patterns) should not be shared outside the engineering team — mark security-sensitive ADRs with a sensitivity tag |
+| Superseded ADRs containing outdated security guidance | An old ADR recommending a deprecated encryption algorithm could be cited by a new team member unaware it was superseded — clearly mark superseded ADRs and link to the replacement |
+| Pending ADRs delaying critical security decisions | Using "Pending" ADR status as a way to defer security decisions (e.g., "ADR-013: Tenant isolation strategy — Pending") creates risk — security ADRs should have a hard deadline |
 
 ## Performance
 
-| Concern                                  | Guideline                                                                                                                                                                                                                        |
+| Concern | Guideline |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR review overhead vs decision velocity | Requiring ADRs for every trivial decision slows teams down — use ADRs only for decisions that are costly to reverse (service boundaries, database choice, auth model) and use lightweight RFCs for reversible decisions          |
-| Quarterly review cost vs benefit         | Reviewing 13 ADRs quarterly takes ~2 hours per review cycle — this is acceptable for architectural governance; if ADR count grows beyond 50, consider risk-based adr review (review only decisions flagged as needing attention) |
-| Pending ADR tracking overhead            | 7 pending ADRs that remain pending for months become stale overhead — assign a due date to each pending ADR and escalate when the due date passes without a decision                                                             |
+| ADR review overhead vs decision velocity | Requiring ADRs for every trivial decision slows teams down — use ADRs only for decisions that are costly to reverse (service boundaries, database choice, auth model) and use lightweight RFCs for reversible decisions |
+| Quarterly review cost vs benefit | Reviewing 13 ADRs quarterly takes ~2 hours per review cycle — this is acceptable for architectural governance; if ADR count grows beyond 50, consider risk-based adr review (review only decisions flagged as needing attention) |
+| Pending ADR tracking overhead | 7 pending ADRs that remain pending for months become stale overhead — assign a due date to each pending ADR and escalate when the due date passes without a decision |

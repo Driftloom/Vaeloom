@@ -10,32 +10,32 @@
 
 ```mermaid
 graph TD
-    classDef mvp fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef v2 fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef mvp fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef v2 fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    subgraph MVP["📋 MVP Features"]
-        F1["Auto-Organization<br/>Problem: Manual filing never happens"]
-        F2["Master Resume<br/>Problem: Resumes go stale"]
-        F3["ATS Scoring<br/>Problem: No machine-readability visibility"]
-        F4["Job Search<br/>Problem: Manual, unranked search"]
-        F5["Tailored Applications<br/>Problem: Generic apps underperform"]
-        F6["Gmail Digest<br/>Problem: Time-sensitive mail missed"]
-        F7["Deadline Detection<br/>Problem: Deadlines collide unnoticed"]
-        F8["Memory Graph<br/>Problem: Can't see what system knows"]
-        F9["Dashboard + Chat<br/>Problem: No single view, no direct line"]
-        F10["In-App Document Viewer<br/>Problem: Context-switching to read files"]
-        F11["Global Search<br/>Problem: Info scattered across memory types"]
-        F12["Chat with Agents<br/>Problem: No direct line to specialist agents"]
-    end
+ subgraph MVP["MVP Features"]
+ F1["Auto-Organization<br/>Problem: Manual filing never happens"]
+ F2["Master Resume<br/>Problem: Resumes go stale"]
+ F3["ATS Scoring<br/>Problem: No machine-readability visibility"]
+ F4["Job Search<br/>Problem: Manual, unranked search"]
+ F5["Tailored Applications<br/>Problem: Generic apps underperform"]
+ F6["Gmail Digest<br/>Problem: Time-sensitive mail missed"]
+ F7["Deadline Detection<br/>Problem: Deadlines collide unnoticed"]
+ F8["Memory Graph<br/>Problem: Can't see what system knows"]
+ F9["Dashboard + Chat<br/>Problem: No single view, no direct line"]
+ F10["In-App Document Viewer<br/>Problem: Context-switching to read files"]
+ F11["Global Search<br/>Problem: Info scattered across memory types"]
+ F12["Chat with Agents<br/>Problem: No direct line to specialist agents"]
+ end
 
-    subgraph V2["⬜ V2 Features"]
-        V1["Learning Roadmap<br/>Problem: Skill gaps not actioned"]
-    end
+ subgraph V2["V2 Features"]
+ V1["Learning Roadmap<br/>Problem: Skill gaps not actioned"]
+ end
 
-    MVP --> V2
+ MVP--> V2
 
-    class F1,F2,F3,F4,F5,F6,F7,F8,F9,F10,F11,F12 mvp
-    class V1 v2
+ class F1,F2,F3,F4,F5,F6,F7,F8,F9,F10,F11,F12 mvp
+ class V1 v2
 ```
 
 > **Diagram:** Features architecture — **12 MVP features** (auto-organization through chat with agents) and **1 V2 feature** (learning roadmap). Each feature solves a specific user problem and is backed by a specialist agent.

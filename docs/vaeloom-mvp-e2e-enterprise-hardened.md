@@ -49,9 +49,9 @@ When statements conflict, use this order:
 1. This hardening and completion specification.
 2. `01-vaeloom-mvp-spec.md` as the canonical product-scope source.
 3. `02-system-architecture.md`, `03-agent-workflow.md`, and
-   `04-memory-knowledge-graph.md` for subsystem intent.
+ `04-memory-knowledge-graph.md` for subsystem intent.
 4. `vaeloom-complete-documentation.md` and `vaeloom-documentation-site.md` for
-   wider product context.
+ wider product context.
 5. `vaeloom-mvp-e2e.md` for the original 22-phase execution structure.
 6. Superseded or alternative-format documents only for historical context.
 
@@ -59,22 +59,22 @@ When statements conflict, use this order:
 
 Every decision in this file uses one of these labels:
 
-| Label                  | Meaning                                                                                        |
+| Label | Meaning |
 | ---------------------- | ---------------------------------------------------------------------------------------------- |
-| `SOURCE-DERIVED`       | Directly supported by the Vaeloom source corpus                                                |
-| `EXTERNAL-VERIFIED`    | Confirmed against current official documentation, a primary GitHub repository, or a model card |
-| `NEW-DESIGN-DECISION`  | Added to close a real implementation gap                                                       |
-| `STAKEHOLDER-DECISION` | Cannot be finalized responsibly without business, legal, budget, or launch input               |
-| `NOT_EXECUTED`         | Designed but not run against a repository or environment                                       |
+| `SOURCE-DERIVED` | Directly supported by the Vaeloom source corpus |
+| `EXTERNAL-VERIFIED` | Confirmed against current official documentation, a primary GitHub repository, or a model card |
+| `NEW-DESIGN-DECISION` | Added to close a real implementation gap |
+| `STAKEHOLDER-DECISION` | Cannot be finalized responsibly without business, legal, budget, or launch input |
+| `NOT_EXECUTED` | Designed but not run against a repository or environment |
 
 ### 0.4 Required merge behavior
 
 This document may be used in either of two ways:
 
 - **Preferred:** Keep it as the authoritative hardening companion to
-  `vaeloom-mvp-e2e.md`.
+ `vaeloom-mvp-e2e.md`.
 - **Alternative:** Merge each numbered section into the corresponding original
-  phase using the phase-mapping table in Section 17.
+ phase using the phase-mapping table in Section 17.
 
 Do not copy only the code samples while ignoring the surrounding invariants,
 threat assumptions, tests, and release gates.
@@ -111,19 +111,19 @@ The following items are now resolved at design level:
 
 ### 1.2 Truthful project status
 
-| Dimension        | Status                                                                                                                           |
+| Dimension | Status |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Product concept  | Complete enough to implement                                                                                                     |
-| MVP scope        | Complete after Section 2 corrections                                                                                             |
-| Architecture     | Complete at design level                                                                                                         |
-| Data contracts   | Complete at design level; migrations unexecuted                                                                                  |
-| API contracts    | Endpoint catalog and mandatory contract standards complete; generated OpenAPI artifact still requires repository materialization |
-| UI/UX            | Interaction requirements complete; visual files and usability evidence unexecuted                                                |
-| AI/ML            | Architecture and evaluation plan complete; provider benchmark unexecuted                                                         |
-| Security/privacy | Control design complete; legal review, penetration test, and DPIA unexecuted                                                     |
-| CI/CD            | Workflow specification complete; pipeline unexecuted                                                                             |
-| Infrastructure   | Reference architecture complete; provider selection and provisioning unresolved                                                  |
-| Release          | **NOT AUTHORIZED**                                                                                                               |
+| Product concept | Complete enough to implement |
+| MVP scope | Complete after Section 2 corrections |
+| Architecture | Complete at design level |
+| Data contracts | Complete at design level; migrations unexecuted |
+| API contracts | Endpoint catalog and mandatory contract standards complete; generated OpenAPI artifact still requires repository materialization |
+| UI/UX | Interaction requirements complete; visual files and usability evidence unexecuted |
+| AI/ML | Architecture and evaluation plan complete; provider benchmark unexecuted |
+| Security/privacy | Control design complete; legal review, penetration test, and DPIA unexecuted |
+| CI/CD | Workflow specification complete; pipeline unexecuted |
+| Infrastructure | Reference architecture complete; provider selection and provisioning unresolved |
+| Release | **NOT AUTHORIZED** |
 
 ### 1.3 Release authorization rule
 
@@ -151,16 +151,16 @@ The architectural center remains memory, not chat.
 
 The MVP contains **eight total runtime agents, including the Orchestrator**.
 
-| #   | Agent                          | Mission                                                                                                         | Consequential actions                                                                            |
+| # | Agent | Mission | Consequential actions |
 | --- | ------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| 1   | Orchestrator                   | Route requests, assemble workflow context, enforce workflow state                                               | None directly                                                                                    |
-| 2   | Organization Agent             | Classify, name, tag, deduplicate, version-chain, and propose file operations                                    | Move/rename/archive only after approval unless narrowly authorized                               |
-| 3   | Memory Agent                   | Extract, validate, merge, supersede, retrieve, and consolidate memory                                           | Internal memory writes within declared policy                                                    |
-| 4   | Resume Agent                   | Maintain the master resume and create traceable variants                                                        | User-visible document creation; never silently publishes                                         |
-| 5   | ATS Agent                      | Compare a resume with a supplied job description                                                                | Read-only scoring and suggestions                                                                |
-| 6   | Job Search & Application Agent | Discover permitted opportunities, rank fit, prepare materials, deep-link, or use formally approved partner APIs | Submission only after role-specific approval                                                     |
-| 7   | Gmail Agent                    | Classify permitted email, extract deadlines, and create drafts                                                  | Draft-only in MVP; never sends                                                                   |
-| 8   | Scheduler Agent                | Normalize deadlines/events, detect conflicts, and send reminders                                                | May create reminders; external calendar writes require approval or explicit action authorization |
+| 1 | Orchestrator | Route requests, assemble workflow context, enforce workflow state | None directly |
+| 2 | Organization Agent | Classify, name, tag, deduplicate, version-chain, and propose file operations | Move/rename/archive only after approval unless narrowly authorized |
+| 3 | Memory Agent | Extract, validate, merge, supersede, retrieve, and consolidate memory | Internal memory writes within declared policy |
+| 4 | Resume Agent | Maintain the master resume and create traceable variants | User-visible document creation; never silently publishes |
+| 5 | ATS Agent | Compare a resume with a supplied job description | Read-only scoring and suggestions |
+| 6 | Job Search & Application Agent | Discover permitted opportunities, rank fit, prepare materials, deep-link, or use formally approved partner APIs | Submission only after role-specific approval |
+| 7 | Gmail Agent | Classify permitted email, extract deadlines, and create drafts | Draft-only in MVP; never sends |
+| 8 | Scheduler Agent | Normalize deadlines/events, detect conflicts, and send reminders | May create reminders; external calendar writes require approval or explicit action authorization |
 
 ### 2.3 Removed MVP-agent references
 
@@ -194,7 +194,7 @@ The Job Search & Application Agent may:
 - Prepare structured application answers.
 - Deep-link the user to the original listing.
 - Submit only through a formally authorized partner API and only after explicit
-  approval.
+ approval.
 
 It may not:
 
@@ -211,18 +211,18 @@ Search & Application Agent.”
 
 ### 2.6 MVP and post-MVP boundary
 
-| Capability                                             |     MVP |                      Post-MVP / enterprise |
+| Capability | MVP | Post-MVP / enterprise |
 | ------------------------------------------------------ | ------: | -----------------------------------------: |
-| Eight-agent roster                                     |     Yes |                      Expanded roster later |
-| Six memory types                                       |     Yes |                    Expanded taxonomy later |
-| Single-user workspace isolation                        |     Yes |       Multi-tenant institution model later |
-| Suggest-mode-first                                     |     Yes |                      Earned autonomy later |
-| Official connectors                                    | Limited |  Marketplace and third-party plugins later |
-| MCP-shaped internal tools                              |     Yes | External MCP servers after security review |
-| Full admin portal                                      |      No |                                 Enterprise |
-| Institution analytics                                  |      No |                                 Enterprise |
-| Cross-user memory sharing                              |      No |                                 Enterprise |
-| Autonomous job submission across unsupported platforms |      No |    Not permitted without valid integration |
+| Eight-agent roster | Yes | Expanded roster later |
+| Six memory types | Yes | Expanded taxonomy later |
+| Single-user workspace isolation | Yes | Multi-tenant institution model later |
+| Suggest-mode-first | Yes | Earned autonomy later |
+| Official connectors | Limited | Marketplace and third-party plugins later |
+| MCP-shaped internal tools | Yes | External MCP servers after security review |
+| Full admin portal | No | Enterprise |
+| Institution analytics | No | Enterprise |
+| Cross-user memory sharing | No | Enterprise |
+| Autonomous job submission across unsupported platforms | No | Not permitted without valid integration |
 
 ---
 
@@ -232,76 +232,76 @@ Search & Application Agent.”
 
 The original FR-01 through FR-51 remain in force except for these amendments.
 
-| Requirement | Required amendment                                                                                                                                                    |
+| Requirement | Required amendment |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-30       | Search only approved sources; every source must have a documented legal/technical access basis                                                                        |
-| FR-32       | Approval must bind role, platform, document versions, answers, expiry, and permitted action                                                                           |
-| FR-33       | Direct submission is permitted only through an approved integration contract; otherwise deep-link                                                                     |
-| FR-34       | Every manual or automated application must record source, approval, artifact versions, status provenance, and timestamps                                              |
-| FR-35       | Expand prohibition to all unauthorized automation, access-control circumvention, scraping, credential replay, or platform simulation                                  |
-| FR-37       | Gmail push notifications must use watch renewal, deduplication, history reconciliation, and periodic recovery sync                                                    |
-| FR-43       | Export must include a machine-readable manifest, provenance, object inventory, and failure report                                                                     |
-| FR-44       | Replace “immediate deletion of all copies” with the deletion lifecycle in Section 8; the user receives an immediate processing receipt and a final completion receipt |
-| FR-48       | Named-agent routing is limited to the canonical eight-agent roster                                                                                                    |
-| NFR-09      | Replace WCAG 2.1 AA with **WCAG 2.2 AA**                                                                                                                              |
+| FR-30 | Search only approved sources; every source must have a documented legal/technical access basis |
+| FR-32 | Approval must bind role, platform, document versions, answers, expiry, and permitted action |
+| FR-33 | Direct submission is permitted only through an approved integration contract; otherwise deep-link |
+| FR-34 | Every manual or automated application must record source, approval, artifact versions, status provenance, and timestamps |
+| FR-35 | Expand prohibition to all unauthorized automation, access-control circumvention, scraping, credential replay, or platform simulation |
+| FR-37 | Gmail push notifications must use watch renewal, deduplication, history reconciliation, and periodic recovery sync |
+| FR-43 | Export must include a machine-readable manifest, provenance, object inventory, and failure report |
+| FR-44 | Replace “immediate deletion of all copies” with the deletion lifecycle in Section 8; the user receives an immediate processing receipt and a final completion receipt |
+| FR-48 | Named-agent routing is limited to the canonical eight-agent roster |
+| NFR-09 | Replace WCAG 2.1 AA with **WCAG 2.2 AA** |
 
 ### 3.2 New functional requirements
 
-| ID    | Requirement                                                                                                                                                           | Priority |
+| ID | Requirement | Priority |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| FR-52 | The system shall select embeddings through a provider-neutral interface and persist model, version, dimension, input type, normalization, and chunking metadata       | Must     |
-| FR-53 | The system shall support re-embedding into a new version without overwriting the previous vector until validation and cutover complete                                | Must     |
-| FR-54 | Every retrieved fact shall carry source provenance sufficient to identify source object, version, location, extraction version, and confidence                        | Must     |
-| FR-55 | The system shall separate proposed actions from applied actions and require an immutable approval record for every consequential action                               | Must     |
-| FR-56 | Every action-application request shall support idempotency and reject replay with changed payload                                                                     | Must     |
-| FR-57 | Long-running ingestion, agent, export, deletion, and connector operations shall use asynchronous jobs with status, progress, cancellation policy, and terminal result | Must     |
-| FR-58 | External webhook ingestion shall verify signature/authenticity where supported, deduplicate events, tolerate out-of-order delivery, and reconcile missed events       | Must     |
-| FR-59 | Workspace identity shall be derived from verified membership and server-owned authorization state, never trusted from path/body input alone                           | Must     |
-| FR-60 | Service-to-service calls shall authenticate workload identity and carry user, workspace, actor, purpose, policy-decision, and trace context                           | Must     |
-| FR-61 | The system shall support a complete erasure workflow across relational, graph, vector, search, object versions, cache, queue, secret, and analytics stores            | Must     |
-| FR-62 | The system shall issue a deletion receipt listing immediate actions, pending backup expiration, exceptions, and final completion status                               | Must     |
-| FR-63 | The system shall record all AI model, prompt, tool-schema, retrieval, and policy versions used for an agent result                                                    | Must     |
-| FR-64 | The system shall provide source-grounded explanations for memory-derived claims and never present low-confidence inferred facts as confirmed facts                    | Must     |
-| FR-65 | The system shall quarantine unsupported, malicious, malformed, or oversized documents and surface a safe failure state                                                | Must     |
-| FR-66 | The system shall maintain an external-integration registry with access basis, scopes, quota, terms-review date, owner, and kill switch                                | Must     |
-| FR-67 | The system shall maintain a version-pinned MCP compatibility profile; an MCP specification upgrade requires security and interoperability regression testing          | Should   |
-| FR-68 | The system shall support correction of a memory fact without deleting its provenance; corrections create a new state and supersession link                            | Must     |
-| FR-69 | The system shall expose export and deletion progress without revealing sensitive internal infrastructure details                                                      | Must     |
-| FR-70 | The system shall prevent untrusted retrieved content from modifying system policy, tool authorization, or approval requirements                                       | Must     |
+| FR-52 | The system shall select embeddings through a provider-neutral interface and persist model, version, dimension, input type, normalization, and chunking metadata | Must |
+| FR-53 | The system shall support re-embedding into a new version without overwriting the previous vector until validation and cutover complete | Must |
+| FR-54 | Every retrieved fact shall carry source provenance sufficient to identify source object, version, location, extraction version, and confidence | Must |
+| FR-55 | The system shall separate proposed actions from applied actions and require an immutable approval record for every consequential action | Must |
+| FR-56 | Every action-application request shall support idempotency and reject replay with changed payload | Must |
+| FR-57 | Long-running ingestion, agent, export, deletion, and connector operations shall use asynchronous jobs with status, progress, cancellation policy, and terminal result | Must |
+| FR-58 | External webhook ingestion shall verify signature/authenticity where supported, deduplicate events, tolerate out-of-order delivery, and reconcile missed events | Must |
+| FR-59 | Workspace identity shall be derived from verified membership and server-owned authorization state, never trusted from path/body input alone | Must |
+| FR-60 | Service-to-service calls shall authenticate workload identity and carry user, workspace, actor, purpose, policy-decision, and trace context | Must |
+| FR-61 | The system shall support a complete erasure workflow across relational, graph, vector, search, object versions, cache, queue, secret, and analytics stores | Must |
+| FR-62 | The system shall issue a deletion receipt listing immediate actions, pending backup expiration, exceptions, and final completion status | Must |
+| FR-63 | The system shall record all AI model, prompt, tool-schema, retrieval, and policy versions used for an agent result | Must |
+| FR-64 | The system shall provide source-grounded explanations for memory-derived claims and never present low-confidence inferred facts as confirmed facts | Must |
+| FR-65 | The system shall quarantine unsupported, malicious, malformed, or oversized documents and surface a safe failure state | Must |
+| FR-66 | The system shall maintain an external-integration registry with access basis, scopes, quota, terms-review date, owner, and kill switch | Must |
+| FR-67 | The system shall maintain a version-pinned MCP compatibility profile; an MCP specification upgrade requires security and interoperability regression testing | Should |
+| FR-68 | The system shall support correction of a memory fact without deleting its provenance; corrections create a new state and supersession link | Must |
+| FR-69 | The system shall expose export and deletion progress without revealing sensitive internal infrastructure details | Must |
+| FR-70 | The system shall prevent untrusted retrieved content from modifying system policy, tool authorization, or approval requirements | Must |
 
 ### 3.3 New non-functional requirements
 
-| ID     | Category          | Requirement                                                                                                                                   |
+| ID | Category | Requirement |
 | ------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| NFR-15 | Isolation         | Cross-workspace access shall be prevented by database policy, composite constraints, service authorization, and tests—not convention alone    |
-| NFR-16 | Integrity         | All consequential writes shall use optimistic concurrency or a precondition token                                                             |
-| NFR-17 | Reliability       | Webhooks and queue consumers shall be at-least-once safe through idempotency and deduplication                                                |
-| NFR-18 | AI traceability   | Every AI output shall be reproducible to the extent possible from stored model/prompt/retrieval/tool metadata                                 |
-| NFR-19 | Supply chain      | CI shall generate an SBOM, scan dependencies/images/IaC, sign release images, and preserve provenance                                         |
-| NFR-20 | Data lifecycle    | Deletion status shall distinguish primary-store completion from backup-expiration completion                                                  |
-| NFR-21 | Accessibility     | All MVP web workflows shall meet WCAG 2.2 AA and support keyboard-only, screen-reader, reduced-motion, zoom, and non-color-only communication |
-| NFR-22 | Resilience        | Connector outage shall degrade only the affected capability and shall not corrupt memory or duplicate actions                                 |
-| NFR-23 | Portability       | Export format shall be documented, versioned, and importable by a future Vaeloom version                                                      |
-| NFR-24 | Model portability | No database schema or API shall assume a single fixed embedding dimension or provider                                                         |
-| NFR-25 | Privacy           | Raw content sent to external models shall be minimized, purpose-bound, logged, and governed by a provider data-processing configuration       |
-| NFR-26 | Audit             | Security-relevant audit events shall be append-only for application roles and periodically anchored to tamper-evident storage                 |
-| NFR-27 | Operability       | Every SLO alert shall link to a tested runbook and have an owner                                                                              |
-| NFR-28 | Minor-user safety | Launch policy shall define minimum age, consent basis where applicable, and restricted processing for minors before public release            |
+| NFR-15 | Isolation | Cross-workspace access shall be prevented by database policy, composite constraints, service authorization, and tests—not convention alone |
+| NFR-16 | Integrity | All consequential writes shall use optimistic concurrency or a precondition token |
+| NFR-17 | Reliability | Webhooks and queue consumers shall be at-least-once safe through idempotency and deduplication |
+| NFR-18 | AI traceability | Every AI output shall be reproducible to the extent possible from stored model/prompt/retrieval/tool metadata |
+| NFR-19 | Supply chain | CI shall generate an SBOM, scan dependencies/images/IaC, sign release images, and preserve provenance |
+| NFR-20 | Data lifecycle | Deletion status shall distinguish primary-store completion from backup-expiration completion |
+| NFR-21 | Accessibility | All MVP web workflows shall meet WCAG 2.2 AA and support keyboard-only, screen-reader, reduced-motion, zoom, and non-color-only communication |
+| NFR-22 | Resilience | Connector outage shall degrade only the affected capability and shall not corrupt memory or duplicate actions |
+| NFR-23 | Portability | Export format shall be documented, versioned, and importable by a future Vaeloom version |
+| NFR-24 | Model portability | No database schema or API shall assume a single fixed embedding dimension or provider |
+| NFR-25 | Privacy | Raw content sent to external models shall be minimized, purpose-bound, logged, and governed by a provider data-processing configuration |
+| NFR-26 | Audit | Security-relevant audit events shall be append-only for application roles and periodically anchored to tamper-evident storage |
+| NFR-27 | Operability | Every SLO alert shall link to a tested runbook and have an owner |
+| NFR-28 | Minor-user safety | Launch policy shall define minimum age, consent basis where applicable, and restricted processing for minors before public release |
 
 ### 3.4 Revised success metrics and evidence rules
 
-| Metric                           | Target                                                            | Evidence rule                                                                                   |
+| Metric | Target | Evidence rule |
 | -------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Organization proposal acceptance | ≥90% for eligible proposals                                       | Exclude cancellations, duplicates, and unavailable-source failures; report by proposal type     |
-| Wrong entity merge               | Release threshold defined after pilot benchmark                   | Use a sufficiently powered, stratified labeled set; do not claim <0.5% from a sample of 300     |
-| Missed urgent mail               | <2% on an approved labeled evaluation set                         | Report confidence interval and per-class recall                                                 |
-| Time to first value              | P50 and P95, not only a single target                             | Measured from successful upload completion to first validated entity visible                    |
-| Retrieval quality                | Recall@k, nDCG@k, citation accuracy                               | Separate by query type and document format                                                      |
-| Cross-workspace leakage          | Zero                                                              | Mandatory negative tests at API, service, SQL, cache, search, export, and background-job layers |
-| Deletion                         | 100% primary-store completion within approved SLO                 | Backups reported separately until expiration                                                    |
-| Approval integrity               | Zero action outside bound approval                                | Replay, payload mutation, expiry, and cross-workspace tests                                     |
-| AI cost                          | Budget per successful workflow                                    | Report model, embedding, reranker, OCR, and storage costs separately                            |
-| Accessibility                    | Zero critical/serious automated violations plus manual acceptance | Automated tools alone are insufficient                                                          |
+| Organization proposal acceptance | ≥90% for eligible proposals | Exclude cancellations, duplicates, and unavailable-source failures; report by proposal type |
+| Wrong entity merge | Release threshold defined after pilot benchmark | Use a sufficiently powered, stratified labeled set; do not claim <0.5% from a sample of 300 |
+| Missed urgent mail | <2% on an approved labeled evaluation set | Report confidence interval and per-class recall |
+| Time to first value | P50 and P95, not only a single target | Measured from successful upload completion to first validated entity visible |
+| Retrieval quality | Recall@k, nDCG@k, citation accuracy | Separate by query type and document format |
+| Cross-workspace leakage | Zero | Mandatory negative tests at API, service, SQL, cache, search, export, and background-job layers |
+| Deletion | 100% primary-store completion within approved SLO | Backups reported separately until expiration |
+| Approval integrity | Zero action outside bound approval | Replay, payload mutation, expiry, and cross-workspace tests |
+| AI cost | Budget per successful workflow | Report model, embedding, reranker, OCR, and storage costs separately |
+| Accessibility | Zero critical/serious automated violations plus manual acceptance | Automated tools alone are insufficient |
 
 ---
 
@@ -311,97 +311,97 @@ The original FR-01 through FR-51 remain in force except for these amendments.
 
 ```mermaid
 flowchart LR
-    U[User / Client] --> EDGE[Edge / API Gateway]
-    EDGE --> API[Core API]
-    API --> POLICY[Policy Decision Point]
-    API --> JOBS[Job Orchestrator]
-    JOBS --> AI[AI and Agent Service]
-    JOBS --> WORKERS[Ingestion / Connector Workers]
-    AI --> RETRIEVAL[Retrieval Service]
-    AI --> TOOLS[Policy-Enforced Tool Gateway]
-    RETRIEVAL --> PG[(PostgreSQL + pgvector)]
-    RETRIEVAL --> GRAPH[Graph Access Layer]
-    WORKERS --> OBJECTS[(Encrypted Object Storage)]
-    WORKERS --> PG
-    API --> PG
-    API --> SECRETS[Secrets Manager]
-    TOOLS --> CONNECTORS[Approved External Connectors]
-    API --> AUDIT[Audit / Security Event Sink]
-    AI --> AUDIT
-    WORKERS --> AUDIT
+ U[User / Client]--> EDGE[Edge / API Gateway]
+ EDGE--> API[Core API]
+ API--> POLICY[Policy Decision Point]
+ API--> JOBS[Job Orchestrator]
+ JOBS--> AI[AI and Agent Service]
+ JOBS--> WORKERS[Ingestion / Connector Workers]
+ AI--> RETRIEVAL[Retrieval Service]
+ AI--> TOOLS[Policy-Enforced Tool Gateway]
+ RETRIEVAL--> PG[(PostgreSQL + pgvector)]
+ RETRIEVAL--> GRAPH[Graph Access Layer]
+ WORKERS--> OBJECTS[(Encrypted Object Storage)]
+ WORKERS--> PG
+ API--> PG
+ API--> SECRETS[Secrets Manager]
+ TOOLS--> CONNECTORS[Approved External Connectors]
+ API--> AUDIT[Audit / Security Event Sink]
+ AI--> AUDIT
+ WORKERS--> AUDIT
 ```
 
 ### 4.2 Trust-boundary rules
 
 1. Client input is untrusted, including `workspaceId`.
 2. Authenticated user identity is necessary but not sufficient; membership and
-   policy must be evaluated.
+ policy must be evaluated.
 3. The Core API is the policy enforcement point for user-facing operations.
 4. Internal services authenticate using workload identity.
 5. Agent prompts are never authorization controls.
 6. The AI service cannot directly execute consequential connector actions.
 7. Tool calls pass through a Tool Gateway that validates policy, approval,
-   idempotency, and payload constraints.
+ idempotency, and payload constraints.
 8. The database independently enforces workspace isolation.
 9. Retrieved text is untrusted data, not instructions.
 10. Audit events are emitted before and after consequential operations.
 
 ### 4.3 Corrected component ownership
 
-| Component             | Owns                                                                                | Explicitly does not own                                |
+| Component | Owns | Explicitly does not own |
 | --------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Core API              | User auth, workspace membership, policy enforcement, approval lifecycle, public API | LLM reasoning                                          |
-| Policy Decision Point | Policy evaluation from actor, workspace, agent, action, resource, purpose, approval | Business workflow execution                            |
-| Job Orchestrator      | Long-running job state, retries, cancellation, timeouts, dedupe                     | Model logic                                            |
-| AI/Agent Service      | Planning, retrieval requests, content transformation, proposal generation           | Direct connector credentials or unrestricted DB access |
-| Retrieval Service     | Hybrid retrieval, provenance, filter enforcement, reranking                         | Memory mutation                                        |
-| Memory Write Service  | Validated memory writes, merge decisions, supersession, provenance                  | Connector actions                                      |
-| Tool Gateway          | Tool schema validation, scopes, approval binding, rate/quota checks                 | User authentication issuance                           |
-| Connector Worker      | Official connector API calls                                                        | Policy decisions                                       |
-| Audit Service         | Immutable event receipt and tamper-evident export                                   | Product analytics aggregation                          |
+| Core API | User auth, workspace membership, policy enforcement, approval lifecycle, public API | LLM reasoning |
+| Policy Decision Point | Policy evaluation from actor, workspace, agent, action, resource, purpose, approval | Business workflow execution |
+| Job Orchestrator | Long-running job state, retries, cancellation, timeouts, dedupe | Model logic |
+| AI/Agent Service | Planning, retrieval requests, content transformation, proposal generation | Direct connector credentials or unrestricted DB access |
+| Retrieval Service | Hybrid retrieval, provenance, filter enforcement, reranking | Memory mutation |
+| Memory Write Service | Validated memory writes, merge decisions, supersession, provenance | Connector actions |
+| Tool Gateway | Tool schema validation, scopes, approval binding, rate/quota checks | User authentication issuance |
+| Connector Worker | Official connector API calls | Policy decisions |
+| Audit Service | Immutable event receipt and tamper-evident export | Product analytics aggregation |
 
 ### 4.4 New architecture decisions
 
-| ADR     | Decision                                                                                       | Rationale                                                                                                          |
+| ADR | Decision | Rationale |
 | ------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| ADR-007 | Pin PostgreSQL 16 for the initial combined AGE + pgvector deployment                           | Apache AGE's current published support includes PostgreSQL 11–16; a pinned version avoids unsupported combinations |
-| ADR-008 | Use a provider-neutral embedding interface; no fixed `VECTOR(1536)` assumption                 | Claude does not provide embeddings; providers and dimensions vary                                                  |
-| ADR-009 | Separate proposal creation, approval, and execution                                            | Prevents an agent or stale client from converting a suggestion into an action                                      |
-| ADR-010 | Require database RLS plus composite workspace foreign keys                                     | A `workspace_id` column alone does not prevent cross-workspace references                                          |
-| ADR-011 | Use async jobs for ingestion, export, deletion, agent workflows, and connector sync            | These operations exceed safe synchronous request lifetimes                                                         |
-| ADR-012 | Use an outbox/inbox pattern for internal events and webhook deduplication                      | Provides at-least-once safety and recovery                                                                         |
-| ADR-013 | Treat retrieved documents, emails, job descriptions, and web content as untrusted prompt input | Prevents prompt injection from becoming authorization                                                              |
-| ADR-014 | Distinguish primary-store erasure from backup-expiration completion                            | Makes deletion claims truthful and auditable                                                                       |
-| ADR-015 | Pin an MCP protocol profile and upgrade only through compatibility/security gates              | MCP evolves; “MCP-shaped” without a version is not a stable contract                                               |
-| ADR-016 | Keep job-platform integrations disabled by default until an access basis is approved           | Partner access and platform terms are external dependencies                                                        |
+| ADR-007 | Pin PostgreSQL 16 for the initial combined AGE + pgvector deployment | Apache AGE's current published support includes PostgreSQL 11–16; a pinned version avoids unsupported combinations |
+| ADR-008 | Use a provider-neutral embedding interface; no fixed `VECTOR(1536)` assumption | Claude does not provide embeddings; providers and dimensions vary |
+| ADR-009 | Separate proposal creation, approval, and execution | Prevents an agent or stale client from converting a suggestion into an action |
+| ADR-010 | Require database RLS plus composite workspace foreign keys | A `workspace_id` column alone does not prevent cross-workspace references |
+| ADR-011 | Use async jobs for ingestion, export, deletion, agent workflows, and connector sync | These operations exceed safe synchronous request lifetimes |
+| ADR-012 | Use an outbox/inbox pattern for internal events and webhook deduplication | Provides at-least-once safety and recovery |
+| ADR-013 | Treat retrieved documents, emails, job descriptions, and web content as untrusted prompt input | Prevents prompt injection from becoming authorization |
+| ADR-014 | Distinguish primary-store erasure from backup-expiration completion | Makes deletion claims truthful and auditable |
+| ADR-015 | Pin an MCP protocol profile and upgrade only through compatibility/security gates | MCP evolves; “MCP-shaped” without a version is not a stable contract |
+| ADR-016 | Keep job-platform integrations disabled by default until an access basis is approved | Partner access and platform terms are external dependencies |
 
 ### 4.5 Consequential-action sequence
 
 ```mermaid
 sequenceDiagram
-    participant C as Client
-    participant A as Core API
-    participant P as Policy Engine
-    participant AI as Agent Service
-    participant T as Tool Gateway
-    participant X as External Connector
+ participant C as Client
+ participant A as Core API
+ participant P as Policy Engine
+ participant AI as Agent Service
+ participant T as Tool Gateway
+ participant X as External Connector
 
-    C->>A: Request recommendation/workflow
-    A->>P: Authorize read/propose
-    P-->>A: Permit
-    A->>AI: Signed actor/workspace/purpose context
-    AI-->>A: Proposal + immutable payload hash
-    A-->>C: Proposal diff
-    C->>A: Approve proposal/version
-    A->>P: Authorize exact action + resource + expiry
-    P-->>A: Permit + approval decision
-    A->>T: Execute with approval token + idempotency key
-    T->>P: Revalidate token and policy
-    P-->>T: Permit
-    T->>X: Approved API operation
-    X-->>T: Result
-    T-->>A: Result + connector receipt
-    A-->>C: Final status
+ C->>A: Request recommendation/workflow
+ A->>P: Authorize read/propose
+ P-->>A: Permit
+ A->>AI: Signed actor/workspace/purpose context
+ AI-->>A: Proposal + immutable payload hash
+ A-->>C: Proposal diff
+ C->>A: Approve proposal/version
+ A->>P: Authorize exact action + resource + expiry
+ P-->>A: Permit + approval decision
+ A->>T: Execute with approval token + idempotency key
+ T->>P: Revalidate token and policy
+ P-->>T: Permit
+ T->>X: Approved API operation
+ X-->>T: Result
+ T-->>A: Result + connector receipt
+ A-->>C: Final status
 ```
 
 ### 4.6 Internal authorization context
@@ -483,48 +483,48 @@ class EmbeddingProvider(Protocol):
 
 Candidates are not production selections until Vaeloom's benchmark passes.
 
-| Candidate                 | Type                   | Why evaluate                                                                                      | Required diligence                                                   |
+| Candidate | Type | Why evaluate | Required diligence |
 | ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Voyage 4 family           | Managed embeddings     | Current configurable dimensions; Anthropic documentation references Voyage as an embedding option | Data-processing terms, regional availability, cost, latency, quality |
-| BGE-M3                    | Self-hosted/open model | Multilingual, dense+sparse+multi-vector, long-context model card                                  | Infrastructure cost, license review, quality on Vaeloom data         |
-| BGE reranker v2 M3        | Self-hosted reranker   | Multilingual reranking candidate                                                                  | Latency and GPU/CPU benchmark                                        |
-| A second managed provider | Managed fallback       | Avoid single-provider dependency                                                                  | Same benchmark and privacy review                                    |
+| Voyage 4 family | Managed embeddings | Current configurable dimensions; Anthropic documentation references Voyage as an embedding option | Data-processing terms, regional availability, cost, latency, quality |
+| BGE-M3 | Self-hosted/open model | Multilingual, dense+sparse+multi-vector, long-context model card | Infrastructure cost, license review, quality on Vaeloom data |
+| BGE reranker v2 M3 | Self-hosted reranker | Multilingual reranking candidate | Latency and GPU/CPU benchmark |
+| A second managed provider | Managed fallback | Avoid single-provider dependency | Same benchmark and privacy review |
 
 ### 5.4 Embedding metadata contract
 
 Each vector record must persist:
 
-| Field                     | Purpose                        |
+| Field | Purpose |
 | ------------------------- | ------------------------------ |
-| `embedding_provider`      | Provider identity              |
-| `embedding_model`         | Model identifier               |
-| `embedding_model_version` | Immutable or pinned version    |
-| `embedding_dimension`     | Actual dimension               |
-| `input_type`              | Query/document/code/multimodal |
-| `normalized`              | Similarity interpretation      |
-| `chunking_strategy`       | Chunker identifier             |
-| `chunking_version`        | Reproducibility                |
-| `source_content_hash`     | Avoid duplicate re-embedding   |
-| `embedding_created_at`    | Lifecycle                      |
-| `superseded_at`           | Migration/cutover              |
-| `quality_status`          | pending/validated/failed       |
+| `embedding_provider` | Provider identity |
+| `embedding_model` | Model identifier |
+| `embedding_model_version` | Immutable or pinned version |
+| `embedding_dimension` | Actual dimension |
+| `input_type` | Query/document/code/multimodal |
+| `normalized` | Similarity interpretation |
+| `chunking_strategy` | Chunker identifier |
+| `chunking_version` | Reproducibility |
+| `source_content_hash` | Avoid duplicate re-embedding |
+| `embedding_created_at` | Lifecycle |
+| `superseded_at` | Migration/cutover |
+| `quality_status` | pending/validated/failed |
 
 ### 5.5 Retrieval pipeline
 
 ```mermaid
 flowchart LR
-    Q[Agent query] --> CLASSIFY[Query classification]
-    CLASSIFY --> FILTER[Workspace + policy filters]
-    FILTER --> DENSE[Dense retrieval]
-    FILTER --> KEYWORD[Keyword retrieval]
-    FILTER --> GRAPH[Graph traversal]
-    DENSE --> FUSE[Rank fusion]
-    KEYWORD --> FUSE
-    GRAPH --> FUSE
-    FUSE --> RERANK[Reranker]
-    RERANK --> PROV[Attach provenance]
-    PROV --> BUDGET[Context budget and dedupe]
-    BUDGET --> AGENT[Agent]
+ Q[Agent query]--> CLASSIFY[Query classification]
+ CLASSIFY--> FILTER[Workspace + policy filters]
+ FILTER--> DENSE[Dense retrieval]
+ FILTER--> KEYWORD[Keyword retrieval]
+ FILTER--> GRAPH[Graph traversal]
+ DENSE--> FUSE[Rank fusion]
+ KEYWORD--> FUSE
+ GRAPH--> FUSE
+ FUSE--> RERANK[Reranker]
+ RERANK--> PROV[Attach provenance]
+ PROV--> BUDGET[Context budget and dedupe]
+ BUDGET--> AGENT[Agent]
 ```
 
 Mandatory rules:
@@ -562,20 +562,20 @@ and rollback plan.
 
 ### 5.7 AI evaluation suites
 
-| Suite             | Primary metrics                                     | Minimum slices                                                    |
+| Suite | Primary metrics | Minimum slices |
 | ----------------- | --------------------------------------------------- | ----------------------------------------------------------------- |
-| Entity extraction | Precision, recall, F1                               | PDF, DOCX, scans, certificates, resumes, email, code metadata     |
-| Entity resolution | False merge, missed merge, abstention               | Alias, acronym, homonym, multilingual, conflicting dates          |
-| Retrieval         | Recall@5/10, nDCG@10, MRR                           | Exact fact, semantic, relationship, time-sensitive, contradictory |
-| Reranking         | nDCG lift and latency                               | Short and long contexts                                           |
-| Provenance        | Citation correctness and coverage                   | Every memory type                                                 |
-| Resume            | Unsupported-claim rate, omission rate, traceability | Students with sparse and rich histories                           |
-| ATS               | Stability, explanation quality, calibration         | Multiple job families; do not claim employer ATS equivalence      |
-| Gmail             | Per-class precision/recall, urgent false-negative   | Interview, deadline, action-required, spam, ordinary              |
-| Prompt injection  | Policy bypass rate                                  | Documents, email, job descriptions, connector output              |
-| Privacy           | Sensitive-data leakage                              | Cross-workspace, logs, model prompts, exports                     |
-| Tool use          | Unauthorized-tool-call rate                         | All agents and autonomy states                                    |
-| Deletion          | Residual-data detection                             | All primary stores and indexes                                    |
+| Entity extraction | Precision, recall, F1 | PDF, DOCX, scans, certificates, resumes, email, code metadata |
+| Entity resolution | False merge, missed merge, abstention | Alias, acronym, homonym, multilingual, conflicting dates |
+| Retrieval | Recall@5/10, nDCG@10, MRR | Exact fact, semantic, relationship, time-sensitive, contradictory |
+| Reranking | nDCG lift and latency | Short and long contexts |
+| Provenance | Citation correctness and coverage | Every memory type |
+| Resume | Unsupported-claim rate, omission rate, traceability | Students with sparse and rich histories |
+| ATS | Stability, explanation quality, calibration | Multiple job families; do not claim employer ATS equivalence |
+| Gmail | Per-class precision/recall, urgent false-negative | Interview, deadline, action-required, spam, ordinary |
+| Prompt injection | Policy bypass rate | Documents, email, job descriptions, connector output |
+| Privacy | Sensitive-data leakage | Cross-workspace, logs, model prompts, exports |
+| Tool use | Unauthorized-tool-call rate | All agents and autonomy states |
+| Deletion | Residual-data detection | All primary stores and indexes |
 
 ### 5.8 Statistical evaluation rule
 
@@ -632,7 +632,7 @@ Benchmark dimensions:
 - Apache AGE: pin an exact tested release compatible with PostgreSQL 16.
 - Build a Vaeloom-owned database image for development and CI.
 - Production managed-Postgres support for both extensions must be confirmed
-  before provider selection.
+ before provider selection.
 - Do not assume a generic pgvector image includes AGE.
 
 ### 6.2 Core isolation invariant
@@ -1041,15 +1041,15 @@ graph-leak tests are mandatory.
 ### 6.6 Backup and erasure semantics
 
 - Primary relational/object/search/vector/graph/cache data: erased during
-  primary erasure.
+ primary erasure.
 - Secrets: revoked and deleted during primary erasure.
 - Audit: retain only what legal/security policy requires, minimize content, and
-  pseudonymize where possible.
+ pseudonymize where possible.
 - Backups: encrypted, access-restricted, not restored except disaster recovery.
 - A deleted workspace restored from backup must be re-deleted using a tombstone
-  registry.
+ registry.
 - Final deletion completion occurs after the last relevant backup expires or is
-  cryptographically rendered inaccessible.
+ cryptographically rendered inaccessible.
 - The receipt must not falsely claim immediate removal from all backups.
 
 ---
@@ -1058,21 +1058,21 @@ graph-leak tests are mandatory.
 
 ### 7.1 Public API conventions
 
-| Concern          | Standard                                                                   |
+| Concern | Standard |
 | ---------------- | -------------------------------------------------------------------------- |
-| Base             | `/v1`                                                                      |
-| Authentication   | Short-lived bearer token                                                   |
-| Authorization    | Server-side membership + policy decision                                   |
-| Workspace path   | May be present for resource addressing, but never trusted as authorization |
-| Correlation      | `X-Request-ID` and W3C `traceparent`                                       |
-| Idempotency      | `Idempotency-Key` required for consequential POST requests                 |
-| Concurrency      | `ETag`/`If-Match` or explicit proposal version                             |
-| Async operations | `202 Accepted` with `jobId` and status URL                                 |
-| Pagination       | Cursor-based                                                               |
-| Errors           | One schema under `components.schemas.ErrorEnvelope`                        |
-| Rate limits      | Per user, workspace, IP-risk signal, operation, and upstream quota         |
-| Webhooks         | Signature verification where available, inbox dedupe, replay protection    |
-| Versioning       | URL major version plus explicit deprecation policy                         |
+| Base | `/v1` |
+| Authentication | Short-lived bearer token |
+| Authorization | Server-side membership + policy decision |
+| Workspace path | May be present for resource addressing, but never trusted as authorization |
+| Correlation | `X-Request-ID` and W3C `traceparent` |
+| Idempotency | `Idempotency-Key` required for consequential POST requests |
+| Concurrency | `ETag`/`If-Match` or explicit proposal version |
+| Async operations | `202 Accepted` with `jobId` and status URL |
+| Pagination | Cursor-based |
+| Errors | One schema under `components.schemas.ErrorEnvelope` |
+| Rate limits | Per user, workspace, IP-risk signal, operation, and upstream quota |
+| Webhooks | Signature verification where available, inbox dedupe, replay protection |
+| Versioning | URL major version plus explicit deprecation policy |
 
 ### 7.2 Correct OpenAPI 3.1 fragment
 
@@ -1321,24 +1321,24 @@ components:
 
 ### 7.3 Endpoint catalog
 
-| Domain         | Mandatory endpoints                                                                     |
+| Domain | Mandatory endpoints |
 | -------------- | --------------------------------------------------------------------------------------- |
-| Auth/workspace | Session, membership, workspace status                                                   |
-| Connectors     | List, authorize, callback, scopes, sync, disconnect, reauth                             |
-| Documents      | Upload-init, upload-complete, list, detail, versions, archive, restore, viewer metadata |
-| Proposals      | List, detail, approve, reject, supersede, batch decision                                |
-| Jobs           | Create, get, cancel where safe, event stream                                            |
-| Memory         | Query, fact detail, provenance, correction, dispute, graph subgraph                     |
-| Resume         | Master, versions, variants, render, gap questions                                       |
-| ATS            | Score job description, score status, suggestions                                        |
-| Career         | Sources, shortlist, role detail, prepare application, approve action, status            |
-| Gmail          | Sync, classifications, draft detail, extracted deadlines                                |
-| Scheduler      | Events, conflicts, reminders, approved external write                                   |
-| Audit          | Filtered actions, action detail, undo where supported                                   |
-| Settings       | Agent/action autonomy, privacy, model consent, notification preferences                 |
-| Export         | Request, status, manifest, download                                                     |
-| Deletion       | Request, status, receipt                                                                |
-| System         | Health, readiness, version metadata                                                     |
+| Auth/workspace | Session, membership, workspace status |
+| Connectors | List, authorize, callback, scopes, sync, disconnect, reauth |
+| Documents | Upload-init, upload-complete, list, detail, versions, archive, restore, viewer metadata |
+| Proposals | List, detail, approve, reject, supersede, batch decision |
+| Jobs | Create, get, cancel where safe, event stream |
+| Memory | Query, fact detail, provenance, correction, dispute, graph subgraph |
+| Resume | Master, versions, variants, render, gap questions |
+| ATS | Score job description, score status, suggestions |
+| Career | Sources, shortlist, role detail, prepare application, approve action, status |
+| Gmail | Sync, classifications, draft detail, extracted deadlines |
+| Scheduler | Events, conflicts, reminders, approved external write |
+| Audit | Filtered actions, action detail, undo where supported |
+| Settings | Agent/action autonomy, privacy, model consent, notification preferences |
+| Export | Request, status, manifest, download |
+| Deletion | Request, status, receipt |
+| System | Health, readiness, version metadata |
 
 ### 7.4 Webhook reliability
 
@@ -1352,7 +1352,7 @@ For Gmail and other event sources:
 - Handle duplicate and out-of-order messages.
 - Renew Gmail mailbox watches at least every seven days; schedule daily renewal.
 - Run periodic history reconciliation because notifications may be delayed or
-  missed.
+ missed.
 - Alert before watch expiry.
 
 ### 7.5 Integration registry
@@ -1386,20 +1386,20 @@ access impossible. The design must use the layered controls in Sections 4 and 6.
 
 ### 8.2 Security control domains
 
-| Domain             | Minimum MVP control                                                            |
+| Domain | Minimum MVP control |
 | ------------------ | ------------------------------------------------------------------------------ |
-| Identity           | Managed auth, short sessions, secure refresh, MFA option for sensitive actions |
-| Authorization      | Central policy decision, exact action/resource/purpose checks                  |
-| Workload identity  | Signed service identity with audience and expiry                               |
-| Database isolation | RLS and composite workspace FKs                                                |
-| Secrets            | KMS-backed secrets manager, rotation, no plaintext app DB token                |
-| File ingestion     | Type detection, malware scanning, sandbox, decompression limits, macro disable |
-| AI                 | Prompt-injection defense, tool isolation, output validation                    |
-| Connectors         | Scope minimization, quota controls, token revocation, kill switch              |
-| Audit              | Append-only application permission, tamper-evident anchoring                   |
-| Supply chain       | Dependency lock, scans, SBOM, signed images                                    |
-| Data lifecycle     | Retention, export, correction, deletion, backup tombstones                     |
-| Incident response  | Severity model, containment, evidence preservation, user notification process  |
+| Identity | Managed auth, short sessions, secure refresh, MFA option for sensitive actions |
+| Authorization | Central policy decision, exact action/resource/purpose checks |
+| Workload identity | Signed service identity with audience and expiry |
+| Database isolation | RLS and composite workspace FKs |
+| Secrets | KMS-backed secrets manager, rotation, no plaintext app DB token |
+| File ingestion | Type detection, malware scanning, sandbox, decompression limits, macro disable |
+| AI | Prompt-injection defense, tool isolation, output validation |
+| Connectors | Scope minimization, quota controls, token revocation, kill switch |
+| Audit | Append-only application permission, tamper-evident anchoring |
+| Supply chain | Dependency lock, scans, SBOM, signed images |
+| Data lifecycle | Retention, export, correction, deletion, backup tombstones |
+| Incident response | Severity model, containment, evidence preservation, user notification process |
 
 ### 8.3 Prompt injection and untrusted-content policy
 
@@ -1417,10 +1417,10 @@ Rules:
 
 1. Wrap untrusted content in explicit data boundaries.
 2. Never concatenate content into policy or system instructions without
-   structured encoding.
+ structured encoding.
 3. Tool authorization comes only from signed policy context.
 4. Ignore instructions inside content that request secrets, policy changes, tool
-   access, or data from other users.
+ access, or data from other users.
 5. Validate tool arguments against a strict schema and policy.
 6. Apply output validation before memory writes.
 7. Record prompt-injection detection and outcome in security telemetry.
@@ -1430,13 +1430,13 @@ Rules:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Requested
-    Requested --> PrimaryErasureRunning
-    PrimaryErasureRunning --> PrimaryErasureComplete
-    PrimaryErasureComplete --> BackupExpiryPending
-    BackupExpiryPending --> Complete
-    PrimaryErasureRunning --> Failed
-    BackupExpiryPending --> Failed
+ [*]--> Requested
+ Requested--> PrimaryErasureRunning
+ PrimaryErasureRunning--> PrimaryErasureComplete
+ PrimaryErasureComplete--> BackupExpiryPending
+ BackupExpiryPending--> Complete
+ PrimaryErasureRunning--> Failed
+ BackupExpiryPending--> Failed
 ```
 
 #### Step 1 — request acceptance
@@ -1510,12 +1510,12 @@ categories, failed items, object counts, and checksums.
 - Initial launch countries.
 - Minimum user age.
 - Whether users below the applicable digital-consent age are excluded or require
-  verified guardian consent.
+ verified guardian consent.
 - Model-provider data retention and training settings.
 - Data-retention defaults.
 - DPO/privacy contact.
 - Whether a formal DPIA is legally required; perform one regardless if risk is
-  high.
+ high.
 - Terms and privacy policy review.
 - Job-platform and connector legal review.
 
@@ -1528,7 +1528,7 @@ At minimum:
 
 - Do not collect age unless needed for a defined legal/product purpose.
 - If an age gate is used, implement it consistently and document handling of
-  underage attempts.
+ underage attempts.
 - Do not enable autonomous consequential actions for minor users by default.
 - Avoid exposing sensitive inferred traits.
 - Provide understandable privacy explanations.
@@ -1564,22 +1564,22 @@ Mandatory manual coverage:
 
 Every async feature must define:
 
-| State                    | Required UI                                                 |
+| State | Required UI |
 | ------------------------ | ----------------------------------------------------------- |
-| Idle                     | Clear starting action                                       |
-| Uploading                | Byte/file progress and cancel behavior                      |
-| Queued                   | Queue state and expected next step, without false precision |
-| Processing               | Stage-level progress                                        |
-| Waiting for user         | Specific question or approval                               |
-| Partial success          | Itemized success/failure and retry                          |
-| Success                  | Result, provenance, next action                             |
-| Recoverable failure      | Plain-language cause, safe retry                            |
-| Permanent failure        | Alternative path and support reference                      |
-| Permission denied        | Missing scope and how to grant safely                       |
-| Connector degraded       | Affected capability only                                    |
-| Rate limited             | Retry guidance                                              |
-| Deleted/expired proposal | Explain stale state and show newer proposal                 |
-| Offline/reconnect        | Preserve safe local state without duplicating action        |
+| Idle | Clear starting action |
+| Uploading | Byte/file progress and cancel behavior |
+| Queued | Queue state and expected next step, without false precision |
+| Processing | Stage-level progress |
+| Waiting for user | Specific question or approval |
+| Partial success | Itemized success/failure and retry |
+| Success | Result, provenance, next action |
+| Recoverable failure | Plain-language cause, safe retry |
+| Permanent failure | Alternative path and support reference |
+| Permission denied | Missing scope and how to grant safely |
+| Connector degraded | Affected capability only |
+| Rate limited | Retry guidance |
+| Deleted/expired proposal | Explain stale state and show newer proposal |
+| Offline/reconnect | Preserve safe local state without duplicating action |
 
 ### 9.3 Approval UI invariant
 
@@ -1631,21 +1631,21 @@ Deletion UX must:
 
 ### 10.1 Mandatory test layers
 
-| Layer         | Gate                                                    |
+| Layer | Gate |
 | ------------- | ------------------------------------------------------- |
-| Unit          | Critical policy, merge, parser, and state-machine logic |
-| Schema        | JSON Schema/OpenAPI/event-schema validation             |
-| Database      | Migrations, constraints, RLS, rollback compatibility    |
-| Integration   | API↔DB, API↔AI, tool gateway↔connector                  |
-| Contract      | Consumer/provider contracts                             |
-| E2E           | First-value and career workflows                        |
-| AI eval       | Every prompt/model/retrieval change                     |
-| Security      | STRIDE/abuse-case tests                                 |
-| Privacy       | Export/deletion/resurrection tests                      |
-| Accessibility | Automated plus manual                                   |
-| Load          | Staging release gate                                    |
-| Resilience    | Connector outage, duplicate webhook, queue retry        |
-| Supply chain  | Dependencies, image, IaC, SBOM, signature               |
+| Unit | Critical policy, merge, parser, and state-machine logic |
+| Schema | JSON Schema/OpenAPI/event-schema validation |
+| Database | Migrations, constraints, RLS, rollback compatibility |
+| Integration | API↔DB, API↔AI, tool gateway↔connector |
+| Contract | Consumer/provider contracts |
+| E2E | First-value and career workflows |
+| AI eval | Every prompt/model/retrieval change |
+| Security | STRIDE/abuse-case tests |
+| Privacy | Export/deletion/resurrection tests |
+| Accessibility | Automated plus manual |
+| Load | Staging release gate |
+| Resilience | Connector outage, duplicate webhook, queue retry |
+| Supply chain | Dependencies, image, IaC, SBOM, signature |
 
 ### 10.2 Cross-workspace isolation test matrix
 
@@ -1784,42 +1784,42 @@ Track separately:
 
 ### 11.3 Benchmark stages
 
-| Stage          | Dataset                  | Gate                                          |
+| Stage | Dataset | Gate |
 | -------------- | ------------------------ | --------------------------------------------- |
-| Developer      | 10 workspaces            | Functional correctness                        |
-| CI             | 100 synthetic workspaces | Isolation and migration                       |
-| Staging small  | 500 workspaces           | Query plans and job behavior                  |
-| Staging target | Expected launch cohort   | SLO validation                                |
-| Stress         | 2–3× target              | Failure mode and recovery                     |
-| Soak           | 24–72 hours              | Memory leaks, queue growth, index maintenance |
+| Developer | 10 workspaces | Functional correctness |
+| CI | 100 synthetic workspaces | Isolation and migration |
+| Staging small | 500 workspaces | Query plans and job behavior |
+| Staging target | Expected launch cohort | SLO validation |
+| Stress | 2–3× target | Failure mode and recovery |
+| Soak | 24–72 hours | Memory leaks, queue growth, index maintenance |
 
 ### 11.4 Revised migration triggers
 
 Triggers require sustained measurement and cost review, not a single spike.
 
-| Signal                                                             | Investigate                                              | Migration candidate         |
+| Signal | Investigate | Migration candidate |
 | ------------------------------------------------------------------ | -------------------------------------------------------- | --------------------------- |
-| Vector P95 exceeds approved SLO after query/index tuning           | Partition, `halfvec`, filters, iterative scans, hardware | Dedicated vector service    |
-| Graph traversal exceeds SLO after bounded-depth/query optimization | Materialized relationships, read models                  | Dedicated graph database    |
-| Combined extension support blocks managed production               | Separate graph or vector workload                        | Managed compatible services |
-| HNSW build/vacuum causes unacceptable operational impact           | Partition or rebuild strategy                            | Dedicated vector service    |
-| Queue retry/replay needs exceed BullMQ design                      | Outbox, durable event log                                | Kafka-compatible platform   |
+| Vector P95 exceeds approved SLO after query/index tuning | Partition, `halfvec`, filters, iterative scans, hardware | Dedicated vector service |
+| Graph traversal exceeds SLO after bounded-depth/query optimization | Materialized relationships, read models | Dedicated graph database |
+| Combined extension support blocks managed production | Separate graph or vector workload | Managed compatible services |
+| HNSW build/vacuum causes unacceptable operational impact | Partition or rebuild strategy | Dedicated vector service |
+| Queue retry/replay needs exceed BullMQ design | Outbox, durable event log | Kafka-compatible platform |
 
 ### 11.5 SLO set
 
-| SLO                                 | MVP target                               |
+| SLO | MVP target |
 | ----------------------------------- | ---------------------------------------- |
-| Core API availability               | 99.5% monthly                            |
-| Read API P95                        | <300 ms excluding large content transfer |
-| Async job acceptance P95            | <1 s                                     |
-| Upload-init P95                     | <1 s                                     |
-| First validated entity              | P95 <5 min for supported file sizes      |
-| Proposal approval application       | P95 <10 s for local/internal operations  |
-| Webhook acknowledgment              | Within provider requirement              |
-| Gmail watch renewal success         | >99.9% before expiration                 |
-| Cross-workspace leakage             | 0                                        |
-| Data-loss event                     | 0                                        |
-| Deletion primary-erasure completion | Approved SLO after benchmark             |
+| Core API availability | 99.5% monthly |
+| Read API P95 | <300 ms excluding large content transfer |
+| Async job acceptance P95 | <1 s |
+| Upload-init P95 | <1 s |
+| First validated entity | P95 <5 min for supported file sizes |
+| Proposal approval application | P95 <10 s for local/internal operations |
+| Webhook acknowledgment | Within provider requirement |
+| Gmail watch renewal success | >99.9% before expiration |
+| Cross-workspace leakage | 0 |
+| Data-loss event | 0 |
+| Deletion primary-erasure completion | Approved SLO after benchmark |
 
 ### 11.6 Reliability patterns
 
@@ -1833,7 +1833,7 @@ Triggers require sustained measurement and cost review, not a single spike.
 - Outbox publisher recovery.
 - Graceful worker drain.
 - No model or connector retry after an uncertain consequential action without
-  idempotency verification.
+ idempotency verification.
 
 ---
 
@@ -2004,22 +2004,22 @@ The repository must contain a reproducible image build that:
 - Publishes an SBOM.
 - Is vulnerability-scanned.
 - Is never assumed equivalent to the production managed service without
-  validation.
+ validation.
 
 ### 12.4 Deployment pipeline
 
 ```mermaid
 flowchart LR
-    PR[Pull request] --> CI[Quality and security gates]
-    CI --> IMAGE[Signed images + SBOM]
-    IMAGE --> STAGE[Deploy staging]
-    STAGE --> MIG[Migration checks]
-    MIG --> E2E[E2E + AI eval + load + accessibility]
-    E2E --> APPROVAL[Manual production approval]
-    APPROVAL --> CANARY[Canary / blue-green]
-    CANARY --> VERIFY[Smoke + SLO + security checks]
-    VERIFY --> PROMOTE[Promote]
-    VERIFY --> ROLLBACK[Rollback]
+ PR[Pull request]--> CI[Quality and security gates]
+ CI--> IMAGE[Signed images + SBOM]
+ IMAGE--> STAGE[Deploy staging]
+ STAGE--> MIG[Migration checks]
+ MIG--> E2E[E2E + AI eval + load + accessibility]
+ E2E--> APPROVAL[Manual production approval]
+ APPROVAL--> CANARY[Canary / blue-green]
+ CANARY--> VERIFY[Smoke + SLO + security checks]
+ VERIFY--> PROMOTE[Promote]
+ VERIFY--> ROLLBACK[Rollback]
 ```
 
 ### 12.5 Migration deployment
@@ -2036,7 +2036,7 @@ flowchart LR
 ### 12.6 Environment rules
 
 - Dev, staging, and production have separate accounts/projects, databases,
-  buckets, secrets, and connector applications.
+ buckets, secrets, and connector applications.
 - No production personal data in lower environments.
 - Synthetic or explicitly consented test data only.
 - Production access is least-privilege, time-bound, and audited.
@@ -2291,22 +2291,22 @@ Exit gate:
 
 ## 15. Traceability for Added Requirements
 
-| Requirement                | Architecture | Data                            | API                   | UI                   | Tests                  | Ops                |
+| Requirement | Architecture | Data | API | UI | Tests | Ops |
 | -------------------------- | ------------ | ------------------------------- | --------------------- | -------------------- | ---------------------- | ------------------ |
-| FR-52/53 embeddings        | §5           | §6.3                            | Internal provider API | Settings/status      | AI benchmark/migration | Model dashboards   |
-| FR-54 provenance           | §5.5         | Memory/source fields            | Memory fact endpoints | Fact detail          | Citation accuracy      | Retrieval metrics  |
-| FR-55/56 approvals         | §4.5         | proposals/approvals/idempotency | Approval endpoints    | Diff card            | Approval suite         | Audit              |
-| FR-57 jobs                 | §4           | jobs table                      | Job endpoints         | Progress states      | Retry/cancel tests     | Queue dashboards   |
-| FR-58 webhooks             | ADR-012      | webhook inbox                   | Provider callback     | Connector health     | Duplicate/order tests  | Watch alerts       |
-| FR-59/60 auth context      | §4           | RLS/context                     | Middleware            | Permission errors    | Cross-workspace suite  | Denial telemetry   |
-| FR-61/62 deletion          | §8           | deletion tables/tombstones      | Deletion endpoints    | Receipts/progress    | Residual-data suite    | Deletion dashboard |
-| FR-63 model versions       | §5.6         | Run metadata                    | Result metadata       | Explainability       | Reproducibility        | Model dashboard    |
-| FR-64 grounded claims      | §5.5         | Provenance                      | Fact/result schema    | Confidence labels    | Citation tests         | Quality monitor    |
-| FR-65 quarantine           | §8.2         | Quarantine metadata             | Job error             | Safe error state     | Malicious file tests   | Quarantine alert   |
-| FR-66 integration registry | §7.5         | Registry table/config           | Admin config          | Connector status     | Disabled-by-default    | Kill switch        |
-| FR-67 MCP pin              | ADR-015      | Version metadata                | Tool schema profile   | N/A                  | Compatibility suite    | Upgrade runbook    |
-| FR-68 corrections          | §5.5         | Supersession                    | Correction endpoint   | Fact correction      | History tests          | Audit              |
-| FR-70 prompt injection     | ADR-013      | Security events                 | Tool gateway          | Warning where useful | Red-team suite         | Incident monitor   |
+| FR-52/53 embeddings | §5 | §6.3 | Internal provider API | Settings/status | AI benchmark/migration | Model dashboards |
+| FR-54 provenance | §5.5 | Memory/source fields | Memory fact endpoints | Fact detail | Citation accuracy | Retrieval metrics |
+| FR-55/56 approvals | §4.5 | proposals/approvals/idempotency | Approval endpoints | Diff card | Approval suite | Audit |
+| FR-57 jobs | §4 | jobs table | Job endpoints | Progress states | Retry/cancel tests | Queue dashboards |
+| FR-58 webhooks | ADR-012 | webhook inbox | Provider callback | Connector health | Duplicate/order tests | Watch alerts |
+| FR-59/60 auth context | §4 | RLS/context | Middleware | Permission errors | Cross-workspace suite | Denial telemetry |
+| FR-61/62 deletion | §8 | deletion tables/tombstones | Deletion endpoints | Receipts/progress | Residual-data suite | Deletion dashboard |
+| FR-63 model versions | §5.6 | Run metadata | Result metadata | Explainability | Reproducibility | Model dashboard |
+| FR-64 grounded claims | §5.5 | Provenance | Fact/result schema | Confidence labels | Citation tests | Quality monitor |
+| FR-65 quarantine | §8.2 | Quarantine metadata | Job error | Safe error state | Malicious file tests | Quarantine alert |
+| FR-66 integration registry | §7.5 | Registry table/config | Admin config | Connector status | Disabled-by-default | Kill switch |
+| FR-67 MCP pin | ADR-015 | Version metadata | Tool schema profile | N/A | Compatibility suite | Upgrade runbook |
+| FR-68 corrections | §5.5 | Supersession | Correction endpoint | Fact correction | History tests | Audit |
+| FR-70 prompt injection | ADR-013 | Security events | Tool gateway | Warning where useful | Red-team suite | Incident monitor |
 
 ---
 
@@ -2394,49 +2394,49 @@ false deletion claims are not waivable for MVP release.
 
 ## 17. Phase-by-Phase Merge Map
 
-| Original phase | Add/replace with                                                           |
+| Original phase | Add/replace with |
 | -------------- | -------------------------------------------------------------------------- |
-| Phase 0        | Authority rules and external dependency register                           |
-| Phase 1        | Revised success-metric evidence rules                                      |
-| Phase 2        | Updated external integration and platform-access research                  |
-| Phase 3        | Section 3 requirements                                                     |
-| Phase 4        | Corrected eight-agent build-plan terminology                               |
-| Phase 5        | Section 4 architecture and ADR-007–016                                     |
-| Phase 6        | Provider-neutral AI stack and pinned versions                              |
-| Phase 7        | Section 6 hardened schema and deletion semantics                           |
-| Phase 8        | Section 7 API and OpenAPI contract                                         |
-| Phase 9        | Section 9 WCAG 2.2 and state requirements                                  |
-| Phase 10       | Approval, async, provenance, and deletion UI invariants                    |
-| Phase 11       | Policy context, tool gateway, jobs, idempotency                            |
-| Phase 12       | Section 5 AI architecture and evaluation                                   |
-| Phase 13       | Section 8 security/privacy                                                 |
-| Phase 14       | Section 10 test matrix                                                     |
-| Phase 15       | Section 11 capacity and benchmark correction                               |
-| Phase 16       | Section 12 corrected CI/CD                                                 |
-| Phase 17       | Section 13 telemetry/runbooks                                              |
-| Phase 18       | This document plus generated API/schema/runbook artifacts                  |
-| Phase 19       | Section 16 release checklist                                               |
-| Phase 20       | Post-deploy SLO, isolation, connector, and deletion verification           |
-| Phase 21       | Model/embedding refresh, access review, backup drills, threat-model review |
+| Phase 0 | Authority rules and external dependency register |
+| Phase 1 | Revised success-metric evidence rules |
+| Phase 2 | Updated external integration and platform-access research |
+| Phase 3 | Section 3 requirements |
+| Phase 4 | Corrected eight-agent build-plan terminology |
+| Phase 5 | Section 4 architecture and ADR-007–016 |
+| Phase 6 | Provider-neutral AI stack and pinned versions |
+| Phase 7 | Section 6 hardened schema and deletion semantics |
+| Phase 8 | Section 7 API and OpenAPI contract |
+| Phase 9 | Section 9 WCAG 2.2 and state requirements |
+| Phase 10 | Approval, async, provenance, and deletion UI invariants |
+| Phase 11 | Policy context, tool gateway, jobs, idempotency |
+| Phase 12 | Section 5 AI architecture and evaluation |
+| Phase 13 | Section 8 security/privacy |
+| Phase 14 | Section 10 test matrix |
+| Phase 15 | Section 11 capacity and benchmark correction |
+| Phase 16 | Section 12 corrected CI/CD |
+| Phase 17 | Section 13 telemetry/runbooks |
+| Phase 18 | This document plus generated API/schema/runbook artifacts |
+| Phase 19 | Section 16 release checklist |
+| Phase 20 | Post-deploy SLO, isolation, connector, and deletion verification |
+| Phase 21 | Model/embedding refresh, access review, backup drills, threat-model review |
 
 ---
 
 ## 18. Open Stakeholder Decisions
 
-| ID    | Decision                                                                  | Blocks                          |
+| ID | Decision | Blocks |
 | ----- | ------------------------------------------------------------------------- | ------------------------------- |
-| SD-01 | Legal entity and jurisdiction                                             | Public launch                   |
-| SD-02 | Launch countries                                                          | Privacy/terms/data region       |
-| SD-03 | Minimum age and consent policy                                            | Public launch                   |
-| SD-04 | Cloud and managed database provider                                       | Infrastructure provisioning     |
-| SD-05 | Budget and model-cost envelope                                            | Provider selection              |
-| SD-06 | Target launch cohort and traffic                                          | Final capacity target           |
-| SD-07 | Embedding/reranker deployment preference: managed, self-hosted, or hybrid | Benchmark shortlist             |
-| SD-08 | Audit retention period                                                    | Privacy/security implementation |
-| SD-09 | Backup retention period                                                   | Final deletion timing           |
-| SD-10 | Enabled job sources and signed partner relationships                      | Career source enablement        |
-| SD-11 | Exact autonomy eligibility policy                                         | Autonomy UI and policy          |
-| SD-12 | Support/on-call staffing                                                  | Production launch               |
+| SD-01 | Legal entity and jurisdiction | Public launch |
+| SD-02 | Launch countries | Privacy/terms/data region |
+| SD-03 | Minimum age and consent policy | Public launch |
+| SD-04 | Cloud and managed database provider | Infrastructure provisioning |
+| SD-05 | Budget and model-cost envelope | Provider selection |
+| SD-06 | Target launch cohort and traffic | Final capacity target |
+| SD-07 | Embedding/reranker deployment preference: managed, self-hosted, or hybrid | Benchmark shortlist |
+| SD-08 | Audit retention period | Privacy/security implementation |
+| SD-09 | Backup retention period | Final deletion timing |
+| SD-10 | Enabled job sources and signed partner relationships | Career source enablement |
+| SD-11 | Exact autonomy eligibility policy | Autonomy UI and policy |
+| SD-12 | Support/on-call staffing | Production launch |
 
 No design document should silently decide these as if stakeholder approval
 occurred.
@@ -2448,61 +2448,61 @@ occurred.
 The following current primary sources informed corrections. They do not replace
 Vaeloom's product requirements; they verify external technical/platform facts.
 
-1. Anthropic Claude Platform documentation — Embeddings  
-   `https://docs.anthropic.com/en/docs/build-with-claude/embeddings`  
-   Confirms Anthropic does not provide its own embedding model.
+1. Anthropic Claude Platform documentation — Embeddings 
+ `https://docs.anthropic.com/en/docs/build-with-claude/embeddings` 
+ Confirms Anthropic does not provide its own embedding model.
 
-2. W3C — Web Content Accessibility Guidelines 2.2  
-   `https://www.w3.org/TR/WCAG22/`  
-   Current accessibility target used by this specification.
+2. W3C — Web Content Accessibility Guidelines 2.2 
+ `https://www.w3.org/TR/WCAG22/` 
+ Current accessibility target used by this specification.
 
-3. GitHub Docs — Choosing the runner for a job  
-   `https://docs.github.com/actions/using-jobs/choosing-the-runner-for-a-job`  
-   Confirms GitHub-hosted jobs use fresh runner instances.
+3. GitHub Docs — Choosing the runner for a job 
+ `https://docs.github.com/actions/using-jobs/choosing-the-runner-for-a-job` 
+ Confirms GitHub-hosted jobs use fresh runner instances.
 
-4. Google Gmail API — Configure push notifications  
-   `https://developers.google.com/workspace/gmail/api/guides/push`  
-   Confirms watch renewal requirements and operational considerations.
+4. Google Gmail API — Configure push notifications 
+ `https://developers.google.com/workspace/gmail/api/guides/push` 
+ Confirms watch renewal requirements and operational considerations.
 
-5. OpenAPI Specification 3.1.1  
-   `https://spec.openapis.org/oas/v3.1.1.html`  
-   Basis for OpenAPI and JSON Schema conventions.
+5. OpenAPI Specification 3.1.1 
+ `https://spec.openapis.org/oas/v3.1.1.html` 
+ Basis for OpenAPI and JSON Schema conventions.
 
-6. Apache AGE Quick Start  
-   `https://age.apache.org/getstarted/quickstart/`  
-   Current published PostgreSQL compatibility information.
+6. Apache AGE Quick Start 
+ `https://age.apache.org/getstarted/quickstart/` 
+ Current published PostgreSQL compatibility information.
 
-7. pgvector repository  
-   `https://github.com/pgvector/pgvector`  
-   Current vector types, indexes, and iterative-scan capabilities.
+7. pgvector repository 
+ `https://github.com/pgvector/pgvector` 
+ Current vector types, indexes, and iterative-scan capabilities.
 
-8. Indeed Partner Documentation — Job Sync API  
-   `https://docs.indeed.com/job-sync-api`  
-   Shows the partner/ATS-oriented integration scope.
+8. Indeed Partner Documentation — Job Sync API 
+ `https://docs.indeed.com/job-sync-api` 
+ Shows the partner/ATS-oriented integration scope.
 
-9. LinkedIn User Agreement  
-   `https://www.linkedin.com/legal/user-agreement`  
-   Current restrictions on scraping and unauthorized automation.
+9. LinkedIn User Agreement 
+ `https://www.linkedin.com/legal/user-agreement` 
+ Current restrictions on scraping and unauthorized automation.
 
-10. Model Context Protocol specification/blog  
-    `https://modelcontextprotocol.io/`  
-    Basis for version-pinning and authorization compatibility requirements.
+10. Model Context Protocol specification/blog 
+ `https://modelcontextprotocol.io/` 
+ Basis for version-pinning and authorization compatibility requirements.
 
-11. BAAI BGE-M3 model card  
-    `https://huggingface.co/BAAI/bge-m3`  
-    Open-model benchmark candidate.
+11. BAAI BGE-M3 model card 
+ `https://huggingface.co/BAAI/bge-m3` 
+ Open-model benchmark candidate.
 
-12. BAAI BGE reranker v2 M3 model card  
-    `https://huggingface.co/BAAI/bge-reranker-v2-m3`  
-    Reranking benchmark candidate.
+12. BAAI BGE reranker v2 M3 model card 
+ `https://huggingface.co/BAAI/bge-reranker-v2-m3` 
+ Reranking benchmark candidate.
 
-13. Voyage AI embedding documentation  
-    `https://docs.voyageai.com/reference/embeddings-api`  
-    Managed-provider benchmark candidate and configurable dimensions.
+13. Voyage AI embedding documentation 
+ `https://docs.voyageai.com/reference/embeddings-api` 
+ Managed-provider benchmark candidate and configurable dimensions.
 
-14. Docling repository  
-    `https://github.com/docling-project/docling`  
-    Ingestion/parser benchmark candidate.
+14. Docling repository 
+ `https://github.com/docling-project/docling` 
+ Ingestion/parser benchmark candidate.
 
 All external dependencies must be rechecked during implementation because
 versions, access programs, terms, and capabilities can change.
@@ -2513,35 +2513,35 @@ versions, access programs, terms, and capabilities can change.
 
 ### Design axis
 
-| Area                       | Result                                   |
+| Area | Result |
 | -------------------------- | ---------------------------------------- |
-| Scope consistency          | Passed after canonical roster correction |
-| Architecture boundaries    | Passed                                   |
-| Isolation design           | Passed                                   |
-| Data model                 | Passed at specification level            |
-| Embedding/reranking design | Passed; benchmark pending                |
-| API standards              | Passed                                   |
-| Security/privacy           | Passed at design level                   |
-| Accessibility              | Passed at requirement level              |
-| QA strategy                | Passed                                   |
-| Capacity model             | Passed as benchmark-driven plan          |
-| CI/CD                      | Passed at specification level            |
-| Operations                 | Passed at specification level            |
+| Scope consistency | Passed after canonical roster correction |
+| Architecture boundaries | Passed |
+| Isolation design | Passed |
+| Data model | Passed at specification level |
+| Embedding/reranking design | Passed; benchmark pending |
+| API standards | Passed |
+| Security/privacy | Passed at design level |
+| Accessibility | Passed at requirement level |
+| QA strategy | Passed |
+| Capacity model | Passed as benchmark-driven plan |
+| CI/CD | Passed at specification level |
+| Operations | Passed at specification level |
 
 ### Execution axis
 
-| Evidence                  | Result         |
+| Evidence | Result |
 | ------------------------- | -------------- |
 | Repository implementation | `NOT_EXECUTED` |
-| Database migration run    | `NOT_EXECUTED` |
-| CI pipeline run           | `NOT_EXECUTED` |
-| AI benchmark              | `NOT_EXECUTED` |
-| Security test/pen test    | `NOT_EXECUTED` |
-| Accessibility audit       | `NOT_EXECUTED` |
-| Load/soak test            | `NOT_EXECUTED` |
-| Backup/restore drill      | `NOT_EXECUTED` |
-| Deletion verification     | `NOT_EXECUTED` |
-| Production deploy         | `NOT_EXECUTED` |
+| Database migration run | `NOT_EXECUTED` |
+| CI pipeline run | `NOT_EXECUTED` |
+| AI benchmark | `NOT_EXECUTED` |
+| Security test/pen test | `NOT_EXECUTED` |
+| Accessibility audit | `NOT_EXECUTED` |
+| Load/soak test | `NOT_EXECUTED` |
+| Backup/restore drill | `NOT_EXECUTED` |
+| Deletion verification | `NOT_EXECUTED` |
+| Production deploy | `NOT_EXECUTED` |
 
 ## Final Statement
 

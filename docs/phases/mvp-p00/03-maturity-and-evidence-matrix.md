@@ -49,127 +49,127 @@ config.
 
 ### 2.2 Frontend checks (apps/web) — RE-RUN 2026-08-12
 
-| Check      | Command                                               | Result                                                                                                                           |
+| Check | Command | Result |
 | ---------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Typecheck  | `pnpm --filter @vaeloom/web typecheck` (tsc --noEmit) | **PASS** (exit 0)                                                                                                                |
-| Lint       | `pnpm --filter @vaeloom/web lint` (next lint)         | **PASS with warnings** (no-console: error-tracking.ts ×3, web-vitals.ts ×1)                                                      |
-| Unit tests | `pnpm --filter @vaeloom/web test` (jest)              | **37/37 PASS** (7 suites) — was 6 failed / 14 passed at baseline; connector page + sidebar specs now green                       |
-| E2E        | `npx playwright test` (testing/e2e, 3 projects)       | **39/39 PASS** (34s) — login/workspace/connector flows × chromium/firefox/mobile-chrome; @playwright/test installed at repo root |
+| Typecheck | `pnpm --filter @vaeloom/web typecheck` (tsc --noEmit) | **PASS** (exit 0) |
+| Lint | `pnpm --filter @vaeloom/web lint` (next lint) | **PASS with warnings** (no-console: error-tracking.ts ×3, web-vitals.ts ×1) |
+| Unit tests | `pnpm --filter @vaeloom/web test` (jest) | **37/37 PASS** (7 suites) — was 6 failed / 14 passed at baseline; connector page + sidebar specs now green |
+| E2E | `npx playwright test` (testing/e2e, 3 projects) | **39/39 PASS** (34s) — login/workspace/connector flows × chromium/firefox/mobile-chrome; @playwright/test installed at repo root |
 
 ### 2.3 Repo-wide quality checks — 2026-08-12 (new, not run at baseline)
 
-| Check           | Command                                                     | Result                                                                                                                                                                                                                                                        |
+| Check | Command | Result |
 | --------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Prettier (CI)   | `pnpm format:check`                                         | **FAIL (exit 2)** — pre-existing drift on committed files: `sdk/typescript/src/types.ts`, `SECURITY.md`, `testing/accessibility/audit-pages.ts`, `axe-config.ts`, `testing/integration/test-containers.ts` → CI `lint-typecheck` job would fail → RISK-P00-11 |
-| Ruff (CI scope) | `ruff check packages/python-common/src apps/ai-service/src` | **FAIL (18 errors)** — style drift (UP007 `X                                                                                                                                                                                                                  | None`, 11 auto-fixable) → CI `python-checks` job would fail → RISK-P00-12 |
-| Ruff (backend)  | `ruff check src tests` (apps/api)                           | 405 errors — **not** CI-enforced for apps/api (ci-backend.yml runs pytest only); informational only                                                                                                                                                           |
-| Nx root lint    | `pnpm lint` (nx run-many)                                   | Hangs in this shell (same limitation as `pnpm dev` — some packages lack lint targets); per-package lint clean                                                                                                                                                 |
+| Prettier (CI) | `pnpm format:check` | **FAIL (exit 2)** — pre-existing drift on committed files: `sdk/typescript/src/types.ts`, `SECURITY.md`, `testing/accessibility/audit-pages.ts`, `axe-config.ts`, `testing/integration/test-containers.ts` → CI `lint-typecheck` job would fail → RISK-P00-11 |
+| Ruff (CI scope) | `ruff check packages/python-common/src apps/ai-service/src` | **FAIL (18 errors)** — style drift (UP007 `X | None`, 11 auto-fixable) → CI `python-checks` job would fail → RISK-P00-12 |
+| Ruff (backend) | `ruff check src tests` (apps/api) | 405 errors — **not** CI-enforced for apps/api (ci-backend.yml runs pytest only); informational only |
+| Nx root lint | `pnpm lint` (nx run-many) | Hangs in this shell (same limitation as `pnpm dev` — some packages lack lint targets); per-package lint clean |
 
 ## 3. Maturity matrix — MVP track objectives
 
 ### 3.1 Honest status summary (corrected 2026-08-16 audit)
 
-| Status              | Area                                                      | Details                                                                                                                                |
+| Status | Area | Details |
 | ------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **IMPLEMENTED**     | Auth (JWT, CSRF, rate limiting, CORS, security headers)   | Security suite 172/172 PASS; middleware present and functional                                                                         |
-| **IMPLEMENTED**     | Memory (extraction, merge, retrieval, versioning)         | 6 memory types, memory_agent, memory_service — tests green                                                                             |
-| **IMPLEMENTED**     | Agents (21 + orchestrator)                                | Scope-lock tests green; MVP 8-agent gate enforced in code                                                                              |
-| **IMPLEMENTED**     | Search (ILIKE-based)                                      | PostgreSQL ILIKE search implemented, tests green                                                                                       |
-| **IMPLEMENTED**     | Scheduling / reminders                                    | scheduler_agent, reminder_agent, scheduler_service — tests green                                                                       |
-| **IMPLEMENTED**     | Resumes / ATS                                             | resume_agent, ats_agent, resume_service — tests green                                                                                  |
-| **IMPLEMENTED**     | Connectors (GraphQL, MCP, REST)                           | 3 connector dirs with unit tests                                                                                                       |
-| **IMPLEMENTED**     | CI/CD (11 GitHub Actions workflows)                       | Present but format:check/ruff drift in CI scope (RISK-P00-11/12)                                                                       |
-| **IMPLEMENTED**     | Frontend pages with real API                              | 16 pages wired to typed API client                                                                                                     |
-| **PARTIAL**         | Multi-tenancy                                             | JWT tenant context works; **TenantMiddleware EXISTS but NOT MOUNTED in main.py**; RLS on 4/36 tables only; GUC app.tenant_id never SET |
-| **PARTIAL**         | Observability (OTel)                                      | OTel setup partial; Prometheus `/metrics` endpoint **COMMENTED OUT** in main.py; FastAPI OTel auto-instrumentation **COMMENTED OUT**   |
-| **PARTIAL**         | RBAC                                                      | Dependency-injection helper exists; **NOT middleware-based** — no enforced route-level RBAC                                            |
-| **PARTIAL**         | Frontend API coverage                                     | 16 pages use real API; **7 pages use hardcoded mock data**                                                                             |
-| **NOT_IMPLEMENTED** | Prometheus `/metrics`                                     | Endpoint exists in code but **COMMENTED OUT**                                                                                          |
-| **NOT_IMPLEMENTED** | OTel FastAPI instrumentation                              | Auto-instrumentation **COMMENTED OUT** in main.py                                                                                      |
-| **NOT_IMPLEMENTED** | SAML SSO                                                  | Provider methods **return None** (STUB)                                                                                                |
-| **NOT_IMPLEMENTED** | SCIM mounting                                             | SCIM router exists but **NOT MOUNTED** in main.py                                                                                      |
-| **NOT_IMPLEMENTED** | IP allowlist mounting                                     | IPFilter middleware exists but **NOT MOUNTED** in main.py                                                                              |
-| **NOT_IMPLEMENTED** | Tenant middleware mounting                                | TenantMiddleware exists but **NOT MOUNTED** in main.py                                                                                 |
-| **NOT_IMPLEMENTED** | Approval gate integration                                 | `has_approval=False` hardcoded in send paths                                                                                           |
-| **NOT_IMPLEMENTED** | BullMQ consumers                                          | Queue abstractions exist; **no active consumers**                                                                                      |
-| **NOT_IMPLEMENTED** | Meilisearch                                               | Not configured; ILIKE only                                                                                                             |
-| **NOT_IMPLEMENTED** | Apache AGE usage                                          | Referenced in docs; **not connected**                                                                                                  |
-| **NOT_IMPLEMENTED** | Event schemas/handlers                                    | infra/events/ dir exists; **no active event handlers**                                                                                 |
-| **NOT_IMPLEMENTED** | Smoke / security / chaos / fuzz / visual-regression tests | Dirs exist but **all empty** — only e2e has tests                                                                                      |
-| **STUB**            | SAML SSO provider                                         | Methods exist but return None — no real SAML flow                                                                                      |
+| **IMPLEMENTED** | Auth (JWT, CSRF, rate limiting, CORS, security headers) | Security suite 172/172 PASS; middleware present and functional |
+| **IMPLEMENTED** | Memory (extraction, merge, retrieval, versioning) | 6 memory types, memory_agent, memory_service — tests green |
+| **IMPLEMENTED** | Agents (21 + orchestrator) | Scope-lock tests green; MVP 8-agent gate enforced in code |
+| **IMPLEMENTED** | Search (ILIKE-based) | PostgreSQL ILIKE search implemented, tests green |
+| **IMPLEMENTED** | Scheduling / reminders | scheduler_agent, reminder_agent, scheduler_service — tests green |
+| **IMPLEMENTED** | Resumes / ATS | resume_agent, ats_agent, resume_service — tests green |
+| **IMPLEMENTED** | Connectors (GraphQL, MCP, REST) | 3 connector dirs with unit tests |
+| **IMPLEMENTED** | CI/CD (11 GitHub Actions workflows) | Present but format:check/ruff drift in CI scope (RISK-P00-11/12) |
+| **IMPLEMENTED** | Frontend pages with real API | 16 pages wired to typed API client |
+| **PARTIAL** | Multi-tenancy | JWT tenant context works; **TenantMiddleware EXISTS but NOT MOUNTED in main.py**; RLS on 4/36 tables only; GUC app.tenant_id never SET |
+| **PARTIAL** | Observability (OTel) | OTel setup partial; Prometheus `/metrics` endpoint **COMMENTED OUT** in main.py; FastAPI OTel auto-instrumentation **COMMENTED OUT** |
+| **PARTIAL** | RBAC | Dependency-injection helper exists; **NOT middleware-based** — no enforced route-level RBAC |
+| **PARTIAL** | Frontend API coverage | 16 pages use real API; **7 pages use hardcoded mock data** |
+| **NOT_IMPLEMENTED** | Prometheus `/metrics` | Endpoint exists in code but **COMMENTED OUT** |
+| **NOT_IMPLEMENTED** | OTel FastAPI instrumentation | Auto-instrumentation **COMMENTED OUT** in main.py |
+| **NOT_IMPLEMENTED** | SAML SSO | Provider methods **return None** (STUB) |
+| **NOT_IMPLEMENTED** | SCIM mounting | SCIM router exists but **NOT MOUNTED** in main.py |
+| **NOT_IMPLEMENTED** | IP allowlist mounting | IPFilter middleware exists but **NOT MOUNTED** in main.py |
+| **NOT_IMPLEMENTED** | Tenant middleware mounting | TenantMiddleware exists but **NOT MOUNTED** in main.py |
+| **NOT_IMPLEMENTED** | Approval gate integration | `has_approval=False` hardcoded in send paths |
+| **NOT_IMPLEMENTED** | BullMQ consumers | Queue abstractions exist; **no active consumers** |
+| **NOT_IMPLEMENTED** | Meilisearch | Not configured; ILIKE only |
+| **NOT_IMPLEMENTED** | Apache AGE usage | Referenced in docs; **not connected** |
+| **NOT_IMPLEMENTED** | Event schemas/handlers | infra/events/ dir exists; **no active event handlers** |
+| **NOT_IMPLEMENTED** | Smoke / security / chaos / fuzz / visual-regression tests | Dirs exist but **all empty** — only e2e has tests |
+| **STUB** | SAML SSO provider | Methods exist but return None — no real SAML flow |
 
 ### 3.2 Detailed maturity matrix — MVP track objectives
 
-| #    | MVP objective                                                                                              | Evidence class                          | Evidence observed                                                                                                                                                | Gap                                                                                        |
+| # | MVP objective | Evidence class | Evidence observed | Gap |
 | ---- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| M-01 | Eight runtime agents + Orchestrator                                                                        | IMPLEMENTED_WITH_EVIDENCE (partial)     | Orchestrator (loop/router/state/base) + 23 agent dirs under `agents/`; scope-lock tests (mvp_scope_enforced) green in full suite                                 | 15 extra agents = enterprise scope creep (CF-05); 8-agent MVP set mapping confirmed in P05 |
-| M-02 | Six memory types                                                                                           | IMPLEMENTED_WITH_EVIDENCE (partial)     | `schemas/memory_types.py`, `memory_service.py`, `memory_versioning.py`, memory_agent (extraction/merge/retrieval/handler) + tests green                          | 6-type vs 22-type registry divergence still OPEN (deferred P07/P12 per user decision)      |
-| M-03 | Suggest-mode-first trust/approval UX                                                                       | IMPLEMENTED_WITH_EVIDENCE (partial)     | approval API + idempotency middleware (P11 batch 1, `bfae40f`); ApprovalCard in web; approval + idempotency tests green                                          | ApprovalCard still not wired to backend API (P10→P11 handoff item)                         |
-| M-04 | Resume / ATS value                                                                                         | IMPLEMENTED_WITH_EVIDENCE               | resume_agent, ats_agent, resume_service, application_service, routes; tests green in full suite                                                                  | No real-user validation (cohort — BQ-05/UNK-05)                                            |
-| M-05 | Lawful opportunity assistance (Gmail draft-only, approved job submission)                                  | IMPLEMENTED_WITH_EVIDENCE (partial)     | gmail_client + gmail watch/draft-only API (P11 batch 2, `929e659`), gmail_agent; `test_gmail_router` green                                                       | Approved job submission via official integration not yet proven end-to-end (P13)           |
-| M-06 | Gmail deadline extraction + reminders                                                                      | IMPLEMENTED_WITH_EVIDENCE               | reminder_agent, scheduler_agent, scheduler_service; scheduler tests green                                                                                        | No live Gmail evidence (no credentials — BQ-02/UNK-03)                                     |
-| M-07 | Export / deletion (GDPR)                                                                                   | IMPLEMENTED_WITH_EVIDENCE               | gdpr.py service + consent router; GDPR + consent tests green                                                                                                     | Legal review pending; DPDP rules doc absent                                                |
-| M-08 | Workspace-scoped isolation                                                                                 | IMPLEMENTED_WITH_EVIDENCE               | tenant.py middleware, workspace_service, permission_service; tenant/isolation tests green (incl. security suite 172/172)                                         | RLS coverage 52% in migration 0005 (projection-level isolation proof in P07)               |
-| M-09 | Bounded operational viability (PaaS, SLOs, runbooks)                                                       | SOURCE_DERIVED / IMPLEMENTED_UNVERIFIED | infra/ (terraform, k8s, monitoring, runbooks) present                                                                                                            | No deploy, no SLO evidence — BLOCKER for GO (BQ-02 deferred to P19)                        |
-| M-10 | WCAG 2.2 AA                                                                                                | IMPLEMENTED_UNVERIFIED                  | a11y-audit.yml, testing/accessibility                                                                                                                            | No a11y run evidence in this env (P14)                                                     |
-| M-11 | Security/privacy hardening (JWT validation, plugin sandbox, rate limiting, CORS, CSRF, IP allowlist, RBAC) | IMPLEMENTED_WITH_EVIDENCE               | middleware/ (auth, csrf, rbac, tenant, ip_filter, rate_limit, security_headers, prompt_injection), plugin_sandbox.py; **security suite 172/172 PASS 2026-08-12** | Legal review + external audit pending (P13)                                                |
+| M-01 | Eight runtime agents + Orchestrator | IMPLEMENTED_WITH_EVIDENCE (partial) | Orchestrator (loop/router/state/base) + 23 agent dirs under `agents/`; scope-lock tests (mvp_scope_enforced) green in full suite | 15 extra agents = enterprise scope creep (CF-05); 8-agent MVP set mapping confirmed in P05 |
+| M-02 | Six memory types | IMPLEMENTED_WITH_EVIDENCE (partial) | `schemas/memory_types.py`, `memory_service.py`, `memory_versioning.py`, memory_agent (extraction/merge/retrieval/handler) + tests green | 6-type vs 22-type registry divergence still OPEN (deferred P07/P12 per user decision) |
+| M-03 | Suggest-mode-first trust/approval UX | IMPLEMENTED_WITH_EVIDENCE (partial) | approval API + idempotency middleware (P11 batch 1, `bfae40f`); ApprovalCard in web; approval + idempotency tests green | ApprovalCard still not wired to backend API (P10→P11 handoff item) |
+| M-04 | Resume / ATS value | IMPLEMENTED_WITH_EVIDENCE | resume_agent, ats_agent, resume_service, application_service, routes; tests green in full suite | No real-user validation (cohort — BQ-05/UNK-05) |
+| M-05 | Lawful opportunity assistance (Gmail draft-only, approved job submission) | IMPLEMENTED_WITH_EVIDENCE (partial) | gmail_client + gmail watch/draft-only API (P11 batch 2, `929e659`), gmail_agent; `test_gmail_router` green | Approved job submission via official integration not yet proven end-to-end (P13) |
+| M-06 | Gmail deadline extraction + reminders | IMPLEMENTED_WITH_EVIDENCE | reminder_agent, scheduler_agent, scheduler_service; scheduler tests green | No live Gmail evidence (no credentials — BQ-02/UNK-03) |
+| M-07 | Export / deletion (GDPR) | IMPLEMENTED_WITH_EVIDENCE | gdpr.py service + consent router; GDPR + consent tests green | Legal review pending; DPDP rules doc absent |
+| M-08 | Workspace-scoped isolation | IMPLEMENTED_WITH_EVIDENCE | tenant.py middleware, workspace_service, permission_service; tenant/isolation tests green (incl. security suite 172/172) | RLS coverage 52% in migration 0005 (projection-level isolation proof in P07) |
+| M-09 | Bounded operational viability (PaaS, SLOs, runbooks) | SOURCE_DERIVED / IMPLEMENTED_UNVERIFIED | infra/ (terraform, k8s, monitoring, runbooks) present | No deploy, no SLO evidence — BLOCKER for GO (BQ-02 deferred to P19) |
+| M-10 | WCAG 2.2 AA | IMPLEMENTED_UNVERIFIED | a11y-audit.yml, testing/accessibility | No a11y run evidence in this env (P14) |
+| M-11 | Security/privacy hardening (JWT validation, plugin sandbox, rate limiting, CORS, CSRF, IP allowlist, RBAC) | IMPLEMENTED_WITH_EVIDENCE | middleware/ (auth, csrf, rbac, tenant, ip_filter, rate_limit, security_headers, prompt_injection), plugin_sandbox.py; **security suite 172/172 PASS 2026-08-12** | Legal review + external audit pending (P13) |
 
 ## 4. Documentation-maturity (for reference only — never runtime evidence)
 
-| Item                        | Value                                                                    |
+| Item | Value |
 | --------------------------- | ------------------------------------------------------------------------ |
-| docs tree                   | **574** .md (2026-08-16; was 492), **26 ADRs** (was 20), canonical 01–06 |
-| gap-analysis report         | baseline 74/100 → completion report 93/100 (docs only)                   |
-| IMPLEMENTATION-CHECKLIST.md | Phase 0–1 marked complete (unverified vs runtime)                        |
-| COMMIT_PLAN.md              | ~280-commit plan (planning artifact)                                     |
+| docs tree | **574** .md (2026-08-16; was 492), **26 ADRs** (was 20), canonical 01–06 |
+| gap-analysis report | baseline 74/100 → completion report 93/100 (docs only) |
+| IMPLEMENTATION-CHECKLIST.md | Phase 0–1 marked complete (unverified vs runtime) |
+| COMMIT_PLAN.md | ~280-commit plan (planning artifact) |
 
 ## 5. Test inventory (backend, on-disk)
 
 - `apps/api/tests/`: **130 test files + 3 conftest.py + 1 debug harness** (134
-  `.py` total) — unit, integration, security, conftest with mock_llm/
-  mock_connector fixtures; 2335 tests collected / 2333 passed.
+ `.py` total) — unit, integration, security, conftest with mock_llm/
+ mock_connector fixtures; 2335 tests collected / 2333 passed.
 - `testing/`: 10 suites (accessibility, chaos, e2e, fuzz, integration,
-  performance, security, smoke, unit, visual-regression) — **e2e live (39/39);
-  chaos/fuzz/security/smoke/visual-regression dirs still empty**.
+ performance, security, smoke, unit, visual-regression) — **e2e live (39/39);
+ chaos/fuzz/security/smoke/visual-regression dirs still empty**.
 - CI: 11 workflows (ci, ci-backend, ci-frontend, ci-integration, security-audit,
-  security-scan, a11y-audit, docs-validate, docker-build, deploy,
-  deploy-staging).
+ security-scan, a11y-audit, docs-validate, docker-build, deploy,
+ deploy-staging).
 
 ## 6. Headline conclusion
 
 Runtime truth re-verified 2026-08-12 @ `3ad6bca`:
 
 - **Backend:** 2335 collected → **2333 PASS, 0 failed, 2 xfailed** — first fully
-  green full-suite run in P00 history (was 47 env-fails, then 27 lastfailed).
-  Security suite 172/172 PASS. Coverage 94% (641 lines uncovered — stale 100%
-  claim retired).
+ green full-suite run in P00 history (was 47 env-fails, then 27 lastfailed).
+ Security suite 172/172 PASS. Coverage 94% (641 lines uncovered — stale 100%
+ claim retired).
 - **Frontend:** typecheck + lint clean; jest **37/37**; e2e **39/39 across 3
-  browsers**.
+ browsers**.
 - **Repo-wide CI drift:** prettier `format:check` FAIL on 5 committed files and
-  CI-scope ruff FAIL (18) — CI `lint-typecheck`/`python-checks` jobs would be
-  red; owned by RISK-P00-11/12, remediation cheap (auto-fix).
+ CI-scope ruff FAIL (18) — CI `lint-typecheck`/`python-checks` jobs would be
+ red; owned by RISK-P00-11/12, remediation cheap (auto-fix).
 - **No deployment, no SLO, no production evidence, no a11y run in this
-  environment** — every "production-ready / secure / compliant / accessible /
-  scalable" claim in docs remains UNVERIFIED.
+ environment** — every "production-ready / secure / compliant / accessible /
+ scalable" claim in docs remains UNVERIFIED.
 - **Docs are mature (574) but not authoritative for runtime state** — repo
-  evidence outranks them.
+ evidence outranks them.
 
 ### 2026-08-16 zero-trust re-audit (see `15-zero-trust-reaudit-2026-08-16.md`)
 
 - **2335 backend tests still collect** at current working tree (HEAD `2f12d94`
-  - uncommitted P06/P07 changes) — no collection/import regression introduced.
+ - uncommitted P06/P07 changes) — no collection/import regression introduced.
 - **66-prompt pack SHA256SUMS re-verified 75/75**; INT-02/03/04 hashes stable.
 - **Scope lock re-confirmed in code** (`config.py:69-70`,
-  `orchestrator/router.py:178-232`).
+ `orchestrator/router.py:178-232`).
 - **Counts corrected for repo drift:** docs 574, ADRs 26, services 46 committed
-  / 49 on disk, alembic 0001–0002 committed + 0003–0006 uncommitted, src 217
-  committed / 220 on disk.
+ / 49 on disk, alembic 0001–0002 committed + 0003–0006 uncommitted, src 217
+ committed / 220 on disk.
 - **External standards refreshed** — OWASP LLM Top 10 2026, EU AI Act high-risk
-  delay, DPDP Rules finalized, COPPA fully in force, Gmail quota model, GitHub
-  user tokens (register 01 §3, ★ rows).
+ delay, DPDP Rules finalized, COPPA fully in force, Gmail quota model, GitHub
+ user tokens (register 01 §3, ★ rows).
 - Full-suite execution at the moved HEAD + uncommitted tree is
-  **P07-gate-owned** (do not re-claim 2333/0/2xf for `2f12d94` without a fresh
-  run).
+ **P07-gate-owned** (do not re-claim 2333/0/2xf for `2f12d94` without a fresh
+ run).
 
 → Full breakdown feeds the gate score in `09-gate-2026-08-12.md`.
 
@@ -178,18 +178,18 @@ Runtime truth re-verified 2026-08-12 @ `3ad6bca`:
 Prompt-mandated paperwork closed without touching source code:
 
 - **§10 Enterprise completeness** → `10-enterprise-completeness.md` — 19
-  domains: 10 APPLICABLE (incl. change control), 6 BLOCKED (compliance, UX/a11y,
-  performance, reliability, operations, DevOps → owning phases P13/P14/P15/
-  P16/P17/P19 named), 3 NOT_APPLICABLE (cost, sustainability, localization) —
-  each with reason.
+ domains: 10 APPLICABLE (incl. change control), 6 BLOCKED (compliance, UX/a11y,
+ performance, reliability, operations, DevOps → owning phases P13/P14/P15/
+ P16/P17/P19 named), 3 NOT_APPLICABLE (cost, sustainability, localization) —
+ each with reason.
 - **§23 Evidence & traceability** → `11-evidence-traceability.md` —
-  EVD-MVP-P00-001…022 (every material claim → file/run → result → date →
-  verifier; failures visible).
+ EVD-MVP-P00-001…022 (every material claim → file/run → result → date →
+ verifier; failures visible).
 - **Future-readiness overlay** → `12-future-readiness-backlog.md` — FB-01…05
-  (manifest, SBOM/AI-BOM, retention/hashing, conflict protocol, scope
-  protection) with adoption triggers + owners; no silent scope expansion.
+ (manifest, SBOM/AI-BOM, retention/hashing, conflict protocol, scope
+ protection) with adoption triggers + owners; no silent scope expansion.
 - **§26/§27 DoR/DoD** → `13-readiness-and-done.md` — all items checked with
-  evidence pointers; gate sign-off honestly marked [ ] pending USER.
+ evidence pointers; gate sign-off honestly marked [ ] pending USER.
 - **§30 Completion response (A–P)** → `14-completion-response.md`.
 - **§28 gate re-score** → `09-gate-2026-08-12.md` §8 — **75.69/100** (corrected
-  arithmetic; evidence/traceability 93, documentation 90, scope 78).
+ arithmetic; evidence/traceability 93, documentation 90, scope 78).

@@ -1,12 +1,12 @@
-﻿# Functional Requirements
+# Functional Requirements
 
 > **Purpose:** Define the functional requirements for Vaeloom organized by module — what the system must do, with priority and acceptance criteria
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Product Team
 > **Version:** 1.0
 > **Last Updated:** 2026-07-16
 > **Dependencies:** [`PRD.md`](./PRD.md), [`User-Stories.md`](./User-Stories.md), [`Non-Functional-Requirements.md`](./Non-Functional-Requirements.md)
-> **Implementation Status:** ðŸ“‹ Spec Only
+> **Implementation Status:** 📁‹ Spec Only
 
 ## Overview
 
@@ -29,14 +29,14 @@ FR-XXX | Requirement description | Priority (P0/P1/P2) | Acceptance criteria
 
 ```mermaid
 graph LR
-    classDef input fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef req fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef output fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef input fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef req fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef output fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    US["User Stories"]:::input --> FR["Functional Requirements"]:::req
-    BR["Business Requirements"]:::input --> FR
-    FR --> FS["Feature Specs"]:::output
-    FR --> TEST["Test Cases"]:::output
+ US["User Stories"]:::input--> FR["Functional Requirements"]:::req
+ BR["Business Requirements"]:::input--> FR
+ FR--> FS["Feature Specs"]:::output
+ FR--> TEST["Test Cases"]:::output
 ```text
 
 > **Diagram:** Requirements traceability. User stories and business requirements inform functional requirements, which drive feature specs and test cases.

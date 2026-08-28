@@ -41,26 +41,26 @@ This document defines the core entities, their attributes, the relationship type
 
 ```mermaid
 erDiagram
-    User ||--o{ Workspace : has
-    Workspace ||--o{ Document : contains
-    Workspace ||--o{ Connector : has
-    Workspace ||--o{ MemoryRecord : has
-    Workspace ||--o{ Entity : has
-    Workspace ||--o{ Resume : has
-    Workspace ||--o{ Application : has
-    Workspace ||--o{ AgentAction : logs
-    
-    Document ||--o{ DocumentVersion : versions
-    Document }o--|| Connector : "sourced from"
-    
-    Entity ||--o{ Relationship : "as source"
-    Entity ||--o{ Relationship : "as target"
-    
-    MemoryRecord }o--|| Document : "sourced from"
-    
-    Resume ||--o{ Application : "version used"
-    
-    Application ||--o{ ScheduleEvent : links
+ User ||--o{ Workspace : has
+ Workspace ||--o{ Document : contains
+ Workspace ||--o{ Connector : has
+ Workspace ||--o{ MemoryRecord : has
+ Workspace ||--o{ Entity : has
+ Workspace ||--o{ Resume : has
+ Workspace ||--o{ Application : has
+ Workspace ||--o{ AgentAction : logs
+ 
+ Document ||--o{ DocumentVersion : versions
+ Document }o--|| Connector : "sourced from"
+ 
+ Entity ||--o{ Relationship : "as source"
+ Entity ||--o{ Relationship : "as target"
+ 
+ MemoryRecord }o--|| Document : "sourced from"
+ 
+ Resume ||--o{ Application : "version used"
+ 
+ Application ||--o{ ScheduleEvent : links
 ```
 
 ## Entity Descriptions
@@ -82,21 +82,21 @@ erDiagram
 
 ```mermaid
 erDiagram
-    Entity ||--o{ Relationship : "source"
-    Entity {
-        uuid id PK
-        uuid workspace_id FK
-        string type
-        string canonical_name
-        string[] aliases
-    }
-    Relationship {
-        uuid id PK
-        uuid from_entity_id FK
-        uuid to_entity_id FK
-        string relation_type
-        float confidence
-    }
+ Entity ||--o{ Relationship : "source"
+ Entity {
+ uuid id PK
+ uuid workspace_id FK
+ string type
+ string canonical_name
+ string[] aliases
+ }
+ Relationship {
+ uuid id PK
+ uuid from_entity_id FK
+ uuid to_entity_id FK
+ string relation_type
+ float confidence
+ }
 ```
 
 ## Common Mistakes

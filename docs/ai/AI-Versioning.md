@@ -128,17 +128,17 @@ ai_artifacts:
 
 ```mermaid
 graph TD
-    classDef detect fill:#ffcccc,stroke:#cc0000,color:#000,stroke-width:2px
-    classDef action fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef verify fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef detect fill:#ffcccc,stroke:#cc0000,color:#000,stroke-width:2px
+ classDef action fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef verify fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    DETECT["Detection<br/>Eval regression / user complaints / error spike"]:::detect
-    DECIDE["Decision<br/>Which artifact caused the regression?"]:::action
-    REVERT["Revert<br/>Switch deployment manifest to previous versions"]:::action
-    VERIFY["Verify<br/>Run eval suite; confirm regression resolved"]:::verify
-    POST["Post-mortem<br/>Document cause; add regression test"]:::verify
+ DETECT["Detection<br/>Eval regression / user complaints / error spike"]:::detect
+ DECIDE["Decision<br/>Which artifact caused the regression?"]:::action
+ REVERT["Revert<br/>Switch deployment manifest to previous versions"]:::action
+ VERIFY["Verify<br/>Run eval suite; confirm regression resolved"]:::verify
+ POST["Post-mortem<br/>Document cause; add regression test"]:::verify
 
-    DETECT --> DECIDE --> REVERT --> VERIFY --> POST
+ DETECT--> DECIDE--> REVERT--> VERIFY--> POST
 ```
 
 > **Diagram:** AI artifact rollback flow. Detection → identify cause → revert manifest → verify → post-mortem.

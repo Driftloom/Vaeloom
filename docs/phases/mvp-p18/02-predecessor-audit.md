@@ -1,8 +1,8 @@
-﻿# MVP-P18 — 02. Predecessor Audit (MVP-P17)
+# MVP-P18 — 02. Predecessor Audit (MVP-P17)
 
-> **Phase:** MVP-P18 — Documentation and Knowledge Transfer  
-> **Predecessor:** MVP-P17 — Observability and Operations  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 (94.2% p50 45ms p95 120ms) + P16 92.8 (12 TF 22 K8s SLSA L2) + P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards + 4 runbooks)  
+> **Phase:** MVP-P18 — Documentation and Knowledge Transfer 
+> **Predecessor:** MVP-P17 — Observability and Operations 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 (94.2% p50 45ms p95 120ms) + P16 92.8 (12 TF 22 K8s SLSA L2) + P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards + 4 runbooks) 
 > **Predecessor Baseline:** `787053aa6e6f` + P17 DEL-01..05 + P17 93.2 APPROVED
 
 ## Predecessor Identity

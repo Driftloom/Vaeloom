@@ -23,44 +23,44 @@ Policy checks enforce hard-coded, auditable business rules (e.g., Application Ag
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    INPUT["User / Agent Input"]:::primary
+ INPUT["User / Agent Input"]:::primary
 
-    subgraph PrePlan["Pre-Plan Guardrails"]
-        IVALID["Input Validation"]:::secondary
-        INJECT["Prompt Injection Defense"]:::secondary
-        PII["PII Detection"]:::secondary
-    end
+ subgraph PrePlan["Pre-Plan Guardrails"]
+ IVALID["Input Validation"]:::secondary
+ INJECT["Prompt Injection Defense"]:::secondary
+ PII["PII Detection"]:::secondary
+ end
 
-    PLAN["Plan Phase"]:::primary
+ PLAN["Plan Phase"]:::primary
 
-    subgraph ActGuard["Act-Phase Guardrails"]
-        TAUTH["Tool Authorization<br/>(scope + permission re-check)"]:::secondary
-        POLICY["Policy Checks<br/>(business rules, daily caps)"]:::secondary
-    end
+ subgraph ActGuard["Act-Phase Guardrails"]
+ TAUTH["Tool Authorization<br/>(scope + permission re-check)"]:::secondary
+ POLICY["Policy Checks<br/>(business rules, daily caps)"]:::secondary
+ end
 
-    ACT["Act Phase"]:::primary
-    OUTPUT["Output to User / Next Agent"]:::primary
+ ACT["Act Phase"]:::primary
+ OUTPUT["Output to User / Next Agent"]:::primary
 
-    subgraph PostAct["Post-Act Guardrails"]
-        OFILTER["Output Filtering"]:::secondary
-        LEAK["Cross-Workspace Leak Check"]:::secondary
-        FORMAT["Output Format Validation"]:::secondary
-    end
+ subgraph PostAct["Post-Act Guardrails"]
+ OFILTER["Output Filtering"]:::secondary
+ LEAK["Cross-Workspace Leak Check"]:::secondary
+ FORMAT["Output Format Validation"]:::secondary
+ end
 
-    INPUT --> IVALID
-    IVALID --> INJECT
-    INJECT --> PII
-    PII --> PLAN
-    PLAN --> TAUTH
-    TAUTH --> POLICY
-    POLICY --> ACT
-    ACT --> OFILTER
-    OFILTER --> LEAK
-    LEAK --> FORMAT
-    FORMAT --> OUTPUT
+ INPUT--> IVALID
+ IVALID--> INJECT
+ INJECT--> PII
+ PII--> PLAN
+ PLAN--> TAUTH
+ TAUTH--> POLICY
+ POLICY--> ACT
+ ACT--> OFILTER
+ OFILTER--> LEAK
+ LEAK--> FORMAT
+ FORMAT--> OUTPUT
 ```
 
 ## Context

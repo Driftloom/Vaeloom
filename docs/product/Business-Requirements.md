@@ -37,34 +37,34 @@ Business requirements translate the product vision into measurable objectives an
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef internal fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef internal fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    VAEL["Vaeloom"]:::primary
+ VAEL["Vaeloom"]:::primary
 
-    subgraph Primary["Primary Stakeholders"]
-        STUD["Students<br/>(CS/Engineering focus)"]:::primary
-        EARLY["Early-Career<br/>Professionals"]:::primary
-    end
+ subgraph Primary["Primary Stakeholders"]
+ STUD["Students<br/>(CS/Engineering focus)"]:::primary
+ EARLY["Early-Career<br/>Professionals"]:::primary
+ end
 
-    subgraph Enterprise["Enterprise Stakeholders"]
-        UNI["Universities"]:::secondary
-        EMP["Employers"]:::secondary
-    end
+ subgraph Enterprise["Enterprise Stakeholders"]
+ UNI["Universities"]:::secondary
+ EMP["Employers"]:::secondary
+ end
 
-    subgraph Internal["Internal Stakeholders"]
-        ENG["Engineering"]:::internal
-        PROD["Product"]:::internal
-        OPS["Operations"]:::internal
-        SALES["Sales / GTM"]:::internal
-    end
+ subgraph Internal["Internal Stakeholders"]
+ ENG["Engineering"]:::internal
+ PROD["Product"]:::internal
+ OPS["Operations"]:::internal
+ SALES["Sales / GTM"]:::internal
+ end
 
-    STUD --> VAEL
-    EARLY --> VAEL
-    UNI --> VAEL
-    EMP --> VAEL
-    ENG & PROD & OPS & SALES -.->|"build & run"| VAEL
+ STUD--> VAEL
+ EARLY--> VAEL
+ UNI--> VAEL
+ EMP--> VAEL
+ ENG & PROD & OPS & SALES -.->|"build & run"| VAEL
 ```
 
 > **Diagram:** Stakeholder map. Primary users (students, early-career professionals) are the core audience. Enterprise stakeholders (universities, employers) are the expansion market. Internal teams build and operate the platform.

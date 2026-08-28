@@ -39,11 +39,11 @@ uv run --project apps/api python -c "import asyncio; from api.temporal.client im
 ## Troubleshooting
 
 - **Port 7233 occupied**: previous Temporal leftover —
-  `docker compose --profile temporal down -v` then up.
+ `docker compose --profile temporal down -v` then up.
 - **Worker liveness**: `docker logs vaeloom-temporal-worker --tail 50`;
-  healthcheck is a Temporal `Client.connect` ping.
+ healthcheck is a Temporal `Client.connect` ping.
 - **No Redis**: degraded inline mode (§33) still works without Redis or
-  Temporal; enable both for parity with prod.
+ Temporal; enable both for parity with prod.
 
 ## Debugging workflow histories
 
@@ -55,10 +55,10 @@ and run
 
 ## Worker queues
 
-| Env                             | Default               |
+| Env | Default |
 | ------------------------------- | --------------------- |
-| `TEMPORAL_TASK_QUEUE_INGEST`    | `vaeloom-ingest-q`    |
-| `TEMPORAL_TASK_QUEUE_AGENT`     | `vaeloom-agent-q`     |
+| `TEMPORAL_TASK_QUEUE_INGEST` | `vaeloom-ingest-q` |
+| `TEMPORAL_TASK_QUEUE_AGENT` | `vaeloom-agent-q` |
 | `TEMPORAL_TASK_QUEUE_APPROVALS` | `vaeloom-approvals-q` |
 | `TEMPORAL_TASK_QUEUE_SCHEDULES` | `vaeloom-schedules-q` |
 

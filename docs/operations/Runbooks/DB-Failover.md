@@ -1,7 +1,7 @@
-﻿# DB Failover Runbook
+# DB Failover Runbook
 
 > **Purpose:** Step-by-step runbook for detecting and executing PostgreSQL database failover in Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
@@ -17,47 +17,47 @@ Vaeloom uses PostgreSQL with streaming replication for high availability. The pr
 
 ```mermaid
 graph TD
-    classDef primary fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
-    classDef replica fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef action fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef monitor fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
+ classDef primary fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
+ classDef replica fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef action fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef monitor fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph PrimaryRegion["Primary Region -- us-east-1"]
-        PG1["PostgreSQL Primary<br/>RDS Multi-AZ<br/>Writes + reads"]
-        WAL["WAL Archives<br/>S3 bucket (encrypted)"]
-        MON["Monitoring<br/>CloudWatch + pg_stat_replication"]
-    end
+ subgraph PrimaryRegion["Primary Region -- us-east-1"]
+ PG1["PostgreSQL Primary<br/>RDS Multi-AZ<br/>Writes + reads"]
+ WAL["WAL Archives<br/>S3 bucket (encrypted)"]
+ MON["Monitoring<br/>CloudWatch + pg_stat_replication"]
+ end
 
-    subgraph SecondaryRegion["Secondary Region -- us-west-2"]
-        PG2["PostgreSQL Replica<br/>Cross-region read replica<br/>Streaming replication"]
-        PROMO["Promotion Candidate<br/>Ready for failover"]
-    end
+ subgraph SecondaryRegion["Secondary Region -- us-west-2"]
+ PG2["PostgreSQL Replica<br/>Cross-region read replica<br/>Streaming replication"]
+ PROMO["Promotion Candidate<br/>Ready for failover"]
+ end
 
-    subgraph Detection["Failure Detection"]
-        D1["CloudWatch Alarm<br/>Replica lag > 30s"]
-        D2["PgBouncer Health<br/>Connection failures"]
-        D3["App-level health check<br/>Write failures"]
-        D4["RDS Event<br/>Instance degraded"]
-    end
+ subgraph Detection["Failure Detection"]
+ D1["CloudWatch Alarm<br/>Replica lag > 30s"]
+ D2["PgBouncer Health<br/>Connection failures"]
+ D3["App-level health check<br/>Write failures"]
+ D4["RDS Event<br/>Instance degraded"]
+ end
 
-    subgraph Actions["Failover Actions"]
-        A1["Auto-promote replica<br/>(no operator in 5 min)"]
-        A2["Manual promote replica<br/>(operator decision)"]
-        A3["Update connection strings<br/>Secrets Manager + apps"]
-        A4["Verify writes + reads"]
-    end
+ subgraph Actions["Failover Actions"]
+ A1["Auto-promote replica<br/>(no operator in 5 min)"]
+ A2["Manual promote replica<br/>(operator decision)"]
+ A3["Update connection strings<br/>Secrets Manager + apps"]
+ A4["Verify writes + reads"]
+ end
 
-    PG1 --> WAL
-    PG1 -.->|Streaming replication| PG2
-    PG1 --> MON
-    D1 & D2 & D3 & D4 --> A1 & A2
-    A1 & A2 --> PROMO --> PG2
-    PG2 --> A3 --> A4
+ PG1--> WAL
+ PG1 -.->|Streaming replication| PG2
+ PG1--> MON
+ D1 & D2 & D3 & D4--> A1 & A2
+ A1 & A2--> PROMO--> PG2
+ PG2--> A3--> A4
 
-    class PG1 primary
-    class PG2,PROMO replica
-    class A1,A2,A3,A4 action
-    class D1,D2,D3,D4 monitor
+ class PG1 primary
+ class PG2,PROMO replica
+ class A1,A2,A3,A4 action
+ class D1,D2,D3,D4 monitor
 ```
 
 ## Detection

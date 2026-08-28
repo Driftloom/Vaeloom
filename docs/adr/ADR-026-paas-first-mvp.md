@@ -1,11 +1,11 @@
 # ADR-026: PaaS-First MVP Target, Nearest Region
 
-| Metadata     | Value                                                                                                            |
+| Metadata | Value |
 | ------------ | ---------------------------------------------------------------------------------------------------------------- |
-| **Status**   | ADOPTED — design-only target (PaaS-first MVP; infra manifests exist but k8s/terraform are not MVP critical path) |
-| **Date**     | 2026-08-15 (design re-run); first documented 2026-08-07                                                          |
-| **Deciders** | Engineering Team + User (BQ-P05-02)                                                                              |
-| **Owner**    | Cloud Architect                                                                                                  |
+| **Status** | ADOPTED — design-only target (PaaS-first MVP; infra manifests exist but k8s/terraform are not MVP critical path) |
+| **Date** | 2026-08-15 (design re-run); first documented 2026-08-07 |
+| **Deciders** | Engineering Team + User (BQ-P05-02) |
+| **Owner** | Cloud Architect |
 
 ## Context
 
@@ -21,13 +21,13 @@ must be positioned for MVP.
 (Singapore-class), with docker-compose as the dev/parity harness.
 
 - `docker-compose.yml` (dev, verified at HEAD): postgres, redis, web, backend,
-  minio, pgbouncer, pgadmin.
+ minio, pgbouncer, pgadmin.
 - `docker-compose.prod.yml` (verified at HEAD): nginx, web, backend, postgres,
-  redis, pgbouncer, minio.
+ redis, pgbouncer, minio.
 - `infra/kubernetes` and `infra/terraform` (incl. `infra/ops/terraform`) remain
-  the **future enterprise path** (ADR-020), not the MVP critical path.
+ the **future enterprise path** (ADR-020), not the MVP critical path.
 - Residency risk recorded as **RISK-MVP-P05-05** → P13 legal review (BQ-P05-02;
-  CF-P05-03).
+ CF-P05-03).
 
 ## Consequences
 

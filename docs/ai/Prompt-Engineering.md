@@ -25,73 +25,73 @@ This document defines the prompt lifecycle, design principles, structure templat
 
 ```mermaid
 graph TD
-    %% ─── Class Definitions ───
-    classDef draft fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef test fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef eval fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef stage fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
-    classDef prod fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
+ %% ─── Class Definitions ───
+ classDef draft fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef test fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef eval fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef stage fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
+ classDef prod fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
 
-    %% ─── Phase 1: Draft ───
-    subgraph Draft["✏️ 1. Draft Phase"]
-        direction TB
-        D1["Write initial prompt<br/>with all 8 required sections"] --> D2["Self-review against<br/>quality checklist"]
-        D2 --> D3["Peer review by<br/>AI team member"]
-        D3 --> D4{"Review approved?"}
-        D4 -->|Yes| D5["Assign version tag<br/>v1.0.0, add changelog"]
-        D4 -->|No| D6["Address feedback<br/>iterate draft"]
-        D6 --> D2
-    end
+ %% ─── Phase 1: Draft ───
+ subgraph Draft["1. Draft Phase"]
+ direction TB
+ D1["Write initial prompt<br/>with all 8 required sections"]--> D2["Self-review against<br/>quality checklist"]
+ D2--> D3["Peer review by<br/>AI team member"]
+ D3--> D4{"Review approved?"}
+ D4-->|Yes| D5["Assign version tag<br/>v1.0.0, add changelog"]
+ D4-->|No| D6["Address feedback<br/>iterate draft"]
+ D6--> D2
+ end
 
-    %% ─── Phase 2: Test ───
-    subgraph Test["🧪 2. Test Phase"]
-        direction TB
-        D5 --> T1["Run golden dataset<br/>10-20 expected examples"]
-        T1 --> T2["Run edge cases<br/>empty, ambiguous, adversarial"]
-        T2 --> T3["Measure metrics:<br/>accuracy, schema compliance,\nlatency, token usage"]
-    end
+ %% ─── Phase 2: Test ───
+ subgraph Test["2. Test Phase"]
+ direction TB
+ D5--> T1["Run golden dataset<br/>10-20 expected examples"]
+ T1--> T2["Run edge cases<br/>empty, ambiguous, adversarial"]
+ T2--> T3["Measure metrics:<br/>accuracy, schema compliance,\nlatency, token usage"]
+ end
 
-    %% ─── Phase 3: Evaluate ───
-    subgraph Eval["📊 3. Evaluate Phase"]
-        direction TB
-        T3 --> E1["Compare against<br/>baseline thresholds"]
-        E1 --> E2{"All metrics pass?<br/>accuracy > 90%<br/>schema compliance = 100%"}
-        E2 -->|Yes| E3["✅ Prompt ready<br/>for staging"]
-        E2 -->|No| E4["❌ Metrics below threshold<br/>identify failing edge cases"]
-        E4 --> E5["Revise prompt<br/>fix identified gaps"]
-        E5 --> D2
-    end
+ %% ─── Phase 3: Evaluate ───
+ subgraph Eval["3. Evaluate Phase"]
+ direction TB
+ T3--> E1["Compare against<br/>baseline thresholds"]
+ E1--> E2{"All metrics pass?<br/>accuracy > 90%<br/>schema compliance = 100%"}
+ E2-->|Yes| E3["Prompt ready<br/>for staging"]
+ E2-->|No| E4["Metrics below threshold<br/>identify failing edge cases"]
+ E4--> E5["Revise prompt<br/>fix identified gaps"]
+ E5--> D2
+ end
 
-    %% ─── Phase 4: Stage ───
-    subgraph Stage["🔬 4. Staging Phase"]
-        direction TB
-        E3 --> S1["Deploy to staging<br/>environment"]
-        S1 --> S2["Shadow mode:<br/>run on real traffic,<br/>compare to production prompt"]
-        S2 --> S3["Monitor metrics:<br/>latency, accuracy drift,\nuser feedback score"]
-        S3 --> S4{"Shadow metrics<br/>match production?"}
-        S4 -->|Yes| S5["✅ Ready for<br/>production rollout"]
-        S4 -->|No| S6["Investigate divergence<br/>roll back to draft"]
-        S6 --> D2
-    end
+ %% ─── Phase 4: Stage ───
+ subgraph Stage["4. Staging Phase"]
+ direction TB
+ E3--> S1["Deploy to staging<br/>environment"]
+ S1--> S2["Shadow mode:<br/>run on real traffic,<br/>compare to production prompt"]
+ S2--> S3["Monitor metrics:<br/>latency, accuracy drift,\nuser feedback score"]
+ S3--> S4{"Shadow metrics<br/>match production?"}
+ S4-->|Yes| S5["Ready for<br/>production rollout"]
+ S4-->|No| S6["Investigate divergence<br/>roll back to draft"]
+ S6--> D2
+ end
 
-    %% ─── Phase 5: Production ───
-    subgraph Production["🚀 5. Production Phase"]
-        direction TB
-        S5 --> P1["Deploy to production<br/>gradual rollout (10% --> 50% --> 100%)"]
-        P1 --> P2["Monitor 24h:<br/>error rate, latency,<br/>user satisfaction"]
-        P2 --> P3{"Performance<br/>acceptable?"}
-        P3 -->|Yes| P4["✅ Prompt live<br/>update version records<br/>notify team"]
-        P3 -->|No| P5["Roll back to<br/>previous version"]
-        P5 --> P6["Log incident,<br/>create regression test,<br/>restart lifecycle"]
-        P6 --> D2
-    end
+ %% ─── Phase 5: Production ───
+ subgraph Production["5. Production Phase"]
+ direction TB
+ S5--> P1["Deploy to production<br/>gradual rollout (10%--> 50%--> 100%)"]
+ P1--> P2["Monitor 24h:<br/>error rate, latency,<br/>user satisfaction"]
+ P2--> P3{"Performance<br/>acceptable?"}
+ P3-->|Yes| P4["Prompt live<br/>update version records<br/>notify team"]
+ P3-->|No| P5["Roll back to<br/>previous version"]
+ P5--> P6["Log incident,<br/>create regression test,<br/>restart lifecycle"]
+ P6--> D2
+ end
 
-    %% ─── Apply styles ───
-    class D1,D2,D3,D4,D5,D6 draft
-    class T1,T2,T3 test
-    class E1,E2,E3,E4,E5 eval
-    class S1,S2,S3,S4,S5,S6 stage
-    class P1,P2,P3,P4,P5,P6 prod
+ %% ─── Apply styles ───
+ class D1,D2,D3,D4,D5,D6 draft
+ class T1,T2,T3 test
+ class E1,E2,E3,E4,E5 eval
+ class S1,S2,S3,S4,S5,S6 stage
+ class P1,P2,P3,P4,P5,P6 prod
 ```
 
 > **Diagram:** The prompt optimization lifecycle follows five phases. **Draft** (✏️) writes and peer-reviews the prompt. **Test** (🧪) runs golden datasets + edge cases + measures metrics. **Evaluate** (📊) gates on accuracy and schema compliance — failures loop back to revision. **Staging** (🔬) shadow-deploys against real traffic. **Production** (🚀) rolls out gradually with 24h monitoring and automatic rollback on degradation.
@@ -263,33 +263,33 @@ This document defines the prompt engineering lifecycle, design principles, struc
 
 ```mermaid
 sequenceDiagram
-    participant AU as Author
-    participant PR as Peer Reviewer
-    participant EV as Eval Runner
-    participant CI as CI Pipeline
-    participant PROD as Production
+ participant AU as Author
+ participant PR as Peer Reviewer
+ participant EV as Eval Runner
+ participant CI as CI Pipeline
+ participant PROD as Production
 
-    AU->>AU: Write/revise prompt (8 sections)
-    AU->>PR: Request peer review
-    PR-->>AU: Feedback / approval
-    
-    AU->>EV: Run golden dataset + edge cases
-    EV-->>AU: Pass/Fail
-    
-    alt Pass
-        AU->>CI: Commit with version + changelog
-        CI->>EV: Full gate (100% dataset + regression)
-        
-        alt CI Pass
-            CI->>PROD: Shadow deploy (24h)
-            PROD-->>CI: Metrics OK
-            CI->>PROD: Gradual rollout (10% --> 100%)
-        else CI Fail
-            CI-->>AU: Blocked; revise and resubmit
-        end
-    else Fail
-        AU->>AU: Revise based on eval results
-    end
+ AU->>AU: Write/revise prompt (8 sections)
+ AU->>PR: Request peer review
+ PR-->>AU: Feedback / approval
+ 
+ AU->>EV: Run golden dataset + edge cases
+ EV-->>AU: Pass/Fail
+ 
+ alt Pass
+ AU->>CI: Commit with version + changelog
+ CI->>EV: Full gate (100% dataset + regression)
+ 
+ alt CI Pass
+ CI->>PROD: Shadow deploy (24h)
+ PROD-->>CI: Metrics OK
+ CI->>PROD: Gradual rollout (10%--> 100%)
+ else CI Fail
+ CI-->>AU: Blocked; revise and resubmit
+ end
+ else Fail
+ AU->>AU: Revise based on eval results
+ end
 ```
 
 > **Diagram:** Prompt lifecycle — author writes → peer review → eval pass → commit to CI → full gate → staging shadow → production rollout. Failures at any stage loop back to revision.

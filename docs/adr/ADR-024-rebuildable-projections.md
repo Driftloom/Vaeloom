@@ -1,11 +1,11 @@
 # ADR-024: Rebuildable Projections (Never Authoritative)
 
-| Metadata     | Value                                                   |
+| Metadata | Value |
 | ------------ | ------------------------------------------------------- |
-| **Status**   | ADOPTED — design + partial implementation (INT-02 §5)   |
-| **Date**     | 2026-08-15 (design re-run); first documented 2026-08-07 |
-| **Deciders** | Engineering Team                                        |
-| **Owner**    | Data Architect                                          |
+| **Status** | ADOPTED — design + partial implementation (INT-02 §5) |
+| **Date** | 2026-08-15 (design re-run); first documented 2026-08-07 |
+| **Deciders** | Engineering Team |
+| **Owner** | Data Architect |
 
 ## Context
 
@@ -24,11 +24,11 @@ Relational rows are the **single source of truth**; projections are rebuildable
 from them and **never authoritative**.
 
 - Embeddings (pgvector, ADR-003) and knowledge-graph `relationships` rows are
-  projection state with provenance references to source rows.
+ projection state with provenance references to source rows.
 - Search indexes source rows via `SearchIndex` / `MeilisearchIndex` (Meilisearch
-  is NOT installed; falls back to PostgreSQL LIKE/pgvector).
+ is NOT installed; falls back to PostgreSQL LIKE/pgvector).
 - Rebuild jobs reconstruct any projection from relational rows, bounded by
-  workspace scope, so a projection can always be discarded and rebuilt.
+ workspace scope, so a projection can always be discarded and rebuilt.
 
 ## Consequences
 

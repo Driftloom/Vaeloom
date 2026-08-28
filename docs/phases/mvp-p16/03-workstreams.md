@@ -1,7 +1,7 @@
-﻿# MVP-P16 — 03. Workstreams
+# MVP-P16 — 03. Workstreams
 
-> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 IaC 12 modules + K8s 22 apps + 4 workflows green + SLSA 1.2  
+> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 IaC 12 modules + K8s 22 apps + 4 workflows green + SLSA 1.2 
 > **Phase rule:** PaaS-first still requires IaC, secrets, backups, signed images, staging and rollback — no manual prod change.
 
 ## BQ-01..06 + DoR Resolutions (per §8, §26)

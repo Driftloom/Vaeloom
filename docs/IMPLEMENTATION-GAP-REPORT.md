@@ -100,10 +100,10 @@ a11y scanning.
 **Reality:** `apps/web/src/app/` contains **20 page routes** (including nested
 dynamic routes). The discrepancy may include future routes or counting errors.
 
-| Source                | Count |
+| Source | Count |
 | --------------------- | ----- |
-| Doc reference         | 22    |
-| Actual `page.*` files | 20    |
+| Doc reference | 22 |
+| Actual `page.*` files | 20 |
 
 **Impact:** Low. Minor counting discrepancy in documentation.
 
@@ -153,14 +153,14 @@ dependency scanning, secret scanning, accessibility checks, and security gates.
 
 **Reality:** Existing `.github/workflows/`:
 
-| Workflow            | Status                   |
+| Workflow | Status |
 | ------------------- | ------------------------ |
-| `ci.yml`            | Exists — basic CI        |
-| `deploy.yml`        | Exists — deployment      |
+| `ci.yml` | Exists — basic CI |
+| `deploy.yml` | Exists — deployment |
 | `docs-validate.yml` | Exists — docs validation |
-| `security-scan.yml` | Exists — but minimal     |
-| Security audit      | ✅ Added by I1           |
-| a11y audit          | ✅ Added by I2           |
+| `security-scan.yml` | Exists — but minimal |
+| Security audit | ✅ Added by I1 |
+| a11y audit | ✅ Added by I2 |
 
 **Impact:** Medium. Several documented pipeline stages were missing.
 
@@ -170,16 +170,16 @@ dependency scanning, secret scanning, accessibility checks, and security gates.
 
 ## Summary
 
-| Gap                                | Severity | Status                     |
+| Gap | Severity | Status |
 | ---------------------------------- | -------- | -------------------------- |
-| G1: Snyk missing                   | Medium   | Open                       |
-| G2: Alert thresholds mismatch      | High     | Open (partially addressed) |
-| G3: a11y infra missing             | High     | ✅ Closed                  |
-| G4: Insecure defaults              | High     | ✅ Closed                  |
-| G5: Route count mismatch           | Low      | Open                       |
-| G6: Monitoring stack unimplemented | Critical | Open                       |
-| G7: URL validation weak            | Medium   | ✅ Closed                  |
-| G8: CI/CD pipeline gaps            | Medium   | ✅ Closed                  |
+| G1: Snyk missing | Medium | Open |
+| G2: Alert thresholds mismatch | High | Open (partially addressed) |
+| G3: a11y infra missing | High | ✅ Closed |
+| G4: Insecure defaults | High | ✅ Closed |
+| G5: Route count mismatch | Low | Open |
+| G6: Monitoring stack unimplemented | Critical | Open |
+| G7: URL validation weak | Medium | ✅ Closed |
+| G8: CI/CD pipeline gaps | Medium | ✅ Closed |
 
 **Overall assessment:** The documentation corpus is comprehensive (93/100 per
 completion report) but has significant gaps between what is documented and what

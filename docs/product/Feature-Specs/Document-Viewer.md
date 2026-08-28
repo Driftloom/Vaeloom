@@ -1,7 +1,7 @@
-﻿## Header
+## Header
 >
 > **Purpose:** Detailed specification for In-App Document Viewer
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
 
@@ -167,23 +167,23 @@ Autonomy level: **Read-only** — the Document Agent answers questions but never
 
 ```mermaid
 graph TD
-    classDef render fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef chat fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef data fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef render fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef chat fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef data fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    U[User] --> V[Document Viewer]
-    V --> R[Format Renderer]
-    R --> RP[PDF Renderer]
-    R --> RM[Markdown Renderer]
-    R --> RI[Image Renderer]
-    R --> RC[Code Renderer]
-    
-    V --> CS[Chat Sidebar]
-    CS --> DA[Document Agent]
-    DA --> MEM[Memory System]
-    
-    V --> AN[Annotations]
-    AN --> DB[(PostgreSQL)]
+ U[User]--> V[Document Viewer]
+ V--> R[Format Renderer]
+ R--> RP[PDF Renderer]
+ R--> RM[Markdown Renderer]
+ R--> RI[Image Renderer]
+ R--> RC[Code Renderer]
+ 
+ V--> CS[Chat Sidebar]
+ CS--> DA[Document Agent]
+ DA--> MEM[Memory System]
+ 
+ V--> AN[Annotations]
+ AN--> DB[(PostgreSQL)]
 ```
 
 > **Diagram:** Document Viewer architecture — format-specific renderers + Document Agent-powered chat sidebar + annotation layer.
@@ -215,23 +215,23 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant DV as Document Viewer
-    participant DA as Document Agent
-    participant QA as QA Agent
-    participant MEM as Memory
+ participant U as User
+ participant DV as Document Viewer
+ participant DA as Document Agent
+ participant QA as QA Agent
+ participant MEM as Memory
 
-    U->>DV: Opens offer_letter.pdf
-    DV->>DV: Renders PDF
-    U->>DV: "What is the starting salary?"
-    DV->>DA: Scoped Q&A request
-    DA->>DA: Search document content
-    DA-->>DV: "$120,000 per year (Section 3.1)"
-    DV->>QA: Validate citation
-    QA-->>DV: Verified
-    DV-->>U: Answer with highlighted citation
-    U->>DV: "Save salary to memory"
-    DV->>MEM: Write entity to graph
+ U->>DV: Opens offer_letter.pdf
+ DV->>DV: Renders PDF
+ U->>DV: "What is the starting salary?"
+ DV->>DA: Scoped Q&A request
+ DA->>DA: Search document content
+ DA-->>DV: "$120,000 per year (Section 3.1)"
+ DV->>QA: Validate citation
+ QA-->>DV: Verified
+ DV-->>U: Answer with highlighted citation
+ U->>DV: "Save salary to memory"
+ DV->>MEM: Write entity to graph
 ```
 
 ## Data Flow

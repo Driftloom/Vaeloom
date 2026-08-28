@@ -9,55 +9,55 @@
 
 ```mermaid
 graph TD
-    classDef client fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef edge fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef app fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef db fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
-    classDef miss fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
+ classDef client fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef edge fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef app fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef db fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
+ classDef miss fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Client["🌐 Browser Layer"]
-        B1["HTTP Cache<br/>Static assets (JS, CSS, images)"]
-    end
+ subgraph Client["Browser Layer"]
+ B1["HTTP Cache<br/>Static assets (JS, CSS, images)"]
+ end
 
-    subgraph Edge["🛡️ Edge / CDN Layer"]
-        C1["Cloudflare / Fastly<br/>Static pages, images<br/>Per-asset TTL"]
-    end
+ subgraph Edge["Edge / CDN Layer"]
+ C1["Cloudflare / Fastly<br/>Static pages, images<br/>Per-asset TTL"]
+ end
 
-    subgraph App["⚡ Application Layer (Redis)"]
-        direction TB
-        R1["Dashboard Data<br/>~10KB/user<br/>Event-invalidated"]
-        R2["Resume Renders<br/>~50KB/variant<br/>Pre-warmed on deploy"]
-        R3["Agent Responses<br/>~5KB/query<br/>TTL: 5 min"]
-        R4["Search Results<br/>~2KB/query<br/>TTL: 1 min"]
-    end
+ subgraph App["Application Layer (Redis)"]
+ direction TB
+ R1["Dashboard Data<br/>~10KB/user<br/>Event-invalidated"]
+ R2["Resume Renders<br/>~50KB/variant<br/>Pre-warmed on deploy"]
+ R3["Agent Responses<br/>~5KB/query<br/>TTL: 5 min"]
+ R4["Search Results<br/>~2KB/query<br/>TTL: 1 min"]
+ end
 
-    subgraph Database["💾 Database Layer"]
-        PG["( PostgreSQL<br/>Shared buffers<br/>LRU eviction )"]
-    end
+ subgraph Database["Database Layer"]
+ PG["PostgreSQL<br/>Shared buffers<br/>LRU eviction )"]
+ end
 
-    subgraph Invalidation["📨 Event-Based Invalidation"]
-        direction TB
-        E1["document.ingested --><br/>Document list, workspace"]
-        E2["memory.updated --><br/>Dashboard, resume, graph"]
-        E3["application.submitted --><br/>App list, stats"]
-        E4["schedule.conflict --><br/>Schedule view, deadlines"]
-    end
+ subgraph Invalidation["Event-Based Invalidation"]
+ direction TB
+ E1["document.ingested--><br/>Document list, workspace"]
+ E2["memory.updated--><br/>Dashboard, resume, graph"]
+ E3["application.submitted--><br/>App list, stats"]
+ E4["schedule.conflict--><br/>Schedule view, deadlines"]
+ end
 
-    B1 -->|Cache MISS| C1
-    C1 -->|Cache MISS| R1 & R2 & R3 & R4
-    R1 & R2 & R3 & R4 -->|Cache MISS| PG
+ B1-->|Cache MISS| C1
+ C1-->|Cache MISS| R1 & R2 & R3 & R4
+ R1 & R2 & R3 & R4-->|Cache MISS| PG
 
-    PG -->|Cache MISS - Query DB & Store| R1 & R2 & R3 & R4
-    R1 & R2 & R3 & R4 -->|Populate| C1
-    C1 -->|Return| B1
+ PG-->|Cache MISS - Query DB & Store| R1 & R2 & R3 & R4
+ R1 & R2 & R3 & R4-->|Populate| C1
+ C1-->|Return| B1
 
-    E1 & E2 & E3 & E4 -.->|Invalidate| R1 & R2 & R3 & R4
+ E1 & E2 & E3 & E4 -.->|Invalidate| R1 & R2 & R3 & R4
 
-    class B1 client
-    class C1 edge
-    class R1,R2,R3,R4 app
-    class PG db
-    class E1,E2,E3,E4 miss
+ class B1 client
+ class C1 edge
+ class R1,R2,R3,R4 app
+ class PG db
+ class E1,E2,E3,E4 miss
 
 ```
 

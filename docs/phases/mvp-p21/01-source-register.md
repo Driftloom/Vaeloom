@@ -1,6 +1,6 @@
-﻿# MVP-P21 — 01. Source Register
+# MVP-P21 — 01. Source Register
 
-> **Phase:** MVP-P21 — Maintenance and Continuous Improvement  
+> **Phase:** MVP-P21 — Maintenance and Continuous Improvement 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 42/42 RLS via 0020
 > `787053aa6e6f`, retention_runs 0021) + P15 93.1 APPROVED (94.2% 99 paths) +
 > P16 92.8 APPROVED (12 TF 60 yamls SLSA L2) + P17 93.2 APPROVED (OTel traces +
@@ -8,113 +8,113 @@
 > (docs IA 256 docs + 32 ADRs + 99 OpenAPI) + P19 93.6 APPROVED (release
 > v0.2.0 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10) + P20 93.8
 > APPROVED (synthetic 3 probes 30s + smoke 12 + E2E 39 + p95 120ms + 99.9% SLO
-> 43.2m)  
+> 43.2m) 
 > **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P21-maintenance-and-continuous-improvement.md`
 > §1-32 (operating reviews, vulnerability/drift, cost/debt,
-> deprecation/retirement, continuous metrics)  
+> deprecation/retirement, continuous metrics) 
 > **Gate Authority:** SRE Lead (accountable) + Product Operations + Security
 > Lead + AI/ML Ops + Data Steward + Arch Review Board + FinOps + Support Lead
-> veto  
+> veto 
 > **Final MVP Gate:** 93+ APPROVED — MVP CLOSE
 
 ## Internal Sources
 
-| ID     | Source                                  | Owner                 | Use                                                                                                                                                                              | Location                                                                               | Version/Date         | Status   |
+| ID | Source | Owner | Use | Location | Version/Date | Status |
 | ------ | --------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------- | -------- |
-| INT-01 | Universal Prompt Generator & Gatekeeper | Vaeloom source team   | Governing 32-section contract (§6 Entry, §22 DEL, §28 gate)                                                                                                                      | `docs/Universal_Enterprise_Phase_Prompt_Generator_and_Gatekeeper.md`                   | 2026-08-04           | VERIFIED |
-| INT-02 | MVP E2E Enterprise Hardened             | Vaeloom source team   | MVP corrections, PaaS-first bounded release                                                                                                                                      | `docs/vaeloom-mvp-e2e-enterprise-hardened.md`                                          | 2026-08-04           | VERIFIED |
-| INT-03 | MVP Spec — 8 agents, 22 memory types    | Vaeloom source team   | Scope 8 agents, 6 MVP memory types                                                                                                                                               | `docs/01-vaeloom-mvp-spec.md`                                                          | 2026-07-13           | VERIFIED |
-| INT-04 | Architecture 6-layer                    | Eng Team              | Interface→Connectors→Ingestion→Orchestration→Memory→Storage                                                                                                                      | `docs/02-system-architecture.md`                                                       | 2026-07-13           | VERIFIED |
-| INT-05 | Agent Workflow                          | Eng Team              | 10-step loop, payload-bound approval                                                                                                                                             | `docs/03-agent-workflow.md`                                                            | 2026-07-13           | VERIFIED |
-| INT-06 | Memory KG 22 types                      | Eng Team              | KG + vector + 6 MVP types                                                                                                                                                        | `docs/04-memory-knowledge-graph.md`                                                    | 2026-07-13           | VERIFIED |
-| INT-07 | P16 Gate 92.8 APPROVED                  | Platform Eng          | 12 TF valid 60 yamls SLSA L2 cosign KMS                                                                                                                                          | `docs/phases/mvp-p16/09-gate-report.md:1`                                              | 2026-08-22           | VERIFIED |
-| INT-08 | P17 Gate 93.2 APPROVED                  | SRE + Obs Eng         | OTel traces + 5 SLO 9 rules + 3 dashboards 23 panels + 4 runbooks + 30d                                                                                                          | `docs/phases/mvp-p17/09-gate-report.md:1`                                              | 2026-08-22           | VERIFIED |
-| INT-09 | P18 Gate 93.4 APPROVED                  | Tech Writer + DX Lead | docs IA 256 docs v2.0 15 cats + 32 ADRs + 99 OpenAPI + portal 1127                                                                                                               | `docs/phases/mvp-p18/09-gate-report.md:1`                                              | 2026-08-22           | VERIFIED |
-| INT-10 | P19 Gate 93.6 APPROVED                  | Release Mgr + SRE     | release v0.2.0 99 paths 42/42 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10 + 0021 + lifespan                                                                        | `docs/phases/mvp-p19/09-gate-report.md:1`                                              | 2026-08-22           | VERIFIED |
-| INT-11 | P20 Gate 93.8 APPROVED                  | SRE Lead + QA Lead    | synthetic 3 probes 30s 61+18+24 + smoke 12 + E2E 39 + p95 120ms + 99.9% SLO                                                                                                      | `docs/phases/mvp-p20/09-gate-report.md:1`                                              | 2026-08-22           | VERIFIED |
-| INT-12 | P20 Handoff 93.8 PROCEED                | SRE Lead              | P21 authorized with 4 restrictions (per-file 68%, starlette Keep 0.50, chaos partial, SLSA L2)                                                                                   | `docs/phases/mvp-p20/10-handoff-to-p21.md:1`                                           | 2026-08-22           | VERIFIED |
-| INT-13 | P13 Gate 95.4 APPROVED                  | Security Arch         | 42/42 RLS via 0020, retention_runs 0021, DPIA v1.2 All Regions                                                                                                                   | `docs/phases/mvp-p13/09-gate-report.md:32`                                             | 2026-08-22 `787053a` | VERIFIED |
-| INT-14 | ADRs 001-032                            | Arch                  | 32 decisions, ADR-001 monolith FastAPI, ADR-011 OTel, ADR-016 structured logging, ADR-026 PaaS-first                                                                             | `docs/adr/`                                                                            | 2026-08-22 32 files  | VERIFIED |
-| INT-15 | OpenAPI 99 paths v0.2.0                 | API                   | Contract live 99 paths at 787053a `openapi: 3.1.0` `version: 0.2.0`                                                                                                              | `docs/backend/openapi.yaml:1`                                                          | 2026-08-22           | VERIFIED |
-| INT-16 | AGENTS.md counts                        | Eng                   | 2557 tests, 170 unique security, 99 OpenAPI, 4 workers, v0.2.0, 37 jest + 39 e2e real                                                                                            | `AGENTS.md:48-54,90`                                                                   | 2026-08-22           | VERIFIED |
-| INT-17 | Service version v0.2.0                  | Eng                   | `service_version: "0.2.0"` + `apps/api/pyproject.toml: version 0.2.0`                                                                                                            | `apps/api/src/api/config.py:11` + `apps/api/pyproject.toml`                            | 2026-08-22           | VERIFIED |
-| INT-18 | MAINTAINERS.md 5 maintainers            | Product Ops           | 5 maintainers Alex/Maya/Kunal/Emma/Sam + Lazy Consensus 72h + 7-day add + release 2-approver + semver                                                                            | `MAINTAINERS.md:1`                                                                     | 91 lines 2026-08-22  | VERIFIED |
-| INT-19 | CONTRIBUTING.md 299 lines               | DX Lead               | Fork→branch→lint→test→typecheck→80% coverage→1 owner approval→squash merge + commit conventional                                                                                 | `CONTRIBUTING.md:1`                                                                    | 299 lines            | VERIFIED |
-| INT-20 | COMMIT_PLAN.md 280 commits              | Eng Mgr               | 280 atomic commits 10 phases conventional                                                                                                                                        | `COMMIT_PLAN.md:1`                                                                     | 437 lines            | VERIFIED |
-| INT-21 | CODE_OF_CONDUCT.md                      | Community             | Contributor Covenant 2.1 + enforcement ladder correction→warning→temp ban→perm ban                                                                                               | `CODE_OF_CONDUCT.md:1`                                                                 | 132 lines            | VERIFIED |
-| INT-22 | SECURITY.md                             | Security Lead         | Supported 0.x + security@vaeloom.dev 48h + Dependabot/CodeQL/Semgrep/Trivy + quarterly pen-test + bug bounty $100-$10k + 90-day disclosure                                       | `SECURITY.md:1`                                                                        | 111 lines            | VERIFIED |
-| INT-23 | CHANGELOG.md Keep a Changelog           | Release Mgr           | Unreleased 25 entries + 0.1.0 2026-07-17 + semver 2.0.0                                                                                                                          | `CHANGELOG.md:1`                                                                       | 60 lines             | VERIFIED |
-| INT-24 | Workflows 11 files                      | Platform              | ci 140 + deploy 175 cosign 2.2.4 awskms + security-scan 114 gitleaks/trivy/syft + security-audit 116 pnpm/pip audit + a11y 70 + docker-build 22 + ci-backend 20 + ci-frontend 18 | `.github/workflows/`                                                                   | 11 files 2026-08-22  | VERIFIED |
-| INT-25 | CI workflow 5 jobs                      | Platform              | lint-typecheck + test coverage + build + integration + docs-validate + concurrency cancel-in-progress                                                                            | `.github/workflows/ci.yml:1`                                                           | 140 lines            | VERIFIED |
-| INT-26 | Deploy workflow 4 jobs                  | Release Mgr           | terraform-plan 1.8.0 + build-push cosign 2.2.4 + load-test-gate 10VUs30s + deploy kustomize + slack                                                                              | `.github/workflows/deploy.yml:1`                                                       | 175 lines            | VERIFIED |
-| INT-27 | Security scan                           | Security              | gitleaks fetch0 + codeql js+python + trivy fs+image + syft spdx-json + docker buildx provenance                                                                                  | `.github/workflows/security-scan.yml:1`                                                | 114 lines            | VERIFIED |
-| INT-28 | Security audit                          | Security              | pnpm audit high + pip-audit high + dependabot                                                                                                                                    | `.github/workflows/security-audit.yml:1`                                               | 116 lines            | VERIFIED |
-| INT-29 | Runbooks 4                              | SRE                   | service-down 100 SEV1 3 failures→alert + high-latency 70 + high-error-rate + db-pool-exhaustion + INCIDENT-RESPONSE SEV1 15m                                                     | `infra/ops/runbooks/service-down.md:1` + `infra/ops/INCIDENT-RESPONSE.md:1`            | 4 files              | VERIFIED |
-| INT-30 | Synthetic monitoring 3 probes           | SRE                   | check-health 61 INTERVAL 30 + alert-on-failure 18 Slack + docker-compose.synthetic 24 alpine:3.20                                                                                | `infra/ops/synthetic-monitoring/check-health.sh:1`                                     | 61+18+24 lines       | VERIFIED |
-| INT-31 | Health endpoints 3 probes               | SRE                   | health.py:54 liveness + :64 readiness DB+Redis + :85 startup DB+Redis+Infisical                                                                                                  | `apps/api/src/api/routers/health.py:54`                                                | 108 lines            | VERIFIED |
-| INT-32 | Monitoring stack 15s                    | SRE                   | prometheus 46 scrape 15s 4 jobs + alerts 118 9 rules 3 groups 30s/60s + grafana 3 dashboards 23 panels                                                                           | `infra/ops/monitoring/prometheus.yml:1` + `alerts.yml:1`                               | 46+118 lines         | VERIFIED |
-| INT-33 | Performance budget p95                  | Perf Eng              | performance-budget.json:55 p95_read_ms 200 (120<200 PASS) + k6-script.js:24 p(95)<500 50 VUs/5m                                                                                  | `infra/ops/performance-budget.json:55` + `k6-script.js:24`                             | 101+107 lines        | VERIFIED |
-| INT-34 | SLO 99.9% error budget                  | SRE + Product         | slo-dr.md:1 p50<100 p95<500 99.9% error<1% RPO1h RTO15m + DISASTER_RECOVERY 308 RTO1h/RPO5m + SLO.md 99.9% 43.2m budget                                                          | `docs/operations/SLO.md:1` + `docs/DISASTER_RECOVERY.md:1`                             | 99.9% SLO            | VERIFIED |
-| INT-35 | Observability docs                      | SRE                   | Observability.md + Monitoring.md + structured-logging.md 30d json-file 10m*3 + health-checks.md                                                                                  | `docs/operations/Observability.md:1` + `infra/logging/configs/structured-logging.md:1` | 30d                  | VERIFIED |
-| INT-36 | Chaos 5 faults                          | SRE                   | chaos-config.yaml 5 faults pod-kill + network-delay 2s + cpu-stress + self-heal + timeout 50%                                                                                    | `infra/ops/chaos/chaos-config.yaml:1`                                                  | 5 faults             | VERIFIED |
-| INT-37 | Terraform IaC 12 modules                | Platform              | provider.tf:1 s3+DDB + main.tf:1 12 modules                                                                                                                                      | `infra/ops/terraform/main.tf:1`                                                        | 12 modules           | VERIFIED |
-| INT-38 | Deprecation policy 30d                  | Arch Review Board     | 30-day notice + 90-day disclosure SECURITY.md + semver MAJOR breaking 4-week RC + sunset condition                                                                               | `SECURITY.md:105` + `MAINTAINERS.md:57`                                                | 30d                  | VERIFIED |
+| INT-01 | Universal Prompt Generator & Gatekeeper | Vaeloom source team | Governing 32-section contract (§6 Entry, §22 DEL, §28 gate) | `docs/Universal_Enterprise_Phase_Prompt_Generator_and_Gatekeeper.md` | 2026-08-04 | VERIFIED |
+| INT-02 | MVP E2E Enterprise Hardened | Vaeloom source team | MVP corrections, PaaS-first bounded release | `docs/vaeloom-mvp-e2e-enterprise-hardened.md` | 2026-08-04 | VERIFIED |
+| INT-03 | MVP Spec — 8 agents, 22 memory types | Vaeloom source team | Scope 8 agents, 6 MVP memory types | `docs/01-vaeloom-mvp-spec.md` | 2026-07-13 | VERIFIED |
+| INT-04 | Architecture 6-layer | Eng Team | Interface→Connectors→Ingestion→Orchestration→Memory→Storage | `docs/02-system-architecture.md` | 2026-07-13 | VERIFIED |
+| INT-05 | Agent Workflow | Eng Team | 10-step loop, payload-bound approval | `docs/03-agent-workflow.md` | 2026-07-13 | VERIFIED |
+| INT-06 | Memory KG 22 types | Eng Team | KG + vector + 6 MVP types | `docs/04-memory-knowledge-graph.md` | 2026-07-13 | VERIFIED |
+| INT-07 | P16 Gate 92.8 APPROVED | Platform Eng | 12 TF valid 60 yamls SLSA L2 cosign KMS | `docs/phases/mvp-p16/09-gate-report.md:1` | 2026-08-22 | VERIFIED |
+| INT-08 | P17 Gate 93.2 APPROVED | SRE + Obs Eng | OTel traces + 5 SLO 9 rules + 3 dashboards 23 panels + 4 runbooks + 30d | `docs/phases/mvp-p17/09-gate-report.md:1` | 2026-08-22 | VERIFIED |
+| INT-09 | P18 Gate 93.4 APPROVED | Tech Writer + DX Lead | docs IA 256 docs v2.0 15 cats + 32 ADRs + 99 OpenAPI + portal 1127 | `docs/phases/mvp-p18/09-gate-report.md:1` | 2026-08-22 | VERIFIED |
+| INT-10 | P19 Gate 93.6 APPROVED | Release Mgr + SRE | release v0.2.0 99 paths 42/42 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10 + 0021 + lifespan | `docs/phases/mvp-p19/09-gate-report.md:1` | 2026-08-22 | VERIFIED |
+| INT-11 | P20 Gate 93.8 APPROVED | SRE Lead + QA Lead | synthetic 3 probes 30s 61+18+24 + smoke 12 + E2E 39 + p95 120ms + 99.9% SLO | `docs/phases/mvp-p20/09-gate-report.md:1` | 2026-08-22 | VERIFIED |
+| INT-12 | P20 Handoff 93.8 PROCEED | SRE Lead | P21 authorized with 4 restrictions (per-file 68%, starlette Keep 0.50, chaos partial, SLSA L2) | `docs/phases/mvp-p20/10-handoff-to-p21.md:1` | 2026-08-22 | VERIFIED |
+| INT-13 | P13 Gate 95.4 APPROVED | Security Arch | 42/42 RLS via 0020, retention_runs 0021, DPIA v1.2 All Regions | `docs/phases/mvp-p13/09-gate-report.md:32` | 2026-08-22 `787053a` | VERIFIED |
+| INT-14 | ADRs 001-032 | Arch | 32 decisions, ADR-001 monolith FastAPI, ADR-011 OTel, ADR-016 structured logging, ADR-026 PaaS-first | `docs/adr/` | 2026-08-22 32 files | VERIFIED |
+| INT-15 | OpenAPI 99 paths v0.2.0 | API | Contract live 99 paths at 787053a `openapi: 3.1.0` `version: 0.2.0` | `docs/backend/openapi.yaml:1` | 2026-08-22 | VERIFIED |
+| INT-16 | AGENTS.md counts | Eng | 2557 tests, 170 unique security, 99 OpenAPI, 4 workers, v0.2.0, 37 jest + 39 e2e real | `AGENTS.md:48-54,90` | 2026-08-22 | VERIFIED |
+| INT-17 | Service version v0.2.0 | Eng | `service_version: "0.2.0"` + `apps/api/pyproject.toml: version 0.2.0` | `apps/api/src/api/config.py:11` + `apps/api/pyproject.toml` | 2026-08-22 | VERIFIED |
+| INT-18 | MAINTAINERS.md 5 maintainers | Product Ops | 5 maintainers Alex/Maya/Kunal/Emma/Sam + Lazy Consensus 72h + 7-day add + release 2-approver + semver | `MAINTAINERS.md:1` | 91 lines 2026-08-22 | VERIFIED |
+| INT-19 | CONTRIBUTING.md 299 lines | DX Lead | Fork→branch→lint→test→typecheck→80% coverage→1 owner approval→squash merge + commit conventional | `CONTRIBUTING.md:1` | 299 lines | VERIFIED |
+| INT-20 | COMMIT_PLAN.md 280 commits | Eng Mgr | 280 atomic commits 10 phases conventional | `COMMIT_PLAN.md:1` | 437 lines | VERIFIED |
+| INT-21 | CODE_OF_CONDUCT.md | Community | Contributor Covenant 2.1 + enforcement ladder correction→warning→temp ban→perm ban | `CODE_OF_CONDUCT.md:1` | 132 lines | VERIFIED |
+| INT-22 | SECURITY.md | Security Lead | Supported 0.x + security@vaeloom.dev 48h + Dependabot/CodeQL/Semgrep/Trivy + quarterly pen-test + bug bounty $100-$10k + 90-day disclosure | `SECURITY.md:1` | 111 lines | VERIFIED |
+| INT-23 | CHANGELOG.md Keep a Changelog | Release Mgr | Unreleased 25 entries + 0.1.0 2026-07-17 + semver 2.0.0 | `CHANGELOG.md:1` | 60 lines | VERIFIED |
+| INT-24 | Workflows 11 files | Platform | ci 140 + deploy 175 cosign 2.2.4 awskms + security-scan 114 gitleaks/trivy/syft + security-audit 116 pnpm/pip audit + a11y 70 + docker-build 22 + ci-backend 20 + ci-frontend 18 | `.github/workflows/` | 11 files 2026-08-22 | VERIFIED |
+| INT-25 | CI workflow 5 jobs | Platform | lint-typecheck + test coverage + build + integration + docs-validate + concurrency cancel-in-progress | `.github/workflows/ci.yml:1` | 140 lines | VERIFIED |
+| INT-26 | Deploy workflow 4 jobs | Release Mgr | terraform-plan 1.8.0 + build-push cosign 2.2.4 + load-test-gate 10VUs30s + deploy kustomize + slack | `.github/workflows/deploy.yml:1` | 175 lines | VERIFIED |
+| INT-27 | Security scan | Security | gitleaks fetch0 + codeql js+python + trivy fs+image + syft spdx-json + docker buildx provenance | `.github/workflows/security-scan.yml:1` | 114 lines | VERIFIED |
+| INT-28 | Security audit | Security | pnpm audit high + pip-audit high + dependabot | `.github/workflows/security-audit.yml:1` | 116 lines | VERIFIED |
+| INT-29 | Runbooks 4 | SRE | service-down 100 SEV1 3 failures→alert + high-latency 70 + high-error-rate + db-pool-exhaustion + INCIDENT-RESPONSE SEV1 15m | `infra/ops/runbooks/service-down.md:1` + `infra/ops/INCIDENT-RESPONSE.md:1` | 4 files | VERIFIED |
+| INT-30 | Synthetic monitoring 3 probes | SRE | check-health 61 INTERVAL 30 + alert-on-failure 18 Slack + docker-compose.synthetic 24 alpine:3.20 | `infra/ops/synthetic-monitoring/check-health.sh:1` | 61+18+24 lines | VERIFIED |
+| INT-31 | Health endpoints 3 probes | SRE | health.py:54 liveness + :64 readiness DB+Redis + :85 startup DB+Redis+Infisical | `apps/api/src/api/routers/health.py:54` | 108 lines | VERIFIED |
+| INT-32 | Monitoring stack 15s | SRE | prometheus 46 scrape 15s 4 jobs + alerts 118 9 rules 3 groups 30s/60s + grafana 3 dashboards 23 panels | `infra/ops/monitoring/prometheus.yml:1` + `alerts.yml:1` | 46+118 lines | VERIFIED |
+| INT-33 | Performance budget p95 | Perf Eng | performance-budget.json:55 p95_read_ms 200 (120<200 PASS) + k6-script.js:24 p(95)<500 50 VUs/5m | `infra/ops/performance-budget.json:55` + `k6-script.js:24` | 101+107 lines | VERIFIED |
+| INT-34 | SLO 99.9% error budget | SRE + Product | slo-dr.md:1 p50<100 p95<500 99.9% error<1% RPO1h RTO15m + DISASTER_RECOVERY 308 RTO1h/RPO5m + SLO.md 99.9% 43.2m budget | `docs/operations/SLO.md:1` + `docs/DISASTER_RECOVERY.md:1` | 99.9% SLO | VERIFIED |
+| INT-35 | Observability docs | SRE | Observability.md + Monitoring.md + structured-logging.md 30d json-file 10m*3 + health-checks.md | `docs/operations/Observability.md:1` + `infra/logging/configs/structured-logging.md:1` | 30d | VERIFIED |
+| INT-36 | Chaos 5 faults | SRE | chaos-config.yaml 5 faults pod-kill + network-delay 2s + cpu-stress + self-heal + timeout 50% | `infra/ops/chaos/chaos-config.yaml:1` | 5 faults | VERIFIED |
+| INT-37 | Terraform IaC 12 modules | Platform | provider.tf:1 s3+DDB + main.tf:1 12 modules | `infra/ops/terraform/main.tf:1` | 12 modules | VERIFIED |
+| INT-38 | Deprecation policy 30d | Arch Review Board | 30-day notice + 90-day disclosure SECURITY.md + semver MAJOR breaking 4-week RC + sunset condition | `SECURITY.md:105` + `MAINTAINERS.md:57` | 30d | VERIFIED |
 
 ## External Sources (re-verified 2026-08-22)
 
-| ID     | Source               | Authority            | Required Use                                                      | Verified Version                                                                     | Status   |
+| ID | Source | Authority | Required Use | Verified Version | Status |
 | ------ | -------------------- | -------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ | -------- |
-| EXT-01 | MCP Spec             | MCP maintainers      | MCP profile, authZ, tasks                                         | 2026-07-28 stateless core                                                            | VERIFIED |
-| EXT-02 | OWASP Agentic Top10  | OWASP                | ASI01-10                                                          | 2026 edition v2.01 Jun2026                                                           | VERIFIED |
-| EXT-03 | OWASP LLM Top10      | OWASP                | Prompt injection, leakage                                         | 2025 v2.0                                                                            | VERIFIED |
-| EXT-04 | NIST AI RMF          | NIST                 | Govern/Map/Measure/Manage                                         | AI 100-1 + GenAI 600-1                                                               | VERIFIED |
-| EXT-05 | WCAG 2.2             | W3C                  | AA                                                                | 2.2 Rec (axe-core 4.10)                                                              | VERIFIED |
-| EXT-06 | RFC 9700 BCP         | IETF                 | PKCE everywhere                                                   | BCP 240 Jan2025                                                                      | VERIFIED |
-| EXT-07 | OpenAPI              | OpenAPI Initiative   | 3.2.0 contract 99 paths                                           | 3.1.0 Sep2024 `openapi.yaml:1` 3.1.0 0.2.0                                           | VERIFIED |
-| EXT-08 | OpenTelemetry        | CNCF                 | Traces/metrics/logs 1.27 + 7.0                                    | OTel 1.27 `opentelemetry.py:19`                                                      | VERIFIED |
-| EXT-09 | Prometheus           | CNCF                 | /metrics 15s + alerts 9 rules + error budget 99.9% SLO burn 2x/5x | 2.47+ 15s `prometheus.yml:4` + `alerts.yml:1` 9 rules                                | VERIFIED |
-| EXT-10 | Grafana              | Grafana Labs         | Dashboards latency/backend/agents                                 | 10.x 3 dashboards 23 panels                                                          | VERIFIED |
-| EXT-11 | SLSA 1.2             | OpenSSF              | Build L2 provenance cosign 2.2.4 awskms                           | 1.2 Nov2025 `deploy.yml:86`                                                          | VERIFIED |
-| EXT-12 | NIST SSDF            | NIST                 | SSDF 800-218 v1.1                                                 | v1.1                                                                                 | VERIFIED |
-| EXT-13 | Sigstore/Cosign      | Sigstore             | Keyless + KMS AWSKMS                                              | cosign 2.2.4 `deploy.yml:92`                                                         | VERIFIED |
-| EXT-14 | SBOM SPDX            | SPDX/Anchore         | syft spdx-json                                                    | SPDX 2.3 `security-scan.yml:26`                                                      | VERIFIED |
-| EXT-15 | Trivy                | Aqua                 | fs + image scan                                                   | latest `security-scan.yml:19`                                                        | VERIFIED |
-| EXT-16 | Gitleaks             | Gitleaks             | Secret scan fetch0                                                | v2 `security-scan.yml:6`                                                             | VERIFIED |
-| EXT-17 | pip-audit/pnpm audit | PyPA/pnpm            | Dep audit high                                                    | latest/9 `security-audit.yml:12,24`                                                  | VERIFIED |
-| EXT-18 | k6                   | Grafana Labs         | Load gate p95<500 rate<0.01 50 VUs/5m p95 120ms <200              | 0.54 `k6-script.js:24` p95 120ms                                                     | VERIFIED |
-| EXT-19 | PgBouncer            | PgBouncer            | Transaction pooling SET LOCAL                                     | 1.22 `pgbouncer.ini:4` `docker-compose.prod.yml:183`                                 | VERIFIED |
-| EXT-20 | Docker               | Docker               | Buildx + healthchecks + synthetic alpine:3.20                     | buildx v4 `docker-compose.prod.yml:1` + `docker-compose.synthetic.yml:5` alpine:3.20 | VERIFIED |
-| EXT-21 | Terraform            | HashiCorp            | IaC 12 modules s3+DDB                                             | 1.8.0 `deploy.yml:terraform-plan:1` + `provider.tf:1`                                | VERIFIED |
-| EXT-22 | Kubernetes Kustomize | CNCF                 | base + 3 overlays dev/staging/prod replicas 1/2/3 + HPA 3->10     | Kustomize v5 `overlays/prod/kustomization.yaml:1`                                    | VERIFIED |
-| EXT-23 | Playwright           | Microsoft            | E2E 39 cases basic-smoke 8 + flows 14                             | Playwright 1.47 `basic-smoke.spec.ts:1`                                              | VERIFIED |
-| EXT-24 | AWS EKS              | AWS                  | EKS 1.29 + RDS Multi-AZ + ElastiCache + WAF CloudFront scope      | EKS 1.29 `variables.tf:cluster_version 1.29`                                         | VERIFIED |
-| EXT-25 | Keep a Changelog     | Keep a Changelog     | Changelog 1.1.0 + semver 2.0.0                                    | `CHANGELOG.md:2` 1.1.0 semver                                                        | VERIFIED |
-| EXT-26 | Contributor Covenant | Contributor Covenant | Code of Conduct 2.1                                               | `CODE_OF_CONDUCT.md:117` 2.1                                                         | VERIFIED |
+| EXT-01 | MCP Spec | MCP maintainers | MCP profile, authZ, tasks | 2026-07-28 stateless core | VERIFIED |
+| EXT-02 | OWASP Agentic Top10 | OWASP | ASI01-10 | 2026 edition v2.01 Jun2026 | VERIFIED |
+| EXT-03 | OWASP LLM Top10 | OWASP | Prompt injection, leakage | 2025 v2.0 | VERIFIED |
+| EXT-04 | NIST AI RMF | NIST | Govern/Map/Measure/Manage | AI 100-1 + GenAI 600-1 | VERIFIED |
+| EXT-05 | WCAG 2.2 | W3C | AA | 2.2 Rec (axe-core 4.10) | VERIFIED |
+| EXT-06 | RFC 9700 BCP | IETF | PKCE everywhere | BCP 240 Jan2025 | VERIFIED |
+| EXT-07 | OpenAPI | OpenAPI Initiative | 3.2.0 contract 99 paths | 3.1.0 Sep2024 `openapi.yaml:1` 3.1.0 0.2.0 | VERIFIED |
+| EXT-08 | OpenTelemetry | CNCF | Traces/metrics/logs 1.27 + 7.0 | OTel 1.27 `opentelemetry.py:19` | VERIFIED |
+| EXT-09 | Prometheus | CNCF | /metrics 15s + alerts 9 rules + error budget 99.9% SLO burn 2x/5x | 2.47+ 15s `prometheus.yml:4` + `alerts.yml:1` 9 rules | VERIFIED |
+| EXT-10 | Grafana | Grafana Labs | Dashboards latency/backend/agents | 10.x 3 dashboards 23 panels | VERIFIED |
+| EXT-11 | SLSA 1.2 | OpenSSF | Build L2 provenance cosign 2.2.4 awskms | 1.2 Nov2025 `deploy.yml:86` | VERIFIED |
+| EXT-12 | NIST SSDF | NIST | SSDF 800-218 v1.1 | v1.1 | VERIFIED |
+| EXT-13 | Sigstore/Cosign | Sigstore | Keyless + KMS AWSKMS | cosign 2.2.4 `deploy.yml:92` | VERIFIED |
+| EXT-14 | SBOM SPDX | SPDX/Anchore | syft spdx-json | SPDX 2.3 `security-scan.yml:26` | VERIFIED |
+| EXT-15 | Trivy | Aqua | fs + image scan | latest `security-scan.yml:19` | VERIFIED |
+| EXT-16 | Gitleaks | Gitleaks | Secret scan fetch0 | v2 `security-scan.yml:6` | VERIFIED |
+| EXT-17 | pip-audit/pnpm audit | PyPA/pnpm | Dep audit high | latest/9 `security-audit.yml:12,24` | VERIFIED |
+| EXT-18 | k6 | Grafana Labs | Load gate p95<500 rate<0.01 50 VUs/5m p95 120ms <200 | 0.54 `k6-script.js:24` p95 120ms | VERIFIED |
+| EXT-19 | PgBouncer | PgBouncer | Transaction pooling SET LOCAL | 1.22 `pgbouncer.ini:4` `docker-compose.prod.yml:183` | VERIFIED |
+| EXT-20 | Docker | Docker | Buildx + healthchecks + synthetic alpine:3.20 | buildx v4 `docker-compose.prod.yml:1` + `docker-compose.synthetic.yml:5` alpine:3.20 | VERIFIED |
+| EXT-21 | Terraform | HashiCorp | IaC 12 modules s3+DDB | 1.8.0 `deploy.yml:terraform-plan:1` + `provider.tf:1` | VERIFIED |
+| EXT-22 | Kubernetes Kustomize | CNCF | base + 3 overlays dev/staging/prod replicas 1/2/3 + HPA 3->10 | Kustomize v5 `overlays/prod/kustomization.yaml:1` | VERIFIED |
+| EXT-23 | Playwright | Microsoft | E2E 39 cases basic-smoke 8 + flows 14 | Playwright 1.47 `basic-smoke.spec.ts:1` | VERIFIED |
+| EXT-24 | AWS EKS | AWS | EKS 1.29 + RDS Multi-AZ + ElastiCache + WAF CloudFront scope | EKS 1.29 `variables.tf:cluster_version 1.29` | VERIFIED |
+| EXT-25 | Keep a Changelog | Keep a Changelog | Changelog 1.1.0 + semver 2.0.0 | `CHANGELOG.md:2` 1.1.0 semver | VERIFIED |
+| EXT-26 | Contributor Covenant | Contributor Covenant | Code of Conduct 2.1 | `CODE_OF_CONDUCT.md:117` 2.1 | VERIFIED |
 
 ## Conflict Resolution
 
 - P20 93.8 APPROVED chain healthy: P13 95.4 (42/42 RLS 0020 `787053a`) -> P14
-  87.5/88 CONDITIONAL -> P15 93.1 (94.2%+axe+k6) -> P16 92.8 (12 TF 60 yamls
-  SLSA L2) -> P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards + 4 runbooks)
-  -> P18 93.4 (docs IA 256 docs) -> P19 93.6 (release v0.2.0 178 checklist + 239
-  prod + HPA min3 max10) -> P20 93.8 (synthetic 3 probes 30s + smoke 12 + E2E
-  39 + p95 120ms + 99.9% 43.2m) -> **P21 maintenance final**. No stale baseline;
-  predecessor GO authorizes P21.
+ 87.5/88 CONDITIONAL -> P15 93.1 (94.2%+axe+k6) -> P16 92.8 (12 TF 60 yamls
+ SLSA L2) -> P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards + 4 runbooks)
+ -> P18 93.4 (docs IA 256 docs) -> P19 93.6 (release v0.2.0 178 checklist + 239
+ prod + HPA min3 max10) -> P20 93.8 (synthetic 3 probes 30s + smoke 12 + E2E
+ 39 + p95 120ms + 99.9% 43.2m) -> **P21 maintenance final**. No stale baseline;
+ predecessor GO authorizes P21.
 - P20 4 carries now owned by P21 and closed/mitigated here: per-file 68%
-  (EXC-P20-01) -> quarterly review backlog 22 issues prioritizes per-file lift
-  to 80% via `test_webhook_perf.py` P21+1; starlette Keep 0.50 (EXC-P20-02) ->
-  SECURITY.md 90-day + MAINTAINERS semver + pip-audit weekly + synthetic no new
-  dep; chaos partial (EXC-P20-03) -> chaos 5 faults + smoke 12/39 + synthetic
-  30s partially closes, full 10-fault P21 backlog; SLSA L2 only + WCAG spot
-  (EXC-P20-04) -> L2 cosign KMS retained, L3 backlog.
+ (EXC-P20-01) -> quarterly review backlog 22 issues prioritizes per-file lift
+ to 80% via `test_webhook_perf.py` P21+1; starlette Keep 0.50 (EXC-P20-02) ->
+ SECURITY.md 90-day + MAINTAINERS semver + pip-audit weekly + synthetic no new
+ dep; chaos partial (EXC-P20-03) -> chaos 5 faults + smoke 12/39 + synthetic
+ 30s partially closes, full 10-fault P21 backlog; SLSA L2 only + WCAG spot
+ (EXC-P20-04) -> L2 cosign KMS retained, L3 backlog.
 - Maintenance truth: `MAINTAINERS.md:22` Lazy Consensus 72h +
-  `MAINTAINERS.md:44` 7-day add maintainer + `CONTRIBUTING.md:191`
-  fork->branch->lint->test->80%->review 1 owner->squash + `COMMIT_PLAN.md:1` 280
-  commits conventional + `.github/workflows/ci.yml:1` 140 lines 5 jobs +
-  `deploy.yml:1` 175 lines + `security-scan.yml:1` 114 lines +
-  `security-audit.yml:1` 116 lines + `INCIDENT-RESPONSE.md:1` SEV1 15m 4 tiers +
-  `service-down.md:1` 100 lines + `SLO.md:1` 99.9% 43.2m +
-  `performance-budget.json:55` p95 200 (120<200) + `chaos-config.yaml:1` 5
-  faults + `CHANGELOG.md:40` 0.1.0 + `CODE_OF_CONDUCT.md:73` enforcement 4 tiers
-  = **DEL-MVP-P21-01..05 VERIFIED** with quarterly review 2026-11-22 + 30d
-  deprecation + 5 support tiers.
+ `MAINTAINERS.md:44` 7-day add maintainer + `CONTRIBUTING.md:191`
+ fork->branch->lint->test->80%->review 1 owner->squash + `COMMIT_PLAN.md:1` 280
+ commits conventional + `.github/workflows/ci.yml:1` 140 lines 5 jobs +
+ `deploy.yml:1` 175 lines + `security-scan.yml:1` 114 lines +
+ `security-audit.yml:1` 116 lines + `INCIDENT-RESPONSE.md:1` SEV1 15m 4 tiers +
+ `service-down.md:1` 100 lines + `SLO.md:1` 99.9% 43.2m +
+ `performance-budget.json:55` p95 200 (120<200) + `chaos-config.yaml:1` 5
+ faults + `CHANGELOG.md:40` 0.1.0 + `CODE_OF_CONDUCT.md:73` enforcement 4 tiers
+ = **DEL-MVP-P21-01..05 VERIFIED** with quarterly review 2026-11-22 + 30d
+ deprecation + 5 support tiers.

@@ -1,7 +1,7 @@
-﻿## Header
+## Header
 >
 > **Purpose:** Detailed specification for Dashboard
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
 
@@ -127,7 +127,7 @@ Dashboard respects existing per-module read permissions — it cannot show data 
 | Dashboard shows sensitive information on the default screen | Each widget only shows summary/aggregate data, never full content; clicking through requires appropriate scope |
 | Suggestion action could trigger unintended agent behavior | Suggestion approve/dismiss writes only to preference memory; concrete agent actions require dedicated screen flow |
 | Dashboard exposes data from disconnected modules | Widgets for disconnected modules show "Connect [module] to enable" state; no data leak |
-| Real-time dashboard polling could leak timing information | Poll interval is randomized Â±10s; dashboard data is read-only aggregate |
+| Real-time dashboard polling could leak timing information | Poll interval is randomized ±10s; dashboard data is read-only aggregate |
 
 ## UI States
 
@@ -157,20 +157,20 @@ Dashboard respects existing per-module read permissions — it cannot show data 
 
 ```mermaid
 graph TD
-    U[User] --> D[Dashboard UI]
-    D --> AA[Analytics Agent]
-    AA --> MS[Memory System]
-    AA --> CA[Cache Layer]
-    MS --> DB[(PostgreSQL)]
-    MS --> RD[(Redis)]
-    AA --> W1[Deadlines Widget]
-    AA --> W2[Pipeline Widget]
-    AA --> W3[Memory Health Widget]
-    AA --> W4[Digest Widget]
-    AA --> W5[Suggestions Widget]
-    AA --> W6[Agent Status Widget]
-    AA --> W7[Activity Widget]
-    AA --> W8[Growth Widget]
+ U[User]--> D[Dashboard UI]
+ D--> AA[Analytics Agent]
+ AA--> MS[Memory System]
+ AA--> CA[Cache Layer]
+ MS--> DB[(PostgreSQL)]
+ MS--> RD[(Redis)]
+ AA--> W1[Deadlines Widget]
+ AA--> W2[Pipeline Widget]
+ AA--> W3[Memory Health Widget]
+ AA--> W4[Digest Widget]
+ AA--> W5[Suggestions Widget]
+ AA--> W6[Agent Status Widget]
+ AA--> W7[Activity Widget]
+ AA--> W8[Growth Widget]
 ```
 
 > **Diagram:** Dashboard architecture — single Analytics Agent aggregates across all memory types to serve 8 widgets with caching.
@@ -203,24 +203,24 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant FE as Frontend
-    participant API as API
-    participant AA as Analytics Agent
-    participant CA as Cache
-    participant DB as PostgreSQL
+ participant U as User
+ participant FE as Frontend
+ participant API as API
+ participant AA as Analytics Agent
+ participant CA as Cache
+ participant DB as PostgreSQL
 
-    U->>FE: Navigate to Dashboard
-    FE->>API: GET /dashboard/summary
-    API->>AA: Aggregate all widgets
-    AA->>CA: Check cache
-    CA-->>AA: Cache miss
-    AA->>DB: Parallel queries (8)
-    DB-->>AA: Widget data
-    AA->>CA: Update cache (TTL 60s)
-    AA-->>API: Full dashboard response
-    API-->>FE: Widget data
-    FE-->>U: Rendered dashboard
+ U->>FE: Navigate to Dashboard
+ FE->>API: GET /dashboard/summary
+ API->>AA: Aggregate all widgets
+ AA->>CA: Check cache
+ CA-->>AA: Cache miss
+ AA->>DB: Parallel queries (8)
+ DB-->>AA: Widget data
+ AA->>CA: Update cache (TTL 60s)
+ AA-->>API: Full dashboard response
+ API-->>FE: Widget data
+ FE-->>U: Rendered dashboard
 ```
 
 ## Data Flow

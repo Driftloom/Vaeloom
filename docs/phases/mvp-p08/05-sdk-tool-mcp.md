@@ -6,59 +6,59 @@
 
 ## 1. SDK contracts
 
-| SDK                   | Contract                                                                       | Status  | Delta (P10–P12)                                                                     |
+| SDK | Contract | Status | Delta (P10–P12) |
 | --------------------- | ------------------------------------------------------------------------------ | ------- | ----------------------------------------------------------------------------------- |
-| TS (`@vaeloom/sdk`)   | apiKey/accessToken/tenantId; `X-Tenant-Id`, `X-API-Key`; axios client (exists) | PARTIAL | add approval API + jobs polling + memory domains; typed per OpenAPI 3.1 (generated) |
-| Python (`sdk/python`) | `VaeloomClient` (exists)                                                       | PARTIAL | same deltas; parity tests vs TS; async httpx                                        |
-| `sdk/rest-api`        | **EMPTY** — no files                                                           | MISSING | ship static OpenAPI 3.1 + README at P11                                             |
-| Shared types          | `packages/shared-types` (TS)                                                   | PARTIAL | sync MemoryType domains + approval DTOs                                             |
+| TS (`@vaeloom/sdk`) | apiKey/accessToken/tenantId; `X-Tenant-Id`, `X-API-Key`; axios client (exists) | PARTIAL | add approval API + jobs polling + memory domains; typed per OpenAPI 3.1 (generated) |
+| Python (`sdk/python`) | `VaeloomClient` (exists) | PARTIAL | same deltas; parity tests vs TS; async httpx |
+| `sdk/rest-api` | **EMPTY** — no files | MISSING | ship static OpenAPI 3.1 + README at P11 |
+| Shared types | `packages/shared-types` (TS) | PARTIAL | sync MemoryType domains + approval DTOs |
 
 ### SDK coverage gap analysis
 
-| API Surface Area            | Endpoints | SDK Coverage | Gap     |
+| API Surface Area | Endpoints | SDK Coverage | Gap |
 | --------------------------- | --------- | ------------ | ------- |
-| Auth (login/signup/refresh) | 6         | 0            | FULL    |
-| Memories (CRUD + search)    | 4         | 4 (basic)    | PARTIAL |
-| Agents (CRUD + execute)     | 8         | 3            | LARGE   |
-| Workspaces                  | 4         | 0            | FULL    |
-| Approvals                   | 5         | 0            | FULL    |
-| Gmail                       | 6         | 0            | FULL    |
-| Documents                   | 2         | 0            | FULL    |
-| Connectors                  | 5         | 0            | FULL    |
-| Events                      | 3         | 0            | FULL    |
-| Scheduler                   | 9         | 0            | FULL    |
-| Consent/GDPR                | 6         | 0            | FULL    |
-| Knowledge Graph             | 6         | 0            | FULL    |
-| Search                      | 1         | 0            | FULL    |
-| Notifications               | 5         | 0            | FULL    |
-| Resumes                     | 3         | 0            | FULL    |
-| Health                      | 3         | 1            | LARGE   |
-| **Total**                   | **79**    | **8 (10%)**  | **90%** |
+| Auth (login/signup/refresh) | 6 | 0 | FULL |
+| Memories (CRUD + search) | 4 | 4 (basic) | PARTIAL |
+| Agents (CRUD + execute) | 8 | 3 | LARGE |
+| Workspaces | 4 | 0 | FULL |
+| Approvals | 5 | 0 | FULL |
+| Gmail | 6 | 0 | FULL |
+| Documents | 2 | 0 | FULL |
+| Connectors | 5 | 0 | FULL |
+| Events | 3 | 0 | FULL |
+| Scheduler | 9 | 0 | FULL |
+| Consent/GDPR | 6 | 0 | FULL |
+| Knowledge Graph | 6 | 0 | FULL |
+| Search | 1 | 0 | FULL |
+| Notifications | 5 | 0 | FULL |
+| Resumes | 3 | 0 | FULL |
+| Health | 3 | 1 | LARGE |
+| **Total** | **79** | **8 (10%)** | **90%** |
 
 ### SDK conventions (design delta)
 
-| Convention            | Design                                                             |
+| Convention | Design |
 | --------------------- | ------------------------------------------------------------------ |
-| snake↔camel transform | `transformKeys()` pattern exists in `api.ts` and `api-client.ts`   |
-| Error handling        | Typed errors matching RFC 9457; auto-retry on 429 with Retry-After |
-| Idempotency           | Automatic `Idempotency-Key` on retry (UUID v4)                     |
-| Pagination            | Cursor-based; `limit` + `cursor` params; `{items, next_cursor}`    |
-| Auth                  | API key (`X-API-Key`) or access token (`Authorization: Bearer`)    |
-| Tenant context        | `X-Tenant-Id` header (existing pattern)                            |
-| Versioning            | SDKs track API minor versions; deprecation warnings on upgrades    |
+| snake↔camel transform | `transformKeys()` pattern exists in `api.ts` and `api-client.ts` |
+| Error handling | Typed errors matching RFC 9457; auto-retry on 429 with Retry-After |
+| Idempotency | Automatic `Idempotency-Key` on retry (UUID v4) |
+| Pagination | Cursor-based; `limit` + `cursor` params; `{items, next_cursor}` |
+| Auth | API key (`X-API-Key`) or access token (`Authorization: Bearer`) |
+| Tenant context | `X-Tenant-Id` header (existing pattern) |
+| Versioning | SDKs track API minor versions; deprecation warnings on upgrades |
 
 ## 2. Tool contracts (agent tools)
 
-| Tool                                       | Contract                                           | Authz                               | Status      |
+| Tool | Contract | Authz | Status |
 | ------------------------------------------ | -------------------------------------------------- | ----------------------------------- | ----------- |
-| `memory.read`                              | query+domains+limit → hits w/ provenance           | workspace scope                     | IMPLEMENTED |
-| `memory.write`                             | domain, content, source_ref → memory row (QA gate) | workspace scope; supersession-aware | PARTIAL     |
-| `gmail.list_drafts` / `gmail.create_draft` | draft-only (DEC-P01-03)                            | per-connector OAuth                 | IMPLEMENTED |
-| `gmail.extract_deadlines`                  | message set → deadline facts                       | workspace scope                     | MISSING     |
-| `job.analyze`                              | JD url → extracted role/skills/deadline (FR-04)    | workspace scope                     | MISSING     |
-| `ats.score`                                | resume+JD → score + rationale (FR-21/22)           | workspace scope                     | MISSING     |
-| `approval.request`                         | proposal → approval_request                        | consequential only                  | IMPLEMENTED |
-| `reminder.schedule`                        | ScheduleEvent                                      | workspace scope                     | PARTIAL     |
+| `memory.read` | query+domains+limit → hits w/ provenance | workspace scope | IMPLEMENTED |
+| `memory.write` | domain, content, source_ref → memory row (QA gate) | workspace scope; supersession-aware | PARTIAL |
+| `gmail.list_drafts` / `gmail.create_draft` | draft-only (DEC-P01-03) | per-connector OAuth | IMPLEMENTED |
+| `gmail.extract_deadlines` | message set → deadline facts | workspace scope | MISSING |
+| `job.analyze` | JD url → extracted role/skills/deadline (FR-04) | workspace scope | MISSING |
+| `ats.score` | resume+JD → score + rationale (FR-21/22) | workspace scope | MISSING |
+| `approval.request` | proposal → approval_request | consequential only | IMPLEMENTED |
+| `reminder.schedule` | ScheduleEvent | workspace scope | PARTIAL |
 
 ### Tool registry
 
@@ -71,12 +71,12 @@
 
 ### Current state
 
-| Component  | File                              | Status      |
+| Component | File | Status |
 | ---------- | --------------------------------- | ----------- |
 | MCP client | `connectors/mcp/mcp.connector.ts` | IMPLEMENTED |
-| Transport  | `connectors/mcp/transport.ts`     | IMPLEMENTED |
-| Types      | `connectors/mcp/types.ts`         | IMPLEMENTED |
-| Tests      | `connectors/mcp/__tests__/`       | EXISTS      |
+| Transport | `connectors/mcp/transport.ts` | IMPLEMENTED |
+| Types | `connectors/mcp/types.ts` | IMPLEMENTED |
+| Tests | `connectors/mcp/__tests__/` | EXISTS |
 
 ### MVP role
 
@@ -101,22 +101,22 @@
 
 ### Current state
 
-| Component         | File                         | Status      |
+| Component | File | Status |
 | ----------------- | ---------------------------- | ----------- |
-| Plugin SDK (TS)   | `packages/plugin-sdk/`       | EXISTS      |
-| Plugin manifests  | PluginManifest, capabilities | EXISTS      |
-| Runtime isolation | Subprocess sandbox           | IMPLEMENTED |
-| Official plugins  | `plugins/` (5 plugins)       | EXISTS      |
+| Plugin SDK (TS) | `packages/plugin-sdk/` | EXISTS |
+| Plugin manifests | PluginManifest, capabilities | EXISTS |
+| Runtime isolation | Subprocess sandbox | IMPLEMENTED |
+| Official plugins | `plugins/` (5 plugins) | EXISTS |
 
 ### Official plugins (MVP)
 
-| Plugin        | Location                 | Status |
+| Plugin | Location | Status |
 | ------------- | ------------------------ | ------ |
-| sentiment     | `plugins/sentiment/`     | EXISTS |
-| summarizer    | `plugins/summarizer/`    | EXISTS |
-| translator    | `plugins/translator/`    | EXISTS |
+| sentiment | `plugins/sentiment/` | EXISTS |
+| summarizer | `plugins/summarizer/` | EXISTS |
+| translator | `plugins/translator/` | EXISTS |
 | tag-generator | `plugins/tag-generator/` | EXISTS |
-| word-count    | `plugins/word-count/`    | EXISTS |
+| word-count | `plugins/word-count/` | EXISTS |
 
 ### Plugin security contract
 
@@ -124,7 +124,7 @@
 - Plugin execution audited via `audit_service.record_event()`
 - No plugin gains network-exfil or memory-write without tool allowlist (P05 §6)
 - Subprocess isolation: CPU, memory, FD limits; temp dir per execution; no
-  network by default
+ network by default
 - Plugin boundary tests at P12 (P05 threat mapping)
 
 ## 5. Shared types (`packages/shared-types`)

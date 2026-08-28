@@ -8,25 +8,25 @@
 
 ### Alembic Migrations (canonical — 11 total)
 
-| Migration                      | What It Does                                                               | Gap Fixed                         |
+| Migration | What It Does | Gap Fixed |
 | ------------------------------ | -------------------------------------------------------------------------- | --------------------------------- |
-| `0001_initial_schema`          | Creates 25 core tables                                                     | ✅ Baseline                       |
-| `0002_microservice_tables`     | Creates microservice tables (knowledge, IAM, etc.)                         | ✅ Baseline                       |
-| `0003_approval_tables`         | Creates `approval_request` + `approval_decision` + idempotency cols        | ✅ Baseline                       |
-| `0004_memory_taxonomy`         | Adds `domain`/`supersedes_id`/`deleted_at` to memories + memory_records    | ⚠️ Missing CHECK                  |
-| `0005_rls_expanded`            | Enables RLS on 31 tables with composite workspace+tenant policies          | ✅ Baseline                       |
-| `0006_provenance`              | Adds consent columns, retention_policy, deleted_at, oauth_scopes           | ✅ Baseline                       |
-| **`0007_missing_tables`**      | **NEW: Creates `agent_approvals`, `idempotency_records`, `gmail_watches`** | **FIXES: 3 missing tables**       |
-| **`0008_schema_gaps`**         | **NEW: Adds 5 missing columns to `agent_executions` and `connectors`**     | **FIXES: 5 missing columns**      |
-| **`0009_memory_domain_check`** | **NEW: CHECK constraint on `memories.domain` with backfill**               | **FIXES: missing CHECK**          |
-| **`0010_rls_force_and_roles`** | **NEW: FORCE RLS on 34 tables, 3 roles, BYPASSRLS revocation**             | **FIXES: owner bypass, no roles** |
-| **`0011_hnsw_index`**          | **NEW: HNSW index replaces IVFFlat for embeddings + memories**             | **FIXES: query performance**      |
+| `0001_initial_schema` | Creates 25 core tables | ✅ Baseline |
+| `0002_microservice_tables` | Creates microservice tables (knowledge, IAM, etc.) | ✅ Baseline |
+| `0003_approval_tables` | Creates `approval_request` + `approval_decision` + idempotency cols | ✅ Baseline |
+| `0004_memory_taxonomy` | Adds `domain`/`supersedes_id`/`deleted_at` to memories + memory_records | ⚠️ Missing CHECK |
+| `0005_rls_expanded` | Enables RLS on 31 tables with composite workspace+tenant policies | ✅ Baseline |
+| `0006_provenance` | Adds consent columns, retention_policy, deleted_at, oauth_scopes | ✅ Baseline |
+| **`0007_missing_tables`** | **NEW: Creates `agent_approvals`, `idempotency_records`, `gmail_watches`** | **FIXES: 3 missing tables** |
+| **`0008_schema_gaps`** | **NEW: Adds 5 missing columns to `agent_executions` and `connectors`** | **FIXES: 5 missing columns** |
+| **`0009_memory_domain_check`** | **NEW: CHECK constraint on `memories.domain` with backfill** | **FIXES: missing CHECK** |
+| **`0010_rls_force_and_roles`** | **NEW: FORCE RLS on 34 tables, 3 roles, BYPASSRLS revocation** | **FIXES: owner bypass, no roles** |
+| **`0011_hnsw_index`** | **NEW: HNSW index replaces IVFFlat for embeddings + memories** | **FIXES: query performance** |
 
 ### Custom Runner Migrations (dev convenience — NOT for production)
 
-| Migration   | Purpose                                | Production Use |
+| Migration | Purpose | Production Use |
 | ----------- | -------------------------------------- | -------------- |
-| `0002-0007` | Bootstrap fresh dev DB without Alembic | ❌ Dev only    |
+| `0002-0007` | Bootstrap fresh dev DB without Alembic | ❌ Dev only |
 
 **Recommendation:** Custom runner is gated behind `ENV != prod`. All production
 databases use Alembic exclusively. The custom runner 0002 duplicates Alembic
@@ -38,13 +38,13 @@ databases use Alembic exclusively. The custom runner 0002 duplicates Alembic
 
 Each migration has a `downgrade()` function that reverses its changes:
 
-| Migration | Rollback Action                                                                                  |
+| Migration | Rollback Action |
 | --------- | ------------------------------------------------------------------------------------------------ |
-| 0007      | DROP tables: `agent_approvals`, `idempotency_records`, `gmail_watches`                           |
-| 0008      | DROP columns: `agent_executions.tenant_id/user_id/response_time_ms`, `connectors.name/tenant_id` |
-| 0009      | DROP CHECK constraint `chk_memories_domain`                                                      |
-| 0010      | DROP roles, REMOVE FORCE RLS                                                                     |
-| 0011      | DROP HNSW indexes, RECREATE IVFFlat index                                                        |
+| 0007 | DROP tables: `agent_approvals`, `idempotency_records`, `gmail_watches` |
+| 0008 | DROP columns: `agent_executions.tenant_id/user_id/response_time_ms`, `connectors.name/tenant_id` |
+| 0009 | DROP CHECK constraint `chk_memories_domain` |
+| 0010 | DROP roles, REMOVE FORCE RLS |
+| 0011 | DROP HNSW indexes, RECREATE IVFFlat index |
 
 ### Full rollback procedure
 
@@ -67,12 +67,12 @@ psql $DATABASE_URL -c "\dt" | wc -l  # should match expected table count
 All migrations follow these rules:
 
 1. **Expand-contract pattern**: Add new columns/tables first, backfill, then add
-   constraints. Never drop columns in the same migration that adds them.
+ constraints. Never drop columns in the same migration that adds them.
 2. **Idempotent where possible**: `IF NOT EXISTS` / `IF EXISTS` guards.
 3. **Batch operations**: Use `batch_alter_table` for SQLite compatibility in
-   tests.
+ tests.
 4. **Server defaults**: New NOT NULL columns get server defaults to avoid
-   backfill locks on large tables.
+ backfill locks on large tables.
 5. **No data loss**: CHECK constraints backfill invalid values before enforcing.
 6. **Downgrade always available**: Every migration has a working `downgrade()`.
 
@@ -80,39 +80,39 @@ All migrations follow these rules:
 
 ### 2.1 Alembic Migrations
 
-| Migration                  | What P07 Design Claimed                                                                                         | What It Actually Does                                                                                                                                    | Gap                                                    |
+| Migration | What P07 Design Claimed | What It Actually Does | Gap |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `0001_initial_schema`      | Creates core tables                                                                                             | Creates 25 core tables (memories, events, documents, etc.)                                                                                               | ✅ Matches                                             |
-| `0002_microservice_tables` | Extends notifications, creates plugin/iam/knowledge tables                                                      | Same as claimed                                                                                                                                          | ✅ Matches                                             |
-| `0003_approval_tables`     | Creates `approval_request` + `approval_decision` + idempotency cols                                             | Creates `approval_request`, `approval_decision`, adds `idempotency_key` to `applications`/`agent_actions`, adds `approval_request_id` to `agent_actions` | ✅ Matches (this is the ONLY system with these tables) |
-| `0004_memory_taxonomy`     | Adds `domain`/`supersedes_id`/`deleted_at` + CHECK constraint + backfill                                        | Adds `domain`, `supersedes_id`, `deleted_at` to `memories` and `memory_records`; indexes. **NO CHECK constraint, NO backfill.**                          | ⚠️ Missing CHECK + backfill                            |
-| `0005_rls_expanded`        | Enables RLS on ~30 tables                                                                                       | Enables RLS on 31 tables with `p_{table}_workspace` policies using `app.workspace_id` + `app.tenant_id`; creates `vaeloom_app` role                      | ✅ Matches scope                                       |
-| `0006_provenance`          | Adds provenance columns to embeddings, lifecycle to documents, consent to users/workspaces, OAuth to connectors | Same as claimed                                                                                                                                          | ✅ Matches                                             |
+| `0001_initial_schema` | Creates core tables | Creates 25 core tables (memories, events, documents, etc.) | ✅ Matches |
+| `0002_microservice_tables` | Extends notifications, creates plugin/iam/knowledge tables | Same as claimed | ✅ Matches |
+| `0003_approval_tables` | Creates `approval_request` + `approval_decision` + idempotency cols | Creates `approval_request`, `approval_decision`, adds `idempotency_key` to `applications`/`agent_actions`, adds `approval_request_id` to `agent_actions` | ✅ Matches (this is the ONLY system with these tables) |
+| `0004_memory_taxonomy` | Adds `domain`/`supersedes_id`/`deleted_at` + CHECK constraint + backfill | Adds `domain`, `supersedes_id`, `deleted_at` to `memories` and `memory_records`; indexes. **NO CHECK constraint, NO backfill.** | ⚠️ Missing CHECK + backfill |
+| `0005_rls_expanded` | Enables RLS on ~30 tables | Enables RLS on 31 tables with `p_{table}_workspace` policies using `app.workspace_id` + `app.tenant_id`; creates `vaeloom_app` role | ✅ Matches scope |
+| `0006_provenance` | Adds provenance columns to embeddings, lifecycle to documents, consent to users/workspaces, OAuth to connectors | Same as claimed | ✅ Matches |
 
 ### 2.2 Custom Runner Migrations
 
-| Migration                  | What P07 Design Claimed                          | What It Actually Does                                                                                                        | Gap                              |
+| Migration | What P07 Design Claimed | What It Actually Does | Gap |
 | -------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| `0002_microservice_tables` | (same as Alembic 0002)                           | DUPLICATE of Alembic 0002 — creates identical tables                                                                         | ❌ Conflict                      |
-| `0003_approvals`           | Creates `approval_request` + `approval_decision` | Creates `agent_approvals` table (different table — post-action confirmation, not pre-action approval flow)                   | ❌ Wrong table entirely          |
-| `0004_memory_taxonomy`     | Adds columns + CHECK + backfill                  | Adds `domain`/`supersedes_id`/`deleted_at` to `memories` only (not `memory_records`); index only. **NO CHECK, NO backfill.** | ⚠️ Partial + missing CHECK       |
-| `0005_rls`                 | RLS on ~30 tables                                | RLS on **4 tables only** (`memories`, `events`, `usage_records`, `api_keys`) with `tenant_id`-only filter                    | ❌ 4 vs 30 tables, weaker filter |
-| `0006_idempotency`         | Provenance columns                               | Creates `idempotency_records` table (HTTP replay protection, not provenance)                                                 | ❌ Wrong thing entirely          |
-| `0007_gmail_watch`         | Vector dim guard                                 | Creates `gmail_watches` table (push notification lifecycle)                                                                  | ❌ Wrong thing entirely          |
+| `0002_microservice_tables` | (same as Alembic 0002) | DUPLICATE of Alembic 0002 — creates identical tables | ❌ Conflict |
+| `0003_approvals` | Creates `approval_request` + `approval_decision` | Creates `agent_approvals` table (different table — post-action confirmation, not pre-action approval flow) | ❌ Wrong table entirely |
+| `0004_memory_taxonomy` | Adds columns + CHECK + backfill | Adds `domain`/`supersedes_id`/`deleted_at` to `memories` only (not `memory_records`); index only. **NO CHECK, NO backfill.** | ⚠️ Partial + missing CHECK |
+| `0005_rls` | RLS on ~30 tables | RLS on **4 tables only** (`memories`, `events`, `usage_records`, `api_keys`) with `tenant_id`-only filter | ❌ 4 vs 30 tables, weaker filter |
+| `0006_idempotency` | Provenance columns | Creates `idempotency_records` table (HTTP replay protection, not provenance) | ❌ Wrong thing entirely |
+| `0007_gmail_watch` | Vector dim guard | Creates `gmail_watches` table (push notification lifecycle) | ❌ Wrong thing entirely |
 
 ### 2.3 ORM Models With No Migration
 
 These exist in `models/schema.py` but have **no Alembic migration** (only custom
 runner covers some):
 
-| ORM Model / Column                  | Alembic Migrated? | Custom Runner Migrated?                | Status         |
+| ORM Model / Column | Alembic Migrated? | Custom Runner Migrated? | Status |
 | ----------------------------------- | ----------------- | -------------------------------------- | -------------- |
-| `approval_request` table            | ✅ Alembic 0003   | ❌ (creates `agent_approvals` instead) | OK via Alembic |
-| `approval_decision` table           | ✅ Alembic 0003   | ❌                                     | OK via Alembic |
-| `applications.idempotency_key`      | ✅ Alembic 0003   | ❌                                     | OK via Alembic |
-| `agent_actions.idempotency_key`     | ✅ Alembic 0003   | ❌                                     | OK via Alembic |
-| `agent_actions.approval_request_id` | ✅ Alembic 0003   | ❌                                     | OK via Alembic |
-| `Memory.domain` CHECK constraint    | ❌ Neither system | ❌                                     | **Missing**    |
+| `approval_request` table | ✅ Alembic 0003 | ❌ (creates `agent_approvals` instead) | OK via Alembic |
+| `approval_decision` table | ✅ Alembic 0003 | ❌ | OK via Alembic |
+| `applications.idempotency_key` | ✅ Alembic 0003 | ❌ | OK via Alembic |
+| `agent_actions.idempotency_key` | ✅ Alembic 0003 | ❌ | OK via Alembic |
+| `agent_actions.approval_request_id` | ✅ Alembic 0003 | ❌ | OK via Alembic |
+| `Memory.domain` CHECK constraint | ❌ Neither system | ❌ | **Missing** |
 
 ## 3. Missing Migrations — What Must Be Created
 
@@ -185,7 +185,7 @@ whichever ran first.
 **Pre-flight:**
 
 1. Verify all application connections set `app.workspace_id` and
-   `app.tenant_id`.
+ `app.tenant_id`.
 2. Run integration tests with RLS enabled.
 3. Confirm no queries bypass session variable setup.
 
@@ -279,9 +279,9 @@ Custom runner (dev/test only):
 Every migration follows two phases:
 
 1. **Expand** (forward): Add new columns/tables/constraints without breaking
-   existing code. Old code continues to work.
+ existing code. Old code continues to work.
 2. **Contract** (subsequent migration): Remove old columns/tables/constraints
-   after all code has migrated to the new schema.
+ after all code has migrated to the new schema.
 
 Example:
 
@@ -293,20 +293,20 @@ Example:
 ### 5.2 Rules
 
 1. **One migration per concern.** Each has `upgrade()` + `downgrade()`.
-   Idempotent (re-runnable on partial failure via version tracking).
+ Idempotent (re-runnable on partial failure via version tracking).
 2. **Backfill mapping reviewed + tested** before apply. Memory type → domain map
-   must be signed off.
+ must be signed off.
 3. **Every migration runs against:** dev (docker-compose Postgres) → staging →
-   prod. CI job applies + rolls back + re-applies.
+ prod. CI job applies + rolls back + re-applies.
 4. **No destructive step** without: backup taken, runbook written, named
-   approver, rollback rehearsed.
+ approver, rollback rehearsed.
 5. **Schema changes never shipped as silent `CREATE TABLE` in app startup.**
-   `Base.metadata.create_all` in `main.py` lifespan is dev-only; prod uses
-   Alembic only.
+ `Base.metadata.create_all` in `main.py` lifespan is dev-only; prod uses
+ Alembic only.
 6. **Lock timeouts:** For large tables, set `lock_timeout = '5s'` before DDL.
-   Never hold locks across transactions.
+ Never hold locks across transactions.
 7. **No FK constraints in backfill migrations** — use application-level FK
-   validation instead to avoid lock escalation.
+ validation instead to avoid lock escalation.
 
 ### 5.3 CI Integration
 
@@ -322,25 +322,25 @@ Example:
 
 ## 6. Rollback Scenarios
 
-| Scenario                                       | Immediate Action                                                                                                                   | Root Cause Fix                                                                      | Prevention                                                                  |
+| Scenario | Immediate Action | Root Cause Fix | Prevention |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| **Migration fails mid-apply**                  | `alembic downgrade <last-good-version>`. Fix migration SQL. Re-apply. No data written (DDL is atomic in Postgres).                 | Fix syntax/constraint error in migration file.                                      | Test migrations against fresh DB in CI before prod.                         |
-| **Data corruption detected post-apply**        | Restore from daily backup (RPO 24h, BQ-P07-02). Replay DLQ if queue-backed writes were affected.                                   | Identify which rows were mutated. Write corrective backfill.                        | Data-preservation test: fixture data survives forward+backward cycles.      |
-| **Bad backfill (wrong mapping)**               | Downgrade 0010 (set domains to NULL), fix mapping SQL, re-run. If CHECK constraint already applied, downgrade 0008 first.          | Review `SELECT DISTINCT type FROM memories` and update mapping.                     | Pre-flight query + manual review before backfill migration.                 |
-| **RLS breaks queries**                         | Downgrade 0005/0009 (drop policies). App-level tenant filter still provides isolation (defense-in-depth). Debug which query fails. | Verify session variable setup (`SET app.workspace_id`). Fix connection pool config. | Integration tests with RLS enabled. Load test with RLS.                     |
-| **CHECK constraint rejects valid data**        | Downgrade 0008 (drop constraint). Fix allowed values list. Re-apply.                                                               | Expand CHECK constraint to include missing valid values.                            | Pre-flight: `SELECT DISTINCT domain FROM memories` to enumerate all values. |
-| **Provider/embedding regression (0007 guard)** | Re-embed with old dimensions (ADR-024).                                                                                            | Rebuild projection.                                                                 | Gated by eval; only triggered when provider changes.                        |
+| **Migration fails mid-apply** | `alembic downgrade <last-good-version>`. Fix migration SQL. Re-apply. No data written (DDL is atomic in Postgres). | Fix syntax/constraint error in migration file. | Test migrations against fresh DB in CI before prod. |
+| **Data corruption detected post-apply** | Restore from daily backup (RPO 24h, BQ-P07-02). Replay DLQ if queue-backed writes were affected. | Identify which rows were mutated. Write corrective backfill. | Data-preservation test: fixture data survives forward+backward cycles. |
+| **Bad backfill (wrong mapping)** | Downgrade 0010 (set domains to NULL), fix mapping SQL, re-run. If CHECK constraint already applied, downgrade 0008 first. | Review `SELECT DISTINCT type FROM memories` and update mapping. | Pre-flight query + manual review before backfill migration. |
+| **RLS breaks queries** | Downgrade 0005/0009 (drop policies). App-level tenant filter still provides isolation (defense-in-depth). Debug which query fails. | Verify session variable setup (`SET app.workspace_id`). Fix connection pool config. | Integration tests with RLS enabled. Load test with RLS. |
+| **CHECK constraint rejects valid data** | Downgrade 0008 (drop constraint). Fix allowed values list. Re-apply. | Expand CHECK constraint to include missing valid values. | Pre-flight: `SELECT DISTINCT domain FROM memories` to enumerate all values. |
+| **Provider/embedding regression (0007 guard)** | Re-embed with old dimensions (ADR-024). | Rebuild projection. | Gated by eval; only triggered when provider changes. |
 
 ## 7. Verification (P11 Executes; Tests at P13/P14)
 
 - **Migration test suite:** Apply all → assert schema invariants (constraints
-  present, RLS policies exist, CHECK constraints active) → downgrade all →
-  re-apply (idempotent).
+ present, RLS policies exist, CHECK constraints active) → downgrade all →
+ re-apply (idempotent).
 - **Data preservation test:** Fixture data survives forward + backward cycles.
-  No silent data loss.
+ No silent data loss.
 - **Isolation invariant tests:** Cross-workspace access blocked with and without
-  app-level filter (defense-in-depth, NFR-15/h15).
+ app-level filter (defense-in-depth, NFR-15/h15).
 - **RLS integration test:** Set session vars, query as tenant A, verify tenant B
-  data invisible.
+ data invisible.
 - **Backfill review:** Manual sign-off on memory type → domain mapping before
-  production apply.
+ production apply.

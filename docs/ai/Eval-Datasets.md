@@ -39,35 +39,35 @@ Vaeloom's AI quality is only as good as the datasets used to evaluate it. Evalua
 
 ```mermaid
 graph TD
-    classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef ci fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef ci fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Sources["Data Sources"]
-        SYN["Synthetic<br/>(generated examples)"]:::source
-        REAL["Real User Data<br/>(anonymized, opt-in)"]:::source
-        EXPERT["Expert-Crafted<br/>(domain expert authored)"]:::source
-    end
+ subgraph Sources["Data Sources"]
+ SYN["Synthetic<br/>(generated examples)"]:::source
+ REAL["Real User Data<br/>(anonymized, opt-in)"]:::source
+ EXPERT["Expert-Crafted<br/>(domain expert authored)"]:::source
+ end
 
-    REVIEW["Human Review<br/>(quality + bias check)"]:::process
-    ANON["Anonymization<br/>(PII removal, hashing)"]:::process
+ REVIEW["Human Review<br/>(quality + bias check)"]:::process
+ ANON["Anonymization<br/>(PII removal, hashing)"]:::process
 
-    subgraph Store["Golden Dataset Store"]
-        DS1["Resume Extraction"]:::store
-        DS2["ATS Scoring"]:::store
-        DS3["Job Match"]:::store
-        DS4["Memory Retrieval"]:::store
-        DS5["Agent Task Completion"]:::store
-        DS6["Guardrails"]:::store
-        DS7["RAG Answer Quality"]:::store
-    end
+ subgraph Store["Golden Dataset Store"]
+ DS1["Resume Extraction"]:::store
+ DS2["ATS Scoring"]:::store
+ DS3["Job Match"]:::store
+ DS4["Memory Retrieval"]:::store
+ DS5["Agent Task Completion"]:::store
+ DS6["Guardrails"]:::store
+ DS7["RAG Answer Quality"]:::store
+ end
 
-    CI["CI Eval Runner<br/>(runs on every PR)"]:::ci
+ CI["CI Eval Runner<br/>(runs on every PR)"]:::ci
 
-    Sources --> REVIEW --> ANON --> Store
-    Store -->|"score against"| CI
-    CI -->|"regression?"| BLOCK{"Block PR?"}:::ci
+ Sources--> REVIEW--> ANON--> Store
+ Store-->|"score against"| CI
+ CI-->|"regression?"| BLOCK{"Block PR?"}:::ci
 ```
 
 > **Diagram:** Eval dataset pipeline. Data is sourced (synthetic, anonymized real, expert), reviewed by humans, anonymized, and stored as golden datasets. CI runs the eval runner against these datasets on every PR.

@@ -1,6 +1,6 @@
-﻿# MVP-P15 — 08. Registers
+# MVP-P15 — 08. Registers
 
-> **Phase:** MVP-P15 — Performance, Reliability, and Scalability  
+> **Phase:** MVP-P15 — Performance, Reliability, and Scalability 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 (94.2%, jest-axe 0 critical, k6 p50 45ms p95 120ms, CB 3/30s, SLO RPO 1h RTO 15m)
 
 ## Risk Register

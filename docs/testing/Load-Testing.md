@@ -1,51 +1,51 @@
-﻿# Load Testing
+# Load Testing
 
 > **Purpose:** Define load testing strategy for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Load Testing Architecture
 
 ```mermaid
 graph TD
-    classDef goals fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef scenario fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef tool fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef success fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef goals fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef scenario fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef tool fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef success fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Goals["ðŸŽ¯ Load Testing Goals"]
-        direction TB
-        G1["API throughput<br/>1000 req/s"]
-        G2["Concurrent users<br/>1000 active sessions"]
-        G3["Document ingestion<br/>100 files/min"]
-        G4["Agent response under load<br/>< 15s p99"]
-    end
+ subgraph Goals["Load Testing Goals"]
+ direction TB
+ G1["API throughput<br/>1000 req/s"]
+ G2["Concurrent users<br/>1000 active sessions"]
+ G3["Document ingestion<br/>100 files/min"]
+ G4["Agent response under load<br/>< 15s p99"]
+ end
 
-    subgraph Scenarios["ðŸ“‹ Test Scenarios"]
-        direction TB
-        S1["Normal Load<br/>100 concurrent users<br/>80/20 read/write mix<br/>Duration: 30 min"]
-        S2["Peak Load<br/>1000 concurrent users<br/>Burst writes (exam season)<br/>Duration: 15 min"]
-        S3["Stress Test<br/>Gradual increase to failure<br/>Identify breaking points<br/>2x normal load target"]
-    end
+ subgraph Scenarios["Test Scenarios"]
+ direction TB
+ S1["Normal Load<br/>100 concurrent users<br/>80/20 read/write mix<br/>Duration: 30 min"]
+ S2["Peak Load<br/>1000 concurrent users<br/>Burst writes (exam season)<br/>Duration: 15 min"]
+ S3["Stress Test<br/>Gradual increase to failure<br/>Identify breaking points<br/>2x normal load target"]
+ end
 
-    subgraph Tools["ðŸ”§ Load Testing Tools"]
-        T1["k6<br/>API load testing<br/>k6 run scenarios/api-load.js"]
-        T2["Locust<br/>User simulation<br/>locust -f scenarios/user-flow.py"]
-        T3["Artillery<br/>Spike testing<br/>artillery run scenarios/spike.yml"]
-    end
+ subgraph Tools["Load Testing Tools"]
+ T1["k6<br/>API load testing<br/>k6 run scenarios/api-load.js"]
+ T2["Locust<br/>User simulation<br/>locust -f scenarios/user-flow.py"]
+ T3["Artillery<br/>Spike testing<br/>artillery run scenarios/spike.yml"]
+ end
 
-    subgraph Criteria["âœ… Success Criteria"]
-        C1["API latency p99<br/>Pass: < 1s | Warn: 1-3s | Fail: > 3s"]
-        C2["Error rate<br/>Pass: < 0.1% | Warn: 0.1-1% | Fail: > 1%"]
-        C3["Throughput<br/>Pass: > 80% | Warn: 50-80% | Fail: < 50%"]
-        C4["DB connections<br/>Pass: < 70% | Warn: 70-85% | Fail: > 85%"]
-    end
+ subgraph Criteria["Success Criteria"]
+ C1["API latency p99<br/>Pass: < 1s | Warn: 1-3s | Fail: > 3s"]
+ C2["Error rate<br/>Pass: < 0.1% | Warn: 0.1-1% | Fail: > 1%"]
+ C3["Throughput<br/>Pass: > 80% | Warn: 50-80% | Fail: < 50%"]
+ C4["DB connections<br/>Pass: < 70% | Warn: 70-85% | Fail: > 85%"]
+ end
 
-    Goals --> Scenarios --> Tools --> Criteria
+ Goals--> Scenarios--> Tools--> Criteria
 
-    class G1,G2,G3,G4 goals
-    class S1,S2,S3 scenario
-    class T1,T2,T3 tool
-    class C1,C2,C3,C4 success
+ class G1,G2,G3,G4 goals
+ class S1,S2,S3 scenario
+ class T1,T2,T3 tool
+ class C1,C2,C3,C4 success
 ```
 
 > **Diagram:** Load testing strategy flows from **goals** (throughput, concurrency, ingestion, agent response) → **scenarios** (normal, peak, stress) → **tools** (k6, Locust, Artillery) → **success criteria** with pass/warn/fail thresholds.
@@ -143,7 +143,7 @@ graph TD
 
 | Dimension | Current Limit | 10x Strategy | 100x Strategy |
 |-----------|---------------|--------------|---------------|
-| Concurrent virtual users | 1,000 | 10,000 with distributed k6 runners (10 instances Ã— 1000 users) | 100,000+ with cloud-based load generation across 3 regions |
+| Concurrent virtual users | 1,000 | 10,000 with distributed k6 runners (10 instances — 1000 users) | 100,000+ with cloud-based load generation across 3 regions |
 | Test scenario complexity | 3 scenarios (normal, peak, stress) | 10 scenarios including spike, soak, and chaos patterns | ML-generated load profiles from production traffic patterns |
 | Metrics collected per run | 15 | 50+ with custom k6 metrics and application-level tracing | Full distributed tracing correlation during load tests |
 | Concurrent test reports stored | 100 | 1,000 with automated trend analysis | Infinite with tiered storage (hot/cold/archive) |
@@ -280,27 +280,27 @@ export default function () {
 
 ```mermaid
 sequenceDiagram
-    participant QA as QA Engineer
-    participant K6 as k6 Runner
-    participant TARGET as Staging Environment
-    participant MON as Monitoring
+ participant QA as QA Engineer
+ participant K6 as k6 Runner
+ participant TARGET as Staging Environment
+ participant MON as Monitoring
 
-    QA->>K6: k6 run scenarios/api-load.js
-    K6->>K6: Ramp up: 0-->100 users (5min)
-    K6->>TARGET: 100 concurrent req/s
-    TARGET-->>K6: Responses
-    K6->>MON: Collect metrics
-    K6->>K6: Hold: 100 users (20min)
-    K6->>TARGET: Steady load
-    K6->>K6: Ramp down: 100-->0 (5min)
-    K6->>K6: Compute results
-    K6-->>QA: HTML report
-    alt Thresholds met
-        QA->>QA: âœ… Load test passed
-    else Thresholds exceeded
-        QA->>QA: âŒ p99 latency 2.4s > 2s threshold
-        QA->>QA: Investigate bottleneck
-    end
+ QA->>K6: k6 run scenarios/api-load.js
+ K6->>K6: Ramp up: 0-->100 users (5min)
+ K6->>TARGET: 100 concurrent req/s
+ TARGET-->>K6: Responses
+ K6->>MON: Collect metrics
+ K6->>K6: Hold: 100 users (20min)
+ K6->>TARGET: Steady load
+ K6->>K6: Ramp down: 100-->0 (5min)
+ K6->>K6: Compute results
+ K6-->>QA: HTML report
+ alt Thresholds met
+ QA->>QA: … Load test passed
+ else Thresholds exceeded
+ QA->>QA: Œ p99 latency 2.4s > 2s threshold
+ QA->>QA: Investigate bottleneck
+ end
 ```
 
 ---

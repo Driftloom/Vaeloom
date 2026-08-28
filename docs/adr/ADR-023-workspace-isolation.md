@@ -1,11 +1,11 @@
 # ADR-023: Workspace Isolation Hardening (App Scoping + Postgres RLS)
 
-| Metadata     | Value                                                                                      |
+| Metadata | Value |
 | ------------ | ------------------------------------------------------------------------------------------ |
-| **Status**   | ADOPTED — IMPLEMENTED_UNVERIFIED (verify policy coverage; isolation suite P14; NFR-15/h15) |
-| **Date**     | 2026-08-15 (design re-run); first documented 2026-08-07                                    |
-| **Deciders** | Engineering Team                                                                           |
-| **Owner**    | Security Architect                                                                         |
+| **Status** | ADOPTED — IMPLEMENTED_UNVERIFIED (verify policy coverage; isolation suite P14; NFR-15/h15) |
+| **Date** | 2026-08-15 (design re-run); first documented 2026-08-07 |
+| **Deciders** | Engineering Team |
+| **Owner** | Security Architect |
 
 ## Context
 
@@ -20,11 +20,11 @@ Keep **app-level scoping as the primary control**; add **Postgres RLS as
 defense-in-depth** — never rely on either alone.
 
 - `infrastructure/data_isolation.py` — `RowLevelSecurityMixin`,
-  `TenantScopedQuery`, `TenantAwareBase` provide tenant-filtered ORM helpers.
+ `TenantScopedQuery`, `TenantAwareBase` provide tenant-filtered ORM helpers.
 - `migrations/0005_rls.py` — enables RLS and installs `tenant_isolation_<table>`
-  policies (USING/WITH CHECK on `current_setting('app.tenant_id')`) on
-  `memories`, `events`, `usage_records`, `api_keys`. PostgreSQL only; SQLite
-  (dev/test) no-op.
+ policies (USING/WITH CHECK on `current_setting('app.tenant_id')`) on
+ `memories`, `events`, `usage_records`, `api_keys`. PostgreSQL only; SQLite
+ (dev/test) no-op.
 - Composite (tenant, workspace) constraints remain a P07 concern.
 
 ## Consequences

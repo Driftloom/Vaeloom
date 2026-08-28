@@ -1,9 +1,9 @@
-﻿# MVP-P19 — 09. Gate Report
+# MVP-P19 — 09. Gate Report
 
-> **Phase:** MVP-P19 — Release Readiness and Production Deployment  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 (release v0.2.0 + 99 paths + 42/42 + 3 overlays + HPA min3 max10 + 0021 retention + lifespan daemon + checklist 178)  
-> **Gate Authority:** Release Manager (accountable) + SRE Lead (backup) + Architecture Owner + Security/Compliance + Product veto  
-> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P19-release-readiness-and-production-deployment.md` §28  
+> **Phase:** MVP-P19 — Release Readiness and Production Deployment 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 (release v0.2.0 + 99 paths + 42/42 + 3 overlays + HPA min3 max10 + 0021 retention + lifespan daemon + checklist 178) 
+> **Gate Authority:** Release Manager (accountable) + SRE Lead (backup) + Architecture Owner + Security/Compliance + Product veto 
+> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P19-release-readiness-and-production-deployment.md` §28 
 > **Predecessor:** `787053a` chain 95.4→87.5/88→93.1→92.8→93.2→93.4 → this gate **uplifts release readiness + production deployment** per `02-predecessor-audit.md:94 GO`
 
 ## Weighted Gate (§28 — 12 categories, 100 pts)
@@ -91,7 +91,7 @@ Honest calc for 93.6: **Rel 9→10 (+0.8) + Evid 9→9.5 (+0.4) - Maint 9→7 (-
 - `pytest tests/security --collect-only -q -o addopts=""` 233 (170 unique)
 - `python -c "from api.services.gdpr import ALLOWED_TABLES; print(len(ALLOWED_TABLES))"` 31
 - `uv run --project apps/api python -m pytest --cov=api --cov-report=term -q -o addopts="-n 4"` → 94.2% 2551/2557 PASS
-- `rg -c "^  /" docs/backend/openapi.yaml` → 99 paths PASS 3.1.0 0.2.0
+- `rg -c "^ /" docs/backend/openapi.yaml` → 99 paths PASS 3.1.0 0.2.0
 - `rg "0\.2\.0" apps/api/src/api/config.py docs/backend/openapi.yaml apps/api/pyproject.toml` → 3 hits 0.2.0 PASS
 - `wc -l infra/ops/LAUNCH-CHECKLIST.md` → 178 lines `archived for next release`
 - `ls docs/adr | Measure-Object` → 32 ADRs PASS ADR-001..032

@@ -1,7 +1,7 @@
-﻿# 16 — Deployment & Infrastructure (MVP)
+# 16 — Deployment & Infrastructure (MVP)
 
 > **Purpose:** Containerize every service, stand up staging and production environments, and wire CI/CD for automated deployments — making Vaeloom real for actual users.
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
@@ -23,50 +23,50 @@ Managed services (Postgres with pgvector + AGE, Redis, S3-compatible object stor
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    subgraph Containers["Production Containers"]
-        WEB_C["web (Next.js)"]:::secondary
-        API_C["api (NestJS)"]:::secondary
-        AI_C["ai-service (FastAPI)"]:::secondary
-        WORKER["ingestion worker"]:::secondary
-    end
+ subgraph Containers["Production Containers"]
+ WEB_C["web (Next.js)"]:::secondary
+ API_C["api (NestJS)"]:::secondary
+ AI_C["ai-service (FastAPI)"]:::secondary
+ WORKER["ingestion worker"]:::secondary
+ end
 
-    subgraph Managed["Managed Services"]
-        PG["Postgres (pgvector + AGE)"]:::secondary
-        REDIS["Redis"]:::secondary
-        S3["Object Storage (S3)"]:::secondary
-    end
+ subgraph Managed["Managed Services"]
+ PG["Postgres (pgvector + AGE)"]:::secondary
+ REDIS["Redis"]:::secondary
+ S3["Object Storage (S3)"]:::secondary
+ end
 
-    subgraph Pipeline["CI/CD Pipeline"]
-        MERGE["Merge to main"]:::primary
-        TEST["Full test suite + evals"]:::secondary
-        BUILD["Build containers"]:::secondary
-        STAGE["Deploy to staging"]:::secondary
-        SMOKE["Smoke test suite"]:::secondary
-        APPROVE["Manual approval"]:::primary
-        PROD["Promote to production"]:::secondary
-    end
+ subgraph Pipeline["CI/CD Pipeline"]
+ MERGE["Merge to main"]:::primary
+ TEST["Full test suite + evals"]:::secondary
+ BUILD["Build containers"]:::secondary
+ STAGE["Deploy to staging"]:::secondary
+ SMOKE["Smoke test suite"]:::secondary
+ APPROVE["Manual approval"]:::primary
+ PROD["Promote to production"]:::secondary
+ end
 
-    subgraph Ops["Operations"]
-        FLAG["Feature Flag System"]:::secondary
-        ROLLBACK["One-command Rollback"]:::secondary
-    end
+ subgraph Ops["Operations"]
+ FLAG["Feature Flag System"]:::secondary
+ ROLLBACK["One-command Rollback"]:::secondary
+ end
 
-    WEB_C --> Managed
-    API_C --> Managed
-    AI_C --> Managed
-    WORKER --> Managed
+ WEB_C--> Managed
+ API_C--> Managed
+ AI_C--> Managed
+ WORKER--> Managed
 
-    MERGE --> TEST
-    TEST --> BUILD
-    BUILD --> STAGE
-    STAGE --> SMOKE
-    SMOKE --> APPROVE
-    APPROVE --> PROD
-    PROD --> FLAG
-    PROD --> ROLLBACK
+ MERGE--> TEST
+ TEST--> BUILD
+ BUILD--> STAGE
+ STAGE--> SMOKE
+ SMOKE--> APPROVE
+ APPROVE--> PROD
+ PROD--> FLAG
+ PROD--> ROLLBACK
 ```
 
 ## Context

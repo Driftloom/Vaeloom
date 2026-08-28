@@ -1,51 +1,51 @@
-﻿# API Examples
+# API Examples
 
 > **Purpose:** Common API usage examples for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## API Endpoints Overview
 
 ```mermaid
 graph TD
-    classDef auth fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef doc fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef resume fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef memory fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
-    classDef chat fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
+ classDef auth fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef doc fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef resume fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef memory fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef chat fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Auth["ðŸ”‘ Authentication"]
-        A1["POST /v1/auth/signup<br/>Email + password --> Create account"]
-        A2["POST /v1/auth/login<br/>Email + password --> Token + workspace_id"]
-    end
+ subgraph Auth["Authentication"]
+ A1["POST /v1/auth/signup<br/>Email + password--> Create account"]
+ A2["POST /v1/auth/login<br/>Email + password--> Token + workspace_id"]
+ end
 
-    subgraph Documents["ðŸ“„ Documents"]
-        D1["POST /workspaces/{id}/documents<br/>Upload file --> Document created"]
-        D2["GET /workspaces/{id}/documents<br/>List with pagination"]
-        D3["POST .../organize/approve<br/>Approve agent proposal"]
-    end
+ subgraph Documents["Documents"]
+ D1["POST /workspaces/{id}/documents<br/>Upload file--> Document created"]
+ D2["GET /workspaces/{id}/documents<br/>List with pagination"]
+ D3["POST .../organize/approve<br/>Approve agent proposal"]
+ end
 
-    subgraph Resume["ðŸ“ Resume"]
-        R1["GET /workspaces/{id}/resume<br/>Get master resume"]
-        R2["POST .../resume/variant<br/>Generate role-specific variant"]
-        R3["POST .../resume/score<br/>Score against job description"]
-    end
+ subgraph Resume["Resume"]
+ R1["GET /workspaces/{id}/resume<br/>Get master resume"]
+ R2["POST .../resume/variant<br/>Generate role-specific variant"]
+ R3["POST .../resume/score<br/>Score against job description"]
+ end
 
-    subgraph Memory["ðŸ§  Memory"]
-        M1["GET .../memory/search?q=ml<br/>Search structured memory"]
-        M2["GET .../memory/graph<br/>Get knowledge graph"]
-    end
+ subgraph Memory["Memory"]
+ M1["GET .../memory/search?q=ml<br/>Search structured memory"]
+ M2["GET .../memory/graph<br/>Get knowledge graph"]
+ end
 
-    subgraph Chat["ðŸ’¬ Chat"]
-        C1["POST .../chat/messages<br/>Send message to specialist agent"]
-    end
+ subgraph Chat["Chat"]
+ C1["POST .../chat/messages<br/>Send message to specialist agent"]
+ end
 
-    Auth --> Documents --> Resume --> Memory --> Chat
+ Auth--> Documents--> Resume--> Memory--> Chat
 
-    class A1,A2 auth
-    class D1,D2,D3 doc
-    class R1,R2,R3 resume
-    class M1,M2 memory
-    class C1 chat
+ class A1,A2 auth
+ class D1,D2,D3 doc
+ class R1,R2,R3 resume
+ class M1,M2 memory
+ class C1 chat
 ```
 
 > **Diagram:** API endpoint overview — **Authentication** (signup/login), **Documents** (upload/list/approve), **Resume** (get/generate/score), **Memory** (search/graph), **Chat** (agent messages). All endpoints use Bearer token auth and workspace scoping.

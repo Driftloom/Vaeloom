@@ -23,15 +23,15 @@ ranking, context assembly, and implementation patterns.
 ## Goals
 
 - Enable per-query retrieval strategy selection so agents choose the optimal
-  search method (vector, keyword, graph, or hybrid) for each context need
+ search method (vector, keyword, graph, or hybrid) for each context need
 - Achieve sub-2-second end-to-end retrieval latency through parallel store
-  queries and efficient context assembly
+ queries and efficient context assembly
 - Maintain >90% relevance precision (Precision@5) via multi-factor ranking
-  across relevance, freshness, importance, and confidence
+ across relevance, freshness, importance, and confidence
 - Ensure zero cross-tenant data leakage by scoping every retrieval operation to
-  the originating workspace_id
+ the originating workspace_id
 - Provide full source provenance on every assembled context result for
-  auditability and explainability
+ auditability and explainability
 
 ---
 
@@ -39,83 +39,83 @@ ranking, context assembly, and implementation patterns.
 
 ````mermaid
 stateDiagram-v2
-    direction LR
+ direction LR
 
-    %% ─── State Definitions ───
-    state Idle      : ⏸️ Waiting for agent query
-    state Received  : 📥 Query received by Router
-    state Analyzing : 🔍 Router classifies intent
+ %% ─── State Definitions ───
+ state Idle : ⏸ Waiting for agent query
+ state Received : Query received by Router
+ state Analyzing : Router classifies intent
 
-    state Fork_strategy <<fork>>
+ state Fork_strategy <<fork>>
 
-    state Vector   : 📐 Vector Search
-    state Keyword  : ⌨️ Keyword Search
-    state Graph    : 🔗 Graph Traversal
-    state Hybrid   : 🧬 Hybrid Search
+ state Vector : 📐 Vector Search
+ state Keyword : ⌨ Keyword Search
+ state Graph : 🔗 Graph Traversal
+ state Hybrid : Hybrid Search
 
-    state Join_results <<join>>
+ state Join_results <<join>>
 
-    state Ranking    : 📊 Multi-factor scoring
-    state Assembling : 🧩 Context assembly
-    state Pruning    : ✂️ Prune to token budget
-    state Returned   : ✅ Context delivered to Agent
-    state Error      : ❌ Error / No results
+ state Ranking : Multi-factor scoring
+ state Assembling : 🧩 Context assembly
+ state Pruning : ✂ Prune to token budget
+ state Returned : ✅ Context delivered to Agent
+ state Error : ❌ Error / No results
 
-    %% ─── Transitions ───
-    [*] --> Idle : System ready
-    Idle --> Received : Agent sends query
-    Received --> Analyzing : Router parses query
+ %% ─── Transitions ───
+ [*]--> Idle : System ready
+ Idle--> Received : Agent sends query
+ Received--> Analyzing : Router parses query
 
-    Analyzing --> Fork_strategy
-    Fork_strategy --> Vector : "related to" / fuzzy
-    Fork_strategy --> Keyword : exact match / course code
-    Fork_strategy --> Graph : relationship / "connected"
-    Fork_strategy --> Hybrid : complex / multi-dim
+ Analyzing--> Fork_strategy
+ Fork_strategy--> Vector : "related to" / fuzzy
+ Fork_strategy--> Keyword : exact match / course code
+ Fork_strategy--> Graph : relationship / "connected"
+ Fork_strategy--> Hybrid : complex / multi-dim
 
-    Vector  --> Join_results : top-k results
-    Keyword --> Join_results : top-k results
-    Graph   --> Join_results : top-k results
-    Hybrid  --> Join_results : weighted top-k
+ Vector--> Join_results : top-k results
+ Keyword--> Join_results : top-k results
+ Graph--> Join_results : top-k results
+ Hybrid--> Join_results : weighted top-k
 
-    Join_results --> Ranking : Results from all stores
+ Join_results--> Ranking : Results from all stores
 
-    Ranking --> Assembling : Scores computed
-    Assembling --> Pruning : Dedup + prioritize
+ Ranking--> Assembling : Scores computed
+ Assembling--> Pruning : Dedup + prioritize
 
-    Pruning --> Returned : Context fits within max_tokens
-    Pruning --> Returned : Truncated to budget
+ Pruning--> Returned : Context fits within max_tokens
+ Pruning--> Returned : Truncated to budget
 
-    Returned --> Generating : 🤖 LLM generates response<br/>using assembled context
-    Generating --> [*] : Response delivered to user
-    Generating --> Idle : Ready for next query
+ Returned--> Generating : LLM generates response<br/>using assembled context
+ Generating--> [*] : Response delivered to user
+ Generating--> Idle : Ready for next query
 
-    %% ─── Error transitions ───
-    Analyzing --> Error : Strategy cannot be determined
-    Ranking --> Error : Zero results across all stores
-    Assembling --> Error : All results deduplicated away
+ %% ─── Error transitions ───
+ Analyzing--> Error : Strategy cannot be determined
+ Ranking--> Error : Zero results across all stores
+ Assembling--> Error : All results deduplicated away
 
-    Error --> Idle : Log error, return empty context
+ Error--> Idle : Log error, return empty context
 
-    %% ─── Notes ───
-    note right of Analyzing
-        Router analyzes query signals:
-        exact terms, relationships,
-        time bounds, entity refs
-    end note
+ %% ─── Notes ───
+ note right of Analyzing
+ Router analyzes query signals:
+ exact terms, relationships,
+ time bounds, entity refs
+ end note
 
-    note right of Ranking
-        Weighted score =
-        Relevance(0.50) +
-        Freshness(0.20) +
-        Importance(0.15) +
-        Confidence(0.15)
-    end note
+ note right of Ranking
+ Weighted score =
+ Relevance(0.50) +
+ Freshness(0.20) +
+ Importance(0.15) +
+ Confidence(0.15)
+ end note
 
-    note right of Pruning
-        Deduplicate by entity_id
-        Sort by score descending
-        Truncate at max_tokens
-    end note
+ note right of Pruning
+ Deduplicate by entity_id
+ Sort by score descending
+ Truncate at max_tokens
+ end note
 ```text
 
 > **Diagram:** The RAG query lifecycle as a state machine. A query flows through five phases — **Receive** → **Analyze** → **Strategy Fork** (vector/keyword/graph/hybrid) → **Rank & Assemble** → **Return**. Error states handle strategy failures, empty results, and deduplication edge cases. The system returns to `Idle` after each query, ready for the next.
@@ -126,21 +126,21 @@ stateDiagram-v2
 
 ```mermaid
 graph TD
-    Query[Agent Query] --> Router[Retrieval Router]
+ Query[Agent Query]--> Router[Retrieval Router]
 
-    Router -->|Semantic Query| Vector[Vector Search]
-    Router -->|Exact Match| Keyword[Keyword Search]
-    Router -->|Relationship| Graph[Graph Traversal]
-    Router -->|Complex| Hybrid[Hybrid Search]
+ Router-->|Semantic Query| Vector[Vector Search]
+ Router-->|Exact Match| Keyword[Keyword Search]
+ Router-->|Relationship| Graph[Graph Traversal]
+ Router-->|Complex| Hybrid[Hybrid Search]
 
-    Vector --> Ranker[Relevance Ranker]
-    Keyword --> Ranker
-    Graph --> Ranker
-    Hybrid --> Ranker
+ Vector--> Ranker[Relevance Ranker]
+ Keyword--> Ranker
+ Graph--> Ranker
+ Hybrid--> Ranker
 
-    Ranker --> Assembler[Context Assembler]
-    Assembler --> Prune[Prune to Budget]
-    Prune --> Agent[Return to Agent]
+ Ranker--> Assembler[Context Assembler]
+ Assembler--> Prune[Prune to Budget]
+ Prune--> Agent[Return to Agent]
 ```text
 
 ## Retrieval Strategy Selection
@@ -267,18 +267,18 @@ Once results are retrieved, they go through the re-ranking pipeline:
 
 ```mermaid
 graph LR
-    Raw[Raw Results] --> Score[Score Calculation]
-    Score --> R1[Relevance: 0-100]
-    Score --> R2[Freshness: 0-20]
-    Score --> R3[Importance: 0-15]
-    Score --> R4[Confidence: 0-15]
-    R1 --> Total[Weighted Total]
-    R2 --> Total
-    R3 --> Total
-    R4 --> Total
-    Total --> Sort[Sort Descending]
-    Sort --> Prune[Take Top N]
-    Prune --> Return[Return to Agent]
+ Raw[Raw Results]--> Score[Score Calculation]
+ Score--> R1[Relevance: 0-100]
+ Score--> R2[Freshness: 0-20]
+ Score--> R3[Importance: 0-15]
+ Score--> R4[Confidence: 0-15]
+ R1--> Total[Weighted Total]
+ R2--> Total
+ R3--> Total
+ R4--> Total
+ Total--> Sort[Sort Descending]
+ Sort--> Prune[Take Top N]
+ Prune--> Return[Return to Agent]
 ```text
 
 ### Score Calculation
@@ -447,33 +447,33 @@ This document covers the Agentic RAG system for Vaeloom, including retrieval str
 
 ```mermaid
 sequenceDiagram
-    participant AG as Agent
-    participant RR as Retrieval Router
-    participant VS as Vector Store
-    participant KS as Keyword Store
-    participant GS as Graph Store
-    participant RK as Relevance Ranker
-    participant CA as Context Assembler
+ participant AG as Agent
+ participant RR as Retrieval Router
+ participant VS as Vector Store
+ participant KS as Keyword Store
+ participant GS as Graph Store
+ participant RK as Relevance Ranker
+ participant CA as Context Assembler
 
-    AG->>RR: RetrieveContext(query, workspace_id)
-    RR->>RR: Classify query strategy
+ AG->>RR: RetrieveContext(query, workspace_id)
+ RR->>RR: Classify query strategy
 
-    par Parallel Search
-        RR->>VS: VectorSearch(query, limit)
-        RR->>KS: KeywordSearch(query, limit)
-        RR->>GS: GraphTraverse(query, limit)
-    end
+ par Parallel Search
+ RR->>VS: VectorSearch(query, limit)
+ RR->>KS: KeywordSearch(query, limit)
+ RR->>GS: GraphTraverse(query, limit)
+ end
 
-    VS-->>RK: top-k vector results
-    KS-->>RK: top-k keyword results
-    GS-->>RK: top-k graph results
+ VS-->>RK: top-k vector results
+ KS-->>RK: top-k keyword results
+ GS-->>RK: top-k graph results
 
-    RK->>RK: Compute weighted scores
-    RK->>CA: Ranked results with scores
+ RK->>RK: Compute weighted scores
+ RK->>CA: Ranked results with scores
 
-    CA->>CA: Deduplicate by entity_id
-    CA->>CA: Prune to token budget
-    CA-->>AG: Assembled context with provenance
+ CA->>CA: Deduplicate by entity_id
+ CA->>CA: Prune to token budget
+ CA-->>AG: Assembled context with provenance
 ```text
 
 > **Diagram:** The Agentic RAG retrieval flow showing parallel search execution across three stores, followed by ranking, deduplication, and pruning before delivery to the requesting agent.

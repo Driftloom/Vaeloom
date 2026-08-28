@@ -1,10 +1,10 @@
-﻿Vaeloom Â· Agent Workflow
+Vaeloom · Agent Workflow
 
-| Metadata         | Value                                                                |
+| Metadata | Value |
 |------------------|----------------------------------------------------------------------|
-| **Purpose**      | Document end-to-end agent workflow from file upload to application outcome |
-| **Status**       | Draft |
-| **Owner**        | Engineering Team |
+| **Purpose** | Document end-to-end agent workflow from file upload to application outcome |
+| **Status** | Draft |
+| **Owner** | Engineering Team |
 | **Last Updated** | 2026-07-13 |
 
 ## Overview
@@ -26,27 +26,27 @@ The same memory loop runs underneath every feature. This is what actually happen
 
 ```mermaid
 graph TD
-    classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef org fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef memory fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef resume fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
-    classDef search fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
-    classDef ats fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px
-    classDef apply fill:#c8e6c9,stroke:#1b5e20,color:#000,stroke-width:2px
+ classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef org fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef memory fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef resume fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
+ classDef search fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
+ classDef ats fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px
+ classDef apply fill:#c8e6c9,stroke:#1b5e20,color:#000,stroke-width:2px
 
-    T["1. File uploaded<br/>Resume draft dragged in"]:::trigger
-    O["2. Organization Agent<br/>Reads, names, files it<br/>--> Proposes rename + folder"]:::org
-    MEM["3. Memory Agent<br/>Extracts & merges into graph<br/>--> Skills, projects, education"]:::memory
-    R["4. Resume Agent<br/>Updates master resume<br/>--> Folds in new content"]:::resume
-    U["5. User: Find me backend internships<br/>--> Orchestrator routes request"]:::trigger
-    J["6. Job Search Agent<br/>Searches, ranks, shortlists<br/>--> Returns 8 ranked roles"]:::search
-    ATS["7. ATS Agent<br/>Scores fit per role<br/>--> 78% match, 2 suggested edits"]:::ats
-    AP["8. User picks 3 of 8 to pursue"]:::trigger
-    APP["9. Application Agent<br/>Tailors + submits each app<br/>--> Resume + cover letter per role"]:::apply
-    FB["10. Outcome feeds the next loop<br/>Interview / rejection --> logged--> Episodic memory updated"]:::memory
+ T["1. File uploaded<br/>Resume draft dragged in"]:::trigger
+ O["2. Organization Agent<br/>Reads, names, files it<br/>--> Proposes rename + folder"]:::org
+ MEM["3. Memory Agent<br/>Extracts & merges into graph<br/>--> Skills, projects, education"]:::memory
+ R["4. Resume Agent<br/>Updates master resume<br/>--> Folds in new content"]:::resume
+ U["5. User: Find me backend internships<br/>--> Orchestrator routes request"]:::trigger
+ J["6. Job Search Agent<br/>Searches, ranks, shortlists<br/>--> Returns 8 ranked roles"]:::search
+ ATS["7. ATS Agent<br/>Scores fit per role<br/>--> 78% match, 2 suggested edits"]:::ats
+ AP["8. User picks 3 of 8 to pursue"]:::trigger
+ APP["9. Application Agent<br/>Tailors + submits each app<br/>--> Resume + cover letter per role"]:::apply
+ FB["10. Outcome feeds the next loop<br/>Interview / rejection--> logged--> Episodic memory updated"]:::memory
 
-    T --> O --> MEM --> R --> U --> J --> ATS --> AP --> APP --> FB
-    FB -.->|feedback loop| MEM & R & J
+ T--> O--> MEM--> R--> U--> J--> ATS--> AP--> APP--> FB
+ FB -.->|feedback loop| MEM & R & J
 ```
 
 > **Diagram:** End-to-end agent workflow from file upload to application outcome. **10 sequential steps** flow left-to-right: file trigger → Organization Agent (name/file) → Memory Agent (extract/merge) → Resume Agent (update master) → User request → Job Search Agent (search/rank) → ATS Agent (score) → User picks → Application Agent (tailor/submit) → Memory Agent logs outcome. The **feedback loop** closes back to memory, making future searches smarter.

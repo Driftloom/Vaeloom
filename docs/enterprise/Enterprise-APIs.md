@@ -43,32 +43,32 @@ This document defines every enterprise endpoint, its authentication requirements
 
 ```mermaid
 graph TD
-    classDef client fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef gateway fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef api fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef audit fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef client fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef gateway fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef api fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef audit fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Clients["Enterprise API Clients"]
-        ADMIN["Admin Portal"]:::client
-        CLI["Vaeloom CLI"]:::client
-        PARTNER["Partner Integration"]:::client
-    end
+ subgraph Clients["Enterprise API Clients"]
+ ADMIN["Admin Portal"]:::client
+ CLI["Vaeloom CLI"]:::client
+ PARTNER["Partner Integration"]:::client
+ end
 
-    GW["Enterprise API Gateway<br/>(rate limit, auth, routing)"]:::gateway
+ GW["Enterprise API Gateway<br/>(rate limit, auth, routing)"]:::gateway
 
-    subgraph Services["Enterprise API Services"]
-        TENANT["Tenant Service"]:::api
-        ORG["Organization Service"]:::api
-        BULK["Bulk Operations"]:::api
-        ANALYTICS["Enterprise Analytics"]:::api
-        CONNECTOR["Connector Config"]:::api
-    end
+ subgraph Services["Enterprise API Services"]
+ TENANT["Tenant Service"]:::api
+ ORG["Organization Service"]:::api
+ BULK["Bulk Operations"]:::api
+ ANALYTICS["Enterprise Analytics"]:::api
+ CONNECTOR["Connector Config"]:::api
+ end
 
-    AUDIT["Audit Pipeline"]:::audit
+ AUDIT["Audit Pipeline"]:::audit
 
-    Clients --> GW
-    GW --> Services
-    Services --> AUDIT
+ Clients--> GW
+ GW--> Services
+ Services--> AUDIT
 ```
 
 > **Diagram:** Enterprise API architecture. All enterprise endpoints pass through a gateway that enforces authentication (Platform Admin or Tenant Admin JWT), rate limits, and audit logging. The gateway routes to domain-specific services.

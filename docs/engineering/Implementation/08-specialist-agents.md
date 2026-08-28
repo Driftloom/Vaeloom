@@ -1,7 +1,7 @@
-﻿# 08 — Specialist Agents (MVP)
+# 08 — Specialist Agents (MVP)
 
 > **Purpose:** Implement seven user-facing specialist agents — the first point where the product becomes usable end to end.
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
@@ -23,43 +23,43 @@ The Organization, Resume, ATS, Job Search, and Application Agents form a logical
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    ORCH["Orchestrator"]:::primary
+ ORCH["Orchestrator"]:::primary
 
-    subgraph Agents["MVP Specialist Agents"]
-        OA["Organization Agent<br/>Categorize, dedup, rename docs"]:::secondary
-        RA["Resume Agent<br/>Build & maintain master resume"]:::secondary
-        ATS["ATS Agent<br/>Score resume vs JD (read-only)"]:::secondary
-        JSA["Job Search Agent<br/>Search, rank, shortlist"]:::secondary
-        AA["Application Agent<br/>Tailor & submit applications"]:::secondary
-        GA["Gmail Agent<br/>Classify mail, extract events"]:::secondary
-        SA["Scheduler Agent<br/>Maintain deadlines, detect conflicts"]:::secondary
-    end
+ subgraph Agents["MVP Specialist Agents"]
+ OA["Organization Agent<br/>Categorize, dedup, rename docs"]:::secondary
+ RA["Resume Agent<br/>Build & maintain master resume"]:::secondary
+ ATS["ATS Agent<br/>Score resume vs JD (read-only)"]:::secondary
+ JSA["Job Search Agent<br/>Search, rank, shortlist"]:::secondary
+ AA["Application Agent<br/>Tailor & submit applications"]:::secondary
+ GA["Gmail Agent<br/>Classify mail, extract events"]:::secondary
+ SA["Scheduler Agent<br/>Maintain deadlines, detect conflicts"]:::secondary
+ end
 
-    subgraph Autonomy["Autonomy Levels"]
-        SUGGEST["Suggest-mode (default)"]:::secondary
-        APPROVAL["Approval-gated"]:::secondary
-        READONLY["Read-only"]:::secondary
-        FULL["Full (reminders only)"]:::secondary
-    end
+ subgraph Autonomy["Autonomy Levels"]
+ SUGGEST["Suggest-mode (default)"]:::secondary
+ APPROVAL["Approval-gated"]:::secondary
+ READONLY["Read-only"]:::secondary
+ FULL["Full (reminders only)"]:::secondary
+ end
 
-    ORCH --> OA
-    ORCH --> RA
-    ORCH --> ATS
-    ORCH --> JSA
-    ORCH --> AA
-    ORCH --> GA
-    ORCH --> SA
+ ORCH--> OA
+ ORCH--> RA
+ ORCH--> ATS
+ ORCH--> JSA
+ ORCH--> AA
+ ORCH--> GA
+ ORCH--> SA
 
-    OA -.-> SUGGEST
-    RA -.-> SUGGEST
-    ATS -.-> READONLY
-    JSA -.-> SUGGEST
-    AA -.-> APPROVAL
-    GA -.-> SUGGEST
-    SA -.-> FULL
+ OA -.-> SUGGEST
+ RA -.-> SUGGEST
+ ATS -.-> READONLY
+ JSA -.-> SUGGEST
+ AA -.-> APPROVAL
+ GA -.-> SUGGEST
+ SA -.-> FULL
 ```
 
 ## Context

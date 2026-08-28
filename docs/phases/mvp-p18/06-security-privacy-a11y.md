@@ -1,6 +1,6 @@
-﻿# MVP-P18 — 06. Security, Privacy, A11y
+# MVP-P18 — 06. Security, Privacy, A11y
 
-> **Phase:** MVP-P18 — Documentation and Knowledge Transfer  
+> **Phase:** MVP-P18 — Documentation and Knowledge Transfer 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 (42/42 RLS, JWT 32+, GDPR 31) + P17 93.2 (OTel/structured logging 30d, _redact 9 keys, 5 SLO 3 dashboards) + P18 docs IA 256 docs + 32 ADRs + 99 OpenAPI + runbooks 4 + onboarding
 
 ## Security (P13 95.4 retained + P16 supply-chain retained + P17 observability no regression + P18 docs hardening no regression)
@@ -64,7 +64,7 @@ Per `docs/phases/mvp-p13/09-gate-report.md:32` 95.4 APPROVED + `docs/phases/mvp-
 ## Supply-Chain + Documentation Gaps closed / honest
 
 - **ADRs 32 indexed** `docs/adr/ADR-001..032` 2026-08-22 `ADR-032 migration-system-unification` latest + `docs/Architecture/03-adrs.md:1` index + `docs/README.md:64` ADRs row 256 docs — versioned owned reviewed linked
-- **OpenAPI 99 paths** `docs/backend/openapi.yaml:1` 3.1.0 0.2.0 99 paths `rg -c "^  /" openapi.yaml` 99 + `API_REFERENCE.md:1` 407 lines 18 groups + tags health/security/auth/workspaces/memory/agents/events/search/integrations/documents — runnable `python yaml.safe_load` PASS
+- **OpenAPI 99 paths** `docs/backend/openapi.yaml:1` 3.1.0 0.2.0 99 paths `rg -c "^ /" openapi.yaml` 99 + `API_REFERENCE.md:1` 407 lines 18 groups + tags health/security/auth/workspaces/memory/agents/events/search/integrations/documents — runnable `python yaml.safe_load` PASS
 - **Docs IA 256 docs** `docs/README.md:1` 584 lines + `DOCUMENTATION-MAP.md:1` 65 lines 178 docs + `docs-portal.html:1` 1127 lines searchable + `CONTRIBUTING.md:1` 299 lines `vale sync && vale docs/` — canonical 66 prompts SHA256SUMS pinned + supersession `05-vaeloom-mvp-spec.md` superseded by `01-vaeloom-mvp-spec.md` clarified
 - **Onboarding 4 roles** `DEVELOPER_ONBOARDING.md:1` 216 lines 2-5s `pnpm dev:web` + `docker compose up -d` + `pytest 2557` + `CONTRIBUTING.md` PR workflow 299 lines + `Developer_Experience 8 docs` — validated runnable commands
 - **Runbooks 4 + deploy/DR** `DEPLOYMENT_RUNBOOK.md:1` 207 lines + `DISASTER_RECOVERY.md:1` 308 lines RTO1h/RPO5m + `infra/ops/runbooks 4` + `Operations/Support.md:1` triage <15m + `INCIDENT-RESPONSE.md:1` SEV1-4 15m/30m — runbook-linked 5 SLO

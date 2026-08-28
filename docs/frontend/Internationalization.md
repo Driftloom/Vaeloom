@@ -1,4 +1,4 @@
-﻿# Internationalization
+# Internationalization
 
 > **Purpose:** Define the i18n strategy, locale management, and translation workflow for Vaeloom
 > **Status:** ✅ Upgraded to enterprise quality
@@ -15,57 +15,57 @@ Translations are managed through **Crowdin** for collaborative translation workf
 
 ```mermaid
 graph TD
-    classDef source fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef locale fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef infra fill:#fff3e0,stroke:#e65100,color:#000
-    classDef tool fill:#f3e5f5,stroke:#6a1b9a,color:#000
+ classDef source fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef locale fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef infra fill:#fff3e0,stroke:#e65100,color:#000
+ classDef tool fill:#f3e5f5,stroke:#6a1b9a,color:#000
 
-    subgraph Source["Source of Truth"]
-        EN["en/common.json<br/>en/dashboard.json<br/>en/agents.json<br/>..."]
-    end
-    
-    subgraph Platform["Translation Platform"]
-        CD["Crowdin Project<br/>Vaeloom-web"]
-        TM["Translation Memory"]
-        GT["Glossary / Terminology"]
-    end
-    
-    subgraph Locales["Locale Builds"]
-        ES["es/{ns}.json"]
-        FR["fr/{ns}.json"]
-        DE["de/{ns}.json"]
-        JA["ja/{ns}.json"]
-        ZH["zh/{ns}.json"]
-        AR["ar/{ns}.json<br/>RTL"]
-        HE["he/{ns}.json<br/>RTL"]
-    end
-    
-    subgraph Integration["Build Integration"]
-        DL["CI: Download translations<br/>crowdin pull"]
-        LINT["CI: Lint translations<br/>Missing key check"]
-        BUILD["Build: Lazy namespace<br/>per route chunk"]
-    end
-    
-    subgraph Runtime["Runtime (Browser)"]
-        I18N["next-i18next<br/>instance"]
-        DETECT["Locale Detection<br/>Accept-Language + cookie"]
-        RTL["RTL Engine<br/>dir=rtl + flip"]
-        CACHE["Translation Cache<br/>LocalStorage + SWR"]
-    end
+ subgraph Source["Source of Truth"]
+ EN["en/common.json<br/>en/dashboard.json<br/>en/agents.json<br/>..."]
+ end
+ 
+ subgraph Platform["Translation Platform"]
+ CD["Crowdin Project<br/>Vaeloom-web"]
+ TM["Translation Memory"]
+ GT["Glossary / Terminology"]
+ end
+ 
+ subgraph Locales["Locale Builds"]
+ ES["es/{ns}.json"]
+ FR["fr/{ns}.json"]
+ DE["de/{ns}.json"]
+ JA["ja/{ns}.json"]
+ ZH["zh/{ns}.json"]
+ AR["ar/{ns}.json<br/>RTL"]
+ HE["he/{ns}.json<br/>RTL"]
+ end
+ 
+ subgraph Integration["Build Integration"]
+ DL["CI: Download translations<br/>crowdin pull"]
+ LINT["CI: Lint translations<br/>Missing key check"]
+ BUILD["Build: Lazy namespace<br/>per route chunk"]
+ end
+ 
+ subgraph Runtime["Runtime (Browser)"]
+ I18N["next-i18next<br/>instance"]
+ DETECT["Locale Detection<br/>Accept-Language + cookie"]
+ RTL["RTL Engine<br/>dir=rtl + flip"]
+ CACHE["Translation Cache<br/>LocalStorage + SWR"]
+ end
 
-    EN --> CD
-    CD --> ES & FR & DE & JA & ZH & AR & HE
-    ES & FR & DE & JA & ZH & AR & HE --> DL --> LINT --> BUILD
-    BUILD --> I18N
-    DETECT --> I18N
-    I18N --> RTL
-    I18N --> CACHE
+ EN--> CD
+ CD--> ES & FR & DE & JA & ZH & AR & HE
+ ES & FR & DE & JA & ZH & AR & HE--> DL--> LINT--> BUILD
+ BUILD--> I18N
+ DETECT--> I18N
+ I18N--> RTL
+ I18N--> CACHE
 
-    class EN source
-    class ES,FR,DE,JA,ZH,AR,HE locale
-    class CD,TM,GT tool
-    class DL,LINT,BUILD infra
-    class I18N,DETECT,RTL,CACHE infra
+ class EN source
+ class ES,FR,DE,JA,ZH,AR,HE locale
+ class CD,TM,GT tool
+ class DL,LINT,BUILD infra
+ class I18N,DETECT,RTL,CACHE infra
 ```
 
 ## Locale System
@@ -85,14 +85,14 @@ graph TD
 
 ```mermaid
 flowchart LR
-    A["Developer: Add new key<br/>in en/{ns}.json"] --> B["PR Review: i18n lint<br/>checks for missing keys"]
-    B --> C["Merge to main<br/>triggers CI sync"]
-    C --> D["Crowdin Sync<br/>Upload source to Crowdin"]
-    D --> E["Translators<br/>(Community + Pro)"]
-    E --> F["Translation Review<br/>Proofread + approve"]
-    F --> G["CI: crowdin pull<br/>Download translations"]
-    G --> H["Build: Lazy-loaded<br/>namespace chunks"]
-    H --> I["Deploy<br/>New translations live"]
+ A["Developer: Add new key<br/>in en/{ns}.json"]--> B["PR Review: i18n lint<br/>checks for missing keys"]
+ B--> C["Merge to main<br/>triggers CI sync"]
+ C--> D["Crowdin Sync<br/>Upload source to Crowdin"]
+ D--> E["Translators<br/>(Community + Pro)"]
+ E--> F["Translation Review<br/>Proofread + approve"]
+ F--> G["CI: crowdin pull<br/>Download translations"]
+ G--> H["Build: Lazy-loaded<br/>namespace chunks"]
+ H--> I["Deploy<br/>New translations live"]
 ```
 
 ### Key Configurations
@@ -184,7 +184,7 @@ For RTL locales, the application applies CSS logical properties and a layout fli
 
 ## Workflows
 
-1. **User changes language**: Clicks LanguageSwitcher → selects "FranÃ§ais" → locale cookie updated → page re-renders with French translations → if RTL locale (Arabic, Hebrew), `dir=rtl` applied → layout flips via CSS logical properties
+1. **User changes language**: Clicks LanguageSwitcher → selects "Fran§ais" → locale cookie updated → page re-renders with French translations → if RTL locale (Arabic, Hebrew), `dir=rtl` applied → layout flips via CSS logical properties
 2. **New translation key added**: Developer adds key to `en/common.json` → PR merge triggers CI → Crowdin sync uploads source keys → translators receive notification → translations submitted → proofread approved → `crowdin pull` downloads updated files → build includes new locale chunks
 3. **Missing translation fallback**: User with German locale encounters untranslated key → i18next falls back to English value → console warning logged → Sentry captures missing key → translation ticket auto-filed in Crowdin
 4. **RTL layout verification**: Developer tests Arabic locale → CSS logical properties auto-flip margins, padding, borders → icons reverse via `transform: scaleX(-1)` → visual regression test compares LTR vs RTL screenshots → CI passes only if both match baseline
@@ -193,25 +193,25 @@ For RTL locales, the application applies CSS logical properties and a layout fli
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant MW as Next.js Middleware
-    participant I18N as next-i18next
-    participant API as Vaeloom API
-    participant CDN as CDN (Translations)
+ participant U as User
+ participant MW as Next.js Middleware
+ participant I18N as next-i18next
+ participant API as Vaeloom API
+ participant CDN as CDN (Translations)
 
-    U->>MW: GET /workspace (Accept-Language: fr)
-    MW->>MW: Parse Accept-Language header
-    MW->>MW: Check signed locale cookie
-    alt Cookie present
-        MW->>MW: Use cookie locale
-    else No cookie
-        MW->>MW: Use Accept-Language match
-    end
-    MW-->>U: Set-Cookie: locale=fr
-    U->>I18N: Load fr/common.json
-    I18N->>CDN: Fetch /locales/fr/common.json
-    CDN-->>I18N: Translation JSON (gzipped ~5KB)
-    I18N-->>U: Rendered page in French
+ U->>MW: GET /workspace (Accept-Language: fr)
+ MW->>MW: Parse Accept-Language header
+ MW->>MW: Check signed locale cookie
+ alt Cookie present
+ MW->>MW: Use cookie locale
+ else No cookie
+ MW->>MW: Use Accept-Language match
+ end
+ MW-->>U: Set-Cookie: locale=fr
+ U->>I18N: Load fr/common.json
+ I18N->>CDN: Fetch /locales/fr/common.json
+ CDN-->>I18N: Translation JSON (gzipped ~5KB)
+ I18N-->>U: Rendered page in French
 ```
 
 ## Data Flow

@@ -21,24 +21,24 @@ MVP-P08 re-run designed the API/integration/contract layer over the **live**
 
 ## Evidence
 
-| ID                   | Requirement | Artifact                                                |
+| ID | Requirement | Artifact |
 | -------------------- | ----------- | ------------------------------------------------------- |
-| EVD-MVP-P08-001      | R01/R02     | `01` §3 — 79-path OpenAPI verified against code         |
-| EVD-MVP-P08-002..006 | R01..R07    | `03`–`07` — 5 DELs with gap analysis                    |
-| EVD-MVP-P08-007      | R03         | BQ-P08-01 question-tool record                          |
-| EVD-MVP-P08-008      | R08         | `02` — P07 predecessor audit (98/100 GO)                |
-| EVD-MVP-P08-009..012 | R01/R03     | Code verification: approval, gmail, idempotency, errors |
+| EVD-MVP-P08-001 | R01/R02 | `01` §3 — 79-path OpenAPI verified against code |
+| EVD-MVP-P08-002..006 | R01..R07 | `03`–`07` — 5 DELs with gap analysis |
+| EVD-MVP-P08-007 | R03 | BQ-P08-01 question-tool record |
+| EVD-MVP-P08-008 | R08 | `02` — P07 predecessor audit (98/100 GO) |
+| EVD-MVP-P08-009..012 | R01/R03 | Code verification: approval, gmail, idempotency, errors |
 
 ## Gate: CONDITIONAL APPROVED — RESTRICTIONS APPLY (87.3/100)
 
-| Restriction                                                               | Target phase |
+| Restriction | Target phase |
 | ------------------------------------------------------------------------- | ------------ |
-| 1. RFC 9457 error format migration before new consumer-facing endpoints   | P11          |
-| 2. No breaking change w/o 1-cycle notice + user approval; openapi-diff CI | P11+         |
-| 3. CSRF skip-list stays auth-only; widen only with security review        | every phase  |
-| 4. Gmail draft-only; no send without per-user T3 enablement               | P11/P13      |
-| 5. General async job queue design before export/erase/embed wiring        | P11          |
-| 6. Workload identity + input sanitization before elevated privileges      | P11/P12      |
+| 1. RFC 9457 error format migration before new consumer-facing endpoints | P11 |
+| 2. No breaking change w/o 1-cycle notice + user approval; openapi-diff CI | P11+ |
+| 3. CSRF skip-list stays auth-only; widen only with security review | every phase |
+| 4. Gmail draft-only; no send without per-user T3 enablement | P11/P13 |
+| 5. General async job queue design before export/erase/embed wiring | P11 |
+| 6. Workload identity + input sanitization before elevated privileges | P11/P12 |
 
 ## Open issues carried
 
@@ -50,19 +50,19 @@ MVP-P08 re-run designed the API/integration/contract layer over the **live**
 ## Scope for MVP-P09
 
 - UI/UX & Design System for the web app:
-  - Information architecture for P1+P2 personas & user flows (onboarding,
-    agents, memory, approvals, Gmail, notifications, settings, rights)
-  - Design system/tokens from `packages/ui-kit` + existing components
-  - Accessibility (WCAG), theming (existing light/dark), keyboard nav
-  - Use real existing web routes/pages as the canvas; no runtime code changes
+ - Information architecture for P1+P2 personas & user flows (onboarding,
+ agents, memory, approvals, Gmail, notifications, settings, rights)
+ - Design system/tokens from `packages/ui-kit` + existing components
+ - Accessibility (WCAG), theming (existing light/dark), keyboard nav
+ - Use real existing web routes/pages as the canvas; no runtime code changes
 - Carry restrictions: no code, no breaking changes, design-only phase.
 - Evidence at P09 gate = source-grounded design artifacts (route inventory,
-  component inventory, IA diagram, token map), not screenshots.
+ component inventory, IA diagram, token map), not screenshots.
 
 ## Constraints for successor
 
 - Repo truth: web app is Next.js 15 + existing routes (16+ pages) — inventory
-  them; do not invent new routes beyond IA proposal.
+ them; do not invent new routes beyond IA proposal.
 - ui-kit/design tokens exist — map, don't recreate.
 - A11y + theming + keyboard shortcuts (P12 polish features) — consider in IA.
 - Restriction 3 applies: no touching middleware/CSP lists.

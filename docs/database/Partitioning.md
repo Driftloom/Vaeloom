@@ -1,7 +1,7 @@
-﻿# Database Partitioning
+# Database Partitioning
 
 > **Purpose:** Define the partitioning strategy for Vaeloom's database
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Overview
 
@@ -42,54 +42,54 @@ This document defines the partitioning triggers, strategy per table, implementat
 
 ```mermaid
 graph TD
-    classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef range fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef hash fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef mgmt fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef range fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef hash fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef mgmt fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Triggers["ðŸš¦ Partition Thresholds (Enterprise)"]
-        direction TB
-        TR1["agent_actions > 100M rows<br/>~10M/1K users/year"]
-        TR2["memory_records > 50M rows<br/>~5M/1K users/year"]
-        TR3["documents > 10M rows<br/>~1M/1K users/year"]
-    end
+ subgraph Triggers["Partition Thresholds (Enterprise)"]
+ direction TB
+ TR1["agent_actions > 100M rows<br/>~10M/1K users/year"]
+ TR2["memory_records > 50M rows<br/>~5M/1K users/year"]
+ TR3["documents > 10M rows<br/>~1M/1K users/year"]
+ end
 
-    subgraph RangePartitions["ðŸ“… Range Partitioning (by time)"]
-        direction TB
-        RP1["Table: agent_actions<br/>Partition key: created_at<br/>Type: RANGE (monthly)"]
-        RP2["Partition: agent_actions_2026_07<br/>FOR VALUES FROM ('2026-07-01')<br/>TO ('2026-08-01')"]
-        RP3["Partition: agent_actions_2026_08<br/>FOR VALUES FROM ('2026-08-01')<br/>TO ('2026-09-01')"]
-        RP4["New partition added monthly via cron"]
-    end
+ subgraph RangePartitions["Range Partitioning (by time)"]
+ direction TB
+ RP1["Table: agent_actions<br/>Partition key: created_at<br/>Type: RANGE (monthly)"]
+ RP2["Partition: agent_actions_2026_07<br/>FOR VALUES FROM ('2026-07-01')<br/>TO ('2026-08-01')"]
+ RP3["Partition: agent_actions_2026_08<br/>FOR VALUES FROM ('2026-08-01')<br/>TO ('2026-09-01')"]
+ RP4["New partition added monthly via cron"]
+ end
 
-    subgraph HashPartitions["ðŸ”€ Hash Partitioning (by workspace)"]
-        direction TB
-        HP1["Table: memory_records<br/>Partition key: workspace_id<br/>Type: HASH (256)"]
-        HP2["Table: documents<br/>Partition key: workspace_id<br/>Type: HASH (256)"]
-        HP3["Partition: memory_records_0<br/>MODULUS 256, REMAINDER 0"]
-        HP4["Partition: memory_records_1<br/>MODULUS 256, REMAINDER 1"]
-        HP5["Even distribution across partitions"]
-    end
+ subgraph HashPartitions["Hash Partitioning (by workspace)"]
+ direction TB
+ HP1["Table: memory_records<br/>Partition key: workspace_id<br/>Type: HASH (256)"]
+ HP2["Table: documents<br/>Partition key: workspace_id<br/>Type: HASH (256)"]
+ HP3["Partition: memory_records_0<br/>MODULUS 256, REMAINDER 0"]
+ HP4["Partition: memory_records_1<br/>MODULUS 256, REMAINDER 1"]
+ HP5["Even distribution across partitions"]
+ end
 
-    subgraph Management["ðŸ”„ Partition Management"]
-        direction TB
-        M1["Add new partition:<br/>CREATE TABLE ... PARTITION OF"]
-        M2["Detach old partition:<br/>ALTER TABLE DETACH PARTITION"]
-        M3["Archive detached partitions<br/>to cold storage"]
-    end
+ subgraph Management["Partition Management"]
+ direction TB
+ M1["Add new partition:<br/>CREATE TABLE ... PARTITION OF"]
+ M2["Detach old partition:<br/>ALTER TABLE DETACH PARTITION"]
+ M3["Archive detached partitions<br/>to cold storage"]
+ end
 
-    TR1 --> RP1
-    TR2 & TR3 --> HP1 & HP2
-    RP1 --> RP2 --> RP3 --> RP4
-    HP1 & HP2 --> HP3 & HP4 --> HP5
-    RP4 --> M1
-    HP5 --> M1
-    M1 --> M2 --> M3
+ TR1--> RP1
+ TR2 & TR3--> HP1 & HP2
+ RP1--> RP2--> RP3--> RP4
+ HP1 & HP2--> HP3 & HP4--> HP5
+ RP4--> M1
+ HP5--> M1
+ M1--> M2--> M3
 
-    class TR1,TR2,TR3 trigger
-    class RP1,RP2,RP3,RP4 range
-    class HP1,HP2,HP3,HP4,HP5 hash
-    class M1,M2,M3 mgmt
+ class TR1,TR2,TR3 trigger
+ class RP1,RP2,RP3,RP4 range
+ class HP1,HP2,HP3,HP4,HP5 hash
+ class M1,M2,M3 mgmt
 
 ```
 
@@ -186,7 +186,7 @@ ALTER TABLE agent_actions DETACH PARTITION agent_actions_2021;
 |--------------|----------|
 | Partition pruning efficiency | PostgreSQL prunes partitions at planning time — the query planner must be able to determine which partitions to scan from the WHERE clause. Avoid functions or CASTs on partition keys |
 | Hash partition count trade-off | More partitions = more planner overhead and more open file handles. 256 is a reasonable maximum — 16-64 is sufficient for most workloads |
-| Index overhead per partition | Each partition has its own set of indexes — 256 partitions Ã— 3 indexes each = 768 index maintenance operations. Factor this into maintenance window planning |
+| Index overhead per partition | Each partition has its own set of indexes — 256 partitions — 3 indexes each = 768 index maintenance operations. Factor this into maintenance window planning |
 
 ---
 
@@ -310,36 +310,36 @@ END $$;
 
 ```mermaid
 sequenceDiagram
-    participant APP as Application
-    participant DB as PostgreSQL
-    participant CRON as Partition Manager
-    participant S3 as Cold Storage
+ participant APP as Application
+ participant DB as PostgreSQL
+ participant CRON as Partition Manager
+ participant S3 as Cold Storage
 
-    Note over APP: Query created_at='2026-07-15'
+ Note over APP: Query created_at='2026-07-15'
 
-    APP->>DB: SELECT with WHERE created_at
-    DB->>DB: Partition pruning
-    DB-->>APP: Scan only '2026_07' partition
+ APP->>DB: SELECT with WHERE created_at
+ DB->>DB: Partition pruning
+ DB-->>APP: Scan only '2026_07' partition
 
-    Note over DB: Hash: workspace_id='ws_abc' --> hash('ws_abc') mod 256 = partition_142
+ Note over DB: Hash: workspace_id='ws_abc'--> hash('ws_abc') mod 256 = partition_142
 
-    APP->>DB: INSERT memory record (workspace_id='ws_abc')
-    DB->>DB: Hash workspace_id --> partition_142
-    DB-->>APP: Inserted
+ APP->>DB: INSERT memory record (workspace_id='ws_abc')
+ DB->>DB: Hash workspace_id--> partition_142
+ DB-->>APP: Inserted
 
-    loop Monthly
-        CRON->>DB: CREATE TABLE agent_actions_2026_09 ...
-        DB-->>CRON: Partition ready
-        CRON->>CRON: Attach to parent
-    end
+ loop Monthly
+ CRON->>DB: CREATE TABLE agent_actions_2026_09 ...
+ DB-->>CRON: Partition ready
+ CRON->>CRON: Attach to parent
+ end
 
-    Note over CRON,S3: Retention exceeded (>12 months)
+ Note over CRON,S3: Retention exceeded (>12 months)
 
-    CRON->>DB: DETACH PARTITION agent_actions_2026_06
-    DB-->>CRON: Detached
-    CRON->>S3: Archive partition data
-    S3-->>CRON: Archived
-    CRON->>DB: DROP TABLE agent_actions_2026_06
+ CRON->>DB: DETACH PARTITION agent_actions_2026_06
+ DB-->>CRON: Detached
+ CRON->>S3: Archive partition data
+ S3-->>CRON: Archived
+ CRON->>DB: DROP TABLE agent_actions_2026_06
 ```
 
 > **Diagram:** Partition lifecycle — queries benefit from automatic partition pruning (range: date-clause selects only relevant month; hash: workspace_id routes to one partition). The partition manager cron creates future partitions 2 weeks ahead and detaches old partitions for archival after retention is exceeded.

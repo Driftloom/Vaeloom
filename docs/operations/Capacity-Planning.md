@@ -1,51 +1,51 @@
-﻿# Capacity Planning
+# Capacity Planning
 
 > **Purpose:** Define capacity planning procedures for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Capacity Planning Architecture
 
 ```mermaid
 graph TD
-    classDef cadence fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef growth fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef resource fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef trigger fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef cadence fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef growth fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef resource fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef trigger fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Cadence["ðŸ“… Planning Cadence"]
-        C1["Weekly<br/>Infrastructure metrics review<br/>CPU, memory, storage"]
-        C2["Monthly<br/>Growth trend analysis<br/>Users, storage"]
-        C3["Quarterly<br/>Formal capacity review<br/>All resources + budget"]
-    end
+ subgraph Cadence["Planning Cadence"]
+ C1["Weekly<br/>Infrastructure metrics review<br/>CPU, memory, storage"]
+ C2["Monthly<br/>Growth trend analysis<br/>Users, storage"]
+ C3["Quarterly<br/>Formal capacity review<br/>All resources + budget"]
+ end
 
-    subgraph Growth["ðŸ“ˆ Growth Projections (MVP)"]
-        G1["Month 1: 100 users Â· 5K docs Â· 20K memories"]
-        G2["Month 3: 500 users Â· 50K docs Â· 200K memories"]
-        G3["Month 6: 2K users Â· 500K docs Â· 2M memories"]
-        G4["Month 12: 10K users Â· 5M docs Â· 20M memories"]
-    end
+ subgraph Growth["Growth Projections (MVP)"]
+ G1["Month 1: 100 users · 5K docs · 20K memories"]
+ G2["Month 3: 500 users · 50K docs · 200K memories"]
+ G3["Month 6: 2K users · 500K docs · 2M memories"]
+ G4["Month 12: 10K users · 5M docs · 20M memories"]
+ end
 
-    subgraph Resources["ðŸ”§ Resource Planning"]
-        R1["Web: 2-->4 instances<br/>Trigger: CPU > 70% 1wk"]
-        R2["API: 2-->4 instances<br/>Trigger: Latency p99 > 1s"]
-        R3["AI: 1-->3-4 instances<br/>Trigger: Queue depth > 500"]
-        R4["PG storage: 10GB-->100GB<br/>Trigger: > 70% capacity"]
-        R5["Redis: 1GB-->4GB<br/>Trigger: > 80% used"]
-    end
+ subgraph Resources["Resource Planning"]
+ R1["Web: 2-->4 instances<br/>Trigger: CPU > 70% 1wk"]
+ R2["API: 2-->4 instances<br/>Trigger: Latency p99 > 1s"]
+ R3["AI: 1-->3-4 instances<br/>Trigger: Queue depth > 500"]
+ R4["PG storage: 10GB-->100GB<br/>Trigger: > 70% capacity"]
+ R5["Redis: 1GB-->4GB<br/>Trigger: > 80% used"]
+ end
 
-    subgraph Triggers["ðŸš¦ Scaling Triggers"]
-        T1["Compute: CPU > 70% for 10min --> Auto-scale"]
-        T2["Database: Connections > 80% --> Auto-scale"]
-        T3["Storage: > 70% --> Manual review"]
-        T4["Cache: Memory > 80% or eviction > 1% --> Add nodes"]
-    end
+ subgraph Triggers["Scaling Triggers"]
+ T1["Compute: CPU > 70% for 10min--> Auto-scale"]
+ T2["Database: Connections > 80%--> Auto-scale"]
+ T3["Storage: > 70%--> Manual review"]
+ T4["Cache: Memory > 80% or eviction > 1%--> Add nodes"]
+ end
 
-    Cadence --> Growth --> Resources --> Triggers
+ Cadence--> Growth--> Resources--> Triggers
 
-    class C1,C2,C3 cadence
-    class G1,G2,G3,G4 growth
-    class R1,R2,R3,R4,R5 resource
-    class T1,T2,T3,T4 trigger
+ class C1,C2,C3 cadence
+ class G1,G2,G3,G4 growth
+ class R1,R2,R3,R4,R5 resource
+ class T1,T2,T3,T4 trigger
 ```
 
 > **Diagram:** Capacity planning—**3 cadences** (weekly/monthly/quarterly) → **MVP growth projections** (100→10K users, 5K→5M docs over 12 months) → **resource planning** (instance counts, storage, memory) → **scaling triggers** (auto-scale: CPU/connections; manual review: storage).

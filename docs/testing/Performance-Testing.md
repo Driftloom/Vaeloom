@@ -1,42 +1,42 @@
-﻿# Performance Testing
+# Performance Testing
 
 > **Purpose:** Define performance testing practices for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Performance Test Architecture
 
 ```mermaid
 graph TD
-    classDef type fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef scenario fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef budget fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef type fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef scenario fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef budget fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Types["ðŸ“Š Performance Test Types"]
-        direction TB
-        T1["Load Test<br/>Behavior under expected load<br/>k6 scenarios/api-load.js"]
-        T2["Stress Test<br/>Breaking point identification<br/>k6 scenarios/stress.js"]
-        T3["Endurance Test<br/>Behavior over extended time<br/>k6 (extended, 1h+)"]
-        T4["Spike Test<br/>Behavior under sudden load<br/>k6 scenarios/spike.js"]
-        T5["Scalability Test<br/>Linear scaling verification<br/>k6 + cluster metrics"]
-    end
+ subgraph Types["Performance Test Types"]
+ direction TB
+ T1["Load Test<br/>Behavior under expected load<br/>k6 scenarios/api-load.js"]
+ T2["Stress Test<br/>Breaking point identification<br/>k6 scenarios/stress.js"]
+ T3["Endurance Test<br/>Behavior over extended time<br/>k6 (extended, 1h+)"]
+ T4["Spike Test<br/>Behavior under sudden load<br/>k6 scenarios/spike.js"]
+ T5["Scalability Test<br/>Linear scaling verification<br/>k6 + cluster metrics"]
+ end
 
-    subgraph Scenarios["ðŸ“‹ Load Scenarios"]
-        S1["Normal Load<br/>100 users --> 5m ramp --> 20m hold --> 5m cooldown<br/>Threshold: p95 < 500ms, p99 < 2s"]
-        S2["Peak Load<br/>500 users --> 2m ramp --> 5m hold --> 2m cooldown<br/>Threshold: < 1% error rate"]
-    end
+ subgraph Scenarios["Load Scenarios"]
+ S1["Normal Load<br/>100 users--> 5m ramp--> 20m hold--> 5m cooldown<br/>Threshold: p95 < 500ms, p99 < 2s"]
+ S2["Peak Load<br/>500 users--> 2m ramp--> 5m hold--> 2m cooldown<br/>Threshold: < 1% error rate"]
+ end
 
-    subgraph Budgets["ðŸŽ¯ Performance Budgets"]
-        B1["API p99 latency<br/>< 500ms<br/>Measured by: k6"]
-        B2["Agent p99 latency<br/>< 10s<br/>Measured by: AI tracing"]
-        B3["Page load<br/>< 2s<br/>Measured by: Lighthouse CI"]
-        B4["DB query p99<br/>< 100ms<br/>Measured by: pg_stat_statements"]
-    end
+ subgraph Budgets["Performance Budgets"]
+ B1["API p99 latency<br/>< 500ms<br/>Measured by: k6"]
+ B2["Agent p99 latency<br/>< 10s<br/>Measured by: AI tracing"]
+ B3["Page load<br/>< 2s<br/>Measured by: Lighthouse CI"]
+ B4["DB query p99<br/>< 100ms<br/>Measured by: pg_stat_statements"]
+ end
 
-    Types --> Scenarios --> Budgets
+ Types--> Scenarios--> Budgets
 
-    class T1,T2,T3,T4,T5 type
-    class S1,S2 scenario
-    class B1,B2,B3,B4 budget
+ class T1,T2,T3,T4,T5 type
+ class S1,S2 scenario
+ class B1,B2,B3,B4 budget
 ```
 
 > **Diagram:** Five performance test types (load, stress, endurance, spike, scalability) feed into **load scenarios** with specific ramp-up patterns and thresholds. **Performance budgets** define concrete targets for API, Agent, Page, and Database latency.
@@ -147,7 +147,7 @@ export const options = {
 | Performance test types | 5 (load, stress, endurance, spike, scalability) | 10 types adding cold-start, steady-state, background-job, API gateway, CDN | 25+ types with AI-identified performance patterns |
 | Performance baselines stored | 50 | 500 with automated regression detection | Trend dashboard with ML anomaly detection |
 | Agent performance traces | 100 per day | 10,000 with sampling and aggregation | Continuous profiling with eBPF |
-| Lighthouse CI runs per PR | 3 pages Ã— 3 runs | 10 pages Ã— 3 runs with per-component budgets | Full page inventory with dynamic budget generation |
+| Lighthouse CI runs per PR | 3 pages — 3 runs | 10 pages — 3 runs with per-component budgets | Full page inventory with dynamic budget generation |
 
 ## Error Handling
 
@@ -224,25 +224,25 @@ Performance baselines are versioned alongside the codebase, labeled with git com
 
 ```mermaid
 sequenceDiagram
-    participant CI as CI Pipeline
-    participant K6 as k6 Runner
-    participant TARGET as Staging
-    participant BASELINE as Baseline Store
-    participant REPORT as Report
+ participant CI as CI Pipeline
+ participant K6 as k6 Runner
+ participant TARGET as Staging
+ participant BASELINE as Baseline Store
+ participant REPORT as Report
 
-    CI->>K6: Trigger performance test
-    K6->>TARGET: Run load scenario (100 users, 5m ramp, 20m hold)
-    TARGET-->>K6: Metrics: latency, error rate, throughput
-    K6->>BASELINE: Fetch baseline from last release
-    BASELINE-->>K6: Baseline metrics (p95: 320ms, p99: 450ms)
-    K6->>K6: Compare current vs baseline
-    alt No regression (current p99: 440ms < 500ms budget)
-        K6-->>CI: âœ… Performance within budget
-    else Regression (current p99: 680ms > 20% over baseline)
-        K6-->>REPORT: Generate regression report
-        REPORT-->>CI: âŒ Performance regression: p99 680ms vs 450ms baseline
-        CI-->>CI: Block deployment
-    end
+ CI->>K6: Trigger performance test
+ K6->>TARGET: Run load scenario (100 users, 5m ramp, 20m hold)
+ TARGET-->>K6: Metrics: latency, error rate, throughput
+ K6->>BASELINE: Fetch baseline from last release
+ BASELINE-->>K6: Baseline metrics (p95: 320ms, p99: 450ms)
+ K6->>K6: Compare current vs baseline
+ alt No regression (current p99: 440ms < 500ms budget)
+ K6-->>CI: … Performance within budget
+ else Regression (current p99: 680ms > 20% over baseline)
+ K6-->>REPORT: Generate regression report
+ REPORT-->>CI: Œ Performance regression: p99 680ms vs 450ms baseline
+ CI-->>CI: Block deployment
+ end
 ```
 
 ---

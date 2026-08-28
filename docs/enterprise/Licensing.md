@@ -29,7 +29,7 @@ guarantees hold.
 - Define the licensing model and entitlement matrix
 - Specify runtime license enforcement (API + frontend + AI service)
 - Define license lifecycle (activation, renewal, expiry, grace period,
-  termination)
+ termination)
 - Handle edge cases (downgrade, overage, contract gap)
 - Document the license data model
 
@@ -52,24 +52,24 @@ guarantees hold.
 
 ```mermaid
 graph TD
-    classDef user fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef license fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef enforce fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef external fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef user fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef license fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef enforce fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef external fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    USR["User / Service"]:::user
-    ENT["Entitlement Service<br/>(FastAPI / Python)"]:::license
-    STORE["License Store<br/>(Postgres + Redis cache)"]:::license
-    STRIPE["Stripe Subscription<br/>(source of truth for individual)"]:::external
-    CONTRACT["Enterprise Contract<br/>(source of truth for enterprise)"]:::external
-    GUARD["Entitlement Guard<br/>(middleware)"]:::enforce
+ USR["User / Service"]:::user
+ ENT["Entitlement Service<br/>(FastAPI / Python)"]:::license
+ STORE["License Store<br/>(Postgres + Redis cache)"]:::license
+ STRIPE["Stripe Subscription<br/>(source of truth for individual)"]:::external
+ CONTRACT["Enterprise Contract<br/>(source of truth for enterprise)"]:::external
+ GUARD["Entitlement Guard<br/>(middleware)"]:::enforce
 
-    USR -->|"check entitlement"| ENT
-    STRIPE -->|"webhook: subscription change"| ENT
-    CONTRACT -->|"manual entry / renewal"| ENT
-    ENT --> STORE
-    ENT --> GUARD
-    GUARD -->|"allow / deny"| USR
+ USR-->|"check entitlement"| ENT
+ STRIPE-->|"webhook: subscription change"| ENT
+ CONTRACT-->|"manual entry / renewal"| ENT
+ ENT--> STORE
+ ENT--> GUARD
+ GUARD-->|"allow / deny"| USR
 ```
 
 > **Diagram:** License enforcement flow. The Entitlement Service is the single
@@ -79,42 +79,42 @@ graph TD
 
 ## Entitlement Matrix
 
-| Entitlement           | Free                       | Pro ($19/mo)             | Team ($49/mo)         | Enterprise (Custom)         |
+| Entitlement | Free | Pro ($19/mo) | Team ($49/mo) | Enterprise (Custom) |
 | --------------------- | -------------------------- | ------------------------ | --------------------- | --------------------------- |
-| Storage               | 1 GB                       | 20 GB                    | 50 GB                 | Custom                      |
-| Agent runs/month      | 50                         | 500                      | 1,000                 | Custom                      |
-| AI tokens/month       | 10K                        | 200K                     | 500K                  | Custom                      |
-| Seats                 | 1                          | 1                        | 5                     | Custom                      |
-| Specialist agents     | 3 (Org, Resume, Scheduler) | All 8 MVP                | All 8 MVP + priority  | All 28 (Enterprise)         |
-| Connectors            | 1 (manual upload)          | 3 (Gmail, GitHub, Drive) | 5 (+ Slack, Calendar) | Custom                      |
-| RAG queries/month     | 100                        | 5,000                    | 10,000                | Custom                      |
-| Knowledge graph nodes | 500                        | 50,000                   | 200,000               | Custom                      |
-| API access            | Read-only                  | Full                     | Full + higher limits  | Full + enterprise endpoints |
-| Support               | Community                  | Email (48h)              | Email (24h)           | Dedicated + SLA             |
-| SSO                   | —                          | —                        | —                     | SAML/OIDC                   |
+| Storage | 1 GB | 20 GB | 50 GB | Custom |
+| Agent runs/month | 50 | 500 | 1,000 | Custom |
+| AI tokens/month | 10K | 200K | 500K | Custom |
+| Seats | 1 | 1 | 5 | Custom |
+| Specialist agents | 3 (Org, Resume, Scheduler) | All 8 MVP | All 8 MVP + priority | All 28 (Enterprise) |
+| Connectors | 1 (manual upload) | 3 (Gmail, GitHub, Drive) | 5 (+ Slack, Calendar) | Custom |
+| RAG queries/month | 100 | 5,000 | 10,000 | Custom |
+| Knowledge graph nodes | 500 | 50,000 | 200,000 | Custom |
+| API access | Read-only | Full | Full + higher limits | Full + enterprise endpoints |
+| Support | Community | Email (48h) | Email (24h) | Dedicated + SLA |
+| SSO | — | — | — | SAML/OIDC |
 
 ## Components
 
-| Component           | Responsibility                                                          | Technology                                    | Scale Strategy            |
+| Component | Responsibility | Technology | Scale Strategy |
 | ------------------- | ----------------------------------------------------------------------- | --------------------------------------------- | ------------------------- |
-| Entitlement Service | Resolve entitlements for a user/tenant; reconcile with Stripe/contracts | FastAPI module (apps/api)                     | Stateless; Redis cache    |
-| License Store       | Persisted entitlement state (plan, limits, expiry)                      | Postgres                                      | Read replicas             |
-| Entitlement Guard   | Dependency injection that checks before permitting actions              | FastAPI Depends()                             | Stateless                 |
-| Overage Tracker     | Track usage vs limits; block or allow with overage                      | Redis counters (shared with Billing metering) | Same as Billing           |
-| Contract Manager    | Enterprise contract entry, renewal tracking, custom terms               | FastAPI module                                | Low volume; single worker |
+| Entitlement Service | Resolve entitlements for a user/tenant; reconcile with Stripe/contracts | FastAPI module (apps/api) | Stateless; Redis cache |
+| License Store | Persisted entitlement state (plan, limits, expiry) | Postgres | Read replicas |
+| Entitlement Guard | Dependency injection that checks before permitting actions | FastAPI Depends() | Stateless |
+| Overage Tracker | Track usage vs limits; block or allow with overage | Redis counters (shared with Billing metering) | Same as Billing |
+| Contract Manager | Enterprise contract entry, renewal tracking, custom terms | FastAPI module | Low volume; single worker |
 
 ## License Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Active: subscription created / contract signed
-    Active --> Renewed: payment succeeds / contract renewed
-    Active --> GracePeriod: payment fails / contract expiry imminent
-    GracePeriod --> Active: payment resolved / contract renewed
-    GracePeriod --> Suspended: grace period expires (14 days)
-    Suspended --> Active: payment resolved / contract renewed
-    Suspended --> Terminated: 30 days post-suspension
-    Terminated --> [*]: data exported, account archived
+ [*]--> Active: subscription created / contract signed
+ Active--> Renewed: payment succeeds / contract renewed
+ Active--> GracePeriod: payment fails / contract expiry imminent
+ GracePeriod--> Active: payment resolved / contract renewed
+ GracePeriod--> Suspended: grace period expires (14 days)
+ Suspended--> Active: payment resolved / contract renewed
+ Suspended--> Terminated: 30 days post-suspension
+ Terminated--> [*]: data exported, account archived
 ```
 
 > **Diagram:** License lifecycle. The grace period (14 days) preserves access
@@ -143,82 +143,82 @@ Enterprise contract activation
 
 ## Security
 
-| Concern                                       | Mitigation                                                                   | Verification                                                   |
+| Concern | Mitigation | Verification |
 | --------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| User spoofing a higher plan                   | Entitlements resolved server-side from verified Stripe/contract data         | Client cannot set plan; all entitlement checks are server-side |
-| Enterprise contract tampering                 | Contract records immutable once signed; changes require new contract version | Audit trail for all contract modifications                     |
-| Grace period abuse (repeated failed payments) | Grace period limited to 2 occurrences per 12-month rolling window            | Grace period counter tracked in license store                  |
+| User spoofing a higher plan | Entitlements resolved server-side from verified Stripe/contract data | Client cannot set plan; all entitlement checks are server-side |
+| Enterprise contract tampering | Contract records immutable once signed; changes require new contract version | Audit trail for all contract modifications |
+| Grace period abuse (repeated failed payments) | Grace period limited to 2 occurrences per 12-month rolling window | Grace period counter tracked in license store |
 
 ## Performance
 
-| Concern                   | Budget | Measurement             | Optimization                                                 |
+| Concern | Budget | Measurement | Optimization |
 | ------------------------- | ------ | ----------------------- | ------------------------------------------------------------ |
-| Entitlement check latency | <2ms   | Guard timing            | Redis cache (5-min TTL); invalidation on subscription change |
-| Contract creation latency | <5s    | Contract Manager timing | Low volume; no optimization needed                           |
-| Seat utilization query    | <10ms  | API timing              | Cached seat count; increment/decrement on member add/remove  |
+| Entitlement check latency | <2ms | Guard timing | Redis cache (5-min TTL); invalidation on subscription change |
+| Contract creation latency | <5s | Contract Manager timing | Low volume; no optimization needed |
+| Seat utilization query | <10ms | API timing | Cached seat count; increment/decrement on member add/remove |
 
 ## Scalability
 
-| Dimension              | Current Limit | 10x Strategy                  | 100x Strategy                           |
+| Dimension | Current Limit | 10x Strategy | 100x Strategy |
 | ---------------------- | ------------- | ----------------------------- | --------------------------------------- |
-| Entitlement checks/sec | ~10K (cached) | Redis cluster                 | Per-instance local cache with short TTL |
-| Enterprise contracts   | ~100          | No bottleneck                 | N/A (low volume)                        |
-| Seat count per tenant  | ~1,000        | Pre-computed seat count cache | Sharded seat tracking per department    |
+| Entitlement checks/sec | ~10K (cached) | Redis cluster | Per-instance local cache with short TTL |
+| Enterprise contracts | ~100 | No bottleneck | N/A (low volume) |
+| Seat count per tenant | ~1,000 | Pre-computed seat count cache | Sharded seat tracking per department |
 
 ## Error Handling
 
-| Error Scenario                            | Detection                        | Mitigation                                                                   | Recovery                           |
+| Error Scenario | Detection | Mitigation | Recovery |
 | ----------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------- |
-| Entitlement Service unavailable           | Health check failure             | Serve cached entitlements (stale but safe: deny access if cache stale >5min) | Restore service; cache repopulates |
-| Stripe webhook missed (entitlement stale) | Webhook failure alert            | Nightly reconciliation job compares Stripe state vs local state              | Manual reconciliation              |
-| Enterprise contract expires silently      | Contract Manager tracks end_date | 60-day and 30-day advance warning emails to Tenant Admin + Vaeloom sales     | Renew contract                     |
+| Entitlement Service unavailable | Health check failure | Serve cached entitlements (stale but safe: deny access if cache stale >5min) | Restore service; cache repopulates |
+| Stripe webhook missed (entitlement stale) | Webhook failure alert | Nightly reconciliation job compares Stripe state vs local state | Manual reconciliation |
+| Enterprise contract expires silently | Contract Manager tracks end_date | 60-day and 30-day advance warning emails to Tenant Admin + Vaeloom sales | Renew contract |
 
 ## Monitoring
 
-| Metric                             | Alert Threshold | Severity            | Dashboard   |
+| Metric | Alert Threshold | Severity | Dashboard |
 | ---------------------------------- | --------------- | ------------------- | ----------- |
-| `entitlement_check_latency_p99`    | >10ms           | P3                  | Performance |
-| `entitlement_cache_miss_rate`      | >5%             | P3                  | Performance |
-| `enterprise_contract_expiring_30d` | Any             | P2                  | Sales       |
-| `seat_utilization_pct{tenant_id}`  | >80%            | P3 (info), >100% P2 | Billing     |
+| `entitlement_check_latency_p99` | >10ms | P3 | Performance |
+| `entitlement_cache_miss_rate` | >5% | P3 | Performance |
+| `enterprise_contract_expiring_30d` | Any | P2 | Sales |
+| `seat_utilization_pct{tenant_id}` | >80% | P3 (info), >100% P2 | Billing |
 
 ## Best Practices
 
-| #   | Practice                                                 | Rationale                                                         |
+| # | Practice | Rationale |
 | --- | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| 1   | Resolve entitlements server-side only                    | Client-side entitlement checks are trivially bypassable           |
-| 2   | Cache aggressively but invalidate on subscription change | Most entitlement checks are read-only; caching eliminates DB load |
-| 3   | Never hard-delete data on termination                    | Export and archive; termination is reversible for 90 days         |
-| 4   | Warn before blocking (80% threshold)                     | Users should never be surprised by a hard block                   |
+| 1 | Resolve entitlements server-side only | Client-side entitlement checks are trivially bypassable |
+| 2 | Cache aggressively but invalidate on subscription change | Most entitlement checks are read-only; caching eliminates DB load |
+| 3 | Never hard-delete data on termination | Export and archive; termination is reversible for 90 days |
+| 4 | Warn before blocking (80% threshold) | Users should never be surprised by a hard block |
 
 ## Common Mistakes
 
-| Mistake                                                  | Consequence                                            | Fix                                                                                  |
+| Mistake | Consequence | Fix |
 | -------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| Trusting the plan field from the JWT without re-checking | JWT may be stale (issued before plan change)           | Re-resolve entitlements from source of truth on every write action                   |
-| Not handling downgrade gracefully                        | User downgrades from Pro to Free but has 15 GB of data | On downgrade, warn user about data exceeding new limit; enter read-only grace period |
+| Trusting the plan field from the JWT without re-checking | JWT may be stale (issued before plan change) | Re-resolve entitlements from source of truth on every write action |
+| Not handling downgrade gracefully | User downgrades from Pro to Free but has 15 GB of data | On downgrade, warn user about data exceeding new limit; enter read-only grace period |
 
 ## Risks
 
-| Risk                                                 | Likelihood | Impact             | Mitigation                                                    |
+| Risk | Likelihood | Impact | Mitigation |
 | ---------------------------------------------------- | ---------- | ------------------ | ------------------------------------------------------------- |
-| Stripe webhook delivery gap causes entitlement drift | Medium     | Medium             | Nightly reconciliation; manual reconcile tool                 |
-| Enterprise customer disputes seat count              | Medium     | Medium (financial) | Clear contract language; real-time seat utilization dashboard |
+| Stripe webhook delivery gap causes entitlement drift | Medium | Medium | Nightly reconciliation; manual reconcile tool |
+| Enterprise customer disputes seat count | Medium | Medium (financial) | Clear contract language; real-time seat utilization dashboard |
 
 ## Limitations
 
-| Limitation                          | Impact                                      | Workaround                       | Future Resolution             |
+| Limitation | Impact | Workaround | Future Resolution |
 | ----------------------------------- | ------------------------------------------- | -------------------------------- | ----------------------------- |
-| No usage-based overage purchasing   | Users blocked at plan limit                 | Upgrade prompt; no pay-as-you-go | Usage-based overage (Q1 2027) |
-| No license transfer between tenants | Enterprise mergers require manual migration | Export + import via support      | License transfer API          |
+| No usage-based overage purchasing | Users blocked at plan limit | Upgrade prompt; no pay-as-you-go | Usage-based overage (Q1 2027) |
+| No license transfer between tenants | Enterprise mergers require manual migration | Export + import via support | License transfer API |
 
 ## Future Improvements
 
-| Improvement                                            | Priority | Complexity | Timeline |
+| Improvement | Priority | Complexity | Timeline |
 | ------------------------------------------------------ | -------- | ---------- | -------- |
-| Usage-based overage (pay for what you use beyond plan) | High     | Medium     | Q1 2027  |
-| Self-service contract renewal portal                   | Medium   | Medium     | Q2 2027  |
-| License transfer between tenants                       | Low      | High       | Q3 2027  |
+| Usage-based overage (pay for what you use beyond plan) | High | Medium | Q1 2027 |
+| Self-service contract renewal portal | Medium | Medium | Q2 2027 |
+| License transfer between tenants | Low | High | Q3 2027 |
 
 ## Related Documents
 
@@ -227,4 +227,4 @@ Enterprise contract activation
 - [`Enterprise-APIs.md`](./Enterprise-APIs.md) — enterprise-specific endpoints
 - [`../Product/Pricing.md`](../Product/Pricing.md) — plan definitions
 - [`../Security/Audit-Logs.md`](../Security/Audit-Logs.md) — license change
-  audit trail
+ audit trail

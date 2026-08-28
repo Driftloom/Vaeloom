@@ -1,6 +1,6 @@
 # MVP-P20 — 06. Security, Privacy, A11y
 
-> **Phase:** MVP-P20 — Post-Deployment Validation  
+> **Phase:** MVP-P20 — Post-Deployment Validation 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 (42/42 RLS, JWT 32+, GDPR 31) + P17 93.2 (OTel/structured logging 30d, _redact 9 keys, 5 SLO 3 dashboards) + P18 93.4 (docs IA 256 docs + portal 1127) + P19 93.6 (release v0.2.0 + LAUNCH-CHECKLIST 178) + P20 validation synthetic 30s 3 probes + smoke 12 + E2E 39 + 99.9% SLO
 
 ## Security (P13 95.4 retained + P16 supply-chain retained + P17 observability no regression + P19 release no regression + P20 validation hardened no regression)

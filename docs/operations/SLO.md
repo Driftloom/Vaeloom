@@ -1,45 +1,45 @@
-﻿# Service Level Objectives (SLO)
+# Service Level Objectives (SLO)
 
 > **Purpose:** Define Service Level Objectives for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## SLO Architecture
 
 ```mermaid
 graph TD
-    classDef target fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef budget fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef response fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef target fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef budget fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef response fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Targets["ðŸŽ¯ SLO Targets"]
-        direction TB
-        T1["API Availability<br/>99.9% Â· 30d rolling Â· Health probes"]
-        T2["API Latency p99<br/>< 500ms Â· 7d rolling Â· Tracing"]
-        T3["AI Agent Latency p99<br/>< 10s Â· 7d rolling Â· Tracing"]
-        T4["Agent Accuracy<br/>> 90% Â· 30d rolling Â· Approval rate"]
-        T5["Document Ingestion<br/>< 30s p95 Â· 7d rolling Â· Queue timing"]
-        T6["DB Availability<br/>99.95% Â· 30d rolling Â· Connection rate"]
-    end
+ subgraph Targets["SLO Targets"]
+ direction TB
+ T1["API Availability<br/>99.9% · 30d rolling · Health probes"]
+ T2["API Latency p99<br/>< 500ms · 7d rolling · Tracing"]
+ T3["AI Agent Latency p99<br/>< 10s · 7d rolling · Tracing"]
+ T4["Agent Accuracy<br/>> 90% · 30d rolling · Approval rate"]
+ T5["Document Ingestion<br/>< 30s p95 · 7d rolling · Queue timing"]
+ T6["DB Availability<br/>99.95% · 30d rolling · Connection rate"]
+ end
 
-    subgraph Budgets["ðŸ“Š Error Budgets (30 days)"]
-        B1["99.9% SLO --> 43 min budget"]
-        B2["99.5% SLO --> 3.6 hours"]
-        B3["99.0% SLO --> 7.2 hours"]
-        B4["99.95% DB --> 21.6 min"]
-    end
+ subgraph Budgets["Error Budgets (30 days)"]
+ B1["99.9% SLO--> 43 min budget"]
+ B2["99.5% SLO--> 3.6 hours"]
+ B3["99.0% SLO--> 7.2 hours"]
+ B4["99.95% DB--> 21.6 min"]
+ end
 
-    subgraph Response["ðŸ”” SLO Violation Response"]
-        R1["< 50% consumed: Normal ops"]
-        R2["50-75% consumed: Reduce deploys"]
-        R3["75-100% consumed: Freeze features"]
-        R4["> 100% consumed: Emergency + SLO redesign"]
-    end
+ subgraph Response["SLO Violation Response"]
+ R1["50% consumed: Normal ops"]
+ R2["50-75% consumed: Reduce deploys"]
+ R3["75-100% consumed: Freeze features"]
+ R4["100% consumed: Emergency + SLO redesign"]
+ end
 
-    Targets --> Budgets --> Response
+ Targets--> Budgets--> Response
 
-    class T1,T2,T3,T4,T5,T6 target
-    class B1,B2,B3,B4 budget
-    class R1,R2,R3,R4 response
+ class T1,T2,T3,T4,T5,T6 target
+ class B1,B2,B3,B4 budget
+ class R1,R2,R3,R4 response
 ```
 
 > **Diagram:** SLO architecture — **6 objectives** (API availability/latency, AI latency/accuracy, ingestion speed, DB availability) with measurement windows → **error budgets** (43min to 7.2 hours) → **violation response** (4 tiers from normal ops to emergency).
@@ -127,7 +127,7 @@ graph TD
 
 1. **Define SLO:** Select SLI → set target percentage → define measurement window → set error budget
 2. **Monitor SLO compliance:** Collect SLI data → calculate rolling window compliance → compare to target
-3. **Track error budget:** Compute `(1 - SLO) Ã— period` → deduct consumed budget from failures → check consumption level
+3. **Track error budget:** Compute `(1 - SLO) — period` → deduct consumed budget from failures → check consumption level
 4. **Respond to budget consumption:** < 50% (normal) → 50-75% (reduce deploys) → 75-100% (freeze features) → > 100% (emergency)
 5. **SLO review cycle:** Monthly budget review → quarterly target adjustment → annual SLO renegotiation
 6. **SLO violation post-mortem:** Identify contributing events → analyze burn rate → adjust SLO or error budget policy

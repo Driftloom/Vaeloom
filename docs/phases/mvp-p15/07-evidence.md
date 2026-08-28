@@ -1,7 +1,7 @@
-﻿# MVP-P15 — 07. Evidence Register
+# MVP-P15 — 07. Evidence Register
 
-> **Phase:** MVP-P15 — Performance, Reliability, and Scalability  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 (94.2% cov, jest-axe 0 critical, k6 p50 45ms p95 120ms, CB 3/30s)  
+> **Phase:** MVP-P15 — Performance, Reliability, and Scalability 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 (94.2% cov, jest-axe 0 critical, k6 p50 45ms p95 120ms, CB 3/30s) 
 > **Predecessor:** `ea329dd` honest 87.5/88 CONDITIONAL (P14) → now **93.1 APPROVED** (P15 closes 3 gaps)
 
 | Evidence ID | Claim | Requirement | Type | Location | Result | Date | Verified by |

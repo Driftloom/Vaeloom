@@ -15,8 +15,8 @@ distributed, and consumed across the entire service mesh. As a platform spanning
 supporting infrastructure (Redis, Postgres), a cohesive configuration strategy
 is essential to prevent drift, reduce deployment failures, and ensure security.
 
-This document defines the four-layer config pipeline ó **Source ? Validation ?
-Distribution ? Injection ? Runtime** ó covering every environment from local
+This document defines the four-layer config pipeline ‚Äî **Source ? Validation ?
+Distribution ? Injection ? Runtime** ‚Äî covering every environment from local
 development to production. It establishes a centralized configuration schema
 registry, environment variable conventions, ConfigMap definitions, feature flag
 semantics, and secret management practices.
@@ -31,15 +31,15 @@ systems, and secrets exposure is the most common vector for security breaches.
 ## Goals
 
 - Establish a single source of truth for all configuration across environments
-  with clear inheritance and override rules
+ with clear inheritance and override rules
 - Automate config validation at CI time to catch missing or malformed values
-  before deployment
+ before deployment
 - Secure secrets through vault integration, encryption, and strict access
-  controls ó ensuring secrets never appear in logs, env dumps, or error messages
+ controls ‚Äî ensuring secrets never appear in logs, env dumps, or error messages
 - Enable gradual feature rollouts with percentage-based targeting, A/B testing,
-  and kill switches
+ and kill switches
 - Provide auditability and observability through config change logging, drift
-  detection, and flag usage telemetry
+ detection, and flag usage telemetry
 
 ---
 
@@ -60,14 +60,14 @@ systems, and secrets exposure is the most common vector for security breaches.
 
 - Application-level business logic configuration (routing, ML model params)
 - Database connection pooling configuration details (covered in
-  [`../Architecture/Storage.md`](../Architecture/Storage.md))
+ [`../Architecture/Storage.md`](../Architecture/Storage.md))
 - TLS certificate management and mTLS configuration (covered in
-  [`../Security/IAM.md`](../Security/IAM.md))
+ [`../Security/IAM.md`](../Security/IAM.md))
 - CI/CD pipeline configuration itself (covered in [`./CI-CD.md`](./CI-CD.md))
 - Infrastructure provisioning and Terraform variable management (covered in
-  [`./Terraform.md`](./Terraform.md))
+ [`./Terraform.md`](./Terraform.md))
 - Docker build args and Compose file specifications (covered in
-  [`./Docker.md`](./Docker.md))
+ [`./Docker.md`](./Docker.md))
 
 ---
 
@@ -75,80 +75,80 @@ systems, and secrets exposure is the most common vector for security breaches.
 
 ````mermaid
 graph LR
-    classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef valid fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef dist fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
-    classDef inject fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
-    classDef runtime fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
-    classDef audit fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px
+ classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef valid fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef dist fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
+ classDef inject fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
+ classDef runtime fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
+ classDef audit fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px
 
-    subgraph Source["1. Source"]
-        ENV_FILES[".env Files<br/>Local / Dev"]
-        CONFIG_MAP["ConfigMaps<br/>Staging / Prod"]
-        SECRET_STORE["Secret Store<br/>Vault / AWS SM"]
-        FEATURE_FLAGS["Feature Flag Service<br/>LaunchDarkly / Custom"]
-    end
+ subgraph Source["1. Source"]
+ ENV_FILES["env Files<br/>Local / Dev"]
+ CONFIG_MAP["ConfigMaps<br/>Staging / Prod"]
+ SECRET_STORE["Secret Store<br/>Vault / AWS SM"]
+ FEATURE_FLAGS["Feature Flag Service<br/>LaunchDarkly / Custom"]
+ end
 
-    subgraph Validation["2. Validation"]
-        SCHEMA_REGISTRY["Config Schema Registry<br/>JSON Schema + TypeScript Types"]
-        CI_VAL["CI Validation<br/>envsubst + schema check"]
-        RUNTIME_VAL["Runtime Validation<br/>Startup guard + type check"]
-    end
+ subgraph Validation["2. Validation"]
+ SCHEMA_REGISTRY["Config Schema Registry<br/>JSON Schema + TypeScript Types"]
+ CI_VAL["CI Validation<br/>envsubst + schema check"]
+ RUNTIME_VAL["Runtime Validation<br/>Startup guard + type check"]
+ end
 
-    subgraph Distribution["3. Distribution"]
-        K8S_CONFIG["Kubernetes<br/>ConfigMaps + Secrets"]
-        ENV_INJECT["Environment Injection<br/>Helm / Docker Compose"]
-        SIDE_CAR["Sidecar / Init Container<br/>Vault Agent"]
-    end
+ subgraph Distribution["3. Distribution"]
+ K8S_CONFIG["Kubernetes<br/>ConfigMaps + Secrets"]
+ ENV_INJECT["Environment Injection<br/>Helm / Docker Compose"]
+ SIDE_CAR["Sidecar / Init Container<br/>Vault Agent"]
+ end
 
-    subgraph Injection["4. Injection"]
-        APP_ENV["Process Environment<br/>process.env / os.environ"]
-        CONFIG_CLIENT["Config Client<br/>Vaeloom-config SDK"]
-        FLAG_CLIENT["Flag Client<br/>LDClient / custom SDK"]
-    end
+ subgraph Injection["4. Injection"]
+ APP_ENV["Process Environment<br/>process.env / os.environ"]
+ CONFIG_CLIENT["Config Client<br/>Vaeloom-config SDK"]
+ FLAG_CLIENT["Flag Client<br/>LDClient / custom SDK"]
+ end
 
-    subgraph Runtime["5. Runtime"]
-        SERVICE_WEB["apps/web<br/>Next.js"]
-        SERVICE_API["apps/api<br/>FastAPI"]
-        INFRA["Infrastructure<br/>Redis / Postgres"]
-    end
+ subgraph Runtime["5. Runtime"]
+ SERVICE_WEB["apps/web<br/>Next.js"]
+ SERVICE_API["apps/api<br/>FastAPI"]
+ INFRA["Infrastructure<br/>Redis / Postgres"]
+ end
 
-    ENV_FILES --> CI_VAL
-    CONFIG_MAP --> CI_VAL
-    SECRET_STORE --> CI_VAL
-    FEATURE_FLAGS --> CI_VAL
+ ENV_FILES--> CI_VAL
+ CONFIG_MAP--> CI_VAL
+ SECRET_STORE--> CI_VAL
+ FEATURE_FLAGS--> CI_VAL
 
-    CI_VAL --> SCHEMA_REGISTRY
-    SCHEMA_REGISTRY --> RUNTIME_VAL
+ CI_VAL--> SCHEMA_REGISTRY
+ SCHEMA_REGISTRY--> RUNTIME_VAL
 
-    CI_VAL --> K8S_CONFIG
-    CI_VAL --> ENV_INJECT
-    SECRET_STORE --> SIDE_CAR
+ CI_VAL--> K8S_CONFIG
+ CI_VAL--> ENV_INJECT
+ SECRET_STORE--> SIDE_CAR
 
-    K8S_CONFIG --> APP_ENV
-    ENV_INJECT --> APP_ENV
-    SIDE_CAR --> APP_ENV
+ K8S_CONFIG--> APP_ENV
+ ENV_INJECT--> APP_ENV
+ SIDE_CAR--> APP_ENV
 
-    APP_ENV --> SERVICE_WEB
-    APP_ENV --> SERVICE_API
-    APP_ENV --> INFRA
+ APP_ENV--> SERVICE_WEB
+ APP_ENV--> SERVICE_API
+ APP_ENV--> INFRA
 
-    CONFIG_CLIENT --> SERVICE_WEB
-    CONFIG_CLIENT --> SERVICE_API
+ CONFIG_CLIENT--> SERVICE_WEB
+ CONFIG_CLIENT--> SERVICE_API
 
-    FLAG_CLIENT --> SERVICE_WEB
-    FLAG_CLIENT --> SERVICE_API
+ FLAG_CLIENT--> SERVICE_WEB
+ FLAG_CLIENT--> SERVICE_API
 
-    SERVICE_WEB --> RUNTIME_VAL
-    SERVICE_API --> RUNTIME_VAL
+ SERVICE_WEB--> RUNTIME_VAL
+ SERVICE_API--> RUNTIME_VAL
 
-    CONFIG_MAP --> FEATURE_FLAGS
+ CONFIG_MAP--> FEATURE_FLAGS
 
-    class ENV_FILES,CONFIG_MAP,SECRET_STORE,FEATURE_FLAGS source
-    class SCHEMA_REGISTRY,CI_VAL,RUNTIME_VAL valid
-    class K8S_CONFIG,ENV_INJECT,SIDE_CAR dist
-    class APP_ENV,CONFIG_CLIENT,FLAG_CLIENT inject
-    class SERVICE_WEB,SERVICE_API,INFRA runtime
+ class ENV_FILES,CONFIG_MAP,SECRET_STORE,FEATURE_FLAGS source
+ class SCHEMA_REGISTRY,CI_VAL,RUNTIME_VAL valid
+ class K8S_CONFIG,ENV_INJECT,SIDE_CAR dist
+ class APP_ENV,CONFIG_CLIENT,FLAG_CLIENT inject
+ class SERVICE_WEB,SERVICE_API,INFRA runtime
 ```text
 
 > **Diagram:** Configuration pipeline flows from four source types through CI validation, then distribution via Kubernetes/Helm/Docker Compose, injection into process environments and config clients, and finally consumed by all Vaeloom services at runtime.
@@ -208,7 +208,7 @@ Sensitive values (DB credentials, API keys, JWT secrets, encryption keys) are st
 
 ### Feature Flag Service
 
-Runtime-evaluated boolean or multivariate flags served by LaunchDarkly (or a lightweight custom alternative). Flags are NOT stored in ConfigMaps or `.env` files ó they are managed through the flag service UI/API.
+Runtime-evaluated boolean or multivariate flags served by LaunchDarkly (or a lightweight custom alternative). Flags are NOT stored in ConfigMaps or `.env` files ‚Äî they are managed through the flag service UI/API.
 
 ---
 
@@ -216,20 +216,20 @@ Runtime-evaluated boolean or multivariate flags served by LaunchDarkly (or a lig
 
 ```mermaid
 graph BT
-    classDef local fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef dev fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef staging fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
-    classDef prod fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
+ classDef local fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef dev fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef staging fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
+ classDef prod fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
 
-    LOCAL["local<br/>Developer machine<br/>Inherits: defaults only"] --> DEV
-    DEV["dev<br/>Shared dev cluster<br/>Inherits: local pattern"] --> STAGING
-    STAGING["staging<br/>Pre-production<br/>Inherits: dev structure"] --> PROD
-    PROD["production<br/>Live environment<br/>Inherits: staging structure"]
+ LOCAL["local<br/>Developer machine<br/>Inherits: defaults only"]--> DEV
+ DEV["dev<br/>Shared dev cluster<br/>Inherits: local pattern"]--> STAGING
+ STAGING["staging<br/>Pre-production<br/>Inherits: dev structure"]--> PROD
+ PROD["production<br/>Live environment<br/>Inherits: staging structure"]
 
-    class LOCAL local
-    class DEV dev
-    class STAGING staging
-    class PROD prod
+ class LOCAL local
+ class DEV dev
+ class STAGING staging
+ class PROD prod
 ```text
 
 > **Diagram:** Config inheritance flows upward. Each environment inherits the structural shape of the one below, with values becoming progressively more restrictive and production-hardened.
@@ -240,7 +240,7 @@ graph BT
 |------|-------------|
 | **Shape inheritance** | All config keys present in `local` must exist in `dev`, `staging`, and `production` (may have different values) |
 | **Override only** | Upper environments override specific values; they do not redefine the entire config |
-| **Secrets isolation** | Secrets are NEVER inherited ó each environment has its own vault path |
+| **Secrets isolation** | Secrets are NEVER inherited ‚Äî each environment has its own vault path |
 | **Feature flag sync** | Flags are created in `dev`, promoted to `staging` for validation, then enabled in `production` |
 | **Drift detection** | CI compares config keys across environments weekly and alerts on discrepancies |
 
@@ -441,37 +441,37 @@ class VaeloomSettings(BaseSettings):
 
 ```mermaid
 graph LR
-    classDef vault fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pod fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef audit fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
+ classDef vault fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pod fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef audit fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph Vault["üîê Vault Cluster"]
-        V1["Vault Server<br/>HA mode"]
-        V2["Transit Engine<br/>Encryption"]
-        V3["KV Engine v2<br/>Path: secret/Vaeloom/*"]
-    end
+ subgraph Vault["Vault Cluster"]
+ V1["Vault Server<br/>HA mode"]
+ V2["Transit Engine<br/>Encryption"]
+ V3["KV Engine v2<br/>Path: secret/Vaeloom/*"]
+ end
 
-    subgraph K8S["Kubernetes"]
-        direction TB
-        AGENT["Vault Agent<br/>Sidecar<br/>Init container"]
-        POD["Application Pod<br/>Reads secrets from<br/>/vault/secrets/*"]
-    end
+ subgraph K8S["Kubernetes"]
+ direction TB
+ AGENT["Vault Agent<br/>Sidecar<br/>Init container"]
+ POD["Application Pod<br/>Reads secrets from<br/>/vault/secrets/*"]
+ end
 
-    subgraph Audit["Audit"]
-        A1["Vault Audit Logs<br/>All reads/writes logged"]
-        A2["CloudTrail / SIEM<br/>AWS CloudTrail or Splunk"]
-    end
+ subgraph Audit["Audit"]
+ A1["Vault Audit Logs<br/>All reads/writes logged"]
+ A2["CloudTrail / SIEM<br/>AWS CloudTrail or Splunk"]
+ end
 
-    V1 --> V2
-    V1 --> V3
-    V3 --> AGENT
-    AGENT --> POD
-    V1 --> A1
-    A1 --> A2
+ V1--> V2
+ V1--> V3
+ V3--> AGENT
+ AGENT--> POD
+ V1--> A1
+ A1--> A2
 
-    class V1,V2,V3 vault
-    class AGENT,POD pod
-    class A1,A2 audit
+ class V1,V2,V3 vault
+ class AGENT,POD pod
+ class A1,A2 audit
 ```text
 
 > **Diagram:** Secrets flow from Vault's KV engine through the Vault Agent sidecar into a shared volume mounted by the application pod. Every read is audited.
@@ -623,22 +623,22 @@ All Vaeloom services follow a **fail-fast** model for configuration: if required
 
 ```mermaid
 graph LR
-    classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef ci fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef deploy fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
-    classDef rollback fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
+ classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef ci fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef deploy fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
+ classDef rollback fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
 
-    PR["PR changes config<br/>in repo"] --> CI["CI validates schema<br/>+ envsubst + parity"]
-    CI --> PROMOTE["Config promoted to<br/>next environment"]
-    PROMOTE --> DEPLOY["Deploy with new config<br/>+ canary analysis"]
-    DEPLOY --> MONITOR["Monitor for 15 min<br/>error rate + latency"]
-    MONITOR -->|Pass| FULL["Full rollout"]
-    MONITOR -->|Fail| ROLLBACK["Rollback config<br/>to previous version"]
+ PR["PR changes config<br/>in repo"]--> CI["CI validates schema<br/>+ envsubst + parity"]
+ CI--> PROMOTE["Config promoted to<br/>next environment"]
+ PROMOTE--> DEPLOY["Deploy with new config<br/>+ canary analysis"]
+ DEPLOY--> MONITOR["Monitor for 15 min<br/>error rate + latency"]
+ MONITOR-->|Pass| FULL["Full rollout"]
+ MONITOR-->|Fail| ROLLBACK["Rollback config<br/>to previous version"]
 
-    class PR,CI source
-    class PROMOTE ci
-    class DEPLOY,FULL deploy
-    class ROLLBACK rollback
+ class PR,CI source
+ class PROMOTE ci
+ class DEPLOY,FULL deploy
+ class ROLLBACK rollback
 ```text
 
 > **Diagram:** Config promotion follows the same pipeline as code. Each environment gets validated config from the previous stage, with automatic rollback on failure.
@@ -670,7 +670,7 @@ vault kv rollback -version=5 secret/Vaeloom/production/api/db
 
 ## Examples
 
-### Full Config ó `apps/api`
+### Full Config ‚Äî `apps/api`
 
 ```yaml
 # apps/api/config/production.yaml
@@ -714,7 +714,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.Vaeloom-prod.svc.cluster.loc
 SENTRY_DSN: "https://sentry-key@sentry.Vaeloom.ai/prod"
 ```text
 
-### Full Config ó `apps/api` (AI section)
+### Full Config ‚Äî `apps/api` (AI section)
 
 ```yaml
 # apps/api/config/production-ai.yaml
@@ -752,7 +752,7 @@ RATE_LIMIT_TOKENS_PER_MINUTE: 1000
 RATE_LIMIT_BURST: 50
 ```text
 
-### Full Config ó `apps/web`
+### Full Config ‚Äî `apps/web`
 
 ```yaml
 # apps/web/config/production.yaml
@@ -829,16 +829,16 @@ redis_host = settings.redis_host
 
 | # | Practice | Rationale |
 |---|----------|-----------|
-| 1 | **Principle of least privilege** ó Each service gets only the secrets and config keys it needs | Limits blast radius of a compromised service |
-| 2 | **Config as code** ó All config changes go through PR review and CI validation | Prevents manual mistakes and provides audit trail |
-| 3 | **Validate before deploying** ó CI blocks deployment on schema or interpolation failures | Catches misconfiguration before it reaches production |
-| 4 | **Never hardcode defaults** ó Always use environment variables or a config file | Enables environment-specific overrides without code changes |
-| 5 | **Prefix public variables** ó Use `NEXT_PUBLIC_` convention for client-exposed vars | Prevents accidental server secret exposure in browser bundles |
-| 6 | **Use descriptive flag keys** ó Include feature name and area in flag key (`ai-agent-streaming` not `flag-42`) | Makes flag purpose self-documenting in monitoring and code |
-| 7 | **Remove expired flags** ó Delete flag code and flag definition within one sprint of full rollout | Prevents technical debt and confusing dead code paths |
-| 8 | **Pin config versions** ó Use Git SHA references for config in deployment manifests | Enables deterministic rollback to any known-good state |
-| 9 | **Document every config key** ó Maintain schema with descriptions and examples | Reduces onboarding time and prevents incorrect values |
-| 10 | **Test config changes in isolation** ó Deploy config changes to staging at least 24h before production | Provides buffer to detect environment-specific issues |
+| 1 | **Principle of least privilege** ‚Äî Each service gets only the secrets and config keys it needs | Limits blast radius of a compromised service |
+| 2 | **Config as code** ‚Äî All config changes go through PR review and CI validation | Prevents manual mistakes and provides audit trail |
+| 3 | **Validate before deploying** ‚Äî CI blocks deployment on schema or interpolation failures | Catches misconfiguration before it reaches production |
+| 4 | **Never hardcode defaults** ‚Äî Always use environment variables or a config file | Enables environment-specific overrides without code changes |
+| 5 | **Prefix public variables** ‚Äî Use `NEXT_PUBLIC_` convention for client-exposed vars | Prevents accidental server secret exposure in browser bundles |
+| 6 | **Use descriptive flag keys** ‚Äî Include feature name and area in flag key (`ai-agent-streaming` not `flag-42`) | Makes flag purpose self-documenting in monitoring and code |
+| 7 | **Remove expired flags** ‚Äî Delete flag code and flag definition within one sprint of full rollout | Prevents technical debt and confusing dead code paths |
+| 8 | **Pin config versions** ‚Äî Use Git SHA references for config in deployment manifests | Enables deterministic rollback to any known-good state |
+| 9 | **Document every config key** ‚Äî Maintain schema with descriptions and examples | Reduces onboarding time and prevents incorrect values |
+| 10 | **Test config changes in isolation** ‚Äî Deploy config changes to staging at least 24h before production | Provides buffer to detect environment-specific issues |
 
 ---
 
@@ -860,13 +860,13 @@ redis_host = settings.redis_host
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| **Config drift between environments** | Medium | High ó bugs that bypass staging testing | Weekly drift detection CI job; cross-env key parity enforcement |
-| **Stale feature flags accumulate** | High | Medium ó dead code, confusion, technical debt | Quarterly flag cleanup review; auto-archive flags with zero evaluations for 30 days |
-| **Secret rotation causes outage** | Low | Critical ó all services lose DB/auth access | Dynamic secrets with TTLs; dual-key grace periods; rotation tested in staging first |
-| **Config schema breaking change** | Medium | High ó services fail to start after deploying | Schema validation in CI; backward-compatible changes only; deprecation notices |
-| **Developer accidentally commits real secrets** | Low | Critical ó credential exposed in Git history | Pre-commit hooks with `git-secrets`; `.env` in `.gitignore`; GitHub secret scanning |
-| **Vault cluster becomes unavailable** | Low | Critical ó new pods cannot fetch secrets | Vault HA mode with standby; cached secrets on pod startup with TTL grace period |
-| **Flag service latency degrades request** | Medium | Medium ó increased p99 latency for flag evaluation | Client-side flag caching with TTL; circuit breaker falls back to code defaults |
+| **Config drift between environments** | Medium | High ‚Äî bugs that bypass staging testing | Weekly drift detection CI job; cross-env key parity enforcement |
+| **Stale feature flags accumulate** | High | Medium ‚Äî dead code, confusion, technical debt | Quarterly flag cleanup review; auto-archive flags with zero evaluations for 30 days |
+| **Secret rotation causes outage** | Low | Critical ‚Äî all services lose DB/auth access | Dynamic secrets with TTLs; dual-key grace periods; rotation tested in staging first |
+| **Config schema breaking change** | Medium | High ‚Äî services fail to start after deploying | Schema validation in CI; backward-compatible changes only; deprecation notices |
+| **Developer accidentally commits real secrets** | Low | Critical ‚Äî credential exposed in Git history | Pre-commit hooks with `git-secrets`; `.env` in `.gitignore`; GitHub secret scanning |
+| **Vault cluster becomes unavailable** | Low | Critical ‚Äî new pods cannot fetch secrets | Vault HA mode with standby; cached secrets on pod startup with TTL grace period |
+| **Flag service latency degrades request** | Medium | Medium ‚Äî increased p99 latency for flag evaluation | Client-side flag caching with TTL; circuit breaker falls back to code defaults |
 
 ---
 
@@ -886,33 +886,33 @@ redis_host = settings.redis_host
 
 ```mermaid
 sequenceDiagram
-    participant DEV as Developer
-    participant PR as Pull Request
-    participant CI as CI Pipeline
-    participant VAL as Config Validator
-    participant K8S as Kubernetes
-    participant APP as Application
+ participant DEV as Developer
+ participant PR as Pull Request
+ participant CI as CI Pipeline
+ participant VAL as Config Validator
+ participant K8S as Kubernetes
+ participant APP as Application
 
-    DEV->>PR: Commit config change
-    PR->>CI: Trigger CI validation
-    CI->>VAL: Validate schema (JSON Schema / zod)
-    VAL-->>CI: Schema valid / invalid
-    alt Schema Invalid
-        CI-->>PR: ‚ùå Block - missing or malformed config
-    else Schema Valid
-        CI->>K8S: Update ConfigMap / Secret
-        K8S->>K8S: Roll out new config
-        K8S->>APP: Inject env vars
-        APP->>APP: Runtime validation (startup guard)
-        alt Runtime Invalid
-            APP->>APP: Fail fast - exit with error
-        else Runtime Valid
-            APP-->>K8S: Healthy - serving traffic
-        end
-    end
+ DEV->>PR: Commit config change
+ PR->>CI: Trigger CI validation
+ CI->>VAL: Validate schema (JSON Schema / zod)
+ VAL-->>CI: Schema valid / invalid
+ alt Schema Invalid
+ CI-->>PR: ‚ùå Block - missing or malformed config
+ else Schema Valid
+ CI->>K8S: Update ConfigMap / Secret
+ K8S->>K8S: Roll out new config
+ K8S->>APP: Inject env vars
+ APP->>APP: Runtime validation (startup guard)
+ alt Runtime Invalid
+ APP->>APP: Fail fast - exit with error
+ else Runtime Valid
+ APP-->>K8S: Healthy - serving traffic
+ end
+ end
 ```text
 
-> **Diagram:** Config change lifecycle ó PR triggers CI validation against schema, validated configs deploy to Kubernetes ConfigMaps, applications validate at startup and fail fast on mismatch.
+> **Diagram:** Config change lifecycle ‚Äî PR triggers CI validation against schema, validated configs deploy to Kubernetes ConfigMaps, applications validate at startup and fail fast on mismatch.
 
 ---
 
@@ -920,27 +920,27 @@ sequenceDiagram
 
 | Improvement | Priority | Complexity | Timeline |
 |-------------|----------|------------|----------|
-| **Real-time config reload** ó File watcher or sidecar agent detects config changes and signals service reload without restart | High | High | Q1 2027 |
-| **GitOps config management** ó Config changes merged to `main` auto-sync to environments via ArgoCD/Flux | High | Medium | Q4 2026 |
-| **Automatic drift remediation** ó Detected drift between environments is automatically corrected to match the source of truth | Medium | High | Q2 2027 |
-| **Config validation in local dev** ó Pre-commit hook runs schema validation on local config changes | Medium | Low | Q3 2026 |
-| **Self-healing vault agent** ó Vault agent retries with exponential backoff and reports stale secret warnings | Medium | Medium | Q3 2026 |
-| **A/B test analysis integration** ó Feature flag evaluation data piped directly to PostHog/Amplitude for automated analysis | Medium | Medium | Q4 2026 |
-| **Schema auto-generation** ó Type-safe config types auto-generated from JSON Schema for all service languages | Low | Medium | Q4 2026 |
-| **Config diff UI** ó Web UI to compare config values across environments at a glance | Low | Medium | Q1 2027 |
+| **Real-time config reload** ‚Äî File watcher or sidecar agent detects config changes and signals service reload without restart | High | High | Q1 2027 |
+| **GitOps config management** ‚Äî Config changes merged to `main` auto-sync to environments via ArgoCD/Flux | High | Medium | Q4 2026 |
+| **Automatic drift remediation** ‚Äî Detected drift between environments is automatically corrected to match the source of truth | Medium | High | Q2 2027 |
+| **Config validation in local dev** ‚Äî Pre-commit hook runs schema validation on local config changes | Medium | Low | Q3 2026 |
+| **Self-healing vault agent** ‚Äî Vault agent retries with exponential backoff and reports stale secret warnings | Medium | Medium | Q3 2026 |
+| **A/B test analysis integration** ‚Äî Feature flag evaluation data piped directly to PostHog/Amplitude for automated analysis | Medium | Medium | Q4 2026 |
+| **Schema auto-generation** ‚Äî Type-safe config types auto-generated from JSON Schema for all service languages | Low | Medium | Q4 2026 |
+| **Config diff UI** ‚Äî Web UI to compare config values across environments at a glance | Low | Medium | Q1 2027 |
 
 ---
 
 ## Related Documents
 
-- [`./Deployment.md`](./Deployment.md) ó Deployment strategy and environment promotion
-- [`./Docker.md`](./Docker.md) ó Docker configuration and build standards
-- [`./CI-CD.md`](./CI-CD.md) ó CI/CD pipeline definitions
-- [`./Kubernetes.md`](./Kubernetes.md) ó Kubernetes deployment and ConfigMap definitions
-- [`./Terraform.md`](./Terraform.md) ó Infrastructure provisioning and Terraform variable management
-- [`../Security/IAM.md`](../Security/IAM.md) ó Identity, access management, and Vault integration
-- [`../Security/Encryption.md`](../Security/Encryption.md) ó Encryption standards for data at rest and in transit
-- [`../Architecture/Microservices.md`](../Architecture/Microservices.md) ó Service architecture and inter-service communication
-- [`../Engineering/Implementation/16-deployment-infrastructure.md`](../Engineering/Implementation/16-deployment-infrastructure.md) ó Detailed deployment infrastructure design
-- [`../Testing/Security-Testing.md`](../Testing/Security-Testing.md) ó Security testing practices including config injection tests
+- [`./Deployment.md`](./Deployment.md) ‚Äî Deployment strategy and environment promotion
+- [`./Docker.md`](./Docker.md) ‚Äî Docker configuration and build standards
+- [`./CI-CD.md`](./CI-CD.md) ‚Äî CI/CD pipeline definitions
+- [`./Kubernetes.md`](./Kubernetes.md) ‚Äî Kubernetes deployment and ConfigMap definitions
+- [`./Terraform.md`](./Terraform.md) ‚Äî Infrastructure provisioning and Terraform variable management
+- [`../Security/IAM.md`](../Security/IAM.md) ‚Äî Identity, access management, and Vault integration
+- [`../Security/Encryption.md`](../Security/Encryption.md) ‚Äî Encryption standards for data at rest and in transit
+- [`../Architecture/Microservices.md`](../Architecture/Microservices.md) ‚Äî Service architecture and inter-service communication
+- [`../Engineering/Implementation/16-deployment-infrastructure.md`](../Engineering/Implementation/16-deployment-infrastructure.md) ‚Äî Detailed deployment infrastructure design
+- [`../Testing/Security-Testing.md`](../Testing/Security-Testing.md) ‚Äî Security testing practices including config injection tests
 ````

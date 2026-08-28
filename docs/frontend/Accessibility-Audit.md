@@ -1,4 +1,4 @@
-﻿# Accessibility Audit
+# Accessibility Audit
 
 > **Purpose:** Define the WCAG 2.2 AA compliance audit program, testing methodology, and remediation SLAs for Vaeloom
 > **Status:** ✅ Upgraded to enterprise quality
@@ -15,69 +15,69 @@ The audit program covers automated scanning (axe-core, Lighthouse) and manual te
 
 ```mermaid
 gantt
-    title Accessibility Audit Calendar 2026-2027
-    dateFormat YYYY-MM-DD
-    axisFormat %b %Y
-    
-    section Q3 2026
-    Full Audit (WCAG 2.2 AA)       :2026-08-01, 14d
-    Remediation Sprint              :2026-08-15, 21d
-    
-    section Q4 2026
-    Automated Scan (axe-ci)        :2026-10-01, 5d
-    Manual Screen Reader Review    :2026-11-01, 10d
-    
-    section Q1 2027
-    Full Audit (WCAG 2.2 AA)       :2027-02-01, 14d
-    Keyboard Navigation Review     :2027-02-15, 7d
-    
-    section Q2 2027
-    Automated Scan (axe-ci)        :2027-04-01, 5d
-    Motion Sensitivity Review      :2027-05-01, 7d
+ title Accessibility Audit Calendar 2026-2027
+ dateFormat YYYY-MM-DD
+ axisFormat %b %Y
+ 
+ section Q3 2026
+ Full Audit (WCAG 2.2 AA) :2026-08-01, 14d
+ Remediation Sprint :2026-08-15, 21d
+ 
+ section Q4 2026
+ Automated Scan (axe-ci) :2026-10-01, 5d
+ Manual Screen Reader Review :2026-11-01, 10d
+ 
+ section Q1 2027
+ Full Audit (WCAG 2.2 AA) :2027-02-01, 14d
+ Keyboard Navigation Review :2027-02-15, 7d
+ 
+ section Q2 2027
+ Automated Scan (axe-ci) :2027-04-01, 5d
+ Motion Sensitivity Review :2027-05-01, 7d
 ```
 
 ## Audit Categories
 
 ```mermaid
 graph TD
-    classDef cat fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef tool fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef check fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
+ classDef cat fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef tool fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef check fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph Categories["Audit Categories"]
-        Nav["Navigation<br/>Skip links, landmarks, focus order"]
-        Forms["Forms<br/>Labels, errors, autocomplete"]
-        Img["Images<br/>Alt text, decorative, ARIA"]
-        Color["Color Contrast<br/>4.5:1 / 3:1 ratios"]
-        Key["Keyboard<br/>All actions via keyboard"]
-        SR["Screen Reader<br/>VoiceOver + NVDA"]
-        Focus["Focus<br/>Visible indicators, trap mgmt"]
-        Motion["Motion<br/>Reduced motion, flashing"]
-    end
+ subgraph Categories["Audit Categories"]
+ Nav["Navigation<br/>Skip links, landmarks, focus order"]
+ Forms["Forms<br/>Labels, errors, autocomplete"]
+ Img["Images<br/>Alt text, decorative, ARIA"]
+ Color["Color Contrast<br/>4.5:1 / 3:1 ratios"]
+ Key["Keyboard<br/>All actions via keyboard"]
+ SR["Screen Reader<br/>VoiceOver + NVDA"]
+ Focus["Focus<br/>Visible indicators, trap mgmt"]
+ Motion["Motion<br/>Reduced motion, flashing"]
+ end
 
-    subgraph Tools["Testing Tools"]
-        Axe["axe-core<br/>Automated CI scan"]
-        LH["Lighthouse<br/>Accessibility report"]
-        VO["VoiceOver<br/>macOS / iOS"]
-        NVDA["NVDA<br/>Windows"]
-    end
+ subgraph Tools["Testing Tools"]
+ Axe["axe-core<br/>Automated CI scan"]
+ LH["Lighthouse<br/>Accessibility report"]
+ VO["VoiceOver<br/>macOS / iOS"]
+ NVDA["NVDA<br/>Windows"]
+ end
 
-    subgraph Checks["Per-commit CI Checks"]
-        C1["axe-core scan<br/>All routes"]
-        C2["Color contrast check<br/>Design tokens"]
-        C3["Lighthouse score >= 90<br/>Accessibility category"]
-        C4["No new violations<br/>blocked PR merge"]
-    end
+ subgraph Checks["Per-commit CI Checks"]
+ C1["axe-core scan<br/>All routes"]
+ C2["Color contrast check<br/>Design tokens"]
+ C3["Lighthouse score >= 90<br/>Accessibility category"]
+ C4["No new violations<br/>blocked PR merge"]
+ end
 
-    Nav & Forms & Img & Color & Key & SR & Focus & Motion --> Axe
-    Nav & Forms & Img & Color & Key & SR & Focus & Motion --> LH
-    Key & SR & Focus --> VO
-    Key & SR & Focus --> NVDA
-    Axe & LH --> C1 & C2 & C3 --> C4
+ Nav & Forms & Img & Color & Key & SR & Focus & Motion--> Axe
+ Nav & Forms & Img & Color & Key & SR & Focus & Motion--> LH
+ Key & SR & Focus--> VO
+ Key & SR & Focus--> NVDA
+ Axe & LH--> C1 & C2 & C3--> C4
 
-    class Nav,Forms,Img,Color,Key,SR,Focus,Motion cat
-    class Axe,LH,VO,NVDA tool
-    class C1,C2,C3,C4 check
+ class Nav,Forms,Img,Color,Key,SR,Focus,Motion cat
+ class Axe,LH,VO,NVDA tool
+ class C1,C2,C3,C4 check
 ```
 
 ## Severity Classification & SLAs
@@ -182,22 +182,22 @@ jobs:
 
 ```mermaid
 sequenceDiagram
-    participant DEV as Developer
-    participant CI as GitHub Actions
-    participant AXE as axe-core
-    participant GH as GitHub Checks
+ participant DEV as Developer
+ participant CI as GitHub Actions
+ participant AXE as axe-core
+ participant GH as GitHub Checks
 
-    DEV->>CI: Push PR to branch
-    CI->>AXE: Run scan on changed routes
-    AXE-->>CI: Violation report (JSON)
-    alt 0 new violations
-        CI->>GH: âœ… Pass -- post report
-        GH-->>DEV: PR passes a11y gate
-    else Violations found
-        CI->>GH: âŒ Fail -- post detailed report
-        GH-->>DEV: PR blocked; fix required
-        DEV->>DEV: Fix violations and re-push
-    end
+ DEV->>CI: Push PR to branch
+ CI->>AXE: Run scan on changed routes
+ AXE-->>CI: Violation report (JSON)
+ alt 0 new violations
+ CI->>GH: … Pass -- post report
+ GH-->>DEV: PR passes a11y gate
+ else Violations found
+ CI->>GH: Œ Fail -- post detailed report
+ GH-->>DEV: PR blocked; fix required
+ DEV->>DEV: Fix violations and re-push
+ end
 ```
 
 ## Data Flow
@@ -306,37 +306,37 @@ The accessibility audit program follows a layered quality architecture combining
 
 ```mermaid
 graph TD
-    classDef gate fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef audit fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef monitor fill:#fff3e0,stroke:#e65100,color:#000
+ classDef gate fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef audit fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef monitor fill:#fff3e0,stroke:#e65100,color:#000
 
-    subgraph CI_Gate["CI Gate (Per Commit)"]
-        A1["axe-core scan on changed routes"]
-        A2["Color contrast token validation"]
-        A3["Lighthouse CI score check"]
-    end
+ subgraph CI_Gate["CI Gate (Per Commit)"]
+ A1["axe-core scan on changed routes"]
+ A2["Color contrast token validation"]
+ A3["Lighthouse CI score check"]
+ end
 
-    subgraph Scheduled_Audits["Scheduled Audits (Quarterly)"]
-        B1["Full WCAG 2.2 AA audit"]
-        B2["Manual screen reader review"]
-        B3["Keyboard navigation review"]
-        B4["Motion sensitivity review"]
-    end
+ subgraph Scheduled_Audits["Scheduled Audits (Quarterly)"]
+ B1["Full WCAG 2.2 AA audit"]
+ B2["Manual screen reader review"]
+ B3["Keyboard navigation review"]
+ B4["Motion sensitivity review"]
+ end
 
-    subgraph Monitoring["Continuous Monitoring"]
-        C1["Violation trend dashboard"]
-        C2["SLA tracking per severity"]
-        C3["Screenshot artifact storage"]
-    end
+ subgraph Monitoring["Continuous Monitoring"]
+ C1["Violation trend dashboard"]
+ C2["SLA tracking per severity"]
+ C3["Screenshot artifact storage"]
+ end
 
-    A1 & A2 & A3 -->|Pass| D["PR Merge Gate"]
-    A1 & A2 & A3 -->|Fail| E["Fix Required"]
-    D --> B1 & B2 & B3 & B4
-    B1 & B2 & B3 & B4 --> C1 & C2 & C3
+ A1 & A2 & A3-->|Pass| D["PR Merge Gate"]
+ A1 & A2 & A3-->|Fail| E["Fix Required"]
+ D--> B1 & B2 & B3 & B4
+ B1 & B2 & B3 & B4--> C1 & C2 & C3
 
-    class A1,A2,A3 gate
-    class B1,B2,B3,B4 audit
-    class C1,C2,C3 monitor
+ class A1,A2,A3 gate
+ class B1,B2,B3,B4 audit
+ class C1,C2,C3 monitor
 ```
 
 The system is driven by the audit schedule (see Audit Schedule Gantt), categorized by testing domain (see Audit Categories), and gated by severity-classified SLAs.

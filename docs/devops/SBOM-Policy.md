@@ -1,7 +1,7 @@
-﻿# SBOM Policy
+# SBOM Policy
 
 > **Purpose:** Define the Software Bill of Materials generation, storage, vulnerability scanning, and remediation policy for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** DevOps Team
 > **Last Updated:** 2026-07-13
 
@@ -15,58 +15,58 @@ The SBOM policy applies to all production deployments, container images, and thi
 
 ```mermaid
 graph LR
-    classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef sbom fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef scan fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef policy fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
-    classDef action fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
+ classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef sbom fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef scan fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef policy fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef action fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Source["Build Triggers"]
-        PR["Pull Request"]
-        MAIN["Merge to Main"]
-        TAG["Release Tag"]
-    end
+ subgraph Source["Build Triggers"]
+ PR["Pull Request"]
+ MAIN["Merge to Main"]
+ TAG["Release Tag"]
+ end
 
-    subgraph SBOM["SBOM Generation (SPDX 2.3)"]
-        NPM["npm sbom<br/>CycloneDX plugin"]
-        DOCKER["Container SBOM<br/>CycloneDX for Docker"]
-        GO["Go module SBOM<br/>syft"]
-        AGG["Aggregate SBOM<br/>Merged SPDX document"]
-    end
+ subgraph SBOM["SBOM Generation (SPDX 2.3)"]
+ NPM["npm sbom<br/>CycloneDX plugin"]
+ DOCKER["Container SBOM<br/>CycloneDX for Docker"]
+ GO["Go module SBOM<br/>syft"]
+ AGG["Aggregate SBOM<br/>Merged SPDX document"]
+ end
 
-    subgraph Scan["Vulnerability Scanning"]
-        TRIVY["Trivy<br/>OS + library vulns"]
-        GRYPE["Grype<br/>Deep dependency scan"]
-        MERGE["Merged Report<br/>Severity + fix version"]
-    end
+ subgraph Scan["Vulnerability Scanning"]
+ TRIVY["Trivy<br/>OS + library vulns"]
+ GRYPE["Grype<br/>Deep dependency scan"]
+ MERGE["Merged Report<br/>Severity + fix version"]
+ end
 
-    subgraph Policy["Policy Engine"]
-        CRIT["Critical: Block deployment"]
-        HIGH["High: Block deployment"]
-        MED["Medium: Warn + 7d SLA"]
-        LOW["Low: Informational"]
-    end
+ subgraph Policy["Policy Engine"]
+ CRIT["Critical: Block deployment"]
+ HIGH["High: Block deployment"]
+ MED["Medium: Warn + 7d SLA"]
+ LOW["Low: Informational"]
+ end
 
-    subgraph Storage["Artifact Storage"]
-        REG["Artifact Registry<br/>SBOM stored alongside image"]
-        INDEX["SBOM Index<br/>Searchable by CVE + package"]
-        AUDIT["Audit Trail<br/>SBOM per deployment"]
-    end
+ subgraph Storage["Artifact Storage"]
+ REG["Artifact Registry<br/>SBOM stored alongside image"]
+ INDEX["SBOM Index<br/>Searchable by CVE + package"]
+ AUDIT["Audit Trail<br/>SBOM per deployment"]
+ end
 
-    PR & MAIN & TAG --> NPM & DOCKER & GO --> AGG
-    AGG --> TRIVY & GRYPE --> MERGE
-    MERGE --> CRIT & HIGH & MED & LOW
-    CRIT --> BLOCK["âŒ Block Deploy"]
-    HIGH --> BLOCK
-    MED --> WARN["âš ï¸ Warn + Ticket"]
-    LOW --> INFO["â„¹ï¸ Log"]
-    AGG --> REG --> INDEX --> AUDIT
+ PR & MAIN & TAG--> NPM & DOCKER & GO--> AGG
+ AGG--> TRIVY & GRYPE--> MERGE
+ MERGE--> CRIT & HIGH & MED & LOW
+ CRIT--> BLOCK["Block Deploy"]
+ HIGH--> BLOCK
+ MED--> WARN["Warn + Ticket"]
+ LOW--> INFO["Log"]
+ AGG--> REG--> INDEX--> AUDIT
 
-    class PR,MAIN,TAG source
-    class NPM,DOCKER,GO,AGG sbom
-    class TRIVY,GRYPE,MERGE scan
-    class CRIT,HIGH,MED,LOW policy
-    class BLOCK,WARN,INFO action
+ class PR,MAIN,TAG source
+ class NPM,DOCKER,GO,AGG sbom
+ class TRIVY,GRYPE,MERGE scan
+ class CRIT,HIGH,MED,LOW policy
+ class BLOCK,WARN,INFO action
 ```
 
 ## SBOM Format
@@ -338,32 +338,32 @@ echo "All vulnerability checks passed"
 
 ```mermaid
 sequenceDiagram
-    participant CI as CI Pipeline
-    participant SBOM as CycloneDX Generator
-    participant TRIVY as Trivy Scanner
-    participant GRYPE as Grype Scanner
-    participant POL as Policy Engine
-    participant REG as Artifact Registry
+ participant CI as CI Pipeline
+ participant SBOM as CycloneDX Generator
+ participant TRIVY as Trivy Scanner
+ participant GRYPE as Grype Scanner
+ participant POL as Policy Engine
+ participant REG as Artifact Registry
 
-    CI->>SBOM: Generate SBOM (SPDX 2.3)
-    SBOM-->>CI: sbom.spdx.json
+ CI->>SBOM: Generate SBOM (SPDX 2.3)
+ SBOM-->>CI: sbom.spdx.json
 
-    par Vulnerability Scan
-        CI->>TRIVY: Scan OS + library vulns
-        CI->>GRYPE: Scan deep dependencies
-    end
+ par Vulnerability Scan
+ CI->>TRIVY: Scan OS + library vulns
+ CI->>GRYPE: Scan deep dependencies
+ end
 
-    TRIVY-->>POL: trivy-report.json
-    GRYPE-->>POL: grype-report.json
+ TRIVY-->>POL: trivy-report.json
+ GRYPE-->>POL: grype-report.json
 
-    POL->>POL: Evaluate against policy
-    alt Critical or High found
-        POL-->>CI: âŒ Block deployment
-    else Only Medium/Low
-        POL-->>CI: âœ… Allow (warn + ticket)
-    end
+ POL->>POL: Evaluate against policy
+ alt Critical or High found
+ POL-->>CI: Œ Block deployment
+ else Only Medium/Low
+ POL-->>CI: … Allow (warn + ticket)
+ end
 
-    CI->>REG: Store SBOM + scan reports
+ CI->>REG: Store SBOM + scan reports
 ```
 
 > **Diagram:** SBOM pipeline — CI generates SPDX SBOM, runs parallel scans (Trivy + Grype), policy engine blocks deploy on critical/high CVEs, and stores results in artifact registry.

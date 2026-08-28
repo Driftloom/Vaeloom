@@ -1,7 +1,7 @@
 # MVP-P20 — 04. Code and Configuration
 
-> **Phase:** MVP-P20 — Post-Deployment Validation  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 93.6 + P20 validation (synthetic + 12 smoke + 39 E2E + 99.9% SLO)  
+> **Phase:** MVP-P20 — Post-Deployment Validation 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 93.6 + P20 validation (synthetic + 12 smoke + 39 E2E + 99.9% SLO) 
 > **Predecessor:** P19 release readiness 93.6 (v0.2.0 + 99 paths + 42/42 + HPA min3 max10 + 0021 + lifespan)
 
 ## Architecture Preservation (§13)
@@ -37,7 +37,7 @@ P20 is **post-deployment hardening**; business logic unchanged (only synthetic m
 | `docs/Operations/SLO.md:1` | SLO p50<100 p95<500 99.9% error<1% RPO1h RTO15m | SLO 99.9% | `SLO.md:1` |
 | `docs/DISASTER_RECOVERY.md:1` | DR 308 lines RTO1h/RPO5m 5 tiers + WAL 5m + PITR + `service-down` rollback `aws ecs update-service --force-new-deployment` | DR RTO1h | `DISASTER_RECOVERY.md:1` 308 lines |
 | `apps/api/src/api/config.py:11` | `service_version 0.2.0` + `enterprise_routes_enabled False` `:87` | Version 0.2.0 | `config.py:11` + `:87` |
-| `docs/backend/openapi.yaml:1` | `openapi: 3.1.0` `version: 0.2.0` 99 paths `rg -c "^  /" 99` | OpenAPI 99 | `openapi.yaml:1` 3.1.0 0.2.0 |
+| `docs/backend/openapi.yaml:1` | `openapi: 3.1.0` `version: 0.2.0` 99 paths `rg -c "^ /" 99` | OpenAPI 99 | `openapi.yaml:1` 3.1.0 0.2.0 |
 
 ### Unchanged (verified preserved)
 - `apps/api/src/api/middleware/tenant.py:41` `SET LOCAL app.tenant_id/workspace_id/user_id` fail-closed via `database.py:30` `set_rls_session_vars` — synthetic 30s under `transaction` pgbouncer safe
@@ -86,7 +86,7 @@ P20 is **post-deployment hardening**; business logic unchanged (only synthetic m
 - `pytest --collect-only -q -o addopts=""` 2557 (12.91s)
 - `uv run --project apps/api python -c "from api.services.gdpr import ALLOWED_TABLES; print(len(ALLOWED_TABLES))"` → 31
 - `uv run --project apps/api python -m pytest --cov=api --cov-report=term -q -o addopts="-n 4"` → 94.2% retained P20 not regressed
-- `rg -c "^  /" docs/backend/openapi.yaml` → 99 paths PASS `openapi: 3.1.0` version 0.2.0
+- `rg -c "^ /" docs/backend/openapi.yaml` → 99 paths PASS `openapi: 3.1.0` version 0.2.0
 - `ls docs/adr/ | Measure-Object | Select Count` → 32 ADRs `ADR-001`..`ADR-032`
 - `rg "0\.2\.0" apps/api/src/api/config.py docs/backend/openapi.yaml apps/api/pyproject.toml` → 3 hits 0.2.0 PASS
 - `wc -l infra/ops/LAUNCH-CHECKLIST.md` → 178 lines `archived for next release`

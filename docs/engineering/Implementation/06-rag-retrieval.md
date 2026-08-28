@@ -23,42 +23,42 @@ All retrieved results include traceable provenance back to the source document. 
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    QUERY["Agent Query"]:::primary
-    Q_REWRITE["Query Rewriting<br/>(disambiguation)"]:::secondary
+ QUERY["Agent Query"]:::primary
+ Q_REWRITE["Query Rewriting<br/>(disambiguation)"]:::secondary
 
-    subgraph Retrieval["Hybrid Retrieval"]
-        VEC["Vector Search (pgvector)"]:::secondary
-        KW["Keyword Search (Postgres FTS)"]:::secondary
-        GRAPH["Graph Traversal (AGE)"]:::secondary
-    end
+ subgraph Retrieval["Hybrid Retrieval"]
+ VEC["Vector Search (pgvector)"]:::secondary
+ KW["Keyword Search (Postgres FTS)"]:::secondary
+ GRAPH["Graph Traversal (AGE)"]:::secondary
+ end
 
-    RERANK["Re-ranking<br/>(relevance + freshness + confidence)"]:::primary
-    CONTEXT["Context Assembly<br/>(token budget + dedup)"]:::secondary
-    CITATIONS["Provenance & Citations"]:::primary
-    AGENT["Agent Plan Step"]:::primary
+ RERANK["Re-ranking<br/>(relevance + freshness + confidence)"]:::primary
+ CONTEXT["Context Assembly<br/>(token budget + dedup)"]:::secondary
+ CITATIONS["Provenance & Citations"]:::primary
+ AGENT["Agent Plan Step"]:::primary
 
-    subgraph Chunking["Chunking"]
-        DOC["Long Document"]:::secondary
-        CHUNKS["Semantic Chunks<br/>(paragraph/section boundaries)"]:::secondary
-    end
+ subgraph Chunking["Chunking"]
+ DOC["Long Document"]:::secondary
+ CHUNKS["Semantic Chunks<br/>(paragraph/section boundaries)"]:::secondary
+ end
 
-    QUERY --> Q_REWRITE
-    Q_REWRITE --> VEC
-    Q_REWRITE --> KW
-    Q_REWRITE --> GRAPH
-    VEC --> RERANK
-    KW --> RERANK
-    GRAPH --> RERANK
-    RERANK --> CONTEXT
-    CONTEXT --> CITATIONS
-    CITATIONS --> AGENT
+ QUERY--> Q_REWRITE
+ Q_REWRITE--> VEC
+ Q_REWRITE--> KW
+ Q_REWRITE--> GRAPH
+ VEC--> RERANK
+ KW--> RERANK
+ GRAPH--> RERANK
+ RERANK--> CONTEXT
+ CONTEXT--> CITATIONS
+ CITATIONS--> AGENT
 
-    DOC --> CHUNKS
-    CHUNKS -.-> VEC
-    CHUNKS -.-> KW
+ DOC--> CHUNKS
+ CHUNKS -.-> VEC
+ CHUNKS -.-> KW
 ```
 
 ## Context

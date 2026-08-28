@@ -1,8 +1,8 @@
-﻿# MVP-P15 — 02. Predecessor Audit (MVP-P14)
+# MVP-P15 — 02. Predecessor Audit (MVP-P14)
 
-> **Phase:** MVP-P15 — Performance, Reliability, and Scalability  
-> **Predecessor:** MVP-P14 — Testing and Quality Engineering  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 Perfect to 95+ 42/42 RLS via 0020, 2557 tests, 99 OpenAPI) + `ea329dd` 4 GO-conditions + P15 perf hardening  
+> **Phase:** MVP-P15 — Performance, Reliability, and Scalability 
+> **Predecessor:** MVP-P14 — Testing and Quality Engineering 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 Perfect to 95+ 42/42 RLS via 0020, 2557 tests, 99 OpenAPI) + `ea329dd` 4 GO-conditions + P15 perf hardening 
 > **Predecessor Baseline:** `ea329dd` (a69d7d7 + memory Literal+validator, workspace name min_length, content_hash, ChatWindow) + P14 testing
 
 ## Predecessor Identity

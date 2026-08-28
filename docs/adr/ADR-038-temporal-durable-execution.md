@@ -1,12 +1,12 @@
 # ADR-038: Temporal Durable Execution (Ingestion + Approval Signals + Schedules Migration)
 
-| Metadata       | Value                                                                                                                      |
+| Metadata | Value |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Status**     | Accepted                                                                                                                   |
-| **Date**       | 2026-08-27                                                                                                                 |
-| **Deciders**   | Principal distributed-systems engineer (Temporal hardening track)                                                          |
-| **Related**    | ADR-033 (daemon/queue durability), ADR-031 (sanitization), ADR-030 (secrets), ADR-026 (PaaS-first), ADR-028 (BullMQ event) |
-| **Supersedes** | Execution model of ADR-033; does **not** remove queue-worker until §43 gate passes                                         |
+| **Status** | Accepted |
+| **Date** | 2026-08-27 |
+| **Deciders** | Principal distributed-systems engineer (Temporal hardening track) |
+| **Related** | ADR-033 (daemon/queue durability), ADR-031 (sanitization), ADR-030 (secrets), ADR-026 (PaaS-first), ADR-028 (BullMQ event) |
+| **Supersedes** | Execution model of ADR-033; does **not** remove queue-worker until §43 gate passes |
 
 ## Context
 
@@ -33,12 +33,12 @@ topology must not be baked into workflows (§23).
 ### 1. Self-hosted Temporal (PaaS-first) + Python SDK
 
 - Dependency: `temporalio==1.9.x` (pinned; `grpcio` wheels cover win32 CI). No
-  server-in-process; composer adds `temporal` + `temporal-ui` + `temporal-db`
-  (dedicated Postgres, separate from app `postgres:5432`) +
-  `temporal-admin-tools`. Prod overlay adds `infra/kubernetes/apps/temporal/*`
-  or Temporal Cloud toggle (`TEMPORAL_CLOUD_NAMESPACE/KEY`).
+ server-in-process; composer adds `temporal` + `temporal-ui` + `temporal-db`
+ (dedicated Postgres, separate from app `postgres:5432`) +
+ `temporal-admin-tools`. Prod overlay adds `infra/kubernetes/apps/temporal/*`
+ or Temporal Cloud toggle (`TEMPORAL_CLOUD_NAMESPACE/KEY`).
 - Namespace `vaeloom` (dev/prod split via `TEMPORAL_NAMESPACE`). Task queues per
-  workflow class rather than one fat queue (concurrency/backpressure isolated).
+ workflow class rather than one fat queue (concurrency/backpressure isolated).
 
 ### 2. Temporal boundary (normative)
 
@@ -56,12 +56,12 @@ cancellation, signals/queries, versioning.
 
 ### 3. Workflow/activity catalogue (shipped in this ADR, §5 gate)
 
-| Workflow                       | Queue                 | ID strategy                                                                                             | Signals/Queries                                                 |
+| Workflow | Queue | ID strategy | Signals/Queries |
 | ------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `IngestDocumentWorkflow`       | `vaeloom-ingest-q`    | `ingest:{workspace}:{content_hash}:{doc_id}` (§7 idempotent)                                            | `q: getStatus`, `cancel`                                        |
-| `DurableAgentRunWorkflow`      | `vaeloom-agent-q`     | `durable_run:{workspace}:{user}:{request_id}`                                                           | `q: getStatus`, approve via signal proxy                        |
-| `ApprovalWorkflow`             | `vaeloom-approvals-q` | `approval:{workspace}:{approval_id}`                                                                    | `s: decision(approved/rejected, actor, note)`, `q: getProposal` |
-| Scheduled — migrated (Phase 8) | `vaeloom-schedules-q` | Temporal **Schedules** `sched:{workspace}:{schedule_id}` spec `cron+UTC jitter ±60s`, `BUFFER_ONE/SKIP` | lifecycle `create/update/pause/resume/delete`                   |
+| `IngestDocumentWorkflow` | `vaeloom-ingest-q` | `ingest:{workspace}:{content_hash}:{doc_id}` (§7 idempotent) | `q: getStatus`, `cancel` |
+| `DurableAgentRunWorkflow` | `vaeloom-agent-q` | `durable_run:{workspace}:{user}:{request_id}` | `q: getStatus`, approve via signal proxy |
+| `ApprovalWorkflow` | `vaeloom-approvals-q` | `approval:{workspace}:{approval_id}` | `s: decision(approved/rejected, actor, note)`, `q: getProposal` |
+| Scheduled — migrated (Phase 8) | `vaeloom-schedules-q` | Temporal **Schedules** `sched:{workspace}:{schedule_id}` spec `cron+UTC jitter ±60s`, `BUFFER_ONE/SKIP` | lifecycle `create/update/pause/resume/delete` |
 
 Activities (representative; each has explicit input/output, timeout, retry,
 audit/logging/metrics/tracing per §8-§10, payloads are IDs/refs per §16):
@@ -81,15 +81,15 @@ retry policy is forbidden.
 ### 4. Idempotency & security invariants
 
 - Deterministic workflow IDs as above; external side-effects double-guarded by
-  DB idempotency keys (`content_hash`, `workspace+canonical_name` uniqueness,
-  `connector token_ref` per ADR-030). History never carries secrets/OAuth/PII
-  raw — only `{connector_id, secret_name, document_id}` refs resolved inside
-  activities via `SecretManager` (§15). Payloads are compressed references;
-  large bodies remain in Postgres/MinIO.
+ DB idempotency keys (`content_hash`, `workspace+canonical_name` uniqueness,
+ `connector token_ref` per ADR-030). History never carries secrets/OAuth/PII
+ raw — only `{connector_id, secret_name, document_id}` refs resolved inside
+ activities via `SecretManager` (§15). Payloads are compressed references;
+ large bodies remain in Postgres/MinIO.
 - Authorization re-checked in every consequential activity (§14) via
-  `TenantContext` (RLS GUCs), not trusted from workflow start memo.
-  Cross-workspace `signal/query/cancel` rejects 403 (enforced at API
-  `client.signalWorkflow` gateway).
+ `TenantContext` (RLS GUCs), not trusted from workflow start memo.
+ Cross-workspace `signal/query/cancel` rejects 403 (enforced at API
+ `client.signalWorkflow` gateway).
 
 ### 5. Schedules migration path (§18/§19, no big-bang)
 
@@ -101,9 +101,9 @@ retry policy is forbidden.
 3. assert parity (`schedule execution succeeded/failed/expired` metrics)
 4. flip `temporal_schedules_enabled` per-workspace
 5. background_daemon stops claiming that schedule id (guard
-   `temporal_schedules_enabled` skip)
+ `temporal_schedules_enabled` skip)
 6. delete old path only after §43 evidence (no consumers, no consumers redis
-   key).
+ key).
 
 Degraded Redis-less inline mode degrades to Temporal local
 `TestWorkflowEnvironment` for tests, not to external polling.
@@ -131,28 +131,28 @@ Versioning via `workflow.getVersion("ingest-v1", 1, 2)` tested with
 ## Alternatives Considered
 
 - **Stay on daemon+queue-worker only**: insufficient for human
-  wait/cancellation/versioning; rejected for approval and long-run use-cases.
+ wait/cancellation/versioning; rejected for approval and long-run use-cases.
 - **Immediate Temporal Cloud only**: operational cost before durability proven;
-  rejected in favor of self-host default with Cloud toggle.
+ rejected in favor of self-host default with Cloud toggle.
 - **One task queue**: rejected — burst in ingest starves connector sync (§29).
 
 ## Consequences
 
 - New infra to operate (`temporal`, `temporal-db`, `temporal-ui`); app readiness
-  now depends on `TEMPORAL_HOST` by default in non-local (fail-closed), local
-  can degrade flag `temporal_enabled=false`.
+ now depends on `TEMPORAL_HOST` by default in non-local (fail-closed), local
+ can degrade flag `temporal_enabled=false`.
 - Workflow histories are durable recovery; `~/.vaeloom/state/*.json` checkpoints
-  remain for short interactive runs, not replaced for every chat turn.
+ remain for short interactive runs, not replaced for every chat turn.
 - Future LangGraph inserts cleanly behind `DurableAgentRunActivity` — no
-  workflow rewrite required.
+ workflow rewrite required.
 
 ## Verification
 
 - Doc: this ADR + `docs/temporal/*` catalogue/runbook reviewed in gate §20.
 - Tests: `tests/temporal/test_hello_workflow.py` smoke +
-  `tests/temporal/test_ingest_workflow.py` `TestWorkflowEnvironment`
-  determinism + approval signal test + replayer version test in CI job
-  `temporal-check`.
+ `tests/temporal/test_ingest_workflow.py` `TestWorkflowEnvironment`
+ determinism + approval signal test + replayer version test in CI job
+ `temporal-check`.
 - Infra: `docker compose --profile temporal up` health `temporal:7233`
-  reachable; worker liveness
-  `python -m api.temporal.worker --task-queue vaeloom-ingest-q --dry-run`.
+ reachable; worker liveness
+ `python -m api.temporal.worker --task-queue vaeloom-ingest-q --dry-run`.

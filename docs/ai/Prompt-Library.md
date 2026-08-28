@@ -1,12 +1,12 @@
-﻿# Prompt Library
+# Prompt Library
 
 > **Purpose:** Provide the catalog of production system prompts used by Vaeloom's agents, with versioning, organization, and the actual prompt templates
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** AI Team
 > **Version:** 1.0
 > **Last Updated:** 2026-07-16
 > **Dependencies:** [`Prompt-Standards.md`](./Prompt-Standards.md), [`Prompt-Engineering.md`](./Prompt-Engineering.md), [`AI-Agents.md`](./AI-Agents.md), [`Agent-Prompt-Specs.md`](./Agent-Prompt-Specs.md), [`AI-Versioning.md`](./AI-Versioning.md)
-> **Implementation Status:** ðŸ“‹ Spec Only
+> **Implementation Status:** 📁‹ Spec Only
 
 ## Overview
 
@@ -197,10 +197,10 @@ When you need information or want to take an action, use a tool. Available tools
 To call a tool, output:
 ```json
 {
-  "tool_call": {
-    "name": "{{tool_name}}",
-    "arguments": {{tool_arguments}}
-  }
+ "tool_call": {
+ "name": "{{tool_name}}",
+ "arguments": {{tool_arguments}}
+ }
 }
 ```text
 
@@ -284,17 +284,17 @@ Every prompt change requires:
 
 ```mermaid
 graph TD
-    classDef prompt fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef agent fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef render fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef prompt fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef agent fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef render fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    STORE["Prompt Store<br/>/prompts/ (versioned files)"]:::prompt
-    RESOLVER["Prompt Resolver<br/>loads + injects variables"]:::render
-    AGENT["Agent Harness<br/>sends rendered prompt to LLM"]:::agent
+ STORE["Prompt Store<br/>/prompts/ (versioned files)"]:::prompt
+ RESOLVER["Prompt Resolver<br/>loads + injects variables"]:::render
+ AGENT["Agent Harness<br/>sends rendered prompt to LLM"]:::agent
 
-    STORE -->|"load prompt + version"| RESOLVER
-    RESOLVER -->|"inject {{user_context}}, {{memory}}, {{tools}}"| AGENT
-    AGENT -->|"response"| RESOLVER
+ STORE-->|"load prompt + version"| RESOLVER
+ RESOLVER-->|"inject {{user_context}}, {{memory}}, {{tools}}"| AGENT
+ AGENT-->|"response"| RESOLVER
 ```text
 
 > **Diagram:** Prompt resolution flow. The Prompt Store holds versioned templates; the Resolver loads the correct version and injects runtime variables (user context, memory summaries, tool schemas).

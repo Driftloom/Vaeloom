@@ -12,7 +12,7 @@
 
 ## Overview
 
-The Vaeloom UI architecture defines how the application is structured from root layout to individual page components. Every page shares a consistent shell — Sidebar for primary navigation, TopNav for search and user context, and a Main Content Area that renders the matched route. This consistent layout means users build muscle memory on day one; the sidebar and TopNav remain stable while the content area swaps between Dashboard, Workspace, Memory Graph, Chat, and Settings.
+The Vaeloom UI architecture defines how the application is structured from root layout to individual page components. Every page shares a consistent shell â€” Sidebar for primary navigation, TopNav for search and user context, and a Main Content Area that renders the matched route. This consistent layout means users build muscle memory on day one; the sidebar and TopNav remain stable while the content area swaps between Dashboard, Workspace, Memory Graph, Chat, and Settings.
 
 The rendering strategy varies per page based on its primary interaction model. Content-focused pages (Dashboard, Settings, Resume) use SSR for fast first paint. Highly interactive pages (Chat with real-time messaging, Memory Graph with canvas rendering) use CSR since the bulk of their value comes from client-side JavaScript interaction. This hybrid approach ensures that every page gets the right balance of initial load speed and interactive capability.
 
@@ -44,73 +44,73 @@ The rendering strategy varies per page based on its primary interaction model. C
 | FR-002 | Every route segment and layout level shall have its own error boundary | P0 |
 | FR-003 | Pages shall use SSR or CSR based on their primary interaction model | P0 |
 | FR-004 | Heavy, non-critical components shall use lazy loading with dynamic imports | P1 |
-| FR-005 | Shared components shall not fetch data directly — data comes via props | P1 |
+| FR-005 | Shared components shall not fetch data directly â€” data comes via props | P1 |
 
 ## Non-Functional Requirements
 
 | ID | Requirement | Target | Measurement |
 |----|-------------|--------|-------------|
 | NFR-001 | Layout consistency across all pages | 100% pages share shell | Visual regression test |
-| NFR-002 | Error boundary isolation — no single crash takes down > 1 segment | 100% isolation | Error propagation test |
+| NFR-002 | Error boundary isolation â€” no single crash takes down > 1 segment | 100% isolation | Error propagation test |
 | NFR-003 | Lazy-loaded component activation latency | < 200ms on interaction | Dynamic import timing |
 | NFR-004 | SSR-to-CSR page ratio appropriate to interaction model | Audit passes per page | Architecture review |
-| NFR-005 | Shared component reusability — zero duplicate implementations | 0 duplicates | Component usage scan |
+| NFR-005 | Shared component reusability â€” zero duplicate implementations | 0 duplicates | Component usage scan |
 
 ## Architecture
 
 ```mermaid
 graph TD
-    classDef app fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef layout fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef page fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef shared fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
-    classDef render fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
+ classDef app fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef layout fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef page fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef shared fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef render fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph App["?? App Root"]
-        direction TB
-        LAYOUT["Layout"]
-        SIDEBAR["Sidebar<br/>Navigation"]
-        TOPNAV["TopNav<br/>Search, User Menu"]
-        MAIN["Main Content Area"]
-    end
+ subgraph App["App Root"]
+ direction TB
+ LAYOUT["Layout"]
+ SIDEBAR["Sidebar<br/>Navigation"]
+ TOPNAV["TopNav<br/>Search, User Menu"]
+ MAIN["Main Content Area"]
+ end
 
-    subgraph Pages["?? Pages (per route)"]
-        P1["Dashboard"]
-        P2["Workspace"]
-        P3["MemoryGraph"]
-        P4["Resume"]
-        P5["Chat"]
-        P6["Settings"]
-    end
+ subgraph Pages["Pages (per route)"]
+ P1["Dashboard"]
+ P2["Workspace"]
+ P3["MemoryGraph"]
+ P4["Resume"]
+ P5["Chat"]
+ P6["Settings"]
+ end
 
-    subgraph Shared["?? Shared Components"]
-        U1["AgentProposalCard"]
-        U2["FileViewer"]
-        U3["MemoryNode"]
-        U4["StatusBadge"]
-        U5["ConfirmDialog"]
-    end
+ subgraph Shared["Shared Components"]
+ U1["AgentProposalCard"]
+ U2["FileViewer"]
+ U3["MemoryNode"]
+ U4["StatusBadge"]
+ U5["ConfirmDialog"]
+ end
 
-    subgraph Rendering["?? Rendering Strategy"]
-        R1["Dashboard: SSR<br/>Fast first paint"]
-        R2["Workspace: SSR + Hydration<br/>File tree needs JS"]
-        R3["Chat: CSR<br/>Real-time interaction"]
-        R4["Memory Graph: CSR<br/>Heavy canvas rendering"]
-        R5["Settings: SSR<br/>Simple form"]
-    end
+ subgraph Rendering["Rendering Strategy"]
+ R1["Dashboard: SSR<br/>Fast first paint"]
+ R2["Workspace: SSR + Hydration<br/>File tree needs JS"]
+ R3["Chat: CSR<br/>Real-time interaction"]
+ R4["Memory Graph: CSR<br/>Heavy canvas rendering"]
+ R5["Settings: SSR<br/>Simple form"]
+ end
 
-    LAYOUT --> SIDEBAR & TOPNAV & MAIN
-    MAIN --> P1 & P2 & P3 & P4 & P5 & P6
-    P1 & P2 & P3 & P4 & P5 & P6 -.-> U1 & U2 & U3 & U4 & U5
-    P1 & P2 & P3 & P4 & P5 & P6 -.-> R1 & R2 & R3 & R4 & R5
+ LAYOUT--> SIDEBAR & TOPNAV & MAIN
+ MAIN--> P1 & P2 & P3 & P4 & P5 & P6
+ P1 & P2 & P3 & P4 & P5 & P6 -.-> U1 & U2 & U3 & U4 & U5
+ P1 & P2 & P3 & P4 & P5 & P6 -.-> R1 & R2 & R3 & R4 & R5
 
-    class LAYOUT,SIDEBAR,TOPNAV,MAIN layout
-    class P1,P2,P3,P4,P5,P6 app
-    class U1,U2,U3,U4,U5 shared
-    class R1,R2,R3,R4,R5 render
+ class LAYOUT,SIDEBAR,TOPNAV,MAIN layout
+ class P1,P2,P3,P4,P5,P6 app
+ class U1,U2,U3,U4,U5 shared
+ class R1,R2,R3,R4,R5 render
 ```
 
-> **Diagram:** Component hierarchy showing **Layout** (Sidebar + TopNav + Main Content) ? **Pages** (6 primary routes with SSR/CSR strategies) ? **Shared Components** reused across pages. **Rendering strategy** varies by page — SSR for content pages, CSR for interactive/canvas-heavy pages.
+> **Diagram:** Component hierarchy showing **Layout** (Sidebar + TopNav + Main Content) ? **Pages** (6 primary routes with SSR/CSR strategies) ? **Shared Components** reused across pages. **Rendering strategy** varies by page â€” SSR for content pages, CSR for interactive/canvas-heavy pages.
 
 ## Components
 
@@ -136,36 +136,36 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant L as Layout Shell
-    participant P as Page Component
-    participant EB as Error Boundary
-    participant S as Shared Components
+ participant U as User
+ participant L as Layout Shell
+ participant P as Page Component
+ participant EB as Error Boundary
+ participant S as Shared Components
 
-    U->>L: Navigate to /workspace
-    L->>L: Render Sidebar + TopNav
-    L->>P: Render Workspace page
-    P->>P: Determine strategy (SSR)
-    P->>S: Pass data via props
-    S-->>P: Rendered shared components
-    P-->>L: Page content rendered
-    L-->>U: Full layout visible
+ U->>L: Navigate to /workspace
+ L->>L: Render Sidebar + TopNav
+ L->>P: Render Workspace page
+ P->>P: Determine strategy (SSR)
+ P->>S: Pass data via props
+ S-->>P: Rendered shared components
+ P-->>L: Page content rendered
+ L-->>U: Full layout visible
 
-    Note over U,EB: On render crash
-    U->>P: Interact with buggy component
-    P->>P: Error during render
-    P->>EB: Error boundary catches
-    EB->>EB: Log error + show fallback
-    EB-->>U: Isolated fallback UI
+ Note over U,EB: On render crash
+ U->>P: Interact with buggy component
+ P->>P: Error during render
+ P->>EB: Error boundary catches
+ EB->>EB: Log error + show fallback
+ EB-->>U: Isolated fallback UI
 ```
 
 ## Data Flow
 
-1. **Ingestion**: User navigates to a URL ? Next.js App Router matches the route and renders the root layout (Sidebar + TopNav + ContentArea). Layout shell renders immediately with cached or static data — Sidebar gets workspace info, TopNav gets user context.
+1. **Ingestion**: User navigates to a URL ? Next.js App Router matches the route and renders the root layout (Sidebar + TopNav + ContentArea). Layout shell renders immediately with cached or static data â€” Sidebar gets workspace info, TopNav gets user context.
 
 2. **Processing**: Content area renders the matched page component. For SSR pages, server components fetch data and render HTML. For CSR pages, client components show skeleton loaders and initiate data fetches. The page determines which shared components to render and what data each needs.
 
-3. **Storage**: Shared component data is held in component props — no shared state. Layout state (sidebar collapse, active nav) stored in React Context. Skeleton/animation state local to each component.
+3. **Storage**: Shared component data is held in component props â€” no shared state. Layout state (sidebar collapse, active nav) stored in React Context. Skeleton/animation state local to each component.
 
 4. **Retrieval**: Shared components receive data via props from the page component, never fetching independently. The page component is the single source of truth for data distribution to its children.
 
@@ -173,26 +173,26 @@ sequenceDiagram
 
 ## APIs
 
-N/A — The UI architecture document defines component hierarchy, layout structure, and rendering strategies. API endpoints consumed by page components are documented in the backend API specification and Frontend Architecture document.
+N/A â€” The UI architecture document defines component hierarchy, layout structure, and rendering strategies. API endpoints consumed by page components are documented in the backend API specification and Frontend Architecture document.
 
 ## Database
 
-N/A — The UI layer does not directly access any database. All data consumed by UI components flows through the API gateway, fetched by server components or TanStack Query hooks defined in page components.
+N/A â€” The UI layer does not directly access any database. All data consumed by UI components flows through the API gateway, fetched by server components or TanStack Query hooks defined in page components.
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Route-level access control bypass | Access control on client-side routes is a UX convenience, not a security boundary — every API endpoint behind a route must independently verify permissions |
+| Route-level access control bypass | Access control on client-side routes is a UX convenience, not a security boundary â€” every API endpoint behind a route must independently verify permissions |
 | API endpoint exposure through client-side bundle | Route patterns and API endpoint paths are visible in the compiled Next.js bundle; never hardcode secrets, keys, or internal URLs |
-| Layout-based privilege escalation | A shared layout component should not render admin-only UI elements and rely on CSS to hide them — conditional rendering based on user role is the only safe approach |
+| Layout-based privilege escalation | A shared layout component should not render admin-only UI elements and rely on CSS to hide them â€” conditional rendering based on user role is the only safe approach |
 
 ## Performance
 
 | Concern | Budget | Measurement | Optimization |
 |---------|--------|-------------|--------------|
 | Bundle splitting per page via dynamic imports | 250KB per route | @next/bundle-analyzer | Use `next/dynamic` with `ssr: false` for heavy components (knowledge graph, file viewer) |
-| SSR streaming with Suspense | Layout shell render < 200ms | Server timings | Use React 18 streaming SSR to send HTML progressively — Sidebar and TopNav render before slower content sections |
+| SSR streaming with Suspense | Layout shell render < 200ms | Server timings | Use React 18 streaming SSR to send HTML progressively â€” Sidebar and TopNav render before slower content sections |
 | Hydration overhead | TTI < 3s (SSR), < 5s (CSR) | Web Vitals | Track TTI per page; consider selective hydration or islands architecture for heavy CSR pages |
 | Lazy-loaded component activation | < 200ms from interaction | Dynamic import timing | Preload chunks on hover; use IntersectionObserver for viewport-based loading |
 
@@ -267,13 +267,13 @@ function RootLayout({ children }: { children: React.ReactNode }) {
 ### SSR vs CSR Rendering Strategy
 
 ```tsx
-// Dashboard — SSR for fast first paint (server component)
+// Dashboard ï¿½ SSR for fast first paint (server component)
 async function DashboardPage() {
   const summary = await fetchDashboardSummary();
   return <DashboardContent summary={summary} />;
 }
 
-// Chat — CSR for real-time interaction (client component)
+// Chat ï¿½ CSR for real-time interaction (client component)
 'use client';
 function ChatPage() {
   const ws = useWebSocket();
@@ -281,7 +281,7 @@ function ChatPage() {
   return <ChatInterface messages={messages} ws={ws} />;
 }
 
-// Memory Graph — CSR with lazy loading (client component, dynamically imported)
+// Memory Graph ï¿½ CSR with lazy loading (client component, dynamically imported)
 const MemoryGraph = dynamic(() => import('@/features/memory/MemoryGraph'), {
   ssr: false,
   loading: () => <MemoryGraphSkeleton />,
@@ -320,11 +320,11 @@ function StatusBadge({ status, label }: StatusBadgeProps) {
 
 | # | Practice | Rationale |
 |---|----------|----------|
-| 1 | Choose SSR or CSR per page based on interactivity needs | Dashboard (SSR for fast first paint), Chat (CSR for real-time updates), Memory Graph (CSR for canvas rendering) — each page gets the right strategy |
-| 2 | Error boundaries at every layout nesting level | Wrap the Sidebar, TopNav, main content area, and each page in separate error boundaries — no single failure takes down unrelated parts |
-| 3 | Use component composition over inheritance | Build complex UIs by composing smaller, focused components — prefer `Page > Card > List > Item` over large monolithic components |
+| 1 | Choose SSR or CSR per page based on interactivity needs | Dashboard (SSR for fast first paint), Chat (CSR for real-time updates), Memory Graph (CSR for canvas rendering) â€” each page gets the right strategy |
+| 2 | Error boundaries at every layout nesting level | Wrap the Sidebar, TopNav, main content area, and each page in separate error boundaries â€” no single failure takes down unrelated parts |
+| 3 | Use component composition over inheritance | Build complex UIs by composing smaller, focused components â€” prefer `Page > Card > List > Item` over large monolithic components |
 | 4 | Maintain a consistent page layout structure across routes | Every page should share the same shell (Sidebar + TopNav + ContentArea) so users navigate with muscle memory, not conscious thought |
-| 5 | Shared components must never fetch data independently | Components receive data exclusively via props from their parent page — this keeps them reusable, testable, and free of side effects |
+| 5 | Shared components must never fetch data independently | Components receive data exclusively via props from their parent page â€” this keeps them reusable, testable, and free of side effects |
 
 ## Risks
 

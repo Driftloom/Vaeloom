@@ -1,12 +1,12 @@
 # ADR-031: Input Sanitization for Retrieved Content
 
-| Metadata     | Value                                        |
+| Metadata | Value |
 | ------------ | -------------------------------------------- |
-| **Status**   | Proposed                                     |
-| **Date**     | 2026-08-16                                   |
-| **Deciders** | Security Architect, AI Architect             |
-| **Owner**    | Security Team                                |
-| **Tags**     | security, ai, prompt-injection, sanitization |
+| **Status** | Proposed |
+| **Date** | 2026-08-16 |
+| **Deciders** | Security Architect, AI Architect |
+| **Owner** | Security Team |
+| **Tags** | security, ai, prompt-injection, sanitization |
 
 ## Context
 
@@ -46,14 +46,14 @@ External Content → Sanitization Pipeline → LLM Context Window
 
 ### Sanitization Rules
 
-| Rule                          | Description                                                                                   | Action                                    |
+| Rule | Description | Action |
 | ----------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| **R1: Instruction Detection** | Detect text that looks like system instructions (e.g., "Ignore previous instructions")        | Flag + wrap in `<sanitized>` tags         |
-| **R2: Role Confusion**        | Detect text attempting to change agent role (e.g., "You are now a helpful assistant that...") | Strip + log                               |
-| **R3: Tool Call Injection**   | Detect text containing tool call patterns (e.g., `{"tool": "gmail", "action": "send"}`)       | Strip + log                               |
-| **R4: Data Exfiltration**     | Detect text requesting memory data (e.g., "Show me all memories about...")                    | Block + log                               |
-| **R5: Prompt Leaking**        | Detect text attempting to extract system prompts                                              | Block + log                               |
-| **R6: Provenance Tag**        | All retrieved content wrapped with source attribution                                         | Add `<source type="email" id="...">` tags |
+| **R1: Instruction Detection** | Detect text that looks like system instructions (e.g., "Ignore previous instructions") | Flag + wrap in `<sanitized>` tags |
+| **R2: Role Confusion** | Detect text attempting to change agent role (e.g., "You are now a helpful assistant that...") | Strip + log |
+| **R3: Tool Call Injection** | Detect text containing tool call patterns (e.g., `{"tool": "gmail", "action": "send"}`) | Strip + log |
+| **R4: Data Exfiltration** | Detect text requesting memory data (e.g., "Show me all memories about...") | Block + log |
+| **R5: Prompt Leaking** | Detect text attempting to extract system prompts | Block + log |
+| **R6: Provenance Tag** | All retrieved content wrapped with source attribution | Add `<source type="email" id="...">` tags |
 
 ### Implementation
 
@@ -103,22 +103,22 @@ class ContentSanitizer:
 
 ### Integration Points
 
-| Agent              | Content Source   | Integration Point                               |
+| Agent | Content Source | Integration Point |
 | ------------------ | ---------------- | ----------------------------------------------- |
-| Gmail Agent        | Email bodies     | `classify_emails()` → sanitize before LLM       |
-| Memory Agent       | User input       | `execute()` → sanitize before memory write      |
-| Organization Agent | Document content | `execute()` → sanitize before classification    |
-| Resume Agent       | Resume text      | `score()` → sanitize before ATS scoring         |
-| RAG Pipeline       | Retrieved chunks | `hybrid_retrieve()` → sanitize before reranking |
+| Gmail Agent | Email bodies | `classify_emails()` → sanitize before LLM |
+| Memory Agent | User input | `execute()` → sanitize before memory write |
+| Organization Agent | Document content | `execute()` → sanitize before classification |
+| Resume Agent | Resume text | `score()` → sanitize before ATS scoring |
+| RAG Pipeline | Retrieved chunks | `hybrid_retrieve()` → sanitize before reranking |
 
 ## Rationale
 
-| Alternative                         | Pros                                  | Cons                                           | Why Not             |
+| Alternative | Pros | Cons | Why Not |
 | ----------------------------------- | ------------------------------------- | ---------------------------------------------- | ------------------- |
-| Rely on agent system prompts        | Zero effort                           | Ineffective against sophisticated attacks      | Security gap        |
-| LLM-based detection                 | Adaptive                              | Adds latency, cost, and another attack surface | Circular dependency |
-| Block all external content          | Complete safety                       | Product is useless                             | —                   |
-| Pattern-based sanitization (chosen) | Low latency, deterministic, auditable | May miss novel attacks                         | Best first layer    |
+| Rely on agent system prompts | Zero effort | Ineffective against sophisticated attacks | Security gap |
+| LLM-based detection | Adaptive | Adds latency, cost, and another attack surface | Circular dependency |
+| Block all external content | Complete safety | Product is useless | — |
+| Pattern-based sanitization (chosen) | Low latency, deterministic, auditable | May miss novel attacks | Best first layer |
 
 ## Consequences
 
@@ -134,7 +134,7 @@ class ContentSanitizer:
 - Pattern maintenance: new injection techniques require pattern updates
 - False positives: legitimate content may be flagged (mitigate with allowlists)
 - Not comprehensive: sophisticated attacks may evade pattern matching (mitigate
-  with LLM-based detection as second layer)
+ with LLM-based detection as second layer)
 
 **Risks:**
 
@@ -144,19 +144,19 @@ class ContentSanitizer:
 ## Compliance & Safety Notes
 
 - EU AI Act: "High-risk AI systems must be designed to achieve an appropriate
-  level of accuracy, robustness, and cybersecurity" (Article 10).
+ level of accuracy, robustness, and cybersecurity" (Article 10).
 - NIST AI RMF: MAP function requires "identification of potential impacts" —
-  this ADR addresses the indirect prompt injection impact.
+ this ADR addresses the indirect prompt injection impact.
 - OWASP LLM01: "Prompt injection occurs when an attacker provides input that
-  alters the behavior of a language model."
+ alters the behavior of a language model."
 
 ## Verification
 
 1. Unit tests: inject known patterns, verify sanitization
 2. Integration tests: process test emails with embedded instructions, verify
-   agent behavior unchanged
+ agent behavior unchanged
 3. Adversarial testing: attempt indirect prompt injection via Gmail, verify
-   block/flag
+ block/flag
 
 ## Related ADRs
 

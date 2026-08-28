@@ -1,11 +1,11 @@
-﻿Vaeloom Â· System Architecture
+Vaeloom · System Architecture
 
-| Metadata         | Value                                                  |
+| Metadata | Value |
 | ---------------- | ------------------------------------------------------ |
-| **Purpose**      | Document the six-layer system architecture for Vaeloom |
-| **Status**       | Draft                                                  |
-| **Owner**        | Engineering Team                                       |
-| **Last Updated** | 2026-07-13                                             |
+| **Purpose** | Document the six-layer system architecture for Vaeloom |
+| **Status** | Draft |
+| **Owner** | Engineering Team |
+| **Last Updated** | 2026-07-13 |
 
 ## Overview
 
@@ -19,13 +19,13 @@ ultimately reads from.
 ## Goals
 
 - **Define the six-layer architecture** — clearly delineate each layer's
-  responsibility and interfaces
+ responsibility and interfaces
 - **Establish memory as the architectural spine** — show how all layers feed and
-  read from the core memory layer
+ read from the core memory layer
 - **Document connector and agent boundaries** — permission scopes, data flow,
-  and isolation between components
+ and isolation between components
 - **Provide unambiguous layer contracts** — what each layer guarantees to the
-  layers above and below
+ layers above and below
 
 # Six layers, one spine of memory
 
@@ -35,63 +35,63 @@ memory — which is what every feature above ultimately reads from.
 
 ```mermaid
 graph TD
-    classDef interface fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef connector fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef ingest fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef agent fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
-    classDef core fill:#ffebee,stroke:#c62828,color:#000,stroke-width:3px
-    classDef storage fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px
+ classDef interface fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef connector fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef ingest fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef agent fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
+ classDef core fill:#ffebee,stroke:#c62828,color:#000,stroke-width:3px
+ classDef storage fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px
 
-    subgraph Interface["01 Â· Interface Layer"]
-        I1["Web App<br/>Primary surface -- all pages"]
-        I2["Desktop Companion<br/>Scoped local-folder access"]
-        I3["VS Code Extension<br/>Workspace + git activity"]
-        I4["Mobile (future)<br/>Push notifications, quick capture"]
-    end
+ subgraph Interface["01 · Interface Layer"]
+ I1["Web App<br/>Primary surface -- all pages"]
+ I2["Desktop Companion<br/>Scoped local-folder access"]
+ I3["VS Code Extension<br/>Workspace + git activity"]
+ I4["Mobile (future)<br/>Push notifications, quick capture"]
+ end
 
-    subgraph Connectors["02 Â· Connectors & Plugin Layer"]
-        C1["Gmail Â· GitHub Â· Google Drive<br/>OAuth, read + draft"]
-        C2["Local Folder<br/>One scoped directory"]
-        C3["Plugin SDK<br/>MCP-shaped tool schema"]
-    end
+ subgraph Connectors["02 · Connectors & Plugin Layer"]
+ C1["Gmail · GitHub · Google Drive<br/>OAuth, read + draft"]
+ C2["Local Folder<br/>One scoped directory"]
+ C3["Plugin SDK<br/>MCP-shaped tool schema"]
+ end
 
-    subgraph Ingestion["03 Â· Ingestion Engine"]
-        G1["Document Parser<br/>PDF, DOCX, PPT, XLSX, CSV"]
-        G2["OCR Â· Code Understanding<br/>Scanned docs, repo analysis"]
-        G3["Semantic Extractor<br/>Entities, relationships, summaries"]
-        G4["Dedup & Version Detector<br/>Merge duplicate / versioned files"]
-    end
+ subgraph Ingestion["03 · Ingestion Engine"]
+ G1["Document Parser<br/>PDF, DOCX, PPT, XLSX, CSV"]
+ G2["OCR · Code Understanding<br/>Scanned docs, repo analysis"]
+ G3["Semantic Extractor<br/>Entities, relationships, summaries"]
+ G4["Dedup & Version Detector<br/>Merge duplicate / versioned files"]
+ end
 
-    subgraph Orchestration["04 Â· Agent Orchestration"]
-        O1["Orchestrator --> Routes to right agent"]
-        O2["Organization Â· Resume Â· ATS Agents"]
-        O3["Job Search Â· Gmail Â· Scheduler Agents"]
-    end
+ subgraph Orchestration["04 · Agent Orchestration"]
+ O1["Orchestrator--> Routes to right agent"]
+ O2["Organization · Resume · ATS Agents"]
+ O3["Job Search · Gmail · Scheduler Agents"]
+ end
 
-    subgraph Memory["05 â­ Memory & Knowledge Layer -- CORE"]
-        M1["Knowledge Graph<br/>Entities + typed relationships"]
-        M2["Vector Store<br/>Semantic embeddings"]
-        M3["Structured Memory<br/>Profile / Career / Episodic"]
-        M4["Agentic RAG<br/>Hybrid retrieval + reranking"]
-        M5["Consolidation<br/>Compresses & archives stale memory"]
-    end
+  subgraph Memory["05 Memory & Knowledge Layer -- CORE"]
+ M1["Knowledge Graph<br/>Entities + typed relationships"]
+ M2["Vector Store<br/>Semantic embeddings"]
+ M3["Structured Memory<br/>Profile / Career / Episodic"]
+ M4["Agentic RAG<br/>Hybrid retrieval + reranking"]
+ M5["Consolidation<br/>Compresses & archives stale memory"]
+ end
 
-    subgraph Storage["06 Â· Storage & Security"]
-        S1["Encrypted Storage<br/>Documents & memory at rest"]
-        S2["Secrets Manager<br/>OAuth tokens, never in plaintext"]
-        S3["Permission Engine<br/>Per-connector, per-agent scopes"]
-        S4["Audit Log<br/>Every agent action, reversible"]
-    end
+ subgraph Storage["06 · Storage & Security"]
+ S1["Encrypted Storage<br/>Documents & memory at rest"]
+ S2["Secrets Manager<br/>OAuth tokens, never in plaintext"]
+ S3["Permission Engine<br/>Per-connector, per-agent scopes"]
+ S4["Audit Log<br/>Every agent action, reversible"]
+ end
 
-    Interface --> Connectors --> Ingestion --> Orchestration --> Memory --> Storage
-    Memory -.- M1 & M2 & M3 & M4 & M5
+ Interface--> Connectors--> Ingestion--> Orchestration--> Memory--> Storage
+ Memory -.- M1 & M2 & M3 & M4 & M5
 
-    class I1,I2,I3,I4 interface
-    class C1,C2,C3 connector
-    class G1,G2,G3,G4 ingest
-    class O1,O2,O3 agent
-    class M1,M2,M3,M4,M5 core
-    class S1,S2,S3,S4 storage
+ class I1,I2,I3,I4 interface
+ class C1,C2,C3 connector
+ class G1,G2,G3,G4 ingest
+ class O1,O2,O3 agent
+ class M1,M2,M3,M4,M5 core
+ class S1,S2,S3,S4 storage
 ```
 
 > **Diagram:** Six-layer system architecture. **Interface Layer** (web, desktop,
@@ -103,111 +103,70 @@ graph TD
 > from and writes to. **Storage & Security** provides encryption, secrets
 > management, permissions, and audit logging.
 
----
-
-01
+> **Layer summary:** Each section below complements the diagram above with implementation status and contracts. Status flags (NOT IMPLEMENTED / STUB / DEAD CODE / PARTIAL) reflect runtime truth as of 2026-08-16, not design intent.
 
 ## Interface Layer
 
 Where the person actually touches the product.
 
-Web AppPrimary surface — all pages live here
-
-Desktop Companion — **NOT IMPLEMENTED** — planned only
-
-VS Code Extension — **NOT IMPLEMENTED** — planned only
-
-Mobile (future)Push notifications, quick capture
-
-02
+- **Web App** — Primary surface — all pages live here
+- **Desktop Companion** — **NOT IMPLEMENTED** — planned only
+- **VS Code Extension** — **NOT IMPLEMENTED** — planned only
+- **Mobile (future)** — Push notifications, quick capture
 
 ## Connectors & Plugin Layer
 
 Scoped, OAuth-based access — read-only until the user grants more.
 
-GmailOAuth, read + draft scope only
-
-GitHubRepos, commits, README content
-
-Google DriveDocs, Sheets, Slides
-
-Local FolderOne scoped directory, not full disk
-
-Plugin SDKMCP-shaped tool schema for new connectors
-
-03
+- **Gmail** — OAuth, read + draft scope only
+- **GitHub** — Repos, commits, README content
+- **Google Drive** — Docs, Sheets, Slides
+- **Local Folder** — One scoped directory, not full disk
+- **Plugin SDK** — MCP-shaped tool schema for new connectors
 
 ## Ingestion Engine
 
 Turns raw files into something agents can reason about.
 
-Document ParserPDF, DOCX, PPT, XLSX, CSV
-
-OCR — **STUB** — not functional
-
-Code UnderstandingRepo structure, README, language detection
-
-Semantic ExtractorEntities, relationships, summaries
-
-Dedup & Version DetectorMerges duplicate / versioned files
-
-04
+- **Document Parser** — PDF, DOCX, PPT, XLSX, CSV
+- **OCR** — **STUB** — not functional
+- **Code Understanding** — Repo structure, README, language detection
+- **Semantic Extractor** — Entities, relationships, summaries
+- **Dedup & Version Detector** — Merges duplicate / versioned files
 
 ## Agent Orchestration
 
 Specialized agents, each scoped to one job and one tool list.
 
-OrchestratorRoutes chat & requests to the right agent
-
-Organization AgentNaming, foldering, dedup proposals
-
-Resume AgentBuilds & maintains the master resume
-
-ATS AgentScores resume against a job description
-
-Job Search AgentFinds, ranks, and shortlists roles
-
-Gmail AgentClassifies mail, extracts deadlines
-
-Scheduler AgentDeadlines, reminders, conflict checks
-
-05
+- **Orchestrator** — Routes chat & requests to the right agent
+- **Organization Agent** — Naming, foldering, dedup proposals
+- **Resume Agent** — Builds & maintains the master resume
+- **ATS Agent** — Scores resume against a job description
+- **Job Search Agent** — Finds, ranks, and shortlists roles
+- **Gmail Agent** — Classifies mail, extracts deadlines
+- **Scheduler Agent** — Deadlines, reminders, conflict checks
 
 ## Memory & Knowledge Layer — CORE
 
 Everything above reads from and writes to this layer. This is the actual
 product.
 
-Knowledge GraphEntities + typed relationships
-
-Vector StoreSemantic embeddings for search
-
-Structured MemoryProfile / Career / Episodic / Preference
-
-Agentic RAGHybrid retrieval + relevance re-ranking
-
-Consolidation — **DEAD CODE** — not wired into any pipeline
-
-06
+- **Knowledge Graph** — Entities + typed relationships
+- **Vector Store** — Semantic embeddings for search
+- **Structured Memory** — Profile / Career / Episodic / Preference
+- **Agentic RAG** — Hybrid retrieval + relevance re-ranking
+- **Consolidation** — **DEAD CODE** — not wired into any pipeline
 
 ## Storage & Security
 
 The floor every other layer stands on.
 
-Encrypted Storage — **NOT IMPLEMENTED** — encryption_key is used for token
-signing only
+- **Encrypted Storage** — **NOT IMPLEMENTED** — `encryption_key` is used for token signing only
+- **Secrets Manager** — **IMPLEMENTED** — SecretManager protocol with infisical/fallback provider
+- **Permission Engine** — **PARTIAL** — role-based checks via DI helpers, not a standalone engine
+- **Audit Log** — Every agent action, reversible
 
-Secrets Manager — **IMPLEMENTED** — SecretManager protocol with
-infisical/fallback provider
-
-Permission Engine — **PARTIAL** — role-based checks via DI helpers, not a
-standalone engine
-
-Audit LogEvery agent action, reversible
-
-â— Core layer — the knowledge graph + memory store everything else depends on
-
-Read access is default Â· Write access is always a separate, explicit grant
+> **Core invariant:** The knowledge graph + memory store is the layer everything else depends on. Read access is default · Write access is always a separate, explicit grant
 
 ---
 
@@ -216,10 +175,10 @@ Read access is default Â· Write access is always a separate, explicit grant
 ### In Scope
 
 - Six-layer architecture design: Interface, Connectors, Ingestion, Agent
-  Orchestration, Memory & Knowledge (core), Storage & Security
+ Orchestration, Memory & Knowledge (core), Storage & Security
 - Layer contracts — what each layer guarantees to layers above and below
 - Web app, desktop companion, VS Code extension, and future mobile interface
-  points
+ points
 - Connector architecture using MCP-shaped tool definitions
 - Agent orchestration with Orchestrator + 7 specialist agents
 - Memory layer: knowledge graph, vector store, structured memory, agentic RAG
@@ -268,17 +227,17 @@ const result = await Vaeloom.layers.execute({
 
 ## Future Improvements
 
-| Improvement                                    | Priority | Complexity | Timeline |
+| Improvement | Priority | Complexity | Timeline |
 | ---------------------------------------------- | -------- | ---------- | -------- |
-| Service mesh for inter-layer communication     | High     | High       | Q2 2027  |
-| Layer-level observability instrumentation      | Medium   | Medium     | Q1 2027  |
-| Event-driven architecture for layer decoupling | Medium   | High       | Q3 2027  |
+| Service mesh for inter-layer communication | High | High | Q2 2027 |
+| Layer-level observability instrumentation | Medium | Medium | Q1 2027 |
+| Event-driven architecture for layer decoupling | Medium | High | Q3 2027 |
 
 ## Related Documents
 
-| Document                                                  | Description                               |
+| Document | Description |
 | --------------------------------------------------------- | ----------------------------------------- |
-| [MVP Product Spec](01-Vaeloom-MVP-Spec.md)                | v1/MVP product specification              |
-| [Agent Workflow](03-agent-workflow.md)                    | How agents interact across the six layers |
-| [Memory & Knowledge Graph](04-memory-knowledge-graph.md)  | Deep dive into the core memory layer      |
-| [Enterprise Architecture](06-Vaeloom-Enterprise-Paper.md) | Enterprise-scale architecture vision      |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1/MVP product specification |
+| [Agent Workflow](03-agent-workflow.md) | How agents interact across the six layers |
+| [Memory & Knowledge Graph](04-memory-knowledge-graph.md) | Deep dive into the core memory layer |
+| [Enterprise Architecture](06-Vaeloom-Enterprise-Paper.md) | Enterprise-scale architecture vision |

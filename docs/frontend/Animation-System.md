@@ -1,51 +1,51 @@
-﻿# Animation System
+# Animation System
 
 > **Purpose:** Define the animation and transition system for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Animation Architecture
 
 ```mermaid
 graph TD
-    classDef principle fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef type fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef element fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef a11y fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef principle fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef type fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef element fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef a11y fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Principles["ðŸŽ¯ Animation Principles"]
-        direction TB
-        R1["Purposeful<br/>Every animation serves a function"]
-        R2["Performant<br/>Only transform + opacity"]
-        R3["Subtle<br/>Under 300ms, no gratuitous motion"]
-        R4["Accessible<br/>Respect prefers-reduced-motion"]
-    end
+ subgraph Principles["Animation Principles"]
+ direction TB
+ R1["Purposeful<br/>Every animation serves a function"]
+ R2["Performant<br/>Only transform + opacity"]
+ R3["Subtle<br/>Under 300ms, no gratuitous motion"]
+ R4["Accessible<br/>Respect prefers-reduced-motion"]
+ end
 
-    subgraph Types["â±ï¸ Animation Types"]
-        T1["Micro-interactions<br/>100-150ms Â· ease-out<br/>Button hover, card select"]
-        T2["State Transitions<br/>200-300ms Â· ease-in-out<br/>Modal, sidebar toggle"]
-        T3["Page Transitions<br/>250-400ms Â· ease-in-out<br/>Route changes"]
-        T4["Loading Sequences<br/>500-1000ms Â· linear<br/>Skeleton screens, progress"]
-    end
+ subgraph Types["Animation Types"]
+ T1["Micro-interactions<br/>100-150ms · ease-out<br/>Button hover, card select"]
+ T2["State Transitions<br/>200-300ms · ease-in-out<br/>Modal, sidebar toggle"]
+ T3["Page Transitions<br/>250-400ms · ease-in-out<br/>Route changes"]
+ T4["Loading Sequences<br/>500-1000ms · linear<br/>Skeleton screens, progress"]
+ end
 
-    subgraph Elements["âœ¨ Specific Animations"]
-        E1["Proposal cards: Slide in + fade<br/>transform: translateY + opacity"]
-        E2["Toast: Slide from top<br/>transform: translateY"]
-        E3["Modal: Scale + fade overlay<br/>transform: scale + opacity"]
-        E4["Sidebar: Slide from left<br/>transform: translateX"]
-        E5["Memory graph: Physics layout<br/>D3 force simulation"]
-    end
+ subgraph Elements["Specific Animations"]
+ E1["Proposal cards: Slide in + fade<br/>transform: translateY + opacity"]
+ E2["Toast: Slide from top<br/>transform: translateY"]
+ E3["Modal: Scale + fade overlay<br/>transform: scale + opacity"]
+ E4["Sidebar: Slide from left<br/>transform: translateX"]
+ E5["Memory graph: Physics layout<br/>D3 force simulation"]
+ end
 
-    subgraph Accessibility["â™¿ Reduced Motion"]
-        A1["@media (prefers-reduced-motion: reduce)<br/>animation-duration: 0.01ms !important"]
-    end
+ subgraph Accessibility["Reduced Motion"]
+ A1["media (prefers-reduced-motion: reduce)<br/>animation-duration: 0.01ms !important"]
+ end
 
-    Principles --> Types --> Elements
-    Types & Elements -.-> Accessibility
+ Principles--> Types--> Elements
+ Types & Elements -.-> Accessibility
 
-    class R1,R2,R3,R4 principle
-    class T1,T2,T3,T4 type
-    class E1,E2,E3,E4,E5 element
-    class A1 a11y
+ class R1,R2,R3,R4 principle
+ class T1,T2,T3,T4 type
+ class E1,E2,E3,E4,E5 element
+ class A1 a11y
 ```
 
 > **Diagram:** Animation system built on **4 principles** (purposeful, performant, subtle, accessible) → **4 timing categories** (micro-interactions 100ms → loading 1000ms) → **5 element-specific animations** (all using transform + opacity only). **Reduced motion** respects system preferences by setting durations to near-zero.
@@ -174,28 +174,28 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant P as Page
-    participant FM as Framer Motion
-    participant A11Y as Reduced Motion Check
+ participant U as User
+ participant P as Page
+ participant FM as Framer Motion
+ participant A11Y as Reduced Motion Check
 
-    U->>P: Click sidebar link
-    P->>A11Y: Check prefers-reduced-motion
-    A11Y-->>P: Motion allowed
-    
-    P->>FM: AnimateExit (150ms, ease-out)
-    FM->>P: Exit complete
-    P->>P: Load new route
-    P->>FM: AnimateEnter (250ms, ease-in-out)
-    FM->>P: Enter complete
-    P->>U: New page visible, focus set on h1
+ U->>P: Click sidebar link
+ P->>A11Y: Check prefers-reduced-motion
+ A11Y-->>P: Motion allowed
+ 
+ P->>FM: AnimateExit (150ms, ease-out)
+ FM->>P: Exit complete
+ P->>P: Load new route
+ P->>FM: AnimateEnter (250ms, ease-in-out)
+ FM->>P: Enter complete
+ P->>U: New page visible, focus set on h1
 
-    Note over U,P: Reduced motion path
-    U->>P: Click sidebar link (reduced motion)
-    P->>A11Y: Check prefers-reduced-motion
-    A11Y-->>P: Reduced motion preferred
-    P->>P: Instant swap (0.01ms animations)
-    P->>U: New page without transitions
+ Note over U,P: Reduced motion path
+ U->>P: Click sidebar link (reduced motion)
+ P->>A11Y: Check prefers-reduced-motion
+ A11Y-->>P: Reduced motion preferred
+ P->>P: Instant swap (0.01ms animations)
+ P->>U: New page without transitions
 ```
 
 ## Data Flow

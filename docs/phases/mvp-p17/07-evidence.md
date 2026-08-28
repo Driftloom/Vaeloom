@@ -1,8 +1,8 @@
-﻿# MVP-P17 â€” 07. Evidence Register
+# MVP-P17 — 07. Evidence Register
 
-> **Phase:** MVP-P17 â€” Observability and Operations  
-> **Date:** 2026-08-22 Â· **Baseline:** `787053a` + P15 93.1 (94.2% p50 45ms p95 120ms) + P16 92.8 (12 TF 22 K8s SLSA L2) + P17 (OTel traces + correlation IDs + 5 SLO alerts + 3 Grafana dashboards + 4 runbooks + 30d retention)  
-> **Predecessor:** `ea329dd` + P16 92.8 APPROVED â†’ now **93.2 APPROVED** (P17 observability)
+> **Phase:** MVP-P17 — Observability and Operations 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 93.1 (94.2% p50 45ms p95 120ms) + P16 92.8 (12 TF 22 K8s SLSA L2) + P17 (OTel traces + correlation IDs + 5 SLO alerts + 3 Grafana dashboards + 4 runbooks + 30d retention) 
+> **Predecessor:** `ea329dd` + P16 92.8 APPROVED → now **93.2 APPROVED** (P17 observability)
 
 | Evidence ID | Claim | Requirement | Type | Location | Result | Date | Verified by |
 |---|---|---|---|---|---|---|---|
@@ -22,9 +22,9 @@
 | EVD-P17-014 | Grafana latency 8 panels per-endpoint p50/p95/p99 + heatmap + by method + Top10 workspace + slow >500ms | R05 | grafana | `infra/ops/monitoring/grafana/dashboards/latency.json:1` uid vaeloom-latency 8 panels | PASS JSON lint | 2026-08-22 | SRE |
 | EVD-P17-015 | Grafana agents 7 panels executions/token/duration p50/p95/p99/errors/LLM calls | R05 | grafana | `infra/ops/monitoring/grafana/dashboards/agents.json:1` uid vaeloom-agents 7 panels `agent_execution_duration_seconds_bucket` | PASS 23 total panels | 2026-08-22 | SRE |
 | EVD-P17-016 | Structured logging doc Standard Fields trace_id/span_id 30d retention + OTel TS parity | R05,R06 | doc+code | `infra/logging/configs/structured-logging.md:1` 28 lines + `infra/telemetry/traces/opentelemetry-config.ts:1` NodeSDK OTLP traces/metrics 60s Http/Pg/Redis | PASS | 2026-08-22 | SRE |
-| EVD-P17-017 | Synthetic monitoring 3 probes liveness/readiness/startup interval 30s 3 failures â†’ alert | R05 | synthetic | `infra/ops/synthetic-monitoring/check-health.sh:1` curl --max-time 5 status 200/204 + LOG /var/log/vaeloom-health.log FAILURE /tmp/vaeloom-health-failures 3 | PASS bash -n | 2026-08-22 | SRE |
+| EVD-P17-017 | Synthetic monitoring 3 probes liveness/readiness/startup interval 30s 3 failures → alert | R05 | synthetic | `infra/ops/synthetic-monitoring/check-health.sh:1` curl --max-time 5 status 200/204 + LOG /var/log/vaeloom-health.log FAILURE /tmp/vaeloom-health-failures 3 | PASS bash -n | 2026-08-22 | SRE |
 | EVD-P17-018 | Runbooks 4 severity SEV1/SEV2 PromQL/SQL triage + causes table + resolution | R05 | runbook | `infra/ops/runbooks/high-latency.md:1` + `high-error-rate.md:1` + `service-down.md:1` + `database-connection-pool-exhaustion.md:1` | PASS alert runbook annotations 5 | 2026-08-22 | SRE |
-| EVD-P17-019 | RLS 42/42 + JWT 32+ + GDPR 31 + DPIA v1.2 All Regions still PASS under observability | R03 | sec | `alembic 0010/0019/0020` 42 + `middleware/tenant.py:41` SET LOCAL + `conftest.py:9` 43 chars + `services/gdpr.py:15` 31 + `DPIA v1.2 Â§5.2` | PASS | 2026-08-22 | Sec |
+| EVD-P17-019 | RLS 42/42 + JWT 32+ + GDPR 31 + DPIA v1.2 All Regions still PASS under observability | R03 | sec | `alembic 0010/0019/0020` 42 + `middleware/tenant.py:41` SET LOCAL + `conftest.py:9` 43 chars + `services/gdpr.py:15` 31 + `DPIA v1.2 §5.2` | PASS | 2026-08-22 | Sec |
 | EVD-P17-020 | Full suite 2551/2557 PASS + bandit 0 HIGH/38 MED + ruff/mypy + gitleaks 0 + trivy 0 CRIT + pip-audit 0 + promtool 13 PASS | R04 | test+sast+supply+obs | `pytest -q -o addopts="-n 4"` 210s + `bandit -r apps/api/src/api -ll` 0 HIGH + `ci.yml:python-checks` ruff+mypy + `promtool check rules` 9+4 PASS | PASS | 2026-08-22 | QA |
 
 ## Traceability
@@ -36,9 +36,9 @@
 | R03 Security/Privacy/Supply | WS-17.1/5 + redaction+OTel+metrics labels | 42/42 RLS JWT 32+ GDPR31 DPIA1.2 _redact 9 keys OTel no secrets metric labels low-cardinality | gitleaks 0 + codeql 0 HIGH + trivy 0 CRIT + pip-audit 0 + pnpm 0 + _redact unit | EVD-P17-005..008,019 | RISK-P17-01/02 |
 | R04 Quality (normal/negative/boundary/failure/recovery/perf) | WS-17.1..5 | `ci.yml` 5 jobs + `ci-backend` + `security-scan` + `k6` + `ruff/mypy` + `promtool` | 2551/2557 + --cov 94.2% + k6 p50 45 p95 120 + promtool 13 PASS + redact 9 keys | EVD-P17-001..004,020 | RISK-P17-04 |
 | R05 Operations (telemetry/rollback/support) | WS-17.1..4 | `prometheus.yml` 15s + `alerts.yml` 9 rules runbook + `grafana 3` 23 panels + `runbooks 4` + `check-health.sh` 3 probes + `INCIDENT-RESPONSE.md` SEV1-4 + `background_daemon` 60s | `promtool 9+4 PASS` + `json.tool 3 OK` + `bash -n check-health.sh` + `alembic downgrade` + `kubectl wait 300s` | EVD-P17-005..018 | RISK-P17-02 |
-| R06 Data/AI (lineage, retention, cost, provenance) | WS-17.1/5 | 0021 RetentionRun BYOK `provider_keys.py` + trace tenant_id UUID + agents token usage `agents.json:47` + cost $0.02/1k + sbom spdx SLSA L2 note | gdpr31 + cost $0.02/1k + `syft sbom` + token panel | EVD-P17-015..016,019 | â€” |
-| R07 Traceability | This table + `08-registers` | â€” | 20 EVDs + audit 10 PAs | EVD-P17-010..017 | â€” |
-| R08 Gate â‰¥95/88 | `09-gate-report` 93.2 APPROVED | â€” | â€” | EVD-P17-017..020 | â€” |
+| R06 Data/AI (lineage, retention, cost, provenance) | WS-17.1/5 | 0021 RetentionRun BYOK `provider_keys.py` + trace tenant_id UUID + agents token usage `agents.json:47` + cost $0.02/1k + sbom spdx SLSA L2 note | gdpr31 + cost $0.02/1k + `syft sbom` + token panel | EVD-P17-015..016,019 | — |
+| R07 Traceability | This table + `08-registers` | — | 20 EVDs + audit 10 PAs | EVD-P17-010..017 | — |
+| R08 Gate â‰¥95/88 | `09-gate-report` 93.2 APPROVED | — | — | EVD-P17-017..020 | — |
 
 ## Verification commands (repro)
 

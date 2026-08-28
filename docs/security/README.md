@@ -27,33 +27,33 @@ Compliance is designed around GDPR as the strictest applicable regime, with prov
 
 ```mermaid
 graph TD
-    subgraph PermEngine["🔐 Permission Engine"]
-        direction TB
-        PE["Checks every request against 3 axes:"]
-        AX1["Connector -- which external system"]
-        AX2["Action Type -- read / write / act"]
-        AX3["Agent -- which agent is requesting"]
-    end
+ subgraph PermEngine["Permission Engine"]
+ direction TB
+ PE["Checks every request against 3 axes:"]
+ AX1["Connector -- which external system"]
+ AX2["Action Type -- read / write / act"]
+ AX3["Agent -- which agent is requesting"]
+ end
 
-    subgraph Layers["🛡️ Security Layers"]
-        ENC["Encryption at Rest + In Transit"]
-        SM["Secrets Manager<br/>Tokens never in DB"]
-        ZT["Zero Trust Between Internal Services"]
-        PS["Plugin Sandboxing<br/>Manifests enforced at runtime"]
-        AL["Append-Only Audit Trail"]
-    end
+ subgraph Layers["Security Layers"]
+ ENC["Encryption at Rest + In Transit"]
+ SM["Secrets Manager<br/>Tokens never in DB"]
+ ZT["Zero Trust Between Internal Services"]
+ PS["Plugin Sandboxing<br/>Manifests enforced at runtime"]
+ AL["Append-Only Audit Trail"]
+ end
 
-    PE --> ENC
-    PE --> SM
-    PE --> ZT
-    PE --> PS
-    PE --> AL
+ PE--> ENC
+ PE--> SM
+ PE--> ZT
+ PE--> PS
+ PE--> AL
 
-    classDef engine fill:#ffebee,stroke:#c62828,stroke-width:3px
-    classDef layer fill:#eceff1,stroke:#37474f,stroke-width:2px
+ classDef engine fill:#ffebee,stroke:#c62828,stroke-width:3px
+ classDef layer fill:#eceff1,stroke:#37474f,stroke-width:2px
 
-    class PE,AX1,AX2,AX3 engine
-    class ENC,SM,ZT,PS,AL layer
+ class PE,AX1,AX2,AX3 engine
+ class ENC,SM,ZT,PS,AL layer
 ```
 
 ## Key security principles
@@ -117,20 +117,20 @@ This document provides the security overview for Vaeloom — covering architectu
 
 ```mermaid
 sequenceDiagram
-    participant DEV as Developer
-    participant SEC as Security Docs
-    participant CI as CI Pipeline
-    participant AUD as Auditor
+ participant DEV as Developer
+ participant SEC as Security Docs
+ participant CI as CI Pipeline
+ participant AUD as Auditor
 
-    DEV->>SEC: Read security overview and principles
-    SEC-->>DEV: Architecture, policies, compliance
-    
-    DEV->>CI: Commit new feature
-    CI->>CI: Run security checks (SAST, secrets scan, policy-as-code)
-    CI-->>DEV: Security gate passed/failed
-    
-    AUD->>SEC: Review compliance posture
-    SEC-->>AUD: GDPR, audit logs, retention policies
+ DEV->>SEC: Read security overview and principles
+ SEC-->>DEV: Architecture, policies, compliance
+ 
+ DEV->>CI: Commit new feature
+ CI->>CI: Run security checks (SAST, secrets scan, policy-as-code)
+ CI-->>DEV: Security gate passed/failed
+ 
+ AUD->>SEC: Review compliance posture
+ SEC-->>AUD: GDPR, audit logs, retention policies
 ```
 
 > **Diagram:** Security onboarding flow — developer reads docs, CI enforces policies, auditor reviews compliance.

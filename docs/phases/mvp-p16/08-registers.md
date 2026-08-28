@@ -1,6 +1,6 @@
-﻿# MVP-P16 — 08. Registers
+# MVP-P16 — 08. Registers
 
-> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
+> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 93.1 + P16 (12 TF 22 K8s 4 workflows green SLSA L2 cosign KMS SBOM spdx)
 
 ## Risk Register

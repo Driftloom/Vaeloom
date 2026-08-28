@@ -1,7 +1,7 @@
-﻿# MVP-P19 — 07. Evidence Register
+# MVP-P19 — 07. Evidence Register
 
-> **Phase:** MVP-P19 — Release Readiness and Production Deployment  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 93.1 (94.2% p50 45ms p95 120ms) + P16 92.8 (12 TF 60 yamls SLSA L2) + P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards + 4 runbooks) + P18 93.4 (docs IA 256 docs + 32 ADRs + 99 OpenAPI) + P19 (release v0.2.0 + 99 paths + 42/42 + 3 overlays + HPA + 0021 + checklist 178)  
+> **Phase:** MVP-P19 — Release Readiness and Production Deployment 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 93.1 (94.2% p50 45ms p95 120ms) + P16 92.8 (12 TF 60 yamls SLSA L2) + P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards + 4 runbooks) + P18 93.4 (docs IA 256 docs + 32 ADRs + 99 OpenAPI) + P19 (release v0.2.0 + 99 paths + 42/42 + 3 overlays + HPA + 0021 + checklist 178) 
 > **Predecessor:** `787053a` + P18 93.4 APPROVED → now **93.6 APPROVED** (P19 release readiness)
 
 | Evidence ID | Claim | Requirement | Type | Location | Result | Date | Verified by |

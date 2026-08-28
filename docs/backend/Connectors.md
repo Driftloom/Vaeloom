@@ -1,7 +1,7 @@
-﻿# Connectors
+# Connectors
 
 > **Purpose:** Define the connector architecture for external service integration — OAuth token lifecycle, sync scheduling, rate limiting, and error recovery
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Backend Team
 > **Last Updated:** 2026-07-12
 
@@ -15,92 +15,92 @@ Connectors are the bridge between Vaeloom and external services (Gmail, Google C
 
 ```mermaid
 graph TD
-    %% â”€â”€â”€ Class Definitions â”€â”€â”€
-    classDef auth fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef sync fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef refresh fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef process fill:#c8e6c9,stroke:#1b5e20,color:#000,stroke-width:2px
-    classDef health fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px,stroke-dasharray: 5 3
+ %% "€"€"€ Class Definitions "€"€"€
+ classDef auth fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef sync fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef refresh fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef process fill:#c8e6c9,stroke:#1b5e20,color:#000,stroke-width:2px
+ classDef health fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px,stroke-dasharray: 5 3
 
-    %% â”€â”€â”€ Phase 1: OAuth Authorization â”€â”€â”€
-    subgraph Auth["ðŸ” 1. OAuth Authorization"]
-        direction TB
-        A1["User clicks<br/>\"Connect Service\""] --> A2["Redirect to provider<br/>OAuth consent screen"]
-        A2 --> A3["User grants scopes<br/>(e.g. gmail.readonly)"]
-        A3 --> A4["Provider returns<br/>authorization code"]
-        A4 --> A5["Exchange code for<br/>access_token + refresh_token<br/>+ expires_in"]
-        A5 --> A6["Encrypt & store tokens<br/>in Secrets Manager<br/>(workspace_id, connector_id)"]
-    end
+ %% "€"€"€ Phase 1: OAuth Authorization "€"€"€
+ subgraph Auth["1. OAuth Authorization"]
+ direction TB
+ A1["User clicks<br/>\"Connect Service\""]--> A2["Redirect to provider<br/>OAuth consent screen"]
+ A2--> A3["User grants scopes<br/>(e.g. gmail.readonly)"]
+ A3--> A4["Provider returns<br/>authorization code"]
+ A4--> A5["Exchange code for<br/>access_token + refresh_token<br/>+ expires_in"]
+ A5--> A6["Encrypt & store tokens<br/>in Secrets Manager<br/>(workspace_id, connector_id)"]
+ end
 
-    %% â”€â”€â”€ Phase 2: Token Refresh â”€â”€â”€
-    subgraph Refresh["ðŸ”„ 2. Token Refresh"]
-        direction TB
-        R1{"Access token<br/>expired / expiring?"}
-        R1 -->|No| R2["âœ… Token valid<br/>proceed with sync"]
-        R1 -->|Yes| R3["Request new access_token<br/>using refresh_token"]
-        R3 --> R4{"Refresh succeeded?"}
-        R4 -->|Yes| R5["Update stored access_token<br/>+ new expires_in<br/>reset retry counter"]
-        R4 -->|No| R6{"Retries left?<br/>max 2"}
-        R6 -->|Yes| R7["Wait 5s backoff<br/>retry refresh"]
-        R7 --> R3
-        R6 -->|No| R8["âŒ Token revoked / expired<br/>Mark connector as degraded"]
-        R8 --> R9["Notify user:<br/>\"Re-connect service\" "]
-    end
+ %% "€"€"€ Phase 2: Token Refresh "€"€"€
+ subgraph Refresh["2. Token Refresh"]
+ direction TB
+ R1{"Access token<br/>expired / expiring?"}
+ R1-->|No| R2["Token valid<br/>proceed with sync"]
+ R1-->|Yes| R3["Request new access_token<br/>using refresh_token"]
+ R3--> R4{"Refresh succeeded?"}
+ R4-->|Yes| R5["Update stored access_token<br/>+ new expires_in<br/>reset retry counter"]
+ R4-->|No| R6{"Retries left?<br/>max 2"}
+ R6-->|Yes| R7["Wait 5s backoff<br/>retry refresh"]
+ R7--> R3
+ R6-->|No| R8["Token revoked / expired<br/>Mark connector as degraded"]
+ R8--> R9["Notify user:<br/>\"Re-connect service\""]
+ end
 
-    %% â”€â”€â”€ Phase 3: Sync Execution â”€â”€â”€
-    subgraph Sync["ðŸ“¥ 3. Sync Execution"]
-        direction TB
-        S1["Sync triggered<br/>cron / manual / webhook"] --> S2["Load connector config<br/>+ stored tokens"]
-        S2 --> S3["Decrypt tokens<br/>attach to API client"]
-        S3 --> S4["Call external API<br/>(list messages / events)"]
-        S4 --> S5{"Rate limited?<br/>(429 / 403)"}
-        S5 -->|No| S6["Process response<br/>paginate if more"]
-        S5 -->|Yes| S7["Parse Retry-After header<br/>backoff: 30s --> 2m --> 5m"]
-        S7 --> S8{"Retries left?<br/>max 3"}
-        S8 -->|Yes| S9["Wait & retry request"]
-        S9 --> S4
-        S8 -->|No| S10["Abort sync run<br/>mark as rate_limited"]
-    end
+ %% "€"€"€ Phase 3: Sync Execution "€"€"€
+ subgraph Sync["3. Sync Execution"]
+ direction TB
+ S1["Sync triggered<br/>cron / manual / webhook"]--> S2["Load connector config<br/>+ stored tokens"]
+ S2--> S3["Decrypt tokens<br/>attach to API client"]
+ S3--> S4["Call external API<br/>(list messages / events)"]
+ S4--> S5{"Rate limited?<br/>(429 / 403)"}
+ S5-->|No| S6["Process response<br/>paginate if more"]
+ S5-->|Yes| S7["Parse Retry-After header<br/>backoff: 30s--> 2m--> 5m"]
+ S7--> S8{"Retries left?<br/>max 3"}
+ S8-->|Yes| S9["Wait & retry request"]
+ S9--> S4
+ S8-->|No| S10["Abort sync run<br/>mark as rate_limited"]
+ end
 
-    %% â”€â”€â”€ Phase 4: Data Processing â”€â”€â”€
-    subgraph Process["âš™ï¸ 4. Data Processing"]
-        direction TB
-        S6 --> P1["Enqueue items for<br/>classification pipeline"]
-        P1 --> P2["Deduplicate by<br/>external_id + workspace_id"]
-        P2 --> P3["Classify: email / event /<br/>notification / thread"]
-        P3 --> P4["Extract entities<br/>--> Memory Agent"]
-        P4 --> P5{"More pages?"}
-        P5 -->|Yes| S4
-        P5 -->|No| P6["âœ… Sync complete<br/>update last_sync_at<br/>record item count"]
-    end
+ %% "€"€"€ Phase 4: Data Processing "€"€"€
+ subgraph Process["4. Data Processing"]
+ direction TB
+ S6--> P1["Enqueue items for<br/>classification pipeline"]
+ P1--> P2["Deduplicate by<br/>external_id + workspace_id"]
+ P2--> P3["Classify: email / event /<br/>notification / thread"]
+ P3--> P4["Extract entities<br/>--> Memory Agent"]
+ P4--> P5{"More pages?"}
+ P5-->|Yes| S4
+ P5-->|No| P6["Sync complete<br/>update last_sync_at<br/>record item count"]
+ end
 
-    %% â”€â”€â”€ Phase 5: Health & Monitoring â”€â”€â”€
-    subgraph Health["ðŸ“ˆ 5. Health & Monitoring"]
-        direction TB
-        H1["Emit metrics:<br/>sync_duration, items_processed,<br/>errors, rate_limits"] --> H2["Push to<br/>Prometheus / CloudWatch"]
-        H3["Structured logs:<br/>connector_id, attempt,<br/>error, page_token"] --> H4["Ship to<br/>ELK / Loki"]
-        H5["Alert triggers:<br/>degraded > 24h,<br/>sync failures > 5"] --> H6["PagerDuty / Slack<br/>notification"]
-    end
+ %% "€"€"€ Phase 5: Health & Monitoring "€"€"€
+ subgraph Health["5. Health & Monitoring"]
+ direction TB
+ H1["Emit metrics:<br/>sync_duration, items_processed,<br/>errors, rate_limits"]--> H2["Push to<br/>Prometheus / CloudWatch"]
+ H3["Structured logs:<br/>connector_id, attempt,<br/>error, page_token"]--> H4["Ship to<br/>ELK / Loki"]
+ H5["Alert triggers:<br/>degraded > 24h,<br/>sync failures > 5"]--> H6["PagerDuty / Slack<br/>notification"]
+ end
 
-    %% â”€â”€â”€ Cross-cutting connections â”€â”€â”€
-    A6 -.-> R1
-    R2 -.-> S1
-    R5 -.-> S1
-    R8 -.-> H5
-    S10 -.-> H5
-    P6 -.-> H1
-    S10 -.-> H1
-    R8 -.-> H3
+ %% "€"€"€ Cross-cutting connections "€"€"€
+ A6 -.-> R1
+ R2 -.-> S1
+ R5 -.-> S1
+ R8 -.-> H5
+ S10 -.-> H5
+ P6 -.-> H1
+ S10 -.-> H1
+ R8 -.-> H3
 
-    %% â”€â”€â”€ Apply styles â”€â”€â”€
-    class A1,A2,A3,A4,A5,A6 auth
-    class R1,R2,R3,R4,R5,R6,R7,R8,R9 refresh
-    class S1,S2,S3,S4,S5,S6,S7,S8,S9,S10 sync
-    class P1,P2,P3,P4,P5,P6 process
-    class H1,H2,H3,H4,H5,H6 health
+ %% "€"€"€ Apply styles "€"€"€
+ class A1,A2,A3,A4,A5,A6 auth
+ class R1,R2,R3,R4,R5,R6,R7,R8,R9 refresh
+ class S1,S2,S3,S4,S5,S6,S7,S8,S9,S10 sync
+ class P1,P2,P3,P4,P5,P6 process
+ class H1,H2,H3,H4,H5,H6 health
 ```
 
-> **Diagram:** The connector lifecycle spans five phases. **OAuth Authorization** (ðŸ”) obtains tokens via the OAuth consent flow. **Token Refresh** (ðŸ”„) transparently refreshes expired tokens with up to 2 retries before degrading. **Sync Execution** (ðŸ“¥) fetches data from the external API with rate-limit handling (3 retries, respecting `Retry-After`). **Data Processing** (âš™ï¸) deduplicates, classifies, and enqueues items for the memory pipeline. **Health & Monitoring** (ðŸ“ˆ) collects metrics and alerts on prolonged degradation.
+> **Diagram:** The connector lifecycle spans five phases. **OAuth Authorization** (🔍) obtains tokens via the OAuth consent flow. **Token Refresh** (🔍„) transparently refreshes expired tokens with up to 2 retries before degrading. **Sync Execution** (📁¥) fetches data from the external API with rate-limit handling (3 retries, respecting `Retry-After`). **Data Processing** (⚙️™ï¸) deduplicates, classifies, and enqueues items for the memory pipeline. **Health & Monitoring** (📁ˆ) collects metrics and alerts on prolonged degradation.
 
 ---
 
@@ -227,26 +227,26 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant User as User
-    participant UI as Vaeloom UI
-    participant API as API Service
-    participant Auth as Auth Provider
-    participant SM as Secrets Manager
-    participant External as External API
+ participant User as User
+ participant UI as Vaeloom UI
+ participant API as API Service
+ participant Auth as Auth Provider
+ participant SM as Secrets Manager
+ participant External as External API
 
-    User->>UI: Click "Connect Gmail"
-    UI->>API: POST /v1/connectors/gmail/auth
-    API->>Auth: Initiate OAuth with gmail.readonly scopes
-    Auth-->>UI: Redirect to Google consent screen
-    User->>Auth: Grant gmail.readonly permission
-    Auth-->>API: Authorization code
-    API->>Auth: Exchange code for access_token + refresh_token
-    API->>SM: Encrypt and store tokens (workspace_id, connector_id)
-    SM-->>API: Token stored
-    API-->>UI: Gmail connected
-    UI-->>User: âœ… Connected
+ User->>UI: Click "Connect Gmail"
+ UI->>API: POST /v1/connectors/gmail/auth
+ API->>Auth: Initiate OAuth with gmail.readonly scopes
+ Auth-->>UI: Redirect to Google consent screen
+ User->>Auth: Grant gmail.readonly permission
+ Auth-->>API: Authorization code
+ API->>Auth: Exchange code for access_token + refresh_token
+ API->>SM: Encrypt and store tokens (workspace_id, connector_id)
+ SM-->>API: Token stored
+ API-->>UI: Gmail connected
+ UI-->>User: … Connected
 
-    Note over API,SM: Token stored with workspace isolation
+ Note over API,SM: Token stored with workspace isolation
 ```
 
 > **Diagram:** Connector OAuth flow — User initiates connection via UI, API orchestrates OAuth consent with the external provider, receives tokens, encrypts them, and stores in Secrets Manager scoped to workspace.

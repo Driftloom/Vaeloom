@@ -18,7 +18,7 @@ Components are built with TypeScript strict mode and follow consistent conventio
 
 The component library directly supports Vaeloom's AI-first workflows. Feature components like `ProposalCard` encapsulate the approve/reject interaction pattern that users engage with dozens of times per session. `AgentStatus` provides real-time health monitoring for each AI agent. `MemoryNode` renders entities in the knowledge graph with expand/collapse and drill-down capabilities.
 
-By enforcing a strict component hierarchy and shared conventions, the library ensures visual consistency across all 11 routes, reduces duplication, and enables parallel development — a team building the Dashboard doesn't need to coordinate with the team building Settings as long as both use the same primitive components.
+By enforcing a strict component hierarchy and shared conventions, the library ensures visual consistency across all 11 routes, reduces duplication, and enables parallel development â€” a team building the Dashboard doesn't need to coordinate with the team building Settings as long as both use the same primitive components.
 
 ## Goals
 
@@ -69,79 +69,79 @@ By enforcing a strict component hierarchy and shared conventions, the library en
 
 ```mermaid
 graph TD
-    %% ——— Class Definitions ———
-    classDef primitive fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef molecule fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef layout fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef feature fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
-    classDef page fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
-    classDef shared fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px,stroke-dasharray: 5 3
+ %% Class Definitions 
+ classDef primitive fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef molecule fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef layout fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef feature fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
+ classDef page fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
+ classDef shared fill:#e0f7fa,stroke:#00838f,color:#000,stroke-width:1px,stroke-dasharray: 5 3
 
-    %% ——— Layer 1: Primitives ———
-    subgraph Primitives["?? 1. Primitives (Atoms)"]
-        direction TB
-        P1["Button"] --- P2["Input"] --- P3["Text"] --- P4["Icon"]
-        P5["Avatar"] --- P6["Badge"] --- P7["Tooltip"] --- P8["Spinner"]
-        P9["Checkbox"] --- P10["Radio"] --- P11["Select"] --- P12["Toggle"]
-    end
+ %% Layer 1: Primitives 
+ subgraph Primitives["1. Primitives (Atoms)"]
+ direction TB
+ P1["Button"] --- P2["Input"] --- P3["Text"] --- P4["Icon"]
+ P5["Avatar"] --- P6["Badge"] --- P7["Tooltip"] --- P8["Spinner"]
+ P9["Checkbox"] --- P10["Radio"] --- P11["Select"] --- P12["Toggle"]
+ end
 
-    %% ——— Layer 2: Molecules ———
-    subgraph Molecules["?? 2. Molecules (Compositions)"]
-        direction TB
-        M1["Card<br/>Header + Body + Footer"] --- M2["Table<br/>Sort + Filter + Paginate"]
-        M3["Form<br/>Input + Validation + Submit"] --- M4["Modal<br/>Overlay + Title + Content"]
-        M5["Toast<br/>Message + Type + Timer"] --- M6["Alert<br/>Type + Message + Action"]
-        M7["List<br/>Virtualized Items"] --- M8["Breadcrumb<br/>Path + Separator"]
-    end
+ %% Layer 2: Molecules 
+ subgraph Molecules["2. Molecules (Compositions)"]
+ direction TB
+ M1["Card<br/>Header + Body + Footer"] --- M2["Table<br/>Sort + Filter + Paginate"]
+ M3["Form<br/>Input + Validation + Submit"] --- M4["Modal<br/>Overlay + Title + Content"]
+ M5["Toast<br/>Message + Type + Timer"] --- M6["Alert<br/>Type + Message + Action"]
+ M7["List<br/>Virtualized Items"] --- M8["Breadcrumb<br/>Path + Separator"]
+ end
 
-    %% ——— Layer 3: Layout ———
-    subgraph Layout["?? 3. Layout Components"]
-        direction TB
-        L1["Page<br/>Wrapper + Header + Actions"] --- L2["Grid<br/>Responsive Cols + Gap"]
-        L3["Stack<br/>Direction + Spacing"] --- L4["Sidebar<br/>Nav Items + Collapse"]
-        L5["Navbar<br/>Logo + Nav + Profile"] --- L6["Tabs<br/>Tab List + Panel"]
-    end
+ %% Layer 3: Layout 
+ subgraph Layout["3. Layout Components"]
+ direction TB
+ L1["Page<br/>Wrapper + Header + Actions"] --- L2["Grid<br/>Responsive Cols + Gap"]
+ L3["Stack<br/>Direction + Spacing"] --- L4["Sidebar<br/>Nav Items + Collapse"]
+ L5["Navbar<br/>Logo + Nav + Profile"] --- L6["Tabs<br/>Tab List + Panel"]
+ end
 
-    %% ——— Layer 4: Feature Components ———
-    subgraph Features["? 4. Feature Components (Templates)"]
-        direction TB
-        F1["ProposalCard<br/>Agent suggestions + Approve/Reject"] --- F2["AgentStatus<br/>Health + Metrics + Controls"]
-        F3["MemoryNode<br/>Entity + Depth + Expand"] --- F4["Citation<br/>Source + Text + Tooltip"]
-        F5["ConnectorCard<br/>Status + Sync + Auth"] --- F6["Timeline<br/>Events + Date + Actions"]
-    end
+ %% Layer 4: Feature Components 
+ subgraph Features["4. Feature Components (Templates)"]
+ direction TB
+ F1["ProposalCard<br/>Agent suggestions + Approve/Reject"] --- F2["AgentStatus<br/>Health + Metrics + Controls"]
+ F3["MemoryNode<br/>Entity + Depth + Expand"] --- F4["Citation<br/>Source + Text + Tooltip"]
+ F5["ConnectorCard<br/>Status + Sync + Auth"] --- F6["Timeline<br/>Events + Date + Actions"]
+ end
 
-    %% ——— Layer 5: Pages ———
-    subgraph Pages["?? 5. Pages"]
-        direction TB
-        PG1["WorkspacePage<br/>Dashboard + Activity"] --- PG2["MemoryPage<br/>Graph + Search + Filter"]
-        PG3["ConnectorsPage<br/>List + Status + Setup"] --- PG4["SettingsPage<br/>Profile + Preferences + Billing"]
-        PG5["LoginPage<br/>OAuth + Consent"] --- PG6["OnboardingPage<br/>Wizard + Connect"]
-    end
+ %% Layer 5: Pages 
+ subgraph Pages["5. Pages"]
+ direction TB
+ PG1["WorkspacePage<br/>Dashboard + Activity"] --- PG2["MemoryPage<br/>Graph + Search + Filter"]
+ PG3["ConnectorsPage<br/>List + Status + Setup"] --- PG4["SettingsPage<br/>Profile + Preferences + Billing"]
+ PG5["LoginPage<br/>OAuth + Consent"] --- PG6["OnboardingPage<br/>Wizard + Connect"]
+ end
 
-    %% ——— Component composition arrows ———
-    P1 & P2 & P3 & P4 & P5 & P6 & P7 & P8 & P9 & P10 & P11 & P12 -.->|compose| M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8
-    M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8 -.->|arrange into| L1 & L2 & L3 & L4 & L5 & L6
-    L1 & L2 & L3 & L4 & L5 & L6 -.->|build| F1 & F2 & F3 & F4 & F5 & F6
-    F1 & F2 & F3 & F4 & F5 & F6 -.->|render in| PG1 & PG2 & PG3 & PG4 & PG5 & PG6
+ %% Component composition arrows 
+ P1 & P2 & P3 & P4 & P5 & P6 & P7 & P8 & P9 & P10 & P11 & P12 -.->|compose| M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8
+ M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8 -.->|arrange into| L1 & L2 & L3 & L4 & L5 & L6
+ L1 & L2 & L3 & L4 & L5 & L6 -.->|build| F1 & F2 & F3 & F4 & F5 & F6
+ F1 & F2 & F3 & F4 & F5 & F6 -.->|render in| PG1 & PG2 & PG3 & PG4 & PG5 & PG6
 
-    %% ——— Shared / cross-cutting ———
-    subgraph Shared["?? Shared Utilities"]
-        S1["Theme Tokens<br/>Colors + Typography + Spacing"] --- S2["Hooks<br/>useAuth + useQuery + useSync"]
-        S3["Icons<br/>Lucide / Custom"] --- S4["Styles<br/>Tailwind + CSS Modules"]
-    end
+ %% Shared / cross-cutting 
+ subgraph Shared["Shared Utilities"]
+ S1["Theme Tokens<br/>Colors + Typography + Spacing"] --- S2["Hooks<br/>useAuth + useQuery + useSync"]
+ S3["Icons<br/>Lucide / Custom"] --- S4["Styles<br/>Tailwind + CSS Modules"]
+ end
 
-    S1 -.-> P1 & M1 & L1 & F1 & PG1
-    S2 -.-> P2 & M2 & L2 & F2 & PG2
-    S3 -.-> P3 & M3 & L3 & F3 & PG3
-    S4 -.-> P4 & M4 & L4 & F4 & PG4
+ S1 -.-> P1 & M1 & L1 & F1 & PG1
+ S2 -.-> P2 & M2 & L2 & F2 & PG2
+ S3 -.-> P3 & M3 & L3 & F3 & PG3
+ S4 -.-> P4 & M4 & L4 & F4 & PG4
 
-    %% ——— Apply styles ———
-    class P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12 primitive
-    class M1,M2,M3,M4,M5,M6,M7,M8 molecule
-    class L1,L2,L3,L4,L5,L6 layout
-    class F1,F2,F3,F4,F5,F6 feature
-    class PG1,PG2,PG3,PG4,PG5,PG6 page
-    class S1,S2,S3,S4 shared
+ %% Apply styles 
+ class P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12 primitive
+ class M1,M2,M3,M4,M5,M6,M7,M8 molecule
+ class L1,L2,L3,L4,L5,L6 layout
+ class F1,F2,F3,F4,F5,F6 feature
+ class PG1,PG2,PG3,PG4,PG5,PG6 page
+ class S1,S2,S3,S4 shared
 ```
 
 > **Diagram:** Component hierarchy follows atomic design principles across five layers. **Primitives** (??) are the smallest UI atoms. **Molecules** (??) compose primitives into functional units. **Layout** (??) components arrange molecules into page structures. **Feature Components** (?) build domain-specific templates. **Pages** (??) assemble features into full views. **Shared Utilities** (??) provide theme tokens, hooks, and styles consumed by every layer.
@@ -150,7 +150,7 @@ graph TD
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| Button, Input, Text, Icon, Avatar, Badge, Tooltip, Spinner, Checkbox, Radio, Select, Toggle | Smallest UI atoms — single-purpose interactive elements | React + TypeScript + Tailwind CSS | Tree-shake unused primitives per route; lazy-load rarely used ones |
+| Button, Input, Text, Icon, Avatar, Badge, Tooltip, Spinner, Checkbox, Radio, Select, Toggle | Smallest UI atoms â€” single-purpose interactive elements | React + TypeScript + Tailwind CSS | Tree-shake unused primitives per route; lazy-load rarely used ones |
 | Card, Table, Form, Modal, Toast, Alert, List, Breadcrumb | Compose primitives into functional UI patterns | React compound components + TypeScript generics | Modularize into `@vaeloom/ui/composites` sub-package at 10x scale |
 | Page, Grid, Stack, Sidebar, Navbar, Tabs | Arrange molecules into page structures | React + CSS Grid / Flexbox | Responsive via Tailwind breakpoints; container queries at 100x scale |
 | ProposalCard, AgentStatus, MemoryNode, Citation, ConnectorCard, Timeline | Domain-specific templates encapsulating AI workflows | React + TanStack Query + feature-flag gating | Split into `@vaeloom/features` package with per-route tree-shaking |
@@ -167,24 +167,24 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant DEV as Developer
-    participant LIB as @vaeloom/ui
-    participant T as TypeScript
-    participant R as Runtime
+ participant DEV as Developer
+ participant LIB as @vaeloom/ui
+ participant T as TypeScript
+ participant R as Runtime
 
-    DEV->>LIB: import { Button } from '@vaeloom/ui'
-    LIB->>T: Check props interface
-    T-->>DEV: ? Type-safe props
-    DEV->>R: <Button variant="primary" onClick={handleAction}>
-    R->>R: Resolve variant to theme token
-    R->>R: Apply --btn-primary-bg color
-    R-->>DEV: Rendered button with correct styling
+ DEV->>LIB: import { Button } from '@vaeloom/ui'
+ LIB->>T: Check props interface
+ T-->>DEV: ? Type-safe props
+ DEV->>R: <Button variant="primary" onClick={handleAction}>
+ R->>R: Resolve variant to theme token
+ R->>R: Apply --btn-primary-bg color
+ R-->>DEV: Rendered button with correct styling
 
-    Note over DEV,R: Keyboard interaction
-    DEV->>R: Tab to Button
-    R->>R: Focus visible applied via :focus-visible
-    DEV->>R: Enter key
-    R->>DEV: onClick triggered, action dispatched
+ Note over DEV,R: Keyboard interaction
+ DEV->>R: Tab to Button
+ R->>R: Focus visible applied via :focus-visible
+ DEV->>R: Enter key
+ R->>DEV: onClick triggered, action dispatched
 ```
 
 ## Data Flow
@@ -201,13 +201,13 @@ sequenceDiagram
 |----------|----------|--------|---------|
 | `@vaeloom/ui` (npm package) | Feature components, Pages | `import` | Exports all primitives, molecules, and layout components with TypeScript types |
 | `@vaeloom/features` (npm package) | Pages | `import` | Exports domain-specific feature components with internal data-fetching logic |
-| N/A | N/A | N/A | Component library exposes no HTTP or REST APIs — all data flows through props and React Context |
+| N/A | N/A | N/A | Component library exposes no HTTP or REST APIs â€” all data flows through props and React Context |
 
 ## Database
 
 | Concern | Details |
 |---------|---------|
-| Component state | No direct database access — components receive server data via TanStack Query hooks |
+| Component state | No direct database access â€” components receive server data via TanStack Query hooks |
 | UI preferences | Sidebar collapse, table column visibility, theme selection stored in `localStorage` |
 | Form draft recovery | Form state serializable to `sessionStorage` via `useFormPersist` hook; no server-side persistence |
 | Analytics events | Component interaction events emitted via analytics hook; stored in application database |
@@ -218,7 +218,7 @@ sequenceDiagram
 |---------|------------|
 | `dangerouslySetInnerHTML` in rich text components | Any component that renders user-provided HTML (e.g., Markdown renderer, rich text editor) must sanitize input via DOMPurify or similar |
 | Prop injection through spread operators | `{...props}` on DOM elements can allow malicious prop injection (e.g., `onLoad=alert(1)`); spread only known, validated props |
-| File type validation in upload components | Never trust the file extension or MIME type from the client — validate file signature bytes server-side before rendering previews |
+| File type validation in upload components | Never trust the file extension or MIME type from the client â€” validate file signature bytes server-side before rendering previews |
 
 ## Performance
 
@@ -251,8 +251,8 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Component render time (p95) | > 50ms | Warning | Grafana — React Profiler |
-| Error Boundary activations | > 0 per deploy | Critical | Sentry — Component Errors |
+| Component render time (p95) | > 50ms | Warning | Grafana â€” React Profiler |
+| Error Boundary activations | > 0 per deploy | Critical | Sentry â€” Component Errors |
 | PropType violations in dev | Any | Warning | ESLint + TypeScript build output |
 | Bundle size per component | > 5KB gzipped | Warning | bundlesize CI check |
 
@@ -386,19 +386,19 @@ function ProposalCard({ proposal, onApprove, onReject }: ProposalCardProps) {
 
 ## Related Documents
 
-- [Design-System.md](./Design-System.md) — Design token architecture, color palette, typography scale, spacing
-- [Theme-System.md](./Theme-System.md) — Three-layer token architecture, light/dark theme switching, CSS custom properties
-- [Frontend-Architecture.md](./Frontend-Architecture.md) — Overall frontend stack, routing, page structure
-- [UI-Architecture.md](./UI-Architecture.md) — UI layout patterns, component orchestration, rendering strategies
-- [Animation-System.md](./Animation-System.md) — Motion tokens, transitions, animation patterns for components
-- [Responsive-Design.md](./Responsive-Design.md) — Breakpoint tokens, responsive component patterns
-- [Accessibility.md](./Accessibility.md) — WCAG compliance, ARIA patterns, keyboard navigation
-- [Accessibility-Audit.md](./Accessibility-Audit.md) — Accessibility audit findings and remediation
-- [State-Management.md](./State-Management.md) — TanStack Query, Zustand, component state patterns
-- [Forms.md](./Forms.md) — Form components, validation patterns, field designs
-- [Charts.md](./Charts.md) — Chart components, data visualization patterns
-- [Navigation.md](./Navigation.md) — Routing, sidebar navigation, breadcrumb integration
-- [Dashboard.md](./Dashboard.md) — Dashboard page structure, widget components
-- [Internationalization.md](./Internationalization.md) — i18n support in components, locale tokens
-- [Mobile-Architecture.md](./Mobile-Architecture.md) — Mobile-specific component considerations
-- [UX-Guidelines.md](./UX-Guidelines.md) — User experience patterns and interaction design
+- [Design-System.md](./Design-System.md) â€” Design token architecture, color palette, typography scale, spacing
+- [Theme-System.md](./Theme-System.md) â€” Three-layer token architecture, light/dark theme switching, CSS custom properties
+- [Frontend-Architecture.md](./Frontend-Architecture.md) â€” Overall frontend stack, routing, page structure
+- [UI-Architecture.md](./UI-Architecture.md) â€” UI layout patterns, component orchestration, rendering strategies
+- [Animation-System.md](./Animation-System.md) â€” Motion tokens, transitions, animation patterns for components
+- [Responsive-Design.md](./Responsive-Design.md) â€” Breakpoint tokens, responsive component patterns
+- [Accessibility.md](./Accessibility.md) â€” WCAG compliance, ARIA patterns, keyboard navigation
+- [Accessibility-Audit.md](./Accessibility-Audit.md) â€” Accessibility audit findings and remediation
+- [State-Management.md](./State-Management.md) â€” TanStack Query, Zustand, component state patterns
+- [Forms.md](./Forms.md) â€” Form components, validation patterns, field designs
+- [Charts.md](./Charts.md) â€” Chart components, data visualization patterns
+- [Navigation.md](./Navigation.md) â€” Routing, sidebar navigation, breadcrumb integration
+- [Dashboard.md](./Dashboard.md) â€” Dashboard page structure, widget components
+- [Internationalization.md](./Internationalization.md) â€” i18n support in components, locale tokens
+- [Mobile-Architecture.md](./Mobile-Architecture.md) â€” Mobile-specific component considerations
+- [UX-Guidelines.md](./UX-Guidelines.md) â€” User experience patterns and interaction design

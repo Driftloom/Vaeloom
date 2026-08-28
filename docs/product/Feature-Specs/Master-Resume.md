@@ -1,7 +1,7 @@
-﻿## Header
+## Header
 >
 > **Purpose:** Detailed specification for Master Resume
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
 
@@ -175,20 +175,20 @@ Autonomy level: **Suggest** for auto-updates (proposes changes, doesn't apply si
 
 ```mermaid
 graph TD
-    classDef input fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef output fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef input fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef output fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    MEM[Memory Graph] --> RA[Resume Agent]
-    RA --> ASM[Master Assembler]
-    ASM --> DET[Gap Detector]
-    DET --> QUE[Gap Questions]
-    RA --> VAR[Variant Generator]
-    VAR --> JOB[Job Description]
-    VAR --> ATS[ATS Analysis]
-    VAR --> R1[Resume Variant]
-    RA --> QA[QA Agent]
-    QA --> R2[Validated Resume]
+ MEM[Memory Graph]--> RA[Resume Agent]
+ RA--> ASM[Master Assembler]
+ ASM--> DET[Gap Detector]
+ DET--> QUE[Gap Questions]
+ RA--> VAR[Variant Generator]
+ VAR--> JOB[Job Description]
+ VAR--> ATS[ATS Analysis]
+ VAR--> R1[Resume Variant]
+ RA--> QA[QA Agent]
+ QA--> R2[Validated Resume]
 ```
 
 > **Diagram:** Master Resume architecture — memory graph → assembler → gap detection → variant generation → QA validation.
@@ -221,23 +221,23 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant RA as Resume Agent
-    participant MEM as Memory
-    participant GD as Gap Detector
-    participant QA as QA Agent
+ participant U as User
+ participant RA as Resume Agent
+ participant MEM as Memory
+ participant GD as Gap Detector
+ participant QA as QA Agent
 
-    U->>RA: Open Resume screen
-    RA->>MEM: Query all memory types
-    MEM-->>RA: Education, skills, projects, history
-    RA->>RA: Assemble structured resume
-    RA->>GD: Check for missing information
-    GD-->>RA: 2 gaps: internship date range missing, one achievement unsourced
-    RA->>QA: Validate all entries
-    QA-->>RA: All entries verified against sources
-    RA-->>U: Complete resume with 2 gap prompts
-    U->>RA: Fill internship date
-    RA->>MEM: Write correction to preference memory
+ U->>RA: Open Resume screen
+ RA->>MEM: Query all memory types
+ MEM-->>RA: Education, skills, projects, history
+ RA->>RA: Assemble structured resume
+ RA->>GD: Check for missing information
+ GD-->>RA: 2 gaps: internship date range missing, one achievement unsourced
+ RA->>QA: Validate all entries
+ QA-->>RA: All entries verified against sources
+ RA-->>U: Complete resume with 2 gap prompts
+ U->>RA: Fill internship date
+ RA->>MEM: Write correction to preference memory
 ```
 
 ## Data Flow

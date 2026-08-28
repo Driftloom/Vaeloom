@@ -1,66 +1,66 @@
 # MVP-P13 — 07. Evidence Register
 
-> **Phase:** MVP-P13 — Security, Privacy, and Compliance  
-> **Date:** 2026-08-22 · **Baseline:** `0feb7ff`  
+> **Phase:** MVP-P13 — Security, Privacy, and Compliance 
+> **Date:** 2026-08-22 · **Baseline:** `0feb7ff` 
 > **Environment:** SQLite `tmp_path` per-test via `NullPool`, Python 3.12.13,
 > `uv` + `pytest-xdist -n 4`, mock LLM
 
 ## Evidence Table
 
-| Evidence ID     | Claim                                             | Requirement | Type      | Location                                                                                                                                           | Result     | Date       | Verified by                            |
+| Evidence ID | Claim | Requirement | Type | Location | Result | Date | Verified by |
 | --------------- | ------------------------------------------------- | ----------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- | -------------------------------------- |
-| EVD-MVP-P13-001 | Tenant isolation via transaction-scoped RLS       | MVP-P13-R03 | code      | `apps/api/src/api/middleware/tenant.py:41` (`set_rls_session_vars` `SET LOCAL app.tenant_id`) + `main.py:177` ordering                             | VERIFIED   | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-002 | JWT authN with exp/sub enforcement + PUBLIC_PATHS | MVP-P13-R03 | code      | `apps/api/src/api/middleware/auth.py:1` (`jwt.decode` require exp/sub, PUBLIC_PATHS includes `/consent/scopes`)                                    | VERIFIED   | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-003 | CSRF double-submit HMAC-SHA256, 3600s TTL         | MVP-P13-R03 | code      | `apps/api/src/api/middleware/csrf.py:14` (`_sign_token`/`CSRFTokenStore` 3600s) + `main.py:179`                                                    | VERIFIED   | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-004 | IP allowlist CIDR parsing, conditional mount      | MVP-P13-R03 | code      | `apps/api/src/api/middleware/ip_filter.py:1` + `main.py:188` conditional on `settings.ip_allowlist`                                                | VERIFIED   | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-005 | Fernet encryption for BYOK/connector keys         | MVP-P13-R03 | code      | `apps/api/src/api/services/encryption.py:1` (`hashlib.sha256` derived Fernet, `encrypt_value`/`decrypt_value`)                                     | VERIFIED   | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-006 | SecretManager protocol, Infisical/fallback        | MVP-P13-R03 | code      | `apps/api/src/api/infrastructure/secrets.py` + `config.py:_resolve_from_secret_manager` auto-wire via `INFISICAL_ENABLED`                          | VERIFIED   | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-007 | validate_settings fails fast on weak JWT secret   | MVP-P13-R03 | code      | `apps/api/src/api/config.py:validate_settings()` rejects `secret/changeme` <32 chars                                                               | VERIFIED   | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-008 | Rate limiting sliding window + Retry-After        | MVP-P13-R03 | code      | `apps/api/src/api/middleware/rate_limit.py` (requests_per_minute, window, api_key_rate_limit)                                                      | VERIFIED   | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-009 | Security headers middleware                       | MVP-P13-R03 | code      | `apps/api/src/api/middleware/security_headers.py`                                                                                                  | VERIFIED   | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-010 | Threat models STRIDE enterprise quality           | MVP-P13-R03 | doc       | `docs/security/Threat-Model.md` (assets, attack surface, STRIDE mitigations, 2026-07-12) + `08-registers.md` gap note                              | VERIFIED   | 2026-08-22 | Security Architect                     |
-| EVD-MVP-P13-011 | Privacy/consent/rights workflows + DPIA           | MVP-P13-R03 | doc+code  | `docs/security/DPIA.md` v1.0 + `services/consent.py:1` (3 scopes) + `services/gdpr.py:10` (12 tables)                                              | VERIFIED   | 2026-08-22 | Privacy Engineer                       |
-| EVD-MVP-P13-012 | AI governance + compliance mapping                | MVP-P13-R03 | doc       | `docs/security/AI-Governance.md` v1.0 + `docs/security/Compliance.md` (GDPR, DPDP, FERPA, COPPA, EU AI Act)                                        | VERIFIED   | 2026-08-22 | AI Safety Lead / Compliance Specialist |
-| EVD-MVP-P13-013 | SAST bandit scan                                  | MVP-P13-R04 | report    | `bandit 1.9.4 -r apps/api/src/api -ll` → 0 HIGH, 38 MEDIUM B608 (false positives `text()` bind params) — `05-test-results.md`                      | 0 HIGH     | 2026-08-22 | AppSec Engineer                        |
-| EVD-MVP-P13-014 | SCA pip-audit                                     | MVP-P13-R04 | report    | `pip-audit 2.10.1` → 2 pkgs: pytest UNIX-only, starlette needs ≥1.3.1 (PYSEC-2026-161/248/249) — must-fix pre-prod                                 | 8/10       | 2026-08-22 | AppSec Engineer                        |
-| EVD-MVP-P13-015 | 61 new security tests added                       | MVP-P13-R04 | test      | `tests/security/test_csrf.py:15` + `test_prompt_injection.py:29` + `test_tenant_isolation.py:6` + `test_privacy_flows.py:11`                       | 61/61 PASS | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-016 | All security tests pass (233)                     | MVP-P13-R04 | test      | `pytest tests/security/ -q -o addopts=""` → 233 passed                                                                                             | 233/233    | 2026-08-22 | Phase owner                            |
-| EVD-MVP-P13-017 | Full suite regression check                       | MVP-P13-R04 | test      | `pytest tests/ -q -o addopts="-n 4"` → 2459 passed, 4 skipped, 2 xfailed, 0 failed (2555 collected, was stale 2527 fixed F-01, debug_test removed) | PASS       | 2026-08-22 | QA                                     |
-| EVD-MVP-P13-018 | OpenAPI contract live                             | MVP-P13-R07 | test+code | `docs/backend/openapi.yaml` 88 paths + `tests/test_openapi_spec.py:4`                                                                              | VERIFIED   | 2026-08-22 | Architecture                           |
-| EVD-MVP-P13-019 | DB-backed versioning + chunk wiring (0018)        | MVP-P13-R06 | code+mig  | `alembic/versions/0018_graph_memory_end_to_end.py` + `services/memory_versioning.py`                                                               | VERIFIED   | 2026-08-22 | Data Engineer                          |
-| EVD-MVP-P13-020 | Background daemon (watchers/approvals)            | MVP-P13-R05 | code      | `apps/api/src/api/infrastructure/background_daemon.py` + `orchestrator/supervisor.py`                                                              | VERIFIED   | 2026-08-22 | SRE                                    |
+| EVD-MVP-P13-001 | Tenant isolation via transaction-scoped RLS | MVP-P13-R03 | code | `apps/api/src/api/middleware/tenant.py:41` (`set_rls_session_vars` `SET LOCAL app.tenant_id`) + `main.py:177` ordering | VERIFIED | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-002 | JWT authN with exp/sub enforcement + PUBLIC_PATHS | MVP-P13-R03 | code | `apps/api/src/api/middleware/auth.py:1` (`jwt.decode` require exp/sub, PUBLIC_PATHS includes `/consent/scopes`) | VERIFIED | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-003 | CSRF double-submit HMAC-SHA256, 3600s TTL | MVP-P13-R03 | code | `apps/api/src/api/middleware/csrf.py:14` (`_sign_token`/`CSRFTokenStore` 3600s) + `main.py:179` | VERIFIED | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-004 | IP allowlist CIDR parsing, conditional mount | MVP-P13-R03 | code | `apps/api/src/api/middleware/ip_filter.py:1` + `main.py:188` conditional on `settings.ip_allowlist` | VERIFIED | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-005 | Fernet encryption for BYOK/connector keys | MVP-P13-R03 | code | `apps/api/src/api/services/encryption.py:1` (`hashlib.sha256` derived Fernet, `encrypt_value`/`decrypt_value`) | VERIFIED | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-006 | SecretManager protocol, Infisical/fallback | MVP-P13-R03 | code | `apps/api/src/api/infrastructure/secrets.py` + `config.py:_resolve_from_secret_manager` auto-wire via `INFISICAL_ENABLED` | VERIFIED | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-007 | validate_settings fails fast on weak JWT secret | MVP-P13-R03 | code | `apps/api/src/api/config.py:validate_settings()` rejects `secret/changeme` <32 chars | VERIFIED | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-008 | Rate limiting sliding window + Retry-After | MVP-P13-R03 | code | `apps/api/src/api/middleware/rate_limit.py` (requests_per_minute, window, api_key_rate_limit) | VERIFIED | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-009 | Security headers middleware | MVP-P13-R03 | code | `apps/api/src/api/middleware/security_headers.py` | VERIFIED | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-010 | Threat models STRIDE enterprise quality | MVP-P13-R03 | doc | `docs/security/Threat-Model.md` (assets, attack surface, STRIDE mitigations, 2026-07-12) + `08-registers.md` gap note | VERIFIED | 2026-08-22 | Security Architect |
+| EVD-MVP-P13-011 | Privacy/consent/rights workflows + DPIA | MVP-P13-R03 | doc+code | `docs/security/DPIA.md` v1.0 + `services/consent.py:1` (3 scopes) + `services/gdpr.py:10` (12 tables) | VERIFIED | 2026-08-22 | Privacy Engineer |
+| EVD-MVP-P13-012 | AI governance + compliance mapping | MVP-P13-R03 | doc | `docs/security/AI-Governance.md` v1.0 + `docs/security/Compliance.md` (GDPR, DPDP, FERPA, COPPA, EU AI Act) | VERIFIED | 2026-08-22 | AI Safety Lead / Compliance Specialist |
+| EVD-MVP-P13-013 | SAST bandit scan | MVP-P13-R04 | report | `bandit 1.9.4 -r apps/api/src/api -ll` → 0 HIGH, 38 MEDIUM B608 (false positives `text()` bind params) — `05-test-results.md` | 0 HIGH | 2026-08-22 | AppSec Engineer |
+| EVD-MVP-P13-014 | SCA pip-audit | MVP-P13-R04 | report | `pip-audit 2.10.1` → 2 pkgs: pytest UNIX-only, starlette needs ≥1.3.1 (PYSEC-2026-161/248/249) — must-fix pre-prod | 8/10 | 2026-08-22 | AppSec Engineer |
+| EVD-MVP-P13-015 | 61 new security tests added | MVP-P13-R04 | test | `tests/security/test_csrf.py:15` + `test_prompt_injection.py:29` + `test_tenant_isolation.py:6` + `test_privacy_flows.py:11` | 61/61 PASS | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-016 | All security tests pass (233) | MVP-P13-R04 | test | `pytest tests/security/ -q -o addopts=""` → 233 passed | 233/233 | 2026-08-22 | Phase owner |
+| EVD-MVP-P13-017 | Full suite regression check | MVP-P13-R04 | test | `pytest tests/ -q -o addopts="-n 4"` → 2459 passed, 4 skipped, 2 xfailed, 0 failed (2555 collected, was stale 2527 fixed F-01, debug_test removed) | PASS | 2026-08-22 | QA |
+| EVD-MVP-P13-018 | OpenAPI contract live | MVP-P13-R07 | test+code | `docs/backend/openapi.yaml` 88 paths + `tests/test_openapi_spec.py:4` | VERIFIED | 2026-08-22 | Architecture |
+| EVD-MVP-P13-019 | DB-backed versioning + chunk wiring (0018) | MVP-P13-R06 | code+mig | `alembic/versions/0018_graph_memory_end_to_end.py` + `services/memory_versioning.py` | VERIFIED | 2026-08-22 | Data Engineer |
+| EVD-MVP-P13-020 | Background daemon (watchers/approvals) | MVP-P13-R05 | code | `apps/api/src/api/infrastructure/background_daemon.py` + `orchestrator/supervisor.py` | VERIFIED | 2026-08-22 | SRE |
 
 ## Traceability Matrix
 
-| Requirement                                                                 | Design                                                  | Code                                                                                               | Tests                                                                                          | Evidence           | Risk        |
+| Requirement | Design | Code | Tests | Evidence | Risk |
 | --------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------ | ----------- |
-| MVP-P13-R01 Scope (security/privacy/identity/consent/rights/AI/compliance)  | WS-13.1..13.5 + Source Register                         | All middleware + services + docs                                                                   | 233 security                                                                                   | EVD-001..012,016   | RISK-P13-01 |
-| MVP-P13-R02 Evidence (every claim links to source/repro evidence)           | This register + `01-source-register.md`                 | All files mapped file:line                                                                         | Full suite                                                                                     | EVD-001..020       | RISK-P13-04 |
-| MVP-P13-R03 Security/Privacy (risks designed, tested, owned)                | WS-13.1/13.2/13.3/13.4 + Threat-Model, DPIA, AI-Gov     | `tenant.py`, `auth.py`, `csrf.py`, `prompt_injection.py`, `encryption.py`, `gdpr.py`, `consent.py` | 61 new + 172 existing                                                                          | EVD-001..016       | RISK-P13-02 |
-| MVP-P13-R04 Quality (normal, negative, boundary, failure, recovery)         | WS-13.5 + test matrix §18                               | All middleware + retrieval poisoning guards                                                        | `test_csrf`, `test_prompt_injection`, `test_tenant_isolation`, `test_privacy_flows` + SAST/SCA | EVD-013..017       | RISK-P13-04 |
-| MVP-P13-R05 Operations (ownership, telemetry, support, rollback, lifecycle) | `main.py:lifespan` + background_daemon + Kill switches  | `agent_observability.py`, `background_daemon.py`, `audit_service`                                  | Metrics, kill switch tests                                                                     | EVD-020 + runbooks | RISK-P13-05 |
-| MVP-P13-R06 Data/AI (lineage, scope, quality, retention, AI lineage)        | `provenance_service.py` + `memory_versioning.py` + 0018 | `pipeline.py` chunk→embedding, `retrieval.py` context window, `DPIA.md`                            | Memory filters 8 tests                                                                         | EVD-019            | —           |
-| MVP-P13-R07 Traceability (req→design→file→test→evidence→risk→gate→handoff)  | This table                                              | —                                                                                                  | —                                                                                              | This doc           | —           |
-| MVP-P13-R08 Gate (≥95, zero blockers)                                       | `09-gate-report.md` §28 weighted 100-pt                 | —                                                                                                  | 233/233 + SAST + SCA                                                                           | Gate report        | —           |
+| MVP-P13-R01 Scope (security/privacy/identity/consent/rights/AI/compliance) | WS-13.1..13.5 + Source Register | All middleware + services + docs | 233 security | EVD-001..012,016 | RISK-P13-01 |
+| MVP-P13-R02 Evidence (every claim links to source/repro evidence) | This register + `01-source-register.md` | All files mapped file:line | Full suite | EVD-001..020 | RISK-P13-04 |
+| MVP-P13-R03 Security/Privacy (risks designed, tested, owned) | WS-13.1/13.2/13.3/13.4 + Threat-Model, DPIA, AI-Gov | `tenant.py`, `auth.py`, `csrf.py`, `prompt_injection.py`, `encryption.py`, `gdpr.py`, `consent.py` | 61 new + 172 existing | EVD-001..016 | RISK-P13-02 |
+| MVP-P13-R04 Quality (normal, negative, boundary, failure, recovery) | WS-13.5 + test matrix §18 | All middleware + retrieval poisoning guards | `test_csrf`, `test_prompt_injection`, `test_tenant_isolation`, `test_privacy_flows` + SAST/SCA | EVD-013..017 | RISK-P13-04 |
+| MVP-P13-R05 Operations (ownership, telemetry, support, rollback, lifecycle) | `main.py:lifespan` + background_daemon + Kill switches | `agent_observability.py`, `background_daemon.py`, `audit_service` | Metrics, kill switch tests | EVD-020 + runbooks | RISK-P13-05 |
+| MVP-P13-R06 Data/AI (lineage, scope, quality, retention, AI lineage) | `provenance_service.py` + `memory_versioning.py` + 0018 | `pipeline.py` chunk→embedding, `retrieval.py` context window, `DPIA.md` | Memory filters 8 tests | EVD-019 | — |
+| MVP-P13-R07 Traceability (req→design→file→test→evidence→risk→gate→handoff) | This table | — | — | This doc | — |
+| MVP-P13-R08 Gate (≥95, zero blockers) | `09-gate-report.md` §28 weighted 100-pt | — | 233/233 + SAST + SCA | Gate report | — |
 
 ## Verification Test Mapping (§15 Source Acquisition)
 
-| Standard                      | Verified At         | Control Mapping                             | Test                                                      |
+| Standard | Verified At | Control Mapping | Test |
 | ----------------------------- | ------------------- | ------------------------------------------- | --------------------------------------------------------- |
-| MCP 2026-07-28                | 2026-08-22          | MCP profile, authZ, tasks/extensions        | `model_router.py` + MRTR notes in `01-source-register.md` |
-| OWASP Agentic 2026 (ASI01–10) | 2026-08-20 verified | Agent/tool/memory/identity risks            | `Threat-Model.md` + prompt injection tests                |
-| OWASP LLM 2025                | 2026-08-20 verified | Prompt injection, leakage, excessive agency | `prompt_injection.py` 14 patterns                         |
-| RFC 9700 OAuth BCP            | 2026-08-20 verified | PKCE, redirect matching, replay             | `auth.py` + SAML signxml                                  |
-| OpenAPI 3.2.0                 | 2026-08-20 verified | 88 paths machine-readable contract          | `test_openapi_spec.py`                                    |
+| MCP 2026-07-28 | 2026-08-22 | MCP profile, authZ, tasks/extensions | `model_router.py` + MRTR notes in `01-source-register.md` |
+| OWASP Agentic 2026 (ASI01–10) | 2026-08-20 verified | Agent/tool/memory/identity risks | `Threat-Model.md` + prompt injection tests |
+| OWASP LLM 2025 | 2026-08-20 verified | Prompt injection, leakage, excessive agency | `prompt_injection.py` 14 patterns |
+| RFC 9700 OAuth BCP | 2026-08-20 verified | PKCE, redirect matching, replay | `auth.py` + SAML signxml |
+| OpenAPI 3.2.0 | 2026-08-20 verified | 88 paths machine-readable contract | `test_openapi_spec.py` |
 
 ## Deliverable Completion
 
-| Deliverable                                                                           | Status      | Evidence                                                                                                     |
+| Deliverable | Status | Evidence |
 | ------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------ |
-| DEL-MVP-P13-01 — threat models; versioned, owned, reviewed and linked                 | ✅ VERIFIED | `docs/security/Threat-Model.md` + `Security-Architecture.md` + `OWASP.md`; EVD-010                           |
-| DEL-MVP-P13-02 — privacy/AI impact assessments; versioned, owned, reviewed and linked | ✅ VERIFIED | `docs/security/DPIA.md` v1.0 + `AI-Governance.md` v1.0 + `Privacy.md` + `GDPR.md`; EVD-011,012               |
-| DEL-MVP-P13-03 — controls/rights workflows; versioned, owned, reviewed and linked     | ✅ VERIFIED | `services/consent.py` + `services/gdpr.py` + `services/approval.py` + `middleware/*`; EVD-001..009,015       |
-| DEL-MVP-P13-04 — compliance map; versioned, owned, reviewed and linked                | ✅ VERIFIED | `docs/security/Compliance.md` + `SOC2.md` + `DPIA.md`; EVD-012                                               |
-| DEL-MVP-P13-05 — independent test decision; versioned, owned, reviewed and linked     | ✅ VERIFIED | `05-test-results.md` (bandit + pip-audit + 233 tests) + `08-registers.md` exception governance; EVD-013..017 |
-| Updated risk, decision, assumption, evidence, traceability and change registers       | ✅          | `08-registers.md`                                                                                            |
-| Gate report and next-phase handoff                                                    | ✅          | `09-gate-report.md`, `10-handoff-to-p14.md`                                                                  |
+| DEL-MVP-P13-01 — threat models; versioned, owned, reviewed and linked | ✅ VERIFIED | `docs/security/Threat-Model.md` + `Security-Architecture.md` + `OWASP.md`; EVD-010 |
+| DEL-MVP-P13-02 — privacy/AI impact assessments; versioned, owned, reviewed and linked | ✅ VERIFIED | `docs/security/DPIA.md` v1.0 + `AI-Governance.md` v1.0 + `Privacy.md` + `GDPR.md`; EVD-011,012 |
+| DEL-MVP-P13-03 — controls/rights workflows; versioned, owned, reviewed and linked | ✅ VERIFIED | `services/consent.py` + `services/gdpr.py` + `services/approval.py` + `middleware/*`; EVD-001..009,015 |
+| DEL-MVP-P13-04 — compliance map; versioned, owned, reviewed and linked | ✅ VERIFIED | `docs/security/Compliance.md` + `SOC2.md` + `DPIA.md`; EVD-012 |
+| DEL-MVP-P13-05 — independent test decision; versioned, owned, reviewed and linked | ✅ VERIFIED | `05-test-results.md` (bandit + pip-audit + 233 tests) + `08-registers.md` exception governance; EVD-013..017 |
+| Updated risk, decision, assumption, evidence, traceability and change registers | ✅ | `08-registers.md` |
+| Gate report and next-phase handoff | ✅ | `09-gate-report.md`, `10-handoff-to-p14.md` |

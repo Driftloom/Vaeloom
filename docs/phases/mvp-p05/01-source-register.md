@@ -8,39 +8,39 @@
 
 ## 1. Internal sources (INT)
 
-| ID     | Source                                                              | Use                                    | Status                     |
+| ID | Source | Use | Status |
 | ------ | ------------------------------------------------------------------- | -------------------------------------- | -------------------------- |
-| INT-01 | Gatekeeper compendium (substitute for original)                     | Governing 32-section contract          | Available                  |
-| INT-02 | `vaeloom-mvp-e2e-enterprise-hardened.md` (SHA-256 `2FA8966F…69640`) | Authoritative corrections/hardening    | Available, re-verified     |
-| INT-03 | `vaeloom-mvp-e2e.md`                                                | MVP execution baseline                 | Available                  |
-| INT-04 | `vaeloom-enterprise-e2e.md`                                         | Enterprise baseline (out of MVP scope) | Available                  |
-| INT-05 | `docs/01-vaeloom-mvp-spec.md`                                       | Canonical MVP scope                    | Available                  |
-| INT-07 | `docs/02-system-architecture.md`                                    | Architecture intent (6-layer)          | Available                  |
-| INT-08 | `docs/03-agent-workflow.md`                                         | Agent/approval flow intent             | Available                  |
-| INT-09 | `docs/04-memory-knowledge-graph.md`                                 | Memory/RAG intent                      | Available                  |
-| REPO   | `master` @ `6e8a7b4` — **live inspected 2026-08-15**                | Implementation truth (zero trust)      | Available; inventory in §4 |
+| INT-01 | Gatekeeper compendium (substitute for original) | Governing 32-section contract | Available |
+| INT-02 | `vaeloom-mvp-e2e-enterprise-hardened.md` (SHA-256 `2FA8966F…69640`) | Authoritative corrections/hardening | Available, re-verified |
+| INT-03 | `vaeloom-mvp-e2e.md` | MVP execution baseline | Available |
+| INT-04 | `vaeloom-enterprise-e2e.md` | Enterprise baseline (out of MVP scope) | Available |
+| INT-05 | `docs/01-vaeloom-mvp-spec.md` | Canonical MVP scope | Available |
+| INT-07 | `docs/02-system-architecture.md` | Architecture intent (6-layer) | Available |
+| INT-08 | `docs/03-agent-workflow.md` | Agent/approval flow intent | Available |
+| INT-09 | `docs/04-memory-knowledge-graph.md` | Memory/RAG intent | Available |
+| REPO | `master` @ `6e8a7b4` — **live inspected 2026-08-15** | Implementation truth (zero trust) | Available; inventory in §4 |
 
 Authority order (INT-02 §0.2 + carried CF-P03-02/04-01): REPO reality > INT-02 >
 gatekeeper compendium > INT-05 > INT-07/08/09 > prompt prose.
 
 ## 2. External standards (EXT) — re-verified 2026-08-15
 
-| ID           | Standard                             | Snapshot   | Applicability                                               |
+| ID | Standard | Snapshot | Applicability |
 | ------------ | ------------------------------------ | ---------- | ----------------------------------------------------------- |
-| EXT-01       | MCP Spec                             | 2026-07-28 | APPLICABLE — connectors/mcp (connectors/mcp package)        |
-| EXT-02       | OWASP Agentic Top 10                 | 2026       | APPLICABLE — mapped in `06`                                 |
-| EXT-03       | OWASP LLM Top 10                     | 2026       | APPLICABLE — mapped in `06`                                 |
-| EXT-04       | NIST AI RMF + GenAI profile          | current    | APPLICABLE                                                  |
-| EXT-05       | WCAG 2.2                             | W3C Rec    | APPLICABLE — P09                                            |
-| EXT-06       | RFC 9700 OAuth BCP                   | IETF       | APPLICABLE — P08 (NFR-16)                                   |
-| EXT-07       | RFC 9728 Protected Resource Metadata | IETF       | APPLICABLE — P08                                            |
-| EXT-08       | OpenAPI 3.2.0                        | current    | APPLICABLE — pin at P08; `docs/backend/openapi.yaml` exists |
-| EXT-09       | OpenTelemetry                        | latest     | APPLICABLE — repo has `infrastructure/opentelemetry.py`     |
-| EXT-10       | SLSA v1.2                            | current    | DEFER — P16/P19                                             |
-| EXT-11       | NIST SSDF 800-218                    | v1.1       | APPLICABLE — P06/P13                                        |
-| EXT-12       | Gmail API push/quotas                | current    | APPLICABLE — DEC-P02-01 polling MVP; watch added 2026       |
-| EXT-16       | DPDP Act + Rules 2025                | staged     | APPLICABLE — P13; residency flag CF-P05-03                  |
-| EXT-15/14/17 | EU AI Act / GDPR / FERPA+COPPA       | current    | NOT_APPLICABLE (India launch; 18+; re-check P13)            |
+| EXT-01 | MCP Spec | 2026-07-28 | APPLICABLE — connectors/mcp (connectors/mcp package) |
+| EXT-02 | OWASP Agentic Top 10 | 2026 | APPLICABLE — mapped in `06` |
+| EXT-03 | OWASP LLM Top 10 | 2026 | APPLICABLE — mapped in `06` |
+| EXT-04 | NIST AI RMF + GenAI profile | current | APPLICABLE |
+| EXT-05 | WCAG 2.2 | W3C Rec | APPLICABLE — P09 |
+| EXT-06 | RFC 9700 OAuth BCP | IETF | APPLICABLE — P08 (NFR-16) |
+| EXT-07 | RFC 9728 Protected Resource Metadata | IETF | APPLICABLE — P08 |
+| EXT-08 | OpenAPI 3.2.0 | current | APPLICABLE — pin at P08; `docs/backend/openapi.yaml` exists |
+| EXT-09 | OpenTelemetry | latest | APPLICABLE — repo has `infrastructure/opentelemetry.py` |
+| EXT-10 | SLSA v1.2 | current | DEFER — P16/P19 |
+| EXT-11 | NIST SSDF 800-218 | v1.1 | APPLICABLE — P06/P13 |
+| EXT-12 | Gmail API push/quotas | current | APPLICABLE — DEC-P02-01 polling MVP; watch added 2026 |
+| EXT-16 | DPDP Act + Rules 2025 | staged | APPLICABLE — P13; residency flag CF-P05-03 |
+| EXT-15/14/17 | EU AI Act / GDPR / FERPA+COPPA | current | NOT_APPLICABLE (India launch; 18+; re-check P13) |
 
 Web re-verification of version/applicability (EU AI Act transparency obligations
 effective 2026-08-02; DPDP Rules 2025 staged commencement; MCP 2026-07-28;
@@ -49,50 +49,50 @@ EVD register; secondary sources contextual only.
 
 ## 3. Conflict log
 
-| ID        | Conflict                                                                                                                      | Resolution                                                                                                                                   | Authority                                        | Date       |
+| ID | Conflict | Resolution | Authority | Date |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ---------- |
-| CF-P05-01 | Prompt §3 lists NestJS + `apps/core-api` + `apps/ai-service`; repo has FastAPI unified `apps/api` + worker, no NestJS app     | **Repo truth**: single FastAPI service + queue worker; TS packages (service-auth, observability, queue) are libraries, not deployed services | REPO > INT-05 > prompt (carried CF-P03-02/04-01) | 2026-08-15 |
-| CF-P05-02 | INT-02 memory intent (Profile/Document/Career/Episodic/Preference/Working) vs repo typed `Memory`/`memory_records` + taxonomy | ADR-022: 6-memory taxonomy as typed rows + supersession on existing tables; `0004_memory_taxonomy.py` now implements (verify completeness)   | INT-02 §4 + REPO                                 | 2026-08-15 |
-| CF-P05-03 | Data residency: India launch vs $0 free tiers (no India region)                                                               | BQ-P05-02 (user 2026-08-07): nearest region; DPDP residency risk → RISK-MVP-P05-05, legal review at P13                                      | User decision                                    | 2026-08-07 |
-| CF-P05-04 | **Dual migration systems**: `alembic/versions/` (0001–0002) AND `src/backend/migrations/` (0002–0007 + `runner.py`)           | NEW FINDING 2026-08-15: single migration path required at P07 (ADR) — see `08-registers.md` §1 RISK-MVP-P05-08                               | REPO inspection                                  | 2026-08-15 |
-| CF-P05-05 | Prior P05 "explicit gaps" (approval/idempotency/RLS/watcher/taxonomy absent) vs code present at HEAD                          | REPO_VERIFIED: those now exist; statuses moved to IMPLEMENTED_UNVERIFIED with verify tasks (see §4)                                          | REPO inspection                                  | 2026-08-15 |
+| CF-P05-01 | Prompt §3 lists NestJS + `apps/core-api` + `apps/ai-service`; repo has FastAPI unified `apps/api` + worker, no NestJS app | **Repo truth**: single FastAPI service + queue worker; TS packages (service-auth, observability, queue) are libraries, not deployed services | REPO > INT-05 > prompt (carried CF-P03-02/04-01) | 2026-08-15 |
+| CF-P05-02 | INT-02 memory intent (Profile/Document/Career/Episodic/Preference/Working) vs repo typed `Memory`/`memory_records` + taxonomy | ADR-022: 6-memory taxonomy as typed rows + supersession on existing tables; `0004_memory_taxonomy.py` now implements (verify completeness) | INT-02 §4 + REPO | 2026-08-15 |
+| CF-P05-03 | Data residency: India launch vs $0 free tiers (no India region) | BQ-P05-02 (user 2026-08-07): nearest region; DPDP residency risk → RISK-MVP-P05-05, legal review at P13 | User decision | 2026-08-07 |
+| CF-P05-04 | **Dual migration systems**: `alembic/versions/` (0001–0002) AND `src/backend/migrations/` (0002–0007 + `runner.py`) | NEW FINDING 2026-08-15: single migration path required at P07 (ADR) — see `08-registers.md` §1 RISK-MVP-P05-08 | REPO inspection | 2026-08-15 |
+| CF-P05-05 | Prior P05 "explicit gaps" (approval/idempotency/RLS/watcher/taxonomy absent) vs code present at HEAD | REPO_VERIFIED: those now exist; statuses moved to IMPLEMENTED_UNVERIFIED with verify tasks (see §4) | REPO inspection | 2026-08-15 |
 
 ## 4. Zero-trust repo inspection evidence (truth rule — prompt §14) @ `6e8a7b4`
 
 Performed 2026-08-15 via live inspection + grep. Every row is REPO_VERIFIED with
 path evidence. Anything not re-inspected is marked UNVERIFIED.
 
-| Area        | Finding (evidence path)                                                                                                                                                                                                                                                                                                                                                         | Implication for P05 design                                                                                                                                              |
+| Area | Finding (evidence path) | Implication for P05 design |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backend app | `apps/api/src/backend/main.py` — FastAPI unified; ~30 `include_router` under `/api/v1` (auth, workspaces, memory, agents, events, search, integrations, documents, resumes, applications, notifications, connectors, scheduler, chat, knowledge-graph, gdpr, consent, approvals, agent-costs, gmail, billing, plugins, analytics, audit, iam, recommendations, webhooks, admin) | C4 container + contracts must reflect real router set (not 24)                                                                                                          |
-| Data model  | `apps/api/src/backend/models/schema.py` — **36 `__tablename__`** incl. `idempotency_records`, `agent_approvals`, `gmail_watches`                                                                                                                                                                                                                                                | Schema count 36 (prior claim 33 is STALE); approval/idempotency/watch persisted                                                                                         |
-| Migrations  | **DUAL**: `apps/api/alembic/versions/` (0001_initial_schema, 0002_microservice_tables) AND `apps/api/src/backend/migrations/` (0002_microservice_tables, 0003_approvals, 0004_memory_taxonomy, 0005_rls, 0006_idempotency, 0007_gmail_watch + `runner.py` w/ `schema_migrations`)                                                                                               | NEW FINDING CF-P05-04: single migration path at P07                                                                                                                     |
-| Approval    | `migrations/0003_approvals.py`; `services/approval.py`; `schemas/approval.py`; `routers` approvals; `agent_approvals` table                                                                                                                                                                                                                                                     | ADR-021 approval persistence IMPLEMENTED_UNVERIFIED (verify payload-hash binding, expiry, immutability)                                                                 |
-| Idempotency | `middleware/idempotency.py` + `0006_idempotency.py` + `idempotency_records`                                                                                                                                                                                                                                                                                                     | ADR-021 idempotency IMPLEMENTED_UNVERIFIED (verify coverage breadth)                                                                                                    |
-| RLS         | `infrastructure/data_isolation.py` — `TenantAwareBase(RowLevelSecurityMixin)` + `0005_rls.py`                                                                                                                                                                                                                                                                                   | ADR-023 IMPLEMENTED_UNVERIFIED (verify policy coverage; isolation suite P14)                                                                                            |
-| Memory      | `0004_memory_taxonomy.py`; `schemas/memory_types.py`; `services/memory_service.py`; `services/memory_versioning.py`; `memories`+`memory_records`                                                                                                                                                                                                                                | ADR-022 IMPLEMENTED_UNVERIFIED (verify 6 types + supersession FR-68)                                                                                                    |
-| Gmail       | `clients/gmail_client.py` — `fetch_emails`, `create_draft`, `list_drafts`, `start_watch`, `stop_watch`, `check_health`; **no send**; `0007_gmail_watch.py`; `gmail_watches` table                                                                                                                                                                                               | Draft-only confirmed (DEC-P01-03); watcher now exists — reconcile with polling-first DEC-P02-01                                                                         |
-| Agents      | `agents/` — **22 `handler.py`** agent dirs + 4 memory subagents (`memory/document, planning, reflection, self_improvement`) + `qa_validator`; orchestration module `orchestrator/` (base, loop, router, state); registry DB-backed (`services/agent_service.py`, `agents` table)                                                                                                | 8-agent canonical roster maps to repo (orchestrator module + organization, memory, resume, ats, job_search, application, gmail, scheduler handlers); extra agents exist |
-| Middleware  | `middleware/` — auth, csrf, tenant, rate_limit, ip_filter, security_headers, prompt_injection, api_version, idempotency, log/correlation                                                                                                                                                                                                                                        | Existing control set mapped in `06`; threat base confirmed                                                                                                              |
-| Search/vec  | `infrastructure/search.py` — `SearchIndex` ABC + `MeilisearchIndex`; config references meilisearch; pgvector used for embeddings (ADR-003)                                                                                                                                                                                                                                      | Projections ADR-024: search = rebuildable; Meilisearch + pgvector both present                                                                                          |
-| OTel        | `infrastructure/opentelemetry.py` + wired in `main.py`                                                                                                                                                                                                                                                                                                                          | Observability baseline exists                                                                                                                                           |
-| Static API  | `docs/backend/openapi.yaml` exists (currency UNVERIFIED); FastAPI `/openapi.json` runtime                                                                                                                                                                                                                                                                                       | Static OpenAPI pin at P08                                                                                                                                               |
-| Frontend    | `apps/web` Next.js 15; `src/app` routes `(auth)`, `status`, `workspace`; `src/middleware.ts`; `lib/api.ts` + `lib/api-client.ts` (`transformKeys`)                                                                                                                                                                                                                              | snake↔camel transform (CF-P04-02) carried; contracts client in web                                                                                                      |
-| Contracts   | `packages/contracts/` **empty**; typed client lives in `apps/web/src/lib`                                                                                                                                                                                                                                                                                                       | Contract centralization gap → P08                                                                                                                                       |
-| Infra       | `docker-compose.yml` (dev: postgres, redis, web, backend, minio, pgbouncer, pgadmin); `docker-compose.prod.yml` (nginx, web, backend, postgres, redis, pgbouncer, minio); `infra/k8s` (service manifests — enterprise, out-of-MVP); `infra/terraform` + `infra/ops/terraform` (out-of-MVP)                                                                                      | PaaS-first MVP (ADR-026); k8s/terraform = future enterprise path                                                                                                        |
-| CI/CD       | `.github/workflows/` — **11 workflows** (ci, ci-backend, ci-frontend, ci-integration, docker-build, deploy, deploy-staging, security-audit, security-scan, docs-validate, a11y-audit)                                                                                                                                                                                           | CI gate baseline carried                                                                                                                                                |
-| Tests       | `apps/api/tests/` — **130 test\_*.py files**; `conftest.py` autouse `mock_llm` + `mock_connector_test`, SQLite                                                                                                                                                                                                                                                                  | Carried evidence (2333 pass/94% cov of record) — NOT re-run in this design-only phase                                                                                   |
+| Backend app | `apps/api/src/backend/main.py` — FastAPI unified; ~30 `include_router` under `/api/v1` (auth, workspaces, memory, agents, events, search, integrations, documents, resumes, applications, notifications, connectors, scheduler, chat, knowledge-graph, gdpr, consent, approvals, agent-costs, gmail, billing, plugins, analytics, audit, iam, recommendations, webhooks, admin) | C4 container + contracts must reflect real router set (not 24) |
+| Data model | `apps/api/src/backend/models/schema.py` — **36 `__tablename__`** incl. `idempotency_records`, `agent_approvals`, `gmail_watches` | Schema count 36 (prior claim 33 is STALE); approval/idempotency/watch persisted |
+| Migrations | **DUAL**: `apps/api/alembic/versions/` (0001_initial_schema, 0002_microservice_tables) AND `apps/api/src/backend/migrations/` (0002_microservice_tables, 0003_approvals, 0004_memory_taxonomy, 0005_rls, 0006_idempotency, 0007_gmail_watch + `runner.py` w/ `schema_migrations`) | NEW FINDING CF-P05-04: single migration path at P07 |
+| Approval | `migrations/0003_approvals.py`; `services/approval.py`; `schemas/approval.py`; `routers` approvals; `agent_approvals` table | ADR-021 approval persistence IMPLEMENTED_UNVERIFIED (verify payload-hash binding, expiry, immutability) |
+| Idempotency | `middleware/idempotency.py` + `0006_idempotency.py` + `idempotency_records` | ADR-021 idempotency IMPLEMENTED_UNVERIFIED (verify coverage breadth) |
+| RLS | `infrastructure/data_isolation.py` — `TenantAwareBase(RowLevelSecurityMixin)` + `0005_rls.py` | ADR-023 IMPLEMENTED_UNVERIFIED (verify policy coverage; isolation suite P14) |
+| Memory | `0004_memory_taxonomy.py`; `schemas/memory_types.py`; `services/memory_service.py`; `services/memory_versioning.py`; `memories`+`memory_records` | ADR-022 IMPLEMENTED_UNVERIFIED (verify 6 types + supersession FR-68) |
+| Gmail | `clients/gmail_client.py` — `fetch_emails`, `create_draft`, `list_drafts`, `start_watch`, `stop_watch`, `check_health`; **no send**; `0007_gmail_watch.py`; `gmail_watches` table | Draft-only confirmed (DEC-P01-03); watcher now exists — reconcile with polling-first DEC-P02-01 |
+| Agents | `agents/` — **22 `handler.py`** agent dirs + 4 memory subagents (`memory/document, planning, reflection, self_improvement`) + `qa_validator`; orchestration module `orchestrator/` (base, loop, router, state); registry DB-backed (`services/agent_service.py`, `agents` table) | 8-agent canonical roster maps to repo (orchestrator module + organization, memory, resume, ats, job_search, application, gmail, scheduler handlers); extra agents exist |
+| Middleware | `middleware/` — auth, csrf, tenant, rate_limit, ip_filter, security_headers, prompt_injection, api_version, idempotency, log/correlation | Existing control set mapped in `06`; threat base confirmed |
+| Search/vec | `infrastructure/search.py` — `SearchIndex` ABC + `MeilisearchIndex`; config references meilisearch; pgvector used for embeddings (ADR-003) | Projections ADR-024: search = rebuildable; Meilisearch + pgvector both present |
+| OTel | `infrastructure/opentelemetry.py` + wired in `main.py` | Observability baseline exists |
+| Static API | `docs/backend/openapi.yaml` exists (currency UNVERIFIED); FastAPI `/openapi.json` runtime | Static OpenAPI pin at P08 |
+| Frontend | `apps/web` Next.js 15; `src/app` routes `(auth)`, `status`, `workspace`; `src/middleware.ts`; `lib/api.ts` + `lib/api-client.ts` (`transformKeys`) | snake↔camel transform (CF-P04-02) carried; contracts client in web |
+| Contracts | `packages/contracts/` **empty**; typed client lives in `apps/web/src/lib` | Contract centralization gap → P08 |
+| Infra | `docker-compose.yml` (dev: postgres, redis, web, backend, minio, pgbouncer, pgadmin); `docker-compose.prod.yml` (nginx, web, backend, postgres, redis, pgbouncer, minio); `infra/k8s` (service manifests — enterprise, out-of-MVP); `infra/terraform` + `infra/ops/terraform` (out-of-MVP) | PaaS-first MVP (ADR-026); k8s/terraform = future enterprise path |
+| CI/CD | `.github/workflows/` — **11 workflows** (ci, ci-backend, ci-frontend, ci-integration, docker-build, deploy, deploy-staging, security-audit, security-scan, docs-validate, a11y-audit) | CI gate baseline carried |
+| Tests | `apps/api/tests/` — **130 test\_*.py files**; `conftest.py` autouse `mock_llm` + `mock_connector_test`, SQLite | Carried evidence (2333 pass/94% cov of record) — NOT re-run in this design-only phase |
 
 ### Gaps carried forward (verified at HEAD — remain open)
 
-| Gap                                                                       | Evidence                                                   | Owning phase           |
+| Gap | Evidence | Owning phase |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------- |
-| Workload identity / service tokens (ADR-025)                              | No service-token/HMAC mechanism found in backend           | P07/P11 (design now)   |
-| Approval completeness (payload-hash binding, expiry, immutable decisions) | `agent_approvals` + service exist; completeness unverified | P07/P11 verify         |
-| RLS policy coverage breadth                                               | `TenantAwareBase` + 0005_rls exist; coverage unverified    | P07 verify / P14 suite |
-| 6-memory completeness (all types + supersession)                          | 0004 + services exist; verify                              | P07/P12 verify         |
-| Dual migration systems                                                    | CF-P05-04                                                  | P07 unify              |
-| Centralized contracts package empty                                       | `packages/contracts/` empty                                | P08                    |
-| Static OpenAPI currency                                                   | `docs/backend/openapi.yaml` unverified                     | P08 pin                |
+| Workload identity / service tokens (ADR-025) | No service-token/HMAC mechanism found in backend | P07/P11 (design now) |
+| Approval completeness (payload-hash binding, expiry, immutable decisions) | `agent_approvals` + service exist; completeness unverified | P07/P11 verify |
+| RLS policy coverage breadth | `TenantAwareBase` + 0005_rls exist; coverage unverified | P07 verify / P14 suite |
+| 6-memory completeness (all types + supersession) | 0004 + services exist; verify | P07/P12 verify |
+| Dual migration systems | CF-P05-04 | P07 unify |
+| Centralized contracts package empty | `packages/contracts/` empty | P08 |
+| Static OpenAPI currency | `docs/backend/openapi.yaml` unverified | P08 pin |
 
 Evidence: `EVD-MVP-P05-001/002` (inventory reports, this phase).

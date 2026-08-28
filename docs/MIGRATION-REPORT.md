@@ -124,9 +124,9 @@ Archived/build-prompts/ (34 files):
 ### Files with Exact Duplicates in `Docs/`
 These are identical-or-superseded markdown files that exist in both directories:
 - `01-Vaeloom-MVP-Spec.md`, `02-system-architecture.md`, `03-agent-workflow.md`,
-  `04-memory-knowledge-graph.md`, `05-Vaeloom-MVP-Spec.md`, `06-Vaeloom-Enterprise-Paper.md`,
-  `Vaeloom-Complete-Documentation.md`, `Vaeloom-Documentation-Site.md`,
-  `Vaeloom-Enterprise-Paper.md`, `Vaeloom-How-It-Works-Visual.md`
+ `04-memory-knowledge-graph.md`, `05-Vaeloom-MVP-Spec.md`, `06-Vaeloom-Enterprise-Paper.md`,
+ `Vaeloom-Complete-Documentation.md`, `Vaeloom-Documentation-Site.md`,
+ `Vaeloom-Enterprise-Paper.md`, `Vaeloom-How-It-Works-Visual.md`
 
 **Recommendation:** DELETE from `Documents/` (canonical copies live in `Docs/`).
 

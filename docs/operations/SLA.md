@@ -1,44 +1,44 @@
-﻿# Service Level Agreement (SLA)
+# Service Level Agreement (SLA)
 
 > **Purpose:** Define the Service Level Agreement for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## SLA Architecture
 
 ```mermaid
 graph TD
-    classDef target fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef credit fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef exclude fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
+ classDef target fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef credit fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef exclude fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
 
-    subgraph Targets["ðŸŽ¯ SLA Targets"]
-        direction TB
-        T1["Web Application<br/>99.9% Â· < 43 min/month"]
-        T2["API<br/>99.9% Â· < 43 min/month"]
-        T3["AI Agents<br/>99.5% Â· < 3.6 hours/month"]
-        T4["Database<br/>99.95% Â· < 22 min/month"]
-    end
+ subgraph Targets["SLA Targets"]
+ direction TB
+ T1["Web Application<br/>99.9% · < 43 min/month"]
+ T2["API<br/>99.9% · < 43 min/month"]
+ T3["AI Agents<br/>99.5% · < 3.6 hours/month"]
+ T4["Database<br/>99.95% · < 22 min/month"]
+ end
 
-    subgraph Credits["ðŸ’° SLA Credits (Enterprise)"]
-        C1["99.0%-99.9% uptime<br/>5% monthly credit"]
-        C2["95.0%-99.0% uptime<br/>10% monthly credit"]
-        C3["< 95.0% uptime<br/>25% monthly credit"]
-    end
+ subgraph Credits["SLA Credits (Enterprise)"]
+ C1["99.0%-99.9% uptime<br/>5% monthly credit"]
+ C2["95.0%-99.0% uptime<br/>10% monthly credit"]
+ C3["95.0% uptime<br/>25% monthly credit"]
+ end
 
-    subgraph Exclusions["ðŸš« SLA Exclusions"]
-        E1["Scheduled maintenance<br/>48h notice required"]
-        E2["Force majeure<br/>Outside control"]
-        E3["Third-party model outages<br/>Anthropic / OpenAI"]
-        E4["User-side issues<br/>Network / browser"]
-        E5["Beta features<br/>Pre-GA functionality"]
-    end
+ subgraph Exclusions["SLA Exclusions"]
+ E1["Scheduled maintenance<br/>48h notice required"]
+ E2["Force majeure<br/>Outside control"]
+ E3["Third-party model outages<br/>Anthropic / OpenAI"]
+ E4["User-side issues<br/>Network / browser"]
+ E5["Beta features<br/>Pre-GA functionality"]
+ end
 
-    Targets --> Credits
-    Credits -.-> Exclusions
+ Targets--> Credits
+ Credits -.-> Exclusions
 
-    class T1,T2,T3,T4 target
-    class C1,C2,C3 credit
-    class E1,E2,E3,E4,E5 exclude
+ class T1,T2,T3,T4 target
+ class C1,C2,C3 credit
+ class E1,E2,E3,E4,E5 exclude
 ```
 
 > **Diagram:** SLA architecture—**4 service targets** (web 99.9%, API 99.9%, AI agents 99.5%, database 99.95%) → **3 credit tiers** (5%/10%/25% monthly credit for missed targets) → **5 exclusions** (maintenance, force majeure, model outages, user issues, beta features).

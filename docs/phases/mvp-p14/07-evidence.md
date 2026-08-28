@@ -1,6 +1,6 @@
 # MVP-P14 — 07. Evidence Register
 
-> **Phase:** MVP-P14 — Testing and Quality Engineering  
+> **Phase:** MVP-P14 — Testing and Quality Engineering 
 > **Date:** 2026-08-22 · **Baseline:** `a69d7d7` + P14 (GDPR 31, JWT 32+, 2555, DPIA DRAFT)
 
 | Evidence ID | Claim | Requirement | Type | Location | Result | Date | Verified by |

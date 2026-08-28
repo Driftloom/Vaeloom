@@ -1,10 +1,10 @@
-﻿# MVP-P20 → MVP-P21 Handoff — PHASE APPROVED — PROCEED (93.8/100)
+# MVP-P20 → MVP-P21 Handoff — PHASE APPROVED — PROCEED (93.8/100)
 
-> **From:** MVP-P20 — Post-Deployment Validation  
-> **To:** MVP-P21 — Maintenance and Continuous Improvement  
-> **Date:** 2026-08-22  
-> **Gate:** **93.8/100 honest APPROVED (92-94) / 95.0 waived CONDITIONAL** (was P19 93.6 APPROVED → P20 93.8 APPROVED) — **PHASE APPROVED — PROCEED**  
-> **Baseline:** `787053a` (P13 95.4 APPROVED 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021, 99 OpenAPI v0.2.0) + P15 93.1 (94.2% + p50 45ms p95 120ms <200) + P16 92.8 (12 TF valid, 60 yamls, SLSA L2) + P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards 23 panels + 4 runbooks + 30d) + P18 93.4 (docs IA 256 docs + 32 ADRs + 99 OpenAPI) + P19 93.6 (release v0.2.0 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10) + P20 (synthetic 3 probes 30s 61+18+24 + smoke 12 + E2E 39 + health 3 probes + p95 120ms + 99.9% SLO + prometheus 15s + alerts 9 + grafana 23 + service-down 100 lines decision CONTINUE)  
+> **From:** MVP-P20 — Post-Deployment Validation 
+> **To:** MVP-P21 — Maintenance and Continuous Improvement 
+> **Date:** 2026-08-22 
+> **Gate:** **93.8/100 honest APPROVED (92-94) / 95.0 waived CONDITIONAL** (was P19 93.6 APPROVED → P20 93.8 APPROVED) — **PHASE APPROVED — PROCEED** 
+> **Baseline:** `787053a` (P13 95.4 APPROVED 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021, 99 OpenAPI v0.2.0) + P15 93.1 (94.2% + p50 45ms p95 120ms <200) + P16 92.8 (12 TF valid, 60 yamls, SLSA L2) + P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards 23 panels + 4 runbooks + 30d) + P18 93.4 (docs IA 256 docs + 32 ADRs + 99 OpenAPI) + P19 93.6 (release v0.2.0 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10) + P20 (synthetic 3 probes 30s 61+18+24 + smoke 12 + E2E 39 + health 3 probes + p95 120ms + 99.9% SLO + prometheus 15s + alerts 9 + grafana 23 + service-down 100 lines decision CONTINUE) 
 > **Status:** PHASE APPROVED — PROCEED — P21 **authorized** with 4 P21 restrictions (per-file 68%, starlette Keep 0.50, chaos/fuzz/visual partial, SLSA L2 only)
 
 ---
@@ -18,7 +18,7 @@
 - **P15 Gate:** `93.1 APPROVED (92-94)` 12 cats `docs/phases/mvp-p15/09-gate-report.md:27` 94.2% + `jest-axe` 0 critical + `k6` p50 45ms p95 120ms
 - **P13 Gate:** `95.4 APPROVED` per `787053a` 42/42 RLS via `0020` 5 + `TenantContext` `app.workspace_id`+`app.user_id` `middleware/tenant.py:41` `database.py:30` — chain GO
 - **Deliverables P20:** 5 DELs (01 smoke 12 + E2E 39, 02 synthetic 3 probes 30s 61+18+24, 03 SLO 99.9% p95 120ms 43.2m + alerts 9 + prometheus 15s, 04 release verification 0.2.0 + rollout 10%→50%→100% + service-down 100 lines decision CONTINUE, 05 stabilization 178 + runbooks 4 + prometheus 15s + grafana 23 + synthetic) VERIFIED `09-gate-report.md:58` P20 + 20 EVDs
-- **Verification chain:** `787053a` pinned `git rev-parse HEAD` `787053aa6e6f10c6619fc6e4b15c9d45a3825836`, `pytest --collect-only` 2557, `security` 233 (170 unique), `ALLOW_TABLES` 31 `python -c`, `rg -c "^  /" openapi.yaml` 99 v0.2.0 + `rg 0\.2\.0` 3 hits + `cat testing/smoke/README.md` 12 + `rg -c "test\(" basic-smoke.spec.ts` 8 + `rg 39 e2e` `AGENTS.md:90` 39 e2e + `bash -n check-health.sh` 61 lines + `docker compose synthetic config` 24 lines + `rg INTERVAL 30` + `rg -c "/health" 3` + `cat performance-budget.json` 200 120<200 + `promtool check rules` 9 PASS — no stale baseline
+- **Verification chain:** `787053a` pinned `git rev-parse HEAD` `787053aa6e6f10c6619fc6e4b15c9d45a3825836`, `pytest --collect-only` 2557, `security` 233 (170 unique), `ALLOW_TABLES` 31 `python -c`, `rg -c "^ /" openapi.yaml` 99 v0.2.0 + `rg 0\.2\.0` 3 hits + `cat testing/smoke/README.md` 12 + `rg -c "test\(" basic-smoke.spec.ts` 8 + `rg 39 e2e` `AGENTS.md:90` 39 e2e + `bash -n check-health.sh` 61 lines + `docker compose synthetic config` 24 lines + `rg INTERVAL 30` + `rg -c "/health" 3` + `cat performance-budget.json` 200 120<200 + `promtool check rules` 9 PASS — no stale baseline
 
 ## What P20 Actually Delivered
 

@@ -1,7 +1,7 @@
 # MVP-P20 — 05. Test Results
 
-> **Phase:** MVP-P20 — Post-Deployment Validation  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 93.2 + P18 93.4 + P19 93.6 + P20 (synthetic 3 probes 30s + smoke 12 + E2E 39 + p95 120ms + 99.9% SLO)  
+> **Phase:** MVP-P20 — Post-Deployment Validation 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 93.2 + P18 93.4 + P19 93.6 + P20 (synthetic 3 probes 30s + smoke 12 + E2E 39 + p95 120ms + 99.9% SLO) 
 > **Env:** `tmp_path` NullPool `mock_llm` `mock_connector_test` Python 3.12.13 `uv` + `pytest-xdist -n 4` sqlite + `httpx.AsyncClient(app)`; `terraform 1.8.0` + `docker buildx v4` + `k6 v0.54` + `trivy` + `gitleaks` + `cosign 2.2.4` + `syft` + `promtool` + `grafana` + `bash -n` + `docker compose synthetic` + `playwright 1.47`
 
 ## Summary

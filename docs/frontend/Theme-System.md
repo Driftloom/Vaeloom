@@ -1,10 +1,10 @@
-﻿# Theme System
+# Theme System
 
 > **Purpose:** Define the complete theme system for Vaeloom's frontend — token architecture, CSS custom properties, practical component examples, and best practices
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Frontend Team
 > **Last Updated:** 2026-07-13
-> **Interactive preview:** ðŸŽ¨ See all 91 tokens in action with live light/dark mode at [Design-Tokens-Reference.html](./Design-Tokens-Reference.html)
+> **Interactive preview:** See all 91 tokens in action with live light/dark mode at [Design-Tokens-Reference.html](./Design-Tokens-Reference.html)
 
 ---
 
@@ -12,44 +12,44 @@
 
 ```mermaid
 graph TD
-    classDef light fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef dark fill:#333333,stroke:#888888,color:#ffffff,stroke-width:1.5px
-    classDef switch fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef rule fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
+ classDef light fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef dark fill:#333333,stroke:#888888,color:#ffffff,stroke-width:1.5px
+ classDef switch fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef rule fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph Light["â˜€ï¸ Light Theme (Default)"]
-        direction TB
-        L1["--bg-primary: #ffffff<br/>--bg-secondary: #f9fafb"]
-        L2["--text-primary: #111827<br/>--text-secondary: #4b5563"]
-        L3["--accent-primary: #3b82f6<br/>--accent-success: #10b981"]
-        L4["--border-light: #e5e7eb<br/>--border-medium: #d1d5db"]
-    end
+ subgraph Light["Light Theme (Default)"]
+ direction TB
+ L1["bg-primary: #ffffff<br/>--bg-secondary: #f9fafb"]
+ L2["text-primary: #111827<br/>--text-secondary: #4b5563"]
+ L3["accent-primary: #3b82f6<br/>--accent-success: #10b981"]
+ L4["border-light: #e5e7eb<br/>--border-medium: #d1d5db"]
+ end
 
-    subgraph Dark["ðŸŒ™ Dark Theme"]
-        D1["--bg-primary: #111827<br/>--bg-secondary: #1f2937"]
-        D2["--text-primary: #f9fafb<br/>--text-secondary: #d1d5db"]
-        D3["--accent-primary: #60a5fa<br/>--accent-success: #34d399"]
-        D4["--border-light: #374151<br/>--border-medium: #4b5563"]
-    end
+ subgraph Dark["Dark Theme"]
+ D1["bg-primary: #111827<br/>--bg-secondary: #1f2937"]
+ D2["text-primary: #f9fafb<br/>--text-secondary: #d1d5db"]
+ D3["accent-primary: #60a5fa<br/>--accent-success: #34d399"]
+ D4["border-light: #374151<br/>--border-medium: #4b5563"]
+ end
 
-    subgraph Switching["ðŸ”„ Theme Switching"]
-        S1["Stored in localStorage"]
-        S2["Default: System preference<br/>(prefers-color-scheme)"]
-        S3["Override: Settings page"]
-        S4["Applied via: data-theme attr on &lt;html&gt;"]
-    end
+ subgraph Switching["Theme Switching"]
+ S1["Stored in localStorage"]
+ S2["Default: System preference<br/>(prefers-color-scheme)"]
+ S3["Override: Settings page"]
+ S4["Applied via: data-theme attr on &lt;html&gt;"]
+ end
 
-    subgraph Rules["ðŸ“ Component Theming Rules"]
-        R1["âœ… Use semantic token: var(--bg-secondary)"]
-        R2["âŒ NEVER use raw color: #f9fafb"]
-    end
+ subgraph Rules["Component Theming Rules"]
+ R1["Use semantic token: var(--bg-secondary)"]
+ R2["NEVER use raw color: #f9fafb"]
+ end
 
-    Light & Dark --> Switching --> Rules
+ Light & Dark--> Switching--> Rules
 
-    class L1,L2,L3,L4 light
-    class D1,D2,D3,D4 dark
-    class S1,S2,S3,S4 switch
-    class R1,R2 rule
+ class L1,L2,L3,L4 light
+ class D1,D2,D3,D4 dark
+ class S1,S2,S3,S4 switch
+ class R1,R2 rule
 ```
 
 > **Diagram:** Theme system architecture. **Light** (default) and **Dark** themes use CSS custom properties. **Theme switching** is stored in localStorage, defaults to system `prefers-color-scheme`, overridable in Settings, applied via `data-theme` attribute on `<html>`. **Golden rule**: always use semantic tokens — never raw colors.
@@ -62,39 +62,39 @@ Design tokens are organized into three layers, each building on the one below:
 
 ```mermaid
 graph LR
-    subgraph Primitive["ðŸ”§ Layer 1 -- Primitive Tokens"]
-        direction TB
-        P1["Raw color values<br/>#3b82f6, #10b981, #ef4444"]
-        P2["Raw spacing values<br/>4px, 8px, 12px, 16px"]
-        P3["Raw font values<br/>Inter, JetBrains Mono"]
-        P4["Raw shadow values<br/>0 1px 3px rgba(0,0,0,0.12)"]
-    end
+ subgraph Primitive["Layer 1 -- Primitive Tokens"]
+ direction TB
+ P1["Raw color values<br/>#3b82f6, #10b981, #ef4444"]
+ P2["Raw spacing values<br/>4px, 8px, 12px, 16px"]
+ P3["Raw font values<br/>Inter, JetBrains Mono"]
+ P4["Raw shadow values<br/>0 1px 3px rgba(0,0,0,0.12)"]
+ end
 
-    subgraph Semantic["ðŸŽ¯ Layer 2 -- Semantic Tokens"]
-        direction TB
-        S1["--color-primary<br/>References a primitive blue"]
-        S2["--bg-card<br/>References --color-gray-50"]
-        S3["--text-body<br/>References --color-gray-900"]
-        S4["--shadow-card<br/>References a shadow primitive"]
-    end
+ subgraph Semantic["Layer 2 -- Semantic Tokens"]
+ direction TB
+ S1["color-primary<br/>References a primitive blue"]
+ S2["bg-card<br/>References --color-gray-50"]
+ S3["text-body<br/>References --color-gray-900"]
+ S4["shadow-card<br/>References a shadow primitive"]
+ end
 
-    subgraph Component["ðŸ§© Layer 3 -- Component Tokens"]
-        direction TB
-        C1["--btn-primary-bg<br/>References --color-primary"]
-        C2["--card-border-radius<br/>References --radius-md"]
-        C3["--input-border-color<br/>References --border-medium"]
-        C4["--sidebar-width<br/>Direct value: 260px"]
-    end
+ subgraph Component["Layer 3 -- Component Tokens"]
+ direction TB
+ C1["btn-primary-bg<br/>References --color-primary"]
+ C2["card-border-radius<br/>References --radius-md"]
+ C3["input-border-color<br/>References --border-medium"]
+ C4["sidebar-width<br/>Direct value: 260px"]
+ end
 
-    Primitive --> Semantic --> Component
+ Primitive--> Semantic--> Component
 
-    classDef primitive fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef semantic fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    classDef component fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+ classDef primitive fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+ classDef semantic fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+ classDef component fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
 
-    class P1,P2,P3,P4 primitive
-    class S1,S2,S3,S4 semantic
-    class C1,C2,C3,C4 component
+ class P1,P2,P3,P4 primitive
+ class S1,S2,S3,S4 semantic
+ class C1,C2,C3,C4 component
 ```
 
 > **Diagram:** **Primitive tokens** define raw values (colors, spacing, typography, shadows). **Semantic tokens** assign meaning (primary, danger, bg-card, text-body). **Component tokens** are component-scoped overrides (btn-bg, card-radius). Each layer references the one below — never skip layers.
@@ -853,7 +853,7 @@ Use this when reviewing components to ensure theme compliance:
 
 ## Best Practices
 
-### âœ… Do
+### ✅ Do
 
 - **Always use semantic tokens** (`var(--bg-secondary)`), never raw values
 - **Reference component tokens** where they exist (`var(--card-bg)` instead of `var(--bg-secondary)`)
@@ -862,7 +862,7 @@ Use this when reviewing components to ensure theme compliance:
 - **Add transition tokens** (`var(--transition-fast)`) to interactive elements for smooth theme switching
 - **Use the token audit checklist** during code review
 
-### âŒ Don't
+### âŒ Don't
 
 - **Don't hardcode colors** — no `#hex`, `rgb()`, or named colors in component CSS
 - **Don't skip layers** — don't reference primitives directly from components (e.g., `var(--color-blue-500)` → use `var(--accent-primary)`)
@@ -910,75 +910,75 @@ Use this when reviewing components to ensure theme compliance:
 
 ```mermaid
 graph TD
-    subgraph PrimitiveTokens["ðŸ”§ Primitive Tokens"]
-        PT1["--color-gray-50: #f9fafb"]
-        PT2["--font-size-base: 1rem"]
-        PT3["--space-4: 1rem"]
-        PT4["--radius-md: 0.5rem"]
-        PT5["--shadow-sm: 0 1px 2px..."]
-    end
+ subgraph PrimitiveTokens["Primitive Tokens"]
+ PT1["color-gray-50: #f9fafb"]
+ PT2["font-size-base: 1rem"]
+ PT3["space-4: 1rem"]
+ PT4["radius-md: 0.5rem"]
+ PT5["shadow-sm: 0 1px 2px..."]
+ end
 
-    subgraph SemanticTokens["ðŸŽ¯ Semantic Tokens"]
-        ST1["--bg-secondary: var(--color-gray-50)"]
-        ST2["--text-primary: var(--color-gray-900)"]
-        ST3["--border-light: var(--color-gray-200)"]
-        ST4["--accent-primary: var(--color-blue-500)"]
-        ST5["--shadow-card: var(--shadow-sm)"]
-    end
+ subgraph SemanticTokens["Semantic Tokens"]
+ ST1["bg-secondary: var(--color-gray-50)"]
+ ST2["text-primary: var(--color-gray-900)"]
+ ST3["border-light: var(--color-gray-200)"]
+ ST4["accent-primary: var(--color-blue-500)"]
+ ST5["shadow-card: var(--shadow-sm)"]
+ end
 
-    subgraph ComponentTokens["ðŸ§© Component Tokens"]
-        CT1["--card-bg: var(--bg-secondary)"]
-        CT2["--card-radius: var(--radius-md)"]
-        CT3["--btn-primary-bg: var(--accent-primary)"]
-        CT4["--input-border: var(--border-light)"]
-    end
+ subgraph ComponentTokens["Component Tokens"]
+ CT1["card-bg: var(--bg-secondary)"]
+ CT2["card-radius: var(--radius-md)"]
+ CT3["btn-primary-bg: var(--accent-primary)"]
+ CT4["input-border: var(--border-light)"]
+ end
 
-    subgraph Components["ðŸ“¦ Components"]
-        C1["Card"]
-        C2["Button"]
-        C3["Input"]
-        C4["Modal"]
-        C5["Sidebar"]
-    end
+ subgraph Components["Components"]
+ C1["Card"]
+ C2["Button"]
+ C3["Input"]
+ C4["Modal"]
+ C5["Sidebar"]
+ end
 
-    subgraph DarkTheme["ðŸŒ™ Dark Theme Override"]
-        DT1["[data-theme='dark'] {"]
-        DT2["--bg-secondary: #1f2937"]
-        DT3["--text-primary: #f9fafb"]
-        DT4["--border-light: #374151"]
-        DT5["--accent-primary: #60a5fa"]
-        DT6["--shadow-card: 0 1px 3px..."]
-        DT7["}"]
-    end
+ subgraph DarkTheme["Dark Theme Override"]
+ DT1["data-theme='dark'] {"]
+ DT2["bg-secondary: #1f2937"]
+ DT3["text-primary: #f9fafb"]
+ DT4["border-light: #374151"]
+ DT5["accent-primary: #60a5fa"]
+ DT6["shadow-card: 0 1px 3px..."]
+ DT7[""]
+ end
 
-    PT1 --> ST1
-    PT2 -->|via --font-size-base| CT2
-    PT3 --> ST1
-    PT4 --> CT2
-    PT5 --> ST5
-    ST1 --> CT1
-    ST2 --> CT1
-    ST4 --> CT3
-    ST3 --> CT4
-    CT1 --> C1
-    CT3 --> C2
-    CT4 --> C3
-    ST1 --> C4
-    ST3 --> C5
+ PT1--> ST1
+ PT2-->|via --font-size-base| CT2
+ PT3--> ST1
+ PT4--> CT2
+ PT5--> ST5
+ ST1--> CT1
+ ST2--> CT1
+ ST4--> CT3
+ ST3--> CT4
+ CT1--> C1
+ CT3--> C2
+ CT4--> C3
+ ST1--> C4
+ ST3--> C5
 
-    DarkTheme -.->|Override| SemanticTokens
+ DarkTheme -.->|Override| SemanticTokens
 
-    classDef primitive fill:#f3e5f5,stroke:#7b1fa2
-    classDef semantic fill:#e3f2fd,stroke:#1565c0
-    classDef component fill:#e8f5e9,stroke:#2e7d32
-    classDef ui fill:#fff3e0,stroke:#e65100
-    classDef dark fill:#eceff1,stroke:#37474f
+ classDef primitive fill:#f3e5f5,stroke:#7b1fa2
+ classDef semantic fill:#e3f2fd,stroke:#1565c0
+ classDef component fill:#e8f5e9,stroke:#2e7d32
+ classDef ui fill:#fff3e0,stroke:#e65100
+ classDef dark fill:#eceff1,stroke:#37474f
 
-    class PT1,PT2,PT3,PT4,PT5 primitive
-    class ST1,ST2,ST3,ST4,ST5 semantic
-    class CT1,CT2,CT3,CT4 component
-    class C1,C2,C3,C4,C5 ui
-    class DT1,DT2,DT3,DT4,DT5,DT6,DT7 dark
+ class PT1,PT2,PT3,PT4,PT5 primitive
+ class ST1,ST2,ST3,ST4,ST5 semantic
+ class CT1,CT2,CT3,CT4 component
+ class C1,C2,C3,C4,C5 ui
+ class DT1,DT2,DT3,DT4,DT5,DT6,DT7 dark
 ```
 
 > **Diagram:** End-to-end token flow. **Primitive tokens** (gray scale, font sizes, spacing, radii, shadows) are referenced by **semantic tokens** (bg-secondary, text-primary, border-light, accent-primary). **Component tokens** (card-bg, btn-primary-bg, input-border) reference semantic tokens. **Components** use only component or semantic tokens. The **dark theme** overrides semantic token values by remapping them under `[data-theme="dark"]` — no CSS selectors change, only variable values.
@@ -1039,30 +1039,30 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant APP as App
-    participant LS as localStorage
-    participant MQ as matchMedia
-    participant CSS as CSS Variables
+ participant U as User
+ participant APP as App
+ participant LS as localStorage
+ participant MQ as matchMedia
+ participant CSS as CSS Variables
 
-    APP->>LS: Read 'Vaeloom-theme'
-    alt Stored as 'dark'
-        LS-->>APP: 'dark'
-    else Stored as 'system' or null
-        LS-->>APP: 'system'
-        APP->>MQ: Check prefers-color-scheme
-        MQ-->>APP: 'light' or 'dark'
-    end
-    APP->>CSS: Set data-theme="dark"
-    CSS->>CSS: :root variables --> [data-theme="dark"] overrides
-    APP-->>U: Theme applied
+ APP->>LS: Read 'Vaeloom-theme'
+ alt Stored as 'dark'
+ LS-->>APP: 'dark'
+ else Stored as 'system' or null
+ LS-->>APP: 'system'
+ APP->>MQ: Check prefers-color-scheme
+ MQ-->>APP: 'light' or 'dark'
+ end
+ APP->>CSS: Set data-theme="dark"
+ CSS->>CSS: :root variables--> [data-theme="dark"] overrides
+ APP-->>U: Theme applied
 
-    Note over U,CSS: User switches manually
-    U->>APP: Select 'Light' in Settings
-    APP->>LS: Store 'light'
-    APP->>CSS: Set data-theme="light"
-    CSS->>CSS: CSS transition (250ms)
-    CSS-->>U: Light theme visible
+ Note over U,CSS: User switches manually
+ U->>APP: Select 'Light' in Settings
+ APP->>LS: Store 'light'
+ APP->>CSS: Set data-theme="light"
+ CSS->>CSS: CSS transition (250ms)
+ CSS-->>U: Light theme visible
 ```
 
 ## Data Flow
@@ -1243,4 +1243,4 @@ function ThemedCard({ title }: { title: string }) {
 - [Responsive Design.md](./Responsive-Design.md) — Breakpoint tokens, responsive patterns
 - [Accessibility.md](./Accessibility.md) — WCAG compliance, contrast ratios, focus indicators
 - [Frontend Architecture.md](./Frontend-Architecture.md) — Overall frontend stack and page structure
-- ðŸŽ¨ **[Design-Tokens-Reference.html](./Design-Tokens-Reference.html)** — Interactive HTML preview with live light/dark theme toggle, all 91 tokens as click-to-copy cards, and 8 component previews
+- **[Design-Tokens-Reference.html](./Design-Tokens-Reference.html)** — Interactive HTML preview with live light/dark theme toggle, all 91 tokens as click-to-copy cards, and 8 component previews

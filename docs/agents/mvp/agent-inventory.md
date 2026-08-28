@@ -10,28 +10,28 @@
 
 ```mermaid
 graph TD
-    subgraph MVP["MVP Agents (8)"]
-        A1["Document Ingestion Agent"]
-        A2["Auto-Organization Agent"]
-        A3["Deadline Detection Agent"]
-        A4["Job Search Agent"]
-        A5["Tailored Application Agent"]
-        A6["Master Resume Agent"]
-        A7["Memory Graph Agent"]
-        A8["Gmail Digest Agent"]
-    end
+ subgraph MVP["MVP Agents (8)"]
+ A1["Document Ingestion Agent"]
+ A2["Auto-Organization Agent"]
+ A3["Deadline Detection Agent"]
+ A4["Job Search Agent"]
+ A5["Tailored Application Agent"]
+ A6["Master Resume Agent"]
+ A7["Memory Graph Agent"]
+ A8["Gmail Digest Agent"]
+ end
 
-    subgraph Services["Backing Services"]
-        S1["Memory Store"]
-        S2["Knowledge Graph"]
-        S3["Document Parser"]
-        S4["Search Index"]
-    end
+ subgraph Services["Backing Services"]
+ S1["Memory Store"]
+ S2["Knowledge Graph"]
+ S3["Document Parser"]
+ S4["Search Index"]
+ end
 
-    A1 --> S1 & S3
-    A2 --> S2
-    A7 --> S2 & S4
-    A3 & A4 & A5 & A6 & A8 --> S1
+ A1--> S1 & S3
+ A2--> S2
+ A7--> S2 & S4
+ A3 & A4 & A5 & A6 & A8--> S1
 ```
 
 ## Agent Summary

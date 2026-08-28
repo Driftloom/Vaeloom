@@ -12,11 +12,11 @@
 
 ## Overview
 
-Vaeloom's UX guidelines define how the application interacts with users across every touchpoint — from the dashboard that greets them on login to the agent proposals that organize their files and the chat interface that answers their questions. The guiding philosophy is "Proactive, Never Intrusive": the system suggests and notifies but never demands attention, batching notifications by priority and making every alert dismissible.
+Vaeloom's UX guidelines define how the application interacts with users across every touchpoint â€” from the dashboard that greets them on login to the agent proposals that organize their files and the chat interface that answers their questions. The guiding philosophy is "Proactive, Never Intrusive": the system suggests and notifies but never demands attention, batching notifications by priority and making every alert dismissible.
 
-Trust Through Transparency is the second pillar — every agent action is visible in the activity log, every suggestion shows its reasoning, and every autonomous action is explainable. When an AI agent proposes renaming a file or applying to a job, the user sees not just the proposal but the reasoning behind it. This transparency is critical for building trust in autonomous AI actions.
+Trust Through Transparency is the second pillar â€” every agent action is visible in the activity log, every suggestion shows its reasoning, and every autonomous action is explainable. When an AI agent proposes renaming a file or applying to a job, the user sees not just the proposal but the reasoning behind it. This transparency is critical for building trust in autonomous AI actions.
 
-Progressive Disclosure ensures new users aren't overwhelmed. The dashboard starts with 3-4 core widgets and reveals advanced features (memory graph editing, per-agent autonomy sliders, custom automation rules) as the user's engagement deepens over weeks. The Consistent Feedback Loop principle means every user action — approve, reject, correct, edit — has visible feedback within 100ms. Silence is interpreted as failure.
+Progressive Disclosure ensures new users aren't overwhelmed. The dashboard starts with 3-4 core widgets and reveals advanced features (memory graph editing, per-agent autonomy sliders, custom automation rules) as the user's engagement deepens over weeks. The Consistent Feedback Loop principle means every user action â€” approve, reject, correct, edit â€” has visible feedback within 100ms. Silence is interpreted as failure.
 
 For Vaeloom's AI-driven workflows, these principles materialize in specific interaction patterns. Proposal cards show a visual diff of what will change before the user commits. Batch operations support undo with a 15-second window. Chat citations are clickable source references that let users verify information. Settings provide per-agent autonomy sliders, letting users decide how much authority each agent has.
 
@@ -80,38 +80,38 @@ For Vaeloom's AI-driven workflows, these principles materialize in specific inte
 
 ```mermaid
 graph TD
-    classDef principle fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef mobile fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef principle fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef mobile fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Principles["Core UX Principles"]
-        direction TB
-        R1["Proactive, Never Intrusive<br/>Batch notifications, dismissible"]
-        R2["Trust Through Transparency<br/>Activity log, reasoning, explainability"]
-        R3["Progressive Disclosure<br/>Dashboard first ? Advanced gradually"]
-        R4["Consistent Feedback Loop<br/>Every action acknowledged"]
-    end
+ subgraph Principles["Core UX Principles"]
+ direction TB
+ R1["Proactive, Never Intrusive<br/>Batch notifications, dismissible"]
+ R2["Trust Through Transparency<br/>Activity log, reasoning, explainability"]
+ R3["Progressive Disclosure<br/>Dashboard first ? Advanced gradually"]
+ R4["Consistent Feedback Loop<br/>Every action acknowledged"]
+ end
 
-    subgraph Patterns["Interaction Patterns"]
-        direction TB
-        P1["Agent proposals ? Card UI + Diff view"]
-        P2["File organization ? Batch approval + Undo"]
-        P3["Job matches ? Swipe / Approve / Reject"]
-        P4["Chat citations ? Clickable source refs"]
-        P5["Settings ? Per-agent autonomy sliders"]
-    end
+ subgraph Patterns["Interaction Patterns"]
+ direction TB
+ P1["Agent proposals ? Card UI + Diff view"]
+ P2["File organization ? Batch approval + Undo"]
+ P3["Job matches ? Swipe / Approve / Reject"]
+ P4["Chat citations ? Clickable source refs"]
+ P5["Settings ? Per-agent autonomy sliders"]
+ end
 
-    subgraph Mobile["Mobile Considerations"]
-        M1["MVP: Web-first (responsive)"]
-        M2["V2: Mobile companion app<br/>Notifications + quick capture"]
-        M3["V3: Full mobile app"]
-    end
+ subgraph Mobile["Mobile Considerations"]
+ M1["MVP: Web-first (responsive)"]
+ M2["V2: Mobile companion app<br/>Notifications + quick capture"]
+ M3["V3: Full mobile app"]
+ end
 
-    Principles --> Patterns --> Mobile
+ Principles--> Patterns--> Mobile
 
-    class R1,R2,R3,R4 principle
-    class P1,P2,P3,P4,P5 pattern
-    class M1,M2,M3 mobile
+ class R1,R2,R3,R4 principle
+ class P1,P2,P3,P4,P5 pattern
+ class M1,M2,M3 mobile
 ```
 
 ## Components
@@ -136,26 +136,26 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant PC as ProposalCard
-    participant API as Vaeloom API
-    participant AL as ActivityLog
+ participant U as User
+ participant PC as ProposalCard
+ participant API as Vaeloom API
+ participant AL as ActivityLog
 
-    U->>PC: View proposal: "Rename resume.pdf ? Resume_2026.pdf"
-    PC->>PC: Show diff view (original vs proposed)
-    U->>PC: Click "Approve"
-    PC->>API: POST /proposals/5/approve
-    API-->>PC: 200 OK
-    PC->>PC: Animate dismissal (200ms fade)
-    PC-->>U: Toast: "Resume renamed"
-    API->>AL: New event: agent action completed
-    AL->>AL: Update activity feed
+ U->>PC: View proposal: "Rename resume.pdf ? Resume_2026.pdf"
+ PC->>PC: Show diff view (original vs proposed)
+ U->>PC: Click "Approve"
+ PC->>API: POST /proposals/5/approve
+ API-->>PC: 200 OK
+ PC->>PC: Animate dismissal (200ms fade)
+ PC-->>U: Toast: "Resume renamed"
+ API->>AL: New event: agent action completed
+ AL->>AL: Update activity feed
 
-    Note over U,AL: Undo flow
-    U->>PC: Click "Undo" on banner
-    PC->>API: POST /proposals/5/undo
-    API-->>PC: File restored
-    PC-->>U: "Rename undone" confirmation
+ Note over U,AL: Undo flow
+ U->>PC: Click "Undo" on banner
+ PC->>API: POST /proposals/5/undo
+ API-->>PC: File restored
+ PC-->>U: "Rename undone" confirmation
 ```
 
 ## Data Flow
@@ -189,9 +189,9 @@ sequenceDiagram
 
 | Concern | Mitigation |
 |---------|------------|
-| Privacy in notification previews | Notification content should not display sensitive information in OS-level banners — use generic titles with "Tap to view" |
+| Privacy in notification previews | Notification content should not display sensitive information in OS-level banners â€” use generic titles with "Tap to view" |
 | Data exposure in search previews | Scope search preview text based on user's permission level |
-| Session timeout feedback | Preserve work-in-progress (form drafts, pending approvals) when session expires — explain what happened |
+| Session timeout feedback | Preserve work-in-progress (form drafts, pending approvals) when session expires â€” explain what happened |
 | Proposal action authorization | Validate workspace membership before executing any proposal approve/reject/undo |
 
 ## Performance
@@ -226,12 +226,12 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| User proposal approval rate | < 40% | Warning | Amplitude — Agent Engagement |
-| Undo frequency | > 20% of actions undone | Info | Amplitude — UX Analytics |
-| Notification opt-out rate | > 5% per month | Warning | Product — Retention Dashboard |
-| Time-to-first-action for new users | > 7 days | Critical | Amplitude — Onboarding Funnel |
-| Activity log query latency (p95) | > 200ms | Warning | Grafana — API Dashboard |
-| Feedback loop latency (p95) | > 100ms | Critical | Grafana — Frontend Performance |
+| User proposal approval rate | < 40% | Warning | Amplitude â€” Agent Engagement |
+| Undo frequency | > 20% of actions undone | Info | Amplitude â€” UX Analytics |
+| Notification opt-out rate | > 5% per month | Warning | Product â€” Retention Dashboard |
+| Time-to-first-action for new users | > 7 days | Critical | Amplitude â€” Onboarding Funnel |
+| Activity log query latency (p95) | > 200ms | Warning | Grafana â€” API Dashboard |
+| Feedback loop latency (p95) | > 100ms | Critical | Grafana â€” Frontend Performance |
 
 ## Deployment
 
@@ -356,7 +356,7 @@ function AutonomySlider({ agent, value, onChange }: AutonomySliderProps) {
 | 3 | Give users control over their data | One-click "export everything" and "delete everything" should be visible and unconditional from day one |
 | 4 | Support undo for all destructive actions | Any action that modifies user data must have an undo mechanism with a visible timeline |
 | 5 | Batch notifications by priority | Prevent notification fatigue by grouping non-critical alerts into digest summaries |
-| 6 | Use optimistic UI for common operations | Show result immediately, sync in background — the 200-500ms saved per action makes the product feel responsive |
+| 6 | Use optimistic UI for common operations | Show result immediately, sync in background â€” the 200-500ms saved per action makes the product feel responsive |
 
 ## Risks
 

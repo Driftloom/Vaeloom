@@ -1,12 +1,12 @@
-﻿# Event Catalog
+# Event Catalog
 
 > **Purpose:** Provide the authoritative catalog of every event in Vaeloom's event-driven system — name, schema, producer, consumers, version, and retention
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Architecture Team
 > **Version:** 1.0
 > **Last Updated:** 2026-07-16
 > **Dependencies:** [`../Architecture/Event-Architecture.md`](../Architecture/Event-Architecture.md), [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md), [`Queue.md`](./Queue.md)
-> **Implementation Status:** ðŸ“‹ Spec Only
+> **Implementation Status:** 📁‹ Spec Only
 
 ## Overview
 
@@ -40,28 +40,28 @@ If an event is not in this catalog, it does not exist. Adding a new event requir
 
 ```mermaid
 graph LR
-    classDef producer fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef event fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef consumer fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef producer fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef event fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef consumer fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Producers["Producers"]
-        API["API Service"]:::producer
-        AI["AI Service"]:::producer
-        WORKER["Workers"]:::producer
-    end
+ subgraph Producers["Producers"]
+ API["API Service"]:::producer
+ AI["AI Service"]:::producer
+ WORKER["Workers"]:::producer
+ end
 
-    BUS["Event Bus<br/>(Redis Streams)"]:::event
+ BUS["Event Bus<br/>(Redis Streams)"]:::event
 
-    subgraph Consumers["Consumers"]
-        INGEST["Ingestion"]:::consumer
-        MEM["Memory"]:::consumer
-        NOTIFY["Notifications"]:::consumer
-        SEARCH["Search Indexer"]:::consumer
-        AUDIT["Audit Logger"]:::consumer
-        ANALYTICS["Analytics"]:::consumer
-    end
+ subgraph Consumers["Consumers"]
+ INGEST["Ingestion"]:::consumer
+ MEM["Memory"]:::consumer
+ NOTIFY["Notifications"]:::consumer
+ SEARCH["Search Indexer"]:::consumer
+ AUDIT["Audit Logger"]:::consumer
+ ANALYTICS["Analytics"]:::consumer
+ end
 
-    Producers --> BUS --> Consumers
+ Producers--> BUS--> Consumers
 ```text
 
 > **Diagram:** Event catalog topology. Producers emit to the bus; consumers subscribe by event type. Every event type in the catalog below flows through this topology.

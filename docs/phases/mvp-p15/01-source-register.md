@@ -1,7 +1,7 @@
-﻿# MVP-P15 — 01. Source Register
+# MVP-P15 — 01. Source Register
 
-> **Phase:** MVP-P15 — Performance, Reliability, and Scalability  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 Perfect to 95+ 42/42 RLS via 0020, retention_runs 0021, 2557 tests, 99 OpenAPI) + P14 ea329dd 4 GO-conditions + P15 perf hardening  
+> **Phase:** MVP-P15 — Performance, Reliability, and Scalability 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 Perfect to 95+ 42/42 RLS via 0020, retention_runs 0021, 2557 tests, 99 OpenAPI) + P14 ea329dd 4 GO-conditions + P15 perf hardening 
 > **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P15-performance-reliability-and-scalability.md` §28
 > **Gate Authority:** Performance Engineer (accountable) + SRE (backup) + Security/Privacy/Data/A11y/Reliability veto
 

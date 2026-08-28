@@ -7,43 +7,43 @@
 
 ```mermaid
 journey
-    title User Onboarding -- Signup through First Value
+ title User Onboarding -- Signup through First Value
 
-    section 🚪 1. Sign Up
-        Discover Vaeloom: 8: User
-        Visit landing page: 7: User
-        Sign up (email / SSO): 5: User
-        Verify email: 3: User
-        Welcome screen: 9: System
+ section 🚪 1. Sign Up
+ Discover Vaeloom: 8: User
+ Visit landing page: 7: User
+ Sign up (email / SSO): 5: User
+ Verify email: 3: User
+ Welcome screen: 9: System
 
-    section 🔧 2. Setup
-        Create workspace: 6: User
-        Choose identity (personal / org): 5: User
-        Seed memory (optional -- upload resume): 4: User
-        Connect first source (Gmail / GitHub): 6: User
-        OAuth consent & permissions: 3: User
-        Initial sync begins: 7: System
+ section 🔧 2. Setup
+ Create workspace: 6: User
+ Choose identity (personal / org): 5: User
+ Seed memory (optional -- upload resume): 4: User
+ Connect first source (Gmail / GitHub): 6: User
+ OAuth consent & permissions: 3: User
+ Initial sync begins: 7: System
 
-    section ⚡ 3. First Value
-        First sync completes: 8: System
-        First agent proposal appears: 9: System
-        Approve / reject proposal: 7: User
-        See organized workspace: 9: System
-        "Aha moment" -- understand the value: 9: User
+ section ⚡ 3. First Value
+ First sync completes: 8: System
+ First agent proposal appears: 9: System
+ Approve / reject proposal: 7: User
+ See organized workspace: 9: System
+ "Aha moment" -- understand the value: 9: User
 
-    section 📅 4. Daily Rhythm
-        Background sync runs automatically: 7: System
-        Daily notification (deadlines / suggestions): 6: System
-        Quick approvals & corrections: 7: User
-        Ask questions via chat: 8: User
-        Personalized recommendations: 8: System
+ section 4. Daily Rhythm
+ Background sync runs automatically: 7: System
+ Daily notification (deadlines / suggestions): 6: System
+ Quick approvals & corrections: 7: User
+ Ask questions via chat: 8: User
+ Personalized recommendations: 8: System
 
-    section 🌱 5. Deepening
-        Second connector added: 5: User
-        Memory graph grows: 7: System
-        Agent autonomy increases: 6: System
-        Trust built -- less manual review: 8: User
-        System shifts from tool to partner: 8: User
+ section 🌱 5. Deepening
+ Second connector added: 5: User
+ Memory graph grows: 7: System
+ Agent autonomy increases: 6: System
+ Trust built -- less manual review: 8: User
+ System shifts from tool to partner: 8: User
 ```
 
 > **Chart:** The user's emotional journey from signup through first value. Excitement peaks at the **First Sync** and **First Proposal** — this is the "aha moment" where the user understands Vaeloom's value. The setup phase has the lowest scores due to OAuth friction and seed data decisions. Daily rhythm stabilizes with high satisfaction as the system runs autonomously and the user trusts it more over time.

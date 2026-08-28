@@ -13,7 +13,7 @@
 
 Vaeloom's backend is a single monolithic FastAPI application at `apps/api`
 (Python) handling auth, CRUD, permissions, agents, memory, RAG, and inference.
-This document defines the internal module interfaces and contracts — the message
+This document defines the internal module interfaces and contracts â€” the message
 formats, error codes, versioning rules, and testing strategy that ensure they
 can evolve independently without breaking each other.
 
@@ -35,7 +35,7 @@ verify contract compatibility.
 
 - RPC protocol and transport
 - Interface definitions (SubmitAgentTask, GetTaskResult, StreamAgentResponse,
-  etc.)
+ etc.)
 - Shared schema (request/response types)
 - Versioning and backward compatibility
 - Contract testing
@@ -45,36 +45,36 @@ verify contract compatibility.
 
 - Public API (see [`API-Reference.md`](./API-Reference.md))
 - Event-driven communication (see
-  [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md))
+ [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md))
 - LLM provider APIs (see
-  [`../AI/LLM-Architecture.md`](../AI/LLM-Architecture.md))
+ [`../AI/LLM-Architecture.md`](../AI/LLM-Architecture.md))
 
 ## Architecture
 
 ```mermaid
 graph TD
-    classDef api fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef contract fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef ai fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef test fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef api fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef contract fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef ai fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef test fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    API["apps/api<br/>Consumer"]:::api
-    AI["apps/api<br/>Provider"]:::ai
+ API["apps/api<br/>Consumer"]:::api
+ AI["apps/api<br/>Provider"]:::ai
 
-    subgraph Contract["Service Contract"]
-        PROTO["vaeloom_internal.proto<br/>Shared schema definition"]:::contract
-        V1["v1/ -- current version"]:::contract
-        V2["v2/ -- next version<br/>(additive only)"]:::contract
-    end
+ subgraph Contract["Service Contract"]
+ PROTO["vaeloom_internal.proto<br/>Shared schema definition"]:::contract
+ V1["v1/ -- current version"]:::contract
+ V2["v2/ -- next version<br/>(additive only)"]:::contract
+ end
 
-    subgraph Testing["Contract Testing"]
-        PACT["Pact broker<br/>Consumer-driven contracts"]:::test
-        CI_PACT["CI pipeline<br/>Verify contracts on every PR"]:::test
-    end
+ subgraph Testing["Contract Testing"]
+ PACT["Pact broker<br/>Consumer-driven contracts"]:::test
+ CI_PACT["CI pipeline<br/>Verify contracts on every PR"]:::test
+ end
 
-    API -->|"direct function calls"| AI
-    Contract -.->|"defines"| API & AI
-    CI_PACT --> PACT -->|"verifies"| Contract
+ API-->|"direct function calls"| AI
+ Contract -.->|"defines"| API & AI
+ CI_PACT--> PACT-->|"verifies"| Contract
 ```
 
 > **Diagram:** Service contract architecture. The protobuf schema defines the
@@ -83,13 +83,13 @@ graph TD
 
 ## RPC Protocol
 
-| Decision        | Choice                                     | Rationale                                                                               |
+| Decision | Choice | Rationale |
 | --------------- | ------------------------------------------ | --------------------------------------------------------------------------------------- |
-| Transport       | HTTP (internal calls)                      | Binary protocol; lower latency than REST for internal calls; strong typing via protobuf |
-| Schema language | Protocol Buffers v3                        | Cross-language (Python consumer and provider); compact binary encoding                  |
-| Serialization   | Protobuf binary                            | Efficient; schema-evolution friendly (add fields without breaking)                      |
-| Timeout         | 30s default; 120s for long inference tasks | Prevents hung connections; configurable per method                                      |
-| Authentication  | mTLS + service account token               | Services authenticate each other; no JWT passthrough                                    |
+| Transport | HTTP (internal calls) | Binary protocol; lower latency than REST for internal calls; strong typing via protobuf |
+| Schema language | Protocol Buffers v3 | Cross-language (Python consumer and provider); compact binary encoding |
+| Serialization | Protobuf binary | Efficient; schema-evolution friendly (add fields without breaking) |
+| Timeout | 30s default; 120s for long inference tasks | Prevents hung connections; configurable per method |
+| Authentication | mTLS + service account token | Services authenticate each other; no JWT passthrough |
 
 ## Interface Definitions
 
@@ -178,14 +178,14 @@ message MemoryWrite {
 
 ## Versioning
 
-| Rule                   | Detail                                                                                          |
+| Rule | Detail |
 | ---------------------- | ----------------------------------------------------------------------------------------------- |
-| Version format         | `v1/`, `v2/` prefix on protobuf package                                                         |
+| Version format | `v1/`, `v2/` prefix on protobuf package |
 | Backward compatibility | Only additive changes allowed: new fields (with defaults), new methods. Never remove or rename. |
-| Deprecation            | Old method marked `deprecated = true`; consumer given 90 days to migrate                        |
-| Dual-support period    | Both v1 and v2 methods available simultaneously for 90 days                                     |
-| Version negotiation    | Client sends `x-api-version: v2` header; server routes to correct handler                       |
-| Sunset                 | After 90 days + 30-day notice, old version handler is removed                                   |
+| Deprecation | Old method marked `deprecated = true`; consumer given 90 days to migrate |
+| Dual-support period | Both v1 and v2 methods available simultaneously for 90 days |
+| Version negotiation | Client sends `x-api-version: v2` header; server routes to correct handler |
+| Sunset | After 90 days + 30-day notice, old version handler is removed |
 
 ## Contract Testing
 
@@ -210,73 +210,73 @@ Contract testing strategy (consumer-driven via Pact):
 
 ## Circuit Breaker
 
-| State                   | Condition                      | Behavior                                                         |
+| State | Condition | Behavior |
 | ----------------------- | ------------------------------ | ---------------------------------------------------------------- |
-| **Closed** (normal)     | Error rate < 10% in 60s window | All requests routed normally                                     |
-| **Open** (failing)      | Error rate = 50% in 60s window | All requests immediately return fallback; no calls to AI service |
-| **Half-Open** (probing) | After 30s in Open state        | Allow 1 test request; if succeeds ? Closed; if fails ? Open      |
+| **Closed** (normal) | Error rate < 10% in 60s window | All requests routed normally |
+| **Open** (failing) | Error rate = 50% in 60s window | All requests immediately return fallback; no calls to AI service |
+| **Half-Open** (probing) | After 30s in Open state | Allow 1 test request; if succeeds ? Closed; if fails ? Open |
 
 Fallback behavior when circuit is open:
 
 - `SubmitAgentTask` ? return HTTP 503 with `x-circuit-breaker: open` header and
-  retry-after: 60
+ retry-after: 60
 - `StreamAgentResponse` ? return a single error chunk
 - `GetTaskResult` ? return last known result from cache (if available), else 503
 
 ## Error Codes
 
-| Code                   | Meaning                                 | Consumer Action                                    |
+| Code | Meaning | Consumer Action |
 | ---------------------- | --------------------------------------- | -------------------------------------------------- |
-| `TASK_NOT_FOUND`       | Unknown task_id                         | Return 404 to user                                 |
-| `TASK_ALREADY_RUNNING` | Duplicate submit for same task_id       | Return existing task status                        |
-| `AGENT_NOT_AVAILABLE`  | Agent type is disabled or not installed | Return 400 with suggestion to use alternative      |
-| `MODEL_UNAVAILABLE`    | LLM provider is down or rate-limited    | Retry with exponential backoff; fallback model     |
-| `CONTEXT_TOO_LARGE`    | Input exceeds model context window      | Truncate input and retry                           |
-| `GUARDRAIL_BLOCKED`    | Output failed safety check              | Return blocked result with explanation             |
-| `TENANT_POLICY_DENIED` | Tenant policy blocks this agent/action  | Return 403 with policy reference                   |
-| `TIMEOUT`              | Task exceeded timeout_seconds           | Mark as failed; return partial result if available |
+| `TASK_NOT_FOUND` | Unknown task_id | Return 404 to user |
+| `TASK_ALREADY_RUNNING` | Duplicate submit for same task_id | Return existing task status |
+| `AGENT_NOT_AVAILABLE` | Agent type is disabled or not installed | Return 400 with suggestion to use alternative |
+| `MODEL_UNAVAILABLE` | LLM provider is down or rate-limited | Retry with exponential backoff; fallback model |
+| `CONTEXT_TOO_LARGE` | Input exceeds model context window | Truncate input and retry |
+| `GUARDRAIL_BLOCKED` | Output failed safety check | Return blocked result with explanation |
+| `TENANT_POLICY_DENIED` | Tenant policy blocks this agent/action | Return 403 with policy reference |
+| `TIMEOUT` | Task exceeded timeout_seconds | Mark as failed; return partial result if available |
 
 ## Security
 
-| Concern                 | Mitigation                                                                                 |
+| Concern | Mitigation |
 | ----------------------- | ------------------------------------------------------------------------------------------ |
-| Service impersonation   | mTLS between services; service account tokens scoped to internal endpoints                 |
+| Service impersonation | mTLS between services; service account tokens scoped to internal endpoints |
 | Task submission forgery | `task_id` generated server-side; `user_id`/`tenant_id` from verified JWT, not request body |
-| Response injection      | Responses validated against protobuf schema; unexpected fields rejected                    |
-| Trace ID propagation    | `trace_id` in every request/response; propagated to LLM providers and back                 |
+| Response injection | Responses validated against protobuf schema; unexpected fields rejected |
+| Trace ID propagation | `trace_id` in every request/response; propagated to LLM providers and back |
 
 ## Performance
 
-| Concern                               | Budget                | Measurement                        |
+| Concern | Budget | Measurement |
 | ------------------------------------- | --------------------- | ---------------------------------- |
-| function call latency (non-inference) | <50ms                 | RPC timing metrics                 |
-| function call latency (inference)     | <5s (model-dependent) | RPC timing + model gateway metrics |
-| Streaming chunk interval              | <2s per chunk         | Stream timing                      |
-| Contract test suite duration          | <30s                  | CI pipeline timing                 |
+| function call latency (non-inference) | <50ms | RPC timing metrics |
+| function call latency (inference) | <5s (model-dependent) | RPC timing + model gateway metrics |
+| Streaming chunk interval | <2s per chunk | Stream timing |
+| Contract test suite duration | <30s | CI pipeline timing |
 
 ## Best Practices
 
-| #   | Practice                                | Rationale                                                                 |
+| # | Practice | Rationale |
 | --- | --------------------------------------- | ------------------------------------------------------------------------- |
-| 1   | Never pass user JWT between services    | Use service account tokens; pass user_id/tenant_id as fields in the proto |
-| 2   | Make every RPC method idempotent        | Retries from the consumer side must be safe                               |
-| 3   | Version the contract, not the transport | Interfaces stay stable; Pydantic model versioning handles evolution       |
-| 4   | Run contract tests on every PR          | Catches breaking changes before they reach staging                        |
+| 1 | Never pass user JWT between services | Use service account tokens; pass user_id/tenant_id as fields in the proto |
+| 2 | Make every RPC method idempotent | Retries from the consumer side must be safe |
+| 3 | Version the contract, not the transport | Interfaces stay stable; Pydantic model versioning handles evolution |
+| 4 | Run contract tests on every PR | Catches breaking changes before they reach staging |
 
 ## Future Improvements
 
-| Improvement                                                  | Priority | Complexity | Timeline |
+| Improvement | Priority | Complexity | Timeline |
 | ------------------------------------------------------------ | -------- | ---------- | -------- |
-| Bidirectional streaming for interactive agent sessions       | High     | High       | Q1 2027  |
-| Protobuf-to-OpenAPI bridge for unified API docs              | Medium   | Medium     | Q2 2027  |
-| Contract testing as a service (self-service for new modules) | Low      | Medium     | Q3 2027  |
+| Bidirectional streaming for interactive agent sessions | High | High | Q1 2027 |
+| Protobuf-to-OpenAPI bridge for unified API docs | Medium | Medium | Q2 2027 |
+| Contract testing as a service (self-service for new modules) | Low | Medium | Q3 2027 |
 
 ## Related Documents
 
-- [`API-Architecture.md`](./API-Architecture.md) — public API architecture
-- [`../Architecture/C4-Architecture.md`](../Architecture/C4-Architecture.md) —
-  system container diagram
-- [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md) —
-  event-driven patterns
-- [`Workers.md`](./Workers.md) — background workers
-- [`REST-Standards.md`](./REST-Standards.md) — REST conventions (public API)
+- [`API-Architecture.md`](./API-Architecture.md) â€” public API architecture
+- [`../Architecture/C4-Architecture.md`](../Architecture/C4-Architecture.md) â€”
+ system container diagram
+- [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md) â€”
+ event-driven patterns
+- [`Workers.md`](./Workers.md) â€” background workers
+- [`REST-Standards.md`](./REST-Standards.md) â€” REST conventions (public API)

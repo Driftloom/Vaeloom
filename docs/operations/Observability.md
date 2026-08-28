@@ -1,59 +1,59 @@
-﻿# Observability
+# Observability
 
 > **Purpose:** Define the observability strategy for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Observability Architecture
 
 ```mermaid
 graph TD
-    classDef pillar fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef sys fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef app fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef biz fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef pillar fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef sys fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef app fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef biz fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Pillars["ðŸ“¡ Three Pillars of Observability"]
-        P1["Metrics<br/>OpenTelemetry --> APM<br/>Retention: 90d raw / 2yr aggregated"]
-        P2["Logs<br/>Structured JSON --> Log store<br/>Retention: 30d MVP / 1yr enterprise"]
-        P3["Traces<br/>OpenTelemetry<br/>Retention: 30 days"]
-    end
+ subgraph Pillars["Three Pillars of Observability"]
+ P1["Metrics<br/>OpenTelemetry--> APM<br/>Retention: 90d raw / 2yr aggregated"]
+ P2["Logs<br/>Structured JSON--> Log store<br/>Retention: 30d MVP / 1yr enterprise"]
+ P3["Traces<br/>OpenTelemetry<br/>Retention: 30 days"]
+ end
 
-    subgraph System["âš™ï¸ System Metrics"]
-        S1["cpu_usage Â· memory_usage Â· disk_usage<br/>Source: Host/container | Agg: Average by service"]
-    end
+ subgraph System["System Metrics"]
+ S1["cpu_usage · memory_usage · disk_usage<br/>Source: Host/container | Agg: Average by service"]
+ end
 
-    subgraph AppMetrics["ðŸ“Š Application Metrics"]
-        A1["http_request_duration (p50/p95/p99)"]
-        A2["http_request_total (by status code)"]
-        A3["agent_execution_duration (p50/p95/p99)"]
-        A4["agent_error_total (by agent)"]
-        A5["queue_depth (by queue)"]
-        A6["memory_write_rate (per min)"]
-    end
+ subgraph AppMetrics["Application Metrics"]
+ A1["http_request_duration (p50/p95/p99)"]
+ A2["http_request_total (by status code)"]
+ A3["agent_execution_duration (p50/p95/p99)"]
+ A4["agent_error_total (by agent)"]
+ A5["queue_depth (by queue)"]
+ A6["memory_write_rate (per min)"]
+ end
 
-    subgraph Business["ðŸ“ˆ Business Metrics"]
-        B1["active_users_daily --> DAU"]
-        B2["documents_uploaded --> Per day"]
-        B3["applications_submitted --> Per day"]
-        B4["proposal_approval_rate --> Per agent"]
-    end
+ subgraph Business["Business Metrics"]
+ B1["active_users_daily--> DAU"]
+ B2["documents_uploaded--> Per day"]
+ B3["applications_submitted--> Per day"]
+ B4["proposal_approval_rate--> Per agent"]
+ end
 
-    subgraph Dashboards["ðŸ-¥ï¸ Dashboards"]
-        D1["System Health Â· Real-time Â· Engineering"]
-        D2["AI Agent Performance Â· Real-time Â· AI Team"]
-        D3["Business Metrics Â· Daily Â· Product"]
-        D4["Cost Â· Daily Â· Engineering Lead"]
-        D5["SLO Compliance Â· Hourly Â· All"]
-    end
+ subgraph Dashboards["Dashboards"]
+ D1["System Health · Real-time · Engineering"]
+ D2["AI Agent Performance · Real-time · AI Team"]
+ D3["Business Metrics · Daily · Product"]
+ D4["Cost · Daily · Engineering Lead"]
+ D5["SLO Compliance · Hourly · All"]
+ end
 
-    Pillars --> System & AppMetrics & Business
-    System & AppMetrics & Business --> Dashboards
+ Pillars--> System & AppMetrics & Business
+ System & AppMetrics & Business--> Dashboards
 
-    class P1,P2,P3 pillar
-    class S1 sys
-    class A1,A2,A3,A4,A5,A6 app
-    class B1,B2,B3,B4 biz
-    class D1,D2,D3,D4,D5 dash
+ class P1,P2,P3 pillar
+ class S1 sys
+ class A1,A2,A3,A4,A5,A6 app
+ class B1,B2,B3,B4 biz
+ class D1,D2,D3,D4,D5 dash
 ```
 
 > **Diagram:** Observability architecture—**3 pillars** (metrics, logs, traces with retention) → **3 metric categories** (system: CPU/memory/disk; application: latency/errors/queue; business: DAU/docs/apps/approval) → **5 dashboards** (System, AI, Business, Cost, SLO) at different refresh cadences for different audiences.

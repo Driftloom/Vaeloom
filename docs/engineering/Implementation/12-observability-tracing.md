@@ -23,44 +23,44 @@ Special attention is paid to failure path visibility: when the Reflect→re-Plan
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    REQ["API Request"]:::primary
-    TRACE["Trace ID Generated"]:::primary
+ REQ["API Request"]:::primary
+ TRACE["Trace ID Generated"]:::primary
 
-    subgraph Spans["Distributed Tracing (OpenTelemetry)"]
-        ORCHS["Orchestrator Span"]:::secondary
-        PLAN_S["Plan Span"]:::secondary
-        ACT_S["Act Span"]:::secondary
-        OBS_S["Observe Span"]:::secondary
-        REFL_S["Reflect Span"]:::secondary
-        IMPR_S["Improve Span"]:::secondary
-        TOOL_S["Tool Call Span"]:::secondary
-        MEM_S["Memory Read/Write Span"]:::secondary
-    end
+ subgraph Spans["Distributed Tracing (OpenTelemetry)"]
+ ORCHS["Orchestrator Span"]:::secondary
+ PLAN_S["Plan Span"]:::secondary
+ ACT_S["Act Span"]:::secondary
+ OBS_S["Observe Span"]:::secondary
+ REFL_S["Reflect Span"]:::secondary
+ IMPR_S["Improve Span"]:::secondary
+ TOOL_S["Tool Call Span"]:::secondary
+ MEM_S["Memory Read/Write Span"]:::secondary
+ end
 
-    LOGS["Structured JSON Logs<br/>trace_id, workspace_id, agent_name"]:::secondary
-    AUDIT["Audit Log (agent_actions table)"]:::secondary
-    DASH["Per-Agent Dashboards<br/>volume, latency, cost, failure rate"]:::secondary
-    APPROVAL["Approval Rate Tracking"]:::secondary
-    FAILURE["Failure Path Visibility<br/>(escalation traces)"]:::secondary
+ LOGS["Structured JSON Logs<br/>trace_id, workspace_id, agent_name"]:::secondary
+ AUDIT["Audit Log (agent_actions table)"]:::secondary
+ DASH["Per-Agent Dashboards<br/>volume, latency, cost, failure rate"]:::secondary
+ APPROVAL["Approval Rate Tracking"]:::secondary
+ FAILURE["Failure Path Visibility<br/>(escalation traces)"]:::secondary
 
-    REQ --> TRACE
-    TRACE --> ORCHS
-    ORCHS --> PLAN_S
-    PLAN_S --> ACT_S
-    ACT_S --> TOOL_S
-    TOOL_S --> OBS_S
-    OBS_S --> REFL_S
-    REFL_S --> IMPR_S
-    IMPR_S --> MEM_S
-    TRACE -.-> LOGS
-    ACT_S -.-> AUDIT
-    LOGS --> DASH
-    AUDIT --> DASH
-    DASH --> APPROVAL
-    DASH --> FAILURE
+ REQ--> TRACE
+ TRACE--> ORCHS
+ ORCHS--> PLAN_S
+ PLAN_S--> ACT_S
+ ACT_S--> TOOL_S
+ TOOL_S--> OBS_S
+ OBS_S--> REFL_S
+ REFL_S--> IMPR_S
+ IMPR_S--> MEM_S
+ TRACE -.-> LOGS
+ ACT_S -.-> AUDIT
+ LOGS--> DASH
+ AUDIT--> DASH
+ DASH--> APPROVAL
+ DASH--> FAILURE
 ```
 
 ## Context

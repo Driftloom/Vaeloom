@@ -1,7 +1,7 @@
-﻿# MVP-P15 — 03. Workstreams
+# MVP-P15 — 03. Workstreams
 
-> **Phase:** MVP-P15 — Performance, Reliability, and Scalability  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 APPROVED, 42/42 RLS via 0020, 0021 retention_runs, 99 paths) + ea329dd 4 fixes + P15 perf hardening  
+> **Phase:** MVP-P15 — Performance, Reliability, and Scalability 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 APPROVED, 42/42 RLS via 0020, 0021 retention_runs, 99 paths) + ea329dd 4 fixes + P15 perf hardening 
 > **Phase rule:** Measure queue/model/retrieval/cost triggers before architecture split. PaaS-first, workspace-scoped.
 
 ## BQ-01..06 + DoR Resolutions (per §8, §26)

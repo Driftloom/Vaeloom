@@ -13,24 +13,24 @@ create new rows with `supersedes_id` pointing to the original.
 
 Tracks where data originated. Fields exist on `Memory`:
 
-| Field          | Type | Description                                       |
+| Field | Type | Description |
 | -------------- | ---- | ------------------------------------------------- |
-| `source_type`  | enum | `upload`, `connector`, `api`, `agent`, `manual`   |
-| `source_uri`   | text | Original location (URL, file path, connector ID)  |
+| `source_type` | enum | `upload`, `connector`, `api`, `agent`, `manual` |
+| `source_uri` | text | Original location (URL, file path, connector ID) |
 | `source_label` | text | Human-readable label ("Gmail inbox", "notion/db") |
-| `connector_id` | FK   | Links to connector record if sourced externally   |
+| `connector_id` | FK | Links to connector record if sourced externally |
 
 ### 1.2 Version Provenance
 
 Tracks content and model versions for reproducibility:
 
-| Artifact     | Fields                                                   | Notes                             |
+| Artifact | Fields | Notes |
 | ------------ | -------------------------------------------------------- | --------------------------------- |
-| Memory       | `content_hash` (SHA-256), `updated_at`                   | Detects content drift             |
-| Embedding    | `model_version`, `source_table`, `source_id`, dimensions | Links embedding to source row     |
-| Search index | `schema_version`                                         | Tracks index schema evolution     |
-| LLM calls    | `model_version`, `prompt_hash`, `tool_version`           | Stored in `agent_executions`      |
-| Chunking     | `chunking_strategy`, `chunk_size`                        | On `memory_records` if applicable |
+| Memory | `content_hash` (SHA-256), `updated_at` | Detects content drift |
+| Embedding | `model_version`, `source_table`, `source_id`, dimensions | Links embedding to source row |
+| Search index | `schema_version` | Tracks index schema evolution |
+| LLM calls | `model_version`, `prompt_hash`, `tool_version` | Stored in `agent_executions` |
+| Chunking | `chunking_strategy`, `chunk_size` | On `memory_records` if applicable |
 
 Model/prompt/tool/retrieval/chunking/embedding/policy versions consolidated in a
 version registry at P12.
@@ -60,28 +60,28 @@ chain to the root for completeness.
 
 Derived data must be traceable back to its authoritative source:
 
-| Projection          | Linkage                      | Rebuild strategy                |
+| Projection | Linkage | Rebuild strategy |
 | ------------------- | ---------------------------- | ------------------------------- |
 | pgvector embeddings | `source_table` + `source_id` | Rebuild from Memory after erase |
-| Graph nodes/edges   | `knowledge_nodes.source_id`  | Rebuild from Memory after erase |
-| Search index        | document ID reference        | Rebuild from Memory after erase |
+| Graph nodes/edges | `knowledge_nodes.source_id` | Rebuild from Memory after erase |
+| Search index | document ID reference | Rebuild from Memory after erase |
 
 **No projection is authoritative.** All projections can be fully reconstructed
 from the relational truth (ADR-024).
 
 ### 1.5 AI Output Provenance
 
-| Artifact              | Provenance fields                                                          |
+| Artifact | Provenance fields |
 | --------------------- | -------------------------------------------------------------------------- |
-| Agent execution       | `agent_executions`: model, prompt_hash, tool_version, latency, token_count |
-| Extraction confidence | `memory_records.confidence` (0.0–1.0)                                      |
-| QA gate               | Linked to `agent_executions.id`                                            |
+| Agent execution | `agent_executions`: model, prompt_hash, tool_version, latency, token_count |
+| Extraction confidence | `memory_records.confidence` (0.0–1.0) |
+| QA gate | Linked to `agent_executions.id` |
 
 ### 1.6 Action Provenance
 
-| Artifact       | Provenance                                                       |
+| Artifact | Provenance |
 | -------------- | ---------------------------------------------------------------- |
-| Agent actions  | `agent_actions`: immutable, timestamped, linked to execution     |
+| Agent actions | `agent_actions`: immutable, timestamped, linked to execution |
 | Approval chain | `approval_request` → `approval_decision`: append-only, immutable |
 
 ## 2. Lifecycle State Machine
@@ -120,14 +120,14 @@ Legal hold override:
 
 **State semantics**:
 
-| State              | Meaning                                                           |
+| State | Meaning |
 | ------------------ | ----------------------------------------------------------------- |
-| `PROCESSING`       | Ingested but not yet embedded/indexed                             |
-| `ACTIVE`           | Fully indexed, queryable, contributes to search                   |
-| `SUPERSEDED`       | Replaced by a newer row via `supersedes_id`; retained for lineage |
-| `PENDING_DELETION` | User requested deletion; grace period active                      |
-| `DELETED`          | Hard-deleted from primary store; erased from projections          |
-| `HOLDLOCK`         | Legal hold — blocks transition to DELETED                         |
+| `PROCESSING` | Ingested but not yet embedded/indexed |
+| `ACTIVE` | Fully indexed, queryable, contributes to search |
+| `SUPERSEDED` | Replaced by a newer row via `supersedes_id`; retained for lineage |
+| `PENDING_DELETION` | User requested deletion; grace period active |
+| `DELETED` | Hard-deleted from primary store; erased from projections |
+| `HOLDLOCK` | Legal hold — blocks transition to DELETED |
 
 ### 2.2 Document
 
@@ -175,48 +175,48 @@ current implementation status, and known gap.
 
 ### 3.1 Authoritative Stores (Postgres)
 
-| Table                 | Strategy          | Status     | Gap                                   |
+| Table | Strategy | Status | Gap |
 | --------------------- | ----------------- | ---------- | ------------------------------------- |
-| `users`               | anonymize         | ✅ done    | —                                     |
-| `memories`            | hard delete       | ⚠️ partial | `deleted_at` set but not hard-deleted |
-| `memory_records`      | hard delete       | ⚠️ partial | Soft delete only; not erased          |
-| `embeddings`          | hard delete       | ⚠️ partial | Not included in gdpr.py erasure       |
-| `documents`           | hard delete       | ✅ done    | —                                     |
-| `applications`        | hard delete       | ✅ done    | —                                     |
-| `workspaces`          | cascade anonymize | ✅ done    | —                                     |
-| `agent_executions`    | hard delete       | ⚠️ partial | Not included in gdpr.py erasure       |
-| `agent_actions`       | hard delete       | ⚠️ partial | Not included in gdpr.py erasure       |
-| `approval_request`    | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `approval_decision`   | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `agent_approvals`     | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `idempotency_records` | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `resumes`             | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `webhooks`            | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `webhook_deliveries`  | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `gmail_watches`       | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `plugins`             | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `plugin_executions`   | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `agent_schedules`     | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `knowledge_nodes`     | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
-| `knowledge_edges`     | hard delete       | ❌ missing | Not included in gdpr.py erasure       |
+| `users` | anonymize | ✅ done | — |
+| `memories` | hard delete | ⚠️ partial | `deleted_at` set but not hard-deleted |
+| `memory_records` | hard delete | ⚠️ partial | Soft delete only; not erased |
+| `embeddings` | hard delete | ⚠️ partial | Not included in gdpr.py erasure |
+| `documents` | hard delete | ✅ done | — |
+| `applications` | hard delete | ✅ done | — |
+| `workspaces` | cascade anonymize | ✅ done | — |
+| `agent_executions` | hard delete | ⚠️ partial | Not included in gdpr.py erasure |
+| `agent_actions` | hard delete | ⚠️ partial | Not included in gdpr.py erasure |
+| `approval_request` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `approval_decision` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `agent_approvals` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `idempotency_records` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `resumes` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `webhooks` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `webhook_deliveries` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `gmail_watches` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `plugins` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `plugin_executions` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `agent_schedules` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `knowledge_nodes` | hard delete | ❌ missing | Not included in gdpr.py erasure |
+| `knowledge_edges` | hard delete | ❌ missing | Not included in gdpr.py erasure |
 
 **gdpr.py currently covers**: users, memories, documents, applications,
 workspaces, memory_records (soft only). **15+ tables are missed.**
 
 ### 3.2 Object Storage
 
-| Store               | Strategy                         | Status     | Gap                        |
+| Store | Strategy | Status | Gap |
 | ------------------- | -------------------------------- | ---------- | -------------------------- |
-| Document files (S3) | Delete all versions of object    | ✅ done    | —                          |
-| S3 version history  | Purge versions after 30-day hold | ⚠️ partial | No automated version purge |
+| Document files (S3) | Delete all versions of object | ✅ done | — |
+| S3 version history | Purge versions after 30-day hold | ⚠️ partial | No automated version purge |
 
 ### 3.3 Projections (Derived Data)
 
-| Projection          | Strategy                        | Status     | Gap                  |
+| Projection | Strategy | Status | Gap |
 | ------------------- | ------------------------------- | ---------- | -------------------- |
 | pgvector embeddings | Rebuild from Memory after erase | ❌ missing | No rebuild triggered |
-| Graph nodes/edges   | Rebuild from Memory after erase | ❌ missing | No rebuild triggered |
-| Search index        | Rebuild from Memory after erase | ❌ missing | No rebuild triggered |
+| Graph nodes/edges | Rebuild from Memory after erase | ❌ missing | No rebuild triggered |
+| Search index | Rebuild from Memory after erase | ❌ missing | No rebuild triggered |
 
 **ADR-024 mandates**: Projections are rebuilt from relational truth after any
 erasure. This is not implemented. Current gdpr.py only deletes from Postgres;
@@ -224,27 +224,27 @@ projections retain orphaned data indefinitely.
 
 ### 3.4 Redis / Queue
 
-| Store               | Strategy                     | Status     | Gap                         |
+| Store | Strategy | Status | Gap |
 | ------------------- | ---------------------------- | ---------- | --------------------------- |
-| Session cache       | Delete session keys for user | ❌ missing | No Redis purge in erasure   |
-| Job queues          | Purge pending jobs for user  | ❌ missing | No queue purge in erasure   |
-| Dead-letter queue   | Purge DLQ entries for user   | ❌ missing | No DLQ cleanup              |
-| Rate limit counters | Allow expiry (ephemeral)     | ✅ done    | TTL-based, no action needed |
+| Session cache | Delete session keys for user | ❌ missing | No Redis purge in erasure |
+| Job queues | Purge pending jobs for user | ❌ missing | No queue purge in erasure |
+| Dead-letter queue | Purge DLQ entries for user | ❌ missing | No DLQ cleanup |
+| Rate limit counters | Allow expiry (ephemeral) | ✅ done | TTL-based, no action needed |
 
 ### 3.5 Telemetry / Audit
 
-| Store                | Strategy                                     | Status     | Gap                       |
+| Store | Strategy | Status | Gap |
 | -------------------- | -------------------------------------------- | ---------- | ------------------------- |
-| Audit logs           | Retain per DPDP §8; anonymize where possible | ✅ done    | —                         |
-| Telemetry (OTLP)     | No personal data; retain indefinitely        | ✅ done    | —                         |
-| Agent executions log | Anonymize user references                    | ⚠️ partial | Not anonymized on erasure |
+| Audit logs | Retain per DPDP §8; anonymize where possible | ✅ done | — |
+| Telemetry (OTLP) | No personal data; retain indefinitely | ✅ done | — |
+| Agent executions log | Anonymize user references | ⚠️ partial | Not anonymized on erasure |
 
 ### 3.6 External Providers
 
-| Provider     | Strategy                                | Status  | Gap               |
+| Provider | Strategy | Status | Gap |
 | ------------ | --------------------------------------- | ------- | ----------------- |
 | LLM provider | No raw personal data retained by policy | ✅ done | DPA review at P13 |
-| Google OAuth | Revoke tokens; no local PII retained    | ✅ done | —                 |
+| Google OAuth | Revoke tokens; no local PII retained | ✅ done | — |
 
 ## 4. Export Design (NFR-23)
 
@@ -252,16 +252,16 @@ projections retain orphaned data indefinitely.
 
 User-triggered export includes all personal data:
 
-| Data type       | Contents                                              |
+| Data type | Contents |
 | --------------- | ----------------------------------------------------- |
-| Profile         | User metadata, preferences, notification settings     |
-| Memories        | All memories with full provenance (source, version)   |
-| Documents       | Document metadata + file content (base64 or download) |
-| Applications    | Submission history + outcomes                         |
-| Approvals       | Approval requests and decisions                       |
-| Embeddings      | Metadata only (vectors are not user-exportable)       |
-| Consent history | Consent grants and revocations                        |
-| Audit trail     | User's action history (redacted for others' privacy)  |
+| Profile | User metadata, preferences, notification settings |
+| Memories | All memories with full provenance (source, version) |
+| Documents | Document metadata + file content (base64 or download) |
+| Applications | Submission history + outcomes |
+| Approvals | Approval requests and decisions |
+| Embeddings | Metadata only (vectors are not user-exportable) |
+| Consent history | Consent grants and revocations |
+| Audit trail | User's action history (redacted for others' privacy) |
 
 ### 4.2 Format
 
@@ -314,38 +314,38 @@ Every export triggers an audit entry:
 
 ### 5.1 Design Decisions
 
-| Decision                                                         | Rationale                                           |
+| Decision | Rationale |
 | ---------------------------------------------------------------- | --------------------------------------------------- |
-| Data kept until user deletes account                             | User control; no premature data loss                |
-| **Indefinite grace** — no auto-purge                             | User may need time to review before final erasure   |
-| Backups expire after 30 days                                     | RPO 24h; backup restore is read-only                |
-| Erasure receipt distinguishes primary vs backup deletion         | FR-62; user knows when erasure is complete          |
-| Legal hold blocks deletion                                       | Regulatory compliance; no data destroyed under hold |
-| Audit logs retained per DPDP §8                                  | Breach/safety duties; retention aligned at P13      |
-| Consent records kept for account life + DPDP period post-closure | Legal obligation                                    |
+| Data kept until user deletes account | User control; no premature data loss |
+| **Indefinite grace** — no auto-purge | User may need time to review before final erasure |
+| Backups expire after 30 days | RPO 24h; backup restore is read-only |
+| Erasure receipt distinguishes primary vs backup deletion | FR-62; user knows when erasure is complete |
+| Legal hold blocks deletion | Regulatory compliance; no data destroyed under hold |
+| Audit logs retained per DPDP §8 | Breach/safety duties; retention aligned at P13 |
+| Consent records kept for account life + DPDP period post-closure | Legal obligation |
 
 ### 5.2 CONFLICT: retention.py Auto-Deletion
 
 **The current `retention.py` service auto-deletes data, contradicting the
 "indefinite grace" decision:**
 
-| Table              | retention.py behavior     | Conflict                               |
+| Table | retention.py behavior | Conflict |
 | ------------------ | ------------------------- | -------------------------------------- |
-| `events`           | Auto-deleted after N days | BQ-P07-01 says user-driven, indefinite |
-| `audit_events`     | Auto-deleted after N days | DPDP §8 requires retention             |
-| `usage_records`    | Auto-deleted after N days | May be needed for user export          |
+| `events` | Auto-deleted after N days | BQ-P07-01 says user-driven, indefinite |
+| `audit_events` | Auto-deleted after N days | DPDP §8 requires retention |
+| `usage_records` | Auto-deleted after N days | May be needed for user export |
 | `agent_executions` | Auto-deleted after N days | Provenance data; should not auto-purge |
-| `auth_sessions`    | Auto-deleted after N days | Acceptable for security                |
+| `auth_sessions` | Auto-deleted after N days | Acceptable for security |
 
 **Reconciliation required**:
 
 1. `events` and `audit_events` auto-deletion must be removed or gated behind a
-   config flag that defaults to OFF in production
+ config flag that defaults to OFF in production
 2. `agent_executions` auto-deletion must be removed — these carry provenance
 3. `usage_records` auto-deletion must be removed — needed for user export
 4. `auth_sessions` auto-deletion is acceptable (security hygiene)
 5. All retention policies must be reconciled with BQ-P07-01 before production
-   deployment
+ deployment
 
 ## 6. Consent Management (DPDP §5 / §6)
 
@@ -404,33 +404,33 @@ erasure follows per Section 3.
 
 ### 7.1 Critical Gaps (Must Fix Before Production)
 
-| Gap                                            | Impact                                  | Effort |
+| Gap | Impact | Effort |
 | ---------------------------------------------- | --------------------------------------- | ------ |
-| gdpr.py misses 15+ tables                      | Incomplete erasure; DPDP violation      | Medium |
-| No projection rebuild after erasure            | Orphaned embeddings/graph data          | High   |
-| No erasure receipt (FR-62)                     | User cannot verify erasure completeness | Medium |
-| retention.py auto-deletes contradict BQ-P07-01 | Data loss; policy violation             | Low    |
-| No HOLDLOCK concept                            | Legal holds cannot be enforced          | Medium |
+| gdpr.py misses 15+ tables | Incomplete erasure; DPDP violation | Medium |
+| No projection rebuild after erasure | Orphaned embeddings/graph data | High |
+| No erasure receipt (FR-62) | User cannot verify erasure completeness | Medium |
+| retention.py auto-deletes contradict BQ-P07-01 | Data loss; policy violation | Low |
+| No HOLDLOCK concept | Legal holds cannot be enforced | Medium |
 
 ### 7.2 Implementation Gaps
 
-| Gap                                        | Impact                                | Effort |
+| Gap | Impact | Effort |
 | ------------------------------------------ | ------------------------------------- | ------ |
-| Export is inline JSON, not signed URL      | Large exports fail; no async delivery | Medium |
-| No Redis/queue purge on erasure            | Cached PII persists                   | Low    |
-| No consent event table                     | No audit trail for consent changes    | Low    |
-| No lifecycle state machine enforcement     | Invalid state transitions possible    | Medium |
-| Agent executions not anonymized on erasure | PII in execution logs                 | Low    |
+| Export is inline JSON, not signed URL | Large exports fail; no async delivery | Medium |
+| No Redis/queue purge on erasure | Cached PII persists | Low |
+| No consent event table | No audit trail for consent changes | Low |
+| No lifecycle state machine enforcement | Invalid state transitions possible | Medium |
+| Agent executions not anonymized on erasure | PII in execution logs | Low |
 
 ### 7.3 Risks
 
-| Risk                                       | Likelihood | Impact   | Mitigation                      |
+| Risk | Likelihood | Impact | Mitigation |
 | ------------------------------------------ | ---------- | -------- | ------------------------------- |
-| Orphaned projection data after erasure     | High       | High     | Implement rebuild job (ADR-024) |
-| Auto-deleted audit logs before DPDP review | Medium     | High     | Disable retention.py for audit  |
-| Legal hold bypass via direct DB access     | Low        | Critical | Hold check in erasure job       |
-| Export timeout on large datasets           | Medium     | Medium   | Async export with signed URL    |
-| Consent version mismatch across workspaces | Low        | Medium   | Validate on workspace join      |
+| Orphaned projection data after erasure | High | High | Implement rebuild job (ADR-024) |
+| Auto-deleted audit logs before DPDP review | Medium | High | Disable retention.py for audit |
+| Legal hold bypass via direct DB access | Low | Critical | Hold check in erasure job |
+| Export timeout on large datasets | Medium | Medium | Async export with signed URL |
+| Consent version mismatch across workspaces | Low | Medium | Validate on workspace join |
 
 ## 8. Implementation Roadmap
 

@@ -1,10 +1,10 @@
 # MVP-P14 → MVP-P15 Handoff — PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY (ea329dd)
 
-> **From:** MVP-P14 — Testing and Quality Engineering  
-> **To:** MVP-P15 — Performance, Reliability, and Scalability  
-> **Date:** 2026-08-22 (re-verified post-ea329dd 4 GO-conditions close)  
-> **Gate:** 87.5 honest → 88 waived CONDITIONAL (was 74.4 FAILED at c87b9e8, now 88 after ea329dd memory validator + workspace name + content_hash + ChatWindow) — **CONDITIONAL — RESTRICTIONS APPLY**  
-> **Baseline:** `ea329dd` (a69d7d7 + 4 GO-conditions close) + P14 testing (GDPR 31, JWT 32+, 2555, DPIA DRAFT)  
+> **From:** MVP-P14 — Testing and Quality Engineering 
+> **To:** MVP-P15 — Performance, Reliability, and Scalability 
+> **Date:** 2026-08-22 (re-verified post-ea329dd 4 GO-conditions close) 
+> **Gate:** 87.5 honest → 88 waived CONDITIONAL (was 74.4 FAILED at c87b9e8, now 88 after ea329dd memory validator + workspace name + content_hash + ChatWindow) — **CONDITIONAL — RESTRICTIONS APPLY** 
+> **Baseline:** `ea329dd` (a69d7d7 + 4 GO-conditions close) + P14 testing (GDPR 31, JWT 32+, 2555, DPIA DRAFT) 
 > **Status:** PHASE CONDITIONALLY APPROVED — RESTRICTIONS APPLY (3 pre-prod fixes: coverage 94% + WCAG + perf) — P15 **authorized with restrictions**
 
 ---

@@ -1,7 +1,7 @@
-﻿# MVP-P15 — 05. Test Results
+# MVP-P15 — 05. Test Results
 
-> **Phase:** MVP-P15 — Performance, Reliability, and Scalability  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 (k6 p50 45ms p95 120ms, --cov 94.2%, jest-axe 0 critical)  
+> **Phase:** MVP-P15 — Performance, Reliability, and Scalability 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 (k6 p50 45ms p95 120ms, --cov 94.2%, jest-axe 0 critical) 
 > **Env:** `tmp_path` per-test `NullPool`, `mock_llm` + `mock_connector_test` autouse, Python 3.12.13, `uv` + `pytest-xdist -n 4`, mock SQLite + `httpx.AsyncClient(app)` for bench fallback; k6 v0.54 local; jest 29 + e2e 39
 
 ## Summary

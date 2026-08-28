@@ -1,5 +1,24 @@
 # Idempotency & Consistency (Phase 12 — ADR-038 §7, §33, §45)
 
+```mermaid
+flowchart TD
+ REQ["Duplicate request<br/>same logical key"]--> ID{"Deterministic<br/>workflow ID?"}
+ ID-->|exists| DEDUP["WorkflowAlreadyStarted<br/>--> already_started JSON<br/>no second execution"]
+ ID-->|new| EXEC["Temporal start<br/>at-least-once"]
+ EXEC--> ACT["Activity<br/>retry 2× hb30s"]
+ ACT--> DB{"Idempotent guard<br/>SELECT before INSERT?"}
+ DB-->|row exists| NOP["0 diff--> success<br/>effectively-once"]
+ DB-->|new| WRITE["INSERT--> commit"]
+ WRITE--> RES["completed"]
+ DEDUP--> UI["UI: queued-->running-->retrying-->completed<br/>via query getStatus"]
+ RES--> UI
+ NOP--> UI
+
+ style DEDUP fill:#14532d,stroke:#4ade80,color:#fff
+ style NOP fill:#14532d,stroke:#4ade80,color:#fff
+ style EXEC fill:#0f172a,stroke:#38bdf8,color:#fff
+```
+
 **This page is the normative idempotency contract. All handlers must satisfy
 it.**
 
@@ -9,14 +28,14 @@ Every Temporal start uses a content-derived, workspace-scoped ID. Duplicate
 requests with same logical key hit `WorkflowExecutionAlreadyStarted` → safe
 `AlreadyStarted` → `already_started` JSON, not a second execution.
 
-| Operation         | ID formula                                                  | Duplicate effect                                                                                        |
+| Operation | ID formula | Duplicate effect |
 | ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Ingest            | `ingest:{workspace_id}:{content_hash}:{document_id}`        | Second upload of same bytes returns same workflow, not second memory batch                              |
-| Connector sync    | `connector_sync:{workspace_id}:{connector_id}:{sync_token}` | Token = first 8 of connector_id or caller-provided; same token within dedup window is idempotent        |
-| Event             | `event:{workspace_id}:{event_type}:{event_id}`              | Publishing same event twice (retry) starts workflow once; second gets `AlreadyStarted`                  |
-| Approval          | `approval:{workspace_id}:{approval_id}`                     | One human decision → one wait; second `approve` signals same workflow (no second execution)             |
-| Durable agent run | `durable_run:{workspace_id}:{user_id}:{request_id}`         | `request_id` is caller-supplied UUID → dedup per chat turn                                              |
-| Schedule          | `sched:{workspace_id}:{schedule_id}`                        | Temporal Schedule ID, not workflow ID; `create` with same ID → `AlreadyExists` → `handle.update()` path |
+| Ingest | `ingest:{workspace_id}:{content_hash}:{document_id}` | Second upload of same bytes returns same workflow, not second memory batch |
+| Connector sync | `connector_sync:{workspace_id}:{connector_id}:{sync_token}` | Token = first 8 of connector_id or caller-provided; same token within dedup window is idempotent |
+| Event | `event:{workspace_id}:{event_type}:{event_id}` | Publishing same event twice (retry) starts workflow once; second gets `AlreadyStarted` |
+| Approval | `approval:{workspace_id}:{approval_id}` | One human decision → one wait; second `approve` signals same workflow (no second execution) |
+| Durable agent run | `durable_run:{workspace_id}:{user_id}:{request_id}` | `request_id` is caller-supplied UUID → dedup per chat turn |
+| Schedule | `sched:{workspace_id}:{schedule_id}` | Temporal Schedule ID, not workflow ID; `create` with same ID → `AlreadyExists` → `handle.update()` path |
 
 All IDs include `workspace_id`, so cross-workspace replay cannot collide.
 
@@ -26,19 +45,19 @@ Temporal gives **at-least-once** activity execution. Every non-idempotent
 external write is double-guarded:
 
 - **Memory writes** (`write_memory` / `executor.create_entity`):
-  `SELECT Entity WHERE workspace_id=:ws AND canonical_name=:name` before
-  `INSERT` (§7). Double-merge → `already exists` error → activity returns 0 new,
-  no duplicate row.
+ `SELECT Entity WHERE workspace_id=:ws AND canonical_name=:name` before
+ `INSERT` (§7). Double-merge → `already exists` error → activity returns 0 new,
+ no duplicate row.
 - **Documents**: PK `documents.id` UUID; activity `parse_document` does
-  `SELECT ... WHERE id AND workspace_id` before any derived write.
+ `SELECT ... WHERE id AND workspace_id` before any derived write.
 - **Connectors sync**: `connector_ext_service.trigger_sync` is timestamp-only
-  stub today; real provider calls are `GET` (idempotent) or carry
-  `Idempotency-Key: {workflow_id}:{activity_id}` header when `POST` (provider
-  respects it). Schedule dedup key `sched_job:{job_id}:{slot_minute}` via
-  `SETNX vaeloom:daemon:claim:{key} EX 120` while daemon legacy still runs.
+ stub today; real provider calls are `GET` (idempotent) or carry
+ `Idempotency-Key: {workflow_id}:{activity_id}` header when `POST` (provider
+ respects it). Schedule dedup key `sched_job:{job_id}:{slot_minute}` via
+ `SETNX vaeloom:daemon:claim:{key} EX 120` while daemon legacy still runs.
 - **Approvals**: `agent_approvals` `UNIQUE(workspace_id, idempotency_key)` is
-  commented ready; current dedup is workflow ID + `SELECT before INSERT` on
-  decision.
+ commented ready; current dedup is workflow ID + `SELECT before INSERT` on
+ decision.
 
 If you add a new activity that writes externally, you **must** add a
 `SELECT before INSERT/UPSERT` with a workspace-scoped unique key, and make the
@@ -53,21 +72,42 @@ tokens, file bytes, full email bodies, huge model contexts never enter history.
 Activities resolve secrets via `SecretManager` / `provider_key_service` inside
 the worker process.
 
+```mermaid
+flowchart LR
+ subgraph Domain["App Postgres -- business truth"]
+ D1["application.status"]
+ D2["memory.status"]
+ D3["document.path"]
+ D4["audit / approvals"]
+ end
+ subgraph Temporal["Temporal history -- execution lifecycle"]
+ T1["current step"]
+ T2["retry count"]
+ T3["approval wait"]
+ T4["timers / signals"]
+ end
+ Domain -.->|"activities own writes<br/>idempotent SELECT before INSERT"| Temporal
+ Temporal -.->|"query getStatus<br/>never SELECT workflow status<br/>from Postgres"| Domain
+
+ style Domain fill:#334155,stroke:#94a3b8,color:#fff
+ style Temporal fill:#0f172a,stroke:#38bdf8,color:#fff
+```
+
 ## Consistency — domain vs workflow state (§45)
 
-| Store                                 | Owns                                     | Example                                                                                  |
+| Store | Owns | Example |
 | ------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **App Postgres** (domain state)       | Business truth that outlives executions  | `application.status`, `memory.status`, `document.path`, `agent_approval.status`, `audit` |
-| **Temporal history** (workflow state) | Execution lifecycle that can be replayed | `current step`, `pending signal`, `retry count`, `timer`, `approval wait`                |
+| **App Postgres** (domain state) | Business truth that outlives executions | `application.status`, `memory.status`, `document.path`, `agent_approval.status`, `audit` |
+| **Temporal history** (workflow state) | Execution lifecycle that can be replayed | `current step`, `pending signal`, `retry count`, `timer`, `approval wait` |
 
 Never mix them:
 
 - Do not `SELECT` workflow status from Postgres (use
-  `handle.query("getStatus")`).
+ `handle.query("getStatus")`).
 - Do not `UPDATE` domain rows from workflow history replay (activities own
-  writes).
+ writes).
 - No distributed transaction: workflow may retry activity while DB already
-  committed. Hence every DB write must be **idempotent** as above.
+ committed. Hence every DB write must be **idempotent** as above.
 
 ### Outbox
 
@@ -85,7 +125,7 @@ We **never** claim "exactly once" execution. We deliver:
 - **At-least-once** Temporal execution (retries until `maximumAttempts`).
 - **Idempotent** domain side effects (duplicate retries yield 0 diff).
 - **Deduplicated** domain operations (deterministic workflow ID collapses
-  duplicate requests).
+ duplicate requests).
 
 UIs show `queued→running→retrying→completed/failed/cancelled` from real
 `query.getStatus`, never a fake spinner.

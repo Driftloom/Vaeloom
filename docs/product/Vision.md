@@ -22,20 +22,20 @@ This document defines the 5-year vision, the product philosophy that guides ever
 
 ```mermaid
 graph LR
-    subgraph "Core Principles"
-        A[Memory is the Product] --> B[Features are Views]
-        B --> C[Chat Interface]
-        B --> D[Resume Generator]
-        B --> E[Job Matcher]
-        B --> F[Deadline Tracker]
-    end
-    
-    subgraph "Trust Model"
-        G[Suggest by Default] --> H[Earn Autonomy]
-        H --> I[Full Trust]
-    end
-    
-    A --> G
+ subgraph "Core Principles"
+ A[Memory is the Product]--> B[Features are Views]
+ B--> C[Chat Interface]
+ B--> D[Resume Generator]
+ B--> E[Job Matcher]
+ B--> F[Deadline Tracker]
+ end
+ 
+ subgraph "Trust Model"
+ G[Suggest by Default]--> H[Earn Autonomy]
+ H--> I[Full Trust]
+ end
+ 
+ A--> G
 ```
 
 | Principle | Description | Impact |
@@ -48,24 +48,24 @@ graph LR
 
 ```mermaid
 gantt
-    title Vaeloom Vision Timeline
-    dateFormat  YYYY-MM
-    axisFormat  %Y
-    
-    section MVP
-    Core Loop: Proof      :2026-07, 2026-12
-    
-    section Growth
-    Earned Autonomy       :2027-01, 2027-06
-    Full Agent Roster     :2027-06, 2028-01
-    
-    section Scale
-    Enterprise Features   :2028-01, 2028-06
-    Plugin Ecosystem      :2028-06, 2029-01
-    
-    section Future
-    Personal Digital Twin :2029-01, 2030-01
-    AI Mentor Layer       :2029-06, 2031-06
+ title Vaeloom Vision Timeline
+ dateFormat YYYY-MM
+ axisFormat %Y
+ 
+ section MVP
+ Core Loop: Proof :2026-07, 2026-12
+ 
+ section Growth
+ Earned Autonomy :2027-01, 2027-06
+ Full Agent Roster :2027-06, 2028-01
+ 
+ section Scale
+ Enterprise Features :2028-01, 2028-06
+ Plugin Ecosystem :2028-06, 2029-01
+ 
+ section Future
+ Personal Digital Twin :2029-01, 2030-01
+ AI Mentor Layer :2029-06, 2031-06
 ```
 
 ### Milestone Descriptions

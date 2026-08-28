@@ -356,9 +356,9 @@ For validation errors:
 - **Default**: 100 requests per 60 seconds per client IP
 - **Burst**: Up to 10 requests above the limit before 429 is returned
 - **Headers**:
-  - `X-RateLimit-Limit`: maximum requests per window
-  - `X-RateLimit-Remaining`: remaining requests in current window
-  - `X-RateLimit-Reset`: Unix timestamp when the window resets
+ - `X-RateLimit-Limit`: maximum requests per window
+ - `X-RateLimit-Remaining`: remaining requests in current window
+ - `X-RateLimit-Reset`: Unix timestamp when the window resets
 - **429 Response**: Includes `Retry-After` header (seconds until retry)
 - **Per-agent rate limits**: Separate counters for agent execution endpoints
 

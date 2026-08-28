@@ -1,7 +1,7 @@
-﻿# Data Retention Policy
+# Data Retention Policy
 
 > **Purpose:** Define retention schedules, deletion workflows, and legal hold procedures for all data types in Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
 
@@ -15,42 +15,42 @@ This policy applies to all production, staging, and backup environments. Retenti
 
 ```mermaid
 graph TD
-    classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef storage fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef hold fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef storage fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef hold fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    T1["User Account Deletion"] --> DW["Deletion Workflow"]
-    T2["Document Delete Request"] --> DW
-    T3["Legal Hold Order"] --> LH["Legal Hold Process"]
-    T4["Automated Timeout"] --> DW
+ T1["User Account Deletion"]--> DW["Deletion Workflow"]
+ T2["Document Delete Request"]--> DW
+ T3["Legal Hold Order"]--> LH["Legal Hold Process"]
+ T4["Automated Timeout"]--> DW
 
-    subgraph DW["Deletion Workflow"]
-        SW["Soft Delete<br/>Immediate"]
-        VER["Verification Window<br/>30 days"]
-        HD["Hard Delete<br/>After retention period"]
-        CF["Cascade to Dependencies<br/>Embeddings, chunks"]
-    end
+ subgraph DW["Deletion Workflow"]
+ SW["Soft Delete<br/>Immediate"]
+ VER["Verification Window<br/>30 days"]
+ HD["Hard Delete<br/>After retention period"]
+ CF["Cascade to Dependencies<br/>Embeddings, chunks"]
+ end
 
-    subgraph Storage["Data Categories"]
-        DOC["Documents<br/>90d after soft delete"]
-        AUD["Audit Logs<br/>7 year retention"]
-        USR["User Data<br/>30d after account deletion"]
-        AGT["Agent Actions<br/>1 year"]
-        EMB["Embeddings<br/>Cascade with source"]
-        BKP["Backups<br/>30d retention + encrypted"]
-    end
+ subgraph Storage["Data Categories"]
+ DOC["Documents<br/>90d after soft delete"]
+ AUD["Audit Logs<br/>7 year retention"]
+ USR["User Data<br/>30d after account deletion"]
+ AGT["Agent Actions<br/>1 year"]
+ EMB["Embeddings<br/>Cascade with source"]
+ BKP["Backups<br/>30d retention + encrypted"]
+ end
 
-    SW --> VER --> HD
-    HD --> CF
-    CF --> DOC & EMB
-    T3 --> LH
-    LH --> DOC & AUD & USR & AGT & EMB & BKP
+ SW--> VER--> HD
+ HD--> CF
+ CF--> DOC & EMB
+ T3--> LH
+ LH--> DOC & AUD & USR & AGT & EMB & BKP
 
-    class T1,T2,T3,T4 trigger
-    class SW,VER,HD,CF process
-    class DOC,AUD,USR,AGT,EMB,BKP storage
-    class LH hold
+ class T1,T2,T3,T4 trigger
+ class SW,VER,HD,CF process
+ class DOC,AUD,USR,AGT,EMB,BKP storage
+ class LH hold
 ```
 
 ## Retention Schedules
@@ -70,32 +70,32 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User / System
-    participant API as API Layer
-    participant SW as Soft Delete Store
-    participant CRON as Retention Cron Job
-    participant STOR as Storage (S3/DB)
-    participant AUDIT as Audit Logger
+ participant U as User / System
+ participant API as API Layer
+ participant SW as Soft Delete Store
+ participant CRON as Retention Cron Job
+ participant STOR as Storage (S3/DB)
+ participant AUDIT as Audit Logger
 
-    U->>API: Delete document / account
-    API->>SW: Soft delete (is_deleted=true, deleted_at=now)
-    API->>AUDIT: Log deletion event
-    API-->>U: 200 OK
+ U->>API: Delete document / account
+ API->>SW: Soft delete (is_deleted=true, deleted_at=now)
+ API->>AUDIT: Log deletion event
+ API-->>U: 200 OK
 
-    Note over CRON: Runs daily at 02:00 UTC
-    CRON->>SW: Query expired soft-deletes
-    SW-->>CRON: Batch of expired items
-    
-    loop For each expired item
-        CRON->>STOR: Hard delete content
-        CRON->>STOR: Cascade delete embeddings
-        CRON->>AUDIT: Log hard deletion
-    end
+ Note over CRON: Runs daily at 02:00 UTC
+ CRON->>SW: Query expired soft-deletes
+ SW-->>CRON: Batch of expired items
+ 
+ loop For each expired item
+ CRON->>STOR: Hard delete content
+ CRON->>STOR: Cascade delete embeddings
+ CRON->>AUDIT: Log hard deletion
+ end
 
-    alt Legal Hold Active
-        CRON->>CRON: Skip item, mark as "held"
-        CRON->>AUDIT: Log legal hold retention
-    end
+ alt Legal Hold Active
+ CRON->>CRON: Skip item, mark as "held"
+ CRON->>AUDIT: Log legal hold retention
+ end
 ```
 
 ## Legal Hold Procedures
@@ -235,33 +235,33 @@ This document defines the data retention schedules, deletion workflows, legal ho
 
 ```mermaid
 sequenceDiagram
-    participant U as User/System
-    participant API as API Layer
-    participant SW as Soft Delete Store
-    participant CRON as Retention Cron (Daily 02:00 UTC)
-    participant LH as Legal Hold Manager
-    participant AUD as Audit Logger
+ participant U as User/System
+ participant API as API Layer
+ participant SW as Soft Delete Store
+ participant CRON as Retention Cron (Daily 02:00 UTC)
+ participant LH as Legal Hold Manager
+ participant AUD as Audit Logger
 
-    U->>API: Delete request
-    API->>SW: Soft delete (is_deleted=true, deleted_at=now)
-    API->>AUD: Log deletion event
+ U->>API: Delete request
+ API->>SW: Soft delete (is_deleted=true, deleted_at=now)
+ API->>AUD: Log deletion event
 
-    Note over CRON: Runs daily at 02:00 UTC
-    
-    CRON->>SW: Query expired soft-deletes
-    SW-->>CRON: Batch of expired items
-    
-    loop For each expired item
-        CRON->>LH: Check legal hold status
-        alt No Hold
-            CRON->>SW: Hard delete content
-            CRON->>SW: Cascade delete embeddings
-            CRON->>AUD: Log hard deletion
-        else Hold Active
-            CRON->>CRON: Skip item, mark as "held"
-            CRON->>AUD: Log legal hold retention
-        end
-    end
+ Note over CRON: Runs daily at 02:00 UTC
+ 
+ CRON->>SW: Query expired soft-deletes
+ SW-->>CRON: Batch of expired items
+ 
+ loop For each expired item
+ CRON->>LH: Check legal hold status
+ alt No Hold
+ CRON->>SW: Hard delete content
+ CRON->>SW: Cascade delete embeddings
+ CRON->>AUD: Log hard deletion
+ else Hold Active
+ CRON->>CRON: Skip item, mark as "held"
+ CRON->>AUD: Log legal hold retention
+ end
+ end
 ```
 
 > **Diagram:** Deletion workflow — soft delete immediately, retention cron processes expired items daily, legal hold check before each hard delete. Held items are preserved with audit logging.

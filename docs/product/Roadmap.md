@@ -7,49 +7,49 @@
 
 ```mermaid
 gantt
-    title Vaeloom Product Roadmap -- MVP through Enterprise
-    dateFormat  YYYY-MM-DD
-    axisFormat  %b %Y
-    tickInterval 3month
+ title Vaeloom Product Roadmap -- MVP through Enterprise
+ dateFormat YYYY-MM-DD
+ axisFormat %b %Y
+ tickInterval 3month
 
-    section 🚀 MVP (Phases 0-6)
-        Foundation & Infrastructure    :mvp0, 2026-07-01, 2026-08-15
-        Ingestion Pipeline             :mvp1, 2026-07-15, 2026-09-01
-        Memory System (6 types)        :mvp2, 2026-08-01, 2026-09-15
-        Organization Agent             :mvp3, 2026-09-01, 2026-10-15
-        Resume + ATS Agents            :mvp4, 2026-10-01, 2026-11-15
-        Job Search + Gmail Agents      :mvp5, 2026-11-01, 2026-12-15
-        Dashboard + Polish             :mvp6, 2026-12-01, 2027-01-15
-        MVP Launch 🎉                   :milestone, mvp6, 2027-01-15, 1d
+ section MVP (Phases 0-6)
+ Foundation & Infrastructure :mvp0, 2026-07-01, 2026-08-15
+ Ingestion Pipeline :mvp1, 2026-07-15, 2026-09-01
+ Memory System (6 types) :mvp2, 2026-08-01, 2026-09-15
+ Organization Agent :mvp3, 2026-09-01, 2026-10-15
+ Resume + ATS Agents :mvp4, 2026-10-01, 2026-11-15
+ Job Search + Gmail Agents :mvp5, 2026-11-01, 2026-12-15
+ Dashboard + Polish :mvp6, 2026-12-01, 2027-01-15
+ MVP Launch 🎉 :milestone, mvp6, 2027-01-15, 1d
 
-    section ⚡ v1.5 -- Autonomy
-        Earned Autonomy System         :v15_1, 2027-01-15, 2027-03-01
-        Feedback-Loop Learning         :v15_2, 2027-02-01, 2027-03-15
-        Apply Flow Polish              :v15_3, 2027-03-01, 2027-04-15
-        Connector Expansion            :v15_4, 2027-03-15, 2027-05-01
-        v1.5 Release 🚀                :milestone, v15_4, 2027-05-01, 1d
+ section ⚡ v1.5 -- Autonomy
+ Earned Autonomy System :v15_1, 2027-01-15, 2027-03-01
+ Feedback-Loop Learning :v15_2, 2027-02-01, 2027-03-15
+ Apply Flow Polish :v15_3, 2027-03-01, 2027-04-15
+ Connector Expansion :v15_4, 2027-03-15, 2027-05-01
+ v1.5 Release :milestone, v15_4, 2027-05-01, 1d
 
-    section 🧠 V2 -- Memory Graph
-        Full 20-type Memory Taxonomy   :v2_1, 2027-04-01, 2027-06-01
-        Reflection Agent               :v2_2, 2027-05-01, 2027-07-01
-        Memory Graph Visualization     :v2_3, 2027-06-01, 2027-08-01
-        Global Search                  :v2_4, 2027-07-01, 2027-09-01
-        Knowledge Workspace            :v2_5, 2027-08-01, 2027-10-01
-        V2 Launch 🚀                   :milestone, v2_5, 2027-10-01, 1d
+ section V2 -- Memory Graph
+ Full 20-type Memory Taxonomy :v2_1, 2027-04-01, 2027-06-01
+ Reflection Agent :v2_2, 2027-05-01, 2027-07-01
+ Memory Graph Visualization :v2_3, 2027-06-01, 2027-08-01
+ Global Search :v2_4, 2027-07-01, 2027-09-01
+ Knowledge Workspace :v2_5, 2027-08-01, 2027-10-01
+ V2 Launch :milestone, v2_5, 2027-10-01, 1d
 
-    section 🤖 V3 -- Full Agent Roster
-        28-Agent Roster Complete       :v3_1, 2027-09-01, 2027-12-01
-        Self-Improvement Agent         :v3_2, 2027-10-01, 2027-12-15
-        Analytics & Insights           :v3_3, 2027-11-01, 2028-01-15
-        Premium Connectors             :v3_4, 2027-12-01, 2028-02-01
-        V3 Launch 🚀                   :milestone, v3_4, 2028-02-01, 1d
+ section V3 -- Full Agent Roster
+ 28-Agent Roster Complete :v3_1, 2027-09-01, 2027-12-01
+ Self-Improvement Agent :v3_2, 2027-10-01, 2027-12-15
+ Analytics & Insights :v3_3, 2027-11-01, 2028-01-15
+ Premium Connectors :v3_4, 2027-12-01, 2028-02-01
+ V3 Launch :milestone, v3_4, 2028-02-01, 1d
 
-    section 🏢 Enterprise
-        Multi-Tenancy & Isolation      :ent_1, 2028-01-01, 2028-04-01
-        SSO / RBAC / Audit             :ent_2, 2028-02-01, 2028-05-01
-        Compliance (SOC2 / GDPR)       :ent_3, 2028-03-01, 2028-06-01
-        Plugin SDK & Marketplace       :ent_4, 2028-04-01, 2028-07-01
-        Enterprise GA 🏢              :milestone, ent_4, 2028-07-01, 1d
+ section 🏢 Enterprise
+ Multi-Tenancy & Isolation :ent_1, 2028-01-01, 2028-04-01
+ SSO / RBAC / Audit :ent_2, 2028-02-01, 2028-05-01
+ Compliance (SOC2 / GDPR) :ent_3, 2028-03-01, 2028-06-01
+ Plugin SDK & Marketplace :ent_4, 2028-04-01, 2028-07-01
+ Enterprise GA 🏢 :milestone, ent_4, 2028-07-01, 1d
 ```
 
 > **Chart:** The product roadmap spans 4 years from MVP through Enterprise. **MVP** (🚀) delivers core ingestion, organization, and agent capabilities in 6 phases over 6 months. **v1.5** (⚡) layers autonomy and learning feedback. **V2** (🧠) expands memory to 20 types with graph visualization. **V3** (🤖) completes the 28-agent roster. **Enterprise** (🏢) adds multi-tenancy, SSO, compliance, and a plugin marketplace. Milestones mark each major release.

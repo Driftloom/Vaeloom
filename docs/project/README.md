@@ -15,34 +15,34 @@ The project is fully specified at both MVP and Enterprise scope, with implementa
 
 ```mermaid
 graph TD
-    subgraph Project["📋 Project Reference"]
-        PD["Complete Product<br/>Documentation"]
-        HV["How It Works<br/>Visual Overview"]
-        DS["Documentation Site<br/>HTML Variant"]
-        GL["Glossary"]
-    end
+ subgraph Project["Project Reference"]
+ PD["Complete Product<br/>Documentation"]
+ HV["How It Works<br/>Visual Overview"]
+ DS["Documentation Site<br/>HTML Variant"]
+ GL["Glossary"]
+ end
 
-    subgraph Quick["🚀 Quick Facts"]
-        Q1["One-liner: Second brain for education & career"]
-        Q2["Core philosophy: Memory is the product"]
-        Q3["Status: MVP spec complete, not yet implemented"]
-    end
+ subgraph Quick["Quick Facts"]
+ Q1["One-liner: Second brain for education & career"]
+ Q2["Core philosophy: Memory is the product"]
+ Q3["Status: MVP spec complete, not yet implemented"]
+ end
 
-    subgraph Related["🔗 Related Categories"]
-        R1["Product/ -- MVP spec, features, roadmap"]
-        R2["Enterprise/ -- Enterprise vision paper"]
-    end
+ subgraph Related["Related Categories"]
+ R1["Product/ -- MVP spec, features, roadmap"]
+ R2["Enterprise/ -- Enterprise vision paper"]
+ end
 
-    Project --> Quick
-    Quick --> Related
+ Project--> Quick
+ Quick--> Related
 
-    classDef proj fill:#e3f2fd,stroke:#1565c0
-    classDef quick fill:#e8f5e9,stroke:#2e7d32
-    classDef related fill:#fff3e0,stroke:#e65100
+ classDef proj fill:#e3f2fd,stroke:#1565c0
+ classDef quick fill:#e8f5e9,stroke:#2e7d32
+ classDef related fill:#fff3e0,stroke:#e65100
 
-    class PD,HV,DS,GL proj
-    class Q1,Q2,Q3 quick
-    class R1,R2 related
+ class PD,HV,DS,GL proj
+ class Q1,Q2,Q3 quick
+ class R1,R2 related
 ```
 
 ## What's here

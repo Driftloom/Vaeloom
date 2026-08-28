@@ -1,7 +1,7 @@
 # MVP-P20 — 03. Workstreams
 
-> **Phase:** MVP-P20 — Post-Deployment Validation  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 93.6 + P20 post-deployment validation  
+> **Phase:** MVP-P20 — Post-Deployment Validation 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 93.6 + P20 post-deployment validation 
 > **Phase rule:** Every claim links to authoritative source or reproducible evidence; synthetic monitoring proven 30s 3 probes; SLO 99.9% error budget quantified; rollback drill reversible; no hidden manual step.
 
 ## BQ-01..06 + DoR Resolutions (per §8, §26)

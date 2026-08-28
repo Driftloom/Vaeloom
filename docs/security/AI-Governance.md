@@ -1,9 +1,9 @@
 # AI Governance & Model Card
 
-**Document:** AI-GOV-Vaeloom-001  
-**Version:** 1.0  
-**Date:** 2026-08-21  
-**Status:** COMPLETE  
+**Document:** AI-GOV-Vaeloom-001 
+**Version:** 1.0 
+**Date:** 2026-08-21 
+**Status:** COMPLETE 
 **Phase:** MVP-P13 (Security, Privacy, and Compliance)
 
 ---
@@ -38,20 +38,20 @@ Vaeloom is an enterprise AI platform that uses Large Language Models (LLMs) to:
 
 ### 2.1 Supported LLM Providers
 
-| Provider       | Models                         | Default Use                         |
+| Provider | Models | Default Use |
 | -------------- | ------------------------------ | ----------------------------------- |
-| Anthropic      | Claude Sonnet 4, Claude Opus 4 | Agent reasoning, tool use           |
-| OpenAI         | GPT-4o, GPT-4o-mini            | General inference, embeddings       |
-| Local (Ollama) | Various open-source            | Development, air-gapped deployments |
+| Anthropic | Claude Sonnet 4, Claude Opus 4 | Agent reasoning, tool use |
+| OpenAI | GPT-4o, GPT-4o-mini | General inference, embeddings |
+| Local (Ollama) | Various open-source | Development, air-gapped deployments |
 
 ### 2.2 Configuration Parameters
 
-| Parameter   | Default   | Range    | Purpose                        |
+| Parameter | Default | Range | Purpose |
 | ----------- | --------- | -------- | ------------------------------ |
-| temperature | 0.7       | 0.0-1.0  | Response creativity control    |
-| max_tokens  | 4096      | 1-128000 | Output length limit            |
-| top_p       | 1.0       | 0.0-1.0  | Nucleus sampling               |
-| model       | per-agent | -        | Model selection per agent type |
+| temperature | 0.7 | 0.0-1.0 | Response creativity control |
+| max_tokens | 4096 | 1-128000 | Output length limit |
+| top_p | 1.0 | 0.0-1.0 | Nucleus sampling |
+| model | per-agent | - | Model selection per agent type |
 
 ### 2.3 Embeddings
 
@@ -65,24 +65,24 @@ Vaeloom is an enterprise AI platform that uses Large Language Models (LLMs) to:
 
 ### 3.1 Agent Types
 
-| Agent          | Purpose                        | Autonomy Level |
+| Agent | Purpose | Autonomy Level |
 | -------------- | ------------------------------ | -------------- |
-| Orchestrator   | Task decomposition and routing | Supervised     |
-| Memory Agent   | Long-term memory management    | Supervised     |
-| Tool Executor  | External tool invocation       | Sandboxed      |
-| QA Agent       | Output validation              | Independent    |
-| Research Agent | Information gathering          | Supervised     |
+| Orchestrator | Task decomposition and routing | Supervised |
+| Memory Agent | Long-term memory management | Supervised |
+| Tool Executor | External tool invocation | Sandboxed |
+| QA Agent | Output validation | Independent |
+| Research Agent | Information gathering | Supervised |
 
 ### 3.2 Safety Controls
 
-| Control           | Implementation                           | Status |
+| Control | Implementation | Status |
 | ----------------- | ---------------------------------------- | ------ |
-| Circuit breaker   | Automatic failover after 3 failures      | ACTIVE |
-| Rate limiting     | Per-agent request throttling             | ACTIVE |
-| Approval gate     | Human-in-the-loop for sensitive actions  | ACTIVE |
-| Fallback policies | Graceful degradation on model failure    | ACTIVE |
-| Input validation  | Prompt injection detection (14 patterns) | ACTIVE |
-| Output filtering  | Content policy enforcement               | ACTIVE |
+| Circuit breaker | Automatic failover after 3 failures | ACTIVE |
+| Rate limiting | Per-agent request throttling | ACTIVE |
+| Approval gate | Human-in-the-loop for sensitive actions | ACTIVE |
+| Fallback policies | Graceful degradation on model failure | ACTIVE |
+| Input validation | Prompt injection detection (14 patterns) | ACTIVE |
+| Output filtering | Content policy enforcement | ACTIVE |
 
 ### 3.3 Tool Sandboxing
 
@@ -123,7 +123,7 @@ Vaeloom is an enterprise AI platform that uses Large Language Models (LLMs) to:
 
 - Resume parsing may reflect existing biases in historical data
 - Job matching recommendations are based on semantic similarity, not equity
-  metrics
+ metrics
 - LLM responses may reflect biases in training data
 
 ### 5.2 Mitigations
@@ -157,12 +157,12 @@ Vaeloom is an enterprise AI platform that uses Large Language Models (LLMs) to:
 
 ### 7.1 AI-Specific Incidents
 
-| Incident Type             | Detection         | Response                       |
+| Incident Type | Detection | Response |
 | ------------------------- | ----------------- | ------------------------------ |
-| Prompt injection detected | Middleware alert  | Block request, log event       |
-| Agent runaway execution   | Circuit breaker   | Terminate, fallback to human   |
-| Data leak via LLM         | Output monitoring | Quarantine, audit review       |
-| Model provider outage     | Health checks     | Fallback to secondary provider |
+| Prompt injection detected | Middleware alert | Block request, log event |
+| Agent runaway execution | Circuit breaker | Terminate, fallback to human |
+| Data leak via LLM | Output monitoring | Quarantine, audit review |
+| Model provider outage | Health checks | Fallback to secondary provider |
 
 ### 7.2 Escalation Path
 
@@ -176,23 +176,23 @@ Vaeloom is an enterprise AI platform that uses Large Language Models (LLMs) to:
 
 ## 8. Compliance Mapping
 
-| Regulation        | Requirement                 | Implementation                |
+| Regulation | Requirement | Implementation |
 | ----------------- | --------------------------- | ----------------------------- |
-| GDPR Art. 13      | Right to information        | Privacy policy, consent UI    |
-| GDPR Art. 15      | Right of access             | GET /gdpr/export              |
-| GDPR Art. 17      | Right to erasure            | POST /gdpr/delete             |
-| GDPR Art. 22      | Automated decision-making   | No fully automated decisions  |
+| GDPR Art. 13 | Right to information | Privacy policy, consent UI |
+| GDPR Art. 15 | Right of access | GET /gdpr/export |
+| GDPR Art. 17 | Right to erasure | POST /gdpr/delete |
+| GDPR Art. 22 | Automated decision-making | No fully automated decisions |
 | EU AI Act Art. 52 | Transparency for AI systems | AI-generated content labeling |
-| SOC2 CC6.1        | Logical access controls     | RBAC, JWT auth                |
-| SOC2 CC7.1        | System monitoring           | Audit logs, OTel tracing      |
+| SOC2 CC6.1 | Logical access controls | RBAC, JWT auth |
+| SOC2 CC7.1 | System monitoring | Audit logs, OTel tracing |
 
 ---
 
 ## 9. Review & Updates
 
-| Review                | Frequency       | Owner           |
+| Review | Frequency | Owner |
 | --------------------- | --------------- | --------------- |
-| Model card update     | On model change | AI Team         |
-| Safety control review | Quarterly       | Security Team   |
-| Bias assessment       | Bi-monthly      | AI Team + DPO   |
-| Compliance audit      | Annually        | Compliance Team |
+| Model card update | On model change | AI Team |
+| Safety control review | Quarterly | Security Team |
+| Bias assessment | Bi-monthly | AI Team + DPO |
+| Compliance audit | Annually | Compliance Team |

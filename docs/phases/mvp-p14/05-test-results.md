@@ -1,7 +1,7 @@
 # MVP-P14 — 05. Test Results
 
-> **Phase:** MVP-P14 — Testing and Quality Engineering  
-> **Date:** 2026-08-22 · **Baseline:** `a69d7d7` + P14 (GDPR 31, JWT 32+)  
+> **Phase:** MVP-P14 — Testing and Quality Engineering 
+> **Date:** 2026-08-22 · **Baseline:** `a69d7d7` + P14 (GDPR 31, JWT 32+) 
 > **Env:** `tmp_path` per-test `NullPool`, `mock_llm` + `mock_connector_test` autouse, Python 3.12.13, `uv` + `pytest-xdist -n 4`, mock SQLite
 
 ## Summary

@@ -1,15 +1,15 @@
-﻿# API Versioning
+# API Versioning
 
 > **Purpose:** Define Vaeloom's API versioning strategy for public REST APIs,
 > Internal calls, and SDKs — version lifecycle, breaking-change policy,
-> deprecation process, and migration guidance **Status:** ðŸ†• New **Owner:**
+> deprecation process, and migration guidance **Status:** New **Owner:**
 > Architecture Team **Version:** 1.0 **Last Updated:** 2026-07-16
 > **Dependencies:** [`API-Architecture.md`](./API-Architecture.md),
 > [`API-Reference.md`](./API-Reference.md),
 > [`REST-Standards.md`](./REST-Standards.md),
 > [`../Engineering/Versioning.md`](../Engineering/Versioning.md),
 > [`Service-Contracts.md`](./Service-Contracts.md) **Implementation Status:**
-> ðŸ“‹ Spec Only
+> 📁‹ Spec Only
 
 ## Overview
 
@@ -42,15 +42,15 @@ migrate between versions.
 
 - Detailed migration steps per endpoint (per-release migration guides)
 - Feature flag strategy (see
-  [`../Enterprise/Feature-Flags.md`](../Enterprise/Feature-Flags.md))
+ [`../Enterprise/Feature-Flags.md`](../Enterprise/Feature-Flags.md))
 
 ## Versioning Schemes
 
-| API Type           | Scheme                       | Format                  | Example                            |
+| API Type | Scheme | Format | Example |
 | ------------------ | ---------------------------- | ----------------------- | ---------------------------------- |
-| **Public REST**    | URL-based major version      | `/v{N}/...`             | `/v1/documents`, `/v2/documents`   |
-| **Internal calls** | Protobuf package version     | `vaeloom.internal.v{N}` | `vaeloom.internal.v1.AgentService` |
-| **SDK**            | Semantic versioning (semver) | `MAJOR.MINOR.PATCH`     | `@vaeloom/sdk@2.1.3`               |
+| **Public REST** | URL-based major version | `/v{N}/...` | `/v1/documents`, `/v2/documents` |
+| **Internal calls** | Protobuf package version | `vaeloom.internal.v{N}` | `vaeloom.internal.v1.AgentService` |
+| **SDK** | Semantic versioning (semver) | `MAJOR.MINOR.PATCH` | `@vaeloom/sdk@2.1.3` |
 
 ## Public REST API Versioning
 
@@ -77,18 +77,18 @@ GET https://api.vaeloom.dev/v2/documents
 
 ```mermaid
 graph TD
-    classDef safe fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef breaking fill:#ffcccc,stroke:#cc0000,color:#000,stroke-width:2px
+ classDef safe fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef breaking fill:#ffcccc,stroke:#cc0000,color:#000,stroke-width:2px
 
-    CHANGE["Proposed Change"] --> Q1{"Removes/renames<br/>field or endpoint?"}
-    Q1 -->|"Yes"| BREAK["Breaking<br/>Requires new major version"]:::breaking
-    Q1 -->|"No"| Q2{"Changes field type<br/>or semantics?"}
-    Q2 -->|"Yes"| BREAK
-    Q2 -->|"No"| Q3{"Adds optional field<br/>or new endpoint?"}
-    Q3 -->|"Yes"| SAFE["Non-breaking<br/>Same major version"]:::safe
-    Q3 -->|"No"| Q4{"Tightens validation<br/>(stricter rules)?"}
-    Q4 -->|"Yes"| BREAK
-    Q4 -->|"No"| SAFE
+ CHANGE["Proposed Change"]--> Q1{"Removes/renames<br/>field or endpoint?"}
+ Q1-->|"Yes"| BREAK["Breaking<br/>Requires new major version"]:::breaking
+ Q1-->|"No"| Q2{"Changes field type<br/>or semantics?"}
+ Q2-->|"Yes"| BREAK
+ Q2-->|"No"| Q3{"Adds optional field<br/>or new endpoint?"}
+ Q3-->|"Yes"| SAFE["Non-breaking<br/>Same major version"]:::safe
+ Q3-->|"No"| Q4{"Tightens validation<br/>(stricter rules)?"}
+ Q4-->|"Yes"| BREAK
+ Q4-->|"No"| SAFE
 ```text
 
 > **Diagram:** Decision flow for classifying changes. Additive changes are safe; removals, renames, type changes, and stricter validation are breaking.
@@ -119,11 +119,11 @@ graph TD
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Current: released (e.g., /v2/)
-    Current --> Deprecated: new major version released (e.g., /v3/)
-    Deprecated --> Sunset: 6 months after deprecation
-    Sunset --> Retired: 12 months after deprecation
-    Retired --> [*]: endpoint returns 410 Gone
+ [*]--> Current: released (e.g., /v2/)
+ Current--> Deprecated: new major version released (e.g., /v3/)
+ Deprecated--> Sunset: 6 months after deprecation
+ Sunset--> Retired: 12 months after deprecation
+ Retired--> [*]: endpoint returns 410 Gone
 ```text
 
 > **Diagram:** Version lifecycle. A version is Current until the next major version releases. Then it enters a 12-month deprecation window: 6 months deprecated (full support + warnings), then sunset (read-only, no bug fixes), then retired (410 Gone).

@@ -14,7 +14,7 @@
 
 Vaeloom's accessibility framework ensures the platform is usable by all users, including those with disabilities. This document defines the accessibility standards, audit procedures, and remediation workflows that guarantee WCAG 2.2 AA compliance across all user interfaces.
 
-The accessibility strategy covers the web application, mobile companion, and agent interaction surfaces — including screen reader compatibility, keyboard navigation, color contrast, focus management, and reduced motion support. Every UI component in the Vaeloom design system is required to pass automated and manual accessibility checks before release.
+The accessibility strategy covers the web application, mobile companion, and agent interaction surfaces â€” including screen reader compatibility, keyboard navigation, color contrast, focus management, and reduced motion support. Every UI component in the Vaeloom design system is required to pass automated and manual accessibility checks before release.
 
 Accessibility is a core quality attribute for Vaeloom, not an afterthought. As an education and career platform, Vaeloom serves diverse users with varying abilities who rely on assistive technologies. Meeting WCAG 2.2 AA standards is a product requirement for public launch. Automated scans run in CI via axe-core on every pull request, supplemented by quarterly manual audits with NVDA and VoiceOver screen readers.
 
@@ -37,7 +37,7 @@ Accessibility is a core quality attribute for Vaeloom, not an afterthought. As a
 - Color contrast validation for all design tokens across light and dark themes
 - Focus management for modal dialogs, dynamic content, and route transitions
 - Automated accessibility scanning in CI with axe-core on every pull request
-- Text resizing support — no loss of functionality at 200% browser zoom
+- Text resizing support â€” no loss of functionality at 200% browser zoom
 
 ### Out of Scope
 
@@ -76,41 +76,41 @@ Accessibility is a core quality attribute for Vaeloom, not an afterthought. As a
 
 ```mermaid
 graph TD
-    classDef standard fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef audit fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000
+ classDef standard fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef audit fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000
 
-    subgraph Standards["?? WCAG Standards"]
-        direction TB
-        S1["Keyboard Navigation<br/>WCAG 2.1.1<br/>All actions via keyboard"]
-        S2["Screen Reader Support<br/>WCAG 4.1.2<br/>ARIA labels + roles + landmarks"]
-        S3["Color Contrast<br/>WCAG 1.4.3<br/>4.5:1 minimum contrast"]
-        S4["Focus Indicators<br/>WCAG 2.4.7<br/>Visible focus rings"]
-        S5["Error Identification<br/>WCAG 3.3.1<br/>Specific, not just color"]
-        S6["Text Resizing<br/>WCAG 1.4.4<br/>Functional at 200% zoom"]
-    end
+ subgraph Standards["WCAG Standards"]
+ direction TB
+ S1["Keyboard Navigation<br/>WCAG 2.1.1<br/>All actions via keyboard"]
+ S2["Screen Reader Support<br/>WCAG 4.1.2<br/>ARIA labels + roles + landmarks"]
+ S3["Color Contrast<br/>WCAG 1.4.3<br/>4.5:1 minimum contrast"]
+ S4["Focus Indicators<br/>WCAG 2.4.7<br/>Visible focus rings"]
+ S5["Error Identification<br/>WCAG 3.3.1<br/>Specific, not just color"]
+ S6["Text Resizing<br/>WCAG 1.4.4<br/>Functional at 200% zoom"]
+ end
 
-    subgraph Patterns["??? UI Accessibility Patterns"]
-        P1["Proposal cards<br/>Keyboard approve/reject"]
-        P2["Memory graph<br/>Alt text-based navigation"]
-        P3["File viewer<br/>Screen reader summaries"]
-        P4["Chat interface<br/>Announce new messages"]
-        P5["Dashboard<br/>Skip-to-content link"]
-    end
+ subgraph Patterns["UI Accessibility Patterns"]
+ P1["Proposal cards<br/>Keyboard approve/reject"]
+ P2["Memory graph<br/>Alt text-based navigation"]
+ P3["File viewer<br/>Screen reader summaries"]
+ P4["Chat interface<br/>Announce new messages"]
+ P5["Dashboard<br/>Skip-to-content link"]
+ end
 
-    subgraph Infrastructure["?? Audit & Enforcement"]
-        I1["CI: axe-core scan<br/>Every PR"]
-        I2["CI: Color contrast check<br/>Every build"]
-        I3["Quarterly: Manual audit<br/>NVDA + VoiceOver"]
-        I4["SLA: P0/P1 remediation<br/>48h / 1 week"]
-    end
+ subgraph Infrastructure["Audit & Enforcement"]
+ I1["CI: axe-core scan<br/>Every PR"]
+ I2["CI: Color contrast check<br/>Every build"]
+ I3["Quarterly: Manual audit<br/>NVDA + VoiceOver"]
+ I4["SLA: P0/P1 remediation<br/>48h / 1 week"]
+ end
 
-    Standards --> Patterns --> Infrastructure
+ Standards--> Patterns--> Infrastructure
 
-    class S1,S2,S3,S4,S5,S6 standard
-    class P1,P2,P3,P4,P5 pattern
-    class I1,I2,I3,I4 infra
+ class S1,S2,S3,S4,S5,S6 standard
+ class P1,P2,P3,P4,P5 pattern
+ class I1,I2,I3,I4 infra
 ```
 
 > **Diagram:** Accessibility strategy follows **6 WCAG 2.2 AA standards** ? **5 UI-specific accessibility patterns** ? **audit and enforcement infrastructure** (CI scans every PR + quarterly manual audits + SLAs for remediation).
@@ -119,7 +119,7 @@ graph TD
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| SkipToContent | Provide keyboard bypass of navigation blocks | React + CSS | Static — one instance per page |
+| SkipToContent | Provide keyboard bypass of navigation blocks | React + CSS | Static â€” one instance per page |
 | FocusTrapModal | Trap keyboard focus within open dialogs | React + useCallback | Instance per modal; portals for overlay stacking |
 | AriaAnnouncer | Broadcast dynamic content changes to screen readers | React + aria-live region | Singleton via Context; debounced to avoid flooding |
 | ColorContrastValidator | Verify all theme tokens meet WCAG 4.5:1 | CSS custom properties + CI check | Build-time scan of all token pairs; runs per PR |
@@ -135,23 +135,23 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User (Keyboard)
-    participant P as Page
-    participant SK as SkipToContent
-    participant M as Main Content
+ participant U as User (Keyboard)
+ participant P as Page
+ participant SK as SkipToContent
+ participant M as Main Content
 
-    U->>P: Tab key (first press)
-    P->>SK: Focus visible on skip link
-    U->>SK: Enter key
-    SK->>M: Focus jumps to h1
-    M-->>U: Screen reader announces page title
+ U->>P: Tab key (first press)
+ P->>SK: Focus visible on skip link
+ U->>SK: Enter key
+ SK->>M: Focus jumps to h1
+ M-->>U: Screen reader announces page title
 
-    Note over U,M: Modal scenario
-    U->>P: Click "Open Settings"
-    P->>M: Modal opens, focus trapped
-    U->>M: Tab cycles controls
-    U->>M: Escape key
-    M->>P: Modal closes, focus returns to trigger
+ Note over U,M: Modal scenario
+ U->>P: Click "Open Settings"
+ P->>M: Modal opens, focus trapped
+ U->>M: Tab cycles controls
+ U->>M: Escape key
+ M->>P: Modal closes, focus returns to trigger
 ```
 
 ## Data Flow
@@ -164,27 +164,27 @@ sequenceDiagram
 
 ## APIs
 
-N/A — Accessibility concerns are primarily a frontend rendering and CSS responsibility. Color contrast validation is performed at build time via CI scripts. No dedicated runtime API endpoints are required. The accessibility metadata (ARIA labels, alt text) is derived from existing document and content APIs.
+N/A â€” Accessibility concerns are primarily a frontend rendering and CSS responsibility. Color contrast validation is performed at build time via CI scripts. No dedicated runtime API endpoints are required. The accessibility metadata (ARIA labels, alt text) is derived from existing document and content APIs.
 
 ## Database
 
-N/A — Accessibility metadata (ARIA labels, alt text, focus order) is embedded in UI component definitions and theme tokens, not stored in a database. Color contrast token pairs are validated at build time from CSS custom properties. No dedicated accessibility database schema is required.
+N/A â€” Accessibility metadata (ARIA labels, alt text, focus order) is embedded in UI component definitions and theme tokens, not stored in a database. Color contrast token pairs are validated at build time from CSS custom properties. No dedicated accessibility database schema is required.
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Focus management in modal dialogs | Trap focus within open modals; return focus to trigger element on close — prevents keyboard-based UI confusion |
-| Dynamic content announcements | Use `aria-live` regions with appropriate politeness settings — avoid flooding screen readers with sensitive information |
+| Focus management in modal dialogs | Trap focus within open modals; return focus to trigger element on close â€” prevents keyboard-based UI confusion |
+| Dynamic content announcements | Use `aria-live` regions with appropriate politeness settings â€” avoid flooding screen readers with sensitive information |
 | Accessible error disclosure | Error messages should guide resolution without revealing internal system details (stack traces, query structures) |
 
 ## Performance
 
 | Concern | Guideline |
 |---------|-----------|
-| Screen reader overhead | Minimize DOM size — large DOM trees increase accessibility tree computation time, especially on low-end devices |
+| Screen reader overhead | Minimize DOM size â€” large DOM trees increase accessibility tree computation time, especially on low-end devices |
 | Animation impact on assistive tech | `prefers-reduced-motion` animations still compute in the accessibility tree; use `display: none` rather than opacity:0 for truly hidden elements |
-| Audit tool runtime | Run accessibility audits as part of CI, not just at build time — automated axe-core scans add ~200ms per page but catch regressions early |
+| Audit tool runtime | Run accessibility audits as part of CI, not just at build time â€” automated axe-core scans add ~200ms per page but catch regressions early |
 
 ## Scalability
 
@@ -208,10 +208,10 @@ N/A — Accessibility metadata (ARIA labels, alt text, focus order) is embedded in
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| axe-core violation count in CI | > 0 new violations | Critical | GitHub Checks — a11y report |
-| Lighthouse accessibility score | < 90 | Warning | Grafana — Frontend Performance |
-| Screen reader regression reports | Any manually filed bug | High | Sentry — a11y tag |
-| Color contrast compliance ratio | < 100% of token pairs | Warning | CI pipeline — contrast check step |
+| axe-core violation count in CI | > 0 new violations | Critical | GitHub Checks â€” a11y report |
+| Lighthouse accessibility score | < 90 | Warning | Grafana â€” Frontend Performance |
+| Screen reader regression reports | Any manually filed bug | High | Sentry â€” a11y tag |
+| Color contrast compliance ratio | < 100% of token pairs | Warning | CI pipeline â€” contrast check step |
 
 ## Deployment
 

@@ -1,7 +1,7 @@
-﻿# MVP-P19 — 03. Workstreams
+# MVP-P19 — 03. Workstreams
 
-> **Phase:** MVP-P19 — Release Readiness and Production Deployment  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 release readiness  
+> **Phase:** MVP-P19 — Release Readiness and Production Deployment 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 release readiness 
 > **Phase rule:** Every claim links to authoritative source or reproducible evidence; release version/branch/env pinned; deployment validation reversible; data migration idempotent; feature flags kill-switch proven; checklist no hidden manual step.
 
 ## BQ-01..06 + DoR Resolutions (per §8, §26)
@@ -62,7 +62,7 @@ Produce versioned release plan for v0.2.0 with scope/cut-line, branch/tag strate
 ### Tests/Evidence
 - `rg "0\.2\.0" apps/api/src/api/config.py docs/backend/openapi.yaml apps/api/pyproject.toml` 3 hits PASS
 - `wc -l infra/ops/LAUNCH-CHECKLIST.md` 178 lines PASS
-- `rg -c "^  /" docs/backend/openapi.yaml` 99 paths v0.2.0 PASS
+- `rg -c "^ /" docs/backend/openapi.yaml` 99 paths v0.2.0 PASS
 - `python -c "import yaml; yaml.safe_load(open('docs/backend/openapi.yaml'))"` 99 paths PASS
 
 ---

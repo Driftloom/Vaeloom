@@ -70,15 +70,15 @@ Vaeloom uses multiple LLM providers (OpenAI, Anthropic, Google, plus self-hosted
 
 ```mermaid
 graph TD
-    classDef task fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef model fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef task fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef model fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    ROUTING["Intent Classification<br/>(Orchestrator)"]:::task -->|"fast + cheap"| MINI["GPT-4o-mini"]:::model
-    EXTRACT["Entity Extraction<br/>(Resume, Memory)"]:::task -->|"strong instruction"| SONNET["Claude 3.5 Sonnet"]:::model
-    GEN["Long-form Generation<br/>(cover letters, summaries)"]:::task -->|"quality"| GPT4O["GPT-4o"]:::model
-    RAG["RAG Synthesis<br/>(chat answers)"]:::task -->|"balanced"| SONNET
-    LONGCTX["Long-context Tasks<br/>(multi-doc analysis)"]:::task -->|"large context"| GEMINI["Gemini 1.5 Pro"]:::model
-    PRIV["Sensitive Data<br/>(PII-heavy)"]:::task -->|"data control"| LLAMA["Llama 3.1 (self-hosted)"]:::model
+ ROUTING["Intent Classification<br/>(Orchestrator)"]:::task-->|"fast + cheap"| MINI["GPT-4o-mini"]:::model
+ EXTRACT["Entity Extraction<br/>(Resume, Memory)"]:::task-->|"strong instruction"| SONNET["Claude 3.5 Sonnet"]:::model
+ GEN["Long-form Generation<br/>(cover letters, summaries)"]:::task-->|"quality"| GPT4O["GPT-4o"]:::model
+ RAG["RAG Synthesis<br/>(chat answers)"]:::task-->|"balanced"| SONNET
+ LONGCTX["Long-context Tasks<br/>(multi-doc analysis)"]:::task-->|"large context"| GEMINI["Gemini 1.5 Pro"]:::model
+ PRIV["Sensitive Data<br/>(PII-heavy)"]:::task-->|"data control"| LLAMA["Llama 3.1 (self-hosted)"]:::model
 ```
 
 > **Diagram:** Model selection by task type. The router selects the model that optimizes the quality-cost-latency tradeoff for each task category.

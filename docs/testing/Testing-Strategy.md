@@ -21,56 +21,56 @@ targets, and how tests integrate with the CI/CD pipeline.
 
 ```mermaid
 graph TB
-    subgraph "Production Monitoring"
-        PM[Canary Analysis<br/>Error Budgets<br/>SLO Monitoring]
-    end
+ subgraph "Production Monitoring"
+ PM[Canary Analysis<br/>Error Budgets<br/>SLO Monitoring]
+ end
 
-    subgraph "E2E Tests (5%)"
-        E2E[Critical User Flows<br/>Playwright]
-        Smoke[Smoke Tests<br/>Post-Deploy]
-    end
+ subgraph "E2E Tests (5%)"
+ E2E[Critical User Flows<br/>Playwright]
+ Smoke[Smoke Tests<br/>Post-Deploy]
+ end
 
-    subgraph "Integration Tests (20%)"
-        IT[API + Database<br/>Service Boundaries<br/>3rd Party Mocks]
-        CT[Contract Tests<br/>Web ↔ API]
-    end
+ subgraph "Integration Tests (20%)"
+ IT[API + Database<br/>Service Boundaries<br/>3rd Party Mocks]
+ CT[Contract Tests<br/>Web ↔ API]
+ end
 
-    subgraph "Unit Tests (75%)"
-        UT[Functions<br/>Components<br/>Services<br/>Business Logic]
-        PT[AI Prompts<br/>Golden Datasets]
-    end
+ subgraph "Unit Tests (75%)"
+ UT[Functions<br/>Components<br/>Services<br/>Business Logic]
+ PT[AI Prompts<br/>Golden Datasets]
+ end
 
-    style PM fill:#ff6
-    style E2E fill:#f66
-    style IT fill:#66f
-    style UT fill:#6f6
+ style PM fill:#ff6
+ style E2E fill:#f66
+ style IT fill:#66f
+ style UT fill:#6f6
 ```
 
 ## Test Types
 
-| Test Type       | Scope                            | Speed        | Confidence     | Tools              | CI Stage            | Status                               |
+| Test Type | Scope | Speed | Confidence | Tools | CI Stage | Status |
 | --------------- | -------------------------------- | ------------ | -------------- | ------------------ | ------------------- | ------------------------------------ |
-| **Unit**        | Individual functions, components | < 100ms each | Low (isolated) | Jest, pytest, RTL  | Every PR            | ✅ Implemented                       |
-| **Golden**      | AI prompt output correctness     | < 5s each    | Medium         | Custom eval runner | Every prompt change | ✅ Implemented                       |
-| **Integration** | Service boundaries (API + DB)    | < 10s each   | Medium         | Supertest, pytest  | Every PR            | ⚠️ Scaffold only                     |
-| **Contract**    | Frontend ↔ API interface         | < 5s each    | Medium         | Pact               | Every PR            | ✅ Implemented                       |
-| **E2E**         | Full user flows                  | < 60s each   | High           | Playwright         | Staging deploy      | ✅ Implemented                       |
-| **Smoke**       | Critical endpoints post-deploy   | < 30s total  | High           | curl + assertions  | Every deploy        | ❌ NOT_IMPLEMENTED (empty directory) |
-| **Load**        | System under expected load       | < 30 min     | High           | k6                 | Pre-release         | ✅ Implemented                       |
-| **Security**    | Vulnerability scanning           | < 5 min      | High           | ZAP, Dependabot    | Weekly              | ❌ NOT_IMPLEMENTED (empty directory) |
+| **Unit** | Individual functions, components | < 100ms each | Low (isolated) | Jest, pytest, RTL | Every PR | ✅ Implemented |
+| **Golden** | AI prompt output correctness | < 5s each | Medium | Custom eval runner | Every prompt change | ✅ Implemented |
+| **Integration** | Service boundaries (API + DB) | < 10s each | Medium | Supertest, pytest | Every PR | ⚠️ Scaffold only |
+| **Contract** | Frontend ↔ API interface | < 5s each | Medium | Pact | Every PR | ✅ Implemented |
+| **E2E** | Full user flows | < 60s each | High | Playwright | Staging deploy | ✅ Implemented |
+| **Smoke** | Critical endpoints post-deploy | < 30s total | High | curl + assertions | Every deploy | ❌ NOT_IMPLEMENTED (empty directory) |
+| **Load** | System under expected load | < 30 min | High | k6 | Pre-release | ✅ Implemented |
+| **Security** | Vulnerability scanning | < 5 min | High | ZAP, Dependabot | Weekly | ❌ NOT_IMPLEMENTED (empty directory) |
 
 ## Testing by Phase
 
-| Phase                    | Unit | Integration          | E2E                     | AI Evals                | Coverage Target |
+| Phase | Unit | Integration | E2E | AI Evals | Coverage Target |
 | ------------------------ | ---- | -------------------- | ----------------------- | ----------------------- | --------------- |
-| 0 — Infrastructure       | ✅   | ✅ (health check)    | ✅ (signup flow)        | —                       | 60%             |
-| 1 — Ingestion            | ✅   | ✅ (parser accuracy) | —                       | ✅ (golden files)       | 80%             |
-| 2 — Organization Agent   | ✅   | ✅                   | ✅ (upload → organize)  | ✅ (proposal accuracy)  | 80%             |
-| 3 — Resume & ATS         | ✅   | ✅                   | ✅ (resume → ATS score) | ✅ (generation quality) | 85%             |
-| 4 — Career Intelligence  | ✅   | ✅                   | ✅ (search → apply)     | ✅ (ranking quality)    | 85%             |
-| 5 — Communication        | ✅   | ✅                   | ✅ (Gmail → schedule)   | ✅ (classification)     | 85%             |
-| 6 — Dashboard & Settings | ✅   | ✅                   | ✅ (export → delete)    | —                       | 80%             |
-| 7 — Enterprise           | ✅   | ✅                   | ✅ (tenant isolation)   | —                       | 90%             |
+| 0 — Infrastructure | ✅ | ✅ (health check) | ✅ (signup flow) | — | 60% |
+| 1 — Ingestion | ✅ | ✅ (parser accuracy) | — | ✅ (golden files) | 80% |
+| 2 — Organization Agent | ✅ | ✅ | ✅ (upload → organize) | ✅ (proposal accuracy) | 80% |
+| 3 — Resume & ATS | ✅ | ✅ | ✅ (resume → ATS score) | ✅ (generation quality) | 85% |
+| 4 — Career Intelligence | ✅ | ✅ | ✅ (search → apply) | ✅ (ranking quality) | 85% |
+| 5 — Communication | ✅ | ✅ | ✅ (Gmail → schedule) | ✅ (classification) | 85% |
+| 6 — Dashboard & Settings | ✅ | ✅ | ✅ (export → delete) | — | 80% |
+| 7 — Enterprise | ✅ | ✅ | ✅ (tenant isolation) | — | 90% |
 
 ## Unit Testing Standards
 
@@ -274,78 +274,78 @@ class TestMemoryAgent:
 
 ## Best Practices
 
-| Practice                               | Rationale                               |
+| Practice | Rationale |
 | -------------------------------------- | --------------------------------------- |
-| Test behavior, not implementation      | Refactoring doesn't break tests         |
-| One assertion concept per test         | Clear failure messages                  |
-| Use factories, not fixtures            | Flexible test data                      |
-| Mock external services                 | Fast, reliable, no network dependency   |
-| Test edge cases explicitly             | Empty inputs, null values, error states |
-| Golden datasets versioned with prompts | Reproducible AI tests                   |
+| Test behavior, not implementation | Refactoring doesn't break tests |
+| One assertion concept per test | Clear failure messages |
+| Use factories, not fixtures | Flexible test data |
+| Mock external services | Fast, reliable, no network dependency |
+| Test edge cases explicitly | Empty inputs, null values, error states |
+| Golden datasets versioned with prompts | Reproducible AI tests |
 
 ## Common Mistakes
 
-| Mistake                           | Consequence                        | Fix                                       |
+| Mistake | Consequence | Fix |
 | --------------------------------- | ---------------------------------- | ----------------------------------------- |
-| Testing implementation details    | Tests break on refactoring         | Test public API / behavior                |
+| Testing implementation details | Tests break on refactoring | Test public API / behavior |
 | Integration tests without test DB | Use production DB → data pollution | Dedicated test database with transactions |
-| Skipping AI eval tests            | Prompt regression in production    | Block deploys on eval failure             |
-| Flaky E2E tests                   | Ignored test failures              | Retry flaky tests, fix root cause         |
-| No performance baseline           | Can't detect regressions           | Store historical performance data         |
+| Skipping AI eval tests | Prompt regression in production | Block deploys on eval failure |
+| Flaky E2E tests | Ignored test failures | Retry flaky tests, fix root cause |
+| No performance baseline | Can't detect regressions | Store historical performance data |
 
 ## Coverage Targets
 
-| Module                | Line Coverage | Branch Coverage | Notes                  |
+| Module | Line Coverage | Branch Coverage | Notes |
 | --------------------- | ------------- | --------------- | ---------------------- |
-| apps/web (components) | 80%           | 70%             | UI-heavy, lower target |
-| apps/api (services)   | 90%           | 80%             | Core business logic    |
-| apps/api (agents)     | 90%           | 80%             | Critical AI logic      |
-| apps/api (retrieval)  | 85%           | 75%             | RAG pipeline           |
-| Golden datasets       | 95% accuracy  | —               | AI correctness         |
+| apps/web (components) | 80% | 70% | UI-heavy, lower target |
+| apps/api (services) | 90% | 80% | Core business logic |
+| apps/api (agents) | 90% | 80% | Critical AI logic |
+| apps/api (retrieval) | 85% | 75% | RAG pipeline |
+| Golden datasets | 95% accuracy | — | AI correctness |
 
 ## Performance Testing Considerations
 
-| Concern                         | Mitigation                               |
+| Concern | Mitigation |
 | ------------------------------- | ---------------------------------------- |
 | AI golden tests slow (5s+ each) | Run on prompt changes only, not every PR |
-| E2E tests flaky                 | Retry 3x with exponential backoff        |
-| Load tests expensive            | Run pre-release, not on every deploy     |
-| Visual regression tests         | Run on staging, not in CI                |
+| E2E tests flaky | Retry 3x with exponential backoff |
+| Load tests expensive | Run pre-release, not on every deploy |
+| Visual regression tests | Run on staging, not in CI |
 
 ## Security Testing Considerations
 
-| Concern                        | Mitigation                                   |
+| Concern | Mitigation |
 | ------------------------------ | -------------------------------------------- |
-| SAST false positives           | Tune rules per project, manual review        |
-| Dependency alerts on test deps | Exclude dev dependencies from scanning       |
-| AI adversarial tests           | Run on prompt changes, not every PR          |
-| Tenant isolation tests         | Quarterly penetration testing, not automated |
+| SAST false positives | Tune rules per project, manual review |
+| Dependency alerts on test deps | Exclude dev dependencies from scanning |
+| AI adversarial tests | Run on prompt changes, not every PR |
+| Tenant isolation tests | Quarterly penetration testing, not automated |
 
 ## Security Considerations
 
-| Concern                                           | Mitigation                                                                                                                                                  |
+| Concern | Mitigation |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AI model prompt injection in tests                | Eval suites must include adversarial prompts designed to bypass guardrails — integrate these into the golden dataset and block deploys on critical failures |
-| Test data containing real user PII                | Golden datasets and test fixtures must use synthetic or anonymized data — scan test data for patterns resembling real user information before committing    |
-| SAST false positives masking real vulnerabilities | Tune static analysis rules per service to reduce noise, but maintain a manual triage process for all findings labeled critical or high                      |
+| AI model prompt injection in tests | Eval suites must include adversarial prompts designed to bypass guardrails — integrate these into the golden dataset and block deploys on critical failures |
+| Test data containing real user PII | Golden datasets and test fixtures must use synthetic or anonymized data — scan test data for patterns resembling real user information before committing |
+| SAST false positives masking real vulnerabilities | Tune static analysis rules per service to reduce noise, but maintain a manual triage process for all findings labeled critical or high |
 
 ## Performance Considerations
 
-| Concern                            | Approach                                                                                                                                                               |
+| Concern | Approach |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AI golden test execution time      | Running a full golden dataset evaluation on every commit can take 10+ minutes — run a smoke subset on PRs and the full suite nightly                                   |
-| E2E test suite duration            | A growing E2E suite that takes >30 minutes blocks CI — parallelize test execution across multiple runners and prioritize critical user journeys                        |
+| AI golden test execution time | Running a full golden dataset evaluation on every commit can take 10+ minutes — run a smoke subset on PRs and the full suite nightly |
+| E2E test suite duration | A growing E2E suite that takes >30 minutes blocks CI — parallelize test execution across multiple runners and prioritize critical user journeys |
 | Integration test database overhead | Each integration test that creates and tears down database state adds 50-200ms — use transaction rollback tests that share a single connection for significant speedup |
 
 ## Goals
 
 - Achieve 85% line coverage across all production code by end of Phase 5
 - Block deployments on critical AI golden dataset failures to prevent prompt
-  regressions
+ regressions
 - Reduce flaky test rate to below 1% through systematic detection and quarantine
 - Maintain CI pipeline under 15 minutes including all test stages
 - Automate adversarial prompt testing for all AI agents against known injection
-  patterns
+ patterns
 
 ## Scope
 
@@ -370,134 +370,134 @@ class TestMemoryAgent:
 
 ## Functional Requirements
 
-| ID     | Requirement                                                                    | Priority |
+| ID | Requirement | Priority |
 | ------ | ------------------------------------------------------------------------------ | -------- |
-| FR-001 | Every PR shall pass unit, integration, and golden tests before merge           | Critical |
-| FR-002 | AI golden dataset tests shall run on every prompt change                       | Critical |
-| FR-003 | Smoke tests shall run on every deployment to staging and production            | Critical |
-| FR-004 | E2E tests shall run on every staging deployment                                | High     |
-| FR-005 | Load tests shall run before every production release                           | High     |
-| FR-006 | Contract tests shall detect API interface changes between frontend and backend | High     |
-| FR-007 | Coverage thresholds shall be enforced in CI per module                         | Medium   |
-| FR-008 | Flaky tests shall be automatically detected and quarantined                    | Medium   |
+| FR-001 | Every PR shall pass unit, integration, and golden tests before merge | Critical |
+| FR-002 | AI golden dataset tests shall run on every prompt change | Critical |
+| FR-003 | Smoke tests shall run on every deployment to staging and production | Critical |
+| FR-004 | E2E tests shall run on every staging deployment | High |
+| FR-005 | Load tests shall run before every production release | High |
+| FR-006 | Contract tests shall detect API interface changes between frontend and backend | High |
+| FR-007 | Coverage thresholds shall be enforced in CI per module | Medium |
+| FR-008 | Flaky tests shall be automatically detected and quarantined | Medium |
 
 ## Non-Functional Requirements
 
-| ID      | Requirement                                                       | Target   | Measurement                  |
+| ID | Requirement | Target | Measurement |
 | ------- | ----------------------------------------------------------------- | -------- | ---------------------------- |
-| NFR-001 | Full test suite (excluding load) shall complete within 15 minutes | < 15 min | CI pipeline test duration    |
-| NFR-002 | Unit tests shall complete within 100ms per test                   | < 100ms  | Per-test execution time      |
-| NFR-003 | Integration tests shall complete within 10 seconds per test       | < 10s    | Per-test execution time      |
-| NFR-004 | E2E tests shall complete within 60 seconds per scenario           | < 60s    | Per-scenario execution time  |
-| NFR-005 | Golden dataset accuracy shall exceed 95%                          | > 95%    | Per-dataset accuracy metric  |
-| NFR-006 | Flaky test rate shall remain below 1%                             | < 1%     | Flaky rate over 7-day window |
+| NFR-001 | Full test suite (excluding load) shall complete within 15 minutes | < 15 min | CI pipeline test duration |
+| NFR-002 | Unit tests shall complete within 100ms per test | < 100ms | Per-test execution time |
+| NFR-003 | Integration tests shall complete within 10 seconds per test | < 10s | Per-test execution time |
+| NFR-004 | E2E tests shall complete within 60 seconds per scenario | < 60s | Per-scenario execution time |
+| NFR-005 | Golden dataset accuracy shall exceed 95% | > 95% | Per-dataset accuracy metric |
+| NFR-006 | Flaky test rate shall remain below 1% | < 1% | Flaky rate over 7-day window |
 
 ## Components
 
-| Component                | Responsibility                                  | Technology                    | Scale Strategy                              |
+| Component | Responsibility | Technology | Scale Strategy |
 | ------------------------ | ----------------------------------------------- | ----------------------------- | ------------------------------------------- |
-| Unit Test Runner         | Execute function and service-level tests        | Jest (TS), pytest (Python)    | Parallel worker processes, sharding         |
-| Integration Test Runner  | Execute API + database boundary tests           | Supertest, pytest             | Service containers, parallel execution      |
-| E2E Test Runner          | Execute full user flow tests                    | Playwright                    | Parallel browser contexts, multiple workers |
-| Golden Dataset Evaluator | Validate AI prompt output against known samples | Custom eval framework         | Parallel eval runs, cached model responses  |
-| Contract Test Runner     | Validate API interface compatibility            | Pact                          | Provider-side verification in CI            |
-| Load Test Runner         | Execute performance benchmarks                  | k6                            | Distributed cloud execution                 |
-| Coverage Reporter        | Aggregate and validate coverage metrics         | Istanbul, pytest-cov, Codecov | Per-service coverage dashboard              |
+| Unit Test Runner | Execute function and service-level tests | Jest (TS), pytest (Python) | Parallel worker processes, sharding |
+| Integration Test Runner | Execute API + database boundary tests | Supertest, pytest | Service containers, parallel execution |
+| E2E Test Runner | Execute full user flow tests | Playwright | Parallel browser contexts, multiple workers |
+| Golden Dataset Evaluator | Validate AI prompt output against known samples | Custom eval framework | Parallel eval runs, cached model responses |
+| Contract Test Runner | Validate API interface compatibility | Pact | Provider-side verification in CI |
+| Load Test Runner | Execute performance benchmarks | k6 | Distributed cloud execution |
+| Coverage Reporter | Aggregate and validate coverage metrics | Istanbul, pytest-cov, Codecov | Per-service coverage dashboard |
 
 ## Data Flow
 
 1. **PR Submission** — Developer pushes code; CI triggers test pipeline;
-   dependencies are restored from cache; test shards are allocated across
-   parallel workers
+ dependencies are restored from cache; test shards are allocated across
+ parallel workers
 2. **Unit Test Execution** — Jest and pytest run unit tests in parallel shards
-   with mock external services; simple functions complete in <50ms; services
-   with DB mocks complete in <200ms
+ with mock external services; simple functions complete in <50ms; services
+ with DB mocks complete in <200ms
 3. **Integration Test Execution** — Integration tests spin up PostgreSQL and
-   Redis service containers, run API requests against test endpoints, verify
-   responses with schema assertions, and clean up test data via transaction
-   rollback
+ Redis service containers, run API requests against test endpoints, verify
+ responses with schema assertions, and clean up test data via transaction
+ rollback
 4. **Golden Dataset Evaluation** — On prompt changes, custom evaluator runs
-   agent prompts against predefined input/output pairs, compares results to
-   expected outputs, and calculates accuracy metrics (must exceed 95% threshold)
+ agent prompts against predefined input/output pairs, compares results to
+ expected outputs, and calculates accuracy metrics (must exceed 95% threshold)
 5. **Coverage Aggregation** — All test results are collected; coverage reports
-   are generated per module and uploaded to Codecov; coverage thresholds are
-   validated against targets — pipeline fails if thresholds are not met
+ are generated per module and uploaded to Codecov; coverage thresholds are
+ validated against targets — pipeline fails if thresholds are not met
 
 ## Scalability
 
-| Dimension             | Current Limit         | 10x Strategy                         | 100x Strategy                          |
+| Dimension | Current Limit | 10x Strategy | 100x Strategy |
 | --------------------- | --------------------- | ------------------------------------ | -------------------------------------- |
-| Test count            | 500 tests             | 5000 tests with parallel sharding    | 50000 tests with distributed execution |
-| E2E test count        | 20 scenarios          | 200 scenarios with parallel browsers | 2000 scenarios with cloud test grid    |
-| Golden dataset size   | 50 prompts            | 500 prompts with parallel eval       | 5000 prompts with batch inference      |
-| CI concurrent runners | 4 runners             | 16 runners with auto-scaling         | 64 runners with self-hosted fleet      |
-| Coverage reporting    | Per-service dashboard | Per-module with historical trends    | Per-function with flaky attribution    |
+| Test count | 500 tests | 5000 tests with parallel sharding | 50000 tests with distributed execution |
+| E2E test count | 20 scenarios | 200 scenarios with parallel browsers | 2000 scenarios with cloud test grid |
+| Golden dataset size | 50 prompts | 500 prompts with parallel eval | 5000 prompts with batch inference |
+| CI concurrent runners | 4 runners | 16 runners with auto-scaling | 64 runners with self-hosted fleet |
+| Coverage reporting | Per-service dashboard | Per-module with historical trends | Per-function with flaky attribution |
 
 ## Error Handling
 
-| Error Scenario                          | Detection                         | Mitigation                               | Recovery                                   |
+| Error Scenario | Detection | Mitigation | Recovery |
 | --------------------------------------- | --------------------------------- | ---------------------------------------- | ------------------------------------------ |
-| Flaky test detected                     | Test failed then passed on retry  | Quarantine test, notify owner            | Fix root cause, re-enable from quarantine  |
-| Golden dataset accuracy below threshold | Accuracy metric < 95%             | Block deployment, alert AI team          | Fix prompt, re-evaluate                    |
-| Integration test DB setup failure       | Service container startup timeout | Retry with clean container               | Increase timeout, check resource limits    |
-| E2E test timeout                        | Playwright timeout > 60s          | Retry with backoff (3 attempts)          | Fix test or increase timeout for slow flow |
-| Coverage below threshold                | Coverage metric < target          | Warning for small misses, block for > 5% | Add tests for uncovered paths              |
-| Load test target not met                | Performance metric below SLA      | Block release, generate perf report      | Optimize bottleneck, re-run load test      |
+| Flaky test detected | Test failed then passed on retry | Quarantine test, notify owner | Fix root cause, re-enable from quarantine |
+| Golden dataset accuracy below threshold | Accuracy metric < 95% | Block deployment, alert AI team | Fix prompt, re-evaluate |
+| Integration test DB setup failure | Service container startup timeout | Retry with clean container | Increase timeout, check resource limits |
+| E2E test timeout | Playwright timeout > 60s | Retry with backoff (3 attempts) | Fix test or increase timeout for slow flow |
+| Coverage below threshold | Coverage metric < target | Warning for small misses, block for > 5% | Add tests for uncovered paths |
+| Load test target not met | Performance metric below SLA | Block release, generate perf report | Optimize bottleneck, re-run load test |
 
 ## Monitoring
 
-| Metric                   | Alert Threshold                     | Severity | Dashboard                   |
+| Metric | Alert Threshold | Severity | Dashboard |
 | ------------------------ | ----------------------------------- | -------- | --------------------------- |
-| Test suite pass rate     | < 95% over 1 hour                   | Critical | CI Test Health Dashboard    |
-| Flaky test count         | > 5 active quarantined tests        | Warning  | Flaky Test Dashboard        |
-| Golden dataset accuracy  | < 95% for any dataset               | Critical | AI Eval Dashboard           |
-| Code coverage per module | Decrease > 2% from baseline         | Warning  | Coverage Trends Dashboard   |
-| E2E test duration p95    | > 90 seconds                        | Warning  | E2E Performance Dashboard   |
-| CI pipeline duration     | > 20 minutes for 3 consecutive runs | Warning  | Pipeline Duration Dashboard |
+| Test suite pass rate | < 95% over 1 hour | Critical | CI Test Health Dashboard |
+| Flaky test count | > 5 active quarantined tests | Warning | Flaky Test Dashboard |
+| Golden dataset accuracy | < 95% for any dataset | Critical | AI Eval Dashboard |
+| Code coverage per module | Decrease > 2% from baseline | Warning | Coverage Trends Dashboard |
+| E2E test duration p95 | > 90 seconds | Warning | E2E Performance Dashboard |
+| CI pipeline duration | > 20 minutes for 3 consecutive runs | Warning | Pipeline Duration Dashboard |
 
 ## Configuration
 
-| Variable                  | Purpose                                   | Default                                    | Required |
+| Variable | Purpose | Default | Required |
 | ------------------------- | ----------------------------------------- | ------------------------------------------ | -------- |
-| COVERAGE_THRESHOLD_LINE   | Minimum line coverage percentage          | 80                                         | Yes      |
-| COVERAGE_THRESHOLD_BRANCH | Minimum branch coverage percentage        | 70                                         | Yes      |
-| GOLDEN_ACCURACY_THRESHOLD | Minimum golden dataset accuracy           | 0.95                                       | Yes      |
-| E2E_RETRY_COUNT           | Number of retries for flaky E2E tests     | 2                                          | No       |
-| E2E_TIMEOUT               | E2E test timeout in milliseconds          | 60000                                      | No       |
-| INTEGRATION_DB_URL        | Test database connection string           | postgresql://test:test@localhost:5432/test | Yes      |
-| FLAKY_QUARANTINE_WINDOW   | Hours to quarantine flaky test            | 48                                         | No       |
-| LOAD_TEST_RPS_TARGET      | Target requests per second for load tests | 1000                                       | No       |
-| PARALLEL_WORKERS          | Number of parallel test workers           | 4                                          | No       |
+| COVERAGE_THRESHOLD_LINE | Minimum line coverage percentage | 80 | Yes |
+| COVERAGE_THRESHOLD_BRANCH | Minimum branch coverage percentage | 70 | Yes |
+| GOLDEN_ACCURACY_THRESHOLD | Minimum golden dataset accuracy | 0.95 | Yes |
+| E2E_RETRY_COUNT | Number of retries for flaky E2E tests | 2 | No |
+| E2E_TIMEOUT | E2E test timeout in milliseconds | 60000 | No |
+| INTEGRATION_DB_URL | Test database connection string | postgresql://test:test@localhost:5432/test | Yes |
+| FLAKY_QUARANTINE_WINDOW | Hours to quarantine flaky test | 48 | No |
+| LOAD_TEST_RPS_TARGET | Target requests per second for load tests | 1000 | No |
+| PARALLEL_WORKERS | Number of parallel test workers | 4 | No |
 
 ## Risks
 
-| Risk                                                     | Likelihood | Impact | Mitigation                                                      |
+| Risk | Likelihood | Impact | Mitigation |
 | -------------------------------------------------------- | ---------- | ------ | --------------------------------------------------------------- |
-| Golden dataset stale and not reflecting real user inputs | Medium     | High   | Monthly review of datasets against production data patterns     |
-| E2E tests creating test data pollution in staging        | Medium     | Medium | Dedicated test workspace, cleanup after test suite              |
-| Flaky tests eroding trust in CI pipeline                 | Medium     | High   | Automatic quarantine system, mandatory root cause analysis      |
-| AI eval tests being too expensive to run on every commit | High       | Medium | Run smoke eval on PR, full eval nightly                         |
-| Coverage targets encouraging useless tests               | Medium     | Low    | Coverage as indicator, not target; code review for test quality |
+| Golden dataset stale and not reflecting real user inputs | Medium | High | Monthly review of datasets against production data patterns |
+| E2E tests creating test data pollution in staging | Medium | Medium | Dedicated test workspace, cleanup after test suite |
+| Flaky tests eroding trust in CI pipeline | Medium | High | Automatic quarantine system, mandatory root cause analysis |
+| AI eval tests being too expensive to run on every commit | High | Medium | Run smoke eval on PR, full eval nightly |
+| Coverage targets encouraging useless tests | Medium | Low | Coverage as indicator, not target; code review for test quality |
 
 ## Limitations
 
-| Limitation                                | Impact                              | Workaround                                | Future Resolution                                     |
+| Limitation | Impact | Workaround | Future Resolution |
 | ----------------------------------------- | ----------------------------------- | ----------------------------------------- | ----------------------------------------------------- |
-| No visual regression testing              | UI regressions may go undetected    | Manual review of staging UI               | Add Percy or Chromatic for automated visual diff      |
-| Golden datasets limited to known patterns | Unknown edge cases untested         | Manual exploratory testing                | Generate synthetic edge cases via LLM                 |
-| Load tests not run in CI                  | Performance regressions caught late | Pre-release gate with mandatory load test | Run performance smoke tests in CI, full suite nightly |
-| No fuzz testing for agent inputs          | Prompt injection may slip through   | Manual adversarial testing                | Automated fuzz testing with known injection patterns  |
-| No test impact analysis                   | All tests run on every commit       | Manual test selection                     | Test impact analysis based on changed files           |
+| No visual regression testing | UI regressions may go undetected | Manual review of staging UI | Add Percy or Chromatic for automated visual diff |
+| Golden datasets limited to known patterns | Unknown edge cases untested | Manual exploratory testing | Generate synthetic edge cases via LLM |
+| Load tests not run in CI | Performance regressions caught late | Pre-release gate with mandatory load test | Run performance smoke tests in CI, full suite nightly |
+| No fuzz testing for agent inputs | Prompt injection may slip through | Manual adversarial testing | Automated fuzz testing with known injection patterns |
+| No test impact analysis | All tests run on every commit | Manual test selection | Test impact analysis based on changed files |
 
 ## Future Improvements
 
-| Improvement                                           | Priority | Complexity | Timeline |
+| Improvement | Priority | Complexity | Timeline |
 | ----------------------------------------------------- | -------- | ---------- | -------- |
-| Test impact analysis for selective test execution     | High     | High       | Q4 2026  |
-| Automated visual regression testing (Percy/Chromatic) | High     | Medium     | Q3 2026  |
-| Automated fuzz testing for agent prompt injection     | Medium   | Medium     | Q3 2026  |
-| Performance smoke tests in CI                         | Medium   | Low        | Q2 2026  |
-| Synthetic edge case generation for golden datasets    | Low      | Medium     | Q4 2026  |
+| Test impact analysis for selective test execution | High | High | Q4 2026 |
+| Automated visual regression testing (Percy/Chromatic) | High | Medium | Q3 2026 |
+| Automated fuzz testing for agent prompt injection | Medium | Medium | Q3 2026 |
+| Performance smoke tests in CI | Medium | Low | Q2 2026 |
+| Synthetic edge case generation for golden datasets | Low | Medium | Q4 2026 |
 
 ## Examples
 

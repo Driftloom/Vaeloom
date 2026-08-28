@@ -50,23 +50,23 @@ User research is how Vaeloom stays grounded in real user needs rather than assum
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    subgraph Primary["Primary Segments"]
-        S1["CS/Engineering Students<br/>Undergrad + Grad"]:::primary
-        S2["Early-Career Professionals<br/>0-3 years experience"]:::primary
-    end
+ subgraph Primary["Primary Segments"]
+ S1["CS/Engineering Students<br/>Undergrad + Grad"]:::primary
+ S2["Early-Career Professionals<br/>0-3 years experience"]:::primary
+ end
 
-    subgraph Secondary["Secondary Segments"]
-        S3["Bootcamp Graduates<br/>Career changers"]:::secondary
-        S4["Mid-Career Professionals<br/>Seeking advancement"]:::secondary
-    end
+ subgraph Secondary["Secondary Segments"]
+ S3["Bootcamp Graduates<br/>Career changers"]:::secondary
+ S4["Mid-Career Professionals<br/>Seeking advancement"]:::secondary
+ end
 
-    subgraph Enterprise["Enterprise Segments"]
-        S5["Universities<br/>(Career services)"]:::secondary
-        S6["Employers<br/>(L&D, HR)"]:::secondary
-    end
+ subgraph Enterprise["Enterprise Segments"]
+ S5["Universities<br/>(Career services)"]:::secondary
+ S6["Employers<br/>(L&D, HR)"]:::secondary
+ end
 ```
 
 > **Diagram:** User segment hierarchy. Primary segments (students, early-career) are the MVP focus. Secondary segments are natural expansion. Enterprise segments are the long-term market.
@@ -119,15 +119,15 @@ graph TD
 
 ```mermaid
 graph LR
-    classDef research fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef product fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef research fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef product fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    R1["Research Findings"]:::research -->|"synthesize"| R2["User Needs Matrix"]:::research
-    R2 -->|"prioritize"| P1["Product Backlog"]:::product
-    P1 -->|"specify"| P2["Feature Specs"]:::product
-    P2 -->|"build"| P3["Release"]:::product
-    P3 -->|"measure"| R3["Analytics + NPS"]:::research
-    R3 -->|"new findings"| R1
+ R1["Research Findings"]:::research-->|"synthesize"| R2["User Needs Matrix"]:::research
+ R2-->|"prioritize"| P1["Product Backlog"]:::product
+ P1-->|"specify"| P2["Feature Specs"]:::product
+ P2-->|"build"| P3["Release"]:::product
+ P3-->|"measure"| R3["Analytics + NPS"]:::research
+ R3-->|"new findings"| R1
 ```
 
 > **Diagram:** Research-to-product loop. Findings → needs matrix → backlog → specs → release → measure → new findings. Research is continuous, not a phase.

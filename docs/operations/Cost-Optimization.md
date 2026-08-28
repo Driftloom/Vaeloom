@@ -1,52 +1,52 @@
-﻿# Cost Optimization
+# Cost Optimization
 
 > **Purpose:** Define cost optimization strategy for Vaeloom operations
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Cost Architecture
 
 ```mermaid
 graph TD
-    classDef driver fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef aiOpt fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef infraOpt fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef monitor fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef driver fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef aiOpt fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef infraOpt fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef monitor fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Drivers["ðŸ’° Cost Drivers"]
-        D1["AI Model Inference Â· 50-60%<br/>Token usage per agent"]
-        D2["Compute (Hosting) Â· 20-30%<br/>Service instances"]
-        D3["Storage Â· 10-15%<br/>Documents + database"]
-        D4["Networking Â· 5-10%<br/>Data transfer, CDN"]
-    end
+ subgraph Drivers["Cost Drivers"]
+ D1["AI Model Inference · 50-60%<br/>Token usage per agent"]
+ D2["Compute (Hosting) · 20-30%<br/>Service instances"]
+ D3["Storage · 10-15%<br/>Documents + database"]
+ D4["Networking · 5-10%<br/>Data transfer, CDN"]
+ end
 
-    subgraph AIOpt["ðŸ¤- AI Cost Optimization"]
-        A1["Tiered model routing: Save 30-50%<br/>Cheap models for classification"]
-        A2["Prompt caching: Save 20-30%<br/>Cache repeated invocations"]
-        A3["Context window mgmt: Save 10-20%<br/>Prune to relevant memories"]
-        A4["Debounced re-processing: Save 10-15%<br/>Batch during low traffic"]
-    end
+ subgraph AIOpt["AI Cost Optimization"]
+ A1["Tiered model routing: Save 30-50%<br/>Cheap models for classification"]
+ A2["Prompt caching: Save 20-30%<br/>Cache repeated invocations"]
+ A3["Context window mgmt: Save 10-20%<br/>Prune to relevant memories"]
+ A4["Debounced re-processing: Save 10-15%<br/>Batch during low traffic"]
+ end
 
-    subgraph InfraOpt["âš™ï¸ Infrastructure Optimization"]
-        I1["Right-sizing instances: Save 20-40%"]
-        I2["Auto-scaling: Save 10-20%"]
-        I3["Reserved instances: Save 20-30%"]
-        I4["Spot instances: Save 40-60%<br/>Batch processing jobs"]
-    end
+ subgraph InfraOpt["Infrastructure Optimization"]
+ I1["Right-sizing instances: Save 20-40%"]
+ I2["Auto-scaling: Save 10-20%"]
+ I3["Reserved instances: Save 20-30%"]
+ I4["Spot instances: Save 40-60%<br/>Batch processing jobs"]
+ end
 
-    subgraph Monitoring["ðŸ”” Cost Monitoring"]
-        M1["Daily spend > 20% day-over-day --> Alert"]
-        M2["AI cost/user > $2/month --> Alert"]
-        M3["Monthly budget > 80% --> Alert"]
-        M4["Storage > 10% week-over-week --> Alert"]
-    end
+ subgraph Monitoring["Cost Monitoring"]
+ M1["Daily spend > 20% day-over-day--> Alert"]
+ M2["AI cost/user > $2/month--> Alert"]
+ M3["Monthly budget > 80%--> Alert"]
+ M4["Storage > 10% week-over-week--> Alert"]
+ end
 
-    Drivers --> AIOpt & InfraOpt
-    AIOpt & InfraOpt --> Monitoring
+ Drivers--> AIOpt & InfraOpt
+ AIOpt & InfraOpt--> Monitoring
 
-    class D1,D2,D3,D4 driver
-    class A1,A2,A3,A4 aiOpt
-    class I1,I2,I3,I4 infraOpt
-    class M1,M2,M3,M4 monitor
+ class D1,D2,D3,D4 driver
+ class A1,A2,A3,A4 aiOpt
+ class I1,I2,I3,I4 infraOpt
+ class M1,M2,M3,M4 monitor
 ```
 
 > **Diagram:** Cost optimization — **4 cost drivers** (AI inference 50-60% → compute → storage → networking), **AI strategies** (tiered routing 30-50%, prompt caching 20-30%, context pruning 10-20%), **infrastructure strategies** (right-sizing 20-40%, spot 40-60%), and **monitoring alerts** (daily spend, per-user AI cost, budget utilization, storage growth).

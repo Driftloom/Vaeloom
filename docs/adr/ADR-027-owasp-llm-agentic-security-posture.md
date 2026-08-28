@@ -1,12 +1,12 @@
 # ADR-027: OWASP LLM/Agentic Security Posture
 
-| Metadata     | Value                            |
+| Metadata | Value |
 | ------------ | -------------------------------- |
-| **Status**   | Accepted                         |
-| **Date**     | 2026-08-16                       |
+| **Status** | Accepted |
+| **Date** | 2026-08-16 |
 | **Deciders** | Security Architect, AI Architect |
-| **Owner**    | Security Team                    |
-| **Tags**     | security, ai, owasp, compliance  |
+| **Owner** | Security Team |
+| **Tags** | security, ai, owasp, compliance |
 
 ## Context
 
@@ -23,33 +23,33 @@ maintain this mapping as a living document.
 
 ### OWASP LLM Top 10 Mapping
 
-| OWASP LLM Risk                              | Vaeloom Exposure                                          | Current Mitigation                               | Status                                      |
+| OWASP LLM Risk | Vaeloom Exposure | Current Mitigation | Status |
 | ------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------- |
-| **LLM01: Prompt Injection**                 | High — agents process user documents, emails, web content | Pydantic validation; agent system prompts        | ⚠️ No dedicated prompt injection classifier |
-| **LLM02: Sensitive Information Disclosure** | High — memory stores personal data                        | AES-256 encryption; tenant isolation             | ⚠️ No output filtering for PII leaks        |
-| **LLM03: Supply Chain**                     | Medium — OpenAI/Anthropic API dependencies                | API key rotation; circuit breaker (ADR-017)      | ⚠️ No model provider failover               |
-| **LLM04: Data and Model Poisoning**         | High — knowledge graph ingest                             | Append-only audit trail                          | ⚠️ No embedding validation                  |
-| **LLM05: Improper Output Handling**         | Medium — agent outputs in UI                              | React auto-escaping; DOMPurify                   | ✅ Adequate                                 |
-| **LLM06: Excessive Agency**                 | Critical — tool access, memory write, email draft         | Permission Engine (4-axis); suggest-mode default | ⚠️ Static tool allowlist                    |
-| **LLM07: System Prompt Leakage**            | Medium — system prompts contain mission details           | Not addressed                                    | ❌ No guard                                 |
-| **LLM08: Vector and Embedding Weaknesses**  | High — pgvector store                                     | Tenant-scoped queries                            | ⚠️ No embedding integrity check             |
-| **LLM09: Misinformation**                   | Medium — agent hallucination                              | QA Agent; confidence threshold (<0.8)            | ⚠️ No grounding verification                |
-| **LLM10: Unbounded Consumption**            | Medium — LLM API costs                                    | Rate limiting (ADR-012); per-agent limits        | ⚠️ No token budget per request              |
+| **LLM01: Prompt Injection** | High — agents process user documents, emails, web content | Pydantic validation; agent system prompts | ⚠️ No dedicated prompt injection classifier |
+| **LLM02: Sensitive Information Disclosure** | High — memory stores personal data | AES-256 encryption; tenant isolation | ⚠️ No output filtering for PII leaks |
+| **LLM03: Supply Chain** | Medium — OpenAI/Anthropic API dependencies | API key rotation; circuit breaker (ADR-017) | ⚠️ No model provider failover |
+| **LLM04: Data and Model Poisoning** | High — knowledge graph ingest | Append-only audit trail | ⚠️ No embedding validation |
+| **LLM05: Improper Output Handling** | Medium — agent outputs in UI | React auto-escaping; DOMPurify | ✅ Adequate |
+| **LLM06: Excessive Agency** | Critical — tool access, memory write, email draft | Permission Engine (4-axis); suggest-mode default | ⚠️ Static tool allowlist |
+| **LLM07: System Prompt Leakage** | Medium — system prompts contain mission details | Not addressed | ❌ No guard |
+| **LLM08: Vector and Embedding Weaknesses** | High — pgvector store | Tenant-scoped queries | ⚠️ No embedding integrity check |
+| **LLM09: Misinformation** | Medium — agent hallucination | QA Agent; confidence threshold (<0.8) | ⚠️ No grounding verification |
+| **LLM10: Unbounded Consumption** | Medium — LLM API costs | Rate limiting (ADR-012); per-agent limits | ⚠️ No token budget per request |
 
 ### OWASP Agentic Top 10 Mapping
 
-| ASI Risk                                      | Vaeloom Exposure                          | Mitigation                           | Status                               |
+| ASI Risk | Vaeloom Exposure | Mitigation | Status |
 | --------------------------------------------- | ----------------------------------------- | ------------------------------------ | ------------------------------------ |
-| **ASI01: Agent Goal Hijack**                  | Critical — orchestrator routes agents     | Orchestrator + QA Agent              | ⚠️ No behavioral baseline            |
-| **ASI02: Tool Misuse**                        | High — MCP tools (Gmail, GitHub, Drive)   | Permission Engine per tool call      | ✅ Runtime enforcement               |
-| **ASI03: Identity/Privilege Abuse**           | High — shared workspace credentials       | Per-agent tool scope                 | ⚠️ No per-agent credential isolation |
-| **ASI04: Agentic Supply Chain**               | Medium — plugin SDK, MCP tools            | Plugin sandbox (ADR-008)             | ✅ Subprocess isolation              |
-| **ASI05: Unexpected Code Execution**          | Medium — plugin sandbox                   | Subprocess isolation                 | ⚠️ No egress restriction             |
-| **ASI06: Memory/Context Poisoning**           | Critical — memory is core product         | No input validation on memory writes | ❌ No anomaly detection              |
-| **ASI07: Insecure Inter-Agent Communication** | Medium — via Orchestrator                 | No direct agent-to-agent calls       | ✅ Star topology                     |
-| **ASI08: Cascading Agent Failures**           | High — agent chain: Memory→Org→Resume→ATS | Circuit breaker (ADR-017)            | ⚠️ No inter-agent breaker            |
-| **ASI09: Rogue Agents**                       | Low — statically configured               | Agent config validated in CI         | ✅                                   |
-| **ASI10: Resource/Rate Abuse**                | Medium — LLM API costs                    | Per-agent rate limits                | ⚠️ No per-workflow budget            |
+| **ASI01: Agent Goal Hijack** | Critical — orchestrator routes agents | Orchestrator + QA Agent | ⚠️ No behavioral baseline |
+| **ASI02: Tool Misuse** | High — MCP tools (Gmail, GitHub, Drive) | Permission Engine per tool call | ✅ Runtime enforcement |
+| **ASI03: Identity/Privilege Abuse** | High — shared workspace credentials | Per-agent tool scope | ⚠️ No per-agent credential isolation |
+| **ASI04: Agentic Supply Chain** | Medium — plugin SDK, MCP tools | Plugin sandbox (ADR-008) | ✅ Subprocess isolation |
+| **ASI05: Unexpected Code Execution** | Medium — plugin sandbox | Subprocess isolation | ⚠️ No egress restriction |
+| **ASI06: Memory/Context Poisoning** | Critical — memory is core product | No input validation on memory writes | ❌ No anomaly detection |
+| **ASI07: Insecure Inter-Agent Communication** | Medium — via Orchestrator | No direct agent-to-agent calls | ✅ Star topology |
+| **ASI08: Cascading Agent Failures** | High — agent chain: Memory→Org→Resume→ATS | Circuit breaker (ADR-017) | ⚠️ No inter-agent breaker |
+| **ASI09: Rogue Agents** | Low — statically configured | Agent config validated in CI | ✅ |
+| **ASI10: Resource/Rate Abuse** | Medium — LLM API costs | Per-agent rate limits | ⚠️ No per-workflow budget |
 
 ## Rationale
 
@@ -65,11 +65,11 @@ than "accidental."
 
 ## Alternatives Considered
 
-| Option                        | Pros                        | Cons                     | Why Not            |
+| Option | Pros | Cons | Why Not |
 | ----------------------------- | --------------------------- | ------------------------ | ------------------ |
-| Ad-hoc security reviews       | Low effort                  | Incomplete, unrepeatable | Audit failure risk |
-| Third-party pen test only     | External validation         | Point-in-time, expensive | Not continuous     |
-| Formal OWASP mapping (chosen) | Complete, auditable, living | Initial effort ~2 days   | —                  |
+| Ad-hoc security reviews | Low effort | Incomplete, unrepeatable | Audit failure risk |
+| Third-party pen test only | External validation | Point-in-time, expensive | Not continuous |
+| Formal OWASP mapping (chosen) | Complete, auditable, living | Initial effort ~2 days | — |
 
 ## Consequences
 
@@ -91,11 +91,11 @@ than "accidental."
 ## Compliance & Safety Notes
 
 - EU AI Act: Transparency obligations applicable from 2026-08-02 require
-  documented risk identification for AI systems.
+ documented risk identification for AI systems.
 - NIST AI RMF: GOVERN function requires "risk management practices are
-  established, implemented, and continuously improved."
+ established, implemented, and continuously improved."
 - SOC 2: Security control documentation is a Trust Services Criteria
-  requirement.
+ requirement.
 
 ## Verification
 

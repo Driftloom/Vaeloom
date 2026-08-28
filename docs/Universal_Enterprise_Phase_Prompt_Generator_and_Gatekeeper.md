@@ -30,7 +30,7 @@ When this prompt is used, you must:
 8. Include source discovery and evidence requirements in the generated prompt.
 9. Include all phase-relevant enterprise disciplines.
 10. Include implementation, testing, security, documentation, operations, and
-    audit requirements.
+ audit requirements.
 11. Define measurable entry and exit criteria.
 12. Define a mandatory quality gate.
 13. Define a remediation loop for failed or partial items.
@@ -299,13 +299,13 @@ adjacent roles must review the result.
 For example:
 
 - A database phase still requires security, privacy, performance, backup,
-  migration, testing, and operations review.
+ migration, testing, and operations review.
 - A frontend phase still requires accessibility, API contract, security,
-  performance, analytics, error handling, and test review.
+ performance, analytics, error handling, and test review.
 - A deployment phase still requires application, database, security, rollback,
-  observability, documentation, and business continuity review.
+ observability, documentation, and business continuity review.
 - An AI phase still requires data governance, responsible AI, evaluation,
-  security, privacy, model operations, fallback behavior, and human oversight.
+ security, privacy, model operations, fallback behavior, and human oversight.
 
 ---
 
@@ -369,7 +369,7 @@ REQUIRES_PROFESSIONAL_REVIEW
 Ask a question only when:
 
 1. The information is required to produce a correct phase prompt or safely
-   execute the phase.
+ execute the phase.
 2. It cannot be obtained from existing project sources.
 3. It cannot be safely represented as a reversible placeholder.
 4. Proceeding without it would create material risk.
@@ -1489,20 +1489,20 @@ Do not fix only the visible symptom when the root cause remains.
 
 ## 14.1 Weighted categories
 
-| Category                                 | Weight |
+| Category | Weight |
 | ---------------------------------------- | -----: |
-| Scope and requirement completeness       |    12% |
-| Technical correctness                    |    12% |
-| Architecture and integration consistency |     8% |
-| Data quality and integrity               |     8% |
-| Security and privacy                     |    12% |
-| Testing and validation                   |    12% |
-| Reliability and failure handling         |     8% |
-| Performance and scalability              |     6% |
-| Evidence and traceability                |     8% |
-| Documentation and handoff                |     6% |
-| Operational readiness                    |     5% |
-| Maintainability and supportability       |     3% |
+| Scope and requirement completeness | 12% |
+| Technical correctness | 12% |
+| Architecture and integration consistency | 8% |
+| Data quality and integrity | 8% |
+| Security and privacy | 12% |
+| Testing and validation | 12% |
+| Reliability and failure handling | 8% |
+| Performance and scalability | 6% |
+| Evidence and traceability | 8% |
+| Documentation and handoff | 6% |
+| Operational readiness | 5% |
+| Maintainability and supportability | 3% |
 
 Mark non-applicable categories and redistribute weight proportionally.
 
@@ -2025,7 +2025,7 @@ At the completion of an executed or audited phase, return:
 
 ## L. Risks and Decisions
 
-| ID  | Type | Description | Decision or Mitigation | Owner | Status |
+| ID | Type | Description | Decision or Mitigation | Owner | Status |
 | --- | ---- | ----------- | ---------------------- | ----- | ------ |
 
 ## M. Gaps
@@ -2076,37 +2076,37 @@ PHASE NOT EXECUTED — REQUIRED INPUT, SOURCE, APPROVAL, OR ACCESS IS MISSING
 
 Before returning a generated phase prompt, verify:
 
-| Check                                        |        Required |
+| Check | Required |
 | -------------------------------------------- | --------------: |
-| Selected phase is correctly normalized       |             Yes |
-| Scope is explicit                            |             Yes |
-| Out-of-scope work is explicit                |             Yes |
-| Previous-phase dependencies are included     |             Yes |
-| Blocking unknowns are visible                |             Yes |
-| No material facts are invented               |             Yes |
-| Sources are defined                          |             Yes |
-| Source conflicts have a process              |             Yes |
-| Requirements have IDs                        |             Yes |
-| Acceptance criteria are measurable           |             Yes |
-| Work is decomposed                           |             Yes |
-| Code and non-code deliverables are covered   |             Yes |
-| Security is covered                          |             Yes |
-| Privacy is covered                           | When applicable |
-| Compliance is covered                        | When applicable |
-| Data is covered                              | When applicable |
-| Accessibility is covered                     | When applicable |
-| Performance is covered                       | When applicable |
-| Reliability is covered                       | When applicable |
-| Testing is complete                          |             Yes |
-| Evidence is mandatory                        |             Yes |
-| Traceability is mandatory                    |             Yes |
-| Documentation is mandatory                   |             Yes |
-| Quality gate is explicit                     |             Yes |
-| Remediation loop exists                      |             Yes |
-| Handoff is explicit                          |             Yes |
-| Next phase is blocked until approval         |             Yes |
-| Executed and proposed work are distinguished |             Yes |
-| The prompt is standalone                     |             Yes |
+| Selected phase is correctly normalized | Yes |
+| Scope is explicit | Yes |
+| Out-of-scope work is explicit | Yes |
+| Previous-phase dependencies are included | Yes |
+| Blocking unknowns are visible | Yes |
+| No material facts are invented | Yes |
+| Sources are defined | Yes |
+| Source conflicts have a process | Yes |
+| Requirements have IDs | Yes |
+| Acceptance criteria are measurable | Yes |
+| Work is decomposed | Yes |
+| Code and non-code deliverables are covered | Yes |
+| Security is covered | Yes |
+| Privacy is covered | When applicable |
+| Compliance is covered | When applicable |
+| Data is covered | When applicable |
+| Accessibility is covered | When applicable |
+| Performance is covered | When applicable |
+| Reliability is covered | When applicable |
+| Testing is complete | Yes |
+| Evidence is mandatory | Yes |
+| Traceability is mandatory | Yes |
+| Documentation is mandatory | Yes |
+| Quality gate is explicit | Yes |
+| Remediation loop exists | Yes |
+| Handoff is explicit | Yes |
+| Next phase is blocked until approval | Yes |
+| Executed and proposed work are distinguished | Yes |
+| The prompt is standalone | Yes |
 
 Repair the generated prompt until all applicable checks pass.
 
@@ -2168,8 +2168,8 @@ Expected behavior:
 3. Separate blocking and non-blocking gaps.
 4. Generate a standalone frontend execution prompt.
 5. Include repository inspection, implementation, API contract checks,
-   accessibility, responsive behavior, security, tests, evidence, documentation,
-   gate, remediation, and handoff.
+ accessibility, responsive behavior, security, tests, evidence, documentation,
+ gate, remediation, and handoff.
 6. Do not falsely claim that frontend code was executed.
 
 ---
@@ -2228,14 +2228,14 @@ Self-audit the generated prompt and repair all missing sections before returning
 20. Do not claim production readiness without release and operations evidence.
 21. Do not claim security without threat-based verification.
 22. Do not claim scalability without measurable architecture or performance
-    evidence.
+ evidence.
 23. Do not claim accessibility without accessibility testing.
 24. Do not claim data quality without validated rules and results.
 25. Do not claim completion when required access prevented execution.
 26. Always identify what was executed, what was generated, what was verified,
-    and what remains unresolved.
+ and what remains unresolved.
 27. Continue remediation until the phase is approved or formally blocked.
 28. Generate the next-phase prompt only from the approved handoff.
 29. Preserve complete traceability from original source to final gate.
 30. Optimize for enterprise correctness, safety, maintainability, and
-    operational readiness—not output length.
+ operational readiness—not output length.

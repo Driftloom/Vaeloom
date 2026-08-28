@@ -1,7 +1,7 @@
-﻿# MVP-P18 — 05. Test Results
+# MVP-P18 — 05. Test Results
 
-> **Phase:** MVP-P18 — Documentation and Knowledge Transfer  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 93.2 + P18 (docs IA 256 docs 15 cats + 32 ADRs + 99 OpenAPI + onboarding + portal 1127 lines)  
+> **Phase:** MVP-P18 — Documentation and Knowledge Transfer 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 93.2 + P18 (docs IA 256 docs 15 cats + 32 ADRs + 99 OpenAPI + onboarding + portal 1127 lines) 
 > **Env:** `tmp_path` NullPool `mock_llm` `mock_connector_test` Python 3.12.13 `uv` + `pytest-xdist -n 4` sqlite + `httpx.AsyncClient(app)`; `terraform 1.8.0` + `docker buildx v4` + `k6 v0.54` + `trivy` + `gitleaks` + `cosign 2.2.4` + `syft` + `promtool` + `grafana` + `vale/vale.ini` + `markdownlint-cli` + `python yaml`
 
 ## Summary
@@ -78,7 +78,7 @@ $ python -c "from api.logging import _redact; print(_redact({'password':'x','tok
 | **Docs IA 256 docs** | `docs/README.md:1` 584 lines 15 cats taxonomy mermaid + Category Index Arch18/AI23/Backend21/DB10/DevOps12/Eng11/Ent9/FE17/Ops16/Product22/Sec14/Test12/API4/Guides9/Contrib2 + Lifecycle 🆕/✅/🔄/🗄️ | PASS 15 cats + 256 Published v2.0 `2026-07-17` |
 | **Documentation Map** | `DOCUMENTATION-MAP.md:1` 65 lines Category Summary 178 files + Dependency Graph 7 edges + Canonical Phase Sources + Related docs | PASS 178 docs dependency ARCH→BACKEND→AI verified |
 | **ADRs 32 indexed** | `docs/adr/` 32 files `ADR-001..032` `rg -n "^# ADR" docs/adr/*.md` 32 + `Architecture/03-adrs.md:1` index + `docs/README.md:64` ADR row | PASS 32 ADRs Status Accepted versioned |
-| **OpenAPI 99 paths** | `openapi.yaml:1` 3.1.0 0.2.0 99 paths `rg -c "^  /" openapi.yaml` =99 + `python yaml.safe_load` PASS + tags 18 groups + `/metrics` + `/health` 3 probes | PASS 99 matches `API_REFERENCE.md` 18 groups |
+| **OpenAPI 99 paths** | `openapi.yaml:1` 3.1.0 0.2.0 99 paths `rg -c "^ /" openapi.yaml` =99 + `python yaml.safe_load` PASS + tags 18 groups + `/metrics` + `/health` 3 probes | PASS 99 matches `API_REFERENCE.md` 18 groups |
 | **API Reference 407 lines** | `API_REFERENCE.md:1` 407 lines Auth Bearer JWT/SSO + 18 Endpoint Groups + Error 400/401/403/404/422/429/500 + RateLimit 100/60s + Pagination 20/100 + WS SSE | PASS curl examples accurate vs openapi |
 | **Onboarding 216 lines** | `DEVELOPER_ONBOARDING.md:1` 216 lines Prerequisites + Clone `git clone` + `pnpm install 2-3min` + venv + docker 5432/6379/9000 + `pnpm dev:be/web` never `pnpm dev` hangs + Tests + Common Issues + PR workflow | PASS 4 roles engineer/operator/support/security validated |
 | **Contributing 299 lines** | `CONTRIBUTING.md:1` 299 lines project 25 packages + TS strict/Py PEP8 100ch + lint eslint/ruff/prettier/husky + conv commits + PR 8-step + vale + ADR docs/adr | PASS lint `markdownlint` 0 errors |

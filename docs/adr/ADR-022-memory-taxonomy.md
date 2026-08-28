@@ -1,11 +1,11 @@
 # ADR-022: Six-Domain Memory Taxonomy on Existing Schema
 
-| Metadata     | Value                                                                |
+| Metadata | Value |
 | ------------ | -------------------------------------------------------------------- |
-| **Status**   | ADOPTED — IMPLEMENTED_UNVERIFIED (verify all 6 types + supersession) |
-| **Date**     | 2026-08-15 (design re-run); first documented 2026-08-07              |
-| **Deciders** | Engineering Team                                                     |
-| **Owner**    | Data Architect                                                       |
+| **Status** | ADOPTED — IMPLEMENTED_UNVERIFIED (verify all 6 types + supersession) |
+| **Date** | 2026-08-15 (design re-run); first documented 2026-08-07 |
+| **Deciders** | Engineering Team |
+| **Owner** | Data Architect |
 
 ## Context
 
@@ -20,11 +20,11 @@ Keep the six-domain taxonomy as the classification/retrieval contract, mapped
 onto existing `memories` / `memory_records` rows — **not** new tables.
 
 - `schemas/memory_types.py` — `MemoryType` enum + `MEMORY_TYPE_REGISTRY`
-  (fine-grained entity registry: person, organization, skill, … preference,
-  document, conversation) with per-type TTL and search weight.
+ (fine-grained entity registry: person, organization, skill, … preference,
+ document, conversation) with per-type TTL and search weight.
 - `migrations/0004_memory_taxonomy.py` — adds `domain` facet, `supersedes_id`
-  supersession link (FR-68), `deleted_at` soft-delete, `(tenant_id, domain)`
-  index on `memories`.
+ supersession link (FR-68), `deleted_at` soft-delete, `(tenant_id, domain)`
+ index on `memories`.
 - `services/memory_versioning.py` — version snapshots/diffs per memory.
 - Supersession via `supersedes_id`, not row deletion.
 

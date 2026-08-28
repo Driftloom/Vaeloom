@@ -1,46 +1,46 @@
-﻿# Business Model
+# Business Model
 
 > **Purpose:** Define the business model and monetization strategy for Vaeloom
-> **Status:** ðŸ†• New — placeholder for MVP learnings
+> **Status:** New — placeholder for MVP learnings
 
 ## Business Model Architecture
 
 ```mermaid
 graph TD
-    classDef free fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pro fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef ent fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef principle fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef free fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pro fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef ent fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef principle fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Individual["ðŸ‘¤ Individual Tier"]
-        I1["Free: $0<br/>1 connector, 100 docs, basic org"]
-        I2["Pro: TBD<br/>Unlimited, all agents, ATS scoring"]
-        I3["Lifetime: TBD<br/>Early adopter, all future features"]
-    end
+ subgraph Individual["Individual Tier"]
+ I1["Free: $0<br/>1 connector, 100 docs, basic org"]
+ I2["Pro: TBD<br/>Unlimited, all agents, ATS scoring"]
+ I3["Lifetime: TBD<br/>Early adopter, all future features"]
+ end
 
-    subgraph Enterprise["ðŸ¢ Enterprise Tier"]
-        E1["University: Per-seat annual<br/>Student accounts, consent model, SSO"]
-        E2["Company: Per-seat annual<br/>Employee accounts, RBAC, mobility"]
-    end
+ subgraph Enterprise["Enterprise Tier"]
+ E1["University: Per-seat annual<br/>Student accounts, consent model, SSO"]
+ E2["Company: Per-seat annual<br/>Employee accounts, RBAC, mobility"]
+ end
 
-    subgraph Principles["ðŸ“‹ Pricing Principles"]
-        P1["Student-accessible<br/>Free tier must be genuinely useful"]
-        P2["Value-based<br/>Price on outcomes, not features used"]
-        P3["Data-driven<br/>MVP data informs enterprise pricing"]
-    end
+ subgraph Principles["Pricing Principles"]
+ P1["Student-accessible<br/>Free tier must be genuinely useful"]
+ P2["Value-based<br/>Price on outcomes, not features used"]
+ P3["Data-driven<br/>MVP data informs enterprise pricing"]
+ end
 
-    subgraph Economics["ðŸ“Š Unit Economics (Est.)"]
-        U1["COGS/user/mo: $0.50-$2.00<br/>(AI compute + storage)"]
-        U2["Free-->Paid conversion: TBD"]
-        U3["ARPU: TBD \| CAC: TBD"]
-    end
+ subgraph Economics["Unit Economics (Est.)"]
+ U1["COGS/user/mo: $0.50-$2.00<br/>(AI compute + storage)"]
+ U2["Free-->Paid conversion: TBD"]
+ U3["ARPU: TBD \| CAC: TBD"]
+ end
 
-    Individual & Enterprise --> Principles --> Economics
+ Individual & Enterprise--> Principles--> Economics
 
-    class I1,I2,I3 free
-    class E1,E2 ent
-    class P1,P2,P3 principle
-    class U1,U2,U3 economics
+ class I1,I2,I3 free
+ class E1,E2 ent
+ class P1,P2,P3 principle
+ class U1,U2,U3 economics
 ```
 
 > **Diagram:** Business model — **individual tier** (free/pro/lifetime), **enterprise tier** (university/company per-seat), **pricing principles** (student-accessible, value-based, data-driven), **unit economics** with MVP estimates.

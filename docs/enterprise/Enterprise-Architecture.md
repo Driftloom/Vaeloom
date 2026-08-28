@@ -21,60 +21,60 @@ isolation models, identity federation, audit pipeline, compliance mappings (SOC
 
 ```mermaid
 graph TD
-    classDef tenant fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef isolation fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef audit fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef tenant fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef isolation fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef audit fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Tenants["Enterprise Tenants"]
-        T1["Tenant A<br/>(Acme Corp)"]
-        T2["Tenant B<br/>(Beta Inc)"]
-        T3["Tenant C<br/>(Gamma LLC)"]
-    end
+ subgraph Tenants["Enterprise Tenants"]
+ T1["Tenant A<br/>(Acme Corp)"]
+ T2["Tenant B<br/>(Beta Inc)"]
+ T3["Tenant C<br/>(Gamma LLC)"]
+ end
 
-    subgraph Isolation["Tenant Isolation Models"]
-        DBP["Database-per-Tenant<br/>Separate RDS instance<br/>Max isolation<br/>Best for: Regulated orgs"]
-        RLS["Row-Level Security<br/>Shared database<br/>PostgreSQL RLS policies<br/>Best for: SMB enterprises"]
-        HYBRID["Hybrid<br/>Sharded by sensitivity<br/>RLS + dedicated for PII"]
-    end
+ subgraph Isolation["Tenant Isolation Models"]
+ DBP["Database-per-Tenant<br/>Separate RDS instance<br/>Max isolation<br/>Best for: Regulated orgs"]
+ RLS["Row-Level Security<br/>Shared database<br/>PostgreSQL RLS policies<br/>Best for: SMB enterprises"]
+ HYBRID["Hybrid<br/>Sharded by sensitivity<br/>RLS + dedicated for PII"]
+ end
 
-    subgraph Shared["Shared Infrastructure"]
-        GW["Enterprise Gateway<br/>SSO, routing, rate limiting"]
-        SRV["Shared Services<br/>Agents, search, inference"]
-        AUD["Audit Pipeline<br/>Immutable audit store"]
-    end
+ subgraph Shared["Shared Infrastructure"]
+ GW["Enterprise Gateway<br/>SSO, routing, rate limiting"]
+ SRV["Shared Services<br/>Agents, search, inference"]
+ AUD["Audit Pipeline<br/>Immutable audit store"]
+ end
 
-    subgraph Admin["Enterprise Admin Console"]
-        ADM1["User Management<br/>Provisioning, dept, roles"]
-        ADM2["SSO Configuration<br/>SAML/OIDC metadata"]
-        ADM3["Audit Viewer<br/>Search, export, alert"]
-        ADM4["Billing & Analytics<br/>Usage, invoices, quotas"]
-    end
+ subgraph Admin["Enterprise Admin Console"]
+ ADM1["User Management<br/>Provisioning, dept, roles"]
+ ADM2["SSO Configuration<br/>SAML/OIDC metadata"]
+ ADM3["Audit Viewer<br/>Search, export, alert"]
+ ADM4["Billing & Analytics<br/>Usage, invoices, quotas"]
+ end
 
-    T1 & T2 & T3 --> Admin
-    Admin --> GW
-    GW --> DBP & RLS & HYBRID
-    DBP & RLS & HYBRID --> SRV
-    T1 & T2 & T3 --> AUD
-    SRV --> AUD
+ T1 & T2 & T3--> Admin
+ Admin--> GW
+ GW--> DBP & RLS & HYBRID
+ DBP & RLS & HYBRID--> SRV
+ T1 & T2 & T3--> AUD
+ SRV--> AUD
 
-    class T1,T2,T3 tenant
-    class DBP,RLS,HYBRID isolation
-    class GW,SRV,AUD infra
-    class ADM1,ADM2,ADM3,ADM4 admin
+ class T1,T2,T3 tenant
+ class DBP,RLS,HYBRID isolation
+ class GW,SRV,AUD infra
+ class ADM1,ADM2,ADM3,ADM4 admin
 ```
 
 ## Tenant Isolation Models
 
-| Feature                  | Database-per-Tenant     | Row-Level Security (RLS)     | Hybrid                       |
+| Feature | Database-per-Tenant | Row-Level Security (RLS) | Hybrid |
 | ------------------------ | ----------------------- | ---------------------------- | ---------------------------- |
-| **Isolation level**      | Physical database       | Logical (PostgreSQL RLS)     | PII: physical, rest: logical |
-| **Data separation**      | Complete                | Policy-based row filtering   | Tiered                       |
-| **Performance**          | Dedicated resources     | Shared resource pool         | Per-tier allocation          |
-| **Backup/Restore**       | Per-tenant backup       | Whole-database backup        | Per-PII-tenant backup        |
-| **Cost**                 | Highest (per-tenant DB) | Lowest (shared DB)           | Medium                       |
-| **Migration complexity** | Low                     | High (RLS policy management) | Medium                       |
-| **Compliance fit**       | HIPAA, SOC 2 Type II    | SOC 2, GDPR                  | Best for mixed workloads     |
+| **Isolation level** | Physical database | Logical (PostgreSQL RLS) | PII: physical, rest: logical |
+| **Data separation** | Complete | Policy-based row filtering | Tiered |
+| **Performance** | Dedicated resources | Shared resource pool | Per-tier allocation |
+| **Backup/Restore** | Per-tenant backup | Whole-database backup | Per-PII-tenant backup |
+| **Cost** | Highest (per-tenant DB) | Lowest (shared DB) | Medium |
+| **Migration complexity** | Low | High (RLS policy management) | Medium |
+| **Compliance fit** | HIPAA, SOC 2 Type II | SOC 2, GDPR | Best for mixed workloads |
 
 ### Implementation: Row-Level Security
 
@@ -127,51 +127,51 @@ async function tenantMiddleware(
 
 ## SSO / SAML / OIDC Integration
 
-> **Implementation Status: STUB** � SAML SSO code exists in
+> **Implementation Status: STUB** — SAML SSO code exists in
 > `apps/api/.../sso.py` but all methods return `None`. SAML is **not
 > functional**. Google and Microsoft SSO (OAuth/OIDC) are implemented and
 > working. Treat SAML as a placeholder for future implementation.
 
 ```mermaid
 sequenceDiagram
-    participant U as Enterprise User
-    participant APP as Vaeloom App
-    participant GW as Enterprise Gateway
-    participant IDP as IdP (Okta/Azure AD/OneLogin)
-    participant API as Vaeloom API
+ participant U as Enterprise User
+ participant APP as Vaeloom App
+ participant GW as Enterprise Gateway
+ participant IDP as IdP (Okta/Azure AD/OneLogin)
+ participant API as Vaeloom API
 
-    U->>APP: Access app.Vaeloom.dev
-    APP->>GW: Redirect to SSO login
-    GW->>IDP: SAML Request / OIDC Auth Request
-    IDP-->>U: Login page
-    U->>IDP: Enter credentials
-    IDP-->>GW: SAML Assertion / ID Token
+ U->>APP: Access app.Vaeloom.dev
+ APP->>GW: Redirect to SSO login
+ GW->>IDP: SAML Request / OIDC Auth Request
+ IDP-->>U: Login page
+ U->>IDP: Enter credentials
+ IDP-->>GW: SAML Assertion / ID Token
 
-    Note over GW: Validate assertion<br/>Check audience, issuer, signature<br/>Extract attributes (email, groups)
+ Note over GW: Validate assertion<br/>Check audience, issuer, signature<br/>Extract attributes (email, groups)
 
-    GW->>API: Create/find user session
-    API->>API: Map IdP groups to Vaeloom roles
+ GW->>API: Create/find user session
+ API->>API: Map IdP groups to Vaeloom roles
 
-    alt Just-in-Time Provisioning
-        API->>API: Create user if not exists<br/>Assign roles from group mapping
-    end
+ alt Just-in-Time Provisioning
+ API->>API: Create user if not exists<br/>Assign roles from group mapping
+ end
 
-    API-->>GW: Session token (JWT)
-    GW-->>APP: Set session cookie
-    APP-->>U: Authenticated dashboard
+ API-->>GW: Session token (JWT)
+ GW-->>APP: Set session cookie
+ APP-->>U: Authenticated dashboard
 
-    Note over GW: Session lifetime: IdP session duration<br/>Token refresh: 15 min access token
+ Note over GW: Session lifetime: IdP session duration<br/>Token refresh: 15 min access token
 ```
 
 ### Supported Identity Providers
 
-| IdP                 | Protocol                       | SCIM Provisioning                              | Directory Sync |
+| IdP | Protocol | SCIM Provisioning | Directory Sync |
 | ------------------- | ------------------------------ | ---------------------------------------------- | -------------- |
-| Okta                | SAML 2.0, OIDC                 | ?? NOT MOUNTED (router exists, not in main.py) | ?? NOT MOUNTED |
-| Azure AD / Entra ID | SAML 2.0, OIDC                 | ?? NOT MOUNTED (router exists, not in main.py) | ?? NOT MOUNTED |
-| OneLogin            | SAML 2.0                       | ?? NOT MOUNTED (router exists, not in main.py) | ?? NOT MOUNTED |
-| Google Workspace    | OIDC                           | ?? NOT MOUNTED (router exists, not in main.py) | ?? NOT MOUNTED |
-| Any SAML 2.0 IdP    | SAML 2.0 (STUB � returns None) | ?? NOT MOUNTED                                 | ?              |
+| Okta | SAML 2.0, OIDC | ?? NOT MOUNTED (router exists, not in main.py) | ?? NOT MOUNTED |
+| Azure AD / Entra ID | SAML 2.0, OIDC | ?? NOT MOUNTED (router exists, not in main.py) | ?? NOT MOUNTED |
+| OneLogin | SAML 2.0 | ?? NOT MOUNTED (router exists, not in main.py) | ?? NOT MOUNTED |
+| Google Workspace | OIDC | ?? NOT MOUNTED (router exists, not in main.py) | ?? NOT MOUNTED |
+| Any SAML 2.0 IdP | SAML 2.0 (STUB — returns None) | ?? NOT MOUNTED | ? |
 
 ### Configuration Requirements
 
@@ -195,48 +195,48 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pipeline fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef action fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pipeline fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef store fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef action fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Sources["Audit Event Sources"]
-        S1["API Actions<br/>CRUD operations"]
-        S2["Auth Events<br/>Login, logout, MFA"]
-        S3["Admin Actions<br/>Config changes, provisioning"]
-        S4["Agent Runs<br/>Inference + outputs"]
-        S5["Data Access<br/>Document reads, exports"]
-    end
+ subgraph Sources["Audit Event Sources"]
+ S1["API Actions<br/>CRUD operations"]
+ S2["Auth Events<br/>Login, logout, MFA"]
+ S3["Admin Actions<br/>Config changes, provisioning"]
+ S4["Agent Runs<br/>Inference + outputs"]
+ S5["Data Access<br/>Document reads, exports"]
+ end
 
-    subgraph Pipeline["Audit Pipeline"]
-        P1["Structured Event<br/>CloudEvents format"]
-        P2["Enrichment<br/>User context, tenant, IP"]
-        P3["Immutability<br/>Append-only + signing"]
-        P4["Encryption<br/>AES-256 at rest"]
-    end
+ subgraph Pipeline["Audit Pipeline"]
+ P1["Structured Event<br/>CloudEvents format"]
+ P2["Enrichment<br/>User context, tenant, IP"]
+ P3["Immutability<br/>Append-only + signing"]
+ P4["Encryption<br/>AES-256 at rest"]
+ end
 
-    subgraph Storage["Audit Storage"]
-        ST1["Immutable Log Store<br/>S3 + DynamoDB index"]
-        ST2["7-Year Retention<br/>Glacier archive"]
-        ST3["Legal Hold<br/>Exempt from deletion"]
-    end
+ subgraph Storage["Audit Storage"]
+ ST1["Immutable Log Store<br/>S3 + DynamoDB index"]
+ ST2["7-Year Retention<br/>Glacier archive"]
+ ST3["Legal Hold<br/>Exempt from deletion"]
+ end
 
-    subgraph Features["Audit Features"]
-        F1["Real-time Search<br/>Elasticsearch"]
-        F2["Export (CSV/JSON)<br/>For SIEM ingestion"]
-        F3["Alert Rules<br/>Anomaly detection"]
-        F4["Compliance Reports<br/>SOC 2, HIPAA"]
-    end
+ subgraph Features["Audit Features"]
+ F1["Real-time Search<br/>Elasticsearch"]
+ F2["Export (CSV/JSON)<br/>For SIEM ingestion"]
+ F3["Alert Rules<br/>Anomaly detection"]
+ F4["Compliance Reports<br/>SOC 2, HIPAA"]
+ end
 
-    S1 & S2 & S3 & S4 & S5 --> P1 --> P2 --> P3 --> P4
-    P4 --> ST1 --> ST2
-    ST1 --> ST3
-    ST1 --> F1 & F2 & F3 & F4
+ S1 & S2 & S3 & S4 & S5--> P1--> P2--> P3--> P4
+ P4--> ST1--> ST2
+ ST1--> ST3
+ ST1--> F1 & F2 & F3 & F4
 
-    class S1,S2,S3,S4,S5 source
-    class P1,P2,P3,P4 pipeline
-    class ST1,ST2,ST3 store
-    class F1,F2,F3,F4 action
+ class S1,S2,S3,S4,S5 source
+ class P1,P2,P3,P4 pipeline
+ class ST1,ST2,ST3 store
+ class F1,F2,F3,F4 action
 ```
 
 ### Audit Event Schema
@@ -271,18 +271,18 @@ graph LR
 
 ## Compliance Mappings
 
-| Requirement           | SOC 2 | GDPR      | HIPAA (Readiness)   | Vaeloom Implementation                                                                        |
+| Requirement | SOC 2 | GDPR | HIPAA (Readiness) | Vaeloom Implementation |
 | --------------------- | ----- | --------- | ------------------- | --------------------------------------------------------------------------------------------- |
-| Access Control        | CC6.1 | Art. 32   | �164.312(a)(1)      | RBAC (dependency injection helper) + ABAC + tenant isolation; API gateway enforces all access |
-| Encryption at Rest    | CC6.7 | Art. 32   | �164.312(a)(2)(iv)  | AES-256 for all data stores; KMS-managed keys                                                 |
-| Encryption in Transit | CC6.7 | Art. 32   | �164.312(e)(1)      | TLS 1.3 for all API, database, and inter-service communication                                |
-| Audit Logging         | CC7.2 | Art. 5(2) | �164.312(b)         | Immutable audit events; 7-year retention; real-time search                                    |
-| Data Retention        | CC7.3 | Art. 17   | �164.310(d)(1)      | Per-data-type retention schedules; automated enforcement                                      |
-| Incident Response     | CC7.4 | Art. 33   | �164.308(a)(6)      | Documented IR plan; 24-hour notification SLA                                                  |
-| Business Continuity   | CC7.5 | Art. 32   | �164.308(a)(7)      | RTO 4h, RPO 1h; annual failover test                                                          |
-| Vendor Management     | CC3.2 | Art. 28   | �164.308(b)(1)      | Annual vendor assessments; DPAs with all vendors                                              |
-| Data Deletion         | CC6.1 | Art. 17   | �164.310(d)(2)(iii) | Soft delete + retention cron; legal hold override                                             |
-| Employee Access       | CC6.1 | Art. 32   | �164.308(a)(3)      | JIT access; MFA for all operations; quarterly access review                                   |
+| Access Control | CC6.1 | Art. 32 | —164.312(a)(1) | RBAC (dependency injection helper) + ABAC + tenant isolation; API gateway enforces all access |
+| Encryption at Rest | CC6.7 | Art. 32 | —164.312(a)(2)(iv) | AES-256 for all data stores; KMS-managed keys |
+| Encryption in Transit | CC6.7 | Art. 32 | —164.312(e)(1) | TLS 1.3 for all API, database, and inter-service communication |
+| Audit Logging | CC7.2 | Art. 5(2) | —164.312(b) | Immutable audit events; 7-year retention; real-time search |
+| Data Retention | CC7.3 | Art. 17 | —164.310(d)(1) | Per-data-type retention schedules; automated enforcement |
+| Incident Response | CC7.4 | Art. 33 | —164.308(a)(6) | Documented IR plan; 24-hour notification SLA |
+| Business Continuity | CC7.5 | Art. 32 | —164.308(a)(7) | RTO 4h, RPO 1h; annual failover test |
+| Vendor Management | CC3.2 | Art. 28 | —164.308(b)(1) | Annual vendor assessments; DPAs with all vendors |
+| Data Deletion | CC6.1 | Art. 17 | —164.310(d)(2)(iii) | Soft delete + retention cron; legal hold override |
+| Employee Access | CC6.1 | Art. 32 | —164.308(a)(3) | JIT access; MFA for all operations; quarterly access review |
 
 ## Private Cloud / VPC Deployment
 
@@ -326,51 +326,51 @@ deployment_options:
 
 ## Best Practices
 
-| Practice                                       | Rationale                                                                                                                                      |
+| Practice | Rationale |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Prefer row-level security for most enterprises | Database-per-tenant doubles operational cost and backup complexity; RLS provides sufficient isolation for all but the most regulated customers |
-| Use Just-in-Time (JIT) provisioning with SCIM  | Prevents stale user records; SCIM sync ensures deprovisioned IdP users are suspended in Vaeloom within 15 minutes                              | **Note: SCIM router is NOT MOUNTED � code exists but endpoints return 404** |
-| Sign all audit events at creation              | Append-only log with hash chaining prevents tampering � each event includes the hash of the previous event                                     |
-| Map IdP groups to Vaeloom roles                | Group-based role assignment scales better than per-user configuration; supports org-chart changes without manual intervention                  |
+| Use Just-in-Time (JIT) provisioning with SCIM | Prevents stale user records; SCIM sync ensures deprovisioned IdP users are suspended in Vaeloom within 15 minutes | **Note: SCIM router is NOT MOUNTED — code exists but endpoints return 404** |
+| Sign all audit events at creation | Append-only log with hash chaining prevents tampering — each event includes the hash of the previous event |
+| Map IdP groups to Vaeloom roles | Group-based role assignment scales better than per-user configuration; supports org-chart changes without manual intervention |
 
 ## Common Mistakes
 
-| Mistake                              | Consequence                                                                                      | Fix                                                                                                                     |
+| Mistake | Consequence | Fix |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Applying RLS policies inconsistently | Some tables expose cross-tenant data; hard to detect without cross-tenant testing                | Run automated cross-tenant data leak tests in CI; RLS policies must be applied to every table with a `tenant_id` column |
-| Over-scoping SAML attribute mapping  | Mapping all IdP groups to roles creates permission sprawl; unused groups create confusion        | Only map groups explicitly configured in the admin console; ignore unmapped groups                                      | **Note: SAML is STUB � all methods return None** |
-| No tenant-level rate limiting        | One noisy tenant can degrade performance for all others                                          | Implement tenant-level rate limits separate from user-level limits; enforce at the enterprise gateway                   |
-| Ignoring audit log integrity         | Audit logs stored in mutable storage (database) � if compromised, logs can be altered or deleted | Use append-only storage (S3 + hashing); audit log access is read-only even for admins                                   |
+| Applying RLS policies inconsistently | Some tables expose cross-tenant data; hard to detect without cross-tenant testing | Run automated cross-tenant data leak tests in CI; RLS policies must be applied to every table with a `tenant_id` column |
+| Over-scoping SAML attribute mapping | Mapping all IdP groups to roles creates permission sprawl; unused groups create confusion | Only map groups explicitly configured in the admin console; ignore unmapped groups | **Note: SAML is STUB — all methods return None** |
+| No tenant-level rate limiting | One noisy tenant can degrade performance for all others | Implement tenant-level rate limits separate from user-level limits; enforce at the enterprise gateway |
+| Ignoring audit log integrity | Audit logs stored in mutable storage (database) — if compromised, logs can be altered or deleted | Use append-only storage (S3 + hashing); audit log access is read-only even for admins |
 
 ## Security Considerations
 
-| Concern                                                  | Mitigation                                                                                                                                                    |
+| Concern | Mitigation |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cross-tenant data access (vertical privilege escalation) | RLS policies enforced at database level; tenant routing ensured by API gateway; cross-tenant query attempts logged and alerted                                |
-| IdP impersonation                                        | SAML assertion signature validation with X.509 certificates (STUB � not implemented); OIDC JWT signature + audience validation (working for Google/Microsoft) |
-| Tenant key compromise                                    | Per-tenant encryption keys (KMS); key rotation on tenant admin change; compromised key rotation <1 hour                                                       |
-| Audit log tampering                                      | Hash-chained audit events; periodic integrity verification; detection of missing or modified events triggers alert                                            |
-| VPC peering exposure                                     | VPC peering limited to specific routes; security groups restrict inter-service communication; network ACLs block unexpected traffic                           |
+| Cross-tenant data access (vertical privilege escalation) | RLS policies enforced at database level; tenant routing ensured by API gateway; cross-tenant query attempts logged and alerted |
+| IdP impersonation | SAML assertion signature validation with X.509 certificates (STUB — not implemented); OIDC JWT signature + audience validation (working for Google/Microsoft) |
+| Tenant key compromise | Per-tenant encryption keys (KMS); key rotation on tenant admin change; compromised key rotation <1 hour |
+| Audit log tampering | Hash-chained audit events; periodic integrity verification; detection of missing or modified events triggers alert |
+| VPC peering exposure | VPC peering limited to specific routes; security groups restrict inter-service communication; network ACLs block unexpected traffic |
 
 ## Performance Considerations
 
-| Concern                                | Mitigation                                                                                                                                |
+| Concern | Mitigation |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| RLS policy evaluation overhead         | RLS policies add <1ms per query on indexed `tenant_id` columns; composite indexes created on `(tenant_id, ...)` for common query patterns |
-| Database-per-tenant connection pooling | Connection pool per tenant creates overhead at 100+ tenants; PgBouncer with `session` pooling mode reduces connections                    |
-| Audit event ingestion at scale         | Audit events buffered and batch-written (1000 events / batch); target <1s from event creation to searchable                               |
-| SCIM sync frequency                    | SCIM sync runs every 15 minutes; delta sync (not full) to minimize load on IdP and Vaeloom API                                            | **Note: SCIM router is NOT MOUNTED � code exists but endpoints return 404** |
-| Private cloud deployment provisioning  | VPC deployment automated via Terraform; 12-week timeline includes compliance validation and network security review                       |
+| RLS policy evaluation overhead | RLS policies add <1ms per query on indexed `tenant_id` columns; composite indexes created on `(tenant_id, ...)` for common query patterns |
+| Database-per-tenant connection pooling | Connection pool per tenant creates overhead at 100+ tenants; PgBouncer with `session` pooling mode reduces connections |
+| Audit event ingestion at scale | Audit events buffered and batch-written (1000 events / batch); target <1s from event creation to searchable |
+| SCIM sync frequency | SCIM sync runs every 15 minutes; delta sync (not full) to minimize load on IdP and Vaeloom API | **Note: SCIM router is NOT MOUNTED — code exists but endpoints return 404** |
+| Private cloud deployment provisioning | VPC deployment automated via Terraform; 12-week timeline includes compliance validation and network security review |
 
 ## Goals
 
 - Define the multi-tenant architecture options (database-per-tenant, RLS,
-  hybrid) with trade-off analysis
+ hybrid) with trade-off analysis
 - Document SSO/SAML/OIDC integration patterns for major identity providers
 - Establish enterprise audit requirements with immutable, hash-chained event
-  storage
+ storage
 - Map compliance requirements (SOC 2, GDPR, HIPAA) to Vaeloom implementation
-  controls
+ controls
 - Specify private cloud and VPC deployment options with SLAs and timelines
 
 ---
@@ -381,7 +381,7 @@ deployment_options:
 
 - Multi-tenant architecture and isolation models
 - SSO/SAML/OIDC integration with major IdPs (Okta, Azure AD, OneLogin, Google
-  Workspace)
+ Workspace)
 - Enterprise audit pipeline (CloudEvents format, immutability, retention)
 - Compliance mappings (SOC 2, GDPR, HIPAA readiness)
 - Private cloud / VPC deployment options
@@ -430,19 +430,19 @@ const workspace = await enterprise.workspaces.create({ name: 'Acme HR' });
 
 ## Future Improvements
 
-| Improvement                                    | Priority | Complexity | Timeline |
+| Improvement | Priority | Complexity | Timeline |
 | ---------------------------------------------- | -------- | ---------- | -------- |
-| Automated cross-tenant data leak testing in CI | High     | Medium     | Q4 2026  |
-| Per-tenant encryption key auto-rotation        | High     | Medium     | Q1 2027  |
-| SCIM v2 full lifecycle management (push/pull)  | Medium   | Medium     | Q1 2027  | **Prerequisite: mount SCIM router in main.py** |
-| AI-powered audit log anomaly detection         | Medium   | High       | Q2 2027  |
-| Self-service private cloud provisioning        | Low      | High       | Q3 2027  |
+| Automated cross-tenant data leak testing in CI | High | Medium | Q4 2026 |
+| Per-tenant encryption key auto-rotation | High | Medium | Q1 2027 |
+| SCIM v2 full lifecycle management (push/pull) | Medium | Medium | Q1 2027 | **Prerequisite: mount SCIM router in main.py** |
+| AI-powered audit log anomaly detection | Medium | High | Q2 2027 |
+| Self-service private cloud provisioning | Low | High | Q3 2027 |
 
 ## Related Documents
 
 - [Security Architecture.md](../Security/Security-Architecture.md)
-- [RBAC Model.md](../Backend/RBAC.md) � RBAC is a dependency injection helper,
-  NOT middleware
+- [RBAC Model.md](../Backend/RBAC.md) — RBAC is a dependency injection helper,
+ NOT middleware
 - [ABAC Model.md](../Backend/ABAC.md)
 - [Audit Logs.md](../Security/Audit-Logs.md)
 - [Data Retention Policy.md](../Security/Data-Retention-Policy.md)

@@ -38,29 +38,29 @@
 
 ```mermaid
 quadrantChart
-    title Competitive Landscape -- Price vs. Capability
-    x-axis "Low Price" --> "High Price"
-    y-axis "Low Capability" --> "High Capability"
-    quadrant-1 "💎 Premium"
-    quadrant-2 "🌟 Sweet Spot"
-    quadrant-3 "🛠️ Basic Tools"
-    quadrant-4 "💸 Overpriced"
+ title Competitive Landscape -- Price vs. Capability
+ x-axis "Low Price"--> "High Price"
+ y-axis "Low Capability"--> "High Capability"
+ quadrant-1 "💎 Premium"
+ quadrant-2 "🌟 Sweet Spot"
+ quadrant-3 "🛠 Basic Tools"
+ quadrant-4 "💸 Overpriced"
 
-    "Vaeloom": [0.52, 0.78]
-    "Notion": [0.25, 0.50]
-    "Obsidian": [0.05, 0.42]
-    "Roam": [0.35, 0.48]
-    "ChatGPT": [0.30, 0.65]
-    "Claude": [0.30, 0.68]
-    "Copilot": [0.40, 0.60]
-    "LinkedIn": [0.05, 0.35]
-    "Indeed": [0.05, 0.25]
-    "Google Drive": [0.15, 0.20]
-    "Dropbox": [0.30, 0.22]
-    "Handshake": [0.05, 0.30]
-    "Rezi": [0.20, 0.30]
-    "Novoresume": [0.25, 0.28]
-    "Kickresume": [0.15, 0.18]
+ "Vaeloom": [0.52, 0.78]
+ "Notion": [0.25, 0.50]
+ "Obsidian": [0.05, 0.42]
+ "Roam": [0.35, 0.48]
+ "ChatGPT": [0.30, 0.65]
+ "Claude": [0.30, 0.68]
+ "Copilot": [0.40, 0.60]
+ "LinkedIn": [0.05, 0.35]
+ "Indeed": [0.05, 0.25]
+ "Google Drive": [0.15, 0.20]
+ "Dropbox": [0.30, 0.22]
+ "Handshake": [0.05, 0.30]
+ "Rezi": [0.20, 0.30]
+ "Novoresume": [0.25, 0.28]
+ "Kickresume": [0.15, 0.18]
 ```
 
 > **Chart:** Vaeloom occupies the **Sweet Spot** quadrant — high capability at mid-range price. AI assistants (ChatGPT, Claude) cluster nearby but lack persistent memory. Note tools (Notion, Obsidian, Roam) offer moderate capability at low-to-mid price. Job boards (LinkedIn, Indeed) and resume builders (Rezi, Novoresume) sit in the **Basic Tools** quadrant — useful but limited. No competitor combines automated organization, persistent memory, and proactive agents at this price point.

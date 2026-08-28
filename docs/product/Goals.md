@@ -7,36 +7,36 @@
 
 ```mermaid
 graph TD
-    classDef product fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef mvp fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef ent fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef product fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef mvp fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef ent fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Product["🎯 Product Goals"]
-        G1["Persistent structured memory<br/>Every interaction --> knows user better"]
-        G2["Zero manual organization<br/>No manual file naming or sorting"]
-        G3["Proactive, not reactive<br/>Surface before being asked"]
-        G4["Trustworthy autonomy<br/>Explainable, reversible, earned"]
-        G5["Platform, not silo<br/>Plugin/MCP ecosystem"]
-    end
+ subgraph Product["Product Goals"]
+ G1["Persistent structured memory<br/>Every interaction--> knows user better"]
+ G2["Zero manual organization<br/>No manual file naming or sorting"]
+ G3["Proactive, not reactive<br/>Surface before being asked"]
+ G4["Trustworthy autonomy<br/>Explainable, reversible, earned"]
+ G5["Platform, not silo<br/>Plugin/MCP ecosystem"]
+ end
 
-    subgraph MVP["📋 MVP Goals (Phase 0-6)"]
-        M1["Prove core loop: ingest --> organize --> remember --> assist"]
-        M2[">90% proposal approval on file organization"]
-        M3["Upload resume --> submit tailored app in one session"]
-        M4["Surface urgent emails within minutes"]
-    end
+ subgraph MVP["MVP Goals (Phase 0-6)"]
+ M1["Prove core loop: ingest--> organize--> remember--> assist"]
+ M2["90% proposal approval on file organization"]
+ M3["Upload resume--> submit tailored app in one session"]
+ M4["Surface urgent emails within minutes"]
+ end
 
-    subgraph Enterprise["🏢 Enterprise Goals (Phase 7+)"]
-        E1["Institutions provision accounts without access to memory"]
-        E2["25+ connectors across platforms"]
-        E3["Verified tenant isolation"]
-    end
+ subgraph Enterprise["Enterprise Goals (Phase 7+)"]
+ E1["Institutions provision accounts without access to memory"]
+ E2["25+ connectors across platforms"]
+ E3["Verified tenant isolation"]
+ end
 
-    Product --> MVP --> Enterprise
+ Product--> MVP--> Enterprise
 
-    class G1,G2,G3,G4,G5 product
-    class M1,M2,M3,M4 mvp
-    class E1,E2,E3 ent
+ class G1,G2,G3,G4,G5 product
+ class M1,M2,M3,M4 mvp
+ class E1,E2,E3 ent
 ```
 
 > **Diagram:** Goals architecture — **5 product goals** (memory, zero organization, proactive, autonomy, platform) → **4 MVP goals** (core loop, 90% approval, one-session application, urgent surfacing) → **3 enterprise goals** (institutional provisioning, 25+ connectors, tenant isolation).

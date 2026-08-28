@@ -1,7 +1,7 @@
-﻿# Enterprise Documentation Template
+# Enterprise Documentation Template
 
 > **Purpose:** This template defines the full 25-section enterprise quality standard for all Vaeloom documentation — target: 100/100
-> **Status:** ðŸ†• Template — apply to all docs
+> **Status:** Template — apply to all docs
 > **Owner:** Architecture Team
 > **Last Updated:** 2026-07-13
 
@@ -17,12 +17,12 @@ Every document in the Vaeloom documentation system MUST follow this structure. A
 # Document Title
 
 > **Purpose:** One-sentence description of what this document covers
-> **Status:** ðŸ†• New | âœ… Upgraded to enterprise quality | ðŸ”„ Needs Update | ðŸ—„ï¸ Deprecated
+> **Status:** 🆕 New | ✅ Upgraded to enterprise quality | 🔄 Needs Update | 🗄️ Deprecated
 > **Owner:** [Team Name]
 > **Version:** 1.0
 > **Last Updated:** YYYY-MM-DD
 > **Dependencies:** [comma-separated docs/systems this relies on, or "None"]
-> **Implementation Status:** ðŸ“‹ Spec Only | ðŸ”¨ In Progress | âœ… Shipped
+> **Implementation Status:** 📋 Spec Only | 🔨 In Progress | ✅ Shipped
 > **Review Checklist:** Standard
 > **Canonical source:** <!-- Replace with actual path --> `./path/to/source.md`
 ```
@@ -116,16 +116,16 @@ Mermaid diagram showing the architecture:
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    subgraph System["System Name"]
-        A["Component A"] --> B["Component B"]
-        B --> C["Component C"]
-    end
+ subgraph System["System Name"]
+ A["Component A"] --> B["Component B"]
+ B --> C["Component C"]
+ end
 
-    class A,B primary
-    class C secondary
+ class A,B primary
+ class C secondary
 ```
 
 > **Diagram:** Brief description of the architecture shown.
@@ -157,14 +157,14 @@ For workflows with multiple actors:
 
 ````mermaid
 sequenceDiagram
-    participant User
-    participant System
-    participant External
-    
-    User->>System: Request
-    System->>External: API Call
-    External-->>System: Response
-    System-->>User: Result
+ participant User
+ participant System
+ participant External
+ 
+ User->>System: Request
+ System->>External: API Call
+ External-->>System: Response
+ System-->>User: Result
 ````
 
 ### 11. Data Flow

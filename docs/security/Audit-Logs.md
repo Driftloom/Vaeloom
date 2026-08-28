@@ -10,46 +10,46 @@
 
 ```mermaid
 graph TD
-    classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef schema fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef retention fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef query fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef source fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef schema fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef retention fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef query fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Sources["📤 What Gets Logged"]
-        direction TB
-        S1["Agent Proposal<br/>Input, proposed output, confidence"]
-        S2["User Approval/Rejection<br/>Which proposal, user action"]
-        S3["Agent Autonomous Action<br/>Full input, output, reasoning"]
-        S4["Memory Read/Write<br/>Query, entity, confidence"]
-        S5["Permission Grant/Revoke<br/>Granter, grantee, scope"]
-        S6["Connector Events<br/>Type, scopes, errors"]
-    end
+ subgraph Sources["What Gets Logged"]
+ direction TB
+ S1["Agent Proposal<br/>Input, proposed output, confidence"]
+ S2["User Approval/Rejection<br/>Which proposal, user action"]
+ S3["Agent Autonomous Action<br/>Full input, output, reasoning"]
+ S4["Memory Read/Write<br/>Query, entity, confidence"]
+ S5["Permission Grant/Revoke<br/>Granter, grantee, scope"]
+ S6["Connector Events<br/>Type, scopes, errors"]
+ end
 
-    subgraph Schema["🗄️ Database Schema"]
-        SC["agent_actions<br/>id: UUID PK<br/>workspace_id: UUID FK<br/>agent_name: TEXT<br/>action_type: TEXT<br/>input_ref: JSONB<br/>output_ref: JSONB<br/>status: pending/approved/rejected...<br/>created_at: TIMESTAMPTZ<br/>approved_by: TEXT<br/>undo_action_id: UUID"]
-    end
+ subgraph Schema["Database Schema"]
+ SC["agent_actions<br/>id: UUID PK<br/>workspace_id: UUID FK<br/>agent_name: TEXT<br/>action_type: TEXT<br/>input_ref: JSONB<br/>output_ref: JSONB<br/>status: pending/approved/rejected...<br/>created_at: TIMESTAMPTZ<br/>approved_by: TEXT<br/>undo_action_id: UUID"]
+ end
 
-    subgraph Retention["⏱️ Retention Policies"]
-        R1["Agent actions<br/>MVP: 1 year<br/>Enterprise: 7 years"]
-        R2["Memory reads<br/>90 days"]
-        R3["Permission changes<br/>Permanent"]
-        R4["Connector events<br/>1 year"]
-    end
+ subgraph Retention["Retention Policies"]
+ R1["Agent actions<br/>MVP: 1 year<br/>Enterprise: 7 years"]
+ R2["Memory reads<br/>90 days"]
+ R3["Permission changes<br/>Permanent"]
+ R4["Connector events<br/>1 year"]
+ end
 
-    subgraph Queries["🔍 Querying Audit Logs"]
-        Q1["All actions by agent<br/>WHERE agent_name = 'org_agent'<br/>AND created_at > 7 days ago"]
-        Q2["Actions that were undone<br/>WHERE undo_action_id IS NOT NULL"]
-        Q3["All actions on workspace<br/>WHERE workspace_id = 'ws_abc'<br/>ORDER BY created_at DESC"]
-    end
+ subgraph Queries["Querying Audit Logs"]
+ Q1["All actions by agent<br/>WHERE agent_name = 'org_agent'<br/>AND created_at > 7 days ago"]
+ Q2["Actions that were undone<br/>WHERE undo_action_id IS NOT NULL"]
+ Q3["All actions on workspace<br/>WHERE workspace_id = 'ws_abc'<br/>ORDER BY created_at DESC"]
+ end
 
-    S1 & S2 & S3 & S4 & S5 & S6 --> Schema
-    Schema --> R1 & R2 & R3 & R4
-    Schema --> Q1 & Q2 & Q3
+ S1 & S2 & S3 & S4 & S5 & S6--> Schema
+ Schema--> R1 & R2 & R3 & R4
+ Schema--> Q1 & Q2 & Q3
 
-    class S1,S2,S3,S4,S5,S6 source
-    class SC schema
-    class R1,R2,R3,R4 retention
-    class Q1,Q2,Q3 query
+ class S1,S2,S3,S4,S5,S6 source
+ class SC schema
+ class R1,R2,R3,R4 retention
+ class Q1,Q2,Q3 query
 ```
 
 > **Diagram:** Audit log architecture showing **6 event sources** → single `agent_actions` table with full schema → **4 retention tiers** (90 days to permanent) → **query patterns** for investigation. The append-only design prevents tampering, and every action is traceable to its source agent.
@@ -244,26 +244,26 @@ This document defines the audit logging system for Vaeloom — covering what get
 
 ```mermaid
 sequenceDiagram
-    participant AG as Agent
-    participant EC as Event Collector
-    participant LW as Log Writer
-    participant IS as Immutable Store
-    participant RM as Retention Manager
+ participant AG as Agent
+ participant EC as Event Collector
+ participant LW as Log Writer
+ participant IS as Immutable Store
+ participant RM as Retention Manager
 
-    AG->>EC: Agent action event (type, payload, agent_id)
-    EC->>EC: Validate event schema
-    EC->>EC: Queue in async buffer
-    
-    LW->>EC: Flush batch (every 100 events / 5s)
-    EC-->>LW: Batch of validated events
-    
-    LW->>IS: Write to append-only store
-    IS-->>LW: Confirmation with write timestamp
-    
-    RM->>IS: Check retention policy (daily)
-    IS-->>RM: Records exceeding policy
-    RM->>RM: Apply lifecycle (delete/archive)
-    RM->>IS: Confirm lifecycle applied
+ AG->>EC: Agent action event (type, payload, agent_id)
+ EC->>EC: Validate event schema
+ EC->>EC: Queue in async buffer
+ 
+ LW->>EC: Flush batch (every 100 events / 5s)
+ EC-->>LW: Batch of validated events
+ 
+ LW->>IS: Write to append-only store
+ IS-->>LW: Confirmation with write timestamp
+ 
+ RM->>IS: Check retention policy (daily)
+ IS-->>RM: Records exceeding policy
+ RM->>RM: Apply lifecycle (delete/archive)
+ RM->>IS: Confirm lifecycle applied
 ```
 
 > **Diagram:** Audit log flow — events collected asynchronously, batched, written to immutable store, then lifecycle policies applied based on log type and retention schedule.

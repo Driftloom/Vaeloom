@@ -1,4 +1,4 @@
-﻿# Operations
+# Operations
 
 > **Purpose:** Runbooks, incident response, monitoring, and operational procedures
 > **Status:** Active
@@ -17,37 +17,37 @@ All operations docs follow best practices for version control, regular testing, 
 
 | Document | Location | Status |
 |----------|----------|--------|
-| Operations Runbook | [`01-operations-runbook.md`](./01-operations-runbook.md) | ðŸ†• Created |
-| Incident Response | [`02-incident-response.md`](./02-incident-response.md) | ðŸ†• Created |
+| Operations Runbook | [`01-operations-runbook.md`](./01-operations-runbook.md) | Created |
+| Incident Response | [`02-incident-response.md`](./02-incident-response.md) | Created |
 
 ```mermaid
 graph LR
-    subgraph Monitor["ðŸ“Š Monitor"]
-        M1["Observability"]
-        M2["Tracing"]
-        M3["Alerting"]
-    end
-    subgraph Respond["ðŸš¨ Respond"]
-        R1["Incident Detection"]
-        R2["Runbook Execution"]
-        R3["Postmortem"]
-    end
-    subgraph Improve["ðŸ”„ Improve"]
-        I1["SLA/SLO Tracking"]
-        I2["Capacity Planning"]
-        I3["Cost Optimization"]
-    end
+ subgraph Monitor["Monitor"]
+ M1["Observability"]
+ M2["Tracing"]
+ M3["Alerting"]
+ end
+ subgraph Respond["Respond"]
+ R1["Incident Detection"]
+ R2["Runbook Execution"]
+ R3["Postmortem"]
+ end
+ subgraph Improve["Improve"]
+ I1["SLA/SLO Tracking"]
+ I2["Capacity Planning"]
+ I3["Cost Optimization"]
+ end
 
-    Monitor --> Respond --> Improve
-    Improve -.->|Feedback Loop| Monitor
+ Monitor--> Respond--> Improve
+ Improve -.->|Feedback Loop| Monitor
 
-    classDef monitor fill:#e3f2fd,stroke:#1565c0
-    classDef respond fill:#ffebee,stroke:#c62828
-    classDef improve fill:#e8f5e9,stroke:#2e7d32
+ classDef monitor fill:#e3f2fd,stroke:#1565c0
+ classDef respond fill:#ffebee,stroke:#c62828
+ classDef improve fill:#e8f5e9,stroke:#2e7d32
 
-    class M1,M2,M3 monitor
-    class R1,R2,R3 respond
-    class I1,I2,I3 improve
+ class M1,M2,M3 monitor
+ class R1,R2,R3 respond
+ class I1,I2,I3 improve
 ```
 
 ## Why these were missing

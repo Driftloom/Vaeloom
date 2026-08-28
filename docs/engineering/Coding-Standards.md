@@ -17,43 +17,43 @@ This document covers language-specific standards, shared conventions, linting ru
 
 ```mermaid
 graph TD
-    classDef ts fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef py fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef shared fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef ts fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef py fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef shared fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph TypeScript["🟦 TypeScript Standards"]
-        direction TB
-        T1["Version: 5.0+<br/>Strict: true"]
-        T2["✅ Named exports, ??, async/await<br/>Branded types for IDs"]
-        T3["❌ Default exports, any,<br/>callbacks, mutable state"]
-    end
+ subgraph TypeScript["TypeScript Standards"]
+ direction TB
+ T1["Version: 5.0+<br/>Strict: true"]
+ T2["Named exports, ??, async/await<br/>Branded types for IDs"]
+ T3["Default exports, any,<br/>callbacks, mutable state"]
+ end
 
-    subgraph Python["🐍 Python Standards"]
-        direction TB
-        P1["Version: 3.11+<br/>mypy --strict"]
-        P2["✅ Type hints, dataclasses,<br/>custom exceptions, async"]
-        P3["❌ Bare except, mutable defaults,<br/>missing hints, print() logging"]
-    end
+ subgraph Python["Python Standards"]
+ direction TB
+ P1["Version: 3.11+<br/>mypy --strict"]
+ P2["Type hints, dataclasses,<br/>custom exceptions, async"]
+ P3["Bare except, mutable defaults,<br/>missing hints, print() logging"]
+ end
 
-    subgraph Shared["📋 Shared Conventions"]
-        S1["Line length: 100 chars"]
-        S2["Indentation: 2 TS / 4 Python"]
-        S3["File naming: kebab / snake"]
-        S4["Class: PascalCase (both)"]
-        S5["Functions: camel TS / snake Python"]
-    end
+ subgraph Shared["Shared Conventions"]
+ S1["Line length: 100 chars"]
+ S2["Indentation: 2 TS / 4 Python"]
+ S3["File naming: kebab / snake"]
+ S4["Class: PascalCase (both)"]
+ S5["Functions: camel TS / snake Python"]
+ end
 
-    subgraph Linting["🔧 Linting Rules"]
-        L1["ESLint (TS)<br/>no-console, no-unused-vars,<br/>import ordering"]
-        L2["Ruff (Python)<br/>E/F/I/N/W + ANN/ARG/COM"]
-    end
+ subgraph Linting["Linting Rules"]
+ L1["ESLint (TS)<br/>no-console, no-unused-vars,<br/>import ordering"]
+ L2["Ruff (Python)<br/>E/F/I/N/W + ANN/ARG/COM"]
+ end
 
-    TypeScript & Python --> Shared --> Linting
+ TypeScript & Python--> Shared--> Linting
 
-    class T1,T2,T3 ts
-    class P1,P2,P3 py
-    class S1,S2,S3,S4,S5 shared
-    class L1,L2 lint
+ class T1,T2,T3 ts
+ class P1,P2,P3 py
+ class S1,S2,S3,S4,S5 shared
+ class L1,L2 lint
 ```
 
 > **Diagram:** Coding standards organized by language — **TypeScript** (strict mode, good/bad patterns), **Python** (mypy strict, good/bad patterns), **Shared conventions** (line length, indentation, naming). **Linting** enforced via ESLint for TypeScript and Ruff for Python.

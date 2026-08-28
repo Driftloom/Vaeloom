@@ -1,12 +1,12 @@
-﻿# Non-Functional Requirements
+# Non-Functional Requirements
 
 > **Purpose:** Define the quality attributes Vaeloom must satisfy — performance, scalability, availability, security, usability, accessibility, and compliance targets
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Architecture Team
 > **Version:** 1.0
 > **Last Updated:** 2026-07-16
 > **Dependencies:** [`Functional-Requirements.md`](./Functional-Requirements.md), [`../Architecture/Performance.md`](../Architecture/Performance.md), [`../Architecture/Scalability.md`](../Architecture/Scalability.md), [`../Security/Security-Architecture.md`](../Security/Security-Architecture.md)
-> **Implementation Status:** ðŸ“‹ Spec Only
+> **Implementation Status:** 📁‹ Spec Only
 
 ## Overview
 
@@ -28,18 +28,18 @@ NFR-XXX | Requirement | Target metric | Measurement method
 
 ```mermaid
 graph TD
-    classDef nfr fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef nfr fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
 
-    PERF["Performance"]:::nfr
-    SCALE["Scalability"]:::nfr
-    AVAIL["Availability"]:::nfr
-    SEC["Security"]:::nfr
-    PRIV["Privacy"]:::nfr
-    USE["Usability"]:::nfr
-    A11Y["Accessibility"]:::nfr
-    REL["Reliability"]:::nfr
-    OBS["Observability"]:::nfr
-    COMP["Compliance"]:::nfr
+ PERF["Performance"]:::nfr
+ SCALE["Scalability"]:::nfr
+ AVAIL["Availability"]:::nfr
+ SEC["Security"]:::nfr
+ PRIV["Privacy"]:::nfr
+ USE["Usability"]:::nfr
+ A11Y["Accessibility"]:::nfr
+ REL["Reliability"]:::nfr
+ OBS["Observability"]:::nfr
+ COMP["Compliance"]:::nfr
 ```text
 
 ## Performance

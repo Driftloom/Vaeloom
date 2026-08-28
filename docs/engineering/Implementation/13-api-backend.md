@@ -1,7 +1,7 @@
-﻿# 13 — API & Backend Services (MVP)
+# 13 — API & Backend Services (MVP)
 
 > **Purpose:** Build the resource-oriented REST API in NestJS with the Permission Engine enforced on every call — the only door into the system.
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
@@ -23,51 +23,51 @@ The Permission Engine is designed to be stateless (no local cache) so it always 
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    WEB["apps/web (Next.js)"]:::primary
+ WEB["apps/web (Next.js)"]:::primary
 
-    subgraph API["apps/api (NestJS)"]
-        PERM["Permission Engine<br/>(check connector, action, agent)"]:::primary
-        DOCS["Documents Endpoints"]:::secondary
-        MEM["Memory/Graph Endpoint"]:::secondary
-        RES["Resume Endpoints"]:::secondary
-        JOBS["Jobs Endpoints"]:::secondary
-        APPS["Applications Endpoints"]:::secondary
-        CHAT["Chat Endpoint"]:::secondary
-        SCHED["Schedule Endpoints"]:::secondary
-        CONN["Connectors Endpoints"]:::secondary
-        AUDIT["Audit Endpoints"]:::secondary
-        SETT["Settings Endpoints"]:::secondary
-    end
+ subgraph API["apps/api (NestJS)"]
+ PERM["Permission Engine<br/>(check connector, action, agent)"]:::primary
+ DOCS["Documents Endpoints"]:::secondary
+ MEM["Memory/Graph Endpoint"]:::secondary
+ RES["Resume Endpoints"]:::secondary
+ JOBS["Jobs Endpoints"]:::secondary
+ APPS["Applications Endpoints"]:::secondary
+ CHAT["Chat Endpoint"]:::secondary
+ SCHED["Schedule Endpoints"]:::secondary
+ CONN["Connectors Endpoints"]:::secondary
+ AUDIT["Audit Endpoints"]:::secondary
+ SETT["Settings Endpoints"]:::secondary
+ end
 
-    RPC["Internal RPC Boundary"]:::primary
+ RPC["Internal RPC Boundary"]:::primary
 
-    subgraph AI["apps/ai-service"]
-        ORCH["Orchestrator"]:::secondary
-        AGENTS["Specialist Agents"]:::secondary
-    end
+ subgraph AI["apps/ai-service"]
+ ORCH["Orchestrator"]:::secondary
+ AGENTS["Specialist Agents"]:::secondary
+ end
 
-    DB["Database (Postgres)"]:::secondary
+ DB["Database (Postgres)"]:::secondary
 
-    WEB --> API
-    API --> PERM
-    PERM --> DOCS
-    PERM --> MEM
-    PERM --> RES
-    PERM --> JOBS
-    PERM --> APPS
-    PERM --> CHAT
-    PERM --> SCHED
-    PERM --> CONN
-    PERM --> AUDIT
-    PERM --> SETT
-    CHAT --> RPC
-    RPC --> ORCH
-    ORCH --> AGENTS
-    API --> DB
-    AI --> DB
+ WEB--> API
+ API--> PERM
+ PERM--> DOCS
+ PERM--> MEM
+ PERM--> RES
+ PERM--> JOBS
+ PERM--> APPS
+ PERM--> CHAT
+ PERM--> SCHED
+ PERM--> CONN
+ PERM--> AUDIT
+ PERM--> SETT
+ CHAT--> RPC
+ RPC--> ORCH
+ ORCH--> AGENTS
+ API--> DB
+ AI--> DB
 ```
 
 ## Context

@@ -1,88 +1,88 @@
-﻿# E2E Testing
+# E2E Testing
 
 > **Purpose:** Define end-to-end testing strategy for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Test Runner Flow
 
 ```mermaid
 sequenceDiagram
-    participant DEV as ðŸ‘¨”ðŸ’» Developer / CI
-    participant PW as ðŸŽ­ Playwright CLI
-    participant DIS as ðŸ“‹ Test Discovery
-    participant W1 as âš™ï¸ Worker 1<br/>(Chromium)
-    participant W2 as âš™ï¸ Worker 2<br/>(Chromium)
-    participant B1 as ðŸŒ Browser Context<br/>Chromium
-    participant B2 as ðŸŒ Browser Context<br/>Firefox
-    participant REP as ðŸ“Š Reporter
-    participant ART as ðŸ“¦ Artifacts<br/>(Screenshots / Traces)
+ participant DEV as '¨"'» Developer / CI
+ participant PW as Ž­ Playwright CLI
+ participant DIS as "‹ Test Discovery
+ participant W1 as ™¸ Worker 1<br/>(Chromium)
+ participant W2 as ™¸ Worker 2<br/>(Chromium)
+ participant B1 as  Browser Context<br/>Chromium
+ participant B2 as  Browser Context<br/>Firefox
+ participant REP as "Š Reporter
+ participant ART as " Artifacts<br/>(Screenshots / Traces)
 
-    Note over DEV,ART: â”€â”€ 1. Test Discovery & Sharding â”€â”€
+ Note over DEV,ART: "€"€ 1. Test Discovery & Sharding "€"€
 
-    DEV->>PW: npx playwright test --workers=2
-    PW->>DIS: Discover spec files matching<br/>*.spec.ts pattern
-    DIS-->>PW: Return file list (e.g. 8 specs)
-    PW->>PW: Shard specs across workers<br/>Worker 1: specs 1-4<br/>Worker 2: specs 5-8
+ DEV->>PW: npx playwright test --workers=2
+ PW->>DIS: Discover spec files matching<br/>*.spec.ts pattern
+ DIS-->>PW: Return file list (e.g. 8 specs)
+ PW->>PW: Shard specs across workers<br/>Worker 1: specs 1-4<br/>Worker 2: specs 5-8
 
-    Note over DEV,ART: â”€â”€ 2. Test Execution (Worker 1) â”€â”€
+ Note over DEV,ART: "€"€ 2. Test Execution (Worker 1) "€"€
 
-    PW->>W1: Assign spec 1: login.spec.ts
-    W1->>B1: Launch browser context<br/>viewport, storageState, permissions
-    B1-->>W1: Browser ready
-    W1->>B1: page.goto('/login')
-    B1-->>W1: Page loaded
-    W1->>B1: page.fill('[data-testid=email]', '...')
-    W1->>B1: page.fill('[data-testid=password]', '...')
-    W1->>B1: page.click('[data-testid=login]')
-    B1-->>W1: Navigation to /workspace
-    W1->>B1: expect(page.locator(...)).toContainText(...)
-    B1-->>W1: âœ… Assertion passed
+ PW->>W1: Assign spec 1: login.spec.ts
+ W1->>B1: Launch browser context<br/>viewport, storageState, permissions
+ B1-->>W1: Browser ready
+ W1->>B1: page.goto('/login')
+ B1-->>W1: Page loaded
+ W1->>B1: page.fill('[data-testid=email]', '...')
+ W1->>B1: page.fill('[data-testid=password]', '...')
+ W1->>B1: page.click('[data-testid=login]')
+ B1-->>W1: Navigation to /workspace
+ W1->>B1: expect(page.locator(...)).toContainText(...)
+ B1-->>W1: … Assertion passed
 
-    alt âœ… Test Passed
-        W1->>REP: Report: login.spec.ts PASSED<br/>duration: 4.2s, steps: 6
-    else âŒ Assertion Failed
-        B1-->>W1: âŒ expect.toContainText failed<br/>Expected "Dashboard" not found
-        W1->>B1: page.screenshot()
-        B1-->>ART: Capture screenshot<br/>test-results/login-failed.png
-        W1->>B1: page.trace().stop()
-        B1-->>ART: Save trace.zip
-        W1->>REP: Report: login.spec.ts FAILED<br/>error: TimeoutError, line 42
-    end
+ alt … Test Passed
+ W1->>REP: Report: login.spec.ts PASSED<br/>duration: 4.2s, steps: 6
+ else Œ Assertion Failed
+ B1-->>W1: Œ expect.toContainText failed<br/>Expected "Dashboard" not found
+ W1->>B1: page.screenshot()
+ B1-->>ART: Capture screenshot<br/>test-results/login-failed.png
+ W1->>B1: page.trace().stop()
+ B1-->>ART: Save trace.zip
+ W1->>REP: Report: login.spec.ts FAILED<br/>error: TimeoutError, line 42
+ end
 
-    W1->>B1: Close browser context
-    B1-->>W1: Context closed
+ W1->>B1: Close browser context
+ B1-->>W1: Context closed
 
-    Note over DEV,ART: â”€â”€ 3. Parallel Execution (Worker 2) â”€â”€
+ Note over DEV,ART: "€"€ 3. Parallel Execution (Worker 2) "€"€
 
-    PW->>W2: Assign spec 5: upload.spec.ts
-    W2->>B2: Launch Firefox context
-    B2-->>W2: Browser ready
-    W2->>B2: Execute test steps...
-    B2-->>W2: Test complete (concurrent with W1)
-    W2->>REP: Report: upload.spec.ts PASSED<br/>duration: 6.1s, steps: 8
-    W2->>B2: Close context
+ PW->>W2: Assign spec 5: upload.spec.ts
+ W2->>B2: Launch Firefox context
+ B2-->>W2: Browser ready
+ W2->>B2: Execute test steps...
+ B2-->>W2: Test complete (concurrent with W1)
+ W2->>REP: Report: upload.spec.ts PASSED<br/>duration: 6.1s, steps: 8
+ W2->>B2: Close context
 
-    Note over DEV,ART: â”€â”€ 4. Retry & Report â”€â”€
+ Note over DEV,ART: "€"€ 4. Retry & Report "€"€
 
-    PW->>W1: Re-run failed spec (retry 1/2)
-    W1->>B1: Launch new browser context
-    alt Retry passes
-        W1->>REP: Report: login.spec.ts PASSED (retry 1)<br/>Flaky test detected
-    else Retry fails (2/2)
-        W1->>REP: Report: login.spec.ts FAILED (retry 2/2)<br/>Permanent failure
-    end
+ PW->>W1: Re-run failed spec (retry 1/2)
+ W1->>B1: Launch new browser context
+ alt Retry passes
+ W1->>REP: Report: login.spec.ts PASSED (retry 1)<br/>Flaky test detected
+ else Retry fails (2/2)
+ W1->>REP: Report: login.spec.ts FAILED (retry 2/2)<br/>Permanent failure
+ end
 
-    Note over DEV,ART: â”€â”€ 5. Report Generation â”€â”€
+ Note over DEV,ART: "€"€ 5. Report Generation "€"€
 
-    PW->>REP: All workers finished<br/>8 of 8 specs completed
-    REP->>REP: Generate reports:<br/>- HTML report (playwright-report/)<br/>- JSON report (test-results.json)<br/>- JUnit XML (junit.xml)
-    REP-->>PW: Report ready
-    PW-->>DEV: âœ… Exit code 0 (all passed)<br/>âŒ Exit code 1 (failures)
+ PW->>REP: All workers finished<br/>8 of 8 specs completed
+ REP->>REP: Generate reports:<br/>- HTML report (playwright-report/)<br/>- JSON report (test-results.json)<br/>- JUnit XML (junit.xml)
+ REP-->>PW: Report ready
+ PW-->>DEV: … Exit code 0 (all passed)<br/>Œ Exit code 1 (failures)
 
-    alt CI Pipeline
-        DEV->>ART: Upload test artifacts
-        DEV->>DEV: Post summary to PR<br/>"8 passed, 1 flaky, 0 failed"
-    end
+ alt CI Pipeline
+ DEV->>ART: Upload test artifacts
+ DEV->>DEV: Post summary to PR<br/>"8 passed, 1 flaky, 0 failed"
+ end
 ```
 
 > **Diagram:** The Playwright test runner flow from spec discovery through parallel execution, retries, and reporting. **Two parallel workers** run different specs concurrently — Worker 1 runs Chromium, Worker 2 runs Firefox. **Failures** trigger screenshots + trace capture, then up to 2 retries. **Reports** generate in HTML, JSON, and JUnit XML formats. CI posts a summary to the PR.
@@ -95,14 +95,14 @@ E2E tests cover full user flows across all services:
 
 | Flow | Description | Critical? |
 |------|-------------|-----------|
-| Sign up → Workspace | New user creates account, sees dashboard | âœ… |
-| Upload → Organize | Upload file, agent proposes name, user approves | âœ… |
-| Resume → ATS | Generate resume, score against JD | âœ… |
-| Job Search → Apply | Find jobs, rank, tailor, submit | âœ… |
-| Gmail → Schedule | Email scanned, deadline extracted, shown on schedule | âœ… |
-| Connector → Sync | Connect Gmail, initial sync completes | âœ… |
-| Settings → Export | Export all data, verify completeness | âœ… |
-| Settings → Delete | Delete all data, verify workspace is empty | âœ… |
+| Sign up → Workspace | New user creates account, sees dashboard | ✅ |
+| Upload → Organize | Upload file, agent proposes name, user approves | ✅ |
+| Resume → ATS | Generate resume, score against JD | ✅ |
+| Job Search → Apply | Find jobs, rank, tailor, submit | ✅ |
+| Gmail → Schedule | Email scanned, deadline extracted, shown on schedule | ✅ |
+| Connector → Sync | Connect Gmail, initial sync completes | ✅ |
+| Settings → Export | Export all data, verify completeness | ✅ |
+| Settings → Delete | Delete all data, verify workspace is empty | ✅ |
 
 ## Test Implementation
 
@@ -171,35 +171,35 @@ test('user uploads resume and sees organization proposal', async ({ page }) => {
 
 ```mermaid
 graph TD
-    classDef infra fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef test fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef report fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef infra fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef test fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef report fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Infra["ðŸ§ª E2E Test Infrastructure"]
-        I1["Playwright CLI<br/>npx playwright test"]
-        I2["Browser Workers<br/>Chromium, Firefox, WebKit"]
-        I3["Test Databases<br/>PostgreSQL test + Redis test"]
-        I4["Auth Fixtures<br/>Test accounts per role"]
-    end
+ subgraph Infra["E2E Test Infrastructure"]
+ I1["Playwright CLI<br/>npx playwright test"]
+ I2["Browser Workers<br/>Chromium, Firefox, WebKit"]
+ I3["Test Databases<br/>PostgreSQL test + Redis test"]
+ I4["Auth Fixtures<br/>Test accounts per role"]
+ end
 
-    subgraph Tests["ðŸ“‹ E2E Test Suites"]
-        T1["Smoke Suite<br/>3 critical flows<br/>Every PR"]
-        T2["Critical Suite<br/>8 core user flows<br/>Every staging deploy"]
-        T3["Full Suite<br/>20+ flows<br/>Every production deploy"]
-    end
+ subgraph Tests["E2E Test Suites"]
+ T1["Smoke Suite<br/>3 critical flows<br/>Every PR"]
+ T2["Critical Suite<br/>8 core user flows<br/>Every staging deploy"]
+ T3["Full Suite<br/>20+ flows<br/>Every production deploy"]
+ end
 
-    subgraph Reports["ðŸ“Š Test Reports"]
-        R1["HTML Report<br/>playwright-report/"]
-        R2["Trace Viewer<br/>trace.zip per failure"]
-        R3["Screenshots<br/>test-results/"]
-        R4["JUnit XML<br/>CI integration"]
-    end
+ subgraph Reports["Test Reports"]
+ R1["HTML Report<br/>playwright-report/"]
+ R2["Trace Viewer<br/>trace.zip per failure"]
+ R3["Screenshots<br/>test-results/"]
+ R4["JUnit XML<br/>CI integration"]
+ end
 
-    Infra --> Tests --> Reports
+ Infra--> Tests--> Reports
 
-    class I1,I2,I3,I4 infra
-    class T1,T2,T3 test
-    class R1,R2,R3,R4 report
+ class I1,I2,I3,I4 infra
+ class T1,T2,T3 test
+ class R1,R2,R3,R4 report
 ```
 
 > **Diagram:** E2E testing infrastructure — **Playwright CLI** with browser workers (Chromium, Firefox, WebKit) runs against **test databases** and **auth fixtures**. Three test suites (smoke, critical, full) run at different cadences. **Reports** include HTML, trace viewer, screenshots, and JUnit XML.

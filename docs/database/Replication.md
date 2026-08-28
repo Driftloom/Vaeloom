@@ -1,7 +1,7 @@
-﻿# Database Replication
+# Database Replication
 
 > **Purpose:** Define the replication strategy for Vaeloom's PostgreSQL database
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Overview
 
@@ -42,52 +42,52 @@ This document defines the replication architecture, scale triggers, replica conf
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef replica fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef split fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef monitor fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef replica fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef split fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef monitor fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph ReplicationArch["ðŸ”„ Streaming Replication Architecture"]
-        direction TB
-        PR["( PostgreSQL Primary<br/>Handles writes )"]
+ subgraph ReplicationArch["Streaming Replication Architecture"]
+ direction TB
+ PR["PostgreSQL Primary<br/>Handles writes )"]
 
-        PR -->|Streaming replication<br/>WAL segments| R1["( Read Replica 1<br/>User queries + API )"]
-        PR -->|Streaming replication<br/>WAL segments| R2["( Read Replica 2<br/>Analytics + reporting )"]
-        PR -->|Streaming replication<br/>WAL segments| R3["( Read Replica 3<br/>Backups + DR )"]
-    end
+ PR-->|Streaming replication<br/>WAL segments| R1["Read Replica 1<br/>User queries + API )"]
+ PR-->|Streaming replication<br/>WAL segments| R2["Read Replica 2<br/>Analytics + reporting )"]
+ PR-->|Streaming replication<br/>WAL segments| R3["Read Replica 3<br/>Backups + DR )"]
+ end
 
-    subgraph Triggers["ðŸš¦ Scale Triggers"]
-        direction TB
-        T1["Read queries > 5,000/sec<br/>--> Add 1st read replica"]
-        T2["Replica CPU > 70%<br/>--> Add additional replica"]
-        T3["Primary pool > 80%<br/>--> Offload reporting to replica"]
-    end
+ subgraph Triggers["Scale Triggers"]
+ direction TB
+ T1["Read queries > 5,000/sec<br/>--> Add 1st read replica"]
+ T2["Replica CPU > 70%<br/>--> Add additional replica"]
+ T3["Primary pool > 80%<br/>--> Offload reporting to replica"]
+ end
 
-    subgraph ReadWrite["ðŸ“ Read/Write Splitting"]
-        direction TB
-        RW1["Application layer<br/>determines query type"]
-        RW2["Query: { readOnly: true }<br/>--> Route to replica"]
-        RW3["Query: { readOnly: false }<br/>--> Route to primary"]
-        RW4["Pool config:<br/>primary.host: primary.db<br/>replica.host: replica.db"]
-    end
+ subgraph ReadWrite["Read/Write Splitting"]
+ direction TB
+ RW1["Application layer<br/>determines query type"]
+ RW2["Query: { readOnly: true }<br/>--> Route to replica"]
+ RW3["Query: { readOnly: false }<br/>--> Route to primary"]
+ RW4["Pool config:<br/>primary.host: primary.db<br/>replica.host: replica.db"]
+ end
 
-    subgraph Monitoring["ðŸ“Š Replication Monitoring"]
-        direction TB
-        M1["Replication lag<br/>Warning: > 5s<br/>Critical: > 30s"]
-        M2["Replica count<br/>Warning: < 2<br/>Critical: 0"]
-        M3["WAL generation rate<br/>Warning: > 100MB/min<br/>Critical: > 500MB/min"]
-    end
+ subgraph Monitoring["Replication Monitoring"]
+ direction TB
+ M1["Replication lag<br/>Warning: > 5s<br/>Critical: > 30s"]
+ M2["Replica count<br/>Warning: < 2<br/>Critical: 0"]
+ M3["WAL generation rate<br/>Warning: > 100MB/min<br/>Critical: > 500MB/min"]
+ end
 
-    T1 & T2 & T3 --> PR
-    R1 & R2 & R3 --> RW1
-    RW1 --> RW2 & RW3
-    RW2 & RW3 --> RW4
-    PR & R1 & R2 & R3 -.-> M1 & M2 & M3
+ T1 & T2 & T3--> PR
+ R1 & R2 & R3--> RW1
+ RW1--> RW2 & RW3
+ RW2 & RW3--> RW4
+ PR & R1 & R2 & R3 -.-> M1 & M2 & M3
 
-    class PR primary
-    class R1,R2,R3 replica
-    class RW1,RW2,RW3,RW4 split
-    class T1,T2,T3,M1,M2,M3 monitor
+ class PR primary
+ class R1,R2,R3 replica
+ class RW1,RW2,RW3,RW4 split
+ class T1,T2,T3,M1,M2,M3 monitor
 
 ```
 
@@ -312,43 +312,43 @@ FROM pg_stat_replication;
 
 ```mermaid
 sequenceDiagram
-    participant APP as Application
-    participant PRIM as Primary
-    participant R1 as Replica 1 (User Queries)
-    participant R2 as Replica 2 (Analytics)
-    participant R3 as Replica 3 (Backups/DR)
-    participant WAL as WAL Stream
+ participant APP as Application
+ participant PRIM as Primary
+ participant R1 as Replica 1 (User Queries)
+ participant R2 as Replica 2 (Analytics)
+ participant R3 as Replica 3 (Backups/DR)
+ participant WAL as WAL Stream
 
-    Note over PRIM: Writes handled exclusively by Primary
+ Note over PRIM: Writes handled exclusively by Primary
 
-    APP->>PRIM: INSERT / UPDATE / DELETE (readOnly: false)
-    PRIM-->>APP: Write acknowledged
+ APP->>PRIM: INSERT / UPDATE / DELETE (readOnly: false)
+ PRIM-->>APP: Write acknowledged
 
-    par WAL Streaming (async)
-        PRIM->>WAL: Write-ahead log generated
-        WAL-->>R1: WAL segment applied
-        WAL-->>R2: WAL segment applied
-        WAL-->>R3: WAL segment applied
-    end
+ par WAL Streaming (async)
+ PRIM->>WAL: Write-ahead log generated
+ WAL-->>R1: WAL segment applied
+ WAL-->>R2: WAL segment applied
+ WAL-->>R3: WAL segment applied
+ end
 
-    APP->>R1: SELECT query (readOnly: true)
-    R1-->>APP: Result (slight lag possible)
+ APP->>R1: SELECT query (readOnly: true)
+ R1-->>APP: Result (slight lag possible)
 
-    Note over APP,R3: Analytics queries routed to R2
+ Note over APP,R3: Analytics queries routed to R2
 
-    APP->>R2: Reporting query (readOnly: true)
-    R2-->>APP: Aggregated results
+ APP->>R2: Reporting query (readOnly: true)
+ R2-->>APP: Aggregated results
 
-    Note over R3: Backup window
+ Note over R3: Backup window
 
-    R3->>R3: pg_dump (no impact on Primary or other replicas)
+ R3->>R3: pg_dump (no impact on Primary or other replicas)
 
-    alt Failover
-        APP->>APP: Promote R3 to new Primary
-        R3->>R3: pg_promote()
-        Note over R3: New Primary elected
-        APP->>R3: All queries now target new Primary
-    end
+ alt Failover
+ APP->>APP: Promote R3 to new Primary
+ R3->>R3: pg_promote()
+ Note over R3: New Primary elected
+ APP->>R3: All queries now target new Primary
+ end
 ```
 
 > **Diagram:** Replication topology — Primary handles all writes while 3 replicas stream WAL asynchronously. Replica 1 serves user queries, Replica 2 handles analytics/reporting, Replica 3 isolates backups and serves as DR failover target. Application-layer routing splits read vs write queries via a readOnly flag.

@@ -24,7 +24,7 @@
 ### What P11 must wire
 
 1. **ApprovalCard → live approval API** — UI designed, backend endpoints exist,
-   no wiring yet
+ no wiring yet
 2. **Consent scope toggles → backend** — currently cosmetic only
 3. **Connector permissions → backend** — currently local state only
 
@@ -43,8 +43,8 @@
 ### Deep audit findings for P11 awareness
 
 - Shared types (Memory, Agent, Connector) diverge from backend models — P11 may
-  need to reconcile
+ need to reconcile
 - Inline interfaces in api-client.ts use snake_case (transformKeys handles at
-  runtime)
+ runtime)
 - Settings consent scope revocation needs API wiring
 - Applications Kanban is read-only (no drag-and-drop)

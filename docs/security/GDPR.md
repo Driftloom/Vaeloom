@@ -9,44 +9,44 @@
 
 ```mermaid
 graph TD
-    classDef req fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef right fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef process fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef register fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef req fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef right fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef process fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef register fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Requirements["📋 Key GDPR Requirements"]
-        direction TB
-        R1["Explicit Consent<br/>Granular per-data-access"]
-        R2["Right to Access<br/>Export everything action"]
-        R3["Right to Erasure<br/>Delete everything action"]
-        R4["Data Portability<br/>Full memory export (JSON)"]
-        R5["Data Residency<br/>EU / US / India options"]
-        R6["Consent Revocation<br/>Future data stop, not retroactive"]
-    end
+ subgraph Requirements["Key GDPR Requirements"]
+ direction TB
+ R1["Explicit Consent<br/>Granular per-data-access"]
+ R2["Right to Access<br/>Export everything action"]
+ R3["Right to Erasure<br/>Delete everything action"]
+ R4["Data Portability<br/>Full memory export (JSON)"]
+ R5["Data Residency<br/>EU / US / India options"]
+ R6["Consent Revocation<br/>Future data stop, not retroactive"]
+ end
 
-    subgraph Rights["🛡️ Data Subject Rights"]
-        S1["Right to be informed<br/>Privacy policy + in-app prompts"]
-        S2["Right of access<br/>Settings --> Export Everything"]
-        S3["Right to rectification<br/>Memory Graph editor"]
-        S4["Right to erasure<br/>Settings --> Delete Everything"]
-        S5["Right to restrict<br/>Per-agent autonomy controls"]
-        S6["Right to portability<br/>Export in structured format"]
-        S7["Right to object<br/>Opt-out of processing"]
-    end
+ subgraph Rights["Data Subject Rights"]
+ S1["Right to be informed<br/>Privacy policy + in-app prompts"]
+ S2["Right of access<br/>Settings--> Export Everything"]
+ S3["Right to rectification<br/>Memory Graph editor"]
+ S4["Right to erasure<br/>Settings--> Delete Everything"]
+ S5["Right to restrict<br/>Per-agent autonomy controls"]
+ S6["Right to portability<br/>Export in structured format"]
+ S7["Right to object<br/>Opt-out of processing"]
+ end
 
-    subgraph Register["📝 Data Processing Register"]
-        D1["📄 Document storage<br/>Consent --> Until deletion"]
-        D2["🧠 Memory extraction<br/>Consent --> Until deletion"]
-        D3["💼 Job matching<br/>Legitimate interest --> Until withdrawn"]
-        D4["📧 Gmail scanning<br/>Consent --> 30 days"]
-    end
+ subgraph Register["Data Processing Register"]
+ D1["Document storage<br/>Consent--> Until deletion"]
+ D2["Memory extraction<br/>Consent--> Until deletion"]
+ D3["Job matching<br/>Legitimate interest--> Until withdrawn"]
+ D4["Gmail scanning<br/>Consent--> 30 days"]
+ end
 
-    Requirements --> Rights
-    Rights --> Register
+ Requirements--> Rights
+ Rights--> Register
 
-    class R1,R2,R3,R4,R5,R6 req
-    class S1,S2,S3,S4,S5,S6,S7 right
-    class D1,D2,D3,D4 register
+ class R1,R2,R3,R4,R5,R6 req
+ class S1,S2,S3,S4,S5,S6,S7 right
+ class D1,D2,D3,D4 register
 ```
 
 > **Diagram:** GDPR compliance architecture covering **6 key requirements** (consent, access, erasure, portability, residency, revocation), **7 data subject rights** mapped to UI actions, and **4 processing activities** with legal bases and retention periods.
@@ -223,31 +223,31 @@ This document defines the GDPR compliance posture for Vaeloom — covering key r
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant ER as Erasure Orchestrator
-    participant DB as Primary Database
-    participant CACHE as Cache (Redis)
-    participant BACKUP as Backup Service
-    participant ANON as Analytics
-    participant AUD as Audit Logger
+ participant U as User
+ participant ER as Erasure Orchestrator
+ participant DB as Primary Database
+ participant CACHE as Cache (Redis)
+ participant BACKUP as Backup Service
+ participant ANON as Analytics
+ participant AUD as Audit Logger
 
-    U->>ER: Delete Everything request
-    ER->>ER: Verify identity (MFA)
-    
-    par Cascade Deletion
-        ER->>DB: Delete user records
-        ER->>CACHE: Invalidate cached data
-        ER->>BACKUP: Schedule backup exclusion
-        ER->>ANON: Anonymize analytics
-    end
-    
-    DB-->>ER: Confirmed
-    CACHE-->>ER: Confirmed
-    BACKUP-->>ER: Scheduled
-    ANON-->>ER: Anonymized
-    
-    ER->>U: Deletion complete
-    ER->>AUD: Log full deletion event
+ U->>ER: Delete Everything request
+ ER->>ER: Verify identity (MFA)
+ 
+ par Cascade Deletion
+ ER->>DB: Delete user records
+ ER->>CACHE: Invalidate cached data
+ ER->>BACKUP: Schedule backup exclusion
+ ER->>ANON: Anonymize analytics
+ end
+ 
+ DB-->>ER: Confirmed
+ CACHE-->>ER: Confirmed
+ BACKUP-->>ER: Scheduled
+ ANON-->>ER: Anonymized
+ 
+ ER->>U: Deletion complete
+ ER->>AUD: Log full deletion event
 ```
 
 > **Diagram:** Right to erasure — parallel cascading deletion across database, cache, backups, and analytics. All confirmed before user notification; full audit log recorded.

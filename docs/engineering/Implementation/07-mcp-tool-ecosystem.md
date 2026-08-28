@@ -23,42 +23,42 @@ All tool calls are wrapped by the harness's Act phase with consistent retry/fail
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    subgraph ToolDef["Tool Definition (base.py)"]
-        NAME["name: str"]:::secondary
-        DESC["description: str"]:::secondary
-        INPUT["input_schema: JSON Schema"]:::secondary
-        OUTPUT["output_schema: JSON Schema"]:::secondary
-        SCOPE["required_scope: str"]:::secondary
-        AUTH["auth_type: oauth2/api_key/none"]:::secondary
-        CAPS["capabilities: ToolCapabilities"]:::secondary
-    end
+ subgraph ToolDef["Tool Definition (base.py)"]
+ NAME["name: str"]:::secondary
+ DESC["description: str"]:::secondary
+ INPUT["input_schema: JSON Schema"]:::secondary
+ OUTPUT["output_schema: JSON Schema"]:::secondary
+ SCOPE["required_scope: str"]:::secondary
+ AUTH["auth_type: oauth2/api_key/none"]:::secondary
+ CAPS["capabilities: ToolCapabilities"]:::secondary
+ end
 
-    HARNESS["Harness (Act phase)"]:::primary
-    RETRY["Retry & Failure Handling"]:::secondary
+ HARNESS["Harness (Act phase)"]:::primary
+ RETRY["Retry & Failure Handling"]:::secondary
 
-    subgraph Connectors["Connector Implementations"]
-        GMAIL["gmail.py<br/>search_messages, get_message, create_draft"]:::secondary
-        GITHUB["github.py<br/>list_repos, get_repo_summary, get_commit_history"]:::secondary
-        GDRIVE["google_drive.py<br/>list_files, get_file_content"]:::secondary
-    end
+ subgraph Connectors["Connector Implementations"]
+ GMAIL["gmail.py<br/>search_messages, get_message, create_draft"]:::secondary
+ GITHUB["github.py<br/>list_repos, get_repo_summary, get_commit_history"]:::secondary
+ GDRIVE["google_drive.py<br/>list_files, get_file_content"]:::secondary
+ end
 
-    PLUGIN["Plugin SDK v1<br/>packages/plugin-sdk/"]:::primary
-    THIRD["Third-party Tools"]:::secondary
+ PLUGIN["Plugin SDK v1<br/>packages/plugin-sdk/"]:::primary
+ THIRD["Third-party Tools"]:::secondary
 
-    HEALTH["Connector Health Check"]:::secondary
+ HEALTH["Connector Health Check"]:::secondary
 
-    HARNESS --> RETRY
-    RETRY --> GMAIL
-    RETRY --> GITHUB
-    RETRY --> GDRIVE
-    GMAIL --> HEALTH
-    GITHUB --> HEALTH
-    GDRIVE --> HEALTH
-    PLUGIN --> THIRD
-    THIRD -.-> HARNESS
+ HARNESS--> RETRY
+ RETRY--> GMAIL
+ RETRY--> GITHUB
+ RETRY--> GDRIVE
+ GMAIL--> HEALTH
+ GITHUB--> HEALTH
+ GDRIVE--> HEALTH
+ PLUGIN--> THIRD
+ THIRD -.-> HARNESS
 ```
 
 ## Context

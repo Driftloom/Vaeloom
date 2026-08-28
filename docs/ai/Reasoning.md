@@ -1,7 +1,7 @@
-﻿# Reasoning
+# Reasoning
 
 > **Purpose:** Define the AI reasoning architecture for Vaeloom's agents
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** AI Team
 > **Last Updated:** 2026-07-13
 
@@ -40,51 +40,51 @@ Different agents use different reasoning approaches depending on their task:
 
 ```mermaid
 stateDiagram-v2
-    direction LR
+ direction LR
 
-    state Idle : ðŸ’¤ Waiting for input
-    state Plan : ðŸ“‹ Determine approach
-    state Act : âš¡ Execute planned action
-    state Observe : ðŸ‘€ Evaluate result
-    state Reflect : ðŸ¤” Is result correct?
-    state Improve : ðŸ”§ Adjust & retry
-    state Complete : âœ… Task complete
-    state Error : âŒ Max iterations / fatal
+ state Idle : '¤ Waiting for input
+ state Plan : "‹ Determine approach
+ state Act : ¡ Execute planned action
+ state Observe : '€ Evaluate result
+ state Reflect : " Is result correct?
+ state Improve : " Adjust & retry
+ state Complete : … Task complete
+ state Error : Œ Max iterations / fatal
 
-    [*] --> Idle : Agent ready
-    Idle --> Plan : Input received
-    Plan --> Act : Strategy determined
-    Act --> Observe : Action executed
+ [*]--> Idle : Agent ready
+ Idle--> Plan : Input received
+ Plan--> Act : Strategy determined
+ Act--> Observe : Action executed
 
-    Observe --> Reflect : Result captured
+ Observe--> Reflect : Result captured
 
-    Reflect --> Complete : âœ… Correct & sufficient
-    Reflect --> Improve : âš ï¸ Needs adjustment
-    Reflect --> Act : ðŸ”„ Retry exactly
+ Reflect--> Complete : … Correct & sufficient
+ Reflect--> Improve :  ¸ Needs adjustment
+ Reflect--> Act : "„ Retry exactly
 
-    Improve --> Plan : New approach needed
-    Improve --> Act : Same approach, different params
+ Improve--> Plan : New approach needed
+ Improve--> Act : Same approach, different params
 
-    Plan --> Error : Strategy unknown
-    Observe --> Error : Fatal error
-    Act --> Error : Tool failure / timeout
+ Plan--> Error : Strategy unknown
+ Observe--> Error : Fatal error
+ Act--> Error : Tool failure / timeout
 
-    Complete --> Idle : Ready for next task
-    Error --> Idle : Logged, returning to idle
+ Complete--> Idle : Ready for next task
+ Error--> Idle : Logged, returning to idle
 
-    note right of Reflect
-        Complex reasoning (CoT):
-        Sonnet model
-        Logged for audit
-    end note
+ note right of Reflect
+ Complex reasoning (CoT):
+ Sonnet model
+ Logged for audit
+ end note
 
-    note right of Act
-        Simple classification:
-        Haiku model
-        Direct output, no CoT
-    end note
+ note right of Act
+ Simple classification:
+ Haiku model
+ Direct output, no CoT
+ end note
 
-    note right of Complete : Result returned to Orchestrator
+ note right of Complete : Result returned to Orchestrator
 
 ```
 
@@ -195,33 +195,33 @@ This document defines the AI reasoning architecture for Vaeloom's agents — cov
 
 ```mermaid
 sequenceDiagram
-    participant AG as Agent
-    participant RE as Reasoner
-    participant RC as Iteration Controller
-    participant TOOL as Tool/Memory
-    participant TL as Trace Logger
+ participant AG as Agent
+ participant RE as Reasoner
+ participant RC as Iteration Controller
+ participant TOOL as Tool/Memory
+ participant TL as Trace Logger
 
-    Note over AG,TL: Complex Reasoning (Sonnet + CoT)
-    AG->>RE: Input for multi-step reasoning
-    RE->>RE: Plan --> Act (tool call)
-    TOOL-->>RE: Result
-    RE->>RE: Observe --> Reflect
-    RE->>RC: Is result sufficient?
-    
-    loop Max 3 iterations
-        RC-->>RE: Needs improvement
-        RE->>RE: Improve (revise approach)
-        RE->>TOOL: New attempt
-        TOOL-->>RE: New result
-        RE->>RC: Is result sufficient now?
-    end
-    
-    RC-->>AG: Complete (best of 3)
-    AG->>TL: Log reasoning trace
-    
-    Note over AG,TL: Simple Classification (Haiku)
-    AG->>AG: Direct output (no loops)
-    AG->>TL: Log classification trace
+ Note over AG,TL: Complex Reasoning (Sonnet + CoT)
+ AG->>RE: Input for multi-step reasoning
+ RE->>RE: Plan--> Act (tool call)
+ TOOL-->>RE: Result
+ RE->>RE: Observe--> Reflect
+ RE->>RC: Is result sufficient?
+ 
+ loop Max 3 iterations
+ RC-->>RE: Needs improvement
+ RE->>RE: Improve (revise approach)
+ RE->>TOOL: New attempt
+ TOOL-->>RE: New result
+ RE->>RC: Is result sufficient now?
+ end
+ 
+ RC-->>AG: Complete (best of 3)
+ AG->>TL: Log reasoning trace
+ 
+ Note over AG,TL: Simple Classification (Haiku)
+ AG->>AG: Direct output (no loops)
+ AG->>TL: Log classification trace
 ```
 
 > **Diagram:** Two reasoning paths — complex tasks (Sonnet + CoT) go through Plan→Act→Observe→Reflect→Improve with max 3 iterations. Simple classification (Haiku) returns direct output without looping. Both paths log traces.

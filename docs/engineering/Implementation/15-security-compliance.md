@@ -1,7 +1,7 @@
-﻿# 15 — Security & Compliance (MVP)
+# 15 — Security & Compliance (MVP)
 
 > **Purpose:** Harden the entire system with encryption, real secrets management, and the two data controls every user must have from day one: export everything, delete everything.
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
@@ -23,39 +23,39 @@ The auth scaffold from Phase 01 is upgraded to support real OAuth/SSO providers.
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    subgraph Encryption["Encryption"]
-        AT_REST["Encryption at Rest<br/>(Postgres + Object Storage)"]:::secondary
-        IN_TRANSIT["Encryption in Transit<br/>(TLS everywhere)"]:::secondary
-    end
+ subgraph Encryption["Encryption"]
+ AT_REST["Encryption at Rest<br/>(Postgres + Object Storage)"]:::secondary
+ IN_TRANSIT["Encryption in Transit<br/>(TLS everywhere)"]:::secondary
+ end
 
-    subgraph Secrets["Secrets Management"]
-        SM["Secrets Manager"]:::primary
-        TOKENS["OAuth Tokens via token_ref"]:::secondary
-        CREDS["DB Credentials via SM"]:::secondary
-    end
+ subgraph Secrets["Secrets Management"]
+ SM["Secrets Manager"]:::primary
+ TOKENS["OAuth Tokens via token_ref"]:::secondary
+ CREDS["DB Credentials via SM"]:::secondary
+ end
 
-    subgraph Auth["Auth Upgrade"]
-        OAUTH["OAuth/SSO Provider"]:::primary
-        EXISTING["File 01's auth scaffold"]:::secondary
-    end
+ subgraph Auth["Auth Upgrade"]
+ OAUTH["OAuth/SSO Provider"]:::primary
+ EXISTING["File 01's auth scaffold"]:::secondary
+ end
 
-    subgraph Data["Data Controls"]
-        EXPORT["Export Everything<br/>(JSON bundle + file zip)"]:::secondary
-        DELETE["Delete Everything<br/>(all stores verified)"]:::primary
-        AUDIT_RET["Audit Retention<br/>(anonymized minimal)"]:::secondary
-    end
+ subgraph Data["Data Controls"]
+ EXPORT["Export Everything<br/>(JSON bundle + file zip)"]:::secondary
+ DELETE["Delete Everything<br/>(all stores verified)"]:::primary
+ AUDIT_RET["Audit Retention<br/>(anonymized minimal)"]:::secondary
+ end
 
-    AT_REST --> SM
-    IN_TRANSIT --> SM
-    SM --> TOKENS
-    SM --> CREDS
-    OAUTH --> EXISTING
-    CREDS --> EXPORT
-    CREDS --> DELETE
-    DELETE --> AUDIT_RET
+ AT_REST--> SM
+ IN_TRANSIT--> SM
+ SM--> TOKENS
+ SM--> CREDS
+ OAUTH--> EXISTING
+ CREDS--> EXPORT
+ CREDS--> DELETE
+ DELETE--> AUDIT_RET
 ```
 
 ## Context

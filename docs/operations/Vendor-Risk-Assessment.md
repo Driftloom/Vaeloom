@@ -1,7 +1,7 @@
-﻿# Vendor Risk Assessment
+# Vendor Risk Assessment
 
 > **Purpose:** Define the vendor risk management program, assessment methodology, and data processing requirements for all Vaeloom third-party vendors
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
 
@@ -15,94 +15,94 @@ This document covers all active vendors, their risk tier, data processing agreem
 
 ```mermaid
 graph TD
-    classDef critical fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
-    classDef high fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef medium fill:#fff8e1,stroke:#f57f17,color:#000,stroke-width:1.5px
-    classDef low fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef action fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1px
+ classDef critical fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
+ classDef high fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef medium fill:#fff8e1,stroke:#f57f17,color:#000,stroke-width:1.5px
+ classDef low fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef action fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1px
 
-    subgraph Vendors["Vendor Inventory"]
-        V1["Anthropic<br/>AI Model Provider"]
-        V2["OpenAI<br/>Fallback AI Provider"]
-        V3["Clerk / Auth0<br/>Authentication"]
-        V4["Vercel<br/>Frontend Hosting"]
-        V5["Fly.io<br/>AI Service Hosting"]
-        V6["AWS<br/>Cloud Infrastructure"]
-        V7["Resend / SES<br/>Email Delivery"]
-        V8["GitHub<br/>Source Control + CI"]
-    end
+ subgraph Vendors["Vendor Inventory"]
+ V1["Anthropic<br/>AI Model Provider"]
+ V2["OpenAI<br/>Fallback AI Provider"]
+ V3["Clerk / Auth0<br/>Authentication"]
+ V4["Vercel<br/>Frontend Hosting"]
+ V5["Fly.io<br/>AI Service Hosting"]
+ V6["AWS<br/>Cloud Infrastructure"]
+ V7["Resend / SES<br/>Email Delivery"]
+ V8["GitHub<br/>Source Control + CI"]
+ end
 
-    subgraph Tiers["Risk Tiers"]
-        T1["Tier 1 -- Critical<br/>Customer data processed<br/>No viable alternative"]
-        T2["Tier 2 -- High<br/>Customer data processed<br/>Alternative exists"]
-        T3["Tier 3 -- Medium<br/>Business operations<br/>No customer data"]
-        T4["Tier 4 -- Low<br/>Ancillary service<br/>Easily replaceable"]
-    end
+ subgraph Tiers["Risk Tiers"]
+ T1["Tier 1 -- Critical<br/>Customer data processed<br/>No viable alternative"]
+ T2["Tier 2 -- High<br/>Customer data processed<br/>Alternative exists"]
+ T3["Tier 3 -- Medium<br/>Business operations<br/>No customer data"]
+ T4["Tier 4 -- Low<br/>Ancillary service<br/>Easily replaceable"]
+ end
 
-    subgraph Assessment["Assessment Process"]
-        A1["Initial Assessment<br/>Security questionnaire"]
-        A2["DPA Review<br/>Data processing agreement"]
-        A3["SOC 2 / ISO 27001<br/>Certification check"]
-        A4["BCP Review<br/>Business continuity"]
-        A5["Ongoing Monitoring<br/>Status page, alerts"]
-    end
+ subgraph Assessment["Assessment Process"]
+ A1["Initial Assessment<br/>Security questionnaire"]
+ A2["DPA Review<br/>Data processing agreement"]
+ A3["SOC 2 / ISO 27001<br/>Certification check"]
+ A4["BCP Review<br/>Business continuity"]
+ A5["Ongoing Monitoring<br/>Status page, alerts"]
+ end
 
-    subgraph Actions["Risk Actions"]
-        ACT1["Annual re-assessment"]
-        ACT2["Quarterly status check"]
-        ACT3["Incident notification SLA"]
-        ACT4["Exit strategy documented"]
-    end
+ subgraph Actions["Risk Actions"]
+ ACT1["Annual re-assessment"]
+ ACT2["Quarterly status check"]
+ ACT3["Incident notification SLA"]
+ ACT4["Exit strategy documented"]
+ end
 
-    V1 & V2 & V3 & V6 --> T1
-    V4 & V5 --> T2
-    V7 --> T3
-    V8 --> T4
+ V1 & V2 & V3 & V6--> T1
+ V4 & V5--> T2
+ V7--> T3
+ V8--> T4
 
-    T1 & T2 & T3 & T4 --> A1 & A2 & A3 & A4
-    A1 & A2 & A3 & A4 & A5 --> ACT1 & ACT2 & ACT3 & ACT4
+ T1 & T2 & T3 & T4--> A1 & A2 & A3 & A4
+ A1 & A2 & A3 & A4 & A5--> ACT1 & ACT2 & ACT3 & ACT4
 
-    class V1,V2,V3,V6 critical
-    class V4,V5 high
-    class V7 medium
-    class V8 low
-    class T1,T2,T3,T4 action
-    class A1,A2,A3,A4,A5 action
-    class ACT1,ACT2,ACT3,ACT4 action
+ class V1,V2,V3,V6 critical
+ class V4,V5 high
+ class V7 medium
+ class V8 low
+ class T1,T2,T3,T4 action
+ class A1,A2,A3,A4,A5 action
+ class ACT1,ACT2,ACT3,ACT4 action
 ```
 
 ## Vendor Registry
 
 | Vendor | Service | Risk Tier | Data Classification | Assessment Frequency | DPA Signed | Certifications |
 |--------|---------|-----------|-------------------|---------------------|------------|----------------|
-| **Anthropic** | AI model inference (Claude API) | Tier 1 — Critical | User documents, agent inputs/outputs | Annual | âœ… Signed | SOC 2 Type II |
-| **OpenAI** | AI model inference (fallback) | Tier 1 — Critical | User documents, agent inputs/outputs | Annual | âœ… Signed | SOC 2 Type II |
-| **Clerk / Auth0** | Authentication, SSO, MFA | Tier 1 — Critical | User identities, email, hashed passwords | Annual | âœ… Signed | SOC 2 Type II, ISO 27001 |
-| **AWS** | Compute (ECS), Storage (S3), Database (RDS) | Tier 1 — Critical | All customer data at rest | Annual | âœ… Signed (DDA) | SOC 2 Type II, ISO 27001, FedRAMP |
-| **Vercel** | Frontend hosting, Edge Functions | Tier 2 — High | Session tokens, page views | Annual | âœ… Signed | SOC 2 Type II |
-| **Fly.io** | AI service hosting, GPU instances | Tier 2 — High | Agent inference inputs/outputs (transient) | Annual | âœ… Signed | SOC 2 Type II |
-| **Resend / AWS SES** | Transactional email delivery | Tier 3 — Medium | Email addresses, notification content | Annual | âœ… Signed | SOC 2 Type II (SES) |
-| **GitHub** | Source control, CI/CD | Tier 4 — Low | Source code, CI config, deployment keys | Annual | âœ… Signed | SOC 2 Type II |
+| **Anthropic** | AI model inference (Claude API) | Tier 1 — Critical | User documents, agent inputs/outputs | Annual | ✅ Signed | SOC 2 Type II |
+| **OpenAI** | AI model inference (fallback) | Tier 1 — Critical | User documents, agent inputs/outputs | Annual | ✅ Signed | SOC 2 Type II |
+| **Clerk / Auth0** | Authentication, SSO, MFA | Tier 1 — Critical | User identities, email, hashed passwords | Annual | ✅ Signed | SOC 2 Type II, ISO 27001 |
+| **AWS** | Compute (ECS), Storage (S3), Database (RDS) | Tier 1 — Critical | All customer data at rest | Annual | ✅ Signed (DDA) | SOC 2 Type II, ISO 27001, FedRAMP |
+| **Vercel** | Frontend hosting, Edge Functions | Tier 2 — High | Session tokens, page views | Annual | ✅ Signed | SOC 2 Type II |
+| **Fly.io** | AI service hosting, GPU instances | Tier 2 — High | Agent inference inputs/outputs (transient) | Annual | ✅ Signed | SOC 2 Type II |
+| **Resend / AWS SES** | Transactional email delivery | Tier 3 — Medium | Email addresses, notification content | Annual | ✅ Signed | SOC 2 Type II (SES) |
+| **GitHub** | Source control, CI/CD | Tier 4 — Low | Source code, CI config, deployment keys | Annual | ✅ Signed | SOC 2 Type II |
 
 ## Assessment Process
 
 ```mermaid
 flowchart LR
-    A["Onboard Vendor<br/>Procurement request"] --> B["Initial Assessment<br/>Security questionnaire"]
-    B --> C{"Risk Tier<br/>Determination"}
-    C -->|Tier 1| D["Full Assessment<br/>SOC 2 + Pen test + BCP"]
-    C -->|Tier 2| E["Standard Assessment<br/>SOC 2 + DPA"]
-    C -->|Tier 3| F["Basic Assessment<br/>DPA + Public docs"]
-    C -->|Tier 4| G["Light Assessment<br/>AUP review"]
-    
-    D & E & F & G --> H["DPA Execution"]
-    H --> I["Ongoing Monitoring<br/>Status page RSS + alerts"]
-    I --> J["Quarterly Health Check"]
-    J --> K{"Changes?"}
-    K -->|Yes| D
-    K -->|No| I
+ A["Onboard Vendor<br/>Procurement request"]--> B["Initial Assessment<br/>Security questionnaire"]
+ B--> C{"Risk Tier<br/>Determination"}
+ C-->|Tier 1| D["Full Assessment<br/>SOC 2 + Pen test + BCP"]
+ C-->|Tier 2| E["Standard Assessment<br/>SOC 2 + DPA"]
+ C-->|Tier 3| F["Basic Assessment<br/>DPA + Public docs"]
+ C-->|Tier 4| G["Light Assessment<br/>AUP review"]
+ 
+ D & E & F & G--> H["DPA Execution"]
+ H--> I["Ongoing Monitoring<br/>Status page RSS + alerts"]
+ I--> J["Quarterly Health Check"]
+ J--> K{"Changes?"}
+ K-->|Yes| D
+ K-->|No| I
 
-    L["Annual Re-assessment"] --> D & E & F & G
+ L["Annual Re-assessment"]--> D & E & F & G
 ```
 
 ## Data Processing Requirements
@@ -154,7 +154,7 @@ All vendors processing customer data must meet the following minimum requirement
 | Vendor latency spikes | Multi-vendor routing: primary vendor <500ms p99; fallback vendor activated if primary exceeds threshold |
 | Vendor metadata synchronization | User and workspace metadata cached locally; vendor outage does not block core CRUD operations |
 | Vendor status page polling | Status page changes polled every 5 minutes; integrated with PagerDuty for automatic incident creation |
-| Vendor migration time | AI model migration (Anthropic â†” OpenAI) estimated <30 minutes (hot swap via feature flag) |
+| Vendor migration time | AI model migration (Anthropic ↔ OpenAI) estimated <30 minutes (hot swap via feature flag) |
 
 ## Workflows
 

@@ -1,7 +1,7 @@
-﻿# MVP-P18 — 03. Workstreams
+# MVP-P18 — 03. Workstreams
 
-> **Phase:** MVP-P18 — Documentation and Knowledge Transfer  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 docs IA/training  
+> **Phase:** MVP-P18 — Documentation and Knowledge Transfer 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 docs IA/training 
 > **Phase rule:** Every claim links to authoritative source or reproducible evidence; canonical vs superseded docs resolved; design vs implementation status separated; version/owner/status on every doc.
 
 ## BQ-01..06 + DoR Resolutions (per §8, §26)
@@ -87,7 +87,7 @@ Generate architecture/ADR/API/schema/security/AI/deploy/runbook/support docs wit
 - `docs/Backend/` 21 docs + `docs/DevOps/` 12 docs + `docs/Operations/` 16 docs
 
 ### Changes
-- Verified `openapi.yaml:1` `openapi: 3.1.0` `title: Vaeloom Backend` `version: 0.2.0` + `paths:` 99 entries `rg -c "^  /" docs/backend/openapi.yaml` =99 matches `grep -c` (was 88 at P12 →99 at 787053a) + `/metrics` prometheus 15s + `/health` liveness + `/health/ready` readiness + `/health/startup` Infisical + auth `signup/login/logout/me/refresh/sso/{provider}` 8 + workspaces `CRUD+agents/memories/connectors/document-actions` 7 + memories `CRUD+feed/lineage/history/chunks/search` 9 + agents `catalog/list/create/chat/stream/execute/run/schedule/executions` 12 + documents/events/search/integrations/resumes/scheduler/notifications/analytics/audit/IAM/plugins
+- Verified `openapi.yaml:1` `openapi: 3.1.0` `title: Vaeloom Backend` `version: 0.2.0` + `paths:` 99 entries `rg -c "^ /" docs/backend/openapi.yaml` =99 matches `grep -c` (was 88 at P12 →99 at 787053a) + `/metrics` prometheus 15s + `/health` liveness + `/health/ready` readiness + `/health/startup` Infisical + auth `signup/login/logout/me/refresh/sso/{provider}` 8 + workspaces `CRUD+agents/memories/connectors/document-actions` 7 + memories `CRUD+feed/lineage/history/chunks/search` 9 + agents `catalog/list/create/chat/stream/execute/run/schedule/executions` 12 + documents/events/search/integrations/resumes/scheduler/notifications/analytics/audit/IAM/plugins
 - Verified `API_REFERENCE.md:1` Authentication Bearer JWT `sub/email/tenant_id/iat/exp 1h/30d` + API Key `Authorization: Bearer <api_key>` + SSO `POST /api/v1/auth/sso/{provider}` + Versioning `/api/v1/`→`/api/v2/` + Endpoint Groups tables 18 groups Health→Recommendations + Error `400/401/403/404/409/422/429/500` + RateLimit `100/60s burst10 X-RateLimit-* Retry-After` + Pagination `page 1 page_size 20 max100` nested keys `memories/agents/plugins` + Headers `Authorization/Content-Type/X-Request-ID/X-Correlation-ID`
 - Verified `DEPLOYMENT_RUNBOOK.md:1` 17 pre-deploy checkboxes + ECR push `vaeloom-api/web:$VERSION` + `terraform init -backend-config` 3 envs + `alembic downgrade -1` warning destructive + `kustomize edit set image` + staging auto `.github/workflows/deploy-staging.yml` merge main + smoke `curl -f health 3 probes` + `TOKEN=$(curl login)` + `playwright --grep @smoke` + production `Mon-Thu 09:00-16:00 UTC 2 approvals + on-call notified, No Friday`
 - Verified `DISASTER_RECOVERY.md:1` RTO/RPO table 5m DB writes vs 1h file + `aws rds create-db-snapshot` + `export-task` + `s3 sync --delete` + `pg_dump --where tenant_id` partial + `aws rds restore-db-instance-to-point-in-time` + region failover `aws rds promote-read-replica` + `kubectl edit configmap DATABASE_URL` + `kubectl scale --replicas=3` + DR Test `Weekly backup verify + Quarterly cross-region`
@@ -102,7 +102,7 @@ Generate architecture/ADR/API/schema/security/AI/deploy/runbook/support docs wit
 - [x] 4 runbooks runbook-linked 5 SLO alerts `HighErrorRate/HighLatency/ServiceDown/DatabasePool/AgentFailure`
 
 ### Tests
-- `rg -c "^  /" docs/backend/openapi.yaml` 99 paths PASS
+- `rg -c "^ /" docs/backend/openapi.yaml` 99 paths PASS
 - `python -c "import yaml; yaml.safe_load(open('docs/backend/openapi.yaml'))" && echo "yaml OK"` PASS
 - `markdownlint docs/API_REFERENCE.md docs/DEPLOYMENT_RUNBOOK.md docs/DISASTER_RECOVERY.md` 0 errors
 - `curl -f http://localhost:8000/health && curl -f http://localhost:8000/health/ready && curl -f http://localhost:8000/health/startup` 3 probes 200 OK

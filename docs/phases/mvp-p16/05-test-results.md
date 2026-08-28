@@ -1,7 +1,7 @@
-﻿# MVP-P16 — 05. Test Results
+# MVP-P16 — 05. Test Results
 
-> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 (IaC 12, K8s 22, 4 workflows green, SLSA 1.2, pip-audit/bandit/trivy)  
+> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 (IaC 12, K8s 22, 4 workflows green, SLSA 1.2, pip-audit/bandit/trivy) 
 > **Env:** `tmp_path` NullPool `mock_llm` `mock_connector_test` Python 3.12.13 `uv` + `pytest-xdist -n 4` sqlite + `httpx.AsyncClient(app)`; `terraform 1.8.0` + `docker buildx v4` + `k6 v0.54` + `trivy` + `gitleaks` + `cosign 2.2.4` + `syft`
 
 ## Summary

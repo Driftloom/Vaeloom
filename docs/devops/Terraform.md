@@ -1,61 +1,61 @@
-﻿# Terraform
+# Terraform
 
 > **Purpose:** Define Infrastructure as Code strategy for Vaeloom (Enterprise)
-> **Status:** ðŸ†• New — Enterprise-only. MVP uses PaaS + Docker Compose.
+> **Status:** New — Enterprise-only. MVP uses PaaS + Docker Compose.
 
 ## Terraform Architecture
 
 ```mermaid
 graph TD
-    classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef provider fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef module fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef env fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
-    classDef workflow fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
+ classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef provider fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef module fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef env fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
+ classDef workflow fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Triggers["ðŸš¦ When to Use Terraform (Enterprise)"]
-        direction TB
-        T1["Multi-service deployment<br/>Manual mgmt error-prone"]
-        T2["Cloud resource mgmt<br/>DBs, caches, networking"]
-        T3["Compliance requirements<br/>Audit trail for changes"]
-        T4["Team scaling<br/>Consistent environments"]
-    end
+ subgraph Triggers["When to Use Terraform (Enterprise)"]
+ direction TB
+ T1["Multi-service deployment<br/>Manual mgmt error-prone"]
+ T2["Cloud resource mgmt<br/>DBs, caches, networking"]
+ T3["Compliance requirements<br/>Audit trail for changes"]
+ T4["Team scaling<br/>Consistent environments"]
+ end
 
-    subgraph Providers["ðŸ”Œ Provider Configuration"]
-        PR1["aws<br/>hashicorp/aws ~> 5.0<br/>Region: var.aws_region"]
-        PR2["kubernetes<br/>hashicorp/kubernetes ~> 2.0"]
-    end
+ subgraph Providers["Provider Configuration"]
+ PR1["aws<br/>hashicorp/aws ~> 5.0<br/>Region: var.aws_region"]
+ PR2["kubernetes<br/>hashicorp/kubernetes ~> 2.0"]
+ end
 
-    subgraph Modules["ðŸ“¦ Resource Modules"]
-        MOD1["database/<br/>Aurora PostgreSQL<br/>Serverless v2 (1-8 ACU)<br/>Backup retention: 30d"]
-        MOD2["kubernetes/<br/>EKS cluster config<br/>Node groups + HPA"]
-        MOD3["redis/<br/>ElastiCache cluster<br/>Multi-AZ"]
-        MOD4["networking/<br/>VPC, subnets,<br/>security groups"]
-    end
+ subgraph Modules["Resource Modules"]
+ MOD1["database/<br/>Aurora PostgreSQL<br/>Serverless v2 (1-8 ACU)<br/>Backup retention: 30d"]
+ MOD2["kubernetes/<br/>EKS cluster config<br/>Node groups + HPA"]
+ MOD3["redis/<br/>ElastiCache cluster<br/>Multi-AZ"]
+ MOD4["networking/<br/>VPC, subnets,<br/>security groups"]
+ end
 
-    subgraph Environments["ðŸ--ï¸ Environment Structure"]
-        ENV1["dev/<br/>Terraform config"]
-        ENV2["staging/<br/>Terraform config"]
-        ENV3["prod/<br/>main.tf + terraform.tfvars<br/>(gitignored -- secrets)"]
-    end
+ subgraph Environments["Environment Structure"]
+ ENV1["dev/<br/>Terraform config"]
+ ENV2["staging/<br/>Terraform config"]
+ ENV3["prod/<br/>main.tf + terraform.tfvars<br/>(gitignored -- secrets)"]
+ end
 
-    subgraph Workflow["ðŸ”„ Terraform Workflow"]
-        W1["terraform plan -out=tfplan<br/>Preview changes"]
-        W2["terraform apply tfplan<br/>Apply infrastructure"]
-        W3["terraform plan -destroy<br/>Teardown (caution)"]
-    end
+ subgraph Workflow["Terraform Workflow"]
+ W1["terraform plan -out=tfplan<br/>Preview changes"]
+ W2["terraform apply tfplan<br/>Apply infrastructure"]
+ W3["terraform plan -destroy<br/>Teardown (caution)"]
+ end
 
-    T1 & T2 & T3 & T4 --> PR1 & PR2
-    PR1 & PR2 --> MOD1 & MOD2 & MOD3 & MOD4
-    MOD1 & MOD2 & MOD3 & MOD4 --> ENV1 & ENV2 & ENV3
-    ENV3 --> W1 --> W2
-    W1 --> W3
+ T1 & T2 & T3 & T4--> PR1 & PR2
+ PR1 & PR2--> MOD1 & MOD2 & MOD3 & MOD4
+ MOD1 & MOD2 & MOD3 & MOD4--> ENV1 & ENV2 & ENV3
+ ENV3--> W1--> W2
+ W1--> W3
 
-    class T1,T2,T3,T4 trigger
-    class PR1,PR2 provider
-    class MOD1,MOD2,MOD3,MOD4 module
-    class ENV1,ENV2,ENV3 env
-    class W1,W2,W3 workflow
+ class T1,T2,T3,T4 trigger
+ class PR1,PR2 provider
+ class MOD1,MOD2,MOD3,MOD4 module
+ class ENV1,ENV2,ENV3 env
+ class W1,W2,W3 workflow
 
 ```
 
@@ -352,31 +352,31 @@ resource "aws_rds_cluster" "Vaeloom" {
 
 ```mermaid
 sequenceDiagram
-    participant DEV as Developer
-    participant PR as Pull Request
-    participant CI as CI/CD (Atlantis)
-    participant TF as Terraform
-    participant BACKEND as State Backend (S3+DDB)
-    participant CLOUD as Cloud Provider (AWS)
+ participant DEV as Developer
+ participant PR as Pull Request
+ participant CI as CI/CD (Atlantis)
+ participant TF as Terraform
+ participant BACKEND as State Backend (S3+DDB)
+ participant CLOUD as Cloud Provider (AWS)
 
-    DEV->>PR: Commit Terraform change
-    PR->>CI: Trigger plan
-    CI->>TF: terraform plan
-    TF->>BACKEND: Read current state
-    BACKEND-->>TF: Current state
-    TF->>CLOUD: Refresh resources
-    CLOUD-->>TF: Current resource config
-    TF-->>CI: Plan output (add/modify/destroy)
+ DEV->>PR: Commit Terraform change
+ PR->>CI: Trigger plan
+ CI->>TF: terraform plan
+ TF->>BACKEND: Read current state
+ BACKEND-->>TF: Current state
+ TF->>CLOUD: Refresh resources
+ CLOUD-->>TF: Current resource config
+ TF-->>CI: Plan output (add/modify/destroy)
 
-    CI-->>PR: Post plan output for review
-    DEV->>CI: Approve + apply
+ CI-->>PR: Post plan output for review
+ DEV->>CI: Approve + apply
 
-    CI->>TF: terraform apply
-    TF->>BACKEND: Lock state
-    TF->>CLOUD: Create/update resources
-    CLOUD-->>TF: Resource IDs
-    TF->>BACKEND: Write new state + unlock
-    BACKEND-->>CI: Apply complete
+ CI->>TF: terraform apply
+ TF->>BACKEND: Lock state
+ TF->>CLOUD: Create/update resources
+ CLOUD-->>TF: Resource IDs
+ TF->>BACKEND: Write new state + unlock
+ BACKEND-->>CI: Apply complete
 ```
 
 > **Diagram:** Terraform workflow — PR triggers plan, plan output posted to PR for review, approved applies execute with state locking, changes written to encrypted remote state.

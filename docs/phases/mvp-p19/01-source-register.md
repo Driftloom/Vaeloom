@@ -1,8 +1,8 @@
-﻿# MVP-P19 — 01. Source Register
+# MVP-P19 — 01. Source Register
 
-> **Phase:** MVP-P19 — Release Readiness and Production Deployment  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021) + P15 93.1 APPROVED (94.2% 99 paths) + P16 92.8 APPROVED (12 TF 22 K8s SLSA L2) + P17 93.2 APPROVED (OTel traces + 5 SLO 9 rules + 3 Grafana 23 panels + 4 runbooks + 30d) + P18 93.4 APPROVED (docs IA 256 docs + 32 ADRs + 99 OpenAPI + portal 1127 lines)  
-> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P19-release-readiness-and-production-deployment.md` §1-32 (release plan, deployment validation, migration/backup, feature flags/rollout, production checklist)  
+> **Phase:** MVP-P19 — Release Readiness and Production Deployment 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021) + P15 93.1 APPROVED (94.2% 99 paths) + P16 92.8 APPROVED (12 TF 22 K8s SLSA L2) + P17 93.2 APPROVED (OTel traces + 5 SLO 9 rules + 3 Grafana 23 panels + 4 runbooks + 30d) + P18 93.4 APPROVED (docs IA 256 docs + 32 ADRs + 99 OpenAPI + portal 1127 lines) 
+> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P19-release-readiness-and-production-deployment.md` §1-32 (release plan, deployment validation, migration/backup, feature flags/rollout, production checklist) 
 > **Gate Authority:** Release Manager (accountable) + SRE Lead (backup) + Architecture Owner + Security/Compliance + Product veto
 
 ## Internal Sources

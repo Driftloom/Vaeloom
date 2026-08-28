@@ -1,8 +1,8 @@
 # MVP-P20 — 01. Source Register
 
-> **Phase:** MVP-P20 — Post-Deployment Validation  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021) + P15 93.1 APPROVED (94.2% 99 paths) + P16 92.8 APPROVED (12 TF 22 K8s SLSA L2) + P17 93.2 APPROVED (OTel traces + 5 SLO 9 rules + 3 Grafana 23 panels + 4 runbooks + 30d) + P18 93.4 APPROVED (docs IA 256 docs + 32 ADRs + 99 OpenAPI) + P19 93.6 APPROVED (release v0.2.0 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10)  
-> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P20-post-deployment-validation.md` §1-32 (post-deployment validation, synthetic monitoring, SLO/error budget, release verification, rollback drill)  
+> **Phase:** MVP-P20 — Post-Deployment Validation 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021) + P15 93.1 APPROVED (94.2% 99 paths) + P16 92.8 APPROVED (12 TF 22 K8s SLSA L2) + P17 93.2 APPROVED (OTel traces + 5 SLO 9 rules + 3 Grafana 23 panels + 4 runbooks + 30d) + P18 93.4 APPROVED (docs IA 256 docs + 32 ADRs + 99 OpenAPI) + P19 93.6 APPROVED (release v0.2.0 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10) 
+> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P20-post-deployment-validation.md` §1-32 (post-deployment validation, synthetic monitoring, SLO/error budget, release verification, rollback drill) 
 > **Gate Authority:** SRE Lead (accountable) + QA Lead + Security Operations + Product Analytics Lead + Incident Commander veto
 
 ## Internal Sources

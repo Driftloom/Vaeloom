@@ -20,52 +20,52 @@ Vaeloom uses **multi-model orchestration** — different agents route to the mod
 
 ```mermaid
 graph TD
-    classDef agent fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef fast fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef capable fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef fallback fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
-    classDef router fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
+ classDef agent fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef fast fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef capable fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef fallback fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
+ classDef router fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
 
-    subgraph AgentsIn["🤖 Agents"]
-        GA["Gmail Agent<br/>Classification"]
-        MA["Memory Agent<br/>Entity Extraction"]
-        RA["Resume Agent<br/>Generation"]
-        JSA["Job Search Agent<br/>Ranking"]
-        CHAT["Chat<br/>User-facing"]
-        ORG["Organization Agent<br/>Categorization"]
-    end
+ subgraph AgentsIn["Agents"]
+ GA["Gmail Agent<br/>Classification"]
+ MA["Memory Agent<br/>Entity Extraction"]
+ RA["Resume Agent<br/>Generation"]
+ JSA["Job Search Agent<br/>Ranking"]
+ CHAT["Chat<br/>User-facing"]
+ ORG["Organization Agent<br/>Categorization"]
+ end
 
-    subgraph Router["🔀 Model Router"]
-        direction TB
-        R1["Receive request<br/>+ task_type + priority"]
-        R2["Task classification:<br/>Classification / Reasoning / Gen"]
-        R3["Select primary model<br/>based on config"]
-        R4["Check fallback<br/>on failure / timeout"]
-        R5["Monitor & log<br/>latency + cost"]
-    end
+ subgraph Router["Model Router"]
+ direction TB
+ R1["Receive request<br/>+ task_type + priority"]
+ R2["Task classification:<br/>Classification / Reasoning / Gen"]
+ R3["Select primary model<br/>based on config"]
+ R4["Check fallback<br/>on failure / timeout"]
+ R5["Monitor & log<br/>latency + cost"]
+ end
 
-    subgraph Models["🧠 Model Pool"]
-        HAIKU["Claude Haiku<br/>Fast & cheap<br/>$0.00025/K in"]
-        SONNET["Claude Sonnet<br/>Balanced reasoning<br/>$0.003/K in"]
-        GPT4O["GPT-4o<br/>Fallback capable<br/>$0.005/K in"]
-        EMBED["text-embedding-3-small<br/>Dedicated embeddings"]
-    end
+ subgraph Models["Model Pool"]
+ HAIKU["Claude Haiku<br/>Fast & cheap<br/>$0.00025/K in"]
+ SONNET["Claude Sonnet<br/>Balanced reasoning<br/>$0.003/K in"]
+ GPT4O["GPT-4o<br/>Fallback capable<br/>$0.005/K in"]
+ EMBED["text-embedding-3-small<br/>Dedicated embeddings"]
+ end
 
-    GA & ORG --> R1
-    MA & RA & JSA & CHAT --> R1
-    R1 --> R2 --> R3 --> R4 --> R5
-    R3 -->|Classification| HAIKU
-    R3 -->|Reasoning| SONNET
-    R3 -->|Generation| SONNET
-    R3 -->|Embedding| EMBED
-    R4 -.->|Fallback| GPT4O
+ GA & ORG--> R1
+ MA & RA & JSA & CHAT--> R1
+ R1--> R2--> R3--> R4--> R5
+ R3-->|Classification| HAIKU
+ R3-->|Reasoning| SONNET
+ R3-->|Generation| SONNET
+ R3-->|Embedding| EMBED
+ R4 -.->|Fallback| GPT4O
 
-    class GA,MA,RA,JSA,CHAT,ORG agent
-    class HAIKU fast
-    class SONNET capable
-    class GPT4O fallback
-    class EMBED fast
-    class R1,R2,R3,R4,R5 router
+ class GA,MA,RA,JSA,CHAT,ORG agent
+ class HAIKU fast
+ class SONNET capable
+ class GPT4O fallback
+ class EMBED fast
+ class R1,R2,R3,R4,R5 router
 
 ```
 
@@ -302,30 +302,30 @@ cost = (input_tokens / 1000 * 0.00025) + (output_tokens / 1000 * 0.00125)
 
 ```mermaid
 sequenceDiagram
-    participant AG as Agent
-    participant MR as Model Router
-    participant CFG as Config Service
-    participant ANTH as Anthropic API
-    participant OPEN as OpenAI API (Fallback)
-    participant COST as Cost Tracker
+ participant AG as Agent
+ participant MR as Model Router
+ participant CFG as Config Service
+ participant ANTH as Anthropic API
+ participant OPEN as OpenAI API (Fallback)
+ participant COST as Cost Tracker
 
-    AG->>MR: route(task_type, agent_id, input)
-    MR->>CFG: Get agent routing config
-    CFG-->>MR: {primary: haiku, fallback: gpt-4o-mini}
-    MR->>COST: Check daily budget remaining
-    COST-->>MR: Budget available
-    
-    MR->>ANTH: Inference call (primary model)
-    alt Success
-        ANTH-->>MR: Response
-        MR->>COST: Record token usage + cost
-        MR-->>AG: RouteResponse(model, tokens, cost)
-    else Failure (timeout/5xx)
-        MR->>OPEN: Fallback call (secondary model)
-        OPEN-->>MR: Response
-        MR->>COST: Record usage + cost
-        MR-->>AG: RouteResponse(model=fallback, tokens, cost)
-    end
+ AG->>MR: route(task_type, agent_id, input)
+ MR->>CFG: Get agent routing config
+ CFG-->>MR: {primary: haiku, fallback: gpt-4o-mini}
+ MR->>COST: Check daily budget remaining
+ COST-->>MR: Budget available
+ 
+ MR->>ANTH: Inference call (primary model)
+ alt Success
+ ANTH-->>MR: Response
+ MR->>COST: Record token usage + cost
+ MR-->>AG: RouteResponse(model, tokens, cost)
+ else Failure (timeout/5xx)
+ MR->>OPEN: Fallback call (secondary model)
+ OPEN-->>MR: Response
+ MR->>COST: Record usage + cost
+ MR-->>AG: RouteResponse(model=fallback, tokens, cost)
+ end
 ```
 
 > **Diagram:** Model routing flow — agent request triggers config lookup, budget check, primary model call, and automatic fallback to the secondary model on failure. All token usage and cost is recorded for per-agent attribution.

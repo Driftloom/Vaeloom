@@ -1,17 +1,17 @@
-﻿# Vaeloom SDK Documentation
+# Vaeloom SDK Documentation
 
 > **Purpose:** SDK architecture, installation, usage, and governance for the Vaeloom platform
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
-| Metadata         | Value                          |
+| Metadata | Value |
 |------------------|--------------------------------|
-| **Purpose**      | SDK architecture, installation, usage, and governance for the Vaeloom platform |
-| **Status**       | ðŸ†• New                         |
-| **Owner**        | Engineering Team               |
-| **Last Updated** | 2026-07-13                     |
-| **Version**      | 1.0.0                          |
+| **Purpose** | SDK architecture, installation, usage, and governance for the Vaeloom platform |
+| **Status** | New |
+| **Owner** | Engineering Team |
+| **Last Updated** | 2026-07-13 |
+| **Version** | 1.0.0 |
 
 ---
 
@@ -70,23 +70,23 @@ The **Vaeloom SDK** is a first-class, type-safe client library that enables deve
 
 ### In Scope
 
-| Component          | Languages       | Description                                      |
+| Component | Languages | Description |
 |--------------------|-----------------|--------------------------------------------------|
-| TypeScript SDK     | TypeScript 5.x  | Full-featured client for Node.js and browser     |
-| Python SDK         | Python 3.11+    | Native async client for Python services          |
-| Auth Helpers       | Both            | API key, OAuth2, and token refresh flows         |
-| Query Builder      | Both            | Fluent, type-safe query construction             |
-| Entity CRUD        | Both            | Create, read, update, delete for Vaeloom entities |
-| Agent Execution    | Both            | Submit, poll, cancel, and webhook-based agents   |
+| TypeScript SDK | TypeScript 5.x | Full-featured client for Node.js and browser |
+| Python SDK | Python 3.11+ | Native async client for Python services |
+| Auth Helpers | Both | API key, OAuth2, and token refresh flows |
+| Query Builder | Both | Fluent, type-safe query construction |
+| Entity CRUD | Both | Create, read, update, delete for Vaeloom entities |
+| Agent Execution | Both | Submit, poll, cancel, and webhook-based agents |
 
 ### Out of Scope
 
-| Item                    | Rationale                                      |
+| Item | Rationale |
 |-------------------------|-------------------------------------------------|
-| Mobile SDK (iOS/Android)| Separate native team; REST compatibility only   |
-| Frontend Components     | UI concerns are owned by the web app team       |
-| CLI Tool                | Covered by `Vaeloom-cli` package separately    |
-| GraphQL Client          | Future consideration (see §25)                  |
+| Mobile SDK (iOS/Android)| Separate native team; REST compatibility only |
+| Frontend Components | UI concerns are owned by the web app team |
+| CLI Tool | Covered by `Vaeloom-cli` package separately |
+| GraphQL Client | Future consideration (see §25) |
 
 ---
 
@@ -96,35 +96,35 @@ The SDK is organised into five logical layers. Each layer depends only on the la
 
 ```mermaid
 graph TD
-    subgraph Consumer
-        APP[Your Application]
-    end
+ subgraph Consumer
+ APP[Your Application]
+ end
 
-    subgraph Vaeloom SDK
-        direction TB
-        L5["Transport Layer<br/><i>HTTP client, connection pool, keep-alive</i>"]
-        L4["Auth Layer<br/><i>API key, OAuth2, token refresh, credential resolution</i>"]
-        L3["Client Layer<br/><i>BaseClient, error wrapping, tracing, logging</i>"]
-        L2["Resource Layer<br/><i>EntityClient, AgentClient, QueryBuilder</i>"]
-        L1["Public API Layer<br/><i>VaeloomClient, typed exports</i>"]
-    end
+ subgraph Vaeloom SDK
+ direction TB
+ L5["Transport Layer<br/><i>HTTP client, connection pool, keep-alive</i>"]
+ L4["Auth Layer<br/><i>API key, OAuth2, token refresh, credential resolution</i>"]
+ L3["Client Layer<br/><i>BaseClient, error wrapping, tracing, logging</i>"]
+ L2["Resource Layer<br/><i>EntityClient, AgentClient, QueryBuilder</i>"]
+ L1["Public API Layer<br/><i>VaeloomClient, typed exports</i>"]
+ end
 
-    subgraph Vaeloom Platform
-        API[REST API Gateway]
-        AUTH[Auth Service]
-        ENT[Entity Service]
-        AGT[Agent Service]
-    end
+ subgraph Vaeloom Platform
+ API[REST API Gateway]
+ AUTH[Auth Service]
+ ENT[Entity Service]
+ AGT[Agent Service]
+ end
 
-    APP --> L1
-    L1 --> L2
-    L2 --> L3
-    L3 --> L4
-    L4 --> L5
-    L5 --> API
-    API --> AUTH
-    API --> ENT
-    API --> AGT
+ APP--> L1
+ L1--> L2
+ L2--> L3
+ L3--> L4
+ L4--> L5
+ L5--> API
+ API--> AUTH
+ API--> ENT
+ API--> AGT
 ```
 
 **Request flow:** Consumer calls a public method → resource client builds the request → base client enriches with auth headers → transport dispatches via connection pool → response is unwrapped, errors are classified, and a typed result is returned.
@@ -186,10 +186,10 @@ export interface Page<T> {
 
 Handles credential resolution, token caching, and automatic refresh.
 
-| Strategy    | Token Source              | Refresh Mechanism               |
+| Strategy | Token Source | Refresh Mechanism |
 |-------------|--------------------------|---------------------------------|
-| API Key     | `Vaeloom_API_KEY` env    | Static, no refresh              |
-| OAuth2      | `Vaeloom_CLIENT_ID` + `Vaeloom_CLIENT_SECRET` | OAuth2 client credentials grant, auto-refreshed at 80% TTL |
+| API Key | `Vaeloom_API_KEY` env | Static, no refresh |
+| OAuth2 | `Vaeloom_CLIENT_ID` + `Vaeloom_CLIENT_SECRET` | OAuth2 client credentials grant, auto-refreshed at 80% TTL |
 | Access Token| `Vaeloom_ACCESS_TOKEN` env | Manual refresh via `client.auth.refresh()` |
 
 ### 5.5 Query Builder
@@ -246,30 +246,30 @@ const result = await agentClient.runAndWait({
 
 ```mermaid
 sequenceDiagram
-    participant Dev as Developer
-    participant SDK as Vaeloom SDK
-    participant API as Vaeloom API
-    participant Auth as Auth Service
-    participant Agent as Agent Service
+ participant Dev as Developer
+ participant SDK as Vaeloom SDK
+ participant API as Vaeloom API
+ participant Auth as Auth Service
+ participant Agent as Agent Service
 
-    Dev->>SDK: 1. Install SDK (npm/pip)
-    Dev->>SDK: 2. Create client with API key
+ Dev->>SDK: 1. Install SDK (npm/pip)
+ Dev->>SDK: 2. Create client with API key
 
-    SDK->>Auth: 3. Validate credentials
-    Auth-->>SDK: 4. Access token
+ SDK->>Auth: 3. Validate credentials
+ Auth-->>SDK: 4. Access token
 
-    Dev->>SDK: 5. entityClient.create(document)
+ Dev->>SDK: 5. entityClient.create(document)
 
-    SDK->>API: POST /v1/entities/document
-    API-->>SDK: 201 { id, attributes }
+ SDK->>API: POST /v1/entities/document
+ API-->>SDK: 201 { id, attributes }
 
-    Dev->>SDK: 6. agentClient.run({ payload })
-    SDK->>API: POST /v1/agents/data-enrichment/run
-    API-->>SDK: 202 { taskId, status }
+ Dev->>SDK: 6. agentClient.run({ payload })
+ SDK->>API: POST /v1/agents/data-enrichment/run
+ API-->>SDK: 202 { taskId, status }
 
-    SDK->>API: 7. GET /v1/tasks/{taskId} (poll)
-    API-->>SDK: 200 { status: "completed", result }
-    SDK-->>Dev: 8. Typed result
+ SDK->>API: 7. GET /v1/tasks/{taskId} (poll)
+ API-->>SDK: 200 { status: "completed", result }
+ SDK-->>Dev: 8. Typed result
 ```
 
 ---
@@ -469,14 +469,14 @@ await client.auth.refresh();
 
 ### 9.5 Environment Variable Conventions
 
-| Variable                     | Description                          | Required       |
+| Variable | Description | Required |
 |------------------------------|--------------------------------------|----------------|
-| `Vaeloom_API_KEY`           | API key for simple auth              | Conditional    |
-| `Vaeloom_CLIENT_ID`         | OAuth2 client ID                     | Conditional    |
-| `Vaeloom_CLIENT_SECRET`     | OAuth2 client secret                 | Conditional    |
-| `Vaeloom_ACCESS_TOKEN`      | Pre-obtained access token            | Conditional    |
-| `Vaeloom_BASE_URL`          | API base URL (default: `https://api.Vaeloom.dev`) | No |
-| `Vaeloom_REQUEST_TIMEOUT`   | Request timeout in ms (default: `30000`) | No |
+| `Vaeloom_API_KEY` | API key for simple auth | Conditional |
+| `Vaeloom_CLIENT_ID` | OAuth2 client ID | Conditional |
+| `Vaeloom_CLIENT_SECRET` | OAuth2 client secret | Conditional |
+| `Vaeloom_ACCESS_TOKEN` | Pre-obtained access token | Conditional |
+| `Vaeloom_BASE_URL` | API base URL (default: `https://api.Vaeloom.dev`) | No |
+| `Vaeloom_REQUEST_TIMEOUT` | Request timeout in ms (default: `30000`) | No |
 
 ---
 
@@ -525,17 +525,17 @@ result = await query.fetch()
 
 ### 10.2 Filter Operators
 
-| Operator      | Function    | Description                             |
+| Operator | Function | Description |
 |---------------|-------------|-----------------------------------------|
-| `eq`          | `eq(v)`     | Equals                                  |
-| `ne`          | `ne(v)`     | Not equals                              |
-| `gt`          | `gt(v)`     | Greater than                            |
-| `gte`         | `gte(v)`    | Greater than or equal                   |
-| `lt`          | `lt(v)`     | Less than                               |
-| `lte`         | `lte(v)`    | Less than or equal                      |
-| `inList`      | `inList(v)` | In a list of values                     |
-| `contains`    | `contains(v)`| Partial string match                   |
-| `exists`      | `exists()`  | Field is present (non-null)             |
+| `eq` | `eq(v)` | Equals |
+| `ne` | `ne(v)` | Not equals |
+| `gt` | `gt(v)` | Greater than |
+| `gte` | `gte(v)` | Greater than or equal |
+| `lt` | `lt(v)` | Less than |
+| `lte` | `lte(v)` | Less than or equal |
+| `inList` | `inList(v)` | In a list of values |
+| `contains` | `contains(v)`| Partial string match |
+| `exists` | `exists()` | Field is present (non-null) |
 
 ### 10.3 Reusing Queries
 
@@ -726,14 +726,14 @@ When an agent completes, Vaeloom POSTs the following payload to your registered 
 
 All SDK errors extend a base `VaeloomError` class, which exposes `statusCode`, `code`, `message`, and `requestId`.
 
-| Error Class             | HTTP Status | When Raised                           |
+| Error Class | HTTP Status | When Raised |
 |-------------------------|-------------|---------------------------------------|
-| `AuthenticationError`   | 401         | Invalid or expired credentials        |
-| `RateLimitError`        | 429         | Too many requests (see §14)           |
-| `ValidationError`       | 422         | Request payload failed schema validation |
-| `NotFoundError`         | 404         | Requested resource does not exist     |
-| `ServerError`           | 500+        | Upstream server failure               |
-| `NetworkError`          | N/A         | Connection dropped / DNS failure      |
+| `AuthenticationError` | 401 | Invalid or expired credentials |
+| `RateLimitError` | 429 | Too many requests (see §14) |
+| `ValidationError` | 422 | Request payload failed schema validation |
+| `NotFoundError` | 404 | Requested resource does not exist |
+| `ServerError` | 500+ | Upstream server failure |
+| `NetworkError` | N/A | Connection dropped / DNS failure |
 
 ### 13.2 Handling Errors
 
@@ -788,12 +788,12 @@ except NotFoundError:
 
 The SDK retries on transient failures (429, 503, network errors) with exponential backoff.
 
-| Parameter            | Default | Description                            |
+| Parameter | Default | Description |
 |----------------------|---------|----------------------------------------|
-| `maxRetries`         | 3       | Maximum number of retries              |
-| `baseDelayMs`        | 500     | Initial delay before first retry       |
-| `maxDelayMs`         | 30_000  | Maximum delay cap                      |
-| `backoffMultiplier`  | 2       | Exponential factor (500 → 1000 → 2000) |
+| `maxRetries` | 3 | Maximum number of retries |
+| `baseDelayMs` | 500 | Initial delay before first retry |
+| `maxDelayMs` | 30_000 | Maximum delay cap |
+| `backoffMultiplier` | 2 | Exponential factor (500 → 1000 → 2000) |
 
 These can be overridden at the client level:
 
@@ -822,11 +822,11 @@ const client = new VaeloomClient({
 
 The SDK implements a **token-bucket algorithm** to stay within Vaeloom API rate limits.
 
-| Limit Type          | Default Rate        | Scope     |
+| Limit Type | Default Rate | Scope |
 |---------------------|---------------------|-----------|
-| Requests per second | 100 req/s           | Per client instance |
-| Burst               | 200 requests        | Per client instance |
-| Concurrent requests | 10                  | Per client instance |
+| Requests per second | 100 req/s | Per client instance |
+| Burst | 200 requests | Per client instance |
+| Concurrent requests | 10 | Per client instance |
 
 ### 14.2 Exponential Backoff
 
@@ -905,11 +905,11 @@ const client = new VaeloomClient({
 });
 ```
 
-| Environment | Typical `baseUrl`                      |
+| Environment | Typical `baseUrl` |
 |-------------|----------------------------------------|
-| Development| `https://api-dev.Vaeloom.dev`          |
-| Staging    | `https://api-staging.Vaeloom.dev`      |
-| Production | `https://api.Vaeloom.dev`              |
+| Development| `https://api-dev.Vaeloom.dev` |
+| Staging | `https://api-staging.Vaeloom.dev` |
+| Production | `https://api.Vaeloom.dev` |
 
 ### 15.4 Transport Security
 
@@ -931,11 +931,11 @@ const client = new VaeloomClient({
 
 The SDK maintains a persistent HTTP connection pool (keep-alive) to avoid TCP handshake overhead on every request.
 
-| Platform  | Pool Size | Library          |
+| Platform | Pool Size | Library |
 |-----------|-----------|------------------|
-| Node.js   | 25        | `undici` / `node:http` |
-| Browser   | 6         | `fetch` (browser limit) |
-| Python    | 10        | `httpx`           |
+| Node.js | 25 | `undici` / `node:http` |
+| Browser | 6 | `fetch` (browser limit) |
+| Python | 10 | `httpx` |
 
 ### 16.2 Keep-Alive
 
@@ -1089,16 +1089,16 @@ client.on("metric", (metric) => {
 });
 ```
 
-| Metric Name                  | Type       | Description                          |
+| Metric Name | Type | Description |
 |------------------------------|------------|--------------------------------------|
-| `request.duration`           | Histogram  | Request round-trip time (ms)         |
-| `request.total`              | Counter    | Total requests                       |
-| `request.errors`             | Counter    | Failed requests (by status code)     |
-| `retry.attempts`             | Counter    | Retry attempts                       |
-| `rate_limit.queued`          | Gauge      | Currently queued requests            |
-| `rate_limit.throttled`       | Counter    | Times rate limit was hit             |
-| `cache.hit`                  | Counter    | Cache hit count                      |
-| `cache.miss`                 | Counter    | Cache miss count                     |
+| `request.duration` | Histogram | Request round-trip time (ms) |
+| `request.total` | Counter | Total requests |
+| `request.errors` | Counter | Failed requests (by status code) |
+| `retry.attempts` | Counter | Retry attempts |
+| `rate_limit.queued` | Gauge | Currently queued requests |
+| `rate_limit.throttled` | Counter | Times rate limit was hit |
+| `cache.hit` | Counter | Cache hit count |
+| `cache.miss` | Counter | Cache miss count |
 
 ### 18.4 Health Check
 
@@ -1115,11 +1115,11 @@ const health = await client.health();
 
 The SDK follows strict [SemVer 2.0.0](https://semver.org/):
 
-| Version Bump | Meaning                                      | Example    |
+| Version Bump | Meaning | Example |
 |--------------|----------------------------------------------|------------|
-| **Major**    | Breaking API changes, removed functionality  | `1.x → 2.0.0` |
-| **Minor**    | New features, backward-compatible            | `1.0 → 1.1.0` |
-| **Patch**    | Bug fixes, performance improvements          | `1.0.0 → 1.0.1` |
+| **Major** | Breaking API changes, removed functionality | `1.x → 2.0.0` |
+| **Minor** | New features, backward-compatible | `1.0 → 1.1.0` |
+| **Patch** | Bug fixes, performance improvements | `1.0.0 → 1.0.1` |
 
 ### 19.2 Changelog
 
@@ -1144,11 +1144,11 @@ MIGRATING.md
 
 ### 19.4 Deprecation Policy
 
-| Phase        | Duration | Developer Signal                          |
+| Phase | Duration | Developer Signal |
 |--------------|----------|-------------------------------------------|
-| **Notice**   | 1 major cycle | Feature still works; deprecation warning in logs |
-| **Sunset**   | 1 major cycle | Feature removed; migration guide published |
-| **Removal**  | After sunset  | Feature deleted                            |
+| **Notice** | 1 major cycle | Feature still works; deprecation warning in logs |
+| **Sunset** | 1 major cycle | Feature removed; migration guide published |
+| **Removal** | After sunset | Feature deleted |
 
 Deprecated features produce a runtime warning once per client instance:
 
@@ -1316,23 +1316,23 @@ const client = new VaeloomClient({
 
 ## 22. Common Mistakes
 
-| # | Mistake                         | Why It's Wrong                                          | Correct Approach                          |
+| # | Mistake | Why It's Wrong | Correct Approach |
 |---|---------------------------------|--------------------------------------------------------|-------------------------------------------|
-| 1 | **Creating a new client per request** | Exhausts connection pool; bypasses rate limiting       | Create once, reuse across the application |
-| 2 | **Ignoring rate limit errors**  | Leads to repeated 429s and eventual IP blocking        | Let the SDK handle backoff automatically  |
-| 3 | **Missing error handling**      | Unhandled promise rejections crash the process         | Always wrap in try/catch with typed errors|
-| 4 | **Hardcoding API keys**         | Credentials leak to version control                    | Use environment variables or secret manager|
-| 5 | **Not pinning SDK version**     | Accidental breaking changes from `npm update`          | Use `^major` or exact version pinning     |
-| 6 | **Disabling TLS verification**  | MITM attacks against API traffic                       | Keep TLS verification enabled             |
-| 7 | **Sharing clients across tenants** | Auth context bleeds between users                   | Create one client per tenant / auth scope |
+| 1 | **Creating a new client per request** | Exhausts connection pool; bypasses rate limiting | Create once, reuse across the application |
+| 2 | **Ignoring rate limit errors** | Leads to repeated 429s and eventual IP blocking | Let the SDK handle backoff automatically |
+| 3 | **Missing error handling** | Unhandled promise rejections crash the process | Always wrap in try/catch with typed errors|
+| 4 | **Hardcoding API keys** | Credentials leak to version control | Use environment variables or secret manager|
+| 5 | **Not pinning SDK version** | Accidental breaking changes from `npm update` | Use `^major` or exact version pinning |
+| 6 | **Disabling TLS verification** | MITM attacks against API traffic | Keep TLS verification enabled |
+| 7 | **Sharing clients across tenants** | Auth context bleeds between users | Create one client per tenant / auth scope |
 
 ---
 
 ## 23. Risks
 
-| Risk                               | Likelihood | Impact | Mitigation                                           |
+| Risk | Likelihood | Impact | Mitigation |
 |------------------------------------|------------|--------|------------------------------------------------------|
-| **SDK version drift** between projects | Medium  | Medium | Enforce version ranges; use Dependabot/Renovate      |
+| **SDK version drift** between projects | Medium | Medium | Enforce version ranges; use Dependabot/Renovate |
 | **Breaking API changes** without corresponding SDK release | Low | High | SDK auto-generated from OpenAPI spec; CI enforces sync |
 | **Deprecated feature usage** across teams | Medium | Low | Runtime deprecation warnings; quarterly deprecation audits |
 | **Credential leak** in logs or error reports | Low | Critical | SDK redacts credentials; pre-commit hook scans for secrets |
@@ -1354,26 +1354,26 @@ const client = new VaeloomClient({
 
 ## 25. Future Improvements
 
-| Feature                    | Target Version | Status     | Description                                     |
+| Feature | Target Version | Status | Description |
 |----------------------------|----------------|------------|-------------------------------------------------|
-| **Streaming responses**    | v2.0           | Planned    | SSE-based streaming for agent logs and entity exports |
-| **GraphQL support**        | v2.0           | Planned    | GraphQL client with typed queries                |
-| **Real-time subscriptions**| v2.1           | Research   | WebSocket-based subscription to entity changes   |
-| **WebSocket SDK**          | v2.1           | Research   | Dedicated transport for low-latency agent interactions |
-| **Offline queue**          | v3.0           | Backlog    | Queue mutations offline and sync on reconnect    |
-| **gRPC transport**         | v3.0           | Backlog    | High-throughput transport for internal services  |
+| **Streaming responses** | v2.0 | Planned | SSE-based streaming for agent logs and entity exports |
+| **GraphQL support** | v2.0 | Planned | GraphQL client with typed queries |
+| **Real-time subscriptions**| v2.1 | Research | WebSocket-based subscription to entity changes |
+| **WebSocket SDK** | v2.1 | Research | Dedicated transport for low-latency agent interactions |
+| **Offline queue** | v3.0 | Backlog | Queue mutations offline and sync on reconnect |
+| **gRPC transport** | v3.0 | Backlog | High-throughput transport for internal services |
 
 ---
 
 ## 26. Related Documents
 
-| Document                          | Description                                      | Location                                    |
+| Document | Description | Location |
 |-----------------------------------|--------------------------------------------------|---------------------------------------------|
-| **API Reference**                 | Full REST API endpoint documentation             | [`Backend/API-Reference.md`](./Backend/API-Reference.md) |
-| **Authentication Guide**          | Auth flows, token management, scopes             | [`Backend/Authentication.md`](./Backend/Authentication.md) |
-| **Rate Limiting Guide**           | Rate limit policies, headers, best practices     | [`Backend/Rate-Limiting.md`](./Backend/Rate-Limiting.md) |
-| **REST API Standards**            | Naming conventions, pagination, error contracts  | [`Backend/REST-Standards.md`](./Backend/REST-Standards.md) |
-| **Webhook Guide**                 | Webhook registration, verification, retries      | [`Integration-Guide.md`](./Integration-Guide.md) |
-| **Migration Guide (v1.x to v2.0)**| Breaking changes and upgrade paths               | Not yet created |
-| **CHANGELOG**                     | Release history and version diffs                | Not yet created |
-| **OpenAPI Spec**                  | Machine-readable API specification               | [`Backend/openapi.yaml`](./Backend/openapi.yaml) |
+| **API Reference** | Full REST API endpoint documentation | [`Backend/API-Reference.md`](./Backend/API-Reference.md) |
+| **Authentication Guide** | Auth flows, token management, scopes | [`Backend/Authentication.md`](./Backend/Authentication.md) |
+| **Rate Limiting Guide** | Rate limit policies, headers, best practices | [`Backend/Rate-Limiting.md`](./Backend/Rate-Limiting.md) |
+| **REST API Standards** | Naming conventions, pagination, error contracts | [`Backend/REST-Standards.md`](./Backend/REST-Standards.md) |
+| **Webhook Guide** | Webhook registration, verification, retries | [`Integration-Guide.md`](./Integration-Guide.md) |
+| **Migration Guide (v1.x to v2.0)**| Breaking changes and upgrade paths | Not yet created |
+| **CHANGELOG** | Release history and version diffs | Not yet created |
+| **OpenAPI Spec** | Machine-readable API specification | [`Backend/openapi.yaml`](./Backend/openapi.yaml) |

@@ -1,7 +1,7 @@
-﻿## Header
+## Header
 >
 > **Purpose:** Detailed specification for Learning Roadmap (V2)
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
 
@@ -152,19 +152,19 @@ Autonomy level: **Suggest** — the Planning Agent proposes roadmaps but does no
 
 ```mermaid
 graph TD
-    classDef input fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef output fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef input fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef process fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef output fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    ATS[ATS Agent Gap Report] --> PA[Planning Agent]
-    RF[Reflection Agent] --> PA
-    MEM[Skill Graph] --> PA
-    PA --> DG[Dependency Grapher]
-    DG --> RE[Resource Finder]
-    RE --> COURSE[Course Search]
-    PA --> ROAD[Structured Roadmap]
-    ROAD --> DASH[Dashboard Widget]
-    ROAD --> PROG[Progress Tracker]
+ ATS[ATS Agent Gap Report]--> PA[Planning Agent]
+ RF[Reflection Agent]--> PA
+ MEM[Skill Graph]--> PA
+ PA--> DG[Dependency Grapher]
+ DG--> RE[Resource Finder]
+ RE--> COURSE[Course Search]
+ PA--> ROAD[Structured Roadmap]
+ ROAD--> DASH[Dashboard Widget]
+ ROAD--> PROG[Progress Tracker]
 ```
 
 > **Diagram:** Learning Roadmap architecture — ATS gaps + Reflection patterns → Planning Agent → dependency graph → resources → structured roadmap.
@@ -197,25 +197,25 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant PA as Planning Agent
-    participant ATS as ATS Agent
-    participant DG as Dependency Grapher
-    participant RF as Resource Finder
-    participant MEM as Memory
+ participant U as User
+ participant PA as Planning Agent
+ participant ATS as ATS Agent
+ participant DG as Dependency Grapher
+ participant RF as Resource Finder
+ participant MEM as Memory
 
-    U->>PA: Generate roadmap (target: frontend intern)
-    PA->>ATS: Get skill gaps
-    ATS-->>PA: Missing: React, TypeScript, CSS Grid
-    PA->>MEM: Check existing skills
-    MEM-->>PA: Has: JavaScript, HTML, Git
-    PA->>DG: Order by dependency
-    DG-->>PA: TypeScript --> React --> CSS Grid
-    PA->>RF: Find resources for each
-    RF-->>PA: Course links + project ideas
-    PA-->>U: 3-step roadmap (40 hours total)
-    U->>PA: Set deadline: 8 weeks
-    PA-->>U: Paced: 5 hours/week
+ U->>PA: Generate roadmap (target: frontend intern)
+ PA->>ATS: Get skill gaps
+ ATS-->>PA: Missing: React, TypeScript, CSS Grid
+ PA->>MEM: Check existing skills
+ MEM-->>PA: Has: JavaScript, HTML, Git
+ PA->>DG: Order by dependency
+ DG-->>PA: TypeScript--> React--> CSS Grid
+ PA->>RF: Find resources for each
+ RF-->>PA: Course links + project ideas
+ PA-->>U: 3-step roadmap (40 hours total)
+ U->>PA: Set deadline: 8 weeks
+ PA-->>U: Paced: 5 hours/week
 ```
 
 ## Data Flow

@@ -1,7 +1,7 @@
 # MVP-P14 — 01. Source Register
 
-> **Phase:** MVP-P14 — Testing and Quality Engineering  
-> **Date:** 2026-08-22 · **Baseline:** `a69d7d7` (HEAD after P13 remediation) + P14 hardening  
+> **Phase:** MVP-P14 — Testing and Quality Engineering 
+> **Date:** 2026-08-22 · **Baseline:** `a69d7d7` (HEAD after P13 remediation) + P14 hardening 
 > **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P14-testing-and-quality-engineering.md` §28
 
 ## Internal Sources

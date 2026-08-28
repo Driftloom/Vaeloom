@@ -1,8 +1,8 @@
-﻿# MVP-P16 — 01. Source Register
+# MVP-P16 — 01. Source Register
 
-> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021) + P15 93.1 APPROVED (p50 45ms p95 120ms 94.2% 99 paths) + P16 IaC/supply-chain  
-> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P16-devops-infrastructure-and-cicd.md` §1-32 (DEVOPS, IaC, SLSA 1.2, SBOM, signed promotion, rollback)  
+> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4 42/42 RLS via 0020 `787053aa6e6f`, retention_runs 0021) + P15 93.1 APPROVED (p50 45ms p95 120ms 94.2% 99 paths) + P16 IaC/supply-chain 
+> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P16-devops-infrastructure-and-cicd.md` §1-32 (DEVOPS, IaC, SLSA 1.2, SBOM, signed promotion, rollback) 
 > **Gate Authority:** Platform Engineer (accountable) + DevOps Engineer (backup) + Security/SRE/Cloud Arch veto
 
 ## Internal Sources

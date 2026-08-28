@@ -47,24 +47,24 @@ This document defines the required sections, naming conventions, quality gates, 
 
 ```mermaid
 graph TD
-    subgraph "Prompt File Anatomy"
-        A[ROLE: Agent Mission] --> B[CONTEXT: Background]
-        B --> C[TOOLS: Available Tools]
-        C --> D[MEMORY: Read/Write Scope]
-        D --> E[CONSTRAINTS: Rules]
-        E --> F[EXAMPLES: Few-shot]
-        F --> G[EDGE CASES: Ambiguity]
-        G --> H[OUTPUT FORMAT: JSON Schema]
-    end
-    
-    H --> I[Golden Dataset]
-    I --> J[CI Gate: Eval Pass]
-    J --> K[Deploy Prompt]
-    
-    style A fill:#e3f2fd
-    style H fill:#fff3e0
-    style J fill:#fce4ec
-    style K fill:#e8f5e9
+ subgraph "Prompt File Anatomy"
+ A[ROLE: Agent Mission]--> B[CONTEXT: Background]
+ B--> C[TOOLS: Available Tools]
+ C--> D[MEMORY: Read/Write Scope]
+ D--> E[CONSTRAINTS: Rules]
+ E--> F[EXAMPLES: Few-shot]
+ F--> G[EDGE CASES: Ambiguity]
+ G--> H[OUTPUT FORMAT: JSON Schema]
+ end
+ 
+ H--> I[Golden Dataset]
+ I--> J[CI Gate: Eval Pass]
+ J--> K[Deploy Prompt]
+ 
+ style A fill:#e3f2fd
+ style H fill:#fff3e0
+ style J fill:#fce4ec
+ style K fill:#e8f5e9
 ```
 
 ## Required Sections
@@ -86,18 +86,18 @@ Every prompt MUST include ALL of the following sections in order:
 
 ```mermaid
 graph LR
-    A[Write Prompt] --> B[Validate Schema]
-    B --> C[Golden Dataset Passes?]
-    C -->|Yes| D[Injection Test Passes?]
-    C -->|No| A
-    D -->|Yes| E[Review Checklist]
-    D -->|No| A
-    E --> F[Version Bump]
-    F --> G[Deploy]
+ A[Write Prompt]--> B[Validate Schema]
+ B--> C[Golden Dataset Passes?]
+ C-->|Yes| D[Injection Test Passes?]
+ C-->|No| A
+ D-->|Yes| E[Review Checklist]
+ D-->|No| A
+ E--> F[Version Bump]
+ F--> G[Deploy]
 
-    style C fill:#fff3e0
-    style D fill:#fce4ec
-    style G fill:#e8f5e9
+ style C fill:#fff3e0
+ style D fill:#fce4ec
+ style G fill:#e8f5e9
 ```
 
 Before deploying a new prompt, the following checklist MUST pass:
@@ -226,32 +226,32 @@ This document defines the standardized conventions, required sections, quality g
 
 ```mermaid
 sequenceDiagram
-    participant AU as Author
-    participant SV as Section Validator
-    participant NC as Naming Convention
-    participant PS as Prohibited Scanner
-    participant EV as Eval Runner
-    participant CI as CI Gate
+ participant AU as Author
+ participant SV as Section Validator
+ participant NC as Naming Convention
+ participant PS as Prohibited Scanner
+ participant EV as Eval Runner
+ participant CI as CI Gate
 
-    AU->>AU: Write prompt (8 sections)
-    AU->>SV: Validate sections
-    SV-->>AU: All 8 present
-    
-    AU->>NC: Validate filename
-    NC-->>AU: Convention correct
-    
-    AU->>PS: Scan for prohibited patterns
-    PS-->>AU: No prohibited patterns found
-    
-    AU->>EV: Run golden dataset (100% pass required)
-    EV-->>AU: Pass
-    
-    AU->>EV: Run injection test
-    EV-->>AU: Pass
-    
-    AU->>CI: Submit for deployment
-    CI->>CI: Quality checklist (9 items)
-    CI-->>AU: ✅ Ready for deployment
+ AU->>AU: Write prompt (8 sections)
+ AU->>SV: Validate sections
+ SV-->>AU: All 8 present
+ 
+ AU->>NC: Validate filename
+ NC-->>AU: Convention correct
+ 
+ AU->>PS: Scan for prohibited patterns
+ PS-->>AU: No prohibited patterns found
+ 
+ AU->>EV: Run golden dataset (100% pass required)
+ EV-->>AU: Pass
+ 
+ AU->>EV: Run injection test
+ EV-->>AU: Pass
+ 
+ AU->>CI: Submit for deployment
+ CI->>CI: Quality checklist (9 items)
+ CI-->>AU: ✅ Ready for deployment
 ```
 
 > **Diagram:** Prompt quality gate flow — 6 validation steps must all pass before a prompt can be deployed: section validation, naming convention, prohibited pattern scan, golden dataset, injection test, and quality checklist.

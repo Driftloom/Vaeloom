@@ -1,9 +1,9 @@
 # Vaeloom MVP — Independent End-to-End Phase Prompt 09: UI/UX and Design System
 
-> **Prompt ID:** `MVP-P09`  
-> **Artifact type:** Standalone generate + audit + execute + verify + gate + remediate + handoff prompt  
-> **Generated:** 2026-08-04  
-> **Truth status:** Design/prompt artifact complete; target repository execution, runtime tests, deployment and certification remain `NOT_EXECUTED` until real evidence is attached.  
+> **Prompt ID:** `MVP-P09` 
+> **Artifact type:** Standalone generate + audit + execute + verify + gate + remediate + handoff prompt 
+> **Generated:** 2026-08-04 
+> **Truth status:** Design/prompt artifact complete; target repository execution, runtime tests, deployment and certification remain `NOT_EXECUTED` until real evidence is attached. 
 > **Primary governing source:** `Universal_Enterprise_Phase_Prompt_Generator_and_Gatekeeper.md`
 
 ## How to Use This File
@@ -418,7 +418,7 @@ Deep research MUST:
 8. Record rejected alternatives and why they were rejected.
 9. Produce a concise research conclusion.
 10. Link the conclusion to the requirement/design/implementation
-   decision it supports.
+ decision it supports.
 
 ### 15A.2 Mandatory Research Topics for MVP-P09
 
@@ -602,21 +602,21 @@ It does NOT prove that Vaeloom:
 Therefore every web-derived requirement must eventually follow:
 
 External Source
-    ↓
+ ↓
 Research Finding
-    ↓
+ ↓
 Vaeloom Requirement
-    ↓
+ ↓
 Design Decision
-    ↓
+ ↓
 Implementation
-    ↓
+ ↓
 Automated Test
-    ↓
+ ↓
 Manual/Independent Verification
-    ↓
+ ↓
 Evidence
-    ↓
+ ↓
 Gate Decision
 
 ## 16. Security, Privacy, and Compliance

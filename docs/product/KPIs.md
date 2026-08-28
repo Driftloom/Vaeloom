@@ -23,18 +23,18 @@ KPIs are the vital signs of the business. This document defines every KPI Vaeloo
 
 ```mermaid
 graph TD
-    classDef category fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef kpi fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef category fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef kpi fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    PROD["Product KPIs<br/>(user engagement)"]:::category
-    AI["AI KPIs<br/>(quality + cost)"]:::category
-    BIZ["Business KPIs<br/>(revenue + growth)"]:::category
-    ENG["Engineering KPIs<br/>(delivery + reliability)"]:::category
+ PROD["Product KPIs<br/>(user engagement)"]:::category
+ AI["AI KPIs<br/>(quality + cost)"]:::category
+ BIZ["Business KPIs<br/>(revenue + growth)"]:::category
+ ENG["Engineering KPIs<br/>(delivery + reliability)"]:::category
 
-    PROD --> DAU["DAU/MAU"]:::kpi & RET["Retention"]:::kpi & TTV["Time-to-Value"]:::kpi & ADOPT["Feature Adoption"]:::kpi
-    AI --> TASK["Task Completion"]:::kpi & RAG["RAG Relevance"]:::kpi & COST["Cost/Run"]:::kpi & GUARD["Guardrail Block Rate"]:::kpi
-    BIZ --> MRR["MRR/ARR"]:::kpi & CAC["CAC"]:::kpi & LTV["LTV"]:::kpi & CHURN["Churn"]:::kpi
-    ENG --> DEPLOY["Deploy Frequency"]:::kpi & CFR["Change Failure Rate"]:::kpi & MTTR["MTTR"]:::kpi
+ PROD--> DAU["DAU/MAU"]:::kpi & RET["Retention"]:::kpi & TTV["Time-to-Value"]:::kpi & ADOPT["Feature Adoption"]:::kpi
+ AI--> TASK["Task Completion"]:::kpi & RAG["RAG Relevance"]:::kpi & COST["Cost/Run"]:::kpi & GUARD["Guardrail Block Rate"]:::kpi
+ BIZ--> MRR["MRR/ARR"]:::kpi & CAC["CAC"]:::kpi & LTV["LTV"]:::kpi & CHURN["Churn"]:::kpi
+ ENG--> DEPLOY["Deploy Frequency"]:::kpi & CFR["Change Failure Rate"]:::kpi & MTTR["MTTR"]:::kpi
 ```
 
 > **Diagram:** KPI hierarchy. Four categories, each with its vital metrics. Product measures engagement; AI measures quality and cost; Business measures revenue; Engineering measures delivery.

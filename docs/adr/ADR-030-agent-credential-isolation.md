@@ -1,12 +1,12 @@
 # ADR-030: Agent Credential Isolation
 
-| Metadata     | Value                                    |
+| Metadata | Value |
 | ------------ | ---------------------------------------- |
-| **Status**   | Proposed                                 |
-| **Date**     | 2026-08-16                               |
-| **Deciders** | Security Architect, AI Architect         |
-| **Owner**    | Security Team                            |
-| **Tags**     | security, agents, credentials, isolation |
+| **Status** | Proposed |
+| **Date** | 2026-08-16 |
+| **Deciders** | Security Architect, AI Architect |
+| **Owner** | Security Team |
+| **Tags** | security, agents, credentials, isolation |
 
 ## Context
 
@@ -24,27 +24,27 @@ We will implement per-agent credential isolation for MVP-scope agents:
 
 ### Credential Isolation Model
 
-| Agent          | Required Credentials                         | Isolation Strategy                                |
+| Agent | Required Credentials | Isolation Strategy |
 | -------------- | -------------------------------------------- | ------------------------------------------------- |
-| Gmail Agent    | Google OAuth (read-only, Gmail scope)        | Dedicated OAuth token, revoked on agent disable   |
-| GitHub Agent   | GitHub App token (read-only, specific repos) | Short-lived installation token                    |
-| Drive Agent    | Google OAuth (read-only, Drive scope)        | Dedicated OAuth token, scoped to workspace folder |
-| Calendar Agent | Google OAuth (calendar scope)                | Dedicated OAuth token                             |
-| Other Agents   | No external credentials                      | N/A — use internal API only                       |
+| Gmail Agent | Google OAuth (read-only, Gmail scope) | Dedicated OAuth token, revoked on agent disable |
+| GitHub Agent | GitHub App token (read-only, specific repos) | Short-lived installation token |
+| Drive Agent | Google OAuth (read-only, Drive scope) | Dedicated OAuth token, scoped to workspace folder |
+| Calendar Agent | Google OAuth (calendar scope) | Dedicated OAuth token |
+| Other Agents | No external credentials | N/A — use internal API only |
 
 ### Implementation
 
 1. **Agent Credential Store**: New `agent_credentials` table with:
-   - `agent_id` (foreign key to agent config)
-   - `credential_type` (oauth_token, api_key, service_account)
-   - `encrypted_token` (AES-256-GCM, key from ADR-014)
-   - `scopes` (JSON array of granted scopes)
-   - `expires_at` (timestamp)
-   - `revoked_at` (timestamp, nullable)
+ - `agent_id` (foreign key to agent config)
+ - `credential_type` (oauth_token, api_key, service_account)
+ - `encrypted_token` (AES-256-GCM, key from ADR-014)
+ - `scopes` (JSON array of granted scopes)
+ - `expires_at` (timestamp)
+ - `revoked_at` (timestamp, nullable)
 
 2. **Credential Injection**: Each agent receives only its own credentials via:
 
-   ```python
+ ```python
    class BaseAgent:
        async def get_credential(self, scope: str) -> str:
            cred = await credential_store.get(self.agent_id, scope)
@@ -54,16 +54,16 @@ We will implement per-agent credential isolation for MVP-scope agents:
    ```
 
 3. **Audit Trail**: Every credential usage is logged to the audit table with:
-   - `agent_id`, `credential_type`, `scope_used`, `action`, `timestamp`
+ - `agent_id`, `credential_type`, `scope_used`, `action`, `timestamp`
 
 ## Rationale
 
-| Alternative                       | Pros                       | Cons                                   | Why Not                             |
+| Alternative | Pros | Cons | Why Not |
 | --------------------------------- | -------------------------- | -------------------------------------- | ----------------------------------- |
-| Shared workspace tokens (current) | Simple                     | No isolation, blast radius = workspace | Security violation                  |
-| Per-user OAuth + agent delegation | Full user control          | Complex, UX burden                     | Overkill for MVP                    |
-| Service accounts                  | No user involvement        | Requires Google Workspace admin        | Not available for personal accounts |
-| Per-agent credentials (chosen)    | Least privilege, auditable | Implementation effort ~3 days          | Best security/effort ratio          |
+| Shared workspace tokens (current) | Simple | No isolation, blast radius = workspace | Security violation |
+| Per-user OAuth + agent delegation | Full user control | Complex, UX burden | Overkill for MVP |
+| Service accounts | No user involvement | Requires Google Workspace admin | Not available for personal accounts |
+| Per-agent credentials (chosen) | Least privilege, auditable | Implementation effort ~3 days | Best security/effort ratio |
 
 ## Consequences
 
@@ -83,14 +83,14 @@ We will implement per-agent credential isolation for MVP-scope agents:
 
 - OAuth rate limits may be hit if many agents refresh simultaneously
 - Credential leakage still possible if agent is compromised (mitigate with
-  short-lived tokens)
+ short-lived tokens)
 
 ## Compliance & Safety Notes
 
 - OWASP Agentic Top 10: ASI03 (Identity and Privilege Abuse) — this ADR directly
-  mitigates this risk.
+ mitigates this risk.
 - GDPR: Credential scope must be limited to purpose (data minimization
-  principle).
+ principle).
 
 ## Verification
 

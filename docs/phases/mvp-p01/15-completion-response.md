@@ -11,40 +11,40 @@ execution agent; gate authority = USER (sole approver, BQ-01). Prior run
 ## B. Readiness
 
 - [x] Previous phase (P00) approved gate + handoff: CLOSED by USER 2026-08-13,
-      conditionally approved, restrictions apply.
+ conditionally approved, restrictions apply.
 - [x] Canonical sources, repository revision, environment identified:
-      INT-01..12, EXT-01..19, baseline `1def16d`.
+ INT-01..12, EXT-01..19, baseline `1def16d`.
 - [x] Required access: BLOCKING_ACCESS_UNKNOWN for live-user research — governed
-      as REQUIRES_STAKEHOLDER_DECISION (design-partner protocol in 03).
+ as REQUIRES_STAKEHOLDER_DECISION (design-partner protocol in 03).
 - [x] Owners, reviewers, approver, change authority named (register 04; BQ-01).
 - [x] Requirements/dependencies traceable; no critical blocker makes work
-      unsafe.
+ unsafe.
 - [x] Test/evidence/rollback/documentation plans exist (03-evidence-plan.md).
 
 ## C. Sources
 
 - 12 internal INT-01…12 + 19 external EXT-01…19 (01-source-register.md; pack
-  SHA256SUMS 75/75 verified 2026-08-12; INT-11 P01 prompt hash pinned).
+ SHA256SUMS 75/75 verified 2026-08-12; INT-11 P01 prompt hash pinned).
 - 15-row standards overlay with verified snapshot versions (MCP 2026-07-28,
-  OWASP 2026/2025, NIST AI RMF + GenAI Profile, WCAG 2.2, RFC 9700/9728, OpenAPI
-  3.2.0, OTel, SLSA 1.2, NIST SSDF 1.1, EU AI Act, DPDP 2023+2025, FERPA, COPPA,
-  Gmail push, GitHub apps) — applicability and control phase recorded; control
-  verification evidence owned by P08/P13-P17.
+ OWASP 2026/2025, NIST AI RMF + GenAI Profile, WCAG 2.2, RFC 9700/9728, OpenAPI
+ 3.2.0, OTel, SLSA 1.2, NIST SSDF 1.1, EU AI Act, DPDP 2023+2025, FERPA, COPPA,
+ Gmail push, GitHub apps) — applicability and control phase recorded; control
+ verification evidence owned by P08/P13-P17.
 - Authority order: INT-02 governs MVP (DEC-P00-06); INT-05 canonical scope;
-  measured evidence outranks stale doc claims (DEC-P00-04).
+ measured evidence outranks stale doc claims (DEC-P00-04).
 
 ## D. Requirements
 
-| Req | Domain           | Status                       | Evidence                                                                                             |
+| Req | Domain | Status | Evidence |
 | --- | ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
-| R01 | Scope            | VERIFIED                     | BQ-01..06 statused; DEL-01..05; wedge validated without PMF claim                                    |
-| R02 | Evidence         | VERIFIED                     | EVD-MVP-P01-001..025; every claim labeled; UNKNOWN kept                                              |
-| R03 | Security/Privacy | VERIFIED (design)            | 8 risks owned; 9 constraints; no unresolved critical finding; live research consent protocol defined |
-| R04 | Quality          | PARTIAL (runs owned by P02+) | 8 hypotheses with falsification tests; no runtime runs in discovery                                  |
-| R05 | Operations       | PARTIAL                      | Ops metrics defined (M-01..18); runbook/telemetry evidence = P15/P17                                 |
-| R06 | Data/AI          | VERIFIED (design)            | Lineage/provenance/taxonomy documented; no runtime data                                              |
-| R07 | Traceability     | VERIFIED                     | Claim -> requirement -> file -> evidence -> risk -> gate chain intact                                |
-| R08 | Gate             | VERIFIED                     | 14-gate-2026-08-13.md scored 74.89/100; verdict awaits USER                                          |
+| R01 | Scope | VERIFIED | BQ-01..06 statused; DEL-01..05; wedge validated without PMF claim |
+| R02 | Evidence | VERIFIED | EVD-MVP-P01-001..025; every claim labeled; UNKNOWN kept |
+| R03 | Security/Privacy | VERIFIED (design) | 8 risks owned; 9 constraints; no unresolved critical finding; live research consent protocol defined |
+| R04 | Quality | PARTIAL (runs owned by P02+) | 8 hypotheses with falsification tests; no runtime runs in discovery |
+| R05 | Operations | PARTIAL | Ops metrics defined (M-01..18); runbook/telemetry evidence = P15/P17 |
+| R06 | Data/AI | VERIFIED (design) | Lineage/provenance/taxonomy documented; no runtime data |
+| R07 | Traceability | VERIFIED | Claim -> requirement -> file -> evidence -> risk -> gate chain intact |
+| R08 | Gate | VERIFIED | 14-gate-2026-08-13.md scored 74.89/100; verdict awaits USER |
 
 ## E. Work Completed
 
@@ -53,7 +53,7 @@ execution agent; gate authority = USER (sole approver, BQ-01). Prior run
 - DEL-MVP-P01-01..05 produced (files 09-13).
 - 8 validation backlog items + stop/pivot leading indicators (BQ-06).
 - Design-partner evidence protocol (consent-first, DPDP notice, selection
-  criteria, measurement protocol) — activation requires USER cohort access.
+ criteria, measurement protocol) — activation requires USER cohort access.
 
 ## F. Code/Configuration
 
@@ -62,16 +62,16 @@ No source code, configuration, migration or environment changes. Docs-only phase
 
 ## G. Deliverables
 
-| ID               | File                                                  | Status       |
+| ID | File | Status |
 | ---------------- | ----------------------------------------------------- | ------------ |
-| DEL-MVP-P01-01   | `09-problem-statement.md`                             | done, linked |
-| DEL-MVP-P01-02   | `10-persona-jtbd-evidence.md`                         | done, linked |
-| DEL-MVP-P01-03   | `11-value-risk-hypotheses.md`                         | done, linked |
-| DEL-MVP-P01-04   | `12-success-metrics.md`                               | done, linked |
-| DEL-MVP-P01-05   | `13-non-goals-research-backlog.md`                    | done, linked |
-| Registers        | 01-05 refreshed; 06/07 historical                     | done, linked |
+| DEL-MVP-P01-01 | `09-problem-statement.md` | done, linked |
+| DEL-MVP-P01-02 | `10-persona-jtbd-evidence.md` | done, linked |
+| DEL-MVP-P01-03 | `11-value-risk-hypotheses.md` | done, linked |
+| DEL-MVP-P01-04 | `12-success-metrics.md` | done, linked |
+| DEL-MVP-P01-05 | `13-non-goals-research-backlog.md` | done, linked |
+| Registers | 01-05 refreshed; 06/07 historical | done, linked |
 | §7/§10 artifacts | 17-input-readiness-matrix, 18-enterprise-completeness | done, linked |
-| Gate + handoff   | 14-gate, 08-handoff, README                           | done, linked |
+| Gate + handoff | 14-gate, 08-handoff, README | done, linked |
 
 ## H. Test Results
 
@@ -109,13 +109,13 @@ re-affirmed (DEC-P01-05).
 
 ## M. Gaps
 
-| Gap                                        | Owner         | Phase                          |
+| Gap | Owner | Phase |
 | ------------------------------------------ | ------------- | ------------------------------ |
-| Live-user/design-partner validation        | UX Researcher | P02 (needs USER cohort access) |
-| Memory quality / deadline extraction evals | QA/AI         | P02/P12                        |
-| Ship window + budget                       | Founder       | P04                            |
-| Coverage 94% vs 97% measurement delta      | QA            | P03 (reconcile)                |
-| Ops/perf/compliance evidence               | SRE/Legal     | P13-P17                        |
+| Live-user/design-partner validation | UX Researcher | P02 (needs USER cohort access) |
+| Memory quality / deadline extraction evals | QA/AI | P02/P12 |
+| Ship window + budget | Founder | P04 |
+| Coverage 94% vs 97% measurement delta | QA | P03 (reconcile) |
+| Ops/perf/compliance evidence | SRE/Legal | P13-P17 |
 
 ## N. Gate Result
 

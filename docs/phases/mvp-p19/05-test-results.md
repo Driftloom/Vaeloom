@@ -1,7 +1,7 @@
-﻿# MVP-P19 — 05. Test Results
+# MVP-P19 — 05. Test Results
 
-> **Phase:** MVP-P19 — Release Readiness and Production Deployment  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 93.2 + P18 93.4 + P19 (release v0.2.0 + 99 paths + 42/42 + 3 overlays + HPA min3 max10 + 0021 retention + lifespan)  
+> **Phase:** MVP-P19 — Release Readiness and Production Deployment 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 93.2 + P18 93.4 + P19 (release v0.2.0 + 99 paths + 42/42 + 3 overlays + HPA min3 max10 + 0021 retention + lifespan) 
 > **Env:** `tmp_path` NullPool `mock_llm` `mock_connector_test` Python 3.12.13 `uv` + `pytest-xdist -n 4` sqlite + `httpx.AsyncClient(app)`; `terraform 1.8.0` + `docker buildx v4` + `k6 v0.54` + `trivy` + `gitleaks` + `cosign 2.2.4` + `syft` + `promtool` + `grafana` + `kubectl dry-run` + `docker compose config` + `python yaml`
 
 ## Summary
@@ -97,7 +97,7 @@ $ python -c "from api.logging import _redact; print(_redact({'"'"'password'"'"':
 | **Deploy 4 jobs** | `deploy.yml:1` terraform-plan 1.8.0 + build-push cosign 2.2.4 awskms SBOM spdx + load-test-gate k6 10VUs30s + deploy kustomize wait 300s rollback undo + slack | PASS 4 jobs pipeline |
 | **Feature flags 4** | `feature-flags.ts:1` DEFAULT_FLAGS 4 new_chat_ui true beta_memory_graph false dark_mode true batch_operations false + STORAGE_KEY 5m + fetch /api/v1/feature-flags fallback | PASS 4 flags 5m TTL |
 | **Terraform 12** | `provider.tf:1` s3 `vaeloom-terraform-state` DDB `vaeloom-terraform-locks` + `main.tf:1` 12 modules vpc/kms/s3/iam/eks/rds/elasticache/ecr/waf/cloudfront/monitoring/route53 + `terraform validate` | PASS 12 modules |
-| **OpenAPI 99 v0.2.0** | `openapi.yaml:1` 3.1.0 0.2.0 99 paths `rg -c "^  /" 99` + `yaml safe_load` PASS | PASS 99 v0.2.0 |
+| **OpenAPI 99 v0.2.0** | `openapi.yaml:1` 3.1.0 0.2.0 99 paths `rg -c "^ /" 99` + `yaml safe_load` PASS | PASS 99 v0.2.0 |
 | **DR 308 + Deploy 207** | `DISASTER_RECOVERY.md:1` 308 lines RTO1h/RPO5m + `DEPLOYMENT_RUNBOOK.md:1` 207 lines + `LAUNCH-CHECKLIST.md:1` 178 lines | PASS 207+308+178 linked |
 
 ## Representative Run Log (captured)

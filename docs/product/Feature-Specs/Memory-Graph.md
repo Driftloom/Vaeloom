@@ -1,7 +1,7 @@
-﻿## Header
+## Header
 >
 > **Purpose:** Detailed specification for Memory Graph Explorer
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
 
@@ -155,20 +155,20 @@ Autonomy level: **Read-only** for the graph itself (visualization). **Full** for
 
 ```mermaid
 graph TD
-    classDef UI fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef engine fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef data fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef UI fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef engine fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef data fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    U[User] --> GV[Graph Viewport]
-    GV --> FD[Force-Directed Layout]
-    GV --> CL[Clustering Engine]
-    GV --> SE[Search]
-    GV --> DP[Detail Panel]
-    DP --> ED[Entity Editor]
-    ED --> MA[Memory Agent]
-    MA --> ENT[(entities)]
-    MA --> REL[(relationships)]
-    MA --> MEM[(memory_records)]
+ U[User]--> GV[Graph Viewport]
+ GV--> FD[Force-Directed Layout]
+ GV--> CL[Clustering Engine]
+ GV--> SE[Search]
+ GV--> DP[Detail Panel]
+ DP--> ED[Entity Editor]
+ ED--> MA[Memory Agent]
+ MA--> ENT[(entities)]
+ MA--> REL[(relationships)]
+ MA--> MEM[(memory_records)]
 ```
 
 > **Diagram:** Memory Graph architecture — user interacts with graph viewport → force-directed layout + clustering → detail panel → entity editor → Memory Agent writes back.
@@ -202,22 +202,22 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant GV as Graph Viewport
-    participant MA as Memory Agent
-    participant QA as QA Agent
-    participant DB as PostgreSQL
+ participant U as User
+ participant GV as Graph Viewport
+ participant MA as Memory Agent
+ participant QA as QA Agent
+ participant DB as PostgreSQL
 
-    U->>GV: Clicks entity node
-    GV-->>U: Detail panel: "React (Skill) - confidence 0.85"
-    U->>GV: Edit: rename "React" to "React.js"
-    GV->>MA: PATCH /entity/{id}
-    MA->>MA: Validate rename
-    MA->>QA: Check type consistency
-    QA-->>MA: Valid
-    MA->>DB: Update entity
-    MA-->>GV: Success
-    GV-->>U: Updated node label: "React.js"
+ U->>GV: Clicks entity node
+ GV-->>U: Detail panel: "React (Skill) - confidence 0.85"
+ U->>GV: Edit: rename "React" to "React.js"
+ GV->>MA: PATCH /entity/{id}
+ MA->>MA: Validate rename
+ MA->>QA: Check type consistency
+ QA-->>MA: Valid
+ MA->>DB: Update entity
+ MA-->>GV: Success
+ GV-->>U: Updated node label: "React.js"
 ```
 
 ## Data Flow

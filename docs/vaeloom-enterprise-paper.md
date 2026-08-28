@@ -1,4 +1,4 @@
-﻿> **⚠️ SUPERSEDED — kept for history only.**
+> **⚠️ SUPERSEDED — kept for history only.**
 > This is the original enterprise vision draft. The canonical version is
 > [`06-Vaeloom-Enterprise-Paper.md`](./06-Vaeloom-Enterprise-Paper.md), and the
 > live, categorized enterprise documentation lives under [`./Enterprise/`](./Enterprise/).
@@ -6,11 +6,11 @@
 
 Enterprise Product Vision Paper
 
-| Metadata         | Value                                                                |
+| Metadata | Value |
 |------------------|----------------------------------------------------------------------|
-| **Purpose**      | Enterprise product vision paper — Vaeloom at multi-tenant scale |
-| **Status**       | Vision / Architecture Paper — Enterprise Edition |
-| **Owner**        | Product Team |
+| **Purpose** | Enterprise product vision paper — Vaeloom at multi-tenant scale |
+| **Status** | Vision / Architecture Paper — Enterprise Edition |
+| **Owner** | Product Team |
 | **Last Updated** | 2026-07-13 |
 
 ## Overview
@@ -60,88 +60,88 @@ This paper assumes the MVP described in the companion spec has shipped and prove
 
 ```mermaid
 graph TD
-    subgraph Interface["ðŸŒ Interface Layer"]
-        I1["Web App"]
-        I2["Desktop Companion"]
-        I3["VS Code Extension"]
-        I4["Mobile"]
-    end
+ subgraph Interface["Interface Layer"]
+ I1["Web App"]
+ I2["Desktop Companion"]
+ I3["VS Code Extension"]
+ I4["Mobile"]
+ end
 
-    subgraph Connectors["ðŸ”Œ Connectors & Plugins"]
-        C1["Gmail Â· GitHub Â· Drive"]
-        C2["Local Folder"]
-        C3["Plugin SDK / MCP"]
-    end
+ subgraph Connectors["Connectors & Plugins"]
+ C1["Gmail · GitHub · Drive"]
+ C2["Local Folder"]
+ C3["Plugin SDK / MCP"]
+ end
 
-    subgraph Ingestion["âš™ï¸ Ingestion Engine"]
-        G1["Parser + OCR"]
-        G2["Code Understanding"]
-        G3["Semantic Extraction"]
-    end
+ subgraph Ingestion["Ingestion Engine"]
+ G1["Parser + OCR"]
+ G2["Code Understanding"]
+ G3["Semantic Extraction"]
+ end
 
-    subgraph Orchestration["ðŸ¤- Agent Orchestration"]
-        O1["Orchestrator + 28 Specialist Agents"]
-    end
+ subgraph Orchestration["Agent Orchestration"]
+ O1["Orchestrator + 28 Specialist Agents"]
+ end
 
-    subgraph Memory["ðŸ’¾ Memory Layer -- CORE"]
-        M1["Knowledge Graph"]
-        M2["Vector Store"]
-        M3["Structured Memory"]
-        M4["Agentic RAG"]
-    end
+ subgraph Memory["Memory Layer -- CORE"]
+ M1["Knowledge Graph"]
+ M2["Vector Store"]
+ M3["Structured Memory"]
+ M4["Agentic RAG"]
+ end
 
-    subgraph Events["ðŸ“¡ Events & Realtime"]
-        E1["Event Bus + WebSocket"]
-    end
+ subgraph Events["Events & Realtime"]
+ E1["Event Bus + WebSocket"]
+ end
 
-    subgraph Infra["ðŸ--„ï¸ Data Infrastructure"]
-        D1["Queues + Workers"]
-        D2["Cache + Search"]
-    end
+ subgraph Infra["Data Infrastructure"]
+ D1["Queues + Workers"]
+ D2["Cache + Search"]
+ end
 
-    subgraph Security["ðŸ”’ Storage & Security"]
-        S1["Encrypted Storage"]
-        S2["Permission Engine"]
-        S3["Audit Log"]
-    end
+ subgraph Security["Storage & Security"]
+ S1["Encrypted Storage"]
+ S2["Permission Engine"]
+ S3["Audit Log"]
+ end
 
-    I1 --> C1
-    I2 --> C2
-    I3 --> C3
-    C1 --> G1
-    C2 --> G2
-    C3 --> G3
-    G1 --> O1
-    G2 --> O1
-    G3 --> O1
-    O1 --> M1
-    O1 --> M2
-    O1 --> M3
-    M4 -.->|Retrieval| O1
-    O1 --> E1
-    E1 --> D1
-    D1 --> D2
-    S2 -.->|Enforces| O1
-    S2 -.->|Enforces| C1
-    S3 -.->|Logs| O1
+ I1--> C1
+ I2--> C2
+ I3--> C3
+ C1--> G1
+ C2--> G2
+ C3--> G3
+ G1--> O1
+ G2--> O1
+ G3--> O1
+ O1--> M1
+ O1--> M2
+ O1--> M3
+ M4 -.->|Retrieval| O1
+ O1--> E1
+ E1--> D1
+ D1--> D2
+ S2 -.->|Enforces| O1
+ S2 -.->|Enforces| C1
+ S3 -.->|Logs| O1
 
-    classDef interface fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    classDef connector fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    classDef ingest fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef memory fill:#ffebee,stroke:#c62828,stroke-width:3px
-    classDef events fill:#e0f2f1,stroke:#00695c,stroke-width:2px
-    classDef infra fill:#f5f5f5,stroke:#616161,stroke-width:2px
-    classDef security fill:#eceff1,stroke:#37474f,stroke-width:2px
+ classDef interface fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+ classDef connector fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+ classDef ingest fill:#fff3e0,stroke:#e65100,stroke-width:2px
+ classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+ classDef memory fill:#ffebee,stroke:#c62828,stroke-width:3px
+ classDef events fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+ classDef infra fill:#f5f5f5,stroke:#616161,stroke-width:2px
+ classDef security fill:#eceff1,stroke:#37474f,stroke-width:2px
 
-    class I1,I2,I3,I4 interface
-    class C1,C2,C3 connector
-    class G1,G2,G3 ingest
-    class O1 agent
-    class M1,M2,M3,M4 memory
-    class E1 events
-    class D1,D2 infra
-    class S1,S2,S3 security
+ class I1,I2,I3,I4 interface
+ class C1,C2,C3 connector
+ class G1,G2,G3 ingest
+ class O1 agent
+ class M1,M2,M3,M4 memory
+ class E1 events
+ class D1,D2 infra
+ class S1,S2,S3 security
 ```
 
 ---
@@ -217,17 +217,17 @@ control of every consequential action.
 Three commitments shape every design decision in this paper:
 
 1. **Memory before features.** A flashier UI on a shallow
-   memory loses to a plain UI on a deep one. Every new feature is evaluated
-   by what it teaches the memory system, not just what it shows the
-   user.
+ memory loses to a plain UI on a deep one. Every new feature is evaluated
+ by what it teaches the memory system, not just what it shows the
+ user.
 2. **Consent is the architecture, not a settings page.**
-   Permission scopes, autonomy levels, and audit trails are core data-model
-   concepts, present in every agent and every connector from the schema up
-   — not a layer added later for compliance.
+ Permission scopes, autonomy levels, and audit trails are core data-model
+ concepts, present in every agent and every connector from the schema up
+ — not a layer added later for compliance.
 3. **Earned autonomy compounds.** The system starts
-   conservative everywhere and becomes more autonomous only where it has
-   demonstrated it’s right — per agent, per user, per action type. Trust is
-   a variable the product tracks, not an assumption it makes.
+ conservative everywhere and becomes more autonomous only where it has
+ demonstrated it’s right — per agent, per user, per action type. Trust is
+ a variable the product tracks, not an assumption it makes.
 
 ### 1.5 Long-term Vision
 
@@ -261,18 +261,18 @@ becomes a job seeker, then an employee, then an alum.
 ### 1.7 Problems Solved
 
 - Resumes that are perpetually out of date because updating them is
-  manual, tedious work nobody prioritizes until a deadline forces it.
+ manual, tedious work nobody prioritizes until a deadline forces it.
 - Achievements and skills that quietly get forgotten — a hackathon
-  win, a certification, a strong project — because nothing connects
-  “things I did” to “things on my resume.”
+ win, a certification, a strong project — because nothing connects
+ “things I did” to “things on my resume.”
 - Job and internship search that is reactive, manual, and disconnected
-  from any sense of personal fit.
+ from any sense of personal fit.
 - Important time-sensitive information (interview calls, application
-  deadlines) buried in inboxes and missed.
+ deadlines) buried in inboxes and missed.
 - Files, documents, and knowledge scattered across a dozen tools with
-  no single, trustworthy source of truth.
+ no single, trustworthy source of truth.
 - The cognitive overhead of being your own project manager for your
-  education and career, with no system tracking it for you.
+ education and career, with no system tracking it for you.
 
 ### 1.8 Why Current Solutions Fail
 
@@ -341,7 +341,7 @@ interfaces.
 ### 3.1 Registration
 
 Standard auth (email, SSO for enterprise tenants) plus an identity
-decision up front: personal account vs.Â organization-provisioned
+decision up front: personal account vs. organization-provisioned
 account. Organization accounts inherit tenant-level policy (retention
 windows, allowed connectors) but the underlying memory remains owned by
 the individual — see §19 for the consent model that makes this work.
@@ -462,16 +462,16 @@ Third-party developers can register new connectors and agent tools
 without touching Vaeloom’s core. A plugin declares:
 
 - **Manifest** — name, description, required scopes, auth
-  type (OAuth2, API key, none)
+ type (OAuth2, API key, none)
 - **Tool definitions** — JSON-schema input/output for
-  each capability it exposes, identical in shape to an MCP tool
-  definition
+ each capability it exposes, identical in shape to an MCP tool
+ definition
 - **Permission tier** — read-only, write, or act
-  (act-tier plugins always require explicit per-action approval until a
-  user grants standing autonomy)
+ (act-tier plugins always require explicit per-action approval until a
+ user grants standing autonomy)
 - **Sandboxing contract** — what the plugin can and
-  cannot access outside its declared scopes; enforced by the Permission
-  Engine (§19), not by developer self-policing
+ cannot access outside its declared scopes; enforced by the Permission
+ Engine (§19), not by developer self-policing
 
 ### 5.3 MCP architecture
 
@@ -638,7 +638,7 @@ sake.
 | Procedural | How they do things, step by step | Their personal job-application checklist |
 | Timeline | What happened, in order | Chronological life/career events |
 | Event | Specific dated occurrences | “Interview on April 3” |
-| Decision | Choices made and their reasoning | “Chose internship A over B because”¦” |
+| Decision | Choices made and their reasoning | “Chose internship A over B because”” |
 
 ### 8.2 Knowledge graph
 
@@ -685,7 +685,7 @@ single query.
 | Evolution | Updates a memory’s confidence/content as new, contradicting, or confirming evidence arrives, rather than treating memory as append-only |
 | Ranking | Orders retrieved memories by a combination of relevance, recency, and confidence for a given query |
 | Freshness | Tracks how recently a memory was confirmed true; stale memories are down-weighted automatically |
-| Importance | A learned/assigned weight reflecting how central a memory is to the person’s identity vs.Â incidental |
+| Importance | A learned/assigned weight reflecting how central a memory is to the person’s identity vs. incidental |
 | Confidence | How strongly the system believes a given fact, based on source count and source reliability |
 
 ### 8.6 Memory governance
@@ -694,7 +694,7 @@ single query.
 | --- | --- |
 | Versioning | Every memory record keeps its edit history, not just its current state |
 | Provenance | Every fact traces back to the source document/event that produced it |
-| Privacy | Per-memory-type visibility controls — what’s used internally vs.Â what’s ever surfaced to the user or an integration |
+| Privacy | Per-memory-type visibility controls — what’s used internally vs. what’s ever surfaced to the user or an integration |
 | Encryption | At-rest and in-transit encryption for all memory stores |
 | Deletion | Granular (delete this fact) and total (delete everything) controls, both honored immediately and verifiably |
 | Export | Full memory export in a structured, portable format — the person’s data should never be unrecoverable from the platform |
@@ -859,23 +859,23 @@ Builds on the Job Search Agent (§9) to cover the full
 career-management surface:
 
 - Automated search across jobs, internships, fellowships, hackathons,
-  scholarships, research opportunities, and competitions on every
-  connected platform.
+ scholarships, research opportunities, and competitions on every
+ connected platform.
 - After user approval: tailored resume and cover letter generation,
-  form-filling and submission where a platform’s API supports it,
-  deep-linked tailored applications where it doesn’t (§9, Job Search
-  Agent).
+ form-filling and submission where a platform’s API supports it,
+ deep-linked tailored applications where it doesn’t (§9, Job Search
+ Agent).
 - Application, status, interview, and offer tracking, all written to
-  Career Memory.
+ Career Memory.
 - Success-probability estimation, based on the gap between the role’s
-  requirements and the user’s actual recorded skills — shown with its
-  reasoning, never as an unexplained number.
+ requirements and the user’s actual recorded skills — shown with its
+ reasoning, never as an unexplained number.
 - Generated learning roadmaps, interview-preparation roadmaps, and
-  project roadmaps targeted at closing the specific gaps the system
-  identified, not generic advice.
+ project roadmaps targeted at closing the specific gaps the system
+ identified, not generic advice.
 - Profile-update suggestions for connected platforms (e.g., “your
-  LinkedIn headline doesn’t mention your strongest recent skill”) —
-  suggested, never auto-published.
+ LinkedIn headline doesn’t mention your strongest recent skill”) —
+ suggested, never auto-published.
 
 ---
 
@@ -1130,62 +1130,62 @@ memory quality to save compute.
 Looking five to ten years out, beyond what’s specified above:
 
 - **Personal Digital Twin** — a queryable model of the
-  person’s capabilities and history accurate enough to answer questions on
-  their behalf (with explicit permission, in narrow contexts like a
-  recruiter screening question).
+ person’s capabilities and history accurate enough to answer questions on
+ their behalf (with explicit permission, in narrow contexts like a
+ recruiter screening question).
 - **Continuous Learning AI** — agents that don’t just
-  store what happened but actively identify what the user should learn
-  next, integrated directly with the Learning Agent’s roadmap output.
+ store what happened but actively identify what the user should learn
+ next, integrated directly with the Learning Agent’s roadmap output.
 - **Autonomous Career Manager** — at full earned trust, a
-  mode where the Career Intelligence system manages an active job search
-  end-to-end within boundaries the user set once, rather than requiring
-  per-application approval.
+ mode where the Career Intelligence system manages an active job search
+ end-to-end within boundaries the user set once, rather than requiring
+ per-application approval.
 - **Life Timeline Intelligence** — a fully connected view
-  across Episodic and Timeline memory spanning years, surfacing “you’ve
-  grown most in X” retrospectives no human would compile by hand.
+ across Episodic and Timeline memory spanning years, surfacing “you’ve
+ grown most in X” retrospectives no human would compile by hand.
 - **Knowledge Evolution Engine** — tracking not just what
-  the user knows now but how their understanding of a topic has changed
-  over time.
+ the user knows now but how their understanding of a topic has changed
+ over time.
 - **AI Mentor** — a persona-consistent guidance layer
-  drawing on the full memory graph, distinct from the task-focused agents,
-  focused on longer-horizon advice.
+ drawing on the full memory graph, distinct from the task-focused agents,
+ focused on longer-horizon advice.
 - **AI Interviewer** — mock interview practice generated
-  from the actual job descriptions the user is pursuing, scored against
-  their actual resume gaps.
+ from the actual job descriptions the user is pursuing, scored against
+ their actual resume gaps.
 - **AI Portfolio Builder** — automatic portfolio site
-  generation from Project and Document memory, kept current the same way
-  the resume is.
+ generation from Project and Document memory, kept current the same way
+ the resume is.
 - **Research Discovery Agent** — proactively surfaces new
-  papers/resources relevant to the user’s demonstrated research
-  interests.
+ papers/resources relevant to the user’s demonstrated research
+ interests.
 - **Opportunity Radar** — a standing background search
-  (distinct from on-demand Job Search) that surfaces relevant
-  opportunities the user didn’t think to look for.
+ (distinct from on-demand Job Search) that surfaces relevant
+ opportunities the user didn’t think to look for.
 - **Personal Cognitive Graph** — an explicit model of how
-  the user thinks and learns best, used to tailor how the system explains
-  things to them.
+ the user thinks and learns best, used to tailor how the system explains
+ things to them.
 - **Cross-Agent Collaboration Protocols** — richer,
-  negotiated task handoffs between agents for compound requests (“help me
-  decide between these two offers” touching Career, Preference, and Goal
-  memory simultaneously).
+ negotiated task handoffs between agents for compound requests (“help me
+ decide between these two offers” touching Career, Preference, and Goal
+ memory simultaneously).
 - **Natural-Language Operating Surface** — reducing the
-  gap between “what page is this feature on” and “just ask for it,” with
-  the chat interface able to trigger any page-level action.
+ gap between “what page is this feature on” and “just ask for it,” with
+ the chat interface able to trigger any page-level action.
 - **Voice-first Workspace** — for in-the-moment capture
-  (e.g., dictating a reflection right after an interview) without breaking
-  flow to open the app.
+ (e.g., dictating a reflection right after an interview) without breaking
+ flow to open the app.
 - **Multimodal Memory** — first-class memory of images,
-  audio, and video content at the same depth as text today.
+ audio, and video content at the same depth as text today.
 - **Predictive Planning** — surfacing likely future
-  conflicts or opportunities before they’re imminent, not just tracking
-  known deadlines.
+ conflicts or opportunities before they’re imminent, not just tracking
+ known deadlines.
 - **Context-Aware Automation** — autonomy that adapts to
-  situational context (e.g., more conservative during exam season when the
-  user has less attention to review proposals).
+ situational context (e.g., more conservative during exam season when the
+ user has less attention to review proposals).
 - **Personal AI APIs** — letting a user expose narrow,
-  permissioned slices of their own memory to other tools they trust,
-  turning Vaeloom into infrastructure other products can build on top
-  of.
+ permissioned slices of their own memory to other tools they trust,
+ turning Vaeloom into infrastructure other products can build on top
+ of.
 
 ---
 
@@ -1200,14 +1200,14 @@ and where it lives.
 | UX refinement | Page-level IA specified (§17) | Full interaction design, accessibility audit |
 | AI opportunities | Future Innovations (§21) | Prioritization against actual user research |
 | Automation depth | Autonomy progression model specified (§7.4, §9) | Concrete thresholds and UI for trust-building flows |
-| Monetization | Not yet specified | Pricing model (individual vs.Â seat-based enterprise), free-tier boundaries |
+| Monetization | Not yet specified | Pricing model (individual vs. seat-based enterprise), free-tier boundaries |
 | Business model | Not yet specified | Go-to-market sequencing (student wedge → professional → enterprise, per §1.6) |
 | SaaS architecture | Multi-tenant consent model specified (§19.2) | Full tenant isolation and provisioning architecture |
 | Enterprise edition | Admin/RBAC sketched (§17, §19.1) | Full admin console spec, SSO provider matrix |
 | Education edition | Persona identified (§2.1) | Institution-specific features (cohort analytics, career-office tooling) |
 | API platform | SDK sketched (§5.4) | Public API documentation, rate-limit tiers, versioning policy |
 | Marketplace | Plugin architecture specified (§5.2) | Discovery, review, revenue-share model for third-party plugins |
-| Mobile | Listed as an access surface (§5.1) | Mobile-specific feature scoping (what’s full-parity vs.Â companion-only) |
+| Mobile | Listed as an access surface (§5.1) | Mobile-specific feature scoping (what’s full-parity vs. companion-only) |
 | Desktop | Companion app specified for local folder access | Broader desktop feature set beyond the file-watcher role |
 | Future research | Future Innovations (§21) | Formal research agenda and evaluation methodology |
 
@@ -1225,27 +1225,27 @@ The MVP (companion spec) and this paper are designed to be the same
 system at two points in time, not two different systems:
 
 1. **Memory schema compatibility.** The MVP’s six memory
-   types are a strict subset of the enterprise taxonomy (§8.1) — no
-   migration or re-ingestion required, only additive schema growth.
+ types are a strict subset of the enterprise taxonomy (§8.1) — no
+ migration or re-ingestion required, only additive schema growth.
 2. **Agent roster growth, not replacement.** The MVP’s
-   eight agents map directly onto eight of this paper’s twenty-eight; the
-   rest are net-new additions operating on the same memory, not
-   replacements requiring re-architecture.
+ eight agents map directly onto eight of this paper’s twenty-eight; the
+ rest are net-new additions operating on the same memory, not
+ replacements requiring re-architecture.
 3. **Connector-shape consistency.** Every connector, from
-   MVP through enterprise, is built MCP-shaped from the start (MVP §6, this
-   paper §5.3) specifically so the connector catalog can grow without a
-   transport-layer rewrite.
+ MVP through enterprise, is built MCP-shaped from the start (MVP §6, this
+ paper §5.3) specifically so the connector catalog can grow without a
+ transport-layer rewrite.
 4. **Permission model continuity.** The MVP’s
-   “suggest-mode by default, earned autonomy” principle (MVP §3, §12) is
-   the same model formalized into the Permission Engine (§19.3) here —
-   enterprise doesn’t introduce a new trust model, it makes the existing
-   one tenant-aware.
+ “suggest-mode by default, earned autonomy” principle (MVP §3, §12) is
+ the same model formalized into the Permission Engine (§19.3) here —
+ enterprise doesn’t introduce a new trust model, it makes the existing
+ one tenant-aware.
 5. **What’s genuinely new at enterprise scale:**
-   multi-tenancy and the consent model that makes organization-provisioned
-   accounts safe (§19.2), the full plugin/MCP ecosystem and SDK (§5), RBAC
-   and admin tooling (§17, §19.1), and the broader connector and agent
-   catalogs (§5.1, §9.2). These are additive surfaces, not corrections to
-   the MVP’s foundation.
+ multi-tenancy and the consent model that makes organization-provisioned
+ accounts safe (§19.2), the full plugin/MCP ecosystem and SDK (§5), RBAC
+ and admin tooling (§17, §19.1), and the broader connector and agent
+ catalogs (§5.1, §9.2). These are additive surfaces, not corrections to
+ the MVP’s foundation.
 
 ---
 
@@ -1286,7 +1286,7 @@ type.
 **Vector store** — the embedding-based store enabling
 semantic similarity search over document and conversation content.
 
-Vaeloom Â· ENTERPRISE PRODUCT VISION PAPER
+Vaeloom · ENTERPRISE PRODUCT VISION PAPER
 
 ---
 

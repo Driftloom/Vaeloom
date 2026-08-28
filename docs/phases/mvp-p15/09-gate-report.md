@@ -1,8 +1,8 @@
-﻿# MVP-P15 — 09. Gate Report
+# MVP-P15 — 09. Gate Report
 
-> **Phase:** MVP-P15 — Performance, Reliability, and Scalability  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + ea329dd + P15 (94.2% cov, jest-axe 0 critical, k6 p50 45ms p95 120ms, CB 3/30s)  
-> **Gate Authority:** Performance Engineer (accountable) + SRE (backup) + Security/Privacy/Data/A11y/Reliability veto holders  
+> **Phase:** MVP-P15 — Performance, Reliability, and Scalability 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + ea329dd + P15 (94.2% cov, jest-axe 0 critical, k6 p50 45ms p95 120ms, CB 3/30s) 
+> **Gate Authority:** Performance Engineer (accountable) + SRE (backup) + Security/Privacy/Data/A11y/Reliability veto holders 
 > **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P15-performance-reliability-and-scalability.md` §28
 > **Predecessor:** `ea329dd` 87.5/88 CONDITIONAL → this gate **closes 3 gaps** (coverage/WCAG/perf) per `02-predecessor-audit.md:88`
 
@@ -115,6 +115,6 @@ Per §29: P14 had 4 defects (coverage, WCAG, perf, smoke dirs) as EXC-P14-01..04
 
 ---
 
-**Approver:** Performance Engineer (approver) + SRE (backup) — gate authority  
+**Approver:** Performance Engineer (approver) + SRE (backup) — gate authority 
 **Veto:** Security/Privacy/Data/A11y/Reliability/Operations — none exercised hard veto; Performance veto exercised via low Performance score if p95>500 (now 120ms PASS)
 

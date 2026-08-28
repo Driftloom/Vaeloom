@@ -7,7 +7,7 @@
 
 ### 1. Package Count: OFF BY 1
 
-| Claim                   | Actual          | Source                                          |
+| Claim | Actual | Source |
 | ----------------------- | --------------- | ----------------------------------------------- |
 | 25 packages (AGENTS.md) | **26** packages | Counted `package.json` + `pyproject.toml` files |
 
@@ -15,18 +15,18 @@
 
 - `apps/` (2): api, web
 - `packages/` (9): eslint-config, observability, plugin-sdk, python-common,
-  queue, service-auth, shared-types, tsconfig, ui-kit
+ queue, service-auth, shared-types, tsconfig, ui-kit
 - `integrations/` (6): calendar, email, github, google-drive, notion, slack
 - `connectors/` (3): graphql, mcp, rest
 - `sdk/` (1): typescript
 - `plugins/` (5): community/tag-generator, community/word-count,
-  official/sentiment, official/summarizer, official/translator
+ official/sentiment, official/summarizer, official/translator
 
 **Impact:** Documentation references "25 packages" throughout. Should be **26**.
 
 ### 2. GitHub Actions Workflows: SIGNIFICANTLY UNDERSTATED
 
-| Claim                                                                              | Actual                | Source                         |
+| Claim | Actual | Source |
 | ---------------------------------------------------------------------------------- | --------------------- | ------------------------------ |
 | "GitHub Actions (api, frontend, docker, deploy) — no release workflow" (AGENTS.md) | **11 workflow files** | `.github/workflows/` directory |
 
@@ -52,7 +52,7 @@ description understates the actual implementation.
 
 ### 3. Frontend Test Count: MISLEADING
 
-| Claim                 | Actual                                                    | Source                                                  |
+| Claim | Actual | Source |
 | --------------------- | --------------------------------------------------------- | ------------------------------------------------------- |
 | "37 jest" (AGENTS.md) | **39 test cases** across 7 spec/test files (with overlap) | `apps/web/src/**/*.spec.*` + `apps/web/src/**/*.test.*` |
 
@@ -71,7 +71,7 @@ test count is likely **33** (39 - 6 overlap).
 
 ### 4. E2E Test Count: REFERS TO BROWSER RUNS, NOT UNIQUE TESTS
 
-| Claim                     | Actual                                                    | Source                           |
+| Claim | Actual | Source |
 | ------------------------- | --------------------------------------------------------- | -------------------------------- |
 | "39 e2e real" (AGENTS.md) | **21 unique test cases** × 3 browsers = **60 total runs** | `testing/e2e/` + `apps/web/e2e/` |
 
@@ -88,7 +88,7 @@ combination, not the total.
 
 ### 5. testing/ Directory: NOT EMPTY
 
-| Claim                                                                                                                | Actual                               | Source               |
+| Claim | Actual | Source |
 | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------- |
 | "testing/smoke/, testing/security/, testing/chaos/, testing/fuzz/, testing/visual-regression/ are EMPTY" (AGENTS.md) | **13 files** across 4 subdirectories | `testing/` directory |
 
@@ -115,7 +115,7 @@ combination, not the total.
 
 ### 6. API Routes: 167 Endpoint Handlers
 
-| Claim                     | Actual                    | Source                                                                                |
+| Claim | Actual | Source |
 | ------------------------- | ------------------------- | ------------------------------------------------------------------------------------- |
 | No specific count claimed | **167 endpoint handlers** | `apps/api/src/api/routers/` (146) + services with embedded routers (20) + main.py (1) |
 
@@ -124,7 +124,7 @@ always-on + 8 enterprise-gated).
 
 ### 7. Frontend Pages: 23 (Matches Claim)
 
-| Claim                                                        | Actual                      | Source              |
+| Claim | Actual | Source |
 | ------------------------------------------------------------ | --------------------------- | ------------------- |
 | "22 feature pages under workspace/[workspaceId]" (AGENTS.md) | **23 page.tsx files** total | `apps/web/src/app/` |
 
@@ -163,14 +163,14 @@ only (19) plus some extras.
 ### 8. Duplicate Test Coverage
 
 - `useWorkspace` hook is tested in both `useWorkspace.test.ts` (8 tests) and
-  `useWorkspace.spec.ts` (6 tests)
+ `useWorkspace.spec.ts` (6 tests)
 - This creates maintenance burden and potential confusion about which is
-  authoritative
+ authoritative
 
 ### 9. testing/ Directory Structure
 
 - The testing directory has a well-structured hierarchy but several
-  subdirectories are empty
+ subdirectories are empty
 - The empty directories suggest planned but not yet implemented test categories
 - This is a gap in test coverage that should be documented
 
@@ -183,13 +183,13 @@ only (19) plus some extras.
 ## Recommendations
 
 1. **Update all references** from "25 packages" to "26 packages" across
-   documentation
+ documentation
 2. **Update GitHub Actions description** to reflect 11 workflows, not 4
 3. **Clarify test counts** — distinguish between unique test cases and browser
-   runs
+ runs
 4. **Document testing/ directory** structure accurately — note which
-   subdirectories are empty vs populated
+ subdirectories are empty vs populated
 5. **Reconcile duplicate tests** — decide whether `useWorkspace.test.ts` or
-   `useWorkspace.spec.ts` is authoritative
+ `useWorkspace.spec.ts` is authoritative
 6. **Update enterprise hardening status** to reflect security/accessibility/docs
-   workflows
+ workflows

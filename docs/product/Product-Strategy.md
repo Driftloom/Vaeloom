@@ -7,32 +7,32 @@
 
 ```mermaid
 graph TD
-    classDef commit fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef gtm fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef moat fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef commit fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef gtm fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef moat fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Commitments["🎯 Core Commitments"]
-        C1["Memory before features<br/>UI on shallow memory < plain UI on deep memory"]
-        C2["Consent is architecture<br/>Not a settings page -- core data model concept"]
-        C3["Earned autonomy compounds<br/>More autonomy where demonstrated correct"]
-    end
+ subgraph Commitments["Core Commitments"]
+ C1["Memory before features<br/>UI on shallow memory < plain UI on deep memory"]
+ C2["Consent is architecture<br/>Not a settings page -- core data model concept"]
+ C3["Earned autonomy compounds<br/>More autonomy where demonstrated correct"]
+ end
 
-    subgraph GTM["🚀 Go-to-Market Strategy"]
-        G1["MVP: Individual students<br/>Free tier, campus word-of-mouth"]
-        G2["v1.5: Early-career professionals<br/>Paid tier, referral program"]
-        G3["V2: Job seekers, freelancers<br/>Content marketing, partnerships"]
-        G4["Enterprise: Universities, companies<br/>Direct sales, design partner program"]
-    end
+ subgraph GTM["Go-to-Market Strategy"]
+ G1["MVP: Individual students<br/>Free tier, campus word-of-mouth"]
+ G2["v1.5: Early-career professionals<br/>Paid tier, referral program"]
+ G3["V2: Job seekers, freelancers<br/>Content marketing, partnerships"]
+ G4["Enterprise: Universities, companies<br/>Direct sales, design partner program"]
+ end
 
-    subgraph Moat["🛡️ Competitive Moat"]
-        M["Compounding memory<br/>Longer use = better features<br/>= higher switching cost"]
-    end
+ subgraph Moat["Competitive Moat"]
+ M["Compounding memory<br/>Longer use = better features<br/>= higher switching cost"]
+ end
 
-    Commitments --> GTM --> Moat
+ Commitments--> GTM--> Moat
 
-    class C1,C2,C3 commit
-    class G1,G2,G3,G4 gtm
-    class M moat
+ class C1,C2,C3 commit
+ class G1,G2,G3,G4 gtm
+ class M moat
 ```
 
 > **Diagram:** Product strategy — **3 core commitments** (memory-first, consent-as-architecture, earned autonomy) → **4-phase go-to-market** (MVP→v1.5→V2→Enterprise targeting specific segments) → **competitive moat** (compounding memory — longer use improves everything).

@@ -12,7 +12,7 @@
 
 ## Overview
 
-The Vaeloom frontend is a component-driven single-page application built with Next.js 14+ (App Router), TypeScript (strict mode), Tailwind CSS, TanStack Query, and React Hook Form. It serves 11 page routes including Dashboard, Workspace, Memory Graph, Resume, Jobs, Applications, Chat, Schedule, Connectors, History, and Settings — each with an SSR or CSR rendering strategy chosen for its interaction model.
+The Vaeloom frontend is a component-driven single-page application built with Next.js 14+ (App Router), TypeScript (strict mode), Tailwind CSS, TanStack Query, and React Hook Form. It serves 11 page routes including Dashboard, Workspace, Memory Graph, Resume, Jobs, Applications, Chat, Schedule, Connectors, History, and Settings â€” each with an SSR or CSR rendering strategy chosen for its interaction model.
 
 The architecture enforces a strict communication boundary: the frontend communicates exclusively through the REST API gateway, never directly accessing databases, memory stores, or agent systems. Every data request passes through the API layer where the permission engine enforces workspace-scoped access control. This one-way data flow prevents data leaks, ensures consistent authorization, and keeps the frontend stateless with respect to backend concerns.
 
@@ -60,45 +60,45 @@ The architecture enforces a strict communication boundary: the frontend communic
 
 ```mermaid
 graph TD
-    classDef arch fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef tech fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef page fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef arch fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef tech fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef page fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Stack["??? Technology Stack"]
-        direction TB
-        S1["Framework: Next.js 14+<br/>SSR + App Router"]
-        S2["Language: TypeScript<br/>Strict mode"]
-        S3["Styling: Tailwind CSS<br/>Design tokens"]
-        S4["State: TanStack Query<br/>Server state, caching"]
-        S5["Forms: React Hook Form<br/>Form state management"]
-    end
+ subgraph Stack["Technology Stack"]
+ direction TB
+ S1["Framework: Next.js 14+<br/>SSR + App Router"]
+ S2["Language: TypeScript<br/>Strict mode"]
+ S3["Styling: Tailwind CSS<br/>Design tokens"]
+ S4["State: TanStack Query<br/>Server state, caching"]
+ S5["Forms: React Hook Form<br/>Form state management"]
+ end
 
-    subgraph Pages["?? Page Structure"]
-        P1["/dashboard<br/>At-a-glance summary"]
-        P2["/workspace<br/>File/folder viewer"]
-        P3["/memory-graph<br/>Knowledge graph viz"]
-        P4["/resume<br/>Master resume editor"]
-        P5["/jobs<br/>Job/internship shortlist"]
-        P6["/chat<br/>Agent chat interface"]
-        P7["/settings<br/>Permissions, privacy"]
-    end
+ subgraph Pages["Page Structure"]
+ P1["dashboard<br/>At-a-glance summary"]
+ P2["workspace<br/>File/folder viewer"]
+ P3["memory-graph<br/>Knowledge graph viz"]
+ P4["resume<br/>Master resume editor"]
+ P5["jobs<br/>Job/internship shortlist"]
+ P6["chat<br/>Agent chat interface"]
+ P7["settings<br/>Permissions, privacy"]
+ end
 
-    subgraph Communication["?? Communication Pattern"]
-        C1["Frontend (Next.js SPA)"]
-        C2["REST API Gateway"]
-        C3["Backend Services<br/>(AI / Memory / Queue)"]
-    end
+ subgraph Communication["Communication Pattern"]
+ C1["Frontend (Next.js SPA)"]
+ C2["REST API Gateway"]
+ C3["Backend Services<br/>(AI / Memory / Queue)"]
+ end
 
-    Stack --> Pages
-    Pages --> C1 --> C2 --> C3
-    C3 -.->|Never direct| C1
+ Stack--> Pages
+ Pages--> C1--> C2--> C3
+ C3 -.->|Never direct| C1
 
-    class S1,S2,S3,S4,S5 tech
-    class P1,P2,P3,P4,P5,P6,P7 page
-    class C1,C2,C3 arch
+ class S1,S2,S3,S4,S5 tech
+ class P1,P2,P3,P4,P5,P6,P7 page
+ class C1,C2,C3 arch
 ```
 
-> **Diagram:** Frontend architecture showing the **technology stack** (Next.js + TypeScript + Tailwind + TanStack Query), **page structure** (11 routes), and **communication pattern** — frontend communicates exclusively through the REST API gateway, never directly accessing memory or agent systems.
+> **Diagram:** Frontend architecture showing the **technology stack** (Next.js + TypeScript + Tailwind + TanStack Query), **page structure** (11 routes), and **communication pattern** â€” frontend communicates exclusively through the REST API gateway, never directly accessing memory or agent systems.
 
 ## Components
 
@@ -114,7 +114,7 @@ graph TD
 
 1. **Initial Page Load**: User navigates to Vaeloom URL ? DNS resolves to CDN ? Next.js server renders page shell with Suspense boundaries ? HTML streamed to client progressively ? React hydrates on client ? TanStack Query initializes workspace-scoped caches ? Page becomes fully interactive. Target: < 3s TTI for SSR pages.
 
-2. **Subsequent Client Navigation**: User clicks sidebar link ? Next.js App Router matches route ? Prefetched chunk loads from browser cache if available ? Layout shell (Sidebar + TopNav) preserved — only content area re-renders ? Page component renders with appropriate SSR/CSR strategy ? TanStack Query serves cached data or fetches fresh data through API gateway ? Transition completes. Target: < 300ms navigation.
+2. **Subsequent Client Navigation**: User clicks sidebar link ? Next.js App Router matches route ? Prefetched chunk loads from browser cache if available ? Layout shell (Sidebar + TopNav) preserved â€” only content area re-renders ? Page component renders with appropriate SSR/CSR strategy ? TanStack Query serves cached data or fetches fresh data through API gateway ? Transition completes. Target: < 300ms navigation.
 
 3. **Data Mutation (Form Submit)**: User fills form and submits ? React Hook Form validates client-side rules ? API client sends POST/PUT/PATCH through gateway with workspace_id and auth token ? Gateway forwards request after permission check ? Backend processes mutation and returns response ? TanStack Query cache invalidated for affected keys ? UI updates reflect new state ? User sees success confirmation or error.
 
@@ -124,35 +124,35 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant N as Next.js SSR
-    participant R as App Router
-    participant Q as TanStack Query
-    participant A as API Gateway
-    participant B as Backend
+ participant U as User
+ participant N as Next.js SSR
+ participant R as App Router
+ participant Q as TanStack Query
+ participant A as API Gateway
+ participant B as Backend
 
-    U->>N: Request /workspace
-    N->>N: Render shell + Suspense
-    N->>A: Fetch initial data (workspace_id + token)
-    A->>B: Permission check + forward
-    B-->>A: Return data
-    A-->>N: Stream response
-    N-->>U: HTML with skeleton states
-    U->>R: Navigate to /chat
-    R->>R: Client-side route match
-    R->>Q: Check workspace-scoped cache
-    Q-->>R: Cache miss
-    R->>A: Fetch /chat data
-    A-->>R: Return chat data
-    R-->>U: Chat page rendered
-    R->>Q: Update cache with chat data
+ U->>N: Request /workspace
+ N->>N: Render shell + Suspense
+ N->>A: Fetch initial data (workspace_id + token)
+ A->>B: Permission check + forward
+ B-->>A: Return data
+ A-->>N: Stream response
+ N-->>U: HTML with skeleton states
+ U->>R: Navigate to /chat
+ R->>R: Client-side route match
+ R->>Q: Check workspace-scoped cache
+ Q-->>R: Cache miss
+ R->>A: Fetch /chat data
+ A-->>R: Return chat data
+ R-->>U: Chat page rendered
+ R->>Q: Update cache with chat data
 ```
 
 ## Data Flow
 
 1. **Ingestion**: User action triggers a data request (page navigation, form submit, search query). Next.js server component or client-side hook initiates fetch through the API client.
 
-2. **Processing**: API client constructs request with workspace_id and auth token. TanStack Query checks its cache — returns cached data if fresh (staleTime: 30s default), otherwise sends HTTP request to the REST API gateway.
+2. **Processing**: API client constructs request with workspace_id and auth token. TanStack Query checks its cache â€” returns cached data if fresh (staleTime: 30s default), otherwise sends HTTP request to the REST API gateway.
 
 3. **Storage**: API gateway receives request, validates authentication, checks permissions against the workspace context, then routes to the appropriate backend service. Backend reads/writes to its data store. Response flows back through the gateway.
 
@@ -162,26 +162,26 @@ sequenceDiagram
 
 ## APIs
 
-N/A — This document defines the frontend architecture and communication pattern. Specific API endpoints, methods, request/response schemas, and authentication flows are documented in the backend API specification and the Vaeloom Complete Documentation.
+N/A â€” This document defines the frontend architecture and communication pattern. Specific API endpoints, methods, request/response schemas, and authentication flows are documented in the backend API specification and the Vaeloom Complete Documentation.
 
 ## Database
 
-N/A — The frontend does not directly access any database. All data flows through the REST API gateway where authentication, authorization, and workspace-scoped permissions are enforced at the backend level.
+N/A â€” The frontend does not directly access any database. All data flows through the REST API gateway where authentication, authorization, and workspace-scoped permissions are enforced at the backend level.
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| API key or token exposure in client-side code | Environment variables prefixed with `NEXT_PUBLIC_` are visible in the browser bundle — never expose secrets, only public configuration values |
+| API key or token exposure in client-side code | Environment variables prefixed with `NEXT_PUBLIC_` are visible in the browser bundle â€” never expose secrets, only public configuration values |
 | Route protection bypass via client-side navigation | Protected routes must verify authentication server-side (Next.js middleware or server components); client-side auth checks can be bypassed |
-| Cross-tenant data exposure through shared state | Ensure TanStack Query caches are scoped per workspace — switching workspaces should not serve cached data from the previous workspace |
+| Cross-tenant data exposure through shared state | Ensure TanStack Query caches are scoped per workspace â€” switching workspaces should not serve cached data from the previous workspace |
 
 ## Performance
 
 | Concern | Budget | Measurement | Optimization |
 |---------|--------|-------------|--------------|
 | Route-level code splitting | 250KB gzipped per route | @next/bundle-analyzer | Next.js App Router auto-splits; verify dynamic imports for heavy components |
-| Image optimization | 100KB per page | Lighthouse | Use `next/image` for WebP conversion, lazy loading, responsive srcset — saves 30-50% on image transfer |
+| Image optimization | 100KB per page | Lighthouse | Use `next/image` for WebP conversion, lazy loading, responsive srcset â€” saves 30-50% on image transfer |
 | Bundle size regression | Main bundle +50KB triggers review | CI bundle size gate | Add `@next/bundle-analyzer` to CI with size thresholds |
 | SSR page time-to-interactive | < 3s | Web Vitals (TTI) | Streaming SSR with Suspense boundaries; defer non-critical JavaScript |
 
@@ -276,10 +276,10 @@ function useWorkspaceQuery<T>(key: string, workspaceId: string, fetcher: () => P
 
 | # | Practice | Rationale |
 |---|----------|----------|
-| 1 | Communicate exclusively through the REST API gateway | The frontend must never access database, memory, or agent systems directly — all data flows through the API where permissions are enforced |
+| 1 | Communicate exclusively through the REST API gateway | The frontend must never access database, memory, or agent systems directly â€” all data flows through the API where permissions are enforced |
 | 2 | Wrap every route segment in an error boundary | A crash in the Memory Graph page should not affect the Dashboard or Workspace; error boundaries at the route level isolate failures |
 | 3 | Use skeleton loading states for every data-dependent view | Skeleton screens that match the final layout feel instant; generic spinners tell the user nothing about what's loading |
-| 4 | Keep shared components independent of page-specific logic | Components should receive data via props, not fetch it themselves — this keeps them reusable and testable across different page contexts |
+| 4 | Keep shared components independent of page-specific logic | Components should receive data via props, not fetch it themselves â€” this keeps them reusable and testable across different page contexts |
 | 5 | Prefix TanStack Query keys with workspace ID | Prevents cross-tenant cache contamination when switching workspaces |
 
 ## Risks

@@ -7,32 +7,32 @@
 
 ```mermaid
 graph TD
-    classDef core fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pillar fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef why fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef core fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pillar fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef why fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Mission["🎯 Mission"]
-        M["Build the most trustworthy<br/>AI-native personal<br/>intelligence platform"]
-    end
+ subgraph Mission["Mission"]
+ M["Build the most trustworthy<br/>AI-native personal<br/>intelligence platform"]
+ end
 
-    subgraph What["⚡ What It Does"]
-        W1["Organizes digital life<br/>Documents, emails, code, career"]
-        W2["Remembers everything<br/>Education, career, achievements"]
-        W3["Actively works on your behalf<br/>Apply, prepare, surface"]
-        W4["Keeps you in control<br/>Every consequential action approved"]
-    end
+ subgraph What["What It Does"]
+ W1["Organizes digital life<br/>Documents, emails, code, career"]
+ W2["Remembers everything<br/>Education, career, achievements"]
+ W3["Actively works on your behalf<br/>Apply, prepare, surface"]
+ W4["Keeps you in control<br/>Every consequential action approved"]
+ end
 
-    subgraph Why["💡 Why This Mission"]
-        Y1["Status quo: Manual re-assembly<br/>Every time it matters"]
-        Y2["Problem: Never prioritized<br/>Until deadline forces it"]
-        Y3["Solution: Automatic + continuous<br/>No more last-minute scrambling"]
-    end
+ subgraph Why["Why This Mission"]
+ Y1["Status quo: Manual re-assembly<br/>Every time it matters"]
+ Y2["Problem: Never prioritized<br/>Until deadline forces it"]
+ Y3["Solution: Automatic + continuous<br/>No more last-minute scrambling"]
+ end
 
-    Mission --> What --> Why
+ Mission--> What--> Why
 
-    class M core
-    class W1,W2,W3,W4 pillar
-    class Y1,Y2,Y3 why
+ class M core
+ class W1,W2,W3,W4 pillar
+ class Y1,Y2,Y3 why
 ```
 
 > **Diagram:** Mission architecture — **core mission** (most trustworthy AI-native platform) → **4 capabilities** (organize, remember, act, control) → **why** (status quo manual reassembly → always last-minute → automated approach).

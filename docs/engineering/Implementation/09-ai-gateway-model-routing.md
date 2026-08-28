@@ -23,40 +23,40 @@ The gateway's cost tracking publishes data into the same trace spans used by the
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    AGENTS["All Agents"]:::primary
-    GATEWAY["Gateway (complete())"]:::primary
+ AGENTS["All Agents"]:::primary
+ GATEWAY["Gateway (complete())"]:::primary
 
-    subgraph Config["Per-Agent Model Configuration"]
-        TIER["Model Tier Config"]:::secondary
-        FALLBACK["Fallback Chain"]:::secondary
-    end
+ subgraph Config["Per-Agent Model Configuration"]
+ TIER["Model Tier Config"]:::secondary
+ FALLBACK["Fallback Chain"]:::secondary
+ end
 
-    subgraph Features["Gateway Features"]
-        AUTH["Credential Management"]:::secondary
-        CACHE["Prompt Caching"]:::secondary
-        COST["Cost & Token Tracking"]:::secondary
-        RATE["Rate Limiting"]:::secondary
-        BUDGET["Per-Workspace Budget Alerts"]:::secondary
-    end
+ subgraph Features["Gateway Features"]
+ AUTH["Credential Management"]:::secondary
+ CACHE["Prompt Caching"]:::secondary
+ COST["Cost & Token Tracking"]:::secondary
+ RATE["Rate Limiting"]:::secondary
+ BUDGET["Per-Workspace Budget Alerts"]:::secondary
+ end
 
-    PROVIDER["Model Provider (Anthropic Claude API)"]:::primary
-    FALLBACK_PROV["Fallback Provider"]:::secondary
-    LOGS["Token Usage Logs"]:::secondary
+ PROVIDER["Model Provider (Anthropic Claude API)"]:::primary
+ FALLBACK_PROV["Fallback Provider"]:::secondary
+ LOGS["Token Usage Logs"]:::secondary
 
-    AGENTS --> GATEWAY
-    GATEWAY --> TIER
-    TIER --> FALLBACK
-    FALLBACK --> PROVIDER
-    FALLBACK --> FALLBACK_PROV
-    GATEWAY --> AUTH
-    GATEWAY --> CACHE
-    GATEWAY --> COST
-    GATEWAY --> RATE
-    GATEWAY --> BUDGET
-    COST --> LOGS
+ AGENTS--> GATEWAY
+ GATEWAY--> TIER
+ TIER--> FALLBACK
+ FALLBACK--> PROVIDER
+ FALLBACK--> FALLBACK_PROV
+ GATEWAY--> AUTH
+ GATEWAY--> CACHE
+ GATEWAY--> COST
+ GATEWAY--> RATE
+ GATEWAY--> BUDGET
+ COST--> LOGS
 ```
 
 ## Context

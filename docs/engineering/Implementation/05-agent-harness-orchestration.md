@@ -23,46 +23,46 @@ This phase defines the eight-part harness anatomy (Planner, Memory, State, Tools
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    REQ["User Request / Scheduled Trigger"]:::primary
-    ORCH["Orchestrator (router.py)"]:::primary
-    PERM["Permission Engine Check"]:::secondary
+ REQ["User Request / Scheduled Trigger"]:::primary
+ ORCH["Orchestrator (router.py)"]:::primary
+ PERM["Permission Engine Check"]:::secondary
 
-    subgraph Loop["Agentic Loop (implemented once)"]
-        PLAN["1. Plan<br/>Intended action from request + context"]:::primary
-        ACT["2. Act<br/>Execute tool call(s)"]:::secondary
-        OBS["3. Observe<br/>Capture tool result"]:::secondary
-        REFL["4. Reflect<br/>Evaluate if request is satisfied"]:::secondary
-        IMPR["5. Improve<br/>Log outcome for evals"]:::primary
-    end
+ subgraph Loop["Agentic Loop (implemented once)"]
+ PLAN["1. Plan<br/>Intended action from request + context"]:::primary
+ ACT["2. Act<br/>Execute tool call(s)"]:::secondary
+ OBS["3. Observe<br/>Capture tool result"]:::secondary
+ REFL["4. Reflect<br/>Evaluate if request is satisfied"]:::secondary
+ IMPR["5. Improve<br/>Log outcome for evals"]:::primary
+ end
 
-    STATE["State Persistence<br/>(Redis checkpoint per phase)"]:::secondary
-    EVENTS["Event Bus<br/>(Redis pub/sub)"]:::secondary
+ STATE["State Persistence<br/>(Redis checkpoint per phase)"]:::secondary
+ EVENTS["Event Bus<br/>(Redis pub/sub)"]:::secondary
 
-    subgraph Contract["Agent Contract (base.py)"]
-        MISSION["fixed mission"]:::secondary
-        TOOLS["declared tool list"]:::secondary
-        SCOPES["memory read/write scopes"]:::secondary
-        AUTONOMY["autonomy level"]:::secondary
-        FALLBACK["fallback() method"]:::secondary
-    end
+ subgraph Contract["Agent Contract (base.py)"]
+ MISSION["fixed mission"]:::secondary
+ TOOLS["declared tool list"]:::secondary
+ SCOPES["memory read/write scopes"]:::secondary
+ AUTONOMY["autonomy level"]:::secondary
+ FALLBACK["fallback() method"]:::secondary
+ end
 
-    REQ --> ORCH
-    ORCH --> PERM
-    PERM --> PLAN
-    PLAN --> ACT
-    ACT --> OBS
-    OBS --> REFL
-    REFL -->|"satisfied"| IMPR
-    REFL -->|"not satisfied (≤3 tries)"| PLAN
-    REFL -->|"max retries exceeded"| FALLBACK
-    STATE -.-> PLAN
-    STATE -.-> ACT
-    STATE -.-> OBS
-    EVENTS -.-> LOOP
-    IMPR -.-> EVENTS
+ REQ--> ORCH
+ ORCH--> PERM
+ PERM--> PLAN
+ PLAN--> ACT
+ ACT--> OBS
+ OBS--> REFL
+ REFL-->|"satisfied"| IMPR
+ REFL-->|"not satisfied (≤3 tries)"| PLAN
+ REFL-->|"max retries exceeded"| FALLBACK
+ STATE -.-> PLAN
+ STATE -.-> ACT
+ STATE -.-> OBS
+ EVENTS -.-> LOOP
+ IMPR -.-> EVENTS
 ```
 
 ## Context

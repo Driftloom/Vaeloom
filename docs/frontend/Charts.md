@@ -14,11 +14,11 @@
 
 Vaeloom uses data visualization to transform raw entity data into actionable insights for users. Charts display knowledge growth trends over time, application volume across platforms, skill category distributions, and the interconnected memory graph that forms the core of Vaeloom's AI-powered knowledge management.
 
-The charting architecture follows a tiered library strategy: Recharts for standard chart types (line, bar, pie), D3.js for complex custom visualizations (the force-directed knowledge graph), and CSS/SVG for lightweight indicators (sparklines, stat badges). This tiered approach ensures each visualization uses the right tool for its complexity level — a dashboard sparkline doesn't require the full D3.js bundle.
+The charting architecture follows a tiered library strategy: Recharts for standard chart types (line, bar, pie), D3.js for complex custom visualizations (the force-directed knowledge graph), and CSS/SVG for lightweight indicators (sparklines, stat badges). This tiered approach ensures each visualization uses the right tool for its complexity level â€” a dashboard sparkline doesn't require the full D3.js bundle.
 
 Every chart in Vaeloom follows five design guidelines: accessibility through data tables, responsive resizing with their container, consistent use of theme color tokens, interactive tooltips with drill-down, and meaningful empty states that guide users when no data is available. These guidelines ensure charts are usable, on-brand, and informative regardless of the data state.
 
-For Vaeloom's users — typically career professionals managing resumes, job applications, and skill development — charts provide at-a-glance understanding of their knowledge ecosystem. The knowledge graph, in particular, is a flagship visualization that reveals hidden connections between skills, experiences, and career goals that users might not have discovered on their own.
+For Vaeloom's users â€” typically career professionals managing resumes, job applications, and skill development â€” charts provide at-a-glance understanding of their knowledge ecosystem. The knowledge graph, in particular, is a flagship visualization that reveals hidden connections between skills, experiences, and career goals that users might not have discovered on their own.
 
 ## Goals
 
@@ -76,49 +76,49 @@ For Vaeloom's users — typically career professionals managing resumes, job appli
 
 ```mermaid
 graph TD
-    classDef library fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef chart fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef guide fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef library fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef chart fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef guide fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Libraries["Charting Libraries"]
-        direction TB
-        L1["Recharts (Primary)<br/>Standard: line, bar, pie"]
-        L2["D3.js (Complex)<br/>Custom: knowledge graph viz"]
-        L3["CSS/SVG (Simple)<br/>Sparklines, badges, indicators"]
-    end
+ subgraph Libraries["Charting Libraries"]
+ direction TB
+ L1["Recharts (Primary)<br/>Standard: line, bar, pie"]
+ L2["D3.js (Complex)<br/>Custom: knowledge graph viz"]
+ L3["CSS/SVG (Simple)<br/>Sparklines, badges, indicators"]
+ end
 
-    subgraph Types["Chart Types"]
-        T1["Line Chart<br/>Trends over time<br/>Knowledge growth, app volume"]
-        T2["Bar Chart<br/>Comparisons<br/>Apps per platform, skills by category"]
-        T3["Pie / Donut<br/>Proportions<br/>Memory type distribution"]
-        T4["Sparkline<br/>Compact trend<br/>Dashboard mini-charts"]
-        T5["Network Graph<br/>Relationships<br/>Knowledge graph (D3.js)"]
-    end
+ subgraph Types["Chart Types"]
+ T1["Line Chart<br/>Trends over time<br/>Knowledge growth, app volume"]
+ T2["Bar Chart<br/>Comparisons<br/>Apps per platform, skills by category"]
+ T3["Pie / Donut<br/>Proportions<br/>Memory type distribution"]
+ T4["Sparkline<br/>Compact trend<br/>Dashboard mini-charts"]
+ T5["Network Graph<br/>Relationships<br/>Knowledge graph (D3.js)"]
+ end
 
-    subgraph Guidelines["Chart Guidelines"]
-        G1["Accessibility: Text alternatives in tables"]
-        G2["Responsive: Resize with container"]
-        G3["Colors: Use theme tokens, not custom"]
-        G4["Interactivity: Tooltips + click to drill"]
-        G5["Empty states: Meaningful, not blank"]
-    end
+ subgraph Guidelines["Chart Guidelines"]
+ G1["Accessibility: Text alternatives in tables"]
+ G2["Responsive: Resize with container"]
+ G3["Colors: Use theme tokens, not custom"]
+ G4["Interactivity: Tooltips + click to drill"]
+ G5["Empty states: Meaningful, not blank"]
+ end
 
-    Libraries --> Types --> Guidelines
+ Libraries--> Types--> Guidelines
 
-    class L1,L2,L3 library
-    class T1,T2,T3,T4,T5 chart
-    class G1,G2,G3,G4,G5 guide
+ class L1,L2,L3 library
+ class T1,T2,T3,T4,T5 chart
+ class G1,G2,G3,G4,G5 guide
 ```
 
 ## Components
 
 | Component | Responsibility | Technology | Scale Strategy |
 |-----------|---------------|------------|----------------|
-| LineChart | Render knowledge growth trends over time | Recharts | Instance per metric — configurable xAxis (date), yAxis (count), color from theme |
+| LineChart | Render knowledge growth trends over time | Recharts | Instance per metric â€” configurable xAxis (date), yAxis (count), color from theme |
 | BarChart | Display comparisons (apps per platform, skills by category) | Recharts | Instance per comparison; responsive via container width |
 | PieChart | Show proportion distribution (memory types, skill categories) | Recharts | Instance per distribution; donut variant with center label |
 | KnowledgeGraph | Force-directed memory graph visualization | D3.js | Single instance per Memory page; dynamic node count based on entity depth |
-| Sparkline | Compact trend indicator in widget headers | CSS/SVG inline | Stateless — rendered as `<path>` in SVG; no JS runtime |
+| Sparkline | Compact trend indicator in widget headers | CSS/SVG inline | Stateless â€” rendered as `<path>` in SVG; no JS runtime |
 | ChartEmptyState | Meaningful empty state for missing data | React | Shared across all chart types; shows different message based on query |
 | ChartDataTable | Accessible data table beneath charts | React | Auto-generated from chart data; toggled via `aria-expanded` |
 
@@ -134,46 +134,46 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant D as Dashboard
-    participant TQ as TanStack Query
-    participant RC as Recharts
-    participant API as Vaeloom API
+ participant U as User
+ participant D as Dashboard
+ participant TQ as TanStack Query
+ participant RC as Recharts
+ participant API as Vaeloom API
 
-    U->>D: Navigate to Dashboard
-    D->>TQ: query knowledgeGrowth
-    TQ->>API: GET /api/dashboard/knowledge-growth
-    API-->>TQ: { dates: [...], counts: [...] }
-    TQ-->>D: Cached data (staleTime: 30s)
-    D->>RC: Render LineChart with data
-    RC->>RC: Compute axis domains
-    RC->>RC: Draw SVG paths
-    RC-->>U: Interactive chart visible
+ U->>D: Navigate to Dashboard
+ D->>TQ: query knowledgeGrowth
+ TQ->>API: GET /api/dashboard/knowledge-growth
+ API-->>TQ: { dates: [...], counts: [...] }
+ TQ-->>D: Cached data (staleTime: 30s)
+ D->>RC: Render LineChart with data
+ RC->>RC: Compute axis domains
+ RC->>RC: Draw SVG paths
+ RC-->>U: Interactive chart visible
 
-    U->>RC: Hover over data point
-    RC-->>U: Tooltip with exact value + date
+ U->>RC: Hover over data point
+ RC-->>U: Tooltip with exact value + date
 ```
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant KG as KnowledgeGraph
-    participant D3 as D3.js Simulation
-    participant API as Vaeloom API
+ participant U as User
+ participant KG as KnowledgeGraph
+ participant D3 as D3.js Simulation
+ participant API as Vaeloom API
 
-    U->>KG: Search for "React"
-    KG->>API: GET /api/memory/graph?q=React
-    API-->>KG: Filtered nodes + links
-    KG->>D3: Update simulation data
-    D3->>D3: Re-heat force simulation
-    D3->>D3: Animate to new positions
-    KG-->>U: Highlighted matching nodes
+ U->>KG: Search for "React"
+ KG->>API: GET /api/memory/graph?q=React
+ API-->>KG: Filtered nodes + links
+ KG->>D3: Update simulation data
+ D3->>D3: Re-heat force simulation
+ D3->>D3: Animate to new positions
+ KG-->>U: Highlighted matching nodes
 
-    U->>KG: Click entity node
-    KG->>D3: Toggle expand/collapse
-    D3->>D3: Add/remove connected nodes
-    D3->>D3: Re-compute forces
-    KG-->>U: Expanded sub-graph visible
+ U->>KG: Click entity node
+ KG->>D3: Toggle expand/collapse
+ D3->>D3: Add/remove connected nodes
+ D3->>D3: Re-compute forces
+ KG-->>U: Expanded sub-graph visible
 ```
 
 ## Data Flow
@@ -207,9 +207,9 @@ sequenceDiagram
 
 | Concern | Mitigation |
 |---------|------------|
-| Data exposure in tooltips | Tooltips on interactive charts may expose user- or workspace-specific data — validate tooltip content against permission scope |
-| XSS through chart labels/annotations | Charting libraries that render HTML in tooltips or labels via `dangerouslySetInnerHTML` can execute injected scripts — sanitize all label inputs |
-| Knowledge graph node data sensitivity | Network graph visualizations can reveal relationship patterns that expose inferred information — scope graph rendering to permitted entities only |
+| Data exposure in tooltips | Tooltips on interactive charts may expose user- or workspace-specific data â€” validate tooltip content against permission scope |
+| XSS through chart labels/annotations | Charting libraries that render HTML in tooltips or labels via `dangerouslySetInnerHTML` can execute injected scripts â€” sanitize all label inputs |
+| Knowledge graph node data sensitivity | Network graph visualizations can reveal relationship patterns that expose inferred information â€” scope graph rendering to permitted entities only |
 
 ## Performance
 
@@ -242,10 +242,10 @@ sequenceDiagram
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Chart render time | > 200ms per chart | Warning | Grafana — Frontend Performance |
-| Knowledge graph FPS | < 30fps during interaction | Warning | Chrome DevTools — Performance tab |
-| Data fetch error rate | > 1% of chart queries | Critical | Grafana — API Dashboard |
-| Empty state impressions | > 50% of chart views show empty state | Info | Amplitude — Chart Engagement |
+| Chart render time | > 200ms per chart | Warning | Grafana â€” Frontend Performance |
+| Knowledge graph FPS | < 30fps during interaction | Warning | Chrome DevTools â€” Performance tab |
+| Data fetch error rate | > 1% of chart queries | Critical | Grafana â€” API Dashboard |
+| Empty state impressions | > 50% of chart views show empty state | Info | Amplitude â€” Chart Engagement |
 
 ## Deployment
 
@@ -362,11 +362,11 @@ function Sparkline({ data, color = 'var(--accent-primary)' }: { data: number[]; 
 | # | Practice | Rationale |
 |---|----------|-----------|
 | 1 | Provide data tables as chart alternatives | Screen readers cannot interpret SVG chart elements; always include the underlying data in an accessible `<table>` |
-| 2 | Use theme color tokens consistently | Charts should reference the same palette as the rest of the UI — never introduce ad-hoc custom colors that clash |
+| 2 | Use theme color tokens consistently | Charts should reference the same palette as the rest of the UI â€” never introduce ad-hoc custom colors that clash |
 | 3 | Add tooltips and click-to-drill interactivity | Users want to explore data, not just see it; tooltips with exact values and click-through to details add depth |
 | 4 | Keep data point count reasonable | Line charts with 1000+ points are illegible; aggregate or sample data for display, show full detail on demand |
 | 5 | Memoize chart components | Use `React.memo` and `useMemo` for data transforms to prevent unnecessary re-renders on parent updates |
-| 6 | Handle empty states gracefully | Never show blank chart with grid lines — display meaningful message about what data will appear |
+| 6 | Handle empty states gracefully | Never show blank chart with grid lines â€” display meaningful message about what data will appear |
 
 ## Risks
 

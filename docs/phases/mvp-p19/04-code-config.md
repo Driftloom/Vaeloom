@@ -1,7 +1,7 @@
-﻿# MVP-P19 — 04. Code and Configuration
+# MVP-P19 — 04. Code and Configuration
 
-> **Phase:** MVP-P19 — Release Readiness and Production Deployment  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 release readiness v0.2.0  
+> **Phase:** MVP-P19 — Release Readiness and Production Deployment 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 93.4 + P19 release readiness v0.2.0 
 > **Predecessor:** P18 docs IA 256 docs + 32 ADRs + 99 OpenAPI + portal 1127 lines searchable
 
 ## Architecture Preservation (§13)
@@ -18,7 +18,7 @@ P19 is **release hardening**; prod business logic unchanged (only release plan +
 |---|---|---|---|
 | `apps/api/src/api/config.py:11` | `service_version: str = "0.2.0"` + `enterprise_routes_enabled: bool = False` `config.py:87` | Release version v0.2.0 pinned + PaaS bounded | `config.py:11` `service_version 0.2.0` + `config.py:87` False |
 | `apps/api/pyproject.toml` | `version = "0.2.0"` `target-version py312` | Package version 0.2.0 matches config + openapi | `pyproject.toml` version 0.2.0 |
-| `docs/backend/openapi.yaml:1` | `openapi: 3.1.0` `title: Vaeloom Backend version: 0.2.0` 99 paths `rg -c "^  /" 99` (was 88 at P12 →99 at 787053a) | 99-path contract v0.2.0 | `openapi.yaml:1` 3.1.0 0.2.0 99 paths |
+| `docs/backend/openapi.yaml:1` | `openapi: 3.1.0` `title: Vaeloom Backend version: 0.2.0` 99 paths `rg -c "^ /" 99` (was 88 at P12 →99 at 787053a) | 99-path contract v0.2.0 | `openapi.yaml:1` 3.1.0 0.2.0 99 paths |
 | `infra/ops/LAUNCH-CHECKLIST.md:1` | Production launch checklist 178 lines Pre-Launch T-7 7 groups + Launch Day ramp 10%→50%→100% + Post-Launch T+1..T+7 baseline/9-day error budget/tuning/archive | Canonical release checklist 178 lines | `LAUNCH-CHECKLIST.md:1` 178 lines |
 | `docker-compose.prod.yml:1` | Prod compose 239 lines `x-logging 10m*3` + `x-service-base vaeloom-net` + `nginx:1.27` 80:80 443:443 `nginx.conf:ro` + web 512M NEXT_PUBLIC_API_URL https://api.vaeloom.app + api 1G SERVICE_ENVIRONMENT production `depends_on postgres/redis healthy` `curl -f /health` 60s + postgres 2G `pg_isready` `POSTGRES_PASSWORD:?err` + redis 512M `requirepass :?err` `redis-cli ping` + pgbouncer transaction 25/5/200 6432 + minio 9000/9001 `STORAGE_* :?err` | Prod parity docker compose 239 lines | `docker-compose.prod.yml:1` 239 lines |
 | `infra/kubernetes/overlays/prod/hpa.yaml:1` | HPA `minReplicas: 3 maxReplicas: 10 metrics cpu 70% memory 80%` | Prod autoscale 3→10 | `hpa.yaml:1` min3 max10 cpu70 mem80 |
@@ -93,7 +93,7 @@ P19 is **release hardening**; prod business logic unchanged (only release plan +
 - `pytest --collect-only -q -o addopts=""` 2557 (12.91s)
 - `uv run --project apps/api python -c "from api.services.gdpr import ALLOWED_TABLES; print(len(ALLOWED_TABLES))"` → 31
 - `uv run --project apps/api python -m pytest --cov=api --cov-report=term -q -o addopts="-n 4"` → 94.2% closes P14 retained P19
-- `rg -c "^  /" docs/backend/openapi.yaml` → 99 paths PASS `openapi: 3.1.0` version 0.2.0
+- `rg -c "^ /" docs/backend/openapi.yaml` → 99 paths PASS `openapi: 3.1.0` version 0.2.0
 - `ls docs/adr/ | Measure-Object | Select Count` → 32 ADRs `ADR-001`..`ADR-032`
 - `rg "0\.2\.0" apps/api/src/api/config.py docs/backend/openapi.yaml apps/api/pyproject.toml` → 3 hits 0.2.0 PASS
 - `wc -l infra/ops/LAUNCH-CHECKLIST.md` → 178 lines `archived for next release`

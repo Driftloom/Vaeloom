@@ -20,10 +20,10 @@ via `page.pdf()`:
 
 - Pixel-perfect CSS (flexbox, print `@page` rules) vs ReportLab's manual canvas.
 - No GTK/Pango native dependency on Windows dev machines (WeasyPrint's pain
-  point).
+ point).
 - Chromium is a large (~300MB) install; the API degrades gracefully:
-  `PlaywrightUnavailableError` → HTTP 503 with a `playwright install chromium`
-  hint. Tests mock compilation; CI does not need browsers.
+ `PlaywrightUnavailableError` → HTTP 503 with a `playwright install chromium`
+ hint. Tests mock compilation; CI does not need browsers.
 
 The `_PlaywrightManager` singleton lazily launches one headless browser, reuses
 it across compiles under an asyncio lock, and flags permanent unavailability.
@@ -75,18 +75,18 @@ via `generated_from_snapshot`.
 
 - New deps: `jinja2`, `playwright` (apps/api).
 - Compile endpoints are rate-limited (6/min compile+cover-letter, 4/min
-  cheatsheet) because chromium renders are expensive.
+ cheatsheet) because chromium renders are expensive.
 - Frontend consumes camelCase-transformed responses; `ResumeBuilder` field
-  accesses were corrected to match the actual runtime shape (latent bug fixed).
+ accesses were corrected to match the actual runtime shape (latent bug fixed).
 - Phase 2 (browser tools) and Phase 3 (native Python MCP client) build on the
-  same Playwright manager and connector patterns established here.
+ same Playwright manager and connector patterns established here.
 
 ## Test evidence
 
 - 47 unit tests (templates, builder incl. mocked fit-loop, helpers)
 - 13 integration tests (routes: templates/tailor/compile/cover-letter/
-  cheatsheet/artifacts/download + authz isolation)
+ cheatsheet/artifacts/download + authz isolation)
 - 16 executor-tool tests (semantic score modes, gazetteer extraction, formatting
-  audit, registry wiring)
+ audit, registry wiring)
 - Real-chromium verification: page-fit loop shrinks an 8-entry resume from 3+
-  pages to ≤2.
+ pages to ≤2.

@@ -10,29 +10,29 @@
 
 ```mermaid
 graph TD
-    classDef step fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef verify fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef step fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef verify fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    subgraph Steps["📋 Setup Steps"]
-        S1["1. Clone repo<br/>git clone Vaeloom.git"]
-        S2["2. Configure env<br/>cp .env.example .env<br/>Set ANTHROPIC_API_KEY"]
-        S3["3. Start infra<br/>docker compose up -d<br/>postgres + redis"]
-        S4["4. DB migrations<br/>cd apps/api<br/>alembic upgrade head"]
-        S5["5. Start Backend<br/>cd apps/api<br/>uvicorn api.main:app --reload<br/>Port 8000"]
-        S6["6. Start Frontend<br/>cd apps/web && npm run dev<br/>Port 3000"]
-    end
+ subgraph Steps["Setup Steps"]
+ S1["1. Clone repo<br/>git clone Vaeloom.git"]
+ S2["2. Configure env<br/>cp .env.example .env<br/>Set ANTHROPIC_API_KEY"]
+ S3["3. Start infra<br/>docker compose up -d<br/>postgres + redis"]
+ S4["4. DB migrations<br/>cd apps/api<br/>alembic upgrade head"]
+ S5["5. Start Backend<br/>cd apps/api<br/>uvicorn api.main:app --reload<br/>Port 8000"]
+ S6["6. Start Frontend<br/>cd apps/web && npm run dev<br/>Port 3000"]
+ end
 
-    subgraph Verify["✅ Verification"]
-        V1["curl localhost:3000 --> 200"]
-        V2["curl localhost:8000/v1/health --> 200"]
-        V3["docker compose exec postgres pg_isready"]
-        V4["docker compose exec redis redis-cli ping --> PONG"]
-    end
+ subgraph Verify["Verification"]
+ V1["curl localhost:3000--> 200"]
+ V2["curl localhost:8000/v1/health--> 200"]
+ V3["docker compose exec postgres pg_isready"]
+ V4["docker compose exec redis redis-cli ping--> PONG"]
+ end
 
-    S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> Verify
+ S1--> S2--> S3--> S4--> S5--> S6--> Verify
 
-    class S1,S2,S3,S4,S5,S6 step
-    class V1,V2,V3,V4 verify
+ class S1,S2,S3,S4,S5,S6 step
+ class V1,V2,V3,V4 verify
 ```
 
 > **Diagram:** Complete setup workflow — **6 sequential steps** (clone →
@@ -49,14 +49,14 @@ FastAPI backend, backed by PostgreSQL and Redis.
 
 ## Prerequisites
 
-| Software       | Version                   | Purpose                      | Check Installation       |
+| Software | Version | Purpose | Check Installation |
 | -------------- | ------------------------- | ---------------------------- | ------------------------ |
-| Node.js        | 18+ (recommended: 20 LTS) | Frontend + API runtime       | `node --version`         |
-| npm            | 9+                        | Package manager              | `npm --version`          |
-| Python         | 3.12+                     | Backend runtime              | `python --version`       |
-| Docker         | Latest                    | PostgreSQL, Redis containers | `docker --version`       |
-| Docker Compose | v2+                       | Service orchestration        | `docker compose version` |
-| Git            | Latest                    | Version control              | `git --version`          |
+| Node.js | 18+ (recommended: 20 LTS) | Frontend + API runtime | `node --version` |
+| npm | 9+ | Package manager | `npm --version` |
+| Python | 3.12+ | Backend runtime | `python --version` |
+| Docker | Latest | PostgreSQL, Redis containers | `docker --version` |
+| Docker Compose | v2+ | Service orchestration | `docker compose version` |
+| Git | Latest | Version control | `git --version` |
 
 ### Installing Prerequisites
 
@@ -198,14 +198,14 @@ Vaeloom/
 
 ### Common Issues
 
-| Issue                                        | Likely Cause                        | Solution                                                          |
+| Issue | Likely Cause | Solution |
 | -------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| `docker compose up` fails with port conflict | PostgreSQL or Redis already running | Stop existing instances: `sudo systemctl stop postgresql`         |
-| `alembic upgrade head` fails                 | Database not ready                  | Wait 10s and retry, or check `docker compose logs postgres`       |
-| `npm install` fails with permissions         | Node.js version mismatch            | `nvm use 20` or update Node.js                                    |
-| `uvicorn` can't find module                  | Virtual environment not activated   | `source .venv/bin/activate` and `pip install -r requirements.txt` |
-| Backend returns 401                          | Missing API key                     | Check `ANTHROPIC_API_KEY` in `.env`                               |
-| Frontend shows loading spinner               | Backend not running                 | Start backend: `cd apps/api && uvicorn api.main:app --reload`     |
+| `docker compose up` fails with port conflict | PostgreSQL or Redis already running | Stop existing instances: `sudo systemctl stop postgresql` |
+| `alembic upgrade head` fails | Database not ready | Wait 10s and retry, or check `docker compose logs postgres` |
+| `npm install` fails with permissions | Node.js version mismatch | `nvm use 20` or update Node.js |
+| `uvicorn` can't find module | Virtual environment not activated | `source .venv/bin/activate` and `pip install -r requirements.txt` |
+| Backend returns 401 | Missing API key | Check `ANTHROPIC_API_KEY` in `.env` |
+| Frontend shows loading spinner | Backend not running | Start backend: `cd apps/api && uvicorn api.main:app --reload` |
 
 ### Docker Issues
 
@@ -224,67 +224,67 @@ docker stats
 
 ## Best Practices
 
-| Practice                               | Why                                                                       |
+| Practice | Why |
 | -------------------------------------- | ------------------------------------------------------------------------- |
-| Keep `.env` out of version control     | Secrets in git = security incident                                        |
-| Run migrations in a separate terminal  | See migration output clearly                                              |
-| Use `uvicorn --reload` for backend dev | Dev mode has hot reload                                                   |
-| Check `docker compose logs` first      | Most issues visible in logs                                               |
-| Format code before committing          | `ruff format` (Python) / `npm run format` (frontend) avoids lint failures |
+| Keep `.env` out of version control | Secrets in git = security incident |
+| Run migrations in a separate terminal | See migration output clearly |
+| Use `uvicorn --reload` for backend dev | Dev mode has hot reload |
+| Check `docker compose logs` first | Most issues visible in logs |
+| Format code before committing | `ruff format` (Python) / `npm run format` (frontend) avoids lint failures |
 
 ## Common Mistakes
 
-| Mistake                                        | Fix                                                            |
+| Mistake | Fix |
 | ---------------------------------------------- | -------------------------------------------------------------- |
-| Forgetting to activate Python venv             | Always `source .venv/bin/activate` when working on the backend |
-| Running `npm start` instead of `npm run dev`   | `npm start` uses production build                              |
-| Editing `docker-compose.yml` for local changes | Use `docker-compose.override.yml` instead                      |
-| Skipping database migrations                   | Always run `alembic upgrade head` after pulling new code       |
+| Forgetting to activate Python venv | Always `source .venv/bin/activate` when working on the backend |
+| Running `npm start` instead of `npm run dev` | `npm start` uses production build |
+| Editing `docker-compose.yml` for local changes | Use `docker-compose.override.yml` instead |
+| Skipping database migrations | Always run `alembic upgrade head` after pulling new code |
 
 ## Security Considerations
 
-| Consideration                         | Mitigation                                                                                                                                                          |
+| Consideration | Mitigation |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API key exposure in local development | Store `ANTHROPIC_API_KEY` in `.env` with permissions `600` — never paste API keys directly into terminal commands where they appear in shell history                |
-| Docker container access               | PostgreSQL and Redis containers run without authentication in local dev — don't expose Docker ports to the public internet or use default credentials in production |
-| OAuth credentials in source code      | Gmail and GitHub OAuth client secrets must never be committed — use `.env.example` with placeholder values and keep real credentials in secrets manager             |
+| API key exposure in local development | Store `ANTHROPIC_API_KEY` in `.env` with permissions `600` — never paste API keys directly into terminal commands where they appear in shell history |
+| Docker container access | PostgreSQL and Redis containers run without authentication in local dev — don't expose Docker ports to the public internet or use default credentials in production |
+| OAuth credentials in source code | Gmail and GitHub OAuth client secrets must never be committed — use `.env.example` with placeholder values and keep real credentials in secrets manager |
 
 ## Error Handling
 
-| Scenario                                   | Detection                                        | Mitigation                                                                        | Recovery                                                                      |
+| Scenario | Detection | Mitigation | Recovery |
 | ------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Docker port conflict on startup            | `docker compose up` fails with port in use error | Document common conflicting services (PostgreSQL, Redis) in troubleshooting table | Stop conflicting service or change mapped port in docker-compose.override.yml |
-| npm install fails with dependency conflict | Peer dependency version mismatch                 | Lock file (`package-lock.json`) should resolve most conflicts                     | Clear `node_modules` and reinstall; check for major version mismatches        |
-| Alembic migration fails on first run       | Schema validation error or timeout               | Check Alembic configuration and database connection                               | Fix migration script and re-run `alembic upgrade head`                        |
-| Python dependency install fails            | pip install exits with error                     | Use Python 3.11+ virtual environment; check OS-specific package requirements      | Activate venv, upgrade pip, retry install                                     |
+| Docker port conflict on startup | `docker compose up` fails with port in use error | Document common conflicting services (PostgreSQL, Redis) in troubleshooting table | Stop conflicting service or change mapped port in docker-compose.override.yml |
+| npm install fails with dependency conflict | Peer dependency version mismatch | Lock file (`package-lock.json`) should resolve most conflicts | Clear `node_modules` and reinstall; check for major version mismatches |
+| Alembic migration fails on first run | Schema validation error or timeout | Check Alembic configuration and database connection | Fix migration script and re-run `alembic upgrade head` |
+| Python dependency install fails | pip install exits with error | Use Python 3.11+ virtual environment; check OS-specific package requirements | Activate venv, upgrade pip, retry install |
 
 ## Risks
 
-| Risk                                                  | Likelihood | Impact | Mitigation                                                                                          |
+| Risk | Likelihood | Impact | Mitigation |
 | ----------------------------------------------------- | ---------- | ------ | --------------------------------------------------------------------------------------------------- |
-| Docker Desktop resource exhaustion slows all services | Medium     | Medium | Allocate minimum 4GB RAM to Docker; use `docker stats` to monitor usage                             |
-| API key exposed in terminal history                   | High       | High   | Use `.env` file (never inline); add shell history exclusion for `.env` sourcing commands            |
-| Setup instructions become outdated between releases   | Medium     | High   | Version-specific setup guides tied to release tags; test setup on clean machine before each release |
+| Docker Desktop resource exhaustion slows all services | Medium | Medium | Allocate minimum 4GB RAM to Docker; use `docker stats` to monitor usage |
+| API key exposed in terminal history | High | High | Use `.env` file (never inline); add shell history exclusion for `.env` sourcing commands |
+| Setup instructions become outdated between releases | Medium | High | Version-specific setup guides tied to release tags; test setup on clean machine before each release |
 
 ## Limitations
 
-| Limitation                                               | Impact                                               | Workaround                                                             | Future Resolution                                               |
+| Limitation | Impact | Workaround | Future Resolution |
 | -------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Windows setup requires additional steps (WSL2, Git Bash) | Windows developers face higher setup friction        | Provide detailed Windows-specific instructions in Appendix             | Cross-platform dev container with VS Code Dev Containers (v1.5) |
-| Initial setup takes 15-30 minutes                        | New developers cannot start contributing immediately | Provide pre-built dev environment (GitHub Codespaces config)           | One-command setup with dev container (v1.5)                     |
-| Backend requires Anthropic API key                       | Some features unavailable without key                | Core features (file organization, document viewer) work without AI key | Evaluation-only mode with mock LLM responses (v1.5)             |
+| Windows setup requires additional steps (WSL2, Git Bash) | Windows developers face higher setup friction | Provide detailed Windows-specific instructions in Appendix | Cross-platform dev container with VS Code Dev Containers (v1.5) |
+| Initial setup takes 15-30 minutes | New developers cannot start contributing immediately | Provide pre-built dev environment (GitHub Codespaces config) | One-command setup with dev container (v1.5) |
+| Backend requires Anthropic API key | Some features unavailable without key | Core features (file organization, document viewer) work without AI key | Evaluation-only mode with mock LLM responses (v1.5) |
 
 ## Goals
 
 - Enable a new developer to go from zero to running all services locally in
-  under 30 minutes
+ under 30 minutes
 - Provide clear, copy-paste commands for every setup step across Windows, macOS,
-  and Linux
+ and Linux
 - Include working verification commands so developers can confirm each service
-  is running
+ is running
 - Anticipate common setup failures and provide troubleshooting guidance
 - Establish environment best practices that prevent credential leaks and
-  configuration drift
+ configuration drift
 
 ---
 
@@ -311,20 +311,20 @@ docker stats
 
 ## Future Improvements
 
-| Improvement                                                | Priority | Complexity | Timeline       |
+| Improvement | Priority | Complexity | Timeline |
 | ---------------------------------------------------------- | -------- | ---------- | -------------- |
-| Dev container (VS Code Dev Containers / GitHub Codespaces) | High     | Medium     | v1.5 (2027 H1) |
-| Pre-built dev environment snapshot                         | High     | Low        | v1.5 (2027 H1) |
-| Mock LLM mode for offline development                      | Medium   | Medium     | v1.5 (2027 H1) |
-| Windows native support (PowerShell equivalents)            | Low      | Low        | V2 (2027 H2)   |
+| Dev container (VS Code Dev Containers / GitHub Codespaces) | High | Medium | v1.5 (2027 H1) |
+| Pre-built dev environment snapshot | High | Low | v1.5 (2027 H1) |
+| Mock LLM mode for offline development | Medium | Medium | v1.5 (2027 H1) |
+| Windows native support (PowerShell equivalents) | Low | Low | V2 (2027 H2) |
 
 ## Performance Considerations
 
-| Consideration              | Approach                                                                                                                                                                                          |
+| Consideration | Approach |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Docker resource allocation | PostgreSQL and Redis containers share system resources — allocate at least 4GB RAM to Docker for smooth development, or use lightweight alternatives (SQLite for dev)                             |
-| First migration speed      | Running `alembic upgrade head` for the first time creates all tables at once — this can take 30-60 seconds even on fast machines. Consider a pre-built dev database snapshot for new contributors |
-| pip install time           | `pip install -r requirements.txt` in `apps/api` installs all dependencies — this takes 2-5 minutes depending on network. Use a package manager cache if available                                 |
+| Docker resource allocation | PostgreSQL and Redis containers share system resources — allocate at least 4GB RAM to Docker for smooth development, or use lightweight alternatives (SQLite for dev) |
+| First migration speed | Running `alembic upgrade head` for the first time creates all tables at once — this can take 30-60 seconds even on fast machines. Consider a pre-built dev database snapshot for new contributors |
+| pip install time | `pip install -r requirements.txt` in `apps/api` installs all dependencies — this takes 2-5 minutes depending on network. Use a package manager cache if available |
 
 ## Examples
 

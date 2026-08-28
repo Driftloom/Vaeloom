@@ -1,8 +1,8 @@
-﻿# MVP-P16 — 02. Predecessor Audit (MVP-P15)
+# MVP-P16 — 02. Predecessor Audit (MVP-P15)
 
-> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
-> **Predecessor:** MVP-P15 — Performance, Reliability, and Scalability  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 APPROVED (94.2% cov, jest-axe 0 critical, k6 p50 45ms p95 120ms CB 3/30s) + P16 IaC  
+> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
+> **Predecessor:** MVP-P15 — Performance, Reliability, and Scalability 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 APPROVED (94.2% cov, jest-axe 0 critical, k6 p50 45ms p95 120ms CB 3/30s) + P16 IaC 
 > **Predecessor Baseline:** `787053aa6e6f` + P15 DEL-01..05 + `ea329dd` 4 GO-conditions
 
 ## Predecessor Identity

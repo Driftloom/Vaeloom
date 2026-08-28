@@ -1,9 +1,9 @@
-﻿# MVP-P18 — 09. Gate Report
+# MVP-P18 — 09. Gate Report
 
-> **Phase:** MVP-P18 — Documentation and Knowledge Transfer  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 (docs IA 256 docs + 32 ADRs + 99 OpenAPI + portal 1127 lines + onboarding + runbooks 4 + deploy/DR)  
-> **Gate Authority:** Technical Writer (accountable) + Developer Experience Lead (backup) + Architecture Owner + Security/Compliance + Support Lead veto  
-> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P18-documentation-and-knowledge-transfer.md` §28  
+> **Phase:** MVP-P18 — Documentation and Knowledge Transfer 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 (docs IA 256 docs + 32 ADRs + 99 OpenAPI + portal 1127 lines + onboarding + runbooks 4 + deploy/DR) 
+> **Gate Authority:** Technical Writer (accountable) + Developer Experience Lead (backup) + Architecture Owner + Security/Compliance + Support Lead veto 
+> **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P18-documentation-and-knowledge-transfer.md` §28 
 > **Predecessor:** `787053a` chain 95.4→87.5/88→93.1→92.8→93.2 → this gate **uplifts docs IA + ADRs + API/operator training** per `02-predecessor-audit.md:94 GO`
 
 ## Weighted Gate (§28 — 12 categories, 100 pts)
@@ -13,7 +13,7 @@ Score 0–10 per category; Weighted = (Score/10) × Weight. **95–100 APPROVED,
 | Category | Weight | Score | Weighted | Basis |
 |---|---|---:|---:|---|
 | Scope and acceptance | 12 | 10 | 12.0 | 5 WS WS-18.1..5 DEL-01..05 versioned/owned/linked; docs IA `docs/README.md:1` 584 lines 256 docs v2.0 `2026-07-17` + `DOCUMENTATION-MAP.md:1` 65 lines 178 docs 15 cats + `docs-portal.html:1` 1127 lines searchable + `docs/adr/ 32 files` + `CONTRIBUTING.md:1` 299 lines project 25 packages + onboarding `DEVELOPER_ONBOARDING.md:1` 216 lines 4 roles — full P18 scope delivered |
-| Technical correctness | 12 | 10 | 12.0 | 20 EVDs file:line + `pytest --collect-only` 2557 + `--cov` 94.2% 2551/2557 PASS + `openapi.yaml:1` 99 paths yaml OK `python yaml.safe_load` + `ls docs/adr 32` + `markdownlint 6 docs` 0 errors + `docs-portal.html` 1127 lines html serve 200 + `rg -c "^  /" openapi.yaml` 99 + `CONTRIBUTING.md` lint PASS |
+| Technical correctness | 12 | 10 | 12.0 | 20 EVDs file:line + `pytest --collect-only` 2557 + `--cov` 94.2% 2551/2557 PASS + `openapi.yaml:1` 99 paths yaml OK `python yaml.safe_load` + `ls docs/adr 32` + `markdownlint 6 docs` 0 errors + `docs-portal.html` 1127 lines html serve 200 + `rg -c "^ /" openapi.yaml` 99 + `CONTRIBUTING.md` lint PASS |
 | Architecture/integration | 8 | 9 | 7.2 | Monolith preserved `main.py:170` middleware chain Tenant inner Auth correct, `docs/adr/ADR-001..032` index `Architecture/03-adrs.md:1`, `docs/README.md:15` Category Index 15 cats dependency graph, `docs-portal.html` CDN `marked12/mermaid10` without split, `openapi.yaml:1` 3.1.0 0.2.0 + `API_REFERENCE.md:1` 407 lines 18 groups matches 99 |
 | Data quality/lifecycle | 8 | 9 | 7.2 | `0010`34 +`0019`3+`0020`5=42/42 RLS fail-closed, `services/gdpr.py:15` 31 tables, `consent_records`+`RetentionRun` 0021, `docs/Security/GDPR.md:1` DPIA v1.2 All Regions 3 DPA §5.2, `docs/Security/Privacy.md:1` 7 categories, `docs/Database/* 10` Schema/ER/Indexes + docs lifecycle 🆕/✅/🔄/🗄️ |
 | Security/privacy | 12 | 9 | 10.8 | 233 sec (170 unique) + `test_gdpr`2 PASS + JWT32+ 0 warnings +42/42 RLS +GDPR31+DPIA v1.2 All Regions + `docs/Security/* 14` Security Arch/Threat/OWASP/IAM/Encryption/Secrets + `docs-portal.html` 1127 lines no secrets per `_redact` + `security-scan.yml:6` gitleaks 0 + `trivy` 0 CRIT + `security-audit.yml:24` pip-audit 0 HIGH |
@@ -65,7 +65,7 @@ Score 0–10 per category; Weighted = (Score/10) × Weight. **95–100 APPROVED,
 | Deliverable | Acceptance | Status |
 |---|---|---|
 | DEL-MVP-P18-01 docs IA; versioned, owned, reviewed and linked | `docs/README.md:1` 584 lines ✅ Published v2.0 Total Documents: 256 + mermaid taxonomy 15 cats + `DOCUMENTATION-MAP.md:1` 65 lines 178 files + dependency graph + `docs-portal.html:1` 1127 lines DOCS_DATA+CATEGORIES_DATA 15 cats searchable `marked@12` `mermaid@10` + `docs/adr/ 32 files` + `CONTRIBUTING.md:1` 299 lines | ✅ VERIFIED |
-| DEL-MVP-P18-02 API/operator/security docs; versioned, owned, reviewed and linked | `docs/backend/openapi.yaml:1` openapi 3.1.0 version 0.2.0 99 paths `rg -c "^  /" 99` + `docs/API_REFERENCE.md:1` 407 lines 18 groups + `docs/Architecture/* 18` + `docs/Backend/* 21` + `docs/Security/* 14` + `docs/DevOps/* 12` + `docs/Operations/* 16` + `docs/DEPLOYMENT_RUNBOOK.md:1` 207 lines + `docs/DISASTER_RECOVERY.md:1` 308 lines RTO1h/RPO5m + `infra/ops/runbooks 4` SEV1/SEV2 5min PromQL/SQL runbook-linked 5 SLO | ✅ VERIFIED |
+| DEL-MVP-P18-02 API/operator/security docs; versioned, owned, reviewed and linked | `docs/backend/openapi.yaml:1` openapi 3.1.0 version 0.2.0 99 paths `rg -c "^ /" 99` + `docs/API_REFERENCE.md:1` 407 lines 18 groups + `docs/Architecture/* 18` + `docs/Backend/* 21` + `docs/Security/* 14` + `docs/DevOps/* 12` + `docs/Operations/* 16` + `docs/DEPLOYMENT_RUNBOOK.md:1` 207 lines + `docs/DISASTER_RECOVERY.md:1` 308 lines RTO1h/RPO5m + `infra/ops/runbooks 4` SEV1/SEV2 5min PromQL/SQL runbook-linked 5 SLO | ✅ VERIFIED |
 | DEL-MVP-P18-03 ADR index; versioned, owned, reviewed and linked | `docs/adr/ADR-001.md:1` → `ADR-032.md:1` 32 files `rg "ADR-" docs/adr | Measure-Object 32` + `Architecture/03-adrs.md:1` index + `docs/README.md:64` ADRs row + each Status Accepted Date 2026-08-22 | ✅ VERIFIED |
 | DEL-MVP-P18-04 training; versioned, owned, reviewed and linked | `docs/DEVELOPER_ONBOARDING.md:1` 216 lines 4 roles engineer/operator/support/security + `CONTRIBUTING.md:1` 299 lines 25 packages + `Developer_Experience 8 docs` API-Examples/Setup/Architecture-Walkthrough/CLI/Debugging/Scripts/Environment + `DEPLOYMENT_RUNBOOK.md`+`DISASTER_RECOVERY.md` operator + `API_REFERENCE.md` integrator | ✅ VERIFIED |
 | DEL-MVP-P18-05 docs tests/ownership; versioned, owned, reviewed and linked | `docs/README.md:1` Lifecycle 🆕/✅/🔄/🗄️ v2.0 `2026-07-17` + `DOCUMENTATION-MAP.md:1` maturity ✅ Stable vs 🔄 Needs Work + `.vale.ini` + `.markdownlint.json` + `vale sync && vale docs/` + `markdownlint 6 docs` 0 errors + `python yaml.safe_load openapi 99` + `python -m http.server docs-portal.html` 200 `DOCS_DATA`+`CATEGORIES_DATA` + `rg link check` internal 99 paths | ✅ VERIFIED |
@@ -84,7 +84,7 @@ Score 0–10 per category; Weighted = (Score/10) × Weight. **95–100 APPROVED,
 - `pytest tests/security --collect-only -q -o addopts=""` 233 (170 unique)
 - `python -c "from api.services.gdpr import ALLOWED_TABLES; print(len(ALLOWED_TABLES))"` 31
 - `uv run --project apps/api python -m pytest --cov=api --cov-report=term -q -o addopts="-n 4"` → 94.2% 2551/2557 PASS
-- `rg -c "^  /" docs/backend/openapi.yaml` → 99 paths PASS 3.1.0 0.2.0
+- `rg -c "^ /" docs/backend/openapi.yaml` → 99 paths PASS 3.1.0 0.2.0
 - `ls docs/adr | Measure-Object` → 32 ADRs PASS ADR-001..032
 - `python -c "import yaml; d=yaml.safe_load(open('docs/backend/openapi.yaml')); print(len(d['paths']))"` → 99 yaml OK
 - `markdownlint docs/README.md docs/DOCUMENTATION-MAP.md docs/DEVELOPER_ONBOARDING.md docs/API_REFERENCE.md` → 0 errors 4 docs OK

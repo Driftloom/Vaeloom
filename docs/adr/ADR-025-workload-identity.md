@@ -1,11 +1,11 @@
 # ADR-025: Workload Identity for FastAPI Worker ↔ API / Connectors
 
-| Metadata     | Value                                           |
+| Metadata | Value |
 | ------------ | ----------------------------------------------- |
-| **Status**   | PROPOSED — design-only, GAP (implement P07/P11) |
-| **Date**     | 2026-08-15                                      |
-| **Deciders** | Engineering Team                                |
-| **Owner**    | Security Architect                              |
+| **Status** | PROPOSED — design-only, GAP (implement P07/P11) |
+| **Date** | 2026-08-15 |
+| **Deciders** | Engineering Team |
+| **Owner** | Security Architect |
 
 ## Context
 
@@ -24,7 +24,7 @@ API ↔ connectors, extending the TypeScript `service-auth` pattern to Python.
 
 - Issued service tokens scoped to the worker/connector role.
 - HMAC request signing or short-lived bearer tokens; no user creds, no shared
-  secrets committed to code.
+ secrets committed to code.
 - Align with RFC 9700 OAuth BCP (EXT-06, P08) on any OAuth-bearing path.
 
 Design-only: no implementation exists at HEAD; no runtime capability claimed.

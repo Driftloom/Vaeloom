@@ -7,35 +7,35 @@
 
 ```mermaid
 graph TD
-    classDef core fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pain fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
-    classDef fail fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef core fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pain fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1.5px
+ classDef fail fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Core["🔥 Core Problem"]
-        C["Students & professionals generate<br/>huge amounts of personal data<br/>-- and none of it is connected"]
-    end
+ subgraph Core["Core Problem"]
+ C["Students & professionals generate<br/>huge amounts of personal data<br/>-- and none of it is connected"]
+ end
 
-    subgraph Pains["😖 Pain Points"]
-        P1["Resumes go stale<br/>Manual updates = never done until deadline"]
-        P2["Achievements forgotten<br/>Year 1 hackathon never on Year 3 resume"]
-        P3["Job search reactive<br/>No personal fit signal, random scrolling"]
-        P4["Emails buried<br/>Interview calls lost in inbox noise"]
-        P5["Files scattered<br/>Drive, laptop, downloads, attachments"]
-    end
+ subgraph Pains["Pain Points"]
+ P1["Resumes go stale<br/>Manual updates = never done until deadline"]
+ P2["Achievements forgotten<br/>Year 1 hackathon never on Year 3 resume"]
+ P3["Job search reactive<br/>No personal fit signal, random scrolling"]
+ P4["Emails buried<br/>Interview calls lost in inbox noise"]
+ P5["Files scattered<br/>Drive, laptop, downloads, attachments"]
+ end
 
-    subgraph Failures["❌ Why Existing Solutions Fail"]
-        F1["Generic AI chatbots: No persistent memory"]
-        F2["Resume builders: Still manual"]
-        F3["File storage: Folder-based, not content-aware"]
-        F4["Note apps: User must do all tagging"]
-        F5["Job boards: No memory of user beyond PDF"]
-    end
+ subgraph Failures["Why Existing Solutions Fail"]
+ F1["Generic AI chatbots: No persistent memory"]
+ F2["Resume builders: Still manual"]
+ F3["File storage: Folder-based, not content-aware"]
+ F4["Note apps: User must do all tagging"]
+ F5["Job boards: No memory of user beyond PDF"]
+ end
 
-    C --> Pains --> Failures
+ C--> Pains--> Failures
 
-    class C core
-    class P1,P2,P3,P4,P5 pain
-    class F1,F2,F3,F4,F5 fail
+ class C core
+ class P1,P2,P3,P4,P5 pain
+ class F1,F2,F3,F4,F5 fail
 ```
 
 > **Diagram:** Problem architecture — **core problem** (data scattered, unconnected) → **5 pain points** (stale resumes, forgotten achievements, reactive search, buried emails, scattered files) → **5 solution failures** (no memory, manual, not content-aware, user-dependent, no personalization).

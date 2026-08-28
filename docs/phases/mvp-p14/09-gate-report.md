@@ -1,8 +1,8 @@
 # MVP-P14 — 09. Gate Report
 
-> **Phase:** MVP-P14 — Testing and Quality Engineering  
-> **Date:** 2026-08-22 · **Baseline:** `ea329dd` (a69d7d7 + 4 GO-conditions close: memory Literal+validator, workspace name, content_hash, ChatWindow) + P14 testing  
-> **Gate Authority:** QA Lead (accountable) + Security/Privacy/Data/A11y/Reliability veto holders  
+> **Phase:** MVP-P14 — Testing and Quality Engineering 
+> **Date:** 2026-08-22 · **Baseline:** `ea329dd` (a69d7d7 + 4 GO-conditions close: memory Literal+validator, workspace name, content_hash, ChatWindow) + P14 testing 
+> **Gate Authority:** QA Lead (accountable) + Security/Privacy/Data/A11y/Reliability veto holders 
 > **Prompt:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/01-mvp/MVP-P14-testing-and-quality-engineering.md` §28
 
 ## Weighted Gate (§28 — 12 categories, 100 pts)
@@ -101,5 +101,5 @@ Per §29: c87b9e8 had 4 defects (coverage, WCAG, perf, smoke dirs) as EXC-P14-01
 
 ---
 
-**Approver:** QA Lead (approver) + Security Architect (backup) — gate authority  
+**Approver:** QA Lead (approver) + Security Architect (backup) — gate authority 
 **Veto:** Security/Privacy/Data/A11y/Reliability/Operations — none exercised hard veto; Testing veto exercised via low Testing score (7)

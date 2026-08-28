@@ -1,6 +1,6 @@
-﻿# MVP-P19 — 08. Registers
+# MVP-P19 — 08. Registers
 
-> **Phase:** MVP-P19 — Release Readiness and Production Deployment  
+> **Phase:** MVP-P19 — Release Readiness and Production Deployment 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 93.2 + P18 93.4 + P19 (release v0.2.0 + 99 paths + 42/42 + 3 overlays + HPA min3 max10 + 0021 retention + lifespan + 178 checklist)
 
 ## Risk Register

@@ -9,49 +9,49 @@
 
 ```mermaid
 graph TD
-    classDef framework fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef design fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef roadmap fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef register fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef framework fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef design fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef roadmap fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef register fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Frameworks["📜 Compliance Frameworks"]
-        direction TB
-        F1["GDPR<br/>EU users<br/>Status: Designed-in"]
-        F2["CCPA<br/>California users<br/>Status: Compatible"]
-        F3["SOC 2<br/>Enterprise customers<br/>Status: Planned (Phase 7)"]
-        F4["FERPA<br/>US education<br/>Status: Planned (Phase 7)"]
-    end
+ subgraph Frameworks["Compliance Frameworks"]
+ direction TB
+ F1["GDPR<br/>EU users<br/>Status: Designed-in"]
+ F2["CCPA<br/>California users<br/>Status: Compatible"]
+ F3["SOC 2<br/>Enterprise customers<br/>Status: Planned (Phase 7)"]
+ F4["FERPA<br/>US education<br/>Status: Planned (Phase 7)"]
+ end
 
-    subgraph ByDesign["🏗️ Compliance by Design"]
-        D1["Consent Management<br/>Permission Engine enforces"]
-        D2["Data Minimization<br/>Only essential data stored"]
-        D3["Purpose Limitation<br/>Declared per connector/agent"]
-        D4["Storage Limitation<br/>Configurable retention windows"]
-        D5["Data Residency<br/>Regional store options"]
-    end
+ subgraph ByDesign["Compliance by Design"]
+ D1["Consent Management<br/>Permission Engine enforces"]
+ D2["Data Minimization<br/>Only essential data stored"]
+ D3["Purpose Limitation<br/>Declared per connector/agent"]
+ D4["Storage Limitation<br/>Configurable retention windows"]
+ D5["Data Residency<br/>Regional store options"]
+ end
 
-    subgraph Roadmap["🗺️ Compliance Roadmap"]
-        R1["MVP<br/>GDPR-ready by design<br/>No formal certification"]
-        R2["V2<br/>SOC 2 Type I audit<br/>Formal review"]
-        R3["V3<br/>SOC 2 Type II audit<br/>Sustained compliance"]
-        R4["Enterprise<br/>Customer-specific<br/>Custom requirements"]
-    end
+ subgraph Roadmap["Compliance Roadmap"]
+ R1["MVP<br/>GDPR-ready by design<br/>No formal certification"]
+ R2["V2<br/>SOC 2 Type I audit<br/>Formal review"]
+ R3["V3<br/>SOC 2 Type II audit<br/>Sustained compliance"]
+ R4["Enterprise<br/>Customer-specific<br/>Custom requirements"]
+ end
 
-    subgraph Register["📝 Data Processing Register"]
-        G1["📄 Document analysis<br/>User docs --> Anthropic<br/>User-controlled retention"]
-        G2["📧 Email classification<br/>Email content --> Anthropic<br/>30-day retention"]
-        G3["💼 Job search<br/>Career data --> Platforms<br/>User-controlled"]
-        G4["🔌 Plugin execution<br/>Per plugin scope<br/>Per plugin policy"]
-    end
+ subgraph Register["Data Processing Register"]
+ G1["Document analysis<br/>User docs--> Anthropic<br/>User-controlled retention"]
+ G2["Email classification<br/>Email content--> Anthropic<br/>30-day retention"]
+ G3["Job search<br/>Career data--> Platforms<br/>User-controlled"]
+ G4["Plugin execution<br/>Per plugin scope<br/>Per plugin policy"]
+ end
 
-    Frameworks --> ByDesign
-    ByDesign --> Roadmap
-    Roadmap --> Register
+ Frameworks--> ByDesign
+ ByDesign--> Roadmap
+ Roadmap--> Register
 
-    class F1,F2,F3,F4 framework
-    class D1,D2,D3,D4,D5 design
-    class R1,R2,R3,R4 roadmap
-    class G1,G2,G3,G4 register
+ class F1,F2,F3,F4 framework
+ class D1,D2,D3,D4,D5 design
+ class R1,R2,R3,R4 roadmap
+ class G1,G2,G3,G4 register
 ```
 
 > **Diagram:** Compliance architecture organized by **frameworks** (GDPR/CCPA/SOC 2/FERPA with status), **by-design principles** (consent, minimization, purpose, storage, residency), **roadmap** (MVP → V2 → V3 → Enterprise), and **data processing register** showing data categories, third-party processors, and retention periods.
@@ -216,26 +216,26 @@ This document defines the compliance requirements and posture for Vaeloom — co
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant PS as Permission Engine
-    participant REG as Data Processing Register
-    participant AUD as Audit System
-    participant DEL as Deletion Orchestrator
+ participant U as User
+ participant PS as Permission Engine
+ participant REG as Data Processing Register
+ participant AUD as Audit System
+ participant DEL as Deletion Orchestrator
 
-    U->>PS: Connect Gmail connector
-    PS->>U: Show consent prompt (granular)
-    U->>PS: Grant consent (document + email scope)
-    PS->>REG: Record consent (user, connector, scope, timestamp)
-    REG-->>PS: Consent recorded
-    
-    Note over PS: On every data access
-    PS->>PS: Check consent is still active
-    
-    U->>PS: Request data deletion
-    PS->>DEL: Orchestrate cascading deletion
-    DEL->>DEL: Delete primary DB --> caches --> backups --> analytics
-    DEL-->>U: Deletion confirmed
-    DEL->>REG: Update deletion record
+ U->>PS: Connect Gmail connector
+ PS->>U: Show consent prompt (granular)
+ U->>PS: Grant consent (document + email scope)
+ PS->>REG: Record consent (user, connector, scope, timestamp)
+ REG-->>PS: Consent recorded
+ 
+ Note over PS: On every data access
+ PS->>PS: Check consent is still active
+ 
+ U->>PS: Request data deletion
+ PS->>DEL: Orchestrate cascading deletion
+ DEL->>DEL: Delete primary DB--> caches--> backups--> analytics
+ DEL-->>U: Deletion confirmed
+ DEL->>REG: Update deletion record
 ```
 
 > **Diagram:** Consent management and deletion flows — granular consent recorded in register; deletion cascades across all storage tiers with confirmation.

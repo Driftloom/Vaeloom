@@ -1,11 +1,11 @@
 # Vaeloom MVP — Complete Frontend End-to-End Audit Report
 
-**Date:** 2026-08-21  
-**Mode:** `FULL_FRONTEND_PRODUCT_AUDIT`  
-**Auditor:** Muse Spark (OpenCode) — Build Mode  
-**Framework:** Next.js 15 App Router + React 18 + SWR 2.2 + Zustand 5 + Tailwind 3  
-**Workspace:** `C:\PROJECTS\PIOS\ClonU\Driftloom\Vaeloom`  
-**Commit baseline:** main branch 2026-08-21  
+**Date:** 2026-08-21 
+**Mode:** `FULL_FRONTEND_PRODUCT_AUDIT` 
+**Auditor:** Muse Spark (OpenCode) — Build Mode 
+**Framework:** Next.js 15 App Router + React 18 + SWR 2.2 + Zustand 5 + Tailwind 3 
+**Workspace:** `C:\PROJECTS\PIOS\ClonU\Driftloom\Vaeloom` 
+**Commit baseline:** main branch 2026-08-21 
 **Verification level:** CODE-LEVEL + DESIGN-TIME + `tsc --noEmit` PASS + `next lint` FAIL (see code findings). No live `pnpm dev:web` browser run performed — marked `NOT VERIFIED` where runtime required.
 
 ---
@@ -408,7 +408,7 @@ Evaluated 43 components against 15 questions (why exists? decision? data? action
 | Form | Location | Labels | Help | Required | Schema | Server | Disabled submit | Loading | Duplicate-protect | Recovery | Success feedback | Focus mgmt | Keyboard | Persist | Unsaved guard |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Login | `app/(auth)/login 423 LOC` | yes `input-label` | helper forgot link | ✅ EMAIL_RE + password required inline | `EMAIL_RE` regex client | ApiError.message → `form` error | ✅ `submitting` | spinner `Signing in…` | ✅ `submitting` disables | clears `form` on validate | push `/workspace/{id}` | `focusedField` ring | Enter submit, tab order correct | no | no |
-| Signup | sibling  — not read but symmetric | assume yes | — | likely | — | — | — | — | — | — | — | — | — | — | — |
+| Signup | sibling — not read but symmetric | assume yes | — | likely | — | — | — | — | — | — | — | — | — | — | — |
 | Forgot-password | not read | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | Files Rename | `files/page.tsx:615 Modal` | `New name` | none | ✅ `!renameValue.trim()` disabled | trim | PATCH error → toast | ✅ `disabled` | none | submit via form preventDefault | toast + keep modal open | toast Renamed | `autoFocus` input | Enter save, Escape close via Modal? | no | no |
 | Schedule Create | `schedule/page.tsx:341` Title + Date+time required | Title, Date & time | placeholder | ✅ `trim` check then toast error | Date parse ISO | `eventApi.publish` catch toast | no disable | none | double-click risk (no debounce) | toast + close on success | toast Event created + refetch | no autofocus | Enter not wired | no | no |

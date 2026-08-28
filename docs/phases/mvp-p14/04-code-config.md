@@ -1,6 +1,6 @@
 # MVP-P14 — 04. Code and Configuration
 
-> **Phase:** MVP-P14 — Testing and Quality Engineering  
+> **Phase:** MVP-P14 — Testing and Quality Engineering 
 > **Date:** 2026-08-22 · **Baseline:** `a69d7d7` (P13 remediation) + P14 test-hardening
 
 ## Architecture Preservation (§13)

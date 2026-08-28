@@ -1,51 +1,51 @@
-﻿# Regression Testing
+# Regression Testing
 
 > **Purpose:** Define regression testing practices for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Regression Test Architecture
 
 ```mermaid
 graph TD
-    classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef suite fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef select fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef visual fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef trigger fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef suite fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef select fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef visual fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Triggers["ðŸš¦ Regression Test Triggers"]
-        direction TB
-        R1["Bug Fix<br/>Add test case for the fixed bug"]
-        R2["Feature Addition<br/>Run full regression suite"]
-        R3["Dependency Update<br/>Run affected module tests"]
-        R4["Prompt Change<br/>Run golden dataset tests"]
-        R5["Model Provider Change<br/>Run all AI eval tests"]
-    end
+ subgraph Triggers["Regression Test Triggers"]
+ direction TB
+ R1["Bug Fix<br/>Add test case for the fixed bug"]
+ R2["Feature Addition<br/>Run full regression suite"]
+ R3["Dependency Update<br/>Run affected module tests"]
+ R4["Prompt Change<br/>Run golden dataset tests"]
+ R5["Model Provider Change<br/>Run all AI eval tests"]
+ end
 
-    subgraph Suite["ðŸ§ª Regression Test Suite"]
-        S1["npm run test:regression<br/>Frontend + API"]
-        S2["pytest tests/regression/<br/>AI Service"]
-        S3["python -m eval.test_golden --all<br/>Golden dataset regression"]
-    end
+ subgraph Suite["Regression Test Suite"]
+ S1["npm run test:regression<br/>Frontend + API"]
+ S2["pytest tests/regression/<br/>AI Service"]
+ S3["python -m eval.test_golden --all<br/>Golden dataset regression"]
+ end
 
-    subgraph Selection["ðŸŽ¯ Targeted Test Selection"]
-        T1["Frontend Component<br/>Unit tests + visual regression"]
-        T2["API Endpoint<br/>Unit + integration tests"]
-        T3["Agent Prompt<br/>Golden dataset + adversarial"]
-        T4["DB Migration<br/>Integration tests"]
-        T5["Connector Integration<br/>Integration tests"]
-    end
+ subgraph Selection["Targeted Test Selection"]
+ T1["Frontend Component<br/>Unit tests + visual regression"]
+ T2["API Endpoint<br/>Unit + integration tests"]
+ T3["Agent Prompt<br/>Golden dataset + adversarial"]
+ T4["DB Migration<br/>Integration tests"]
+ T5["Connector Integration<br/>Integration tests"]
+ end
 
-    subgraph Visual["ðŸ“¸ Visual Regression"]
-        V1["Playwright screenshot comparison<br/>maxDiffPixelRatio: 0.001<br/>(< 0.1% pixel difference)"]
-    end
+ subgraph Visual["Visual Regression"]
+ V1["Playwright screenshot comparison<br/>maxDiffPixelRatio: 0.001<br/>(< 0.1% pixel difference)"]
+ end
 
-    Triggers --> Suite --> Selection
-    Selection -.-> Visual
+ Triggers--> Suite--> Selection
+ Selection -.-> Visual
 
-    class R1,R2,R3,R4,R5 trigger
-    class S1,S2,S3 suite
-    class T1,T2,T3,T4,T5 select
-    class V1 visual
+ class R1,R2,R3,R4,R5 trigger
+ class S1,S2,S3 suite
+ class T1,T2,T3,T4,T5 select
+ class V1 visual
 ```
 
 > **Diagram:** Regression testing is triggered by 5 events (bug fix, feature, dependency, prompt, model change). The **test suite** runs full or targeted based on the change type. **Visual regression** via Playwright screenshot comparison catches UI regressions with 0.1% pixel difference tolerance.
@@ -234,29 +234,29 @@ Visual regression testing via Playwright screenshot comparison catches unintende
 
 ```mermaid
 sequenceDiagram
-    participant DEV as Developer
-    participant CI as CI Pipeline
-    participant SUITE as Regression Suite
-    participant GOLDEN as Golden Dataset
-    participant REPORT as Report
+ participant DEV as Developer
+ participant CI as CI Pipeline
+ participant SUITE as Regression Suite
+ participant GOLDEN as Golden Dataset
+ participant REPORT as Report
 
-    DEV->>CI: Push bug fix + regression test
-    CI->>SUITE: Run targeted regression
-    SUITE->>SUITE: Run unit tests for changed module
-    SUITE->>SUITE: Run integration tests for affected boundary
-    SUITE->>GOLDEN: Run golden dataset regression
-    GOLDEN->>GOLDEN: 50 tests + new bug-fix case
-    alt All pass
-        GOLDEN-->>SUITE: âœ… 51/51 tests pass
-        SUITE-->>REPORT: Generate pass report
-        REPORT-->>CI: âœ… Regression suite passed
-        CI-->>DEV: PR approved
-    else New test fails other golden cases
-        GOLDEN-->>SUITE: âŒ 49/51 -- fix broke existing case
-        SUITE-->>REPORT: Generate failure breakdown
-        REPORT-->>CI: âŒ Prompt change caused regression
-        CI-->>DEV: Fix required -- prompt broke other cases
-    end
+ DEV->>CI: Push bug fix + regression test
+ CI->>SUITE: Run targeted regression
+ SUITE->>SUITE: Run unit tests for changed module
+ SUITE->>SUITE: Run integration tests for affected boundary
+ SUITE->>GOLDEN: Run golden dataset regression
+ GOLDEN->>GOLDEN: 50 tests + new bug-fix case
+ alt All pass
+ GOLDEN-->>SUITE: … 51/51 tests pass
+ SUITE-->>REPORT: Generate pass report
+ REPORT-->>CI: … Regression suite passed
+ CI-->>DEV: PR approved
+ else New test fails other golden cases
+ GOLDEN-->>SUITE: Œ 49/51 -- fix broke existing case
+ SUITE-->>REPORT: Generate failure breakdown
+ REPORT-->>CI: Œ Prompt change caused regression
+ CI-->>DEV: Fix required -- prompt broke other cases
+ end
 ```
 
 ---

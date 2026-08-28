@@ -1,6 +1,6 @@
-﻿# MVP-P17 — 08. Registers
+# MVP-P17 — 08. Registers
 
-> **Phase:** MVP-P17 — Observability and Operations  
+> **Phase:** MVP-P17 — Observability and Operations 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 (OTel traces + correlation IDs + 5 SLO alerts + 3 Grafana dashboards + 4 runbooks retention 30d)
 
 ## Risk Register

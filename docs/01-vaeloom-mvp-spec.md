@@ -1,10 +1,10 @@
-﻿# Vaeloom — MVP Product Spec
+# Vaeloom — MVP Product Spec
 
-| Metadata         | Value                                                                |
+| Metadata | Value |
 |------------------|----------------------------------------------------------------------|
-| **Purpose**      | Define the v1/MVP product scope for Vaeloom |
-| **Status**       | Draft |
-| **Owner**        | Product Team |
+| **Purpose** | Define the v1/MVP product scope for Vaeloom |
+| **Status** | Draft |
+| **Owner** | Product Team |
 | **Last Updated** | 2026-07-13 |
 
 ## Overview
@@ -25,52 +25,52 @@ Vaeloom is a second brain for students and early-career professionals — a pers
 
 ```mermaid
 graph TD
-    subgraph Orchestrator["ðŸ§  Orchestrator -- Routes All Requests"]
-        O["User Input / Schedule"]
-    end
+ subgraph Orchestrator["Orchestrator -- Routes All Requests"]
+ O["User Input / Schedule"]
+ end
 
-    subgraph SpecialistAgents["ðŸ¤- 7 Specialist Agents"]
-        OA["Organization Agent<br/>Names, files, deduplicates"]
-        MA["Memory Agent<br/>Extracts entities, maintains graph"]
-        RA["Resume Agent<br/>Builds master resume"]
-        ATS["ATS Agent<br/>Scores resume vs JD"]
-        JS["Job Search Agent<br/>Finds & ranks opportunities"]
-        GA["Gmail Agent<br/>Classifies mail, deadlines"]
-        SA["Scheduler Agent<br/>Deadlines & conflict detection"]
-    end
+ subgraph SpecialistAgents["7 Specialist Agents"]
+ OA["Organization Agent<br/>Names, files, deduplicates"]
+ MA["Memory Agent<br/>Extracts entities, maintains graph"]
+ RA["Resume Agent<br/>Builds master resume"]
+ ATS["ATS Agent<br/>Scores resume vs JD"]
+ JS["Job Search Agent<br/>Finds & ranks opportunities"]
+ GA["Gmail Agent<br/>Classifies mail, deadlines"]
+ SA["Scheduler Agent<br/>Deadlines & conflict detection"]
+ end
 
-    subgraph Memory["ðŸ’¾ Memory Layer -- The Core Asset"]
-        KG["Knowledge Graph<br/>Entities + Relationships"]
-        VS["Vector Store<br/>Semantic Embeddings"]
-        SM["Structured Memory<br/>6 types: Profile, Document, Career, Episodic, Preference, Working"]
-    end
+ subgraph Memory["Memory Layer -- The Core Asset"]
+ KG["Knowledge Graph<br/>Entities + Relationships"]
+ VS["Vector Store<br/>Semantic Embeddings"]
+ SM["Structured Memory<br/>6 types: Profile, Document, Career, Episodic, Preference, Working"]
+ end
 
-    O -->|Route| OA
-    O -->|Route| MA
-    O -->|Route| RA
-    O -->|Route| ATS
-    O -->|Route| JS
-    O -->|Route| GA
-    O -->|Route| SA
+ O-->|Route| OA
+ O-->|Route| MA
+ O-->|Route| RA
+ O-->|Route| ATS
+ O-->|Route| JS
+ O-->|Route| GA
+ O-->|Route| SA
 
-    OA -->|Write| SM
-    MA -->|Read/Write| KG
-    MA -->|Read/Write| VS
-    MA -->|Read/Write| SM
-    RA -->|Read| SM
-    ATS -->|Read| RA
-    JS -->|Read| SM
-    JS -->|Read| VS
-    GA -->|Write| SM
-    SA -->|Read| SM
+ OA-->|Write| SM
+ MA-->|Read/Write| KG
+ MA-->|Read/Write| VS
+ MA-->|Read/Write| SM
+ RA-->|Read| SM
+ ATS-->|Read| RA
+ JS-->|Read| SM
+ JS-->|Read| VS
+ GA-->|Write| SM
+ SA-->|Read| SM
 
-    classDef orchestrator fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
-    classDef agent fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
-    classDef memory fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+ classDef orchestrator fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+ classDef agent fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+ classDef memory fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
 
-    class O orchestrator
-    class OA,MA,RA,ATS,JS,GA,SA agent
-    class KG,VS,SM memory
+ class O orchestrator
+ class OA,MA,RA,ATS,JS,GA,SA agent
+ class KG,VS,SM memory
 ```
 
 ## 1. One-liner

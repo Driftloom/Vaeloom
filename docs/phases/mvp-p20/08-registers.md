@@ -1,6 +1,6 @@
-﻿# MVP-P20 — 08. Registers
+# MVP-P20 — 08. Registers
 
-> **Phase:** MVP-P20 — Post-Deployment Validation  
+> **Phase:** MVP-P20 — Post-Deployment Validation 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 + P17 93.2 + P18 93.4 + P19 93.6 + P20 (synthetic 3 probes 30s + smoke 12 + E2E 39 + 99.9% SLO)
 
 ## Risk Register

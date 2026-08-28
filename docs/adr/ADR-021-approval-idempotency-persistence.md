@@ -1,11 +1,11 @@
 # ADR-021: Approval & Idempotency Persistence
 
-| Metadata     | Value                                                                                            |
+| Metadata | Value |
 | ------------ | ------------------------------------------------------------------------------------------------ |
-| **Status**   | ADOPTED — IMPLEMENTED_UNVERIFIED (verify hash binding, expiry, decision immutability at P07/P11) |
-| **Date**     | 2026-08-15 (design re-run); first documented 2026-08-07                                          |
-| **Deciders** | Engineering Team                                                                                 |
-| **Owner**    | Security Architect                                                                               |
+| **Status** | ADOPTED — IMPLEMENTED_UNVERIFIED (verify hash binding, expiry, decision immutability at P07/P11) |
+| **Date** | 2026-08-15 (design re-run); first documented 2026-08-07 |
+| **Deciders** | Engineering Team |
+| **Owner** | Security Architect |
 
 ## Context
 
@@ -20,16 +20,16 @@ partially exists, so this records design as implemented-but-unverified.
 Persist approvals and idempotency records; do not rely on transient state.
 
 - **Approvals** — `agent_approvals` (migration `0003_approvals.py`), managed by
-  `services/approval.py`. PENDING rows carry `payload`, `reason`,
-  `requested_by`, `workspace_id`, `expires_at` (default 60 min); decisions
-  recorded against the row.
+ `services/approval.py`. PENDING rows carry `payload`, `reason`,
+ `requested_by`, `workspace_id`, `expires_at` (default 60 min); decisions
+ recorded against the row.
 - **Idempotency** — `middleware/idempotency.py` + `idempotency_records`
-  (`0006_idempotency.py`). Consequential POST/PUT/PATCH with an
-  `Idempotency-Key` header hashed (SHA-256 `method|path|body`); identical replay
-  returns stored response flagged `Idempotency-Replayed: true`; different
-  payload → 422. Retention 24h.
+ (`0006_idempotency.py`). Consequential POST/PUT/PATCH with an
+ `Idempotency-Key` header hashed (SHA-256 `method|path|body`); identical replay
+ returns stored response flagged `Idempotency-Replayed: true`; different
+ payload → 422. Retention 24h.
 - **Gmail** — draft-only (`clients/gmail_client.py`, no send) until per-user T3
-  enablement (DEC-P02-01, DEC-P01-03).
+ enablement (DEC-P02-01, DEC-P01-03).
 
 ## Consequences
 

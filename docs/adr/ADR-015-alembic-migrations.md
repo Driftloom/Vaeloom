@@ -1,9 +1,9 @@
 # ADR-015: Alembic for Database Migrations
 
-| Metadata     | Value            |
+| Metadata | Value |
 | ------------ | ---------------- |
-| **Status**   | Accepted         |
-| **Date**     | 2026-07-22       |
+| **Status** | Accepted |
+| **Date** | 2026-07-22 |
 | **Deciders** | Engineering Team |
 
 ## Context
@@ -27,11 +27,11 @@ Configuration:
 - Auto-generation via `alembic revision --autogenerate -m "description"`
 - Async-compatible migration runner for PostgreSQL target
 - `Base.metadata.create_all` on startup handles fresh database initialization in
-  development
+ development
 - Migrations run before application startup in Docker
-  (`CMD ["sh", "-c", "alembic upgrade head && uvicorn ..."]`)
+ (`CMD ["sh", "-c", "alembic upgrade head && uvicorn ..."]`)
 - Rollback via `alembic downgrade -1` with manual verification for destructive
-  changes
+ changes
 
 ## Consequences
 
@@ -39,21 +39,21 @@ Configuration:
 
 - Auto-generated migrations reduce human error in schema changes
 - Versioned migration chain enables deterministic database state across
-  environments
+ environments
 - `alembic upgrade head` in Docker entrypoint ensures zero-downtime schema
-  deployment
+ deployment
 - Compatibility with both PostgreSQL (production) and SQLite (test) via
-  dialect-aware migration generation
+ dialect-aware migration generation
 - `--autogenerate` detects column additions, removals, type changes, index
-  changes, and constraint changes
+ changes, and constraint changes
 
 **Negative:**
 
 - Auto-generated migrations still require manual review — index-only changes,
-  data migrations, and complex DDL need hand-editing
+ data migrations, and complex DDL need hand-editing
 - Rollback of destructive changes (column drops, table drops) loses data —
-  requires backup restore for recovery
+ requires backup restore for recovery
 - Migration conflicts arise when multiple developers generate migrations from
-  the same schema version
+ the same schema version
 - Async migration runner adds complexity compared to Alembic's default
-  synchronous mode
+ synchronous mode

@@ -1,6 +1,6 @@
-﻿# MVP-P16 — 04. Code and Configuration
+# MVP-P16 — 04. Code and Configuration
 
-> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
+> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 (12 TF modules, 22 K8s apps, 4 workflows green, SLSA 1.2)
 
 ## Architecture Preservation (§13)

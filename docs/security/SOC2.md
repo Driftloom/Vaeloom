@@ -37,24 +37,24 @@ SOC 2 (System and Organization Controls 2) is an audit framework that verifies a
 
 ```mermaid
 graph TD
-    classDef tsc fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef control fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef tsc fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef control fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    SECURITY["Security (Common Criteria)<br/>CC1-CC9"]:::tsc
-    AVAIL["Availability"]:::tsc
-    INTEGRITY["Processing Integrity"]:::tsc
-    CONF["Confidentiality"]:::tsc
-    PRIVACY["Privacy"]:::tsc
+ SECURITY["Security (Common Criteria)<br/>CC1-CC9"]:::tsc
+ AVAIL["Availability"]:::tsc
+ INTEGRITY["Processing Integrity"]:::tsc
+ CONF["Confidentiality"]:::tsc
+ PRIVACY["Privacy"]:::tsc
 
-    SECURITY --> CC1["CC1: Control Environment"]:::control
-    SECURITY --> CC2["CC2: Communication"]:::control
-    SECURITY --> CC3["CC3: Risk Assessment"]:::control
-    SECURITY --> CC4["CC4: Monitoring"]:::control
-    SECURITY --> CC5["CC5: Control Activities"]:::control
-    SECURITY --> CC6["CC6: Logical & Physical Access"]:::control
-    SECURITY --> CC7["CC7: System Operations"]:::control
-    SECURITY --> CC8["CC8: Change Management"]:::control
-    SECURITY --> CC9["CC9: Risk Mitigation"]:::control
+ SECURITY--> CC1["CC1: Control Environment"]:::control
+ SECURITY--> CC2["CC2: Communication"]:::control
+ SECURITY--> CC3["CC3: Risk Assessment"]:::control
+ SECURITY--> CC4["CC4: Monitoring"]:::control
+ SECURITY--> CC5["CC5: Control Activities"]:::control
+ SECURITY--> CC6["CC6: Logical & Physical Access"]:::control
+ SECURITY--> CC7["CC7: System Operations"]:::control
+ SECURITY--> CC8["CC8: Change Management"]:::control
+ SECURITY--> CC9["CC9: Risk Mitigation"]:::control
 ```
 
 > **Diagram:** SOC 2 Trust Service Criteria. Security (Common Criteria CC1-CC9) is required for all audits. Availability, Processing Integrity, Confidentiality, and Privacy are optional categories Vaeloom includes.
@@ -129,18 +129,18 @@ graph TD
 
 ```mermaid
 gantt
-    title SOC 2 Type II Certification Roadmap
-    dateFormat YYYY-MM-DD
-    section Readiness
-    Gap Assessment           :a1, 2026-08-01, 30d
-    Remediation              :a2, after a1, 60d
-    section Observation
-    Evidence Collection (3-6 months) :b1, after a2, 150d
-    section Audit
-    Auditor Selection        :c1, after b1, 30d
-    Fieldwork (Audit)        :c2, after c1, 60d
-    Report Drafting          :c3, after c2, 45d
-    Certification            :milestone, after c3, 0d
+ title SOC 2 Type II Certification Roadmap
+ dateFormat YYYY-MM-DD
+ section Readiness
+ Gap Assessment :a1, 2026-08-01, 30d
+ Remediation :a2, after a1, 60d
+ section Observation
+ Evidence Collection (3-6 months) :b1, after a2, 150d
+ section Audit
+ Auditor Selection :c1, after b1, 30d
+ Fieldwork (Audit) :c2, after c1, 60d
+ Report Drafting :c3, after c2, 45d
+ Certification :milestone, after c3, 0d
 ```
 
 > **Diagram:** SOC 2 certification timeline. ~12 months from gap assessment to certified report. The observation period (3-6 months of evidence) is the longest phase.

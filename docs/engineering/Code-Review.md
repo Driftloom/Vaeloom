@@ -1,47 +1,47 @@
-﻿# Code Review
+# Code Review
 
 > **Purpose:** Define code review standards for Vaeloom engineering
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Review Architecture
 
 ```mermaid
 graph TD
-    classDef req fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef checklist fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef ai fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef req fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef checklist fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef ai fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Requirements["ðŸ“‹ Review Requirements"]
-        R1["< 100 lines<br/>1 reviewer Â· < 4 hours"]
-        R2["100-500 lines<br/>1 reviewer Â· < 24 hours"]
-        R3["500+ lines<br/>2 reviewers Â· Split preferred"]
-    end
+ subgraph Requirements["Review Requirements"]
+ R1["100 lines<br/>1 reviewer · < 4 hours"]
+ R2["100-500 lines<br/>1 reviewer · < 24 hours"]
+ R3["500+ lines<br/>2 reviewers · Split preferred"]
+ end
 
-    subgraph Checklist["âœ… Review Checklist"]
-        C1["Coding standards followed"]
-        C2["Tests included and pass"]
-        C3["No security vulnerabilities"]
-        C4["Error handling appropriate"]
-        C5["Logging appropriate"]
-        C6["Documentation updated"]
-        C7["No debugging code remains"]
-        C8["Performance considered"]
-        C9["Backward compatibility"]
-    end
+ subgraph Checklist["Review Checklist"]
+ C1["Coding standards followed"]
+ C2["Tests included and pass"]
+ C3["No security vulnerabilities"]
+ C4["Error handling appropriate"]
+ C5["Logging appropriate"]
+ C6["Documentation updated"]
+ C7["No debugging code remains"]
+ C8["Performance considered"]
+ C9["Backward compatibility"]
+ end
 
-    subgraph AIReview["ðŸ¤- AI-Specific Review"]
-        A1["Prompt tested against golden dataset"]
-        A2["Edge cases documented"]
-        A3["No prompt injection vulnerabilities"]
-        A4["Output schema validated"]
-        A5["Fallback behavior tested"]
-    end
+ subgraph AIReview["AI-Specific Review"]
+ A1["Prompt tested against golden dataset"]
+ A2["Edge cases documented"]
+ A3["No prompt injection vulnerabilities"]
+ A4["Output schema validated"]
+ A5["Fallback behavior tested"]
+ end
 
-    Requirements --> Checklist --> AIReview
+ Requirements--> Checklist--> AIReview
 
-    class R1,R2,R3 req
-    class C1,C2,C3,C4,C5,C6,C7,C8,C9 checklist
-    class A1,A2,A3,A4,A5 ai
+ class R1,R2,R3 req
+ class C1,C2,C3,C4,C5,C6,C7,C8,C9 checklist
+ class A1,A2,A3,A4,A5 ai
 ```
 
 > **Diagram:** Code review standards — **3 PR size tiers** (small/medium/large with reviewer count and SLA) → **9-item checklist** (standards, tests, security, error handling, logging, docs, debugging, performance, compatibility) → **5 AI-specific checks** (golden dataset, edge cases, prompt injection, output schema, fallback behavior).

@@ -1,7 +1,7 @@
-﻿# MVP-P16 — 07. Evidence Register
+# MVP-P16 — 07. Evidence Register
 
-> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 93.1 (94.2% + p50 45ms p95 120ms) + P16 (12 TF modules, 22 K8s apps, 4 workflows green, cosign KMS + SBOM spdx, trivy/ pip-audit)  
+> **Phase:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 93.1 (94.2% + p50 45ms p95 120ms) + P16 (12 TF modules, 22 K8s apps, 4 workflows green, cosign KMS + SBOM spdx, trivy/ pip-audit) 
 > **Predecessor:** `ea329dd` + P15 93.1 APPROVED → now **92.8 APPROVED** (P16 uplift)
 
 | Evidence ID | Claim | Requirement | Type | Location | Result | Date | Verified by |

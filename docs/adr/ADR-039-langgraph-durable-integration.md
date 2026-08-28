@@ -25,13 +25,41 @@ API routers (auth, CSRF, RLS, 20KB, secret scrub, audit per ADR-031)
           → Activities / Tool side effects (execute_tool, memory, connector, LLM)
 ```
 
+```mermaid
+flowchart TD
+ A["API routers<br/>auth/CSRF/RLS 20KB"]--> B["Temporal DurableAgentRunWorkflow<br/>REJECT_DUPLICATE<br/>10m kill-switch/quota"]
+ B--> C["DurableAgentRunActivity<br/>ONLY langgraph import"]
+ C--> D["LangGraph StateGraph<br/>10 nodes<br/>MemorySaver"]
+ D--> E["Policy<br/>workspace / approval / quota"]
+ E--> F["Activities / Tools<br/>execute_tool + SecretManager"]
+
+ B -.->|"never import langgraph"| X1["Workflows"]
+ D -.->|"graph_retry=0"| X2["Temporal owns retry"]
+
+ style B fill:#0f172a,stroke:#38bdf8,color:#fff
+ style C fill:#1e3a5f,stroke:#f59e0b,color:#fff
+ style D fill:#1e1b4b,stroke:#a78bfa,color:#fff
+```
+
 Workflows **never** `import langgraph`, `StateGraph`, `ainvoke`, `LLM`, `HTTP`, `DB`, `random`, `datetime.now()`. All non-deterministic via Activities. Versioning via `workflow.patched("durable-agent-v1")` + `graph_version=v1` in state metadata; no `get_version` stale term.
 
 ### 2. State contract (typed, bounded, zero-trust)
 
+```mermaid
+flowchart LR
+ S["VaeloomGraphState<br/>16 fields<br/>20KB max"]
+ S--> V["validate_graph_state<br/>SECRET_KEYS 35<br/>FORBIDDEN 10<br/>messages 20<br/>rag 8KB"]
+ V--> B["build_initial_state<br/>task 30k-->8KB<br/>1KB loop truncate"]
+ B--> W["validate_workspace_binding<br/>WorkspaceMismatchError"]
+ V--> R["validate_payload_size<br/>20KB"]
+
+ style S fill:#1e1b4b,stroke:#a78bfa,color:#fff
+ style V fill:#14532d,stroke:#4ade80,color:#fff
+```
+
 `VaeloomGraphState` (`apps/api/src/api/graph/state.py`) `TypedDict` with `Annotated[list, add_messages]`:
 
-`workspace_id, user_id, agent_id, request_id, correlation_id, task (8KB), category, messages ≤20×4KB, rag_context {entities:8, documents:8, preferences:5, ≤8KB refs only}, selected_agent/tool, execution_status {planning,routing,retrieving,executing_tool,waiting_approval,finalizing,completed,failed,cancelled}, approval_state, interrupt_state, result ≤20KB, error, metadata {graph_version=v1, attempt, dag}`
+`workspace_id, user_id, agent_id, request_id, correlation_id, task (8KB), category, messages ≤20×4KB, rag_context {entities:8, documents:8, preferences:5, ≤8KB refs only}, rag_status ok|empty|unavailable|timeout|error, selected_agent/tool, execution_status {planning,routing,retrieving,executing_tool,waiting_approval,finalizing,completed,failed,cancelled}, approval_state, interrupt_state, result ≤20KB, error, metadata {graph_version=v1, attempt, dag}`
 
 Validators: `validate_graph_state` (required fields, `SECRET_KEYS` 35 recursive, `FORBIDDEN_GRAPH_KEYS` 10, `20KB` total, `messages ≤20`, `rag ≤8KB`), `validate_workspace_binding`, `validate_payload_size 20KB`, `validate_no_secrets`. Secrets never in history/checkpoint/signals/metrics/logs/traces — refs `credential_id, connector_id, workspace_id` resolved inside `tool_execute` via `SecretManager`.
 

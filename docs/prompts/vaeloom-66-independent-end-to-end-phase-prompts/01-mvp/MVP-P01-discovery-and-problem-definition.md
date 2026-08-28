@@ -1,9 +1,9 @@
 # Vaeloom MVP — Independent End-to-End Phase Prompt 01: Discovery and Problem Definition
 
-> **Prompt ID:** `MVP-P01`  
-> **Artifact type:** Standalone generate + audit + execute + verify + gate + remediate + handoff prompt  
-> **Generated:** 2026-08-04  
-> **Truth status:** Design-phase prompt for partially implemented codebase (2333+ tests, 90+ endpoints, 38 DB models); Phase 1 execution begins from real code baseline.  
+> **Prompt ID:** `MVP-P01` 
+> **Artifact type:** Standalone generate + audit + execute + verify + gate + remediate + handoff prompt 
+> **Generated:** 2026-08-04 
+> **Truth status:** Design-phase prompt for partially implemented codebase (2333+ tests, 90+ endpoints, 38 DB models); Phase 1 execution begins from real code baseline. 
 > **Primary governing source:** `Universal_Enterprise_Phase_Prompt_Generator_and_Gatekeeper.md`
 
 ## How to Use This File

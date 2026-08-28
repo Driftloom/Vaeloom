@@ -1,6 +1,6 @@
-﻿# MVP-P15 — 06. Security, Privacy, A11y
+# MVP-P15 — 06. Security, Privacy, A11y
 
-> **Phase:** MVP-P15 — Performance, Reliability, and Scalability  
+> **Phase:** MVP-P15 — Performance, Reliability, and Scalability 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 (perf did not regress security/privacy)
 
 ## Security (inherited P13 95.4 + re-verified P15 — perf did not regress)
@@ -39,12 +39,12 @@ Per `docs/phases/mvp-p13/09-gate-report.md:32` 787053a 95.4 APPROVED + `docs/pha
 **Status: RE-MEASURED ✅ — 0 critical violations**
 
 - **Automated:** `apps/web/src/__tests__/a11y.test.tsx:34` 2 cases via `jest-axe` 9.0 + `axe-core` 4.10
-  - Smoke shell `apps/web/src/__tests__/a11y.test.tsx:9` mirrors app shell (header+nav+main+form+footer)
-  - `expect(results).toHaveNoViolations()` when `jest-axe` present, fallback structural checks (landmark `main`, `nav[aria-label]`, `h1` before `h2`, `label[for]`, `img alt`, button name) when fallback
-  - Result: **PASS** `pnpm --filter web test -- src/__tests__/a11y.test.tsx` 3.2s, 0 critical
+ - Smoke shell `apps/web/src/__tests__/a11y.test.tsx:9` mirrors app shell (header+nav+main+form+footer)
+ - `expect(results).toHaveNoViolations()` when `jest-axe` present, fallback structural checks (landmark `main`, `nav[aria-label]`, `h1` before `h2`, `label[for]`, `img alt`, button name) when fallback
+ - Result: **PASS** `pnpm --filter web test -- src/__tests__/a11y.test.tsx` 3.2s, 0 critical
 - **Config:** `testing/accessibility/axe-config.ts:22` thresholds **critical 0 / serious 5 / moderate 10 / minor 20** — all PASS
-  - `runOnly: {type:''tag'', values:[''wcag2a'',''wcag2aa'',''wcag22aa'',''wcag21a'',''wcag21aa'']}` + `tags` best-practice
-  - `include: [''#__next'',''main'',''[role="main"]'']`, `exclude: [.ignore-a11y, [aria-hidden="true"]]`
+ - `runOnly: {type:''tag'', values:[''wcag2a'',''wcag2aa'',''wcag22aa'',''wcag21a'',''wcag21aa'']}` + `tags` best-practice
+ - `include: [''#__next'',''main'',''[role="main"]'']`, `exclude: [.ignore-a11y, [aria-hidden="true"]]`
 - **Manual spot-check (2026-08-22):** `testing/accessibility/audit-pages.ts:1` 5 pages audited (login, signup, dashboard, memories, search) — keyboard nav, focus order, color contrast ≥4.5:1, `axe` scan via `@axe-core/puppeteer` — 0 critical, 2 serious (both `aria-allowed-attr` on legacy icon, fix queued P16)
 - **Prior P10 96/100 frontend** 18 issues fixed (3 critical) — retained, now re-verified with `jest-axe`
 

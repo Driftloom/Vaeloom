@@ -1,7 +1,7 @@
-﻿# Encryption
+# Encryption
 
 > **Purpose:** Define encryption standards for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Security Team
 > **Last Updated:** 2026-07-13
 
@@ -9,46 +9,46 @@
 
 ```mermaid
 graph TD
-    classDef transit fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef rest fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef key fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef field fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef transit fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef rest fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef key fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef field fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph InTransit["ðŸŒ Encryption in Transit"]
-        direction TB
-        T1["TLS 1.3<br/>All external traffic"]
-        T2["TLS 1.2 minimum<br/>Force downgrade protection"]
-        T3["mTLS<br/>Internal service mesh"]
-    end
+ subgraph InTransit["Encryption in Transit"]
+ direction TB
+ T1["TLS 1.3<br/>All external traffic"]
+ T2["TLS 1.2 minimum<br/>Force downgrade protection"]
+ T3["mTLS<br/>Internal service mesh"]
+ end
 
-    subgraph AtRest["ðŸ’¾ Encryption at Rest"]
-        direction TB
-        R1["Database (PostgreSQL)<br/>AES-256 TDE"]
-        R2["Object Storage (S3)<br/>AES-256 SSE"]
-        R3["Secrets Manager<br/>AES-256-GCM"]
-        R4["Redis (optional)<br/>AES-256 at rest"]
-    end
+ subgraph AtRest["Encryption at Rest"]
+ direction TB
+ R1["Database (PostgreSQL)<br/>AES-256 TDE"]
+ R2["Object Storage (S3)<br/>AES-256 SSE"]
+ R3["Secrets Manager<br/>AES-256-GCM"]
+ R4["Redis (optional)<br/>AES-256 at rest"]
+ end
 
-    subgraph KeyMgmt["ðŸ”‘ Key Management"]
-        direction TB
-        K1["DB Encryption Key<br/>Cloud KMS<br/>Rotation: Annual"]
-        K2["TLS Certificates<br/>Certificate Manager<br/>Rotation: Biannual"]
-        K3["App Secrets<br/>Secrets Manager<br/>Rotation: Per incident"]
-        K4["Session Keys<br/>Auth Provider<br/>Rotation: Per session"]
-    end
+ subgraph KeyMgmt["Key Management"]
+ direction TB
+ K1["DB Encryption Key<br/>Cloud KMS<br/>Rotation: Annual"]
+ K2["TLS Certificates<br/>Certificate Manager<br/>Rotation: Biannual"]
+ K3["App Secrets<br/>Secrets Manager<br/>Rotation: Per incident"]
+ K4["Session Keys<br/>Auth Provider<br/>Rotation: Per session"]
+ end
 
-    subgraph FieldLevel["ðŸ“ Field-Level Encryption"]
-        F1["Sensitive fields<br/>Encrypted with AES-256-GCM<br/>Random IV per field<br/>Authentication tag included"]
-    end
+ subgraph FieldLevel["Field-Level Encryption"]
+ F1["Sensitive fields<br/>Encrypted with AES-256-GCM<br/>Random IV per field<br/>Authentication tag included"]
+ end
 
-    T1 & T2 & T3 --> R1 & R2 & R3 & R4
-    R1 & R2 & R3 & R4 --> K1 & K2 & K3 & K4
-    K1 & K2 & K3 & K4 --> F1
+ T1 & T2 & T3--> R1 & R2 & R3 & R4
+ R1 & R2 & R3 & R4--> K1 & K2 & K3 & K4
+ K1 & K2 & K3 & K4--> F1
 
-    class T1,T2,T3 transit
-    class R1,R2,R3,R4 rest
-    class K1,K2,K3,K4 key
-    class F1 field
+ class T1,T2,T3 transit
+ class R1,R2,R3,R4 rest
+ class K1,K2,K3,K4 key
+ class F1 field
 ```
 
 > **Diagram:** Encryption spans three layers — **transit** (TLS 1.3 external, mTLS internal), **at rest** (AES-256 for DB, S3, secrets, Redis), and **key management** with rotation policies. Field-level encryption protects the most sensitive data with per-field IVs and authentication tags.
@@ -228,26 +228,26 @@ Vaeloom's encryption strategy covers three data states — in transit (TLS 1.3),
 
 ```mermaid
 sequenceDiagram
-    participant APP as Application
-    participant FE as Field Encryptor
-    participant KMS as Cloud KMS
-    participant DB as Database
+ participant APP as Application
+ participant FE as Field Encryptor
+ participant KMS as Cloud KMS
+ participant DB as Database
 
-    APP->>FE: Encrypt sensitive field (plaintext)
-    FE->>KMS: Get data key (cached locally)
-    KMS-->>FE: Data key (from local cache)
-    
-    FE->>FE: Generate random IV (16 bytes)
-    FE->>FE: Encrypt with AES-256-GCM
-    FE-->>APP: {iv_hex}:{auth_tag}:{ciphertext}
-    APP->>DB: Store encrypted value
-    
-    Note over FE: On read
-    APP->>DB: Read encrypted value
-    FE->>FE: Parse iv + auth_tag + ciphertext
-    FE->>KMS: Get data key (cached)
-    FE->>FE: Decrypt with AES-256-GCM
-    FE-->>APP: Plaintext
+ APP->>FE: Encrypt sensitive field (plaintext)
+ FE->>KMS: Get data key (cached locally)
+ KMS-->>FE: Data key (from local cache)
+ 
+ FE->>FE: Generate random IV (16 bytes)
+ FE->>FE: Encrypt with AES-256-GCM
+ FE-->>APP: {iv_hex}:{auth_tag}:{ciphertext}
+ APP->>DB: Store encrypted value
+ 
+ Note over FE: On read
+ APP->>DB: Read encrypted value
+ FE->>FE: Parse iv + auth_tag + ciphertext
+ FE->>KMS: Get data key (cached)
+ FE->>FE: Decrypt with AES-256-GCM
+ FE-->>APP: Plaintext
 ```
 
 > **Diagram:** Field-level encryption — data key loaded once from KMS, cached locally, used to encrypt/decrypt fields with random IV per field. Envelope pattern allows key rotation without re-encrypting all data.

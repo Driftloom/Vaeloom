@@ -1,10 +1,10 @@
-﻿# MVP-P15 → MVP-P16 Handoff — PHASE APPROVED — PROCEED (93.1/100)
+# MVP-P15 → MVP-P16 Handoff — PHASE APPROVED — PROCEED (93.1/100)
 
-> **From:** MVP-P15 — Performance, Reliability, and Scalability  
-> **To:** MVP-P16 — DevOps, Infrastructure, and CI/CD  
-> **Date:** 2026-08-22  
-> **Gate:** **93.1/100 honest APPROVED (92-94) / 94.3 waived CONDITIONAL** (was P14 87.5/88 CONDITIONAL → P15 +5.6 via closing 3 gaps) — **PHASE APPROVED — PROCEED**  
-> **Baseline:** `787053a` (P13 95.4 APPROVED, 42/42 RLS via 0020, 0021 retention_runs, 99 OpenAPI) + `ea329dd` 4 GO-conditions + P15 (94.2% cov, jest-axe 0 critical, k6 p50 45ms p95 120ms, CB 3/30s, SLO RPO 1h RTO 15m)  
+> **From:** MVP-P15 — Performance, Reliability, and Scalability 
+> **To:** MVP-P16 — DevOps, Infrastructure, and CI/CD 
+> **Date:** 2026-08-22 
+> **Gate:** **93.1/100 honest APPROVED (92-94) / 94.3 waived CONDITIONAL** (was P14 87.5/88 CONDITIONAL → P15 +5.6 via closing 3 gaps) — **PHASE APPROVED — PROCEED** 
+> **Baseline:** `787053a` (P13 95.4 APPROVED, 42/42 RLS via 0020, 0021 retention_runs, 99 OpenAPI) + `ea329dd` 4 GO-conditions + P15 (94.2% cov, jest-axe 0 critical, k6 p50 45ms p95 120ms, CB 3/30s, SLO RPO 1h RTO 15m) 
 > **Status:** PHASE APPROVED — PROCEED — P16 **authorized** with 4 P16 restrictions (starlette Keep 0.50, chaos/fuzz/visual partial, per-file 68%, WCAG spot-check)
 
 ---

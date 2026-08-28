@@ -1,12 +1,12 @@
-﻿# User Stories
+# User Stories
 
 > **Purpose:** Provide the consolidated user-story backlog organized by epic, with acceptance criteria and priority mapping
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Product Team
 > **Version:** 1.0
 > **Last Updated:** 2026-07-16
 > **Dependencies:** [`User-Personas.md`](./User-Personas.md), [`PRD.md`](./PRD.md), [`Functional-Requirements.md`](./Functional-Requirements.md), [`Feature-Specs/`](./Feature-Specs/)
-> **Implementation Status:** ðŸ“‹ Spec Only
+> **Implementation Status:** 📁‹ Spec Only
 
 ## Overview
 
@@ -26,24 +26,24 @@ Priority: P0 (MVP) | P1 (v1.5) | P2 (Enterprise)
 
 ```mermaid
 graph TD
-    classDef epic fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef found fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef epic fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef found fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
 
-    ONBOARD["Onboarding"]:::found
-    DOCS["Document Management"]:::found
-    MEM["Memory & Knowledge Graph"]:::found
-    RESUME["Resume Building"]:::epic
-    ATS["ATS & Job Matching"]:::epic
-    APPS["Application Tracking"]:::epic
-    AGENT["Agent Interactions"]:::epic
-    SCHED["Scheduling & Deadlines"]:::epic
-    ADMIN["Enterprise Admin"]:::epic
+ ONBOARD["Onboarding"]:::found
+ DOCS["Document Management"]:::found
+ MEM["Memory & Knowledge Graph"]:::found
+ RESUME["Resume Building"]:::epic
+ ATS["ATS & Job Matching"]:::epic
+ APPS["Application Tracking"]:::epic
+ AGENT["Agent Interactions"]:::epic
+ SCHED["Scheduling & Deadlines"]:::epic
+ ADMIN["Enterprise Admin"]:::epic
 
-    ONBOARD --> DOCS --> MEM
-    MEM --> RESUME & ATS & AGENT
-    RESUME & ATS --> APPS
-    AGENT --> SCHED
-    ONBOARD -.->|"enterprise"| ADMIN
+ ONBOARD--> DOCS--> MEM
+ MEM--> RESUME & ATS & AGENT
+ RESUME & ATS--> APPS
+ AGENT--> SCHED
+ ONBOARD -.->|"enterprise"| ADMIN
 ```text
 
 > **Diagram:** Epic dependencies. Onboarding, Documents, and Memory are foundational — other epics depend on them.

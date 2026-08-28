@@ -1,57 +1,57 @@
-﻿# Maintenance
+# Maintenance
 
 > **Purpose:** Define maintenance procedures for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Maintenance Architecture
 
 ```mermaid
 graph TD
-    classDef type fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef weekly fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef monthly fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef quarterly fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef type fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef weekly fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef monthly fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef quarterly fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Types["ðŸ“‹ Maintenance Types"]
-        T1["Routine Updates Â· Weekly Â· < 5 min<br/>None impact (rolling deploy)"]
-        T2["Database Maintenance Â· Monthly Â· < 30 min<br/>Slightly slower queries"]
-        T3["Major Upgrades Â· Quarterly Â· < 1 hour<br/>Brief downtime (announced)"]
-        T4["Emergency Â· As needed Â· Variable"]
-    end
+ subgraph Types["Maintenance Types"]
+ T1["Routine Updates · Weekly · < 5 min<br/>None impact (rolling deploy)"]
+ T2["Database Maintenance · Monthly · < 30 min<br/>Slightly slower queries"]
+ T3["Major Upgrades · Quarterly · < 1 hour<br/>Brief downtime (announced)"]
+ T4["Emergency · As needed · Variable"]
+ end
 
-    subgraph Windows["ðŸ“… Scheduled Windows"]
-        W1["Staging: Any time"]
-        W2["Production: Sunday 3-5 AM local<br/>48h notice for > 5 min downtime"]
-    end
+ subgraph Windows["Scheduled Windows"]
+ W1["Staging: Any time"]
+ W2["Production: Sunday 3-5 AM local<br/>48h notice for > 5 min downtime"]
+ end
 
-    subgraph Weekly["ðŸ“† Weekly Tasks"]
-        WK1["Review error budgets"]
-        WK2["Check dependency updates"]
-        WK3["Verify backup integrity"]
-    end
+ subgraph Weekly["Weekly Tasks"]
+ WK1["Review error budgets"]
+ WK2["Check dependency updates"]
+ WK3["Verify backup integrity"]
+ end
 
-    subgraph Monthly["ðŸ“† Monthly Tasks"]
-        MO1["Run VACUUM ANALYZE"]
-        MO2["Review slow query log"]
-        MO3["Check storage usage trends"]
-        MO4["Rotate API keys"]
-    end
+ subgraph Monthly["Monthly Tasks"]
+ MO1["Run VACUUM ANALYZE"]
+ MO2["Review slow query log"]
+ MO3["Check storage usage trends"]
+ MO4["Rotate API keys"]
+ end
 
-    subgraph Quarterly["ðŸ“† Quarterly Tasks"]
-        Q1["Full capacity planning review"]
-        Q2["Disaster recovery drill"]
-        Q3["Dependency update audit"]
-        Q4["Performance benchmark"]
-    end
+ subgraph Quarterly["Quarterly Tasks"]
+ Q1["Full capacity planning review"]
+ Q2["Disaster recovery drill"]
+ Q3["Dependency update audit"]
+ Q4["Performance benchmark"]
+ end
 
-    Types --> Windows
-    Types --> Weekly & Monthly & Quarterly
+ Types--> Windows
+ Types--> Weekly & Monthly & Quarterly
 
-    class T1,T2,T3,T4 type
-    class W1,W2 windows
-    class WK1,WK2,WK3 weekly
-    class MO1,MO2,MO3,MO4 monthly
-    class Q1,Q2,Q3,Q4 quarterly
+ class T1,T2,T3,T4 type
+ class W1,W2 windows
+ class WK1,WK2,WK3 weekly
+ class MO1,MO2,MO3,MO4 monthly
+ class Q1,Q2,Q3,Q4 quarterly
 ```
 
 > **Diagram:** Maintenance architecture — **4 types** (weekly routine → monthly DB → quarterly upgrades → emergency) → **scheduled windows** → **task breakdown** by cadence (3 weekly, 4 monthly, 4 quarterly items).

@@ -11,43 +11,43 @@
 
 ```mermaid
 graph TD
-    classDef widget fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef source fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef layoutClass fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef widget fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef source fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef layoutClass fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Sources["📡 Data Sources"]
-        S1["Memory Agent<br/>Entity growth, consolidation"]
-        S2["Career Memory<br/>Applications, goals"]
-        S3["Scheduler<br/>Deadlines, calendar"]
-        S4["Audit Log<br/>Recent agent actions"]
-        S5["Recommendation Agent<br/>Proactive suggestions"]
-    end
+ subgraph Sources["Data Sources"]
+ S1["Memory Agent<br/>Entity growth, consolidation"]
+ S2["Career Memory<br/>Applications, goals"]
+ S3["Scheduler<br/>Deadlines, calendar"]
+ S4["Audit Log<br/>Recent agent actions"]
+ S5["Recommendation Agent<br/>Proactive suggestions"]
+ end
 
-    subgraph Widgets["📊 Dashboard Widgets"]
-        W1["Memory Health<br/>Growth rate, consolidation"]
-        W2["Knowledge Growth<br/>Sparkline of entities"]
-        W3["Active Applications<br/>Count + status"]
-        W4["Upcoming Deadlines<br/>Next 7 days"]
-        W5["Goal Progress<br/>Progress toward goals"]
-        W6["Recent Activity<br/>Last 10 agent actions"]
-        W7["AI Suggestions<br/>Proactive suggestions"]
-        W8["Per-Agent Status<br/>Health check per agent"]
-    end
+ subgraph Widgets["Dashboard Widgets"]
+ W1["Memory Health<br/>Growth rate, consolidation"]
+ W2["Knowledge Growth<br/>Sparkline of entities"]
+ W3["Active Applications<br/>Count + status"]
+ W4["Upcoming Deadlines<br/>Next 7 days"]
+ W5["Goal Progress<br/>Progress toward goals"]
+ W6["Recent Activity<br/>Last 10 agent actions"]
+ W7["AI Suggestions<br/>Proactive suggestions"]
+ W8["Per-Agent Status<br/>Health check per agent"]
+ end
 
-    subgraph Layout["🔲 Dashboard Layout"]
-        L1["Row 1: Memory Health | Knowledge Growth"]
-        L2["Row 2: Active Apps | Upcoming Deadlines"]
-        L3["Row 3: Recent Activity (full width)"]
-        L4["Row 4: AI Suggestions (full width)"]
-        L5["Row 5: Agent Status | Goal Progress"]
-    end
+ subgraph Layout["Dashboard Layout"]
+ L1["Row 1: Memory Health | Knowledge Growth"]
+ L2["Row 2: Active Apps | Upcoming Deadlines"]
+ L3["Row 3: Recent Activity (full width)"]
+ L4["Row 4: AI Suggestions (full width)"]
+ L5["Row 5: Agent Status | Goal Progress"]
+ end
 
-    S1 & S2 & S3 & S4 & S5 --> W1 & W2 & W3 & W4 & W5 & W6 & W7 & W8
-    W1 & W2 & W3 & W4 & W5 & W6 & W7 & W8 --> L1 & L2 & L3 & L4 & L5
+ S1 & S2 & S3 & S4 & S5--> W1 & W2 & W3 & W4 & W5 & W6 & W7 & W8
+ W1 & W2 & W3 & W4 & W5 & W6 & W7 & W8--> L1 & L2 & L3 & L4 & L5
 
-    class W1,W2,W3,W4,W5,W6,W7,W8 widget
-    class S1,S2,S3,S4,S5 source
-    class L1,L2,L3,L4,L5 layoutClass
+ class W1,W2,W3,W4,W5,W6,W7,W8 widget
+ class S1,S2,S3,S4,S5 source
+ class L1,L2,L3,L4,L5 layoutClass
 ```
 
 > **Diagram:** Dashboard is composed entirely from other modules — **5 data sources** feed **8 widgets** into a **5-row layout**. The dashboard holds no unique logic of its own; it's an aggregation view. Widgets include Memory Health, Knowledge Growth, Active Applications, Upcoming Deadlines, Goal Progress, Recent Activity, AI Suggestions, and Per-Agent Status.
@@ -171,27 +171,27 @@ The Dashboard is the primary landing page, composed entirely from other modules 
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant D as Dashboard
-    participant TQ as TanStack Query
-    participant API as Vaeloom API
+ participant U as User
+ participant D as Dashboard
+ participant TQ as TanStack Query
+ participant API as Vaeloom API
 
-    U->>D: Navigate to Dashboard
-    D->>D: Render skeleton layout (8 widget placeholders)
-    par Widget 1: Memory Health
-        D->>TQ: query memoryHealth
-        TQ->>API: GET /dashboard/widget/memory-health
-        API-->>TQ: { growthRate: 12%, entities: 340 }
-        TQ-->>D: Cached data
-        D->>D: Render MemoryHealthCard
-    and Widget 2: Knowledge Growth
-        D->>TQ: query knowledgeGrowth
-        TQ->>API: GET /dashboard/widget/knowledge-growth
-        API-->>TQ: { sparkline: [3,5,8,12,15] }
-        TQ-->>D: Cached data
-        D->>D: Render Sparkline
-    end
-    D-->>U: Full dashboard visible
+ U->>D: Navigate to Dashboard
+ D->>D: Render skeleton layout (8 widget placeholders)
+ par Widget 1: Memory Health
+ D->>TQ: query memoryHealth
+ TQ->>API: GET /dashboard/widget/memory-health
+ API-->>TQ: { growthRate: 12%, entities: 340 }
+ TQ-->>D: Cached data
+ D->>D: Render MemoryHealthCard
+ and Widget 2: Knowledge Growth
+ D->>TQ: query knowledgeGrowth
+ TQ->>API: GET /dashboard/widget/knowledge-growth
+ API-->>TQ: { sparkline: [3,5,8,12,15] }
+ TQ-->>D: Cached data
+ D->>D: Render Sparkline
+ end
+ D-->>U: Full dashboard visible
 ```
 
 ## Data Flow
@@ -318,56 +318,56 @@ sequenceDiagram
 
 ```mermaid
 graph TD
-    classDef api fill:#e1f5fe,stroke:#0288d1,color:#000,stroke-width:2px
-    classDef widget fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
-    classDef layout fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
+ classDef api fill:#e1f5fe,stroke:#0288d1,color:#000,stroke-width:2px
+ classDef widget fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
+ classDef layout fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1.5px
 
-    subgraph Client[" Browser"]
-        WGRID["WidgetGrid (CSS Grid)"]
-        W1["MemoryHealthCard"]
-        W2["KnowledgeGrowthCard"]
-        W3["ActiveAppsCard"]
-        W4["DeadlinesCard"]
-        W5["GoalProgressCard"]
-        W6["RecentActivityCard"]
-        W7["AISuggestionsCard"]
-        W8["AgentStatusCard"]
-    end
+ subgraph Client["Browser"]
+ WGRID["WidgetGrid (CSS Grid)"]
+ W1["MemoryHealthCard"]
+ W2["KnowledgeGrowthCard"]
+ W3["ActiveAppsCard"]
+ W4["DeadlinesCard"]
+ W5["GoalProgressCard"]
+ W6["RecentActivityCard"]
+ W7["AISuggestionsCard"]
+ W8["AgentStatusCard"]
+ end
 
-    subgraph API[" API Layer"]
-        SUM["GET /dashboard/summary"]
-        WID["GET /dashboard/widget/:id"]
-        SUG["POST /suggestions/:id/respond"]
-    end
+ subgraph API["API Layer"]
+ SUM["GET /dashboard/summary"]
+ WID["GET /dashboard/widget/:id"]
+ SUG["POST /suggestions/:id/respond"]
+ end
 
-    subgraph Cache[" Cache Layer"]
-        REDIS["Redis 30s TTL"]
-        TQ["TanStack Query<br/>staleTime: 30s"]
-    end
+ subgraph Cache["Cache Layer"]
+ REDIS["Redis 30s TTL"]
+ TQ["TanStack Query<br/>staleTime: 30s"]
+ end
 
-    subgraph Sources[" Data Sources"]
-        MEM["Memory Agent"]
-        CAR["Career Memory"]
-        SCH["Scheduler"]
-        AUD["Audit Log"]
-        REC["Recommendation Agent"]
-    end
+ subgraph Sources["Data Sources"]
+ MEM["Memory Agent"]
+ CAR["Career Memory"]
+ SCH["Scheduler"]
+ AUD["Audit Log"]
+ REC["Recommendation Agent"]
+ end
 
-    Sources --> SUM & WID
-    SUM --> REDIS
-    REDIS --> TQ
-    WID --> TQ
-    TQ --> Client
-    WGRID --> W1 & W2 & W3 & W4 & W5 & W6 & W7 & W8
+ Sources--> SUM & WID
+ SUM--> REDIS
+ REDIS--> TQ
+ WID--> TQ
+ TQ--> Client
+ WGRID--> W1 & W2 & W3 & W4 & W5 & W6 & W7 & W8
 
-    class SUM,WID,SUG api
-    class W1,W2,W3,W4,W5,W6,W7,W8 widget
-    class WGRID layout
-    class REDIS,TQ infra
+ class SUM,WID,SUG api
+ class W1,W2,W3,W4,W5,W6,W7,W8 widget
+ class WGRID layout
+ class REDIS,TQ infra
 ```
 
-> **Diagram:** Widget layout architecture � 8 widgets render independently inside a CSS Grid layout. Data flows from 5 backend sources through an API layer with Redis caching and TanStack Query client-side caching. Widgets are isolated via ErrorBoundary so a single widget failure never blocks the rest of the dashboard.
+> **Diagram:** Widget layout architecture — 8 widgets render independently inside a CSS Grid layout. Data flows from 5 backend sources through an API layer with Redis caching and TanStack Query client-side caching. Widgets are isolated via ErrorBoundary so a single widget failure never blocks the rest of the dashboard.
 
 ## Examples
 

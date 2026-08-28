@@ -46,11 +46,11 @@ to?"
 ### Out of Scope
 
 - Detailed sequence diagrams — see
-  [`../AI/Agentic-RAG.md`](../AI/Agentic-RAG.md) and individual feature docs
+ [`../AI/Agentic-RAG.md`](../AI/Agentic-RAG.md) and individual feature docs
 - Infrastructure-as-code specifics — see
-  [`../DevOps/Terraform.md`](../DevOps/Terraform.md)
+ [`../DevOps/Terraform.md`](../DevOps/Terraform.md)
 - Event architecture — see [`Event-Architecture.md`](./Event-Architecture.md)
-  and [`Event-Flow.md`](./Event-Flow.md)
+ and [`Event-Flow.md`](./Event-Flow.md)
 
 ## Level 1: System Context
 
@@ -59,48 +59,48 @@ external actors and systems.
 
 ```mermaid
 graph TB
-    classDef vaeloom fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:3px
-    classDef actor fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef external fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
+ classDef vaeloom fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:3px
+ classDef actor fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef external fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
 
-    VAEL["Vaeloom Platform<br/><i>Second brain for education and career</i>"]:::vaeloom
+ VAEL["Vaeloom Platform<br/><i>Second brain for education and career</i>"]:::vaeloom
 
-    subgraph Users["Users"]
-        IND["Individual User<br/>Student / Professional"]:::actor
-        ENT["Enterprise Admin<br/>University / Employer"]:::actor
-    end
+ subgraph Users["Users"]
+ IND["Individual User<br/>Student / Professional"]:::actor
+ ENT["Enterprise Admin<br/>University / Employer"]:::actor
+ end
 
-    subgraph Identity["Identity Providers"]
-        OKTA["Okta / Azure AD<br/>SAML 2.0 / OIDC"]:::external
-    end
+ subgraph Identity["Identity Providers"]
+ OKTA["Okta / Azure AD<br/>SAML 2.0 / OIDC"]:::external
+ end
 
-    subgraph LLM["AI/LLM Providers"]
-        OPENAI["OpenAI"]:::external
-        ANTH["Anthropic"]:::external
-        GOOGLE["Google AI"]:::external
-    end
+ subgraph LLM["AI/LLM Providers"]
+ OPENAI["OpenAI"]:::external
+ ANTH["Anthropic"]:::external
+ GOOGLE["Google AI"]:::external
+ end
 
-    subgraph DataSources["Data Sources (MCP)"]
-        GMAIL["Gmail"]:::external
-        GITHUB["GitHub"]:::external
-        DRIVE["Google Drive"]:::external
-        SLACK["Slack"]:::external
-    end
+ subgraph DataSources["Data Sources (MCP)"]
+ GMAIL["Gmail"]:::external
+ GITHUB["GitHub"]:::external
+ DRIVE["Google Drive"]:::external
+ SLACK["Slack"]:::external
+ end
 
-    subgraph Ops["Operational"]
-        STRIPE["Stripe<br/>Payments"]:::external
-        DATADOG["Datadog / Grafana<br/>Observability"]:::external
-        S3["AWS S3<br/>Object Storage"]:::external
-    end
+ subgraph Ops["Operational"]
+ STRIPE["Stripe<br/>Payments"]:::external
+ DATADOG["Datadog / Grafana<br/>Observability"]:::external
+ S3["AWS S3<br/>Object Storage"]:::external
+ end
 
-    IND -->|"uses"| VAEL
-    ENT -->|"manages"| VAEL
-    VAEL -->|"SSO"| OKTA
-    VAEL -->|"inference"| OPENAI & ANTH & GOOGLE
-    VAEL -->|"connects"| GMAIL & GITHUB & DRIVE & SLACK
-    VAEL -->|"billing"| STRIPE
-    VAEL -->|"telemetry"| DATADOG
-    VAEL -->|"store docs"| S3
+ IND-->|"uses"| VAEL
+ ENT-->|"manages"| VAEL
+ VAEL-->|"SSO"| OKTA
+ VAEL-->|"inference"| OPENAI & ANTH & GOOGLE
+ VAEL-->|"connects"| GMAIL & GITHUB & DRIVE & SLACK
+ VAEL-->|"billing"| STRIPE
+ VAEL-->|"telemetry"| DATADOG
+ VAEL-->|"store docs"| S3
 ```
 
 > **Diagram:** C4 Level 1 — System Context. Vaeloom is the central system. Users
@@ -114,51 +114,51 @@ labels reflect actual runtime state, not documentation claims.**
 
 ```mermaid
 graph TB
-    classDef frontend fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef api fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef ai fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
-    classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
-    classDef infra fill:#fce4ec,stroke:#c62828,color:#000,stroke-width:2px
-    classDef external fill:#e0e0e0,stroke:#757575,color:#000,stroke-width:1px
-    classDef gap fill:#ffcdd2,stroke:#c62828,color:#000,stroke-width:2px,stroke-dasharray: 5 5
+ classDef frontend fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef api fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef ai fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
+ classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:2px
+ classDef infra fill:#fce4ec,stroke:#c62828,color:#000,stroke-width:2px
+ classDef external fill:#e0e0e0,stroke:#757575,color:#000,stroke-width:1px
+ classDef gap fill:#ffcdd2,stroke:#c62828,color:#000,stroke-width:2px,stroke-dasharray: 5 5
 
-    subgraph Web["Web Client"]
-        APP["apps/web<br/>Next.js 15 (App Router)<br/>Dashboard, Workspace, Admin"]:::frontend
-    end
+ subgraph Web["Web Client"]
+ APP["apps/web<br/>Next.js 15 (App Router)<br/>Dashboard, Workspace, Admin"]:::frontend
+ end
 
-    subgraph API["API Layer (Unified Monolith)"]
-        GW["API Middleware Stack<br/>CORS → RateLimit → Auth → CSRF<br/>→ SecurityHeaders → Tenant → RBAC"]:::api
-        APISRV["apps/api (FastAPI)<br/>27 routers, 50 services<br/>24 AI agents, 13 middleware"]:::api
-    end
+ subgraph API["API Layer (Unified Monolith)"]
+ GW["API Middleware Stack<br/>CORS--> RateLimit--> Auth--> CSRF<br/>--> SecurityHeaders--> Tenant--> RBAC"]:::api
+ APISRV["apps/api (FastAPI)<br/>27 routers, 50 services<br/>24 AI agents, 13 middleware"]:::api
+ end
 
-    subgraph Data["Data Layer"]
-        PG["PostgreSQL 16 + pgvector<br/>System of Record<br/>RLS: 4/36 tables ⚠️"]:::data
-        REDIS["Redis 7<br/>Cache + Session + Queue<br/>BullMQ: installed, 0 consumers ⚠️"]:::data
-        S3["MinIO (S3-compatible)<br/>Document files, Exports"]:::data
-        MEILI["Meilisearch<br/>NOT_INSTALLED ⚠️<br/>Currently: SQL ILIKE"]:::gap
-    end
+ subgraph Data["Data Layer"]
+ PG["PostgreSQL 16 + pgvector<br/>System of Record<br/>RLS: 4/36 tables ⚠"]:::data
+ REDIS["Redis 7<br/>Cache + Session + Queue<br/>BullMQ: installed, 0 consumers ⚠"]:::data
+ S3["MinIO (S3-compatible)<br/>Document files, Exports"]:::data
+ MEILI["Meilisearch<br/>NOT_INSTALLED ⚠<br/>Currently: SQL ILIKE"]:::gap
+ end
 
-    subgraph Observability["Observability (Partial)"]
-        PROM["Prometheus<br/>COMMENTED OUT ⚠️"]:::gap
-        GRAFANA["Grafana<br/>NOT_DEPLOYED ⚠️"]:::gap
-        OTEL["OpenTelemetry<br/>SDK disabled in dev<br/>No Collector ⚠️"]:::gap
-    end
+ subgraph Observability["Observability (Partial)"]
+ PROM["Prometheus<br/>COMMENTED OUT ⚠"]:::gap
+ GRAFANA["Grafana<br/>NOT_DEPLOYED ⚠"]:::gap
+ OTEL["OpenTelemetry<br/>SDK disabled in dev<br/>No Collector ⚠"]:::gap
+ end
 
-    subgraph External["External Providers"]
-        LLM["LLM APIs<br/>OpenAI / Anthropic<br/>(Claude 3.5 Sonnet default)"]:::external
-        OAUTH["OAuth Providers<br/>Google / Microsoft<br/>(SSO)"]:::external
-        MCP_S["MCP Sources<br/>Gmail, GitHub, Drive<br/>Calendar, Notion, Slack"]:::external
-    end
+ subgraph External["External Providers"]
+ LLM["LLM APIs<br/>OpenAI / Anthropic<br/>(Claude 3.5 Sonnet default)"]:::external
+ OAUTH["OAuth Providers<br/>Google / Microsoft<br/>(SSO)"]:::external
+ MCP_S["MCP Sources<br/>Gmail, GitHub, Drive<br/>Calendar, Notion, Slack"]:::external
+ end
 
-    APP -->|"HTTPS REST"| GW --> APISRV
-    APISRV -->|"SQL + pgvector"| PG
-    APISRV -->|"cache/queue"| REDIS
-    APISRV -->|"file I/O"| S3
-    APISRV -->|"model calls"| LLM
-    APISRV -->|"OIDC"| OAUTH
-    APISRV -->|"MCP protocol"| MCP_S
-    APISRV -.->|"metrics (disabled)"| PROM
-    APISRV -.->|"traces (disabled)"| OTEL
+ APP-->|"HTTPS REST"| GW--> APISRV
+ APISRV-->|"SQL + pgvector"| PG
+ APISRV-->|"cache/queue"| REDIS
+ APISRV-->|"file I/O"| S3
+ APISRV-->|"model calls"| LLM
+ APISRV-->|"OIDC"| OAUTH
+ APISRV-->|"MCP protocol"| MCP_S
+ APISRV -.->|"metrics (disabled)"| PROM
+ APISRV -.->|"traces (disabled)"| OTEL
 ```
 
 > **Diagram:** C4 Level 2 — Container (Runtime State). The web client talks to
@@ -168,18 +168,18 @@ graph TB
 
 ### Container Runtime Status
 
-| Container         | Technology              | Runtime Status | Gap Reference                                   |
+| Container | Technology | Runtime Status | Gap Reference |
 | ----------------- | ----------------------- | -------------- | ----------------------------------------------- |
-| **apps/web**      | Next.js 15 (App Router) | ✅ OPERATIONAL | —                                               |
-| **apps/api**      | FastAPI (Python 3.12)   | ✅ OPERATIONAL | —                                               |
-| **PostgreSQL 16** | RDS / Docker            | ⚠️ PARTIAL     | RLS: 4/36 tables; GUC `app.tenant_id` never SET |
-| **Redis 7**       | ElastiCache / Docker    | ⚠️ PARTIAL     | BullMQ installed, 0 consumers deployed          |
-| **MinIO (S3)**    | Docker                  | ✅ OPERATIONAL | —                                               |
-| **Meilisearch**   | NOT_INSTALLED           | ❌ MISSING     | Search uses SQL ILIKE                           |
-| **Prometheus**    | COMMENTED OUT           | ❌ DISABLED    | `main.py:135-136`                               |
-| **Grafana**       | NOT_DEPLOYED            | ❌ MISSING     | No dashboard JSON files                         |
-| **OpenTelemetry** | SDK disabled            | ⚠️ PARTIAL     | No Collector config                             |
-| **Apache AGE**    | Provisioned in Docker   | ❌ UNUSED      | No code references                              |
+| **apps/web** | Next.js 15 (App Router) | ✅ OPERATIONAL | — |
+| **apps/api** | FastAPI (Python 3.12) | ✅ OPERATIONAL | — |
+| **PostgreSQL 16** | RDS / Docker | ⚠️ PARTIAL | RLS: 4/36 tables; GUC `app.tenant_id` never SET |
+| **Redis 7** | ElastiCache / Docker | ⚠️ PARTIAL | BullMQ installed, 0 consumers deployed |
+| **MinIO (S3)** | Docker | ✅ OPERATIONAL | — |
+| **Meilisearch** | NOT_INSTALLED | ❌ MISSING | Search uses SQL ILIKE |
+| **Prometheus** | COMMENTED OUT | ❌ DISABLED | `main.py:135-136` |
+| **Grafana** | NOT_DEPLOYED | ❌ MISSING | No dashboard JSON files |
+| **OpenTelemetry** | SDK disabled | ⚠️ PARTIAL | No Collector config |
+| **Apache AGE** | Provisioned in Docker | ❌ UNUSED | No code references |
 
 ## Level 3: Component
 
@@ -187,37 +187,37 @@ graph TB
 
 ```mermaid
 graph TB
-    classDef guard fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef module fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
+ classDef guard fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef module fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
 
-    subgraph API["apps/api (FastAPI)"]
-        GW["API Gateway<br/>Rate Limiting, CORS, Routing"]:::guard
-        AUTH["AuthModule<br/>JWT validation, session management"]:::guard
-        TENANT["TenantMiddleware<br/>tenant_id context"]:::guard
-        PERM["PermissionEngine<br/>RBAC + ABAC evaluation"]:::guard
+ subgraph API["apps/api (FastAPI)"]
+ GW["API Gateway<br/>Rate Limiting, CORS, Routing"]:::guard
+ AUTH["AuthModule<br/>JWT validation, session management"]:::guard
+ TENANT["TenantMiddleware<br/>tenant_id context"]:::guard
+ PERM["PermissionEngine<br/>RBAC + ABAC evaluation"]:::guard
 
-        subgraph Modules["Business Modules"]
-            USERS["UsersModule<br/>Profile, preferences"]:::module
-            DOCS["DocumentsModule<br/>Upload, parse, metadata"]:::module
-            WORK["WorkspacesModule<br/>Workspace CRUD, sharing"]:::module
-            CONN["ConnectorsModule<br/>OAuth flows, config"]:::module
-            TENANT_S["TenantsModule<br/>Provisioning, isolation"]:::module
-            BILL["BillingModule<br/>Subscriptions, usage"]:::module
-            SEARCH["SearchModule<br/>Full-text + vector queries"]:::module
-            NOTIFY["NotificationsModule<br/>Email, in-app, push"]:::module
-        end
+ subgraph Modules["Business Modules"]
+ USERS["UsersModule<br/>Profile, preferences"]:::module
+ DOCS["DocumentsModule<br/>Upload, parse, metadata"]:::module
+ WORK["WorkspacesModule<br/>Workspace CRUD, sharing"]:::module
+ CONN["ConnectorsModule<br/>OAuth flows, config"]:::module
+ TENANT_S["TenantsModule<br/>Provisioning, isolation"]:::module
+ BILL["BillingModule<br/>Subscriptions, usage"]:::module
+ SEARCH["SearchModule<br/>Full-text + vector queries"]:::module
+ NOTIFY["NotificationsModule<br/>Email, in-app, push"]:::module
+ end
 
-        subgraph AI_Modules["AI Modules"]
-            AGENTS["Agent System<br/>8 MVP + 28 Enterprise agents"]:::module
-            MEMORY["Memory System<br/>Knowledge graph + vectors"]:::module
-            RAG["RAG Pipeline<br/>Hybrid retrieval + reranking"]:::module
-        end
-    end
+ subgraph AI_Modules["AI Modules"]
+ AGENTS["Agent System<br/>8 MVP + 28 Enterprise agents"]:::module
+ MEMORY["Memory System<br/>Knowledge graph + vectors"]:::module
+ RAG["RAG Pipeline<br/>Hybrid retrieval + reranking"]:::module
+ end
+ end
 
-    GW --> AUTH --> TENANT --> PERM
-    PERM --> Modules
-    PERM --> AI_Modules
+ GW--> AUTH--> TENANT--> PERM
+ PERM--> Modules
+ PERM--> AI_Modules
 ```
 
 > **Diagram:** Components within the FastAPI backend service. The gateway
@@ -231,49 +231,49 @@ graph TB
 
 ```mermaid
 graph TB
-    classDef core fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef agent fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
-    classDef guard fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef core fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef agent fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef infra fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1px
+ classDef guard fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph AI["apps/api AI Modules (FastAPI)"]
-        HARNESS["Agent Harness<br/>Shared agentic loop<br/>(Plan-->Act-->Observe-->Reflect)"]:::core
-        ORCH["Orchestrator<br/>Request routing, plan assembly"]:::agent
-        GUARD["Guardrails<br/>Input validation, output QA"]:::guard
+ subgraph AI["apps/api AI Modules (FastAPI)"]
+ HARNESS["Agent Harness<br/>Shared agentic loop<br/>(Plan-->Act-->Observe-->Reflect)"]:::core
+ ORCH["Orchestrator<br/>Request routing, plan assembly"]:::agent
+ GUARD["Guardrails<br/>Input validation, output QA"]:::guard
 
-        subgraph Agents["Specialist Agents"]
-            ORG_A["Organization Agent"]:::agent
-            RES_A["Resume Agent"]:::agent
-            ATS_A["ATS Agent"]:::agent
-            JOB_A["Job Search Agent"]:::agent
-            APP_A["Application Agent"]:::agent
-            GMAIL_A["Gmail Agent"]:::agent
-            SCHED_A["Scheduler Agent"]:::agent
-        end
+ subgraph Agents["Specialist Agents"]
+ ORG_A["Organization Agent"]:::agent
+ RES_A["Resume Agent"]:::agent
+ ATS_A["ATS Agent"]:::agent
+ JOB_A["Job Search Agent"]:::agent
+ APP_A["Application Agent"]:::agent
+ GMAIL_A["Gmail Agent"]:::agent
+ SCHED_A["Scheduler Agent"]:::agent
+ end
 
-        subgraph Memory["Memory System"]
-            GRAPH["Knowledge Graph<br/>Apache AGE (provisioned, unused)"]:::core
-            VECTOR["Vector Store<br/>pgvector"]:::core
-            LT["Long-Term Memory<br/>Compressed summaries"]:::core
-            ST["Short-Term Memory<br/>Conversation context"]:::core
-        end
+ subgraph Memory["Memory System"]
+ GRAPH["Knowledge Graph<br/>Apache AGE (provisioned, unused)"]:::core
+ VECTOR["Vector Store<br/>pgvector"]:::core
+ LT["Long-Term Memory<br/>Compressed summaries"]:::core
+ ST["Short-Term Memory<br/>Conversation context"]:::core
+ end
 
-        subgraph Infrastructure["AI Infrastructure"]
-            RAG["RAG Pipeline<br/>Hybrid retrieval + reranking"]:::infra
-            GATEWAY["AI Gateway<br/>Model router + fallback"]:::infra
-            INFER["Inference Pipeline<br/>Prompt building, token counting"]:::infra
-            MCP["MCP Connectors<br/>Gmail, GitHub, Drive tools"]:::infra
-            EVAL["Eval Framework<br/>Golden dataset testing"]:::infra
-        end
-    end
+ subgraph Infrastructure["AI Infrastructure"]
+ RAG["RAG Pipeline<br/>Hybrid retrieval + reranking"]:::infra
+ GATEWAY["AI Gateway<br/>Model router + fallback"]:::infra
+ INFER["Inference Pipeline<br/>Prompt building, token counting"]:::infra
+ MCP["MCP Connectors<br/>Gmail, GitHub, Drive tools"]:::infra
+ EVAL["Eval Framework<br/>Golden dataset testing"]:::infra
+ end
+ end
 
-    ORCH --> HARNESS
-    HARNESS --> Agents
-    Agents --> Memory
-    Agents --> RAG
-    Agents --> MCP
-    Agents --> GUARD
-    RAG --> GATEWAY --> INFER
+ ORCH--> HARNESS
+ HARNESS--> Agents
+ Agents--> Memory
+ Agents--> RAG
+ Agents--> MCP
+ Agents--> GUARD
+ RAG--> GATEWAY--> INFER
 ```
 
 > **Diagram:** Components within the FastAPI AI service. The Orchestrator routes
@@ -284,55 +284,55 @@ graph TB
 
 ```mermaid
 graph TB
-    classDef aws fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef k8s fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
-    classDef svc fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
-    classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
-    classDef obs fill:#fce4ec,stroke:#c62828,color:#000,stroke-width:1px
+ classDef aws fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef k8s fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:2px
+ classDef svc fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:2px
+ classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef obs fill:#fce4ec,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph AWS["AWS Region (us-east-1)"]
-        subgraph VPC["VPC (10.0.0.0/16)"]
-            subgraph EKS["EKS Cluster"]
-                subgraph NSAPI["Namespace: backend"]
-                    API_PODS["Backend Pods (FastAPI)<br/>HPA: 2-20 replicas"]:::svc
-                end
-                subgraph NSWORK["Namespace: workers"]
-                    WORKER_PODS["Worker Pods (BullMQ, no consumers deployed)<br/>HPA: 1-5 replicas"]:::svc
-                end
-                subgraph NSOBS["Namespace: observability"]
-                    PROM["Prometheus + Grafana"]:::obs
-                    JAEGER["Jaeger Collector"]:::obs
-                    LOKI["Loki (logs)"]:::obs
-                end
-            end
+ subgraph AWS["AWS Region (us-east-1)"]
+ subgraph VPC["VPC (10.0.0.0/16)"]
+ subgraph EKS["EKS Cluster"]
+ subgraph NSAPI["Namespace: backend"]
+ API_PODS["Backend Pods (FastAPI)<br/>HPA: 2-20 replicas"]:::svc
+ end
+ subgraph NSWORK["Namespace: workers"]
+ WORKER_PODS["Worker Pods (BullMQ, no consumers deployed)<br/>HPA: 1-5 replicas"]:::svc
+ end
+ subgraph NSOBS["Namespace: observability"]
+ PROM["Prometheus + Grafana"]:::obs
+ JAEGER["Jaeger Collector"]:::obs
+ LOKI["Loki (logs)"]:::obs
+ end
+ end
 
-            subgraph RDS["RDS (PostgreSQL 16)"]
-                PG_INST["Primary + 2 Read Replicas<br/>Multi-AZ"]:::data
-            end
+ subgraph RDS["RDS (PostgreSQL 16)"]
+ PG_INST["Primary + 2 Read Replicas<br/>Multi-AZ"]:::data
+ end
 
-            subgraph ELASTIC["ElastiCache (Redis 7)"]
-                REDIS_INST["Cluster Mode<br/>3 nodes + replica"]:::data
-            end
-        end
+ subgraph ELASTIC["ElastiCache (Redis 7)"]
+ REDIS_INST["Cluster Mode<br/>3 nodes + replica"]:::data
+ end
+ end
 
-        S3_B["S3 Bucket<br/>Documents + Exports + Audit"]:::data
-        CLOUD["CloudFront CDN<br/>Static assets + portal"]:::aws
-        LB["Application Load Balancer<br/>Routes to EKS Ingress"]:::aws
-    end
+ S3_B["S3 Bucket<br/>Documents + Exports + Audit"]:::data
+ CLOUD["CloudFront CDN<br/>Static assets + portal"]:::aws
+ LB["Application Load Balancer<br/>Routes to EKS Ingress"]:::aws
+ end
 
-    subgraph Users["Users"]
-        BROWSER["Web Browser"]:::k8s
-    end
+ subgraph Users["Users"]
+ BROWSER["Web Browser"]:::k8s
+ end
 
-    subgraph External["External"]
-        LLM["OpenAI / Anthropic API"]:::aws
-    end
+ subgraph External["External"]
+ LLM["OpenAI / Anthropic API"]:::aws
+ end
 
-    BROWSER -->|"HTTPS"| CLOUD --> LB --> EKS
-    EKS --> RDS
-    EKS --> ELASTIC
-    EKS --> S3_B
-    API_PODS -->|"HTTPS"| LLM
+ BROWSER-->|"HTTPS"| CLOUD--> LB--> EKS
+ EKS--> RDS
+ EKS--> ELASTIC
+ EKS--> S3_B
+ API_PODS-->|"HTTPS"| LLM
 ```
 
 > **Diagram:** C4 Level 4 — Deployment. Vaeloom runs on EKS in a dedicated AWS
@@ -342,56 +342,56 @@ graph TB
 
 ## Components Summary
 
-| Container         | Technology              | Components                                                                                                   | Deployment                      |
+| Container | Technology | Components | Deployment |
 | ----------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| **apps/web**      | Next.js 15 (App Router) | Dashboard, Workspace, Admin Portal, Auth pages                                                               | CDN (CloudFront) + Edge         |
-| **apps/api**      | FastAPI (Python 3.12)   | Auth, Users, Documents, Workspaces, Connectors, Tenants, Billing, Search, Notifications, Agents, Memory, RAG | EKS (HPA: 2-20 pods)            |
-| **PostgreSQL 16** | RDS Multi-AZ            | Relational data + pgvector (embeddings)                                                                      | Primary + 2 read replicas       |
-| **Redis 7**       | ElastiCache Cluster     | Session cache, metering counters, cache                                                                      | 3-node cluster + replica        |
-| **S3**            | AWS S3                  | Document files, exports, audit archive                                                                       | Versioned, lifecycle policy     |
-| **Kubernetes**    | EKS                     | Container orchestration, ingress, HPA                                                                        | Multi-AZ, 3+ availability zones |
+| **apps/web** | Next.js 15 (App Router) | Dashboard, Workspace, Admin Portal, Auth pages | CDN (CloudFront) + Edge |
+| **apps/api** | FastAPI (Python 3.12) | Auth, Users, Documents, Workspaces, Connectors, Tenants, Billing, Search, Notifications, Agents, Memory, RAG | EKS (HPA: 2-20 pods) |
+| **PostgreSQL 16** | RDS Multi-AZ | Relational data + pgvector (embeddings) | Primary + 2 read replicas |
+| **Redis 7** | ElastiCache Cluster | Session cache, metering counters, cache | 3-node cluster + replica |
+| **S3** | AWS S3 | Document files, exports, audit archive | Versioned, lifecycle policy |
+| **Kubernetes** | EKS | Container orchestration, ingress, HPA | Multi-AZ, 3+ availability zones |
 
 ## Security
 
-| Concern                             | Mitigation                                                      | Verification                              |
+| Concern | Mitigation | Verification |
 | ----------------------------------- | --------------------------------------------------------------- | ----------------------------------------- |
-| Inter-service traffic not encrypted | mTLS between all Kubernetes services via service mesh           | Network policy enforcement; traffic audit |
-| Database accessible from internet   | RDS in private subnets; no public IP                            | Security group rules; VPC flow logs       |
-| LLM API key leakage                 | Keys in Secrets Manager; injected at runtime; never in code     | CI secret scanning; runtime audit         |
-| Pod escape                          | gVisor runtime on AI pods (untrusted code); non-root containers | Penetration testing; CIS benchmarks       |
+| Inter-service traffic not encrypted | mTLS between all Kubernetes services via service mesh | Network policy enforcement; traffic audit |
+| Database accessible from internet | RDS in private subnets; no public IP | Security group rules; VPC flow logs |
+| LLM API key leakage | Keys in Secrets Manager; injected at runtime; never in code | CI secret scanning; runtime audit |
+| Pod escape | gVisor runtime on AI pods (untrusted code); non-root containers | Penetration testing; CIS benchmarks |
 
 ## Performance
 
-| Concern                    | Budget                 | Measurement                | Optimization                                              |
+| Concern | Budget | Measurement | Optimization |
 | -------------------------- | ---------------------- | -------------------------- | --------------------------------------------------------- |
-| API request latency (p99)  | <500ms                 | Distributed tracing        | Connection pooling; read replicas; caching                |
-| AI inference latency (p99) | <5s (depends on model) | Model gateway timing       | Model routing (fast model for easy tasks); prompt caching |
-| Page load time             | <2s                    | RUM (Real User Monitoring) | CDN; code splitting; lazy loading                         |
+| API request latency (p99) | <500ms | Distributed tracing | Connection pooling; read replicas; caching |
+| AI inference latency (p99) | <5s (depends on model) | Model gateway timing | Model routing (fast model for easy tasks); prompt caching |
+| Page load time | <2s | RUM (Real User Monitoring) | CDN; code splitting; lazy loading |
 
 ## Scalability
 
-| Dimension            | Current Limit   | 10x Strategy                      | 100x Strategy                            |
+| Dimension | Current Limit | 10x Strategy | 100x Strategy |
 | -------------------- | --------------- | --------------------------------- | ---------------------------------------- |
-| API pods             | 20 (HPA max)    | Increase HPA max; add node pool   | Sharding by tenant_id; regional clusters |
-| AI service pods      | 10              | GPU node pool autoscaling         | Model-specific serving clusters          |
-| Database connections | 500 (PgBouncer) | Connection pooling; read replicas | Writer-leader separation; sharding       |
-| Redis memory         | 10 GB           | Cluster mode upgrade              | Sharded keyspace                         |
+| API pods | 20 (HPA max) | Increase HPA max; add node pool | Sharding by tenant_id; regional clusters |
+| AI service pods | 10 | GPU node pool autoscaling | Model-specific serving clusters |
+| Database connections | 500 (PgBouncer) | Connection pooling; read replicas | Writer-leader separation; sharding |
+| Redis memory | 10 GB | Cluster mode upgrade | Sharded keyspace |
 
 ## Future Improvements
 
-| Improvement                                          | Priority | Complexity | Timeline |
+| Improvement | Priority | Complexity | Timeline |
 | ---------------------------------------------------- | -------- | ---------- | -------- |
-| Regional deployment (EU, APAC) for data residency    | High     | High       | Q2 2027  |
-| Service mesh (Istio) for mTLS and traffic management | Medium   | High       | Q1 2027  |
-| Edge caching for AI inference results                | Medium   | Medium     | Q2 2027  |
+| Regional deployment (EU, APAC) for data residency | High | High | Q2 2027 |
+| Service mesh (Istio) for mTLS and traffic management | Medium | High | Q1 2027 |
+| Edge caching for AI inference results | Medium | Medium | Q2 2027 |
 
 ## Related Documents
 
 - [`System-Design.md`](./System-Design.md) — detailed system design
 - [`High-Level-Design.md`](./High-Level-Design.md) — HLD view
 - [`Service-Architecture.md`](./Service-Architecture.md) — service-level
-  architecture
+ architecture
 - [`Infrastructure.md`](./Infrastructure.md) — infrastructure details
 - [`../DevOps/Kubernetes.md`](../DevOps/Kubernetes.md) — Kubernetes
-  configuration
+ configuration
 - [`../DevOps/Terraform.md`](../DevOps/Terraform.md) — IaC definitions

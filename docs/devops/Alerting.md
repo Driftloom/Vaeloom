@@ -1,70 +1,70 @@
-﻿# Alerting
+# Alerting
 
 > **Purpose:** Define alerting rules and procedures for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Alert Architecture
 
 ```mermaid
 graph TD
-    classDef p1 fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
-    classDef p2 fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef p3 fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef p4 fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef fatigue fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef p1 fill:#ffebee,stroke:#c62828,color:#000,stroke-width:2px
+ classDef p2 fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef p3 fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef p4 fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef fatigue fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Tiers["ðŸ”” Alert Tiers"]
-        direction TB
-        P1_SVC["P1 -- Critical<br/>Response: < 15 min<br/>Channel: PagerDuty + SMS"]
-        P2_SVC["P2 -- High<br/>Response: < 30 min<br/>Channel: Slack #alerts"]
-        P3_SVC["P3 -- Medium<br/>Response: < 2 hours<br/>Channel: Slack #alerts"]
-        P4_SVC["P4 -- Low<br/>Response: Next business day<br/>Channel: GitHub issue"]
-    end
+ subgraph Tiers["Alert Tiers"]
+ direction TB
+ P1_SVC["P1 -- Critical<br/>Response: < 15 min<br/>Channel: PagerDuty + SMS"]
+ P2_SVC["P2 -- High<br/>Response: < 30 min<br/>Channel: Slack #alerts"]
+ P3_SVC["P3 -- Medium<br/>Response: < 2 hours<br/>Channel: Slack #alerts"]
+ P4_SVC["P4 -- Low<br/>Response: Next business day<br/>Channel: GitHub issue"]
+ end
 
-    subgraph Rules_Avail["ðŸ“¡ Availability Alerts"]
-        RA1["API down<br/>health != ok for 1 min --> P1"]
-        RA2["AI Service down<br/>health != ok for 2 min --> P1"]
-        RA3["Database unreachable<br/>30s connection failure --> P1"]
-    end
+ subgraph Rules_Avail["Availability Alerts"]
+ RA1["API down<br/>health != ok for 1 min--> P1"]
+ RA2["AI Service down<br/>health != ok for 2 min--> P1"]
+ RA3["Database unreachable<br/>30s connection failure--> P1"]
+ end
 
-    subgraph Rules_Perf["âš¡ Performance Alerts"]
-        RP1["High API latency<br/>p99 > 2s for 5 min --> P2"]
-        RP2["High AI latency<br/>p99 > 10s for 5 min --> P2"]
-        RP3["Queue backlog<br/>depth > 1000 for 10 min --> P2"]
-    end
+ subgraph Rules_Perf["Performance Alerts"]
+ RP1["High API latency<br/>p99 > 2s for 5 min--> P2"]
+ RP2["High AI latency<br/>p99 > 10s for 5 min--> P2"]
+ RP3["Queue backlog<br/>depth > 1000 for 10 min--> P2"]
+ end
 
-    subgraph Rules_Error["âŒ Error Rate Alerts"]
-        RE1["High error rate<br/>> 5% for 5 min --> P2"]
-        RE2["Agent failure rate<br/>> 10% for 5 min --> P2"]
-        RE3["Auth failures spike<br/>> 20% increase --> P3"]
-    end
+ subgraph Rules_Error["Error Rate Alerts"]
+ RE1["High error rate<br/>> 5% for 5 min--> P2"]
+ RE2["Agent failure rate<br/>> 10% for 5 min--> P2"]
+ RE3["Auth failures spike<br/>> 20% increase--> P3"]
+ end
 
-    subgraph Rules_Biz["ðŸ“Š Business Alerts"]
-        RB1["Connectors degraded<br/>> 10% degraded --> P3"]
-        RB2["Ingestion stalled<br/>0 docs for 30 min --> P3"]
-        RB3["Memory writes stopped<br/>0 for 15 min --> P2"]
-    end
+ subgraph Rules_Biz["Business Alerts"]
+ RB1["Connectors degraded<br/>> 10% degraded--> P3"]
+ RB2["Ingestion stalled<br/>0 docs for 30 min--> P3"]
+ RB3["Memory writes stopped<br/>0 for 15 min--> P2"]
+ end
 
-    subgraph Fatigue["ðŸ§  Alert Fatigue Prevention"]
-        F1["Threshold tuning<br/>Review accuracy monthly"]
-        F2["Alert grouping<br/>Group during incidents"]
-        F3["Auto-resolve<br/>Clear when condition clears"]
-        F4["Maintenance windows<br/>Suppress during known maint."]
-    end
+ subgraph Fatigue["Alert Fatigue Prevention"]
+ F1["Threshold tuning<br/>Review accuracy monthly"]
+ F2["Alert grouping<br/>Group during incidents"]
+ F3["Auto-resolve<br/>Clear when condition clears"]
+ F4["Maintenance windows<br/>Suppress during known maint."]
+ end
 
-    RA1 & RA2 & RA3 --> P1_SVC
-    RP1 & RP2 & RP3 --> P2_SVC
-    RE1 & RE2 --> P2_SVC
-    RE3 & RB1 & RB2 --> P3_SVC
-    RB3 --> P2_SVC
-    P1_SVC & P2_SVC & P3_SVC & P4_SVC --- F1 & F2 & F3 & F4
+ RA1 & RA2 & RA3--> P1_SVC
+ RP1 & RP2 & RP3--> P2_SVC
+ RE1 & RE2--> P2_SVC
+ RE3 & RB1 & RB2--> P3_SVC
+ RB3--> P2_SVC
+ P1_SVC & P2_SVC & P3_SVC & P4_SVC --- F1 & F2 & F3 & F4
 
-    class P1_SVC p1
-    class P2_SVC,RP1,RP2,RP3,RE1,RE2,RB3 p2
-    class RE3,RB1,RB2 p3
-    class P4_SVC p4
-    class RA1,RA2,RA3 p1
-    class F1,F2,F3,F4 fatigue
+ class P1_SVC p1
+ class P2_SVC,RP1,RP2,RP3,RE1,RE2,RB3 p2
+ class RE3,RB1,RB2 p3
+ class P4_SVC p4
+ class RA1,RA2,RA3 p1
+ class F1,F2,F3,F4 fatigue
 
 ```
 
@@ -346,29 +346,29 @@ curl -X PUT https://api.pagerduty.com/incidents \
 
 ```mermaid
 sequenceDiagram
-    participant M as Metric Source (Prometheus/CloudWatch)
-    participant AM as Alert Manager
-    participant PD as PagerDuty (P1-P2)
-    participant SL as Slack (P3-P4)
-    participant EN as On-Call Engineer
-    participant RB as Runbook
+ participant M as Metric Source (Prometheus/CloudWatch)
+ participant AM as Alert Manager
+ participant PD as PagerDuty (P1-P2)
+ participant SL as Slack (P3-P4)
+ participant EN as On-Call Engineer
+ participant RB as Runbook
 
-    M->>AM: Evaluate alert rule (e.g., latency > 2s for 5m)
-    AM->>AM: Check dedup window & grouping
-    alt P1 or P2
-        AM->>PD: Route critical alert
-        PD->>EN: Push notification + SMS
-        EN->>PD: Acknowledge (within SLA)
-        EN->>RB: Open runbook for diagnosis
-        RB-->>EN: Mitigation steps
-        EN->>EN: Mitigate issue
-        EN->>PD: Resolve incident
-    else P3 or P4
-        AM->>SL: Post alert to #alerts
-        SL-->>EN: Notification (async)
-        EN->>EN: Triage within SLA window
-    end
-    AM->>AM: Auto-resolve when condition clears
+ M->>AM: Evaluate alert rule (e.g., latency > 2s for 5m)
+ AM->>AM: Check dedup window & grouping
+ alt P1 or P2
+ AM->>PD: Route critical alert
+ PD->>EN: Push notification + SMS
+ EN->>PD: Acknowledge (within SLA)
+ EN->>RB: Open runbook for diagnosis
+ RB-->>EN: Mitigation steps
+ EN->>EN: Mitigate issue
+ EN->>PD: Resolve incident
+ else P3 or P4
+ AM->>SL: Post alert to #alerts
+ SL-->>EN: Notification (async)
+ EN->>EN: Triage within SLA window
+ end
+ AM->>AM: Auto-resolve when condition clears
 ```
 
 > **Diagram:** Alert flow from metric evaluation through deduplication and routing to PagerDuty (P1–P2) or Slack (P3–P4), with acknowledgment, runbook-guided mitigation, and auto-resolve on condition clearance.

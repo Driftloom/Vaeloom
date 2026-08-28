@@ -1,7 +1,7 @@
-﻿# MVP-P18 — 07. Evidence Register
+# MVP-P18 — 07. Evidence Register
 
-> **Phase:** MVP-P18 — Documentation and Knowledge Transfer  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 93.1 (94.2% p50 45ms p95 120ms) + P16 92.8 (12 TF 22 K8s SLSA L2) + P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards + 4 runbooks) + P18 (docs IA 256 docs + 32 ADRs + 99 OpenAPI + portal 1127 lines + runbooks 4)  
+> **Phase:** MVP-P18 — Documentation and Knowledge Transfer 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` + P15 93.1 (94.2% p50 45ms p95 120ms) + P16 92.8 (12 TF 22 K8s SLSA L2) + P17 93.2 (OTel traces + 5 SLO 9 rules + 3 dashboards + 4 runbooks) + P18 (docs IA 256 docs + 32 ADRs + 99 OpenAPI + portal 1127 lines + runbooks 4) 
 > **Predecessor:** `787053a` + P17 93.2 APPROVED → now **93.4 APPROVED** (P18 docs IA/training)
 
 | Evidence ID | Claim | Requirement | Type | Location | Result | Date | Verified by |
@@ -14,7 +14,7 @@
 | EVD-P18-006 | Documentation Map 178 docs dependency graph + canonical sources | R05,R06 | docs map | `docs/DOCUMENTATION-MAP.md:1` 65 lines 178 files 15 cats maturity + ARCH→BACKEND→AI mermaid | PASS 178 docs | 2026-08-22 | Tech Writer |
 | EVD-P18-007 | Docs portal searchable theme-aware 1127 lines mermaid/marked | R05 | portal | `docs-portal.html:1` 1127 lines sidebar 300px search 100/80/60/30 + DOCS_DATA CATEGORIES_DATA marked12/mermaid10 CDN | PASS html serve 200 | 2026-08-22 | DX Lead |
 | EVD-P18-008 | ADRs 32 indexed ADR-001..032 versioned ACCEPTED | R05,R06 | adrs | `docs/adr/ADR-001-use-fastapi.md:1` .. `ADR-032-migration-system-unification.md:1` 32 files + `Architecture/03-adrs.md:1` index | PASS 32 ADRs | 2026-08-22 | Arch |
-| EVD-P18-009 | OpenAPI 99 paths 3.1.0 0.2.0 contract lint yaml | R05 | openapi | `docs/backend/openapi.yaml:1` openapi 3.1.0 version 0.2.0 99 paths `rg -c "^  /" 99` | PASS 99 yaml OK | 2026-08-22 | API |
+| EVD-P18-009 | OpenAPI 99 paths 3.1.0 0.2.0 contract lint yaml | R05 | openapi | `docs/backend/openapi.yaml:1` openapi 3.1.0 version 0.2.0 99 paths `rg -c "^ /" 99` | PASS 99 yaml OK | 2026-08-22 | API |
 | EVD-P18-010 | API Reference 407 lines 18 groups matches 99 paths + curl + SSE | R05 | api docs | `docs/API_REFERENCE.md:1` 407 lines Base https://api.vaeloom.dev + JWT/SSO + 18 groups + RateLimit 100/60s + pagination | PASS 407 lint | 2026-08-22 | API |
 | EVD-P18-011 | Developer Onboarding 216 lines 4 roles + prerequisites + clone + docker + pnpm dev:be/web | R05 | onboarding | `docs/DEVELOPER_ONBOARDING.md:1` 216 lines Node≥18 pnpm≥9 Python≥3.12 Docker + `pnpm dev:web` 2-5s never `pnpm dev` hangs | PASS 4 roles | 2026-08-22 | DX Lead |
 | EVD-P18-012 | Contributing 299 lines project structure 25 packages + conv commits + PR 8-step | R05 | contrib | `CONTRIBUTING.md:1` 299 lines TS strict Py PEP8 100ch + eslint/ruff/prettier/husky + `feat/fix/chore/docs` + vale | PASS 299 lint | 2026-08-22 | Eng |
@@ -31,7 +31,7 @@
 
 | Requirement | Design | Code/Doc | Tests | Evidence | Risk |
 |---|---|---|---|---|---|
-| R01 Scope (docs bounded, no enterprise cells) | WS-18.1..5 | `docs/README.md:1` 256 docs + `DOCUMENTATION-MAP.md:1` 178 docs + `docs-portal.html:1` 1127 lines + `openapi.yaml:1` 99 paths + `adr 32` | markdownlint 6 docs + yaml lint 99 + portal serve 200 + `rg -c "^  /" 99` | EVD-P18-005..010,015..018 | RISK-P18-02/05 |
+| R01 Scope (docs bounded, no enterprise cells) | WS-18.1..5 | `docs/README.md:1` 256 docs + `DOCUMENTATION-MAP.md:1` 178 docs + `docs-portal.html:1` 1127 lines + `openapi.yaml:1` 99 paths + `adr 32` | markdownlint 6 docs + yaml lint 99 + portal serve 200 + `rg -c "^ /" 99` | EVD-P18-005..010,015..018 | RISK-P18-02/05 |
 | R02 Evidence (every claim source+repro) | This register + `01-source-register` 35+20 | file:line per EVD + `vale` + `markdownlint` + `yaml safe_load` + `http-server` + `rg link check` | 2557 collect + --cov 94.2% + 6 docs lint | EVD-P18-001..002,020 | RISK-P18-04 |
 | R03 Security/Privacy/Supply | WS-18.1/4 + redaction+OTel+observability docs + Security 14 + DPIA v1.2 | 42/42 RLS JWT 32+ GDPR31 DPIA1.2 `docs/Security/* 14` + `DEPLOYMENT_RUNBOOK.md` secrets via Infisical | gitleaks 0 + codeql 0 HIGH + trivy 0 CRIT + pip-audit 0 + pnpm 0 + `docs/Security` 14 lint | EVD-P18-017,019 | RISK-P18-01/02 |
 | R04 Quality (normal/negative/boundary/failure/recovery/perf) | WS-18.1..5 + docs quality/ownership | `ci.yml` 5 jobs + `CONTRIBUTING.md:1` 299 lines + `code-config` 32 ADRs indexed + `k6` + `ruff/mypy` + `markdownlint` + `vale` | 2551/2557 + --cov 94.2% + k6 p50 45 p95 120 + openapi 99 + portal 1127 + 32 ADRs | EVD-P18-001..004,020 | RISK-P18-04 |

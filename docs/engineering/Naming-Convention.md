@@ -1,51 +1,51 @@
-﻿# Naming Conventions
+# Naming Conventions
 
 > **Purpose:** Define naming conventions for the Vaeloom codebase
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Naming Conventions
 
 ```mermaid
 graph TD
-    classDef rules fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef lang fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef context fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef file fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef rules fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef lang fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef context fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef file fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph Rules["ðŸ“‹ General Rules"]
-        R1["Descriptive names<br/>getDocumentById not getDoc"]
-        R2["No abbreviations<br/>OrganizationAgent not OrgAgt"]
-        R3["Consistent terminology<br/>"document" not "file""]
-        R4["No Hungarian notation<br/>name not strName"]
-    end
+ subgraph Rules["General Rules"]
+ R1["Descriptive names<br/>getDocumentById not getDoc"]
+ R2["No abbreviations<br/>OrganizationAgent not OrgAgt"]
+ R3["Consistent terminology<br/>"document" not "file""]
+ R4["No Hungarian notation<br/>name not strName"]
+ end
 
-    subgraph Language["ðŸ”¤ By Language"]
-        L1["TypeScript<br/>Variables: camelCase<br/>Functions: camelCase<br/>Classes: PascalCase<br/>Files: kebab-case"]
-        L2["Python<br/>Variables: snake_case<br/>Functions: snake_case<br/>Classes: PascalCase<br/>Files: snake_case"]
-        L3["SQL / CSS<br/>All: snake_case / kebab-case"]
-    end
+ subgraph Language["By Language"]
+ L1["TypeScript<br/>Variables: camelCase<br/>Functions: camelCase<br/>Classes: PascalCase<br/>Files: kebab-case"]
+ L2["Python<br/>Variables: snake_case<br/>Functions: snake_case<br/>Classes: PascalCase<br/>Files: snake_case"]
+ L3["SQL / CSS<br/>All: snake_case / kebab-case"]
+ end
 
-    subgraph Context["ðŸ“Œ By Context"]
-        C1["API: kebab-case plural<br/>GET /workspaces/{id}/documents"]
-        C2["DB: snake_case plural<br/>memory_records"]
-        C3["GraphQL: camelCase<br/>workspaceId"]
-        C4["Env vars: UPPER_SNAKE<br/>DATABASE_URL"]
-        C5["Git branches: kebab-case<br/>feature/add-upload"]
-    end
+ subgraph Context["By Context"]
+ C1["API: kebab-case plural<br/>GET /workspaces/{id}/documents"]
+ C2["DB: snake_case plural<br/>memory_records"]
+ C3["GraphQL: camelCase<br/>workspaceId"]
+ C4["Env vars: UPPER_SNAKE<br/>DATABASE_URL"]
+ C5["Git branches: kebab-case<br/>feature/add-upload"]
+ end
 
-    subgraph Files["ðŸ“„ File Naming"]
-        F1["React: PascalCase.tsx<br/>ProposalCard.tsx"]
-        F2["Services: kebab.service.ts<br/>document.service.ts"]
-        F3["Python: snake_case.py<br/>memory_agent.py"]
-        F4["Tests: {name}.test.ts<br/>document.service.test.ts"]
-    end
+ subgraph Files["File Naming"]
+ F1["React: PascalCase.tsx<br/>ProposalCard.tsx"]
+ F2["Services: kebab.service.ts<br/>document.service.ts"]
+ F3["Python: snake_case.py<br/>memory_agent.py"]
+ F4["Tests: {name}.test.ts<br/>document.service.test.ts"]
+ end
 
-    Rules --> Language --> Context --> Files
+ Rules--> Language--> Context--> Files
 
-    class R1,R2,R3,R4 rules
-    class L1,L2,L3 lang
-    class C1,C2,C3,C4,C5 context
-    class F1,F2,F3,F4 file
+ class R1,R2,R3,R4 rules
+ class L1,L2,L3 lang
+ class C1,C2,C3,C4,C5 context
+ class F1,F2,F3,F4 file
 ```
 
 > **Diagram:** Naming conventions cascade from **general rules** (descriptive, no abbreviations, consistent, no Hungarian) → **by language** (camelCase for TS, snake_case for Python) → **by context** (API, DB, GraphQL, env vars, git) → **file naming** (PascalCase for React, kebab for services, snake for Python).

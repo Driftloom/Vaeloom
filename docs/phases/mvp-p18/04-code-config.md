@@ -1,7 +1,7 @@
-﻿# MVP-P18 — 04. Code and Configuration
+# MVP-P18 — 04. Code and Configuration
 
-> **Phase:** MVP-P18 — Documentation and Knowledge Transfer  
-> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 docs IA/training  
+> **Phase:** MVP-P18 — Documentation and Knowledge Transfer 
+> **Date:** 2026-08-22 · **Baseline:** `787053a` (P13 95.4) + P15 93.1 + P16 92.8 + P17 93.2 + P18 docs IA/training 
 > **Predecessor:** P17 OTel traces + 5 SLO 9 rules + 3 Grafana 23 panels + 4 runbooks retention 30d
 
 ## Architecture Preservation (§13)
@@ -54,7 +54,7 @@ P18 is **documentation hardening**; prod business logic unchanged (only docs IA 
 | `JWT_SECRET` | `test-jwt-secret-for-ci-only-32-chars-long!!` 43 chars | ≥32 no InsecureKeyLengthWarning `validate_settings()` |
 | `DOCS_VERSION` | `v2.0` `docs/README.md:6` Version 2.0 + `docs-portal.html` welcome stats `DOCS_DATA.length` | Published 2026-07-17 256 docs |
 | `ADRS` | `32` `docs/adr/ADR-001..032` 2026-08-22 `ADR-032 migration-system-unification` latest | All Accepted |
-| `OPENAPI_VERSION` | `0.2.0` `docs/backend/openapi.yaml:3` `info.version 0.2.0` + `API_REFERENCE.md:5` Version 0.2.0 | 99 paths `rg -c "^  /" openapi.yaml` 99 |
+| `OPENAPI_VERSION` | `0.2.0` `docs/backend/openapi.yaml:3` `info.version 0.2.0` + `API_REFERENCE.md:5` Version 0.2.0 | 99 paths `rg -c "^ /" openapi.yaml` 99 |
 | `PORTAL` | `docs-portal.html:1` 1127 lines searchable theme-aware mermaid+marked CDN | `python -m http.server 8000` serves |
 | `RUNBOOKS` | `4` `infra/ops/runbooks/*.md 4` + `DEPLOYMENT_RUNBOOK.md:1` 207 lines + `DISASTER_RECOVERY.md:1` 308 lines | `alerts.yml` runbook annotation 5 SLO |
 | `ONBOARDING` | `docs/DEVELOPER_ONBOARDING.md:1` 216 lines + `CONTRIBUTING.md:1` 299 lines + `Developer_Experience 8 docs` | 4 roles engineer/operator/support/security |
@@ -79,7 +79,7 @@ P18 is **documentation hardening**; prod business logic unchanged (only docs IA 
 - `pytest --collect-only -q -o addopts=""` 2557 (12.91s)
 - `uv run --project apps/api python -c "from api.services.gdpr import ALLOWED_TABLES; print(len(ALLOWED_TABLES))"` → 31
 - `uv run --project apps/api python -m pytest --cov=api --cov-report=term -q -o addopts="-n 4"` → 94.2% closes P14
-- `rg -c "^  /" docs/backend/openapi.yaml` → 99 paths PASS `openapi: 3.1.0` version 0.2.0
+- `rg -c "^ /" docs/backend/openapi.yaml` → 99 paths PASS `openapi: 3.1.0` version 0.2.0
 - `ls docs/adr/ | Measure-Object | Select Count` → 32 ADRs `ADR-001`..`ADR-032`
 - `python -m json.tool infra/ops/monitoring/grafana/dashboards/backend.json > /dev/null && echo backend OK` + `latency.json` + `agents.json` 3 OK 23 panels
 - `bash -n infra/ops/synthetic-monitoring/check-health.sh && echo check-health syntax OK` + `curl -f http://localhost:8000/health` 3 probes expected

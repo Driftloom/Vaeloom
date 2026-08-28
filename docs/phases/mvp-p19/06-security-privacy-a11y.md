@@ -1,6 +1,6 @@
-﻿# MVP-P19 — 06. Security, Privacy, A11y
+# MVP-P19 — 06. Security, Privacy, A11y
 
-> **Phase:** MVP-P19 — Release Readiness and Production Deployment  
+> **Phase:** MVP-P19 — Release Readiness and Production Deployment 
 > **Date:** 2026-08-22 · **Baseline:** `787053a` + P16 92.8 (42/42 RLS, JWT 32+, GDPR 31) + P17 93.2 (OTel/structured logging 30d, _redact 9 keys, 5 SLO 3 dashboards) + P18 93.4 (docs IA 256 docs + portal 1127) + P19 release v0.2.0 + LAUNCH-CHECKLIST 178 + docker prod 239 + HPA min3 max10 + 0021 retention + lifespan daemon + feature flags 4
 
 ## Security (P13 95.4 retained + P16 supply-chain retained + P17 observability no regression + P19 release hardening no regression)

@@ -1,7 +1,7 @@
-﻿# Pricing
+# Pricing
 
 > **Purpose:** Define the concrete pricing tiers and monetization strategy for Vaeloom
-> **Status:** ðŸ†• New
+> **Status:** New
 > **Owner:** Product Team
 > **Last Updated:** 2026-07-13
 
@@ -15,42 +15,42 @@ This document defines the concrete pricing for all four tiers — Free, Pro ($12
 
 ```mermaid
 graph TD
-    classDef free fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pro fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef life fill:#fff8e1,stroke:#f57f17,color:#000,stroke-width:1.5px
-    classDef ent fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef principle fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
-    classDef billing fill:#e1f5fe,stroke:#0288d1,color:#000,stroke-width:1px
+ classDef free fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pro fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef life fill:#fff8e1,stroke:#f57f17,color:#000,stroke-width:1.5px
+ classDef ent fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef principle fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef billing fill:#e1f5fe,stroke:#0288d1,color:#000,stroke-width:1px
 
-    subgraph Philosophy["Pricing Philosophy"]
-        PH1["Student-first<br/>Free tier genuinely useful"]
-        PH2["Value-based<br/>Price on outcomes, not features"]
-        PH3["Data-driven<br/>MVP data informs final tiers"]
-    end
+ subgraph Philosophy["Pricing Philosophy"]
+ PH1["Student-first<br/>Free tier genuinely useful"]
+ PH2["Value-based<br/>Price on outcomes, not features"]
+ PH3["Data-driven<br/>MVP data informs final tiers"]
+ end
 
-    subgraph Tiers["Tier Structure"]
-        Free["Free -- $0/mo"]
-        Pro["Pro -- $12/mo"]
-        Life["Lifetime -- $299"]
-        Ent["Enterprise -- $15/seat/mo"]
-    end
+ subgraph Tiers["Tier Structure"]
+ Free["Free -- $0/mo"]
+ Pro["Pro -- $12/mo"]
+ Life["Lifetime -- $299"]
+ Ent["Enterprise -- $15/seat/mo"]
+ end
 
-    subgraph Billing["Billing Infrastructure"]
-        B1["Stripe Billing<br/>Recurring + invoicing"]
-        B2["Entitlement Service<br/>Cached tier checks"]
-        B3["Usage Aggregator<br/>Async metering"]
-    end
+ subgraph Billing["Billing Infrastructure"]
+ B1["Stripe Billing<br/>Recurring + invoicing"]
+ B2["Entitlement Service<br/>Cached tier checks"]
+ B3["Usage Aggregator<br/>Async metering"]
+ end
 
-    Philosophy --> Tiers
-    Tiers --> Billing
-    Free --> Pro --> Life
-    Free & Pro & Life --> Ent
+ Philosophy--> Tiers
+ Tiers--> Billing
+ Free--> Pro--> Life
+ Free & Pro & Life--> Ent
 
-    class F1,F2,F3,F4,F5 free
-    class P1,P2,P3,P4,P5 pro
-    class L1,L2 life
-    class E1,E2,E3,E4,E5 ent
-    class PH1,PH2,PH3 principle
+ class F1,F2,F3,F4,F5 free
+ class P1,P2,P3,P4,P5 pro
+ class L1,L2 life
+ class E1,E2,E3,E4,E5 ent
+ class PH1,PH2,PH3 principle
 ```
 
 ## Tier Comparison
@@ -74,30 +74,30 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant P as Product UI
-    participant S as Stripe
-    participant ES as Entitlement Service
-    participant API as API Gateway
-    participant AG as Usage Aggregator
+ participant U as User
+ participant P as Product UI
+ participant S as Stripe
+ participant ES as Entitlement Service
+ participant API as API Gateway
+ participant AG as Usage Aggregator
 
-    U->>P: Selects Pro plan
-    P->>S: Create checkout session
-    S-->>P: Checkout URL
-    P-->>U: Redirect to Stripe
-    U->>S: Complete payment
-    S-->>ES: Webhook: checkout.completed
-    ES->>ES: Update entitlements cache
-    ES-->>API: Broadcast entitlement change
-    U->>API: API request
-    API->>ES: Check entitlement (cached)
-    ES-->>API: Tier + limits
-    API-->>U: Response (within limits)
+ U->>P: Selects Pro plan
+ P->>S: Create checkout session
+ S-->>P: Checkout URL
+ P-->>U: Redirect to Stripe
+ U->>S: Complete payment
+ S-->>ES: Webhook: checkout.completed
+ ES->>ES: Update entitlements cache
+ ES-->>API: Broadcast entitlement change
+ U->>API: API request
+ API->>ES: Check entitlement (cached)
+ ES-->>API: Tier + limits
+ API-->>U: Response (within limits)
 
-    Note over AG: Async usage metering
-    API->>AG: Log usage event
-    AG->>AG: Aggregate daily
-    AG->>S: Report usage (enterprise billing)
+ Note over AG: Async usage metering
+ API->>AG: Log usage event
+ AG->>AG: Aggregate daily
+ AG->>S: Report usage (enterprise billing)
 ```
 
 ## Pricing Philosophy

@@ -1,8 +1,8 @@
-﻿# Admin Documentation
+# Admin Documentation
 
 > **Purpose:** Define the Vaeloom Admin Panel — capabilities, architecture,
 > security, and operational workflows for platform administrators **Status:**
-> ðŸ†• New **Owner:** Product Team **Last Updated:** 2026-07-13
+> New **Owner:** Product Team **Last Updated:** 2026-07-13
 
 ---
 
@@ -33,15 +33,15 @@ operational bottlenecks, and support escalations.
 ## Goals
 
 - Define the admin panel architecture, component hierarchy, and data flow for
-  engineering implementation
+ engineering implementation
 - Establish security standards for admin operations — MFA enforcement, IP
-  allowlisting, audited actions, and separation of duties
+ allowlisting, audited actions, and separation of duties
 - Provide operational runbooks for common admin tasks — user suspension,
-  workspace data export, impersonation, incident response
+ workspace data export, impersonation, incident response
 - Document performance budgets and scalability limits for admin operations at
-  platform scale
+ platform scale
 - Enable compliance through comprehensive audit logging, access reviews, and
-  data retention policies
+ data retention policies
 
 ---
 
@@ -52,18 +52,18 @@ operational bottlenecks, and support escalations.
 - Admin panel frontend architecture and component tree
 - User management: CRUD, search, filtering, role assignment, MFA enforcement
 - Workspace administration: view/manage, storage quotas, member management, data
-  export/deletion
+ export/deletion
 - Agent permissions: per-user/workspace overrides, agent activity audit
 - Audit log viewer: searchable, filterable, exportable
 - System health dashboard: service status, incidents, resource utilization,
-  error rates
+ error rates
 - Usage & billing: reports, invoice management, plan changes, credits
 - Support tools: impersonation (audited), session management, feature flag
-  overrides
+ overrides
 - Content moderation: flagged content review, user reports, automated moderation
-  actions
+ actions
 - Security controls: admin MFA, IP allowlisting, session timeout, audit logging,
-  separation of duties
+ separation of duties
 
 ### Out of Scope
 
@@ -79,66 +79,66 @@ operational bottlenecks, and support escalations.
 
 ````mermaid
 graph TD
-    classDef frontend fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef api fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef service fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
-    classDef infra fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
+ classDef frontend fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef api fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef service fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef data fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef infra fill:#ffebee,stroke:#c62828,color:#000,stroke-width:1px
 
-    subgraph Frontend["ðŸ-¥ï¸ Admin Panel Frontend"]
-        ADM["Admin Dashboard<br/>React + Tailwind"]
-        AM["User Mgmt<br/>Module"]
-        AW["Workspace Admin<br/>Module"]
-        AP["Agent Permissions<br/>Module"]
-        AL["Audit Log Viewer<br/>Module"]
-        SH["System Health<br/>Module"]
-        UB["Usage & Billing<br/>Module"]
-        ST["Support Tools<br/>Module"]
-        CM["Content Moderation<br/>Module"]
-    end
+ subgraph Frontend["Admin Panel Frontend"]
+ ADM["Admin Dashboard<br/>React + Tailwind"]
+ AM["User Mgmt<br/>Module"]
+ AW["Workspace Admin<br/>Module"]
+ AP["Agent Permissions<br/>Module"]
+ AL["Audit Log Viewer<br/>Module"]
+ SH["System Health<br/>Module"]
+ UB["Usage & Billing<br/>Module"]
+ ST["Support Tools<br/>Module"]
+ CM["Content Moderation<br/>Module"]
+ end
 
-    subgraph API["ðŸŒ Admin API Layer"]
-        AGW["Admin API Gateway<br/>Auth: Admin JWT + MFA<br/>Rate-limited Â· IP-filtered"]
-        AUTH["Auth Middleware<br/>MFA verify Â· Role check<br/>Session validate Â· Audit"]
-    end
+ subgraph API["Admin API Layer"]
+ AGW["Admin API Gateway<br/>Auth: Admin JWT + MFA<br/>Rate-limited · IP-filtered"]
+ AUTH["Auth Middleware<br/>MFA verify · Role check<br/>Session validate · Audit"]
+ end
 
-    subgraph Services["âš™ï¸ Admin Services"]
-        US["User Service<br/>CRUD Â· Roles Â· MFA"]
-        WS["Workspace Service<br/>Quota Â· Export Â· Members"]
-        AS["Agent Service<br/>Permissions Â· Activity"]
-        AUS["Audit Service<br/>Search Â· Filter Â· Export"]
-        SHS["Health Service<br/>Status Â· Incidents Â· Metrics"]
-        BS["Billing Service<br/>Reports Â· Invoices Â· Plans"]
-        SS["Support Service<br/>Impersonation Â· Sessions"]
-        CMS["Moderation Service<br/>Review Â· Actions Â· Reports"]
-    end
+ subgraph Services["Admin Services"]
+ US["User Service<br/>CRUD · Roles · MFA"]
+ WS["Workspace Service<br/>Quota · Export · Members"]
+ AS["Agent Service<br/>Permissions · Activity"]
+ AUS["Audit Service<br/>Search · Filter · Export"]
+ SHS["Health Service<br/>Status · Incidents · Metrics"]
+ BS["Billing Service<br/>Reports · Invoices · Plans"]
+ SS["Support Service<br/>Impersonation · Sessions"]
+ CMS["Moderation Service<br/>Review · Actions · Reports"]
+ end
 
-    subgraph Data["ðŸ’¾ Data Layer"]
-        PG[("PostgreSQL<br/>Users Â· Workspaces<br/>Agents Â· Audit")]
-        TS[("TimescaleDB<br/>Metrics Â· Error Rates<br/>Resource Usage")]
-        OS[("Object Store<br/>Audit Archives<br/>Export Bundles")]
-        CA[("Cache<br/>Redis<br/>Session Cache<br/>Status Cache")]
-    end
+ subgraph Data["Data Layer"]
+ PG[("PostgreSQL<br/>Users · Workspaces<br/>Agents · Audit")]
+ TS[("TimescaleDB<br/>Metrics · Error Rates<br/>Resource Usage")]
+ OS[("Object Store<br/>Audit Archives<br/>Export Bundles")]
+ CA[("Cache<br/>Redis<br/>Session Cache<br/>Status Cache")]
+ end
 
-    subgraph Events["ðŸ“¡ Event Bus"]
-        EB["Redis Streams<br/>Admin Events<br/>Audit Events<br/>Moderation Events"]
-    end
+ subgraph Events["Event Bus"]
+ EB["Redis Streams<br/>Admin Events<br/>Audit Events<br/>Moderation Events"]
+ end
 
-    ADM --> AM & AW & AP & AL & SH & UB & ST & CM
-    AM & AW & AP & AL & SH & UB & ST & CM --> AGW
-    AGW --> AUTH
-    AUTH --> US & WS & AS & AUS & SHS & BS & SS & CMS
-    US & WS & AS & AUS --> PG
-    SHS --> TS
-    US & AUS & SS & CMS --> EB
-    BS & CMS & AUS --> OS
-    AGW & AUTH --> CA
+ ADM--> AM & AW & AP & AL & SH & UB & ST & CM
+ AM & AW & AP & AL & SH & UB & ST & CM--> AGW
+ AGW--> AUTH
+ AUTH--> US & WS & AS & AUS & SHS & BS & SS & CMS
+ US & WS & AS & AUS--> PG
+ SHS--> TS
+ US & AUS & SS & CMS--> EB
+ BS & CMS & AUS--> OS
+ AGW & AUTH--> CA
 
-    class ADM,AM,AW,AP,AL,SH,UB,ST,CM frontend
-    class AGW,AUTH api
-    class US,WS,AS,AUS,SHS,BS,SS,CMS service
-    class PG,TS,OS,CA data
-    class EB infra
+ class ADM,AM,AW,AP,AL,SH,UB,ST,CM frontend
+ class AGW,AUTH api
+ class US,WS,AS,AUS,SHS,BS,SS,CMS service
+ class PG,TS,OS,CA data
+ class EB infra
 ```text
 
 > **Diagram:** Admin Panel architecture flows through 5 layers — **Frontend** (8 modules) → **Admin API Gateway** (JWT+MFA+IP filtering) → **Admin Services** (8 domain services) → **Data Layer** (PostgreSQL, TimescaleDB, Object Store, Redis Cache) → **Event Bus** for async audit and moderation events. Each service is scoped to a single domain and independently deployable.
@@ -172,13 +172,13 @@ The User Management module provides full CRUD operations for platform users.
 | List users | Paginated list with search, filters (status, role, plan, date range) | — | Admin+ role |
 | Search users | Full-text search by name, email, user ID | — | Admin+ role |
 | Filter users | By status (active/suspended/deleted), role, workspace, plan tier, MFA status | — | Admin+ role |
-| Create user | Create user with email, name, initial role, workspace assignment | âœ… | Admin+ role |
+| Create user | Create user with email, name, initial role, workspace assignment | ✅ | Admin+ role |
 | View user details | Profile, roles, workspaces, agent permissions, session history, last login | — | Admin+ role |
-| Update user | Change name, email, role, workspace assignment | âœ… | Admin+ role |
-| Suspend user | Immediate suspension with optional reason, auto-notification to workspace owners | âœ… | Admin+ role |
-| Delete user | Soft delete with configurable grace period (default 30 days), hard delete after grace | âœ… | Owner only |
-| Assign role | Set role at workspace or tenant scope with optional expiry date | âœ… | Admin+ role |
-| Enforce MFA | Require MFA for specific users or all users in a workspace | âœ… | Admin+ role |
+| Update user | Change name, email, role, workspace assignment | ✅ | Admin+ role |
+| Suspend user | Immediate suspension with optional reason, auto-notification to workspace owners | ✅ | Admin+ role |
+| Delete user | Soft delete with configurable grace period (default 30 days), hard delete after grace | ✅ | Owner only |
+| Assign role | Set role at workspace or tenant scope with optional expiry date | ✅ | Admin+ role |
+| Enforce MFA | Require MFA for specific users or all users in a workspace | ✅ | Admin+ role |
 | View login history | IP, device, timestamp, success/failure for last 90 days | — | Admin+ role |
 
 ### User List API
@@ -220,12 +220,12 @@ The Workspace Admin module provides oversight and management across all tenant w
 |------------|-------------|--------------|----------|
 | List workspaces | Paginated, searchable by name, ID, owner, plan tier | — | Admin+ role |
 | View workspace details | Members, storage used, agent count, connector status, billing info | — | Admin+ role |
-| Update workspace settings | Name, description, default agent config | âœ… | Admin+ role |
-| Manage storage quotas | Set per-workspace storage limits, view usage breakdown | âœ… | Admin+ role |
-| Manage members | Add/remove members, change member roles within workspace | âœ… | Admin+ role |
-| Export workspace data | Full export (documents, agents, config) as ZIP to object store | âœ… | Admin+ role |
-| Delete workspace | Soft delete → 30-day grace → permanent removal | âœ… | Owner only |
-| Transfer ownership | Reassign workspace ownership to another admin user | âœ… | Owner only |
+| Update workspace settings | Name, description, default agent config | ✅ | Admin+ role |
+| Manage storage quotas | Set per-workspace storage limits, view usage breakdown | ✅ | Admin+ role |
+| Manage members | Add/remove members, change member roles within workspace | ✅ | Admin+ role |
+| Export workspace data | Full export (documents, agents, config) as ZIP to object store | ✅ | Admin+ role |
+| Delete workspace | Soft delete → 30-day grace → permanent removal | ✅ | Owner only |
+| Transfer ownership | Reassign workspace ownership to another admin user | ✅ | Owner only |
 
 ### Storage Quota Management
 
@@ -253,11 +253,11 @@ The Agent Permissions module allows administrators to override agent-level permi
 | Capability | Description | Audit Logged | Requires |
 |------------|-------------|--------------|----------|
 | View agent permissions | See all agents and their current permission scope | — | Admin+ role |
-| Override agent permission | Grant/restrict specific capabilities (memory read, connector access, tool use) | âœ… | Admin+ role |
-| Set workspace-level defaults | Default agent permissions for all users in a workspace | âœ… | Admin+ role |
-| Set user-level overrides | Override agent permissions for a specific user | âœ… | Admin+ role |
+| Override agent permission | Grant/restrict specific capabilities (memory read, connector access, tool use) | ✅ | Admin+ role |
+| Set workspace-level defaults | Default agent permissions for all users in a workspace | ✅ | Admin+ role |
+| Set user-level overrides | Override agent permissions for a specific user | ✅ | Admin+ role |
 | Audit agent activity | View all actions taken by an agent with full I/O context | — | Admin+ role |
-| Revoke agent access | Immediately disable a specific agent across all scopes | âœ… | Admin+ role |
+| Revoke agent access | Immediately disable a specific agent across all scopes | ✅ | Admin+ role |
 | View permission conflicts | Highlight where user-level override contradicts workspace default | — | Admin+ role |
 
 ### Agent Permission Override Schema
@@ -354,14 +354,14 @@ The System Health dashboard provides real-time and historical visibility into th
 
 | Service | Status | Uptime (30d) | p95 Latency | Last Incident |
 |---------|--------|--------------|-------------|---------------|
-| Admin API | ðŸŸ¢ Healthy | 99.98% | 85ms | 2026-07-10 |
-| User Service | ðŸŸ¢ Healthy | 99.99% | 45ms | 2026-07-08 |
-| Agent Service | ðŸŸ¢ Healthy | 99.95% | 120ms | 2026-07-05 |
-| Agent Runtime | ðŸŸ¡ Degraded | 99.80% | 350ms | 2026-07-13* |
-| LLM Gateway | ðŸŸ¢ Healthy | 99.97% | 2100ms | 2026-07-09 |
-| Audit Service | ðŸŸ¢ Healthy | 99.99% | 30ms | 2026-06-28 |
-| Billing Service | ðŸŸ¢ Healthy | 100.00% | 60ms | — |
-| Database (Primary) | ðŸŸ¢ Healthy | 99.99% | 5ms | 2026-07-07 |
+| Admin API | Healthy | 99.98% | 85ms | 2026-07-10 |
+| User Service | Healthy | 99.99% | 45ms | 2026-07-08 |
+| Agent Service | Healthy | 99.95% | 120ms | 2026-07-05 |
+| Agent Runtime | Degraded | 99.80% | 350ms | 2026-07-13* |
+| LLM Gateway | Healthy | 99.97% | 2100ms | 2026-07-09 |
+| Audit Service | Healthy | 99.99% | 30ms | 2026-06-28 |
+| Billing Service | Healthy | 100.00% | 60ms | — |
+| Database (Primary) | Healthy | 99.99% | 5ms | 2026-07-07 |
 
 \* Active incident — see Incident #INC-2026-0713
 
@@ -385,11 +385,11 @@ The Usage & Billing module provides financial and consumption oversight for all 
 | Capability | Description | Audit Logged | Requires |
 |------------|-------------|--------------|----------|
 | Usage reports | Per-workspace usage by agent actions, storage, API calls, LLM tokens | — | Admin+ role |
-| Invoice management | View/download invoices, payment history, payment method details | âœ… | Admin+ role |
-| Plan changes | Upgrade/downgrade workspace plans, override plan tier | âœ… | Owner only |
-| Credit management | Add/remove credits, view credit usage history, set auto-reload | âœ… | Admin+ role |
+| Invoice management | View/download invoices, payment history, payment method details | ✅ | Admin+ role |
+| Plan changes | Upgrade/downgrade workspace plans, override plan tier | ✅ | Owner only |
+| Credit management | Add/remove credits, view credit usage history, set auto-reload | ✅ | Admin+ role |
 | Billing analytics | MRR, churn rate, usage trends, top-billing workspaces | — | Owner only |
-| Payment failures | View failed payments, retry, configure dunning settings | âœ… | Admin+ role |
+| Payment failures | View failed payments, retry, configure dunning settings | ✅ | Admin+ role |
 
 ### Usage Report Sample
 
@@ -426,12 +426,12 @@ Support tools provide customer support engineers with the capabilities needed to
 
 | Tool | Description | Audit Logged | Restriction |
 |------|-------------|--------------|-------------|
-| User impersonation | Log in as a user to see exactly what they see | âœ… Full replay log | MFA required, max 30 min |
-| Session management | View active sessions, force logout specific sessions | âœ… | Admin+ role |
-| Feature flag overrides | Enable/disable features for a specific user or workspace | âœ… | Support+ role |
-| API request replay | Replay a user's API request to diagnose issues | âœ… | Support+ role (opt-in user consent) |
+| User impersonation | Log in as a user to see exactly what they see | ✅ Full replay log | MFA required, max 30 min |
+| Session management | View active sessions, force logout specific sessions | ✅ | Admin+ role |
+| Feature flag overrides | Enable/disable features for a specific user or workspace | ✅ | Support+ role |
+| API request replay | Replay a user's API request to diagnose issues | ✅ | Support+ role (opt-in user consent) |
 | Config viewer | View user/workspace configuration without editing | — | Support+ role |
-| Notifications | Send test email/in-app notifications to a user | âœ… | Support+ role |
+| Notifications | Send test email/in-app notifications to a user | ✅ | Support+ role |
 
 ### Impersonation Flow
 
@@ -463,9 +463,9 @@ The Content Moderation module provides tools to review, action, and manage user-
 | Flagged content queue | Queue of content flagged by automated moderation (profanity, PII, policy violations) | — | Moderator+ role |
 | User report queue | Queue of content manually reported by other users | — | Moderator+ role |
 | Content review | View content in context, including surrounding conversation and user history | — | Moderator+ role |
-| Take action | Remove content, warn user, suspend user, escalate to admin | âœ… | Moderator+ role |
-| Automated actions | AI-moderated auto-removal of high-confidence violations (e.g., explicit PII) | âœ… | Configurable threshold |
-| Appeal processing | Review user appeals against moderation actions | âœ… | Moderator+ role |
+| Take action | Remove content, warn user, suspend user, escalate to admin | ✅ | Moderator+ role |
+| Automated actions | AI-moderated auto-removal of high-confidence violations (e.g., explicit PII) | ✅ | Configurable threshold |
+| Appeal processing | Review user appeals against moderation actions | ✅ | Moderator+ role |
 | Moderation stats | Actions taken, response times, false positive rate, trend analysis | — | Admin+ role |
 
 ### Moderation Action

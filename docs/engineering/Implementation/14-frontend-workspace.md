@@ -1,7 +1,7 @@
-﻿# 14 — Frontend & Workspace UI (MVP)
+# 14 — Frontend & Workspace UI (MVP)
 
 > **Purpose:** Build the Next.js frontend covering all MVP screens — the phase where the product becomes something a real user can actually use.
-> **Status:** âœ… Upgraded to enterprise quality
+> **Status:** ✅ Upgraded to enterprise quality
 > **Owner:** Engineering Team
 > **Last Updated:** 2026-07-13
 
@@ -23,48 +23,48 @@ Keyboard navigation works across all screens, and the full MVP user journey (sig
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000
+ classDef secondary fill:#e8f5e9,stroke:#2e7d32,color:#000
 
-    API["apps/api (NestJS)"]:::primary
+ API["apps/api (NestJS)"]:::primary
 
-    subgraph Screens["Frontend Screens (Next.js, App Router)"]
-        DASH["Dashboard<br/>Summary, activity, suggestions"]:::secondary
-        WS["Workspace<br/>File browser, viewer, proposals"]:::secondary
-        MG["Memory Graph<br/>Navigable knowledge graph nodes"]:::secondary
-        RES["Resume<br/>Editor, variants, gap-fill prompts"]:::secondary
-        JOBS["Jobs<br/>Shortlist cards, approve/reject"]:::secondary
-        APPS["Applications<br/>Kanban status board"]:::secondary
-        CHAT["Chat<br/>Thread with source citations"]:::secondary
-        SCHED["Schedule<br/>Calendar + list view"]:::secondary
-        CONN["Connectors<br/>Connection cards"]:::secondary
-        HIST["History<br/>Agent actions audit log"]:::secondary
-        SETT["Settings<br/>Autonomy, export, delete"]:::secondary
-    end
+ subgraph Screens["Frontend Screens (Next.js, App Router)"]
+ DASH["Dashboard<br/>Summary, activity, suggestions"]:::secondary
+ WS["Workspace<br/>File browser, viewer, proposals"]:::secondary
+ MG["Memory Graph<br/>Navigable knowledge graph nodes"]:::secondary
+ RES["Resume<br/>Editor, variants, gap-fill prompts"]:::secondary
+ JOBS["Jobs<br/>Shortlist cards, approve/reject"]:::secondary
+ APPS["Applications<br/>Kanban status board"]:::secondary
+ CHAT["Chat<br/>Thread with source citations"]:::secondary
+ SCHED["Schedule<br/>Calendar + list view"]:::secondary
+ CONN["Connectors<br/>Connection cards"]:::secondary
+ HIST["History<br/>Agent actions audit log"]:::secondary
+ SETT["Settings<br/>Autonomy, export, delete"]:::secondary
+ end
 
-    subgraph UX["UX Requirements"]
-        EMPTY["Empty States"]:::secondary
-        ERROR["Error States"]:::secondary
-        APPROVAL["Approval Flows"]:::secondary
-        KEYNAV["Keyboard Navigation"]:::secondary
-    end
+ subgraph UX["UX Requirements"]
+ EMPTY["Empty States"]:::secondary
+ ERROR["Error States"]:::secondary
+ APPROVAL["Approval Flows"]:::secondary
+ KEYNAV["Keyboard Navigation"]:::secondary
+ end
 
-    API --> DASH
-    API --> WS
-    API --> MG
-    API --> RES
-    API --> JOBS
-    API --> APPS
-    API --> CHAT
-    API --> SCHED
-    API --> CONN
-    API --> HIST
-    API --> SETT
-    DASH -.-> EMPTY
-    WS -.-> APPROVAL
-    JOBS -.-> APPROVAL
-    APPS -.-> APPROVAL
-    CHAT -.-> KEYNAV
+ API--> DASH
+ API--> WS
+ API--> MG
+ API--> RES
+ API--> JOBS
+ API--> APPS
+ API--> CHAT
+ API--> SCHED
+ API--> CONN
+ API--> HIST
+ API--> SETT
+ DASH -.-> EMPTY
+ WS -.-> APPROVAL
+ JOBS -.-> APPROVAL
+ APPS -.-> APPROVAL
+ CHAT -.-> KEYNAV
 ```
 
 ## Context

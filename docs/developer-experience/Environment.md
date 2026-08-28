@@ -7,39 +7,39 @@
 
 ```mermaid
 graph TD
-    classDef env fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef vars fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef config fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef env fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef vars fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef config fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Types["ü--ÇÔ∏è Environment Types"]
-        T1["Development<br/>Local development<br/>Source: .env (gitignored)"]
-        T2["Staging<br/>Integration testing<br/>Source: PaaS secrets / CI"]
-        T3["Production<br/>Live user traffic<br/>Source: Secrets manager"]
-    end
+ subgraph Types["Environment Types"]
+ T1["Development<br/>Local development<br/>Source: .env (gitignored)"]
+ T2["Staging<br/>Integration testing<br/>Source: PaaS secrets / CI"]
+ T3["Production<br/>Live user traffic<br/>Source: Secrets manager"]
+ end
 
-    subgraph Variables["üîë Key Environment Variables"]
-        V1["NODE_ENV / ENVIRONMENT / LOG_LEVEL"]
-        V2["DATABASE_URL / REDIS_URL"]
-        V3["AUTH_PROVIDER_URL / AUTH_SECRET"]
-        V4["ANTHROPIC_API_KEY / ANTHROPIC_MODEL"]
-        V5["S3_ENDPOINT / S3_BUCKET / KEYS"]
-        V6["GMAIL_* / GITHUB_* CLIENT_* secrets"]
-    end
+ subgraph Variables["Key Environment Variables"]
+ V1["NODE_ENV / ENVIRONMENT / LOG_LEVEL"]
+ V2["DATABASE_URL / REDIS_URL"]
+ V3["AUTH_PROVIDER_URL / AUTH_SECRET"]
+ V4["ANTHROPIC_API_KEY / ANTHROPIC_MODEL"]
+ V5["S3_ENDPOINT / S3_BUCKET / KEYS"]
+ V6["GMAIL_* / GITHUB_* CLIENT_* secrets"]
+ end
 
-    subgraph Config["‚öôÔ∏è Environment-Specific Config"]
-        C1["Development: debug logging, 2x rate limit"]
-        C2["Staging: info logging, 1.5x rate limit"]
-        C3["Production: info logging, 1x rate limit"]
-    end
+ subgraph Config["Environment-Specific Config"]
+ C1["Development: debug logging, 2x rate limit"]
+ C2["Staging: info logging, 1.5x rate limit"]
+ C3["Production: info logging, 1x rate limit"]
+ end
 
-    Types --> Variables --> Config
+ Types--> Variables--> Config
 
-    class T1,T2,T3 env
-    class V1,V2,V3,V4,V5,V6 vars
-    class C1,C2,C3 config
+ class T1,T2,T3 env
+ class V1,V2,V3,V4,V5,V6 vars
+ class C1,C2,C3 config
 ```
 
-> **Diagram:** Environment architecture ó **3 environment types**
+> **Diagram:** Environment architecture ‚Äî **3 environment types**
 > (dev/staging/prod) with configuration sources ? **key variables** (core,
 > database, auth, AI, storage, connectors) ? **environment-specific config**
 > (log level, rate limits vary by environment).
@@ -48,11 +48,11 @@ graph TD
 
 ## Environment Types
 
-| Environment | Purpose             | Configuration Source        |
+| Environment | Purpose | Configuration Source |
 | ----------- | ------------------- | --------------------------- |
-| Development | Local development   | `.env` file (gitignored)    |
-| Staging     | Integration testing | PaaS secrets / CI variables |
-| Production  | Live user traffic   | Secrets manager             |
+| Development | Local development | `.env` file (gitignored) |
+| Staging | Integration testing | PaaS secrets / CI variables |
+| Production | Live user traffic | Secrets manager |
 
 ## Environment Variables
 
@@ -132,59 +132,59 @@ settings = Settings()
 
 ## Common Mistakes
 
-| Mistake                                                           | Consequence                                                                                                                                                                       |
+| Mistake | Consequence |
 | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Committing `.env` files to version control                        | A committed `.env` file exposes API keys, database credentials, and secrets to everyone with repository access ó it's the most common source of credential leaks                  |
-| Using production API keys in local development                    | A local development error (infinite loop, accidental delete) with a production API key can incur real costs or modify production data ó API keys should be scoped per environment |
-| Sharing `.env` files via unencrypted channels                     | Sending `.env` files over Slack, email, or chat exposes secrets in transport logs ó use a secrets manager or encrypted sharing instead                                            |
-| Hardcoding fallback values when environment variables are missing | A fallback like `ANTHROPIC_API_KEY` with a default fake key silently uses the fake key ó prefer failing fast with a clear error message                                           |
+| Committing `.env` files to version control | A committed `.env` file exposes API keys, database credentials, and secrets to everyone with repository access ‚Äî it's the most common source of credential leaks |
+| Using production API keys in local development | A local development error (infinite loop, accidental delete) with a production API key can incur real costs or modify production data ‚Äî API keys should be scoped per environment |
+| Sharing `.env` files via unencrypted channels | Sending `.env` files over Slack, email, or chat exposes secrets in transport logs ‚Äî use a secrets manager or encrypted sharing instead |
+| Hardcoding fallback values when environment variables are missing | A fallback like `ANTHROPIC_API_KEY` with a default fake key silently uses the fake key ‚Äî prefer failing fast with a clear error message |
 
 ## Best Practices
 
-| Practice                                                       | Why                                                                                                                                              |
+| Practice | Why |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Keep `.env` in `.gitignore` and never commit it                | The `.env` file is in `.gitignore` by default ó verify with `git status` before committing. Use `.env.example` as the template                   |
-| Use separate API keys for development, staging, and production | Dev keys should have rate limits and no access to production data ó API key scoping prevents cross-environment accidents                         |
-| Use a secrets manager for sharing credentials                  | For team environments, use a vault or secrets manager (1Password CLI, Doppler, AWS Secrets Manager) ó never share `.env` files directly          |
-| Fail fast with clear error messages for missing variables      | `if (!DATABASE_URL) throw new Error('DATABASE_URL is required')` ó catching missing config early prevents confusing connection errors at runtime |
+| Keep `.env` in `.gitignore` and never commit it | The `.env` file is in `.gitignore` by default ‚Äî verify with `git status` before committing. Use `.env.example` as the template |
+| Use separate API keys for development, staging, and production | Dev keys should have rate limits and no access to production data ‚Äî API key scoping prevents cross-environment accidents |
+| Use a secrets manager for sharing credentials | For team environments, use a vault or secrets manager (1Password CLI, Doppler, AWS Secrets Manager) ‚Äî never share `.env` files directly |
+| Fail fast with clear error messages for missing variables | `if (!DATABASE_URL) throw new Error('DATABASE_URL is required')` ‚Äî catching missing config early prevents confusing connection errors at runtime |
 
 ## Security Considerations
 
-| Consideration                        | Mitigation                                                                                                                                               |
+| Consideration | Mitigation |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| .env file permissions                | The `.env` file should have file permissions `600` (owner read/write only) ó prevent other processes on the same machine from reading secrets            |
-| Environment variable injection in CI | CI/CD pipeline variables can be printed in logs or leaked through build artifacts ó mark sensitive variables as "masked" or "secret" in CI configuration |
-| Local environment isolation          | Each project should use its own `.env` file ó shared dotfiles (`.bashrc`, `.zshrc`) with global environment variables create conflicts between projects  |
+| .env file permissions | The `.env` file should have file permissions `600` (owner read/write only) ‚Äî prevent other processes on the same machine from reading secrets |
+| Environment variable injection in CI | CI/CD pipeline variables can be printed in logs or leaked through build artifacts ‚Äî mark sensitive variables as "masked" or "secret" in CI configuration |
+| Local environment isolation | Each project should use its own `.env` file ‚Äî shared dotfiles (`.bashrc`, `.zshrc`) with global environment variables create conflicts between projects |
 
 ## Performance Considerations
 
-| Consideration                                | Approach                                                                                                                                                                             |
+| Consideration | Approach |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Environment variable lookups are not free    | Reading `process.env` thousands of times per request adds overhead ó cache env vars at startup in a config object, not per-request lookups                                           |
-| Development vs production config differences | Dev config uses debug logging and higher rate limits ó ensure the config system correctly reads `NODE_ENV` and doesn't fall through to a default that could apply the wrong settings |
+| Environment variable lookups are not free | Reading `process.env` thousands of times per request adds overhead ‚Äî cache env vars at startup in a config object, not per-request lookups |
+| Development vs production config differences | Dev config uses debug logging and higher rate limits ‚Äî ensure the config system correctly reads `NODE_ENV` and doesn't fall through to a default that could apply the wrong settings |
 
 ## Error Handling
 
-| Scenario                                | Detection                                       | Mitigation                                                         | Recovery                                                       |
+| Scenario | Detection | Mitigation | Recovery |
 | --------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------- |
-| Missing required environment variable   | App crashes on startup with clear error message | Add startup validation that fails fast with specific variable name | Set the missing variable in `.env` and restart                 |
-| Wrong environment values in production  | Unexpected behavior or data loss                | Validate `NODE_ENV` against deployment environment                 | Correct variable and redeploy; audit for data impact           |
-| Secret rotation without updating config | Auth failures across services                   | Use secrets manager with auto-rotation; cache with TTL             | Check all services for stale secrets; trigger rotation webhook |
+| Missing required environment variable | App crashes on startup with clear error message | Add startup validation that fails fast with specific variable name | Set the missing variable in `.env` and restart |
+| Wrong environment values in production | Unexpected behavior or data loss | Validate `NODE_ENV` against deployment environment | Correct variable and redeploy; audit for data impact |
+| Secret rotation without updating config | Auth failures across services | Use secrets manager with auto-rotation; cache with TTL | Check all services for stale secrets; trigger rotation webhook |
 
 ## Risks
 
-| Risk                                             | Likelihood | Impact   | Mitigation                                                                                          |
+| Risk | Likelihood | Impact | Mitigation |
 | ------------------------------------------------ | ---------- | -------- | --------------------------------------------------------------------------------------------------- |
-| `.env` file accidentally committed to git        | High       | Critical | `.env` in `.gitignore` enforced by CI pre-commit hook; `git secrets` scan in PR pipeline            |
-| Production credentials used in local development | Medium     | Critical | Environment-specific API keys with scope limits; `ENVIRONMENT` must match key's allowed environment |
-| Environment variable conflicts across projects   | Medium     | Medium   | Use project-prefixed variable names (`Vaeloom_DATABASE_URL` vs bare `DATABASE_URL`)                 |
+| `.env` file accidentally committed to git | High | Critical | `.env` in `.gitignore` enforced by CI pre-commit hook; `git secrets` scan in PR pipeline |
+| Production credentials used in local development | Medium | Critical | Environment-specific API keys with scope limits; `ENVIRONMENT` must match key's allowed environment |
+| Environment variable conflicts across projects | Medium | Medium | Use project-prefixed variable names (`Vaeloom_DATABASE_URL` vs bare `DATABASE_URL`) |
 
 ## Limitations
 
-| Limitation                             | Impact                                             | Workaround                                                                             | Future Resolution                                              |
+| Limitation | Impact | Workaround | Future Resolution |
 | -------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| .env.example must be manually updated  | New variables may be missing from template         | Add checklist item in PR template; automate .env.example generation from config schema | Auto-generate .env.example from validated config schema (v1.5) |
-| No per-developer environment isolation | Developers working on same machine share env state | Use separate `.env.local` overrides                                                    | Dev container with isolated environment per workspace (V2)     |
+| .env.example must be manually updated | New variables may be missing from template | Add checklist item in PR template; automate .env.example generation from config schema | Auto-generate .env.example from validated config schema (v1.5) |
+| No per-developer environment isolation | Developers working on same machine share env state | Use separate `.env.local` overrides | Dev container with isolated environment per workspace (V2) |
 
 ## Overview
 
@@ -212,7 +212,7 @@ levels, rate limits), security practices for secret management, and the
 
 - Environment types (development, staging, production) and configuration sources
 - Key environment variables across all services (core, database, auth, AI,
-  storage, connectors)
+ storage, connectors)
 - Environment-specific configuration differences
 - .env.example template and conventions
 - Security practices for secrets and environment isolation
@@ -228,11 +228,11 @@ levels, rate limits), security practices for secret management, and the
 
 ## Future Improvements
 
-| Improvement                                             | Priority | Complexity | Timeline       |
+| Improvement | Priority | Complexity | Timeline |
 | ------------------------------------------------------- | -------- | ---------- | -------------- |
-| Auto-generate .env.example from validated config schema | High     | Low        | v1.5 (2027 H1) |
-| Dev container with isolated environment per workspace   | Medium   | Medium     | V2 (2027 H2)   |
-| Environment validation tool (`Vaeloom env check`)       | Medium   | Low        | v1.5 (2027 H1) |
+| Auto-generate .env.example from validated config schema | High | Low | v1.5 (2027 H1) |
+| Dev container with isolated environment per workspace | Medium | Medium | V2 (2027 H2) |
+| Environment validation tool (`Vaeloom env check`) | Medium | Low | v1.5 (2027 H1) |
 
 ## Security Considerations
 

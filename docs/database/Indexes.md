@@ -1,7 +1,7 @@
-﻿# Database Indexes
+# Database Indexes
 
 > **Purpose:** Define the indexing strategy for Vaeloom's PostgreSQL database
-> **Status:** ðŸ†• New
+> **Status:** New
 
 ## Overview
 
@@ -42,53 +42,53 @@ This document defines the indexing architecture, index definitions, maintenance 
 
 ```mermaid
 graph TD
-    classDef btree fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef composite fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef gin fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
-    classDef maint fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+ classDef btree fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef composite fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef gin fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef maint fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
 
-    subgraph BTree["ðŸŒ² B-tree Indexes"]
-        direction TB
-        BT1["documents(workspace_id)<br/>Tenant-scoped queries"]
-        BT2["entities(workspace_id)<br/>Tenant-scoped queries"]
-        BT3["entities(canonical_name)<br/>Name lookups"]
-        BT4["documents(source_connector_id)<br/>Connector sync"]
-        BT5["relationships(from_entity_id)<br/>Graph traversal"]
-        BT6["relationships(to_entity_id)<br/>Graph traversal"]
-        BT7["relationships(relation_type)<br/>Type-filtered queries"]
-    end
+ subgraph BTree["B-tree Indexes"]
+ direction TB
+ BT1["documents(workspace_id)<br/>Tenant-scoped queries"]
+ BT2["entities(workspace_id)<br/>Tenant-scoped queries"]
+ BT3["entities(canonical_name)<br/>Name lookups"]
+ BT4["documents(source_connector_id)<br/>Connector sync"]
+ BT5["relationships(from_entity_id)<br/>Graph traversal"]
+ BT6["relationships(to_entity_id)<br/>Graph traversal"]
+ BT7["relationships(relation_type)<br/>Type-filtered queries"]
+ end
 
-    subgraph Composite["ðŸ”-- Composite Indexes"]
-        CP1["memory_records(type, workspace_id)<br/>Type-scoped retrieval"]
-        CP2["agent_actions(workspace_id, created_at DESC)<br/>Time-range audit queries"]
-    end
+ subgraph Composite["Composite Indexes"]
+ CP1["memory_records(type, workspace_id)<br/>Type-scoped retrieval"]
+ CP2["agent_actions(workspace_id, created_at DESC)<br/>Time-range audit queries"]
+ end
 
-    subgraph GIN["ðŸ” GIN Indexes"]
-        G1["entities USING GIN(aliases)<br/>Entity name search"]
-        G2["documents USING GIN(content_tsvector)<br/>Full-text search"]
-    end
+ subgraph GIN["GIN Indexes"]
+ G1["entities USING GIN(aliases)<br/>Entity name search"]
+ G2["documents USING GIN(content_tsvector)<br/>Full-text search"]
+ end
 
-    subgraph Maintenance["ðŸ› ï¸ Index Maintenance"]
-        M1["workspace_id indexes<br/>Bloat: Low<br/>REINDEX quarterly"]
-        M2["created_at indexes<br/>Bloat: Medium<br/>REINDEX monthly"]
-        M3["GIN indexes<br/>Bloat: Low<br/>Auto-maintained"]
-    end
+ subgraph Maintenance["Index Maintenance"]
+ M1["workspace_id indexes<br/>Bloat: Low<br/>REINDEX quarterly"]
+ M2["created_at indexes<br/>Bloat: Medium<br/>REINDEX monthly"]
+ M3["GIN indexes<br/>Bloat: Low<br/>Auto-maintained"]
+ end
 
-    subgraph Monitoring["ðŸ“Š Usage Monitoring"]
-        MON1["pg_stat_user_indexes<br/>idx_scan = 0 --> Unused"]
-        MON2["pg_relation_size<br/>Track index bloat"]
-    end
+ subgraph Monitoring["Usage Monitoring"]
+ MON1["pg_stat_user_indexes<br/>idx_scan = 0--> Unused"]
+ MON2["pg_relation_size<br/>Track index bloat"]
+ end
 
-    BT1 & BT2 & BT3 & BT4 & BT5 & BT6 & BT7 --> M1
-    CP1 & CP2 --> M2
-    G1 & G2 --> M3
-    M1 & M2 & M3 --> MON1 & MON2
+ BT1 & BT2 & BT3 & BT4 & BT5 & BT6 & BT7--> M1
+ CP1 & CP2--> M2
+ G1 & G2--> M3
+ M1 & M2 & M3--> MON1 & MON2
 
-    class BT1,BT2,BT3,BT4,BT5,BT6,BT7 btree
-    class CP1,CP2 composite
-    class G1,G2 gin
-    class M1,M2,M3 maint
-    class MON1,MON2 maint
+ class BT1,BT2,BT3,BT4,BT5,BT6,BT7 btree
+ class CP1,CP2 composite
+ class G1,G2 gin
+ class M1,M2,M3 maint
+ class MON1,MON2 maint
 
 ```
 
@@ -291,30 +291,30 @@ REINDEX INDEX CONCURRENTLY idx_agent_actions_time;
 
 ```mermaid
 sequenceDiagram
-    participant DEV as Developer
-    participant APP as Application
-    participant PG as PostgreSQL
-    participant MON as Monitor (pg_stat)
+ participant DEV as Developer
+ participant APP as Application
+ participant PG as PostgreSQL
+ participant MON as Monitor (pg_stat)
 
-    DEV->>PG: CREATE INDEX CONCURRENTLY
-    PG->>PG: Build index without blocking writes
-    PG-->>DEV: Index created
+ DEV->>PG: CREATE INDEX CONCURRENTLY
+ PG->>PG: Build index without blocking writes
+ PG-->>DEV: Index created
 
-    DEV->>APP: Deploy query using new index
-    APP->>PG: Query with index scan
-    PG->>PG: Index seek (vs sequential scan)
-    PG-->>APP: Fast result
+ DEV->>APP: Deploy query using new index
+ APP->>PG: Query with index scan
+ PG->>PG: Index seek (vs sequential scan)
+ PG-->>APP: Fast result
 
-    loop Every 24h
-        MON->>PG: Check pg_stat_user_indexes
-        PG-->>MON: idx_scan counts, bloat metrics
-        MON->>MON: Alert on unused (>90d no scan) or bloated (>30% bloat)
-    end
+ loop Every 24h
+ MON->>PG: Check pg_stat_user_indexes
+ PG-->>MON: idx_scan counts, bloat metrics
+ MON->>MON: Alert on unused (>90d no scan) or bloated (>30% bloat)
+ end
 
-    alt Unused Index Detected
-        MON-->>DEV: Recommend index removal
-        DEV->>PG: DROP INDEX CONCURRENTLY
-    end
+ alt Unused Index Detected
+ MON-->>DEV: Recommend index removal
+ DEV->>PG: DROP INDEX CONCURRENTLY
+ end
 ```
 
 > **Diagram:** Index creation and monitoring lifecycle — concurrent index creation avoids blocking writes, the application benefits from faster queries, and daily monitoring via pg_stat_user_indexes detects unused or bloated indexes for cleanup.

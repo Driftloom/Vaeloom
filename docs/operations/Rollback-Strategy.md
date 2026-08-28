@@ -38,20 +38,20 @@ Every deployment must be reversible. This document defines rollback procedures f
 
 ```mermaid
 graph TD
-    classDef detect fill:#ffcccc,stroke:#cc0000,color:#000,stroke-width:2px
-    classDef decision fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
-    classDef action fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef detect fill:#ffcccc,stroke:#cc0000,color:#000,stroke-width:2px
+ classDef decision fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:1.5px
+ classDef action fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
 
-    ISSUE["Issue Detected<br/>(error spike, user reports)"]:::detect
-    SEV{"Severity?"}:::decision
+ ISSUE["Issue Detected<br/>(error spike, user reports)"]:::detect
+ SEV{"Severity?"}:::decision
 
-    SEV -->|"P0 (outage)"| ROLLBACK["Rollback Immediately<br/>(no approval needed)"]:::action
-    SEV -->|"P1 (degraded)"| ASSESS{"Root cause obvious<br/>+ quick fix?"}:::decision
-    SEV -->|"P2/P3 (minor)"| FIX["Fix Forward<br/>(next deploy)"]:::action
+ SEV-->|"P0 (outage)"| ROLLBACK["Rollback Immediately<br/>(no approval needed)"]:::action
+ SEV-->|"P1 (degraded)"| ASSESS{"Root cause obvious<br/>+ quick fix?"}:::decision
+ SEV-->|"P2/P3 (minor)"| FIX["Fix Forward<br/>(next deploy)"]:::action
 
-    ASSESS -->|"Yes, <15 min fix"| FIX
-    ASSESS -->|"No / uncertain"| APPROVAL["Approval: SRE Lead<br/>+ Deploying Engineer"]:::decision
-    APPROVAL --> ROLLBACK
+ ASSESS-->|"Yes, <15 min fix"| FIX
+ ASSESS-->|"No / uncertain"| APPROVAL["Approval: SRE Lead<br/>+ Deploying Engineer"]:::decision
+ APPROVAL--> ROLLBACK
 ```
 
 > **Diagram:** Rollback decision flow. P0 = immediate rollback (no approval). P1 = assess; if not a quick fix, get approval then roll back. P2/P3 = fix forward.

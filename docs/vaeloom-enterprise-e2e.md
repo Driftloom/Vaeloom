@@ -167,41 +167,41 @@ this execution is newly authored, not reproduced.
 
 ### B. Inputs Reviewed
 
-| ID        | Input                                   | Contribution                                                                                                                                                                                                                                                 | Reliability                                                                   |
+| ID | Input | Contribution | Reliability |
 | --------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| SRC-EP-01 | `06-Vaeloom-Enterprise-Paper.md`        | Canonical enterprise vision — 28 agents, 22 memory types, multi-tenant model, plugin ecosystem, migration path                                                                                                                                               | Current, primary source                                                       |
-| SRC-EP-02 | `vaeloom-enterprise-paper.md`           | Superseded duplicate of SRC-EP-01 (explicit banner in-file confirms this)                                                                                                                                                                                    | Not used independently                                                        |
-| SRC-EP-03 | `01-Vaeloom-MVP-Spec.md`                | MVP foundation this tier builds on                                                                                                                                                                                                                           | Current                                                                       |
-| SRC-EP-04 | `02-System-Architecture.md`             | Base six-layer architecture, extended in Phase 5                                                                                                                                                                                                             | Current                                                                       |
-| SRC-EP-05 | `03-Agent-Workflow.md`                  | Base agent trace, extended to enterprise sequence in Phase 5                                                                                                                                                                                                 | Current                                                                       |
-| SRC-EP-06 | `04-Memory-Knowledge-Graph.md`          | Base 6-type memory, extended to 22 types in Phase 7                                                                                                                                                                                                          | Current                                                                       |
-| SRC-EP-07 | `Vaeloom-Complete-Documentation.md`     | 8-layer architecture (adds Events/Realtime/Data-Infra beyond the base 6), full agent roster table, DB schema                                                                                                                                                 | Current                                                                       |
-| SRC-EP-08 | `00-Gap-Analysis-Report.md`             | Prior doc audit; explicitly flags Enterprise as "weakest domain (2 files)" pre-completion pass                                                                                                                                                               | Current, scoped to doc-completeness only                                      |
+| SRC-EP-01 | `06-Vaeloom-Enterprise-Paper.md` | Canonical enterprise vision — 28 agents, 22 memory types, multi-tenant model, plugin ecosystem, migration path | Current, primary source |
+| SRC-EP-02 | `vaeloom-enterprise-paper.md` | Superseded duplicate of SRC-EP-01 (explicit banner in-file confirms this) | Not used independently |
+| SRC-EP-03 | `01-Vaeloom-MVP-Spec.md` | MVP foundation this tier builds on | Current |
+| SRC-EP-04 | `02-System-Architecture.md` | Base six-layer architecture, extended in Phase 5 | Current |
+| SRC-EP-05 | `03-Agent-Workflow.md` | Base agent trace, extended to enterprise sequence in Phase 5 | Current |
+| SRC-EP-06 | `04-Memory-Knowledge-Graph.md` | Base 6-type memory, extended to 22 types in Phase 7 | Current |
+| SRC-EP-07 | `Vaeloom-Complete-Documentation.md` | 8-layer architecture (adds Events/Realtime/Data-Infra beyond the base 6), full agent roster table, DB schema | Current |
+| SRC-EP-08 | `00-Gap-Analysis-Report.md` | Prior doc audit; explicitly flags Enterprise as "weakest domain (2 files)" pre-completion pass | Current, scoped to doc-completeness only |
 | SRC-EP-09 | `00-Documentation-Completion-Report.md` | Records that 8 new Enterprise-tier docs were added (Multi-Tenancy, Organizations, Billing, Admin-Portal, Feature-Flags, Licensing, Plugin-Marketplace, Enterprise-APIs) — **titles and one-line purposes only, full content not provided to this execution** | Current, but **incomplete for this execution's purposes** — see Finding I-0.2 |
 
 ### C. Questions and Unknowns
 
-| ID     | Question                                                                                       | Disposition                                                                                                                                                                                                                                                                                                             |
+| ID | Question | Disposition |
 | ------ | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q-E0.1 | Full content of the 8 Enterprise-tier category docs referenced in SRC-EP-09                    | **Not available.** This document authors fresh, complete content for multi-tenancy, organizations, billing, admin portal, feature flags, licensing, plugin marketplace, and enterprise APIs in the relevant phases below (5, 7, 8, 13), consistent with the explicit instruction to fill these gaps at enterprise depth |
-| Q-E0.2 | Same 9 stakeholder unknowns as MVP Phase 0 (legal entity, budget, deadline, headcount, vendor) | Inherited unresolved from the MVP document; additionally, Q-E0.3 below is net-new at this tier                                                                                                                                                                                                                          |
-| Q-E0.3 | Which specific enterprise design-partner(s) exist, if any                                      | Not stated. Assumption **A-E0.1**: no named design partner yet — Phase 4's rollout plan is generic-institution-shaped, not tuned to one partner's requirements                                                                                                                                                          |
+| Q-E0.1 | Full content of the 8 Enterprise-tier category docs referenced in SRC-EP-09 | **Not available.** This document authors fresh, complete content for multi-tenancy, organizations, billing, admin portal, feature flags, licensing, plugin marketplace, and enterprise APIs in the relevant phases below (5, 7, 8, 13), consistent with the explicit instruction to fill these gaps at enterprise depth |
+| Q-E0.2 | Same 9 stakeholder unknowns as MVP Phase 0 (legal entity, budget, deadline, headcount, vendor) | Inherited unresolved from the MVP document; additionally, Q-E0.3 below is net-new at this tier |
+| Q-E0.3 | Which specific enterprise design-partner(s) exist, if any | Not stated. Assumption **A-E0.1**: no named design partner yet — Phase 4's rollout plan is generic-institution-shaped, not tuned to one partner's requirements |
 
 ### D. Work Completed
 
 **D.1 Existing-state maturity assessment (delta from the MVP document's Phase 0
 D.1).**
 
-| Dimension               | MVP maturity (inherited)                                 | Enterprise-tier maturity (net new)                                                                         |
+| Dimension | MVP maturity (inherited) | Enterprise-tier maturity (net new) |
 | ----------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Multi-tenancy design    | N/A                                                      | Medium — consent model narrated in prose (SRC-EP-01 §19.2), no schema/enforcement design                   |
-| 22-type memory taxonomy | 6 types fully specified                                  | Medium — all 22 types named with one-line definitions (SRC-EP-01 §8.1), no per-type storage/lifecycle spec |
-| 28-agent roster         | 8 agents fully specified                                 | Medium-High — all 28 named with mission/autonomy (SRC-EP-01 §9.2), only 4 documented "in depth"            |
-| SSO/RBAC                | N/A                                                      | Low — principle stated, no schema or provider matrix                                                       |
-| Plugin/MCP ecosystem    | Base MCP-shape decision inherited (ADR-002, MVP Phase 5) | Medium — manifest concept described, no sandbox enforcement design                                         |
-| SOC 2                   | Explicitly out of scope                                  | Low — named as a target, no control mapping                                                                |
-| Billing                 | N/A                                                      | **None** — one-line mention only                                                                           |
-| Admin console           | N/A                                                      | Low — page list exists, no data model or wireframes                                                        |
+| Multi-tenancy design | N/A | Medium — consent model narrated in prose (SRC-EP-01 §19.2), no schema/enforcement design |
+| 22-type memory taxonomy | 6 types fully specified | Medium — all 22 types named with one-line definitions (SRC-EP-01 §8.1), no per-type storage/lifecycle spec |
+| 28-agent roster | 8 agents fully specified | Medium-High — all 28 named with mission/autonomy (SRC-EP-01 §9.2), only 4 documented "in depth" |
+| SSO/RBAC | N/A | Low — principle stated, no schema or provider matrix |
+| Plugin/MCP ecosystem | Base MCP-shape decision inherited (ADR-002, MVP Phase 5) | Medium — manifest concept described, no sandbox enforcement design |
+| SOC 2 | Explicitly out of scope | Low — named as a target, no control mapping |
+| Billing | N/A | **None** — one-line mention only |
+| Admin console | N/A | Low — page list exists, no data model or wireframes |
 
 **D.2 Canonical source resolution.** SRC-EP-01 declared canonical enterprise
 vision document; SRC-EP-02 confirmed superseded duplicate, not cited
@@ -224,16 +224,16 @@ Source inventory (§B), maturity delta table (D.1), canonical-source resolution
 
 ### G. Verification Results
 
-| Check                                    | Result                                          |
+| Check | Result |
 | ---------------------------------------- | ----------------------------------------------- |
-| All 9 source documents inspected         | ✅ Pass                                         |
+| All 9 source documents inspected | ✅ Pass |
 | Relationship to MVP document established | ✅ Pass — explicit inheritance stated in header |
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                              | Mitigation                                                                                                                                                                                                                                      |
+| ID | Risk | Mitigation |
 | --------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RISK-E0.1 | Same structural risk as MVP RISK-0.1 — no code/infra/runtime attached                                             | Same dual-track (Design/Execution) reporting applied throughout                                                                                                                                                                                 |
+| RISK-E0.1 | Same structural risk as MVP RISK-0.1 — no code/infra/runtime attached | Same dual-track (Design/Execution) reporting applied throughout |
 | RISK-E0.2 | This document authors net-new content for 8 enterprise domains without an unseen source document to check against | Content is clearly labeled as newly authored in this execution (D.3); flagged for stakeholder/domain-expert review before being treated as final, especially Billing (real pricing/legal input needed) and SOC 2 (real audit-firm input needed) |
 
 ### J. Quality Gate
@@ -277,38 +277,38 @@ institutions without changing who owns the memory.
 
 **D.2 What's genuinely new at this tier (the actual discovery output).**
 
-| New dimension                   | Why it exists                                                                                                                                                                                                                                                            |
+| New dimension | Why it exists |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Institutional buyer             | Universities/bootcamps/companies want to offer Vaeloom as a structured benefit to their population (career services, internal mobility, alumni engagement)                                                                                                               |
-| The consent model               | Makes the institutional case work **without** compromising the core promise that memory belongs to the individual — this is the single most important new design constraint at this tier, treated as non-negotiable exactly like "suggest-mode" is non-negotiable at MVP |
-| Plugin/MCP ecosystem            | Third parties extend Vaeloom without waiting on the core team                                                                                                                                                                                                            |
-| Full memory taxonomy (22 types) | Each new type answers a distinct kind of question the 6 MVP types don't cover (e.g., Relationship, Goal, Decision)                                                                                                                                                       |
-| Full agent roster (28)          | Net-new agents operate on the _same_ memory as the MVP's 8 — this is additive, not a re-architecture (Migration Path, source corpus §23.2)                                                                                                                               |
+| Institutional buyer | Universities/bootcamps/companies want to offer Vaeloom as a structured benefit to their population (career services, internal mobility, alumni engagement) |
+| The consent model | Makes the institutional case work **without** compromising the core promise that memory belongs to the individual — this is the single most important new design constraint at this tier, treated as non-negotiable exactly like "suggest-mode" is non-negotiable at MVP |
+| Plugin/MCP ecosystem | Third parties extend Vaeloom without waiting on the core team |
+| Full memory taxonomy (22 types) | Each new type answers a distinct kind of question the 6 MVP types don't cover (e.g., Relationship, Goal, Decision) |
+| Full agent roster (28) | Net-new agents operate on the _same_ memory as the MVP's 8 — this is additive, not a re-architecture (Migration Path, source corpus §23.2) |
 
 **D.3 Business objectives (enterprise-tier, additive to MVP's BO-1–4).**
 
-| ID    | Objective                                                                                                                         |
+| ID | Objective |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------- |
-| EBO-1 | Convert a proven MVP core loop into an institutionally-sellable platform                                                          |
+| EBO-1 | Convert a proven MVP core loop into an institutionally-sellable platform |
 | EBO-2 | Achieve this with zero individual-memory access by an institution without that individual's explicit, granular, revocable consent |
-| EBO-3 | Reach SOC 2 Type II audit readiness (not necessarily a completed audit — readiness)                                               |
-| EBO-4 | Support a real plugin ecosystem without the core team being a bottleneck for every new connector                                  |
+| EBO-3 | Reach SOC 2 Type II audit readiness (not necessarily a completed audit — readiness) |
+| EBO-4 | Support a real plugin ecosystem without the core team being a bottleneck for every new connector |
 
 **D.4 Success metrics (enterprise-tier, ESM-01–10, newly authored — the source
 corpus states these as qualitative goals only).**
 
-| ID     | Metric                                                                          | Target                                                                                                           |
+| ID | Metric | Target |
 | ------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| ESM-01 | Cross-tenant data leakage incidents                                             | 0, always (inherited unchanged from MVP SM-08, elevated to the single hardest gate at this tier)                 |
-| ESM-02 | Time from tenant provisioning request to a working, isolated tenant             | < 1 business day (self-service target)                                                                           |
-| ESM-03 | % of institutional admins who can see individual memory content without consent | 0% — architecturally impossible, not just policy-disallowed                                                      |
-| ESM-04 | Consent revocation → institution's access actually reduced                      | < 5 minutes propagation time                                                                                     |
-| ESM-05 | SOC 2 control coverage (Phase 13)                                               | 100% of the Trust Services Criteria mapped with an implementation owner before the first real audit engagement   |
-| ESM-06 | Plugin submission → sandboxed review decision                                   | < 3 business days for a first-pass automated + manual review                                                     |
-| ESM-07 | Agent roster growth from 8 → 28 causes zero MVP-agent behavior regression       | 0 regressions in the MVP golden-dataset suite (Phase 12, MVP document) after enterprise agents are added         |
-| ESM-08 | Memory schema migration from 6 → 22 types                                       | Zero data re-ingestion required (purely additive schema growth, per source corpus §23.1)                         |
-| ESM-09 | Institutional tenant NPS (career-office persona)                                | Directional target only — real number requires real design-partner data, flagged `REQUIRES_STAKEHOLDER_DECISION` |
-| ESM-10 | Data residency compliance                                                       | 100% of tenants provisioned in their contractually-required region from day one of that tenant's onboarding      |
+| ESM-01 | Cross-tenant data leakage incidents | 0, always (inherited unchanged from MVP SM-08, elevated to the single hardest gate at this tier) |
+| ESM-02 | Time from tenant provisioning request to a working, isolated tenant | < 1 business day (self-service target) |
+| ESM-03 | % of institutional admins who can see individual memory content without consent | 0% — architecturally impossible, not just policy-disallowed |
+| ESM-04 | Consent revocation → institution's access actually reduced | < 5 minutes propagation time |
+| ESM-05 | SOC 2 control coverage (Phase 13) | 100% of the Trust Services Criteria mapped with an implementation owner before the first real audit engagement |
+| ESM-06 | Plugin submission → sandboxed review decision | < 3 business days for a first-pass automated + manual review |
+| ESM-07 | Agent roster growth from 8 → 28 causes zero MVP-agent behavior regression | 0 regressions in the MVP golden-dataset suite (Phase 12, MVP document) after enterprise agents are added |
+| ESM-08 | Memory schema migration from 6 → 22 types | Zero data re-ingestion required (purely additive schema growth, per source corpus §23.1) |
+| ESM-09 | Institutional tenant NPS (career-office persona) | Directional target only — real number requires real design-partner data, flagged `REQUIRES_STAKEHOLDER_DECISION` |
+| ESM-10 | Data residency compliance | 100% of tenants provisioned in their contractually-required region from day one of that tenant's onboarding |
 
 **D.5 Feasibility.** Institutionally, the harder problem than technology is
 trust: an institution's admin persona (e.g., a university career office) must be
@@ -330,7 +330,7 @@ starting Phase 3.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                        | Mitigation                                                             |
+| ID | Risk | Mitigation |
 | --------- | ----------------------------------------------------------- | ---------------------------------------------------------------------- |
 | RISK-E1.1 | ESM-09 (NPS) has no real target without design-partner data | Flagged `REQUIRES_STAKEHOLDER_DECISION`, not treated as a release gate |
 
@@ -361,7 +361,7 @@ SRC-EP-01 §2.1 (personas incl. Enterprise employee), §5.1 (Connector catalog),
 
 ### C. Questions and Unknowns
 
-| ID     | Question                                                          | Disposition                                                                                                                                                                                       |
+| ID | Question | Disposition |
 | ------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Q-E2.1 | Named institutional segments beyond "university/bootcamp/company" | Assumption **A-E2.1**: three initial segments only (university career services, corporate L&D/internal mobility, bootcamp placement) — matches source corpus's stated examples, no others assumed |
 
@@ -369,31 +369,31 @@ SRC-EP-01 §2.1 (personas incl. Enterprise employee), §5.1 (Connector catalog),
 
 **D.1 New persona (enterprise tier, additive to the MVP's 6 personas).**
 
-| Persona                                        | Core need                                                                                | Primary modules                                             |
+| Persona | Core need | Primary modules |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Institutional admin (university career office) | Aggregated, consented visibility into cohort outcomes; partner-employer list integration | Admin console, Analytics, consent-gated reporting           |
-| Institutional admin (corporate L&D)            | Internal mobility, skills tracking across the org                                        | Admin console, org-scoped memory views (consented)          |
-| Enterprise employee                            | Internal mobility, structured growth within an org                                       | Org-scoped memory, admin-visible (with consent) skill graph |
+| Institutional admin (university career office) | Aggregated, consented visibility into cohort outcomes; partner-employer list integration | Admin console, Analytics, consent-gated reporting |
+| Institutional admin (corporate L&D) | Internal mobility, skills tracking across the org | Admin console, org-scoped memory views (consented) |
+| Enterprise employee | Internal mobility, structured growth within an org | Org-scoped memory, admin-visible (with consent) skill graph |
 
 **D.2 Domain vocabulary additions.**
 
-| Term             | Definition                                                                                                                                             |
+| Term | Definition |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Tenant           | An institutional account boundary — owns policy (retention, allowed connectors), never owns individual memory content without consent                  |
-| Consent grant    | A revocable, individual-level authorization letting a specific tenant-scoped role see specific, aggregated or specific data                            |
+| Tenant | An institutional account boundary — owns policy (retention, allowed connectors), never owns individual memory content without consent |
+| Consent grant | A revocable, individual-level authorization letting a specific tenant-scoped role see specific, aggregated or specific data |
 | Sandboxed plugin | A third-party tool execution context with no access beyond its declared manifest scope, enforced by the Permission Engine, not developer self-policing |
 
 **D.3 Enterprise connector catalog (additive to MVP's 5 connectors).**
 
-| Category                    | New connectors                                   |
+| Category | New connectors |
 | --------------------------- | ------------------------------------------------ |
-| Cloud storage & docs        | Dropbox, OneDrive (additive to Drive)            |
-| Communication               | Slack, Discord (additive to Gmail)               |
-| Career platforms            | LinkedIn, Indeed, Naukri, Internshala, Wellfound |
-| Competitive/coding profiles | LeetCode, Codeforces, HackerRank, Kaggle         |
-| Learning                    | YouTube, Coursera, Udemy                         |
-| Knowledge tools             | Notion, Obsidian, Figma, Canva                   |
-| Productivity                | Microsoft Office, Google Calendar                |
+| Cloud storage & docs | Dropbox, OneDrive (additive to Drive) |
+| Communication | Slack, Discord (additive to Gmail) |
+| Career platforms | LinkedIn, Indeed, Naukri, Internshala, Wellfound |
+| Competitive/coding profiles | LeetCode, Codeforces, HackerRank, Kaggle |
+| Learning | YouTube, Coursera, Udemy |
+| Knowledge tools | Notion, Obsidian, Figma, Canva |
+| Productivity | Microsoft Office, Google Calendar |
 
 Each ships with the same MCP-shaped contract pattern established in the MVP
 document (ADR-002) — this is the payoff of that decision having been made early.
@@ -426,7 +426,7 @@ expansion; D.4 → Phase 13.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                               | Mitigation                                                                                                                                  |
+| ID | Risk | Mitigation |
 | --------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | RISK-E2.1 | FERPA-adjacent scope was not explicit in the source corpus, introduced here by inference from "university" tenants | Flagged for legal review before any university design partner signs; treated as a research finding, not an assumed compliance certification |
 
@@ -467,104 +467,104 @@ requirements.
 
 _Module: Multi-Tenancy & Consent (the architectural centerpiece of this tier)_
 
-| ID     | Requirement                                                                                                                                                                                                                                                                                                                               | Priority | Traces to |
+| ID | Requirement | Priority | Traces to |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | --------- |
-| EFR-01 | System shall provision a tenant as a policy boundary (allowed connectors, retention windows) distinct from and never automatically granting access to individual workspace memory                                                                                                                                                         | Must     | EBO-2     |
-| EFR-02 | An institution shall be able to provision accounts for its population without gaining access to any individual's memory content absent that individual's explicit consent                                                                                                                                                                 | Must     | ESM-03    |
-| EFR-03 | Consent shall be granular (specific data, specific tenant-scoped role, specific purpose) — never an all-or-nothing toggle                                                                                                                                                                                                                 | Must     | EBO-2     |
-| EFR-04 | Consent shall be revocable at any time by the individual; revocation reduces the tenant's access **going forward only** — it shall never retroactively grant access to history the tenant wasn't previously authorized to see, nor shall revocation delete history the tenant legitimately already had (immutability of the audit record) | Must     | ESM-04    |
-| EFR-05 | System shall enforce tenant data isolation at the storage-query layer (every query scoped by `tenant_id` derived from the authenticated session), not merely at the application-logic layer                                                                                                                                               | Must     | ESM-01    |
-| EFR-06 | System shall support an institutional admin role that can view only aggregated, consented data — never a raw individual memory record, even with elevated internal tooling access                                                                                                                                                         | Must     | ESM-03    |
+| EFR-01 | System shall provision a tenant as a policy boundary (allowed connectors, retention windows) distinct from and never automatically granting access to individual workspace memory | Must | EBO-2 |
+| EFR-02 | An institution shall be able to provision accounts for its population without gaining access to any individual's memory content absent that individual's explicit consent | Must | ESM-03 |
+| EFR-03 | Consent shall be granular (specific data, specific tenant-scoped role, specific purpose) — never an all-or-nothing toggle | Must | EBO-2 |
+| EFR-04 | Consent shall be revocable at any time by the individual; revocation reduces the tenant's access **going forward only** — it shall never retroactively grant access to history the tenant wasn't previously authorized to see, nor shall revocation delete history the tenant legitimately already had (immutability of the audit record) | Must | ESM-04 |
+| EFR-05 | System shall enforce tenant data isolation at the storage-query layer (every query scoped by `tenant_id` derived from the authenticated session), not merely at the application-logic layer | Must | ESM-01 |
+| EFR-06 | System shall support an institutional admin role that can view only aggregated, consented data — never a raw individual memory record, even with elevated internal tooling access | Must | ESM-03 |
 
 _Module: SSO / RBAC_
 
-| ID     | Requirement                                                                                                                                       | Priority | Traces to                              |
+| ID | Requirement | Priority | Traces to |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------- |
-| EFR-07 | System shall support SAML 2.0 and OIDC for institutional tenant SSO, alongside the MVP's standard email/OAuth login                               | Must     | EBO-1                                  |
-| EFR-08 | System shall support tenant-scoped RBAC with, at minimum, the roles: Tenant Admin, Career-Office Viewer, Member                                   | Must     | D.1 institutional personas (Phase 2)   |
-| EFR-09 | Role changes and permission grants/revocations shall be logged in the same append-only audit trail as agent actions (inherits MVP NFR-08 pattern) | Must     | ESM-05 (SOC 2 audit trail requirement) |
+| EFR-07 | System shall support SAML 2.0 and OIDC for institutional tenant SSO, alongside the MVP's standard email/OAuth login | Must | EBO-1 |
+| EFR-08 | System shall support tenant-scoped RBAC with, at minimum, the roles: Tenant Admin, Career-Office Viewer, Member | Must | D.1 institutional personas (Phase 2) |
+| EFR-09 | Role changes and permission grants/revocations shall be logged in the same append-only audit trail as agent actions (inherits MVP NFR-08 pattern) | Must | ESM-05 (SOC 2 audit trail requirement) |
 
 _Module: Agent Roster Expansion (8 → 28)_
 
-| ID     | Requirement                                                                                                                                                                                                                                                                                                                               | Priority | Traces to                           |
+| ID | Requirement | Priority | Traces to |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------- |
-| EFR-10 | System shall add 20 net-new agents (Workspace, Career, Learning, Research, Coding, GitHub, Calendar, Internship, Document, PDF, Planning, Reminder, Analytics, Recommendation, Security, Plugin, Connector, Reflection, Self-Improvement, Quality Assurance) without modifying the behavior or memory contract of any of the 8 MVP agents | Must     | ESM-07                              |
-| EFR-11 | Every new agent shall conform to the same shared agent contract established at MVP (fixed mission, declared tool list, explicit memory scopes, default autonomy, ask-don't-guess fallback)                                                                                                                                                | Must     | Architectural consistency principle |
-| EFR-12 | A Quality Assurance Agent shall validate any consequential agent output (a proposed rename, a drafted email, a submitted application) before it reaches the user or executes, for **every** agent, MVP or enterprise-tier                                                                                                                 | Must     | Trust/safety principle              |
-| EFR-13 | A Reflection Agent shall run on a schedule (not per-event) and surface pattern-based suggestions for user confirmation — never silently change behavior                                                                                                                                                                                   | Must     | Source corpus non-negotiable        |
+| EFR-10 | System shall add 20 net-new agents (Workspace, Career, Learning, Research, Coding, GitHub, Calendar, Internship, Document, PDF, Planning, Reminder, Analytics, Recommendation, Security, Plugin, Connector, Reflection, Self-Improvement, Quality Assurance) without modifying the behavior or memory contract of any of the 8 MVP agents | Must | ESM-07 |
+| EFR-11 | Every new agent shall conform to the same shared agent contract established at MVP (fixed mission, declared tool list, explicit memory scopes, default autonomy, ask-don't-guess fallback) | Must | Architectural consistency principle |
+| EFR-12 | A Quality Assurance Agent shall validate any consequential agent output (a proposed rename, a drafted email, a submitted application) before it reaches the user or executes, for **every** agent, MVP or enterprise-tier | Must | Trust/safety principle |
+| EFR-13 | A Reflection Agent shall run on a schedule (not per-event) and surface pattern-based suggestions for user confirmation — never silently change behavior | Must | Source corpus non-negotiable |
 
 _Module: Memory Taxonomy Expansion (6 → 22 types)_
 
-| ID     | Requirement                                                                                                                                                                                                                                                                                                                                                                    | Priority | Traces to                |
+| ID | Requirement | Priority | Traces to |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ------------------------ |
-| EFR-14 | System shall add 16 net-new memory types (Long-term, Short-term, Conversation, Skill, Learning, Relationship, Task, Goal, Project, Research, Behavior, Context, Semantic, Procedural, Timeline, Event, Decision — 17 named in source corpus, deduplicated against MVP's existing Profile/Document/Career/Episodic/Preference/Working) as a **strictly additive** schema change | Must     | ESM-08                   |
-| EFR-15 | No existing MVP memory record shall require re-ingestion or migration as a result of the taxonomy expansion                                                                                                                                                                                                                                                                    | Must     | ESM-08                   |
-| EFR-16 | Every memory record, regardless of type, shall retain full edit history (versioning) and a provenance pointer to its source document/event                                                                                                                                                                                                                                     | Must     | Explainability principle |
+| EFR-14 | System shall add 16 net-new memory types (Long-term, Short-term, Conversation, Skill, Learning, Relationship, Task, Goal, Project, Research, Behavior, Context, Semantic, Procedural, Timeline, Event, Decision — 17 named in source corpus, deduplicated against MVP's existing Profile/Document/Career/Episodic/Preference/Working) as a **strictly additive** schema change | Must | ESM-08 |
+| EFR-15 | No existing MVP memory record shall require re-ingestion or migration as a result of the taxonomy expansion | Must | ESM-08 |
+| EFR-16 | Every memory record, regardless of type, shall retain full edit history (versioning) and a provenance pointer to its source document/event | Must | Explainability principle |
 
 _Module: Plugin / MCP Ecosystem_
 
-| ID     | Requirement                                                                                                                                                 | Priority | Traces to                 |
+| ID | Requirement | Priority | Traces to |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------- |
-| EFR-17 | System shall accept third-party plugin registration via a manifest (name, required scopes, auth type, tool definitions) without core-team code changes      | Must     | EBO-4                     |
-| EFR-18 | Every plugin shall run in a sandboxed execution context with no access beyond its declared manifest scope, enforced by the Permission Engine                | Must     | ESM-06                    |
-| EFR-19 | Act-tier plugin actions shall always require explicit per-action approval until a user grants standing autonomy, mirroring the MVP's suggest-mode principle | Must     | Consistency with MVP FR-* |
-| EFR-20 | System shall expose an MCP server of its own (Vaeloom-as-provider), not only consume external MCP servers                                                   | Should   | Source corpus §5.3        |
-| EFR-21 | A submitted plugin shall receive an automated + manual review decision within the ESM-06 target window                                                      | Should   | ESM-06                    |
+| EFR-17 | System shall accept third-party plugin registration via a manifest (name, required scopes, auth type, tool definitions) without core-team code changes | Must | EBO-4 |
+| EFR-18 | Every plugin shall run in a sandboxed execution context with no access beyond its declared manifest scope, enforced by the Permission Engine | Must | ESM-06 |
+| EFR-19 | Act-tier plugin actions shall always require explicit per-action approval until a user grants standing autonomy, mirroring the MVP's suggest-mode principle | Must | Consistency with MVP FR-* |
+| EFR-20 | System shall expose an MCP server of its own (Vaeloom-as-provider), not only consume external MCP servers | Should | Source corpus §5.3 |
+| EFR-21 | A submitted plugin shall receive an automated + manual review decision within the ESM-06 target window | Should | ESM-06 |
 
 _Module: Billing (newly authored — Finding I-0.2)_
 
-| ID     | Requirement                                                                                                                                          | Priority | Traces to                                                         |
+| ID | Requirement | Priority | Traces to |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
-| EFR-22 | System shall support per-seat institutional billing (tenant is billed for provisioned member seats) as the default enterprise pricing model          | Must     | EBO-1 (monetization gap explicitly deferred at MVP, now in scope) |
-| EFR-23 | System shall support usage-based metering as a secondary billing dimension (e.g., AI-cost-heavy actions above a per-seat-included allowance)         | Should   | NFR-13 (cost) inherited from MVP                                  |
-| EFR-24 | Billing events shall be auditable and reconcilable against the `agent_actions`/usage logs — a tenant can be shown exactly what it's being billed for | Must     | Trust/transparency principle                                      |
-| EFR-25 | Failed payment shall degrade tenant access gracefully (read-only grace period) before suspension — never an abrupt, un-notified cutoff               | Should   | Institutional-relationship-preservation principle                 |
+| EFR-22 | System shall support per-seat institutional billing (tenant is billed for provisioned member seats) as the default enterprise pricing model | Must | EBO-1 (monetization gap explicitly deferred at MVP, now in scope) |
+| EFR-23 | System shall support usage-based metering as a secondary billing dimension (e.g., AI-cost-heavy actions above a per-seat-included allowance) | Should | NFR-13 (cost) inherited from MVP |
+| EFR-24 | Billing events shall be auditable and reconcilable against the `agent_actions`/usage logs — a tenant can be shown exactly what it's being billed for | Must | Trust/transparency principle |
+| EFR-25 | Failed payment shall degrade tenant access gracefully (read-only grace period) before suspension — never an abrupt, un-notified cutoff | Should | Institutional-relationship-preservation principle |
 
 _Module: Admin Console (data model + IA specified; full wireframes explicitly
 out of scope per source corpus §22)_
 
-| ID     | Requirement                                                                                                                                                                                                                                     | Priority | Traces to                  |
+| ID | Requirement | Priority | Traces to |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------- |
-| EFR-26 | Admin console shall let a Tenant Admin view member list, connector-policy settings, and retention-window configuration                                                                                                                          | Must     | D.1 institutional personas |
-| EFR-27 | Admin console shall let a Career-Office Viewer see only aggregated, consented cohort data (e.g., "62% of consenting members applied to ≥1 internship this term") — never a per-individual drill-down without that individual's specific consent | Must     | ESM-03                     |
-| EFR-28 | Admin console shall show real-time consent status per member (granted / revoked / pending) to the Tenant Admin                                                                                                                                  | Must     | EFR-04                     |
+| EFR-26 | Admin console shall let a Tenant Admin view member list, connector-policy settings, and retention-window configuration | Must | D.1 institutional personas |
+| EFR-27 | Admin console shall let a Career-Office Viewer see only aggregated, consented cohort data (e.g., "62% of consenting members applied to ≥1 internship this term") — never a per-individual drill-down without that individual's specific consent | Must | ESM-03 |
+| EFR-28 | Admin console shall show real-time consent status per member (granted / revoked / pending) to the Tenant Admin | Must | EFR-04 |
 
 _Module: Feature Flags (newly authored — Finding I-0.2)_
 
-| ID     | Requirement                                                                                                                                         | Priority | Traces to              |
+| ID | Requirement | Priority | Traces to |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------- |
-| EFR-29 | System shall support tenant-scoped feature flags (a new agent or capability can be enabled for one tenant without affecting others)                 | Must     | Safe-rollout principle |
-| EFR-30 | Every feature flag shall have a defined owner, a kill-switch (instant global disable), and an expiry review date — no flag lives forever by default | Should   | Operational hygiene    |
+| EFR-29 | System shall support tenant-scoped feature flags (a new agent or capability can be enabled for one tenant without affecting others) | Must | Safe-rollout principle |
+| EFR-30 | Every feature flag shall have a defined owner, a kill-switch (instant global disable), and an expiry review date — no flag lives forever by default | Should | Operational hygiene |
 
 _Module: Licensing (newly authored — Finding I-0.2)_
 
-| ID     | Requirement                                                                                                                                | Priority | Traces to                                         |
+| ID | Requirement | Priority | Traces to |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ------------------------------------------------- |
-| EFR-31 | System shall enforce an entitlement matrix (which agents/connectors/seats a tenant's contract includes) at runtime, not just at sales time | Must     | EFR-22 (billing consistency)                      |
-| EFR-32 | License enforcement shall degrade gracefully (warn before hard-block) when a tenant approaches a contracted limit (e.g., seat count)       | Should   | Institutional-relationship-preservation principle |
+| EFR-31 | System shall enforce an entitlement matrix (which agents/connectors/seats a tenant's contract includes) at runtime, not just at sales time | Must | EFR-22 (billing consistency) |
+| EFR-32 | License enforcement shall degrade gracefully (warn before hard-block) when a tenant approaches a contracted limit (e.g., seat count) | Should | Institutional-relationship-preservation principle |
 
 _Module: Enterprise APIs (newly authored — Finding I-0.2)_
 
-| ID     | Requirement                                                                                                                  | Priority | Traces to             |
+| ID | Requirement | Priority | Traces to |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------- | -------- | --------------------- |
-| EFR-33 | System shall expose tenant-scoped, rate-limited APIs for bulk member provisioning/de-provisioning                            | Must     | EBO-1                 |
-| EFR-34 | System shall expose an aggregated analytics API (consent-respecting) for institutional reporting integrations                | Should   | EFR-27                |
-| EFR-35 | All enterprise APIs shall be versioned and documented per the same standard established at MVP (Phase 8 of the MVP document) | Must     | Consistency principle |
+| EFR-33 | System shall expose tenant-scoped, rate-limited APIs for bulk member provisioning/de-provisioning | Must | EBO-1 |
+| EFR-34 | System shall expose an aggregated analytics API (consent-respecting) for institutional reporting integrations | Should | EFR-27 |
+| EFR-35 | All enterprise APIs shall be versioned and documented per the same standard established at MVP (Phase 8 of the MVP document) | Must | Consistency principle |
 
 _Module: Global Search & Knowledge Workspace (enterprise-scale additions)_
 
-| ID     | Requirement                                                                                                                                                                   | Priority | Traces to         |
+| ID | Requirement | Priority | Traces to |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------- |
-| EFR-36 | Global Search shall span documents, memory, projects, chat history, and the knowledge graph using the same hybrid retrieval agents use internally                             | Should   | Source corpus §18 |
-| EFR-37 | Knowledge Workspace shall support inline annotation, cross-document linking (via the graph, not folder proximity), and direct navigation from a passage into the Memory Graph | Should   | Source corpus §15 |
+| EFR-36 | Global Search shall span documents, memory, projects, chat history, and the knowledge graph using the same hybrid retrieval agents use internally | Should | Source corpus §18 |
+| EFR-37 | Knowledge Workspace shall support inline annotation, cross-document linking (via the graph, not folder proximity), and direct navigation from a passage into the Memory Graph | Should | Source corpus §15 |
 
 _Module: Compliance_
 
-| ID     | Requirement                                                                                                                                                        | Priority | Traces to |
+| ID | Requirement | Priority | Traces to |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | --------- |
-| EFR-38 | System shall map every applicable SOC 2 Trust Services Criterion to a specific implemented control with a named owner                                              | Must     | ESM-05    |
-| EFR-39 | System shall support configurable data-residency at tenant-provisioning time (EU/US/India minimum)                                                                 | Must     | ESM-10    |
-| EFR-40 | System shall produce an exportable, queryable audit trail suitable for a compliance review, covering every memory read/write and every permission grant/revocation | Must     | EFR-09    |
+| EFR-38 | System shall map every applicable SOC 2 Trust Services Criterion to a specific implemented control with a named owner | Must | ESM-05 |
+| EFR-39 | System shall support configurable data-residency at tenant-provisioning time (EU/US/India minimum) | Must | ESM-10 |
+| EFR-40 | System shall produce an exportable, queryable audit trail suitable for a compliance review, covering every memory read/write and every permission grant/revocation | Must | EFR-09 |
 
 _(Remaining EFR-41–57 cover the mechanical expansion of the 20 net-new agents
 from EFR-10 into per-agent mission/tool/autonomy rows, following the exact table
@@ -575,20 +575,20 @@ here.)_
 **D.2 Non-Functional Requirements (enterprise-tier, additive to MVP's
 NFR-01–14)**
 
-| ID      | Category        | Requirement                        | Target                                                                                                                                                                      |
+| ID | Category | Requirement | Target |
 | ------- | --------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ENFR-01 | Security        | Tenant isolation                   | Zero cross-tenant query possible even under an application-logic bug — enforced at the data-access layer (row-level security or equivalent), not solely in application code |
-| ENFR-02 | Availability    | Core API uptime at enterprise tier | ≥ 99.9% (raised from MVP's 99.5%, per institutional SLA expectations)                                                                                                       |
-| ENFR-03 | Scalability     | Concurrent tenant capacity         | Support the Phase 15 (this document) capacity model without architecture change                                                                                             |
-| ENFR-04 | Compliance      | SOC 2 control coverage             | 100% of applicable Trust Services Criteria mapped (ESM-05)                                                                                                                  |
-| ENFR-05 | Compliance      | Data residency enforcement         | 100% (ESM-10)                                                                                                                                                               |
-| ENFR-06 | Security        | Plugin sandboxing                  | Zero plugin access beyond declared manifest scope, verified by automated scope-boundary testing                                                                             |
-| ENFR-07 | Reliability     | Consent propagation latency        | < 5 minutes (ESM-04)                                                                                                                                                        |
-| ENFR-08 | Scalability     | Memory schema migration            | Zero downtime, zero re-ingestion (ESM-08)                                                                                                                                   |
-| ENFR-09 | Observability   | Per-tenant cost/usage dashboards   | Real-time, since billing (EFR-22/23) depends on accurate metering                                                                                                           |
-| ENFR-10 | Maintainability | Agent-roster growth                | Adding a new agent shall require no change to the Permission Engine's enforcement code, only a new declared scope entry                                                     |
-| ENFR-11 | Security        | SSO provider matrix                | At minimum Okta, Azure AD/Entra ID, Google Workspace SAML/OIDC support                                                                                                      |
-| ENFR-12 | Compliance      | Auditability                       | Every consent grant/revocation, tenant policy change, and admin action logged, immutable, exportable                                                                        |
+| ENFR-01 | Security | Tenant isolation | Zero cross-tenant query possible even under an application-logic bug — enforced at the data-access layer (row-level security or equivalent), not solely in application code |
+| ENFR-02 | Availability | Core API uptime at enterprise tier | ≥ 99.9% (raised from MVP's 99.5%, per institutional SLA expectations) |
+| ENFR-03 | Scalability | Concurrent tenant capacity | Support the Phase 15 (this document) capacity model without architecture change |
+| ENFR-04 | Compliance | SOC 2 control coverage | 100% of applicable Trust Services Criteria mapped (ESM-05) |
+| ENFR-05 | Compliance | Data residency enforcement | 100% (ESM-10) |
+| ENFR-06 | Security | Plugin sandboxing | Zero plugin access beyond declared manifest scope, verified by automated scope-boundary testing |
+| ENFR-07 | Reliability | Consent propagation latency | < 5 minutes (ESM-04) |
+| ENFR-08 | Scalability | Memory schema migration | Zero downtime, zero re-ingestion (ESM-08) |
+| ENFR-09 | Observability | Per-tenant cost/usage dashboards | Real-time, since billing (EFR-22/23) depends on accurate metering |
+| ENFR-10 | Maintainability | Agent-roster growth | Adding a new agent shall require no change to the Permission Engine's enforcement code, only a new declared scope entry |
+| ENFR-11 | Security | SSO provider matrix | At minimum Okta, Azure AD/Entra ID, Google Workspace SAML/OIDC support |
+| ENFR-12 | Compliance | Auditability | Every consent grant/revocation, tenant policy change, and admin action logged, immutable, exportable |
 
 ### E. Deliverables
 
@@ -602,10 +602,10 @@ principle.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                     | Mitigation                                                                                                                |
+| ID | Risk | Mitigation |
 | --------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| RISK-E3.1 | EFR-22–32 (Billing/Licensing/Feature Flags) are entirely newly authored, no real pricing/legal input     | Flagged `REQUIRES_STAKEHOLDER_DECISION` before being treated as a committed product spec rather than a design placeholder |
-| RISK-E3.2 | EFR-41–57 (20 new agents) are stated as a mechanical expansion, not written out row-by-row in this phase | Fully expanded in Phase 5, D.3 — not a gap, a sequencing choice to avoid duplicating the agent-roster table twice         |
+| RISK-E3.1 | EFR-22–32 (Billing/Licensing/Feature Flags) are entirely newly authored, no real pricing/legal input | Flagged `REQUIRES_STAKEHOLDER_DECISION` before being treated as a committed product spec rather than a design placeholder |
+| RISK-E3.2 | EFR-41–57 (20 new agents) are stated as a mechanical expansion, not written out row-by-row in this phase | Fully expanded in Phase 5, D.3 — not a gap, a sequencing choice to avoid duplicating the agent-roster table twice |
 
 ### J. Quality Gate
 
@@ -646,14 +646,14 @@ from Phase 0 of this document.
 sub-phases (the MVP document's Phase 4 already reserves "Phase 7" as the
 enterprise placeholder; this is its expansion).**
 
-| Sub-phase                                             | Scope                                                         | EFR/ENFR covered                     | Exit milestone                                                                                                    |
+| Sub-phase | Scope | EFR/ENFR covered | Exit milestone |
 | ----------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| 7a — Multi-Tenancy Foundation                         | Tenant model, row-level isolation, consent-grant schema       | EFR-01–06, ENFR-01                   | A test tenant cannot query another tenant's data even via a deliberately-crafted request (penetration-style test) |
-| 7b — SSO / RBAC                                       | SAML/OIDC integration, tenant-scoped roles                    | EFR-07–09, ENFR-11                   | An institutional admin logs in via their IdP and sees only their tenant's scoped view                             |
-| 7c — Agent & Memory Expansion                         | 20 new agents, 16 new memory types                            | EFR-10–16, ENFR-08, ENFR-10          | Zero regression on the MVP golden-dataset suite (ESM-07) after expansion                                          |
-| 7d — Plugin / MCP Ecosystem                           | Manifest ingestion, sandbox enforcement, review pipeline      | EFR-17–21, ENFR-06                   | A sandboxed test plugin cannot access any scope outside its manifest, verified by an automated boundary test      |
-| 7e — Billing, Licensing, Feature Flags, Admin Console | Metering, entitlement enforcement, tenant admin console       | EFR-22–32                            | A tenant admin can view their own seat/usage/billing state accurately                                             |
-| 7f — Compliance & Enterprise APIs                     | SOC 2 control mapping, data residency provisioning, bulk APIs | EFR-33–40, ENFR-04, ENFR-05, ENFR-12 | 100% of applicable SOC 2 criteria have a named control owner (ESM-05)                                             |
+| 7a — Multi-Tenancy Foundation | Tenant model, row-level isolation, consent-grant schema | EFR-01–06, ENFR-01 | A test tenant cannot query another tenant's data even via a deliberately-crafted request (penetration-style test) |
+| 7b — SSO / RBAC | SAML/OIDC integration, tenant-scoped roles | EFR-07–09, ENFR-11 | An institutional admin logs in via their IdP and sees only their tenant's scoped view |
+| 7c — Agent & Memory Expansion | 20 new agents, 16 new memory types | EFR-10–16, ENFR-08, ENFR-10 | Zero regression on the MVP golden-dataset suite (ESM-07) after expansion |
+| 7d — Plugin / MCP Ecosystem | Manifest ingestion, sandbox enforcement, review pipeline | EFR-17–21, ENFR-06 | A sandboxed test plugin cannot access any scope outside its manifest, verified by an automated boundary test |
+| 7e — Billing, Licensing, Feature Flags, Admin Console | Metering, entitlement enforcement, tenant admin console | EFR-22–32 | A tenant admin can view their own seat/usage/billing state accurately |
+| 7f — Compliance & Enterprise APIs | SOC 2 control mapping, data residency provisioning, bulk APIs | EFR-33–40, ENFR-04, ENFR-05, ENFR-12 | 100% of applicable SOC 2 criteria have a named control owner (ESM-05) |
 
 **D.2 Dependency graph.**
 
@@ -670,12 +670,12 @@ since the admin console is role-gated).
 
 **D.3 RACI (additive to MVP Phase 4's RACI).**
 
-| Activity                                       | Responsible           | Accountable        | Consulted                            | Informed        |
+| Activity | Responsible | Accountable | Consulted | Informed |
 | ---------------------------------------------- | --------------------- | ------------------ | ------------------------------------ | --------------- |
-| Tenant-isolation penetration testing (7a exit) | Security Architect    | Program Manager    | Compliance Specialist                | Full team       |
-| SOC 2 control mapping (7f)                     | Compliance Specialist | Program Manager    | Security Architect, Privacy Engineer | Leadership      |
-| Plugin sandbox boundary testing (7d exit)      | Security Architect    | Solution Architect | QA Lead                              | Program Manager |
-| Billing accuracy reconciliation (7e)           | Backend Engineer      | Product Manager    | Compliance Specialist                | Program Manager |
+| Tenant-isolation penetration testing (7a exit) | Security Architect | Program Manager | Compliance Specialist | Full team |
+| SOC 2 control mapping (7f) | Compliance Specialist | Program Manager | Security Architect, Privacy Engineer | Leadership |
+| Plugin sandbox boundary testing (7d exit) | Security Architect | Solution Architect | QA Lead | Program Manager |
+| Billing accuracy reconciliation (7e) | Backend Engineer | Product Manager | Compliance Specialist | Program Manager |
 
 **D.4 Change control.** Identical policy to MVP (Phase 6 of the MVP document) —
 additionally, **no enterprise-tier change may modify MVP agent behavior or MVP
@@ -701,10 +701,10 @@ D.1's "EFR/ENFR covered" column links Phase 3 to the build sequence.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                     | Mitigation                                                                                                                                                      |
+| ID | Risk | Mitigation |
 | --------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | RISK-E4.1 | Hard dependency on MVP Phase 19 release means any MVP release slip directly delays enterprise-tier start | Explicitly accepted — this is the correct order per the source corpus's own philosophy ("prove the loop before enterprise investment"), not a scheduling defect |
-| RISK-E4.2 | 7c (agent/memory expansion) is the sub-phase most likely to silently regress MVP behavior                | Mitigated by D.4's hard golden-dataset re-run gate                                                                                                              |
+| RISK-E4.2 | 7c (agent/memory expansion) is the sub-phase most likely to silently regress MVP behavior | Mitigated by D.4's hard golden-dataset re-run gate |
 
 ### J. Quality Gate
 
@@ -737,118 +737,118 @@ document's Phase 5, D.6).**
 
 ```mermaid
 graph TD
-    subgraph L1["01 · Interface (inherited)"]
-        I1["Web · Desktop · VS Code · (Mobile still out of scope)"]
-    end
-    subgraph L2["02 · Connectors & Plugins (expanded catalog)"]
-        C1["MVP connectors + Slack/Discord/Notion/Figma/LinkedIn/Indeed/... + Plugin SDK/Marketplace"]
-    end
-    subgraph L3["03 · Ingestion (inherited)"]
-        G1["Parser · OCR · Code Understanding · Semantic Extractor"]
-    end
-    subgraph L4["04 · Agent Orchestration (28 agents)"]
-        O1["Orchestrator + 28 specialist agents"]
-    end
-    subgraph L5["05 · Memory & Knowledge — CORE (22 types)"]
-        M1["Knowledge Graph · Vector Store · 22-type Structured Memory · Agentic RAG"]
-    end
-    subgraph L6new["06 · Events & Realtime — NET NEW"]
-        E1["Event bus (Kafka) · WebSocket · Notification dispatch"]
-    end
-    subgraph L7new["07 · Data Infrastructure — NET NEW"]
-        D1["Queues/Workers · Cache · Search index (OpenSearch)"]
-    end
-    subgraph L8["08 · Storage & Security (inherited + tenant isolation)"]
-        S1["Encrypted Storage · Secrets Manager · Permission Engine (tenant-aware) · Audit Log"]
-    end
-    L1 --> L2 --> L3 --> L4 --> L5 --> L6new --> L7new --> L8
+ subgraph L1["01 · Interface (inherited)"]
+ I1["Web · Desktop · VS Code · (Mobile still out of scope)"]
+ end
+ subgraph L2["02 · Connectors & Plugins (expanded catalog)"]
+ C1["MVP connectors + Slack/Discord/Notion/Figma/LinkedIn/Indeed/... + Plugin SDK/Marketplace"]
+ end
+ subgraph L3["03 · Ingestion (inherited)"]
+ G1["Parser · OCR · Code Understanding · Semantic Extractor"]
+ end
+ subgraph L4["04 · Agent Orchestration (28 agents)"]
+ O1["Orchestrator + 28 specialist agents"]
+ end
+ subgraph L5["05 · Memory & Knowledge -- CORE (22 types)"]
+ M1["Knowledge Graph · Vector Store · 22-type Structured Memory · Agentic RAG"]
+ end
+ subgraph L6new["06 · Events & Realtime -- NET NEW"]
+ E1["Event bus (Kafka) · WebSocket · Notification dispatch"]
+ end
+ subgraph L7new["07 · Data Infrastructure -- NET NEW"]
+ D1["Queues/Workers · Cache · Search index (OpenSearch)"]
+ end
+ subgraph L8["08 · Storage & Security (inherited + tenant isolation)"]
+ S1["Encrypted Storage · Secrets Manager · Permission Engine (tenant-aware) · Audit Log"]
+ end
+ L1--> L2--> L3--> L4--> L5--> L6new--> L7new--> L8
 ```
 
 **D.2 ADR additions (enterprise-tier, additive to the MVP document's
 ADR-001–006).**
 
-| ADR         | Decision                                                                                                                                                                                     | Status   | Rationale                                                                                                                                                                                                                                                                 | Alternatives rejected                                                                                                                                                                                                                        |
+| ADR | Decision | Status | Rationale | Alternatives rejected |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-ENT-001 | Tenant isolation via **row-level security (RLS) with `tenant_id` on every table**, not schema-per-tenant or database-per-tenant                                                              | Accepted | RLS scales to tens-to-hundreds of tenants without per-tenant operational overhead (migrations, backups multiplied per tenant); enforced at the database layer, not just application code — directly satisfies ENFR-01's "even under an application-logic bug" requirement | Database-per-tenant — rejected: operationally expensive at this tenant count and doesn't meaningfully improve isolation over correctly-implemented RLS; Schema-per-tenant — rejected: migration complexity scales linearly with tenant count |
-| ADR-ENT-002 | Consent is a first-class data-model entity (`consent_grants` table) checked by the Permission Engine on every institutional-admin-initiated read, not a policy documented outside the schema | Accepted | Makes EFR-02/03/04 enforceable in code, not just in a privacy policy document — mirrors ADR-004's "suggest-mode enforced at the Orchestrator, not per-agent" philosophy applied to consent                                                                                | Consent as an external policy layer checked only at the API gateway — rejected: doesn't protect against a direct internal-tooling query bypassing the gateway                                                                                |
-| ADR-ENT-003 | Event bus migrates from MVP's Redis queue to Kafka at this tier                                                                                                                              | Accepted | Durable, replayable event log needed once multiple tenants' agent actions, notifications, and audit requirements run concurrently at real load (this is the exact trigger condition the MVP document's Phase 15 D.4 already anticipated)                                  | Stay on Redis queue — rejected: lacks durable replay, which the audit/compliance requirements (ENFR-12) need                                                                                                                                 |
-| ADR-ENT-004 | Graph store migrates from MVP's Postgres+AGE to a dedicated Neo4j cluster                                                                                                                    | Accepted | Per the explicit trigger threshold set in the MVP document's Phase 15, D.4 (traversal P95 > 500ms) — decided in advance, not improvised under load                                                                                                                        | Stay on AGE — rejected: doesn't meet the pre-declared trigger once enterprise-scale traversal volume is expected                                                                                                                             |
-| ADR-ENT-005 | Plugin sandboxing via a separate execution context (e.g., a restricted container/runtime) with capability-scoped tool access, not in-process execution with a permission check               | Accepted | An in-process check can be bypassed by a sufficiently malicious plugin; a separate execution boundary is a structural guarantee, not a trust-the-code guarantee (ENFR-06)                                                                                                 | In-process scope-checked execution — rejected: insufficient isolation for third-party, untrusted code                                                                                                                                        |
-| ADR-ENT-006 | Analytics is a strictly read-only consumer of the event bus/memory stores — it never writes back to memory                                                                                   | Accepted | Keeps "what happened" (memory, subject to consent rules) cleanly separated from "what we learned by observing it" (analytics) — this separation is also what makes the SOC 2 audit story (ENFR-12) clean: analytics can't be a hidden write path around the consent model | Analytics agent with write access to a "learnings" memory type — rejected: blurs the audit boundary                                                                                                                                          |
+| ADR-ENT-001 | Tenant isolation via **row-level security (RLS) with `tenant_id` on every table**, not schema-per-tenant or database-per-tenant | Accepted | RLS scales to tens-to-hundreds of tenants without per-tenant operational overhead (migrations, backups multiplied per tenant); enforced at the database layer, not just application code — directly satisfies ENFR-01's "even under an application-logic bug" requirement | Database-per-tenant — rejected: operationally expensive at this tenant count and doesn't meaningfully improve isolation over correctly-implemented RLS; Schema-per-tenant — rejected: migration complexity scales linearly with tenant count |
+| ADR-ENT-002 | Consent is a first-class data-model entity (`consent_grants` table) checked by the Permission Engine on every institutional-admin-initiated read, not a policy documented outside the schema | Accepted | Makes EFR-02/03/04 enforceable in code, not just in a privacy policy document — mirrors ADR-004's "suggest-mode enforced at the Orchestrator, not per-agent" philosophy applied to consent | Consent as an external policy layer checked only at the API gateway — rejected: doesn't protect against a direct internal-tooling query bypassing the gateway |
+| ADR-ENT-003 | Event bus migrates from MVP's Redis queue to Kafka at this tier | Accepted | Durable, replayable event log needed once multiple tenants' agent actions, notifications, and audit requirements run concurrently at real load (this is the exact trigger condition the MVP document's Phase 15 D.4 already anticipated) | Stay on Redis queue — rejected: lacks durable replay, which the audit/compliance requirements (ENFR-12) need |
+| ADR-ENT-004 | Graph store migrates from MVP's Postgres+AGE to a dedicated Neo4j cluster | Accepted | Per the explicit trigger threshold set in the MVP document's Phase 15, D.4 (traversal P95 > 500ms) — decided in advance, not improvised under load | Stay on AGE — rejected: doesn't meet the pre-declared trigger once enterprise-scale traversal volume is expected |
+| ADR-ENT-005 | Plugin sandboxing via a separate execution context (e.g., a restricted container/runtime) with capability-scoped tool access, not in-process execution with a permission check | Accepted | An in-process check can be bypassed by a sufficiently malicious plugin; a separate execution boundary is a structural guarantee, not a trust-the-code guarantee (ENFR-06) | In-process scope-checked execution — rejected: insufficient isolation for third-party, untrusted code |
+| ADR-ENT-006 | Analytics is a strictly read-only consumer of the event bus/memory stores — it never writes back to memory | Accepted | Keeps "what happened" (memory, subject to consent rules) cleanly separated from "what we learned by observing it" (analytics) — this separation is also what makes the SOC 2 audit story (ENFR-12) clean: analytics can't be a hidden write path around the consent model | Analytics agent with write access to a "learnings" memory type — rejected: blurs the audit boundary |
 
 **D.3 Full 28-agent roster (MVP's 8 + 20 net-new, fulfilling EFR-10/41–57 in
 full here).**
 
-| #   | Agent                   | Mission                                                    | Default autonomy           | MVP or net-new                                                   |
+| # | Agent | Mission | Default autonomy | MVP or net-new |
 | --- | ----------------------- | ---------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------- |
-| 1   | Orchestrator            | Routes requests to the right specialist agent              | Full                       | Inherited                                                        |
-| 2   | Workspace Agent         | Maintains overall workspace structure/health               | Suggest                    | **New**                                                          |
-| 3   | Organization Agent      | Names, files, deduplicates documents                       | Suggest → earned auto      | Inherited                                                        |
-| 4   | Memory Agent            | Extracts entities, maintains graph + vector store          | Full (internal)            | Inherited                                                        |
-| 5   | Resume Agent            | Builds/maintains the master resume                         | Suggest                    | Inherited                                                        |
-| 6   | ATS Agent               | Scores resume vs. job description                          | Read-only                  | Inherited                                                        |
-| 7   | Career Agent            | Tracks overall career trajectory/goals                     | Suggest                    | **New**                                                          |
-| 8   | Learning Agent          | Tracks courses, skills in progress                         | Suggest                    | **New**                                                          |
-| 9   | Research Agent          | Organizes papers, notes, citations                         | Suggest                    | **New**                                                          |
-| 10  | Coding Agent            | Understands repos/coding activity                          | Suggest                    | **New**                                                          |
-| 11  | GitHub Agent            | Syncs repo activity, commit history                        | Read-only                  | **New** (split out from generic ingestion)                       |
-| 12  | Gmail Agent             | Classifies mail, extracts deadlines                        | Suggest (drafts only)      | Inherited                                                        |
-| 13  | Calendar Agent          | Maintains calendar consistency                             | Suggest                    | **New**                                                          |
-| 14  | Job Search Agent        | Finds/ranks job/internship matches                         | Suggest                    | Inherited                                                        |
-| 15  | Internship Agent        | Specialized internship/fellowship search                   | Suggest                    | **New**                                                          |
-| 16  | Application Agent       | Tailors/submits applications                               | Approval-gated             | Inherited                                                        |
-| 17  | Document Agent          | General document Q&A/summarization                         | Read-only                  | **New**                                                          |
-| 18  | PDF Agent               | Specialized PDF form parsing/filling                       | Suggest                    | **New**                                                          |
-| 19  | Planning Agent          | Learning/project/application roadmaps                      | Suggest                    | **New**                                                          |
-| 20  | Scheduler Agent         | Deadlines, conflict detection                              | Suggest/full for reminders | Inherited                                                        |
-| 21  | Reminder Agent          | Timely nudges for upcoming items                           | Full (notify only)         | **New**                                                          |
-| 22  | Analytics Agent         | Surfaces patterns/trends (read-only, ADR-ENT-006)          | Read-only                  | **New**                                                          |
-| 23  | Recommendation Agent    | Suggests next actions/skills/opportunities                 | Read-only                  | **New**                                                          |
-| 24  | Security Agent          | Monitors anomalous access, enforces policy                 | Full (protective)          | **New**                                                          |
-| 25  | Plugin Agent            | Manages plugin lifecycle/sandboxing                        | Full (internal)            | **New**                                                          |
-| 26  | Connector Agent         | Manages connector health, token refresh                    | Full (internal)            | **New**                                                          |
-| 27  | Reflection Agent        | Scheduled higher-level pattern review of memory            | Full (internal)            | **New**                                                          |
-| 28  | Self-Improvement Agent  | Tracks agent accuracy, proposes prompt/tool refinements    | Human-reviewed             | **New**                                                          |
-| —   | Quality Assurance Agent | Validates every consequential agent output before delivery | Full (internal gate)       | **New** — the 20th net-new agent (roster totals 28 including QA) |
+| 1 | Orchestrator | Routes requests to the right specialist agent | Full | Inherited |
+| 2 | Workspace Agent | Maintains overall workspace structure/health | Suggest | **New** |
+| 3 | Organization Agent | Names, files, deduplicates documents | Suggest → earned auto | Inherited |
+| 4 | Memory Agent | Extracts entities, maintains graph + vector store | Full (internal) | Inherited |
+| 5 | Resume Agent | Builds/maintains the master resume | Suggest | Inherited |
+| 6 | ATS Agent | Scores resume vs. job description | Read-only | Inherited |
+| 7 | Career Agent | Tracks overall career trajectory/goals | Suggest | **New** |
+| 8 | Learning Agent | Tracks courses, skills in progress | Suggest | **New** |
+| 9 | Research Agent | Organizes papers, notes, citations | Suggest | **New** |
+| 10 | Coding Agent | Understands repos/coding activity | Suggest | **New** |
+| 11 | GitHub Agent | Syncs repo activity, commit history | Read-only | **New** (split out from generic ingestion) |
+| 12 | Gmail Agent | Classifies mail, extracts deadlines | Suggest (drafts only) | Inherited |
+| 13 | Calendar Agent | Maintains calendar consistency | Suggest | **New** |
+| 14 | Job Search Agent | Finds/ranks job/internship matches | Suggest | Inherited |
+| 15 | Internship Agent | Specialized internship/fellowship search | Suggest | **New** |
+| 16 | Application Agent | Tailors/submits applications | Approval-gated | Inherited |
+| 17 | Document Agent | General document Q&A/summarization | Read-only | **New** |
+| 18 | PDF Agent | Specialized PDF form parsing/filling | Suggest | **New** |
+| 19 | Planning Agent | Learning/project/application roadmaps | Suggest | **New** |
+| 20 | Scheduler Agent | Deadlines, conflict detection | Suggest/full for reminders | Inherited |
+| 21 | Reminder Agent | Timely nudges for upcoming items | Full (notify only) | **New** |
+| 22 | Analytics Agent | Surfaces patterns/trends (read-only, ADR-ENT-006) | Read-only | **New** |
+| 23 | Recommendation Agent | Suggests next actions/skills/opportunities | Read-only | **New** |
+| 24 | Security Agent | Monitors anomalous access, enforces policy | Full (protective) | **New** |
+| 25 | Plugin Agent | Manages plugin lifecycle/sandboxing | Full (internal) | **New** |
+| 26 | Connector Agent | Manages connector health, token refresh | Full (internal) | **New** |
+| 27 | Reflection Agent | Scheduled higher-level pattern review of memory | Full (internal) | **New** |
+| 28 | Self-Improvement Agent | Tracks agent accuracy, proposes prompt/tool refinements | Human-reviewed | **New** |
+| — | Quality Assurance Agent | Validates every consequential agent output before delivery | Full (internal gate) | **New** — the 20th net-new agent (roster totals 28 including QA) |
 
 **D.4 Memory taxonomy (22 types — MVP's 6 + 16 net-new, fulfilling EFR-14).**
 
-| Type         | Answers                           | MVP or net-new                                                            |
+| Type | Answers | MVP or net-new |
 | ------------ | --------------------------------- | ------------------------------------------------------------------------- |
-| Profile      | Durable facts (education, skills) | Inherited (maps to "Long-term" conceptually)                              |
-| Long-term    | What's durably true               | **New** — formalizes what Profile implied                                 |
-| Short-term   | What's relevant right now         | **New**                                                                   |
-| Working      | Active session context            | Inherited                                                                 |
-| Conversation | Past chat threads                 | **New**                                                                   |
-| Document     | Per-file summary/embedding        | Inherited                                                                 |
-| Career       | Applications, outcomes            | Inherited                                                                 |
-| Skill        | Capability + proficiency          | **New**                                                                   |
-| Learning     | Study/course progress             | **New**                                                                   |
-| Preference   | Stated/inferred patterns          | Inherited                                                                 |
-| Relationship | Who they know, how                | **New**                                                                   |
-| Task         | Open action items                 | **New**                                                                   |
-| Goal         | What they're working toward       | **New**                                                                   |
-| Project      | What they've built                | **New**                                                                   |
-| Research     | What they've explored/read        | **New**                                                                   |
-| Episodic     | Timestamped events                | Inherited                                                                 |
-| Behavior     | Repeating patterns                | **New**                                                                   |
-| Context      | Situational backdrop              | **New**                                                                   |
-| Semantic     | General domain facts engaged with | **New**                                                                   |
-| Procedural   | How they do things, step by step  | **New**                                                                   |
-| Timeline     | Chronological ordering            | **New**                                                                   |
-| Event        | Specific dated occurrences        | **New** (distinct from Episodic — Event is atomic, Episodic is narrative) |
-| Decision     | Choices made + reasoning          | **New**                                                                   |
+| Profile | Durable facts (education, skills) | Inherited (maps to "Long-term" conceptually) |
+| Long-term | What's durably true | **New** — formalizes what Profile implied |
+| Short-term | What's relevant right now | **New** |
+| Working | Active session context | Inherited |
+| Conversation | Past chat threads | **New** |
+| Document | Per-file summary/embedding | Inherited |
+| Career | Applications, outcomes | Inherited |
+| Skill | Capability + proficiency | **New** |
+| Learning | Study/course progress | **New** |
+| Preference | Stated/inferred patterns | Inherited |
+| Relationship | Who they know, how | **New** |
+| Task | Open action items | **New** |
+| Goal | What they're working toward | **New** |
+| Project | What they've built | **New** |
+| Research | What they've explored/read | **New** |
+| Episodic | Timestamped events | Inherited |
+| Behavior | Repeating patterns | **New** |
+| Context | Situational backdrop | **New** |
+| Semantic | General domain facts engaged with | **New** |
+| Procedural | How they do things, step by step | **New** |
+| Timeline | Chronological ordering | **New** |
+| Event | Specific dated occurrences | **New** (distinct from Episodic — Event is atomic, Episodic is narrative) |
+| Decision | Choices made + reasoning | **New** |
 
 **D.5 NFR satisfaction matrix (enterprise-tier additions).**
 
-| ENFR                          | Satisfied by                                                               |
+| ENFR | Satisfied by |
 | ----------------------------- | -------------------------------------------------------------------------- |
-| ENFR-01 (tenant isolation)    | ADR-ENT-001 (RLS)                                                          |
-| ENFR-02 (99.9% availability)  | L4 agent-service horizontal scaling + L7 queue/cache layer absorbing burst |
-| ENFR-04/05 (SOC 2, residency) | L8 Storage & Security, tenant-scoped provisioning region selection         |
-| ENFR-06 (plugin sandboxing)   | ADR-ENT-005                                                                |
-| ENFR-07 (consent propagation) | ADR-ENT-002 + event bus (ADR-ENT-003) push-invalidation on revocation      |
-| ENFR-08 (schema migration)    | D.4 taxonomy is purely additive columns/types, no existing-row migration   |
+| ENFR-01 (tenant isolation) | ADR-ENT-001 (RLS) |
+| ENFR-02 (99.9% availability) | L4 agent-service horizontal scaling + L7 queue/cache layer absorbing burst |
+| ENFR-04/05 (SOC 2, residency) | L8 Storage & Security, tenant-scoped provisioning region selection |
+| ENFR-06 (plugin sandboxing) | ADR-ENT-005 |
+| ENFR-07 (consent propagation) | ADR-ENT-002 + event bus (ADR-ENT-003) push-invalidation on revocation |
+| ENFR-08 (schema migration) | D.4 taxonomy is purely additive columns/types, no existing-row migration |
 
 **D.6 Migration Path ADR (referenced from the header — ADR-ENT-000).** This
 architecture is a strict superset of the MVP architecture: L1–L3 and L6(MVP)/L8
@@ -869,10 +869,10 @@ D.2 → ENFR-01/06/07; D.3 → EFR-10–13, 41–57; D.4 → EFR-14–16.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                                                 | Mitigation                                                                                                                     |
+| ID | Risk | Mitigation |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | RISK-E5.1 | RLS (ADR-ENT-001) requires disciplined policy application on every table/query — a single missed policy is a tenant-isolation breach | Phase 14 test plan includes an automated cross-tenant-query-attempt test suite that runs against **every** table, not a sample |
-| RISK-E5.2 | 28-agent roster increases orchestration complexity (more routing decisions, more potential inter-agent conflicts)                    | QA Agent (D.3, #20/28) and Reflection Agent (D.3, #27) are specifically the architectural answer to this, not an afterthought  |
+| RISK-E5.2 | 28-agent roster increases orchestration complexity (more routing decisions, more potential inter-agent conflicts) | QA Agent (D.3, #20/28) and Reflection Agent (D.3, #27) are specifically the architectural answer to this, not an afterthought |
 
 ### J. Quality Gate
 
@@ -901,25 +901,25 @@ compliance-audited software.
 
 **D.1 Stack deltas from MVP (per ADR-ENT-003/004, and net-new categories).**
 
-| Layer           | MVP choice                             | Enterprise choice                                                               | Trigger (from MVP Phase 15, D.4)             |
+| Layer | MVP choice | Enterprise choice | Trigger (from MVP Phase 15, D.4) |
 | --------------- | -------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
-| Graph           | Postgres + AGE                         | Neo4j cluster                                                                   | Traversal P95 > 500ms (ADR-ENT-004)          |
-| Vector          | pgvector                               | Qdrant                                                                          | Query P95 > 200ms                            |
-| Search          | SQL ILIKE (Meilisearch NOT_INSTALLED)  | OpenSearch                                                                      | Scale + advanced query needs                 |
-| Queue/event bus | Redis (BullMQ installed, no consumers) | Kafka                                                                           | Durable, replayable log needed (ADR-ENT-003) |
-| Deployment      | PaaS + Docker                          | Managed Kubernetes                                                              | Multi-service, multi-tenant orchestration    |
-| SSO             | N/A                                    | SAML 2.0 / OIDC via a managed identity broker                                   | New requirement (EFR-07)                     |
-| Plugin runtime  | N/A                                    | Sandboxed container runtime (e.g., gVisor-class or Firecracker-class isolation) | New requirement (ADR-ENT-005)                |
+| Graph | Postgres + AGE | Neo4j cluster | Traversal P95 > 500ms (ADR-ENT-004) |
+| Vector | pgvector | Qdrant | Query P95 > 200ms |
+| Search | SQL ILIKE (Meilisearch NOT_INSTALLED) | OpenSearch | Scale + advanced query needs |
+| Queue/event bus | Redis (BullMQ installed, no consumers) | Kafka | Durable, replayable log needed (ADR-ENT-003) |
+| Deployment | PaaS + Docker | Managed Kubernetes | Multi-service, multi-tenant orchestration |
+| SSO | N/A | SAML 2.0 / OIDC via a managed identity broker | New requirement (EFR-07) |
+| Plugin runtime | N/A | Sandboxed container runtime (e.g., gVisor-class or Firecracker-class isolation) | New requirement (ADR-ENT-005) |
 
 **D.2 Engineering standards additions.**
 
-| Standard                   | Rule                                                                                                                                                                                              |
+| Standard | Rule |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RLS policy review          | Every new table migration must include an explicit `tenant_id` RLS policy; a migration without one fails CI (automated linter, not just code review discipline) — direct mitigation for RISK-E5.1 |
-| Tenant-context testing     | Every integration test must run twice — once as Tenant A, once attempting to access Tenant A's data as Tenant B — before merge                                                                    |
-| Plugin manifest validation | CI validates every plugin manifest against the JSON schema before it reaches the sandbox review pipeline (Phase 5, ADR-ENT-005)                                                                   |
-| Consent-check linting      | Any new admin-facing read endpoint must be statically checked (custom lint rule) to confirm it routes through the consent-check layer (ADR-ENT-002) — a missing check fails CI                    |
-| SOC 2 evidence tagging     | PRs touching a control mapped in Phase 13's control matrix are tagged `soc2-evidence` for the compliance evidence trail                                                                           |
+| RLS policy review | Every new table migration must include an explicit `tenant_id` RLS policy; a migration without one fails CI (automated linter, not just code review discipline) — direct mitigation for RISK-E5.1 |
+| Tenant-context testing | Every integration test must run twice — once as Tenant A, once attempting to access Tenant A's data as Tenant B — before merge |
+| Plugin manifest validation | CI validates every plugin manifest against the JSON schema before it reaches the sandbox review pipeline (Phase 5, ADR-ENT-005) |
+| Consent-check linting | Any new admin-facing read endpoint must be statically checked (custom lint rule) to confirm it routes through the consent-check layer (ADR-ENT-002) — a missing check fails CI |
+| SOC 2 evidence tagging | PRs touching a control mapped in Phase 13's control matrix are tagged `soc2-evidence` for the compliance evidence trail |
 
 ### E. Deliverables
 
@@ -931,7 +931,7 @@ D.1 → ADR-ENT-003/004; D.2 → ENFR-01, ENFR-06, ENFR-04.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                        | Mitigation                                                                                                                                                               |
+| ID | Risk | Mitigation |
 | --------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | RISK-E6.1 | Migrating graph/vector/search stores mid-flight (from MVP choices) is itself a nontrivial migration project | Trigger-based (Phase 15 of the MVP document), not calendar-based — happens when load actually demands it, with a dedicated migration runbook (Phase 16 of this document) |
 
@@ -963,16 +963,16 @@ being available) is closed with real, executable content.
 
 ```mermaid
 erDiagram
-    TENANTS ||--o{ WORKSPACES : "provisions (policy only)"
-    TENANTS ||--o{ TENANT_ROLES : defines
-    USERS ||--o{ TENANT_ROLES : "assigned"
-    WORKSPACES ||--o{ CONSENT_GRANTS : "individual grants"
-    TENANTS ||--o{ CONSENT_GRANTS : "scoped to"
-    TENANTS ||--o{ SUBSCRIPTIONS : has
-    SUBSCRIPTIONS ||--o{ USAGE_RECORDS : meters
-    TENANTS ||--o{ FEATURE_FLAGS : scoped
-    TENANTS ||--o{ ENTITLEMENTS : contracted
-    PLUGINS ||--o{ PLUGIN_REVIEWS : "review pipeline"
+ TENANTS ||--o{ WORKSPACES : "provisions (policy only)"
+ TENANTS ||--o{ TENANT_ROLES : defines
+ USERS ||--o{ TENANT_ROLES : "assigned"
+ WORKSPACES ||--o{ CONSENT_GRANTS : "individual grants"
+ TENANTS ||--o{ CONSENT_GRANTS : "scoped to"
+ TENANTS ||--o{ SUBSCRIPTIONS : has
+ SUBSCRIPTIONS ||--o{ USAGE_RECORDS : meters
+ TENANTS ||--o{ FEATURE_FLAGS : scoped
+ TENANTS ||--o{ ENTITLEMENTS : contracted
+ PLUGINS ||--o{ PLUGIN_REVIEWS : "review pipeline"
 ```
 
 **D.2 DDL — tenant, consent, and RLS (the core of ADR-ENT-001/002).**
@@ -1120,11 +1120,11 @@ ERD additions (D.1), tenant/consent/RLS DDL (D.2), billing/licensing/flags DDL
 
 ### G. Verification Results
 
-| Check                                                              | Result                                                                                                                                                                                                                                                             |
+| Check | Result |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Every EFR-01–32 has a corresponding schema element                 | ✅ Pass                                                                                                                                                                                                                                                            |
+| Every EFR-01–32 has a corresponding schema element | ✅ Pass |
 | RLS policies cover every tenant-scoped table from the MVP document | ✅ Pass by inspection — D.2's pattern applied to `workspaces`, `memory_records`; identical pattern applies to `documents`, `applications`, `resumes`, `schedule_events`, `agent_actions` (not each repeated verbatim here to avoid duplication, same policy shape) |
-| DDL executed against a live instance                               | `NOT_EXECUTED`                                                                                                                                                                                                                                                     |
+| DDL executed against a live instance | `NOT_EXECUTED` |
 
 ### H. Requirement Traceability
 
@@ -1132,10 +1132,10 @@ D.2 → EFR-01–06, ADR-ENT-001/002. D.3 → EFR-22–32. D.4 → EFR-17–21.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                        | Mitigation                                                                                                                                          |
+| ID | Risk | Mitigation |
 | --------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RISK-E7.1 | RLS policy must be replicated correctly across every tenant-scoped table — a single omission breaks ENFR-01 | Phase 6 D.2's CI linter is the structural mitigation; Phase 14 test plan adds the exhaustive per-table cross-tenant test                            |
-| RISK-E7.2 | Billing/entitlement schema (D.3) has no real pricing model behind it yet (RISK-E3.1)                        | Schema is deliberately pricing-model-agnostic (supports per-seat, usage, hybrid) so the real pricing decision doesn't require a schema change later |
+| RISK-E7.1 | RLS policy must be replicated correctly across every tenant-scoped table — a single omission breaks ENFR-01 | Phase 6 D.2's CI linter is the structural mitigation; Phase 14 test plan adds the exhaustive per-table cross-tenant test |
+| RISK-E7.2 | Billing/entitlement schema (D.3) has no real pricing model behind it yet (RISK-E3.1) | Schema is deliberately pricing-model-agnostic (supports per-seat, usage, hybrid) so the real pricing decision doesn't require a schema change later |
 
 ### J. Quality Gate
 
@@ -1281,7 +1281,7 @@ D.1 → EFR-33/34, EFR-17. D.2 → EFR-07. D.3 → EFR-02–04.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                    | Mitigation                                                                               |
+| ID | Risk | Mitigation |
 | --------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | RISK-E8.1 | Cohort-summary endpoint (D.1) is the single highest-consequence endpoint if consent-filtering has a bug | Phase 14 test plan treats this endpoint's test coverage as release-blocking, not routine |
 
@@ -1332,11 +1332,11 @@ product, two tiers" rather than a fragmented enterprise skin.
 **D.3 Key interaction spec (Consent Status screen — the one screen this tier
 cannot get wrong, so it gets full depth here).**
 
-| Element                        | Behavior                                                                                                                                                                                                      |
+| Element | Behavior |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Grant/revoke toggle per member | Visible only to a Tenant Admin; toggling **revoke** shows an inline confirmation stating exactly what stops being visible and from when (ENFR-07's 5-minute propagation is surfaced to the admin, not hidden) |
-| Empty/zero-consent state       | "No members have granted analytics consent yet — cohort statistics require at least 5 consenting members to display (k-anonymity floor, see Phase 13 D.3)"                                                    |
-| Accessibility                  | Same WCAG 2.1 AA bar as MVP (Assumption A-09.1, inherited) — the revoke action in particular must be keyboard-operable and screen-reader-announced given its compliance sensitivity                           |
+| Empty/zero-consent state | "No members have granted analytics consent yet — cohort statistics require at least 5 consenting members to display (k-anonymity floor, see Phase 13 D.3)" |
+| Accessibility | Same WCAG 2.1 AA bar as MVP (Assumption A-09.1, inherited) — the revoke action in particular must be keyboard-operable and screen-reader-announced given its compliance sensitivity |
 
 **D.4 Explicit non-goal (stated to avoid silent scope creep).** Full visual
 wireframes, a component-level Figma file, and pixel-perfect Admin console
@@ -1354,7 +1354,7 @@ D.1 → EFR-26–28; D.3 → EFR-04, ENFR-07.
 
 ### I. Risks and Issues
 
-| ID        | Risk                                                                                                               | Mitigation                                                                                                                                                                                                 |
+| ID | Risk | Mitigation |
 | --------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | RISK-E9.1 | k-anonymity floor (D.3, "at least 5 consenting members") is newly introduced here, not stated in the source corpus | Reasonable privacy-engineering default to prevent re-identification of a single consenting member in a small cohort; flagged for Privacy Engineer sign-off as a real design decision, not silently assumed |
 
@@ -1483,7 +1483,7 @@ D.1 → EFR-04, EFR-28. D.2 → ADR-ENT-001 (client-side half of tenant scoping)
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                                                         | Mitigation                                                                                                                                                                                                     |
+| ID | Risk | Mitigation |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | RISK-E10.1 | `X-Tenant-Context` header (D.2) must never be trusted as the sole source of tenant scope server-side (a client can forge it) | Explicitly documented: the server derives `app.current_tenant_id` (Phase 7, D.2) from the authenticated session/JWT, never from this header alone — the header is a UX convenience, RLS is the actual boundary |
 
@@ -1564,7 +1564,7 @@ D.1 → ADR-ENT-001. D.2 → ADR-ENT-002, EFR-02/03. D.3 → RISK-E9.1 resolutio
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                           | Mitigation                                                                                                    |
+| ID | Risk | Mitigation |
 | ---------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | RISK-E11.1 | Every one of these three pieces is unexecuted, unreviewed by a second engineer | Phase 6's 2-reviewer rule for anything touching `permissions/` explicitly covers this code once a repo exists |
 
@@ -1639,7 +1639,7 @@ behavioral drift of existing agents).
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                                                                                | Mitigation                                                     |
+| ID | Risk | Mitigation |
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | RISK-E12.1 | `REFLECTION_CONFIDENCE_FLOOR` and regression-gate thresholds are unvalidated starting values, same category of risk as the MVP document's RISK-11.1 | Same disposition: release-blocking calibration task (Phase 19) |
 
@@ -1667,33 +1667,33 @@ mapping.
 **D.1 STRIDE additions (enterprise-only components, additive to the MVP
 document's Phase 13, D.1).**
 
-| Component                 | Threat                                                                                          | STRIDE                            | Mitigation                                                                                                                                                                      |
+| Component | Threat | STRIDE | Mitigation |
 | ------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RLS policy layer          | A missing/misconfigured policy on a new table exposes cross-tenant data                         | Information Disclosure            | Phase 6 D.2 CI linter (no migration without an explicit policy) + Phase 14 exhaustive per-table cross-tenant test                                                               |
-| Consent-check layer       | An internal admin tool bypasses the consent check via direct DB access                          | Elevation of Privilege            | RLS policy (D.2, Phase 7) enforced at the database layer itself, not only in application code — a direct psql session under the application role is still subject to the policy |
-| Plugin sandbox            | A malicious plugin attempts to read another tenant's or another plugin's data                   | Tampering, Information Disclosure | ADR-ENT-005 (separate execution context) + capability-scoped tool access, not shared-process trust                                                                              |
-| SSO/SAML assertion        | A forged or replayed SAML assertion grants unauthorized tenant access                           | Spoofing                          | Standard SAML signature validation + assertion replay-window enforcement (5-minute clock skew tolerance, single-use assertion IDs cached)                                       |
-| Cohort analytics endpoint | Statistical inference attack re-identifies an individual from aggregate stats in a small cohort | Information Disclosure            | k-anonymity floor (Phase 9 D.3 / Phase 11 D.3), suppressing output below 5 consenting members                                                                                   |
-| Billing/usage metering    | A tenant under-reports usage by manipulating client-side telemetry                              | Tampering                         | All billable events metered server-side from `agent_actions`/API gateway logs, never from client-reported data                                                                  |
+| RLS policy layer | A missing/misconfigured policy on a new table exposes cross-tenant data | Information Disclosure | Phase 6 D.2 CI linter (no migration without an explicit policy) + Phase 14 exhaustive per-table cross-tenant test |
+| Consent-check layer | An internal admin tool bypasses the consent check via direct DB access | Elevation of Privilege | RLS policy (D.2, Phase 7) enforced at the database layer itself, not only in application code — a direct psql session under the application role is still subject to the policy |
+| Plugin sandbox | A malicious plugin attempts to read another tenant's or another plugin's data | Tampering, Information Disclosure | ADR-ENT-005 (separate execution context) + capability-scoped tool access, not shared-process trust |
+| SSO/SAML assertion | A forged or replayed SAML assertion grants unauthorized tenant access | Spoofing | Standard SAML signature validation + assertion replay-window enforcement (5-minute clock skew tolerance, single-use assertion IDs cached) |
+| Cohort analytics endpoint | Statistical inference attack re-identifies an individual from aggregate stats in a small cohort | Information Disclosure | k-anonymity floor (Phase 9 D.3 / Phase 11 D.3), suppressing output below 5 consenting members |
+| Billing/usage metering | A tenant under-reports usage by manipulating client-side telemetry | Tampering | All billable events metered server-side from `agent_actions`/API gateway logs, never from client-reported data |
 
 **D.2 SOC 2 Trust Services Criteria mapping (EFR-38, closing Finding I-0.2 for
 `Security/SOC2.md`).**
 
-| TSC                        | Criterion (summary)                   | Vaeloom control                                                                  | Owner              | Status   |
+| TSC | Criterion (summary) | Vaeloom control | Owner | Status |
 | -------------------------- | ------------------------------------- | -------------------------------------------------------------------------------- | ------------------ | -------- |
-| CC1                        | Control environment                   | Engineering standards (Phase 6), RACI (Phase 4)                                  | Program Manager    | Designed |
-| CC2                        | Communication & information           | Documentation set (Phase 18), audit log (inherited from MVP)                     | Technical Writer   | Designed |
-| CC3                        | Risk assessment                       | This document's Risk Register (Appendix C) + STRIDE models (D.1, MVP Phase 13)   | Security Architect | Designed |
-| CC4                        | Monitoring activities                 | Phase 17 observability + Phase 6 D.2 evidence-tagging (`soc2-evidence` PR label) | SRE                | Designed |
-| CC5                        | Control activities                    | Permission Engine, RLS, consent-check layer (all above)                          | Security Architect | Designed |
-| CC6                        | Logical/physical access controls      | RBAC (EFR-08), RLS (ADR-ENT-001), secrets manager (inherited from MVP)           | Security Architect | Designed |
-| CC7                        | System operations                     | Phase 16 CI/CD, Phase 17 runbooks                                                | DevOps Engineer    | Designed |
-| CC8                        | Change management                     | Phase 6 branching/review standards, Phase 4 change-control policy                | Release Manager    | Designed |
-| CC9                        | Risk mitigation                       | Vendor/third-party (plugin) risk — ADR-ENT-005 sandboxing                        | Security Architect | Designed |
-| A1 (Availability)          | System availability commitments       | ENFR-02 (99.9%), Phase 15 SLOs                                                   | SRE                | Designed |
-| C1 (Confidentiality)       | Confidential info protection          | Encryption (inherited NFR-05/06), classification (Phase 7 D.6)                   | Privacy Engineer   | Designed |
-| PI1 (Processing Integrity) | Complete, accurate processing         | Test pyramid (Phase 14), append-only audit log                                   | QA Lead            | Designed |
-| P1–P8 (Privacy)            | Notice, choice, consent, access, etc. | Consent model (ADR-ENT-002), export/delete (inherited FR-43/44)                  | Privacy Engineer   | Designed |
+| CC1 | Control environment | Engineering standards (Phase 6), RACI (Phase 4) | Program Manager | Designed |
+| CC2 | Communication & information | Documentation set (Phase 18), audit log (inherited from MVP) | Technical Writer | Designed |
+| CC3 | Risk assessment | This document's Risk Register (Appendix C) + STRIDE models (D.1, MVP Phase 13) | Security Architect | Designed |
+| CC4 | Monitoring activities | Phase 17 observability + Phase 6 D.2 evidence-tagging (`soc2-evidence` PR label) | SRE | Designed |
+| CC5 | Control activities | Permission Engine, RLS, consent-check layer (all above) | Security Architect | Designed |
+| CC6 | Logical/physical access controls | RBAC (EFR-08), RLS (ADR-ENT-001), secrets manager (inherited from MVP) | Security Architect | Designed |
+| CC7 | System operations | Phase 16 CI/CD, Phase 17 runbooks | DevOps Engineer | Designed |
+| CC8 | Change management | Phase 6 branching/review standards, Phase 4 change-control policy | Release Manager | Designed |
+| CC9 | Risk mitigation | Vendor/third-party (plugin) risk — ADR-ENT-005 sandboxing | Security Architect | Designed |
+| A1 (Availability) | System availability commitments | ENFR-02 (99.9%), Phase 15 SLOs | SRE | Designed |
+| C1 (Confidentiality) | Confidential info protection | Encryption (inherited NFR-05/06), classification (Phase 7 D.6) | Privacy Engineer | Designed |
+| PI1 (Processing Integrity) | Complete, accurate processing | Test pyramid (Phase 14), append-only audit log | QA Lead | Designed |
+| P1–P8 (Privacy) | Notice, choice, consent, access, etc. | Consent model (ADR-ENT-002), export/delete (inherited FR-43/44) | Privacy Engineer | Designed |
 
 **Status legend:** "Designed" = control is specified and its implementation is
 traceable to a phase in this document; **no control has "Operating
@@ -1728,10 +1728,10 @@ D.1 → ENFR-01/06. D.2 → EFR-38, ESM-05. D.3 → EFR-39, ESM-10.
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                                                                  | Mitigation                                                                                                              |
+| ID | Risk | Mitigation |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | RISK-E13.1 | SOC 2 mapping (D.2) is "Designed" status only — a real audit firm may require control implementations this document didn't anticipate | Treated as a starting control matrix for a real Compliance Specialist + audit-firm engagement, not a substitute for one |
-| RISK-E13.2 | DPA/legal review is per-tenant and not yet begun for any real tenant                                                                  | Explicitly gates individual tenant onboarding (D.4), does not gate general release readiness                            |
+| RISK-E13.2 | DPA/legal review is per-tenant and not yet begun for any real tenant | Explicitly gates individual tenant onboarding (D.4), does not gate general release readiness |
 
 ### J. Quality Gate
 
@@ -1762,12 +1762,12 @@ plugin-sandbox boundary tests.
 
 **D.1 Test pyramid additions.**
 
-| Layer                                                       | New scope                                                                                                         | Target                                                                                                                               |
+| Layer | New scope | Target |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Cross-tenant isolation (new layer, sits alongside Security) | Every tenant-scoped table (not a sample) tested for a forged cross-tenant read/write attempt                      | 100% of tenant-scoped tables, zero exceptions — this is the one place "representative sample" is explicitly rejected as insufficient |
-| Consent-filtering                                           | Cohort analytics endpoint under every consent-count scenario (0, below k-floor, above k-floor, revoked mid-query) | 100% of scenarios in D.2 below                                                                                                       |
-| Plugin sandbox boundary                                     | Every declared scope in a test manifest, attempt access outside it                                                | 100% of scope categories                                                                                                             |
-| Regression (inherited)                                      | MVP golden-dataset suite re-run on every enterprise-tier PR (Phase 12, D.1)                                       | Zero regression, hard gate                                                                                                           |
+| Cross-tenant isolation (new layer, sits alongside Security) | Every tenant-scoped table (not a sample) tested for a forged cross-tenant read/write attempt | 100% of tenant-scoped tables, zero exceptions — this is the one place "representative sample" is explicitly rejected as insufficient |
+| Consent-filtering | Cohort analytics endpoint under every consent-count scenario (0, below k-floor, above k-floor, revoked mid-query) | 100% of scenarios in D.2 below |
+| Plugin sandbox boundary | Every declared scope in a test manifest, attempt access outside it | 100% of scope categories |
+| Regression (inherited) | MVP golden-dataset suite re-run on every enterprise-tier PR (Phase 12, D.1) | Zero regression, hard gate |
 
 **D.2 Representative exhaustive cross-tenant test (generated programmatically
 across every table, not hand-written per table).**
@@ -1807,7 +1807,7 @@ D.2 → ENFR-01, RISK-E7.1/E5.1. D.3 → RISK-E9.1. D.4 → ENFR-06.
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                                                                                           | Mitigation                                                                                                                                         |
+| ID | Risk | Mitigation |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | RISK-E14.1 | Exhaustive per-table generation (D.2) depends on accurate schema introspection — a table added without RLS could also be missed by a buggy introspection query | Cross-checked against Phase 6 D.2's migration-time linter as a second, independent line of defense (defense in depth, not single point of failure) |
 
@@ -1834,19 +1834,19 @@ institutional tenants, each 50–20,000 individual workspaces (per the
 variance than the MVP's single-cohort estimate, because institution size varies
 enormously (a bootcamp vs. a large state university).
 
-| Resource                                          | Consideration at this range                                                                                                                                                                          |
+| Resource | Consideration at this range |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Postgres (post-migration per ADR-ENT-004 trigger) | Neo4j handles graph traversal at the top of this range; RLS overhead on the relational tables is the thing to actually benchmark, since it adds a policy-evaluation cost to every query              |
-| Kafka                                             | Sized for the audit/event volume of the largest single expected tenant (20k workspaces), not the average                                                                                             |
-| Kubernetes                                        | Namespace-per-environment (not per-tenant, per ADR-ENT-001's RLS choice over DB-per-tenant) — horizontal pod autoscaling on the AI-service deployment specifically, since agent load is the spikiest |
+| Postgres (post-migration per ADR-ENT-004 trigger) | Neo4j handles graph traversal at the top of this range; RLS overhead on the relational tables is the thing to actually benchmark, since it adds a policy-evaluation cost to every query |
+| Kafka | Sized for the audit/event volume of the largest single expected tenant (20k workspaces), not the average |
+| Kubernetes | Namespace-per-environment (not per-tenant, per ADR-ENT-001's RLS choice over DB-per-tenant) — horizontal pod autoscaling on the AI-service deployment specifically, since agent load is the spikiest |
 
 **D.2 SLOs (additive to MVP's, raised where stated in ENFR-02).**
 
-| SLO                            | Target                                                                                       |
+| SLO | Target |
 | ------------------------------ | -------------------------------------------------------------------------------------------- |
-| Core API availability          | 99.9% (ENFR-02)                                                                              |
-| RLS query overhead             | < 10ms added P95 latency vs. an unscoped-equivalent query (measured, not assumed, once real) |
-| Multi-region provisioning time | < 1 business day (ESM-02)                                                                    |
+| Core API availability | 99.9% (ENFR-02) |
+| RLS query overhead | < 10ms added P95 latency vs. an unscoped-equivalent query (measured, not assumed, once real) |
+| Multi-region provisioning time | < 1 business day (ESM-02) |
 
 **D.3 Load-test plan additions.** Simulate the largest single tenant (20k
 workspaces) running a synchronized Gmail-Agent-style scheduled pass alongside 50
@@ -1860,7 +1860,7 @@ D.1/D.2 → ENFR-02/03, ESM-02.
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                           | Mitigation                                                                       |
+| ID | Risk | Mitigation |
 | ---------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | RISK-E15.1 | RLS overhead is a real, measurable cost this document cannot benchmark without a live database | Flagged as the first real-engine benchmark to run once Phase 7's DDL is deployed |
 
@@ -1943,7 +1943,7 @@ D.1 → ESM-10. D.2 → RISK-E7.1/E5.1, Phase 13 D.2. D.3 → ADR-ENT-004.
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                                         | Mitigation                                                                                                                |
+| ID | Risk | Mitigation |
 | ---------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | RISK-E16.1 | Migration runbook (D.3) is unrehearsed — first real migration is inherently higher-risk than a rehearsed one | Recommend a dry-run against a synthetic dataset before the first real trigger event, not skipped even under time pressure |
 
@@ -1998,7 +1998,7 @@ D.1 → ENFR-09. D.2 → ESM-05, EFR-38. D.3 → ENFR-07.
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                                         | Mitigation                                                                                             |
+| ID | Risk | Mitigation |
 | ---------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | RISK-E17.1 | Evidence automation (D.2) only starts collecting from the day it's deployed — no retroactive evidence exists | Expected; flagged so a real audit engagement scopes its evidence period correctly from that start date |
 
@@ -2022,27 +2022,27 @@ onboard from this document set alone.
 
 **D.1 Documentation inventory (additive to the MVP document's Phase 18, D.1).**
 
-| Artifact                                                                             | Location     |
+| Artifact | Location |
 | ------------------------------------------------------------------------------------ | ------------ |
-| Enterprise business case & 10 success metrics                                        | Phase 1      |
-| Institutional personas & enterprise connector catalog                                | Phase 2      |
-| 57 EFRs, 12 ENFRs                                                                    | Phase 3      |
-| Enterprise build-plan (6 sub-phases), RACI                                           | Phase 4      |
-| 8-layer architecture, 6 new ADRs, full 28-agent roster, full 22-memory-type taxonomy | Phase 5      |
-| Stack deltas, RLS/consent/plugin engineering standards                               | Phase 6      |
-| Tenant/consent/billing/plugin DDL                                                    | Phase 7      |
-| Tenant/admin/billing/consent API contracts                                           | Phase 8      |
-| Admin console & plugin marketplace IA                                                | Phase 9      |
-| Frontend/backend/AI representative code                                              | Phases 10–12 |
-| STRIDE additions, full SOC 2 TSC mapping, residency design                           | Phase 13     |
-| Exhaustive cross-tenant test suite design                                            | Phase 14     |
-| Enterprise capacity model                                                            | Phase 15     |
-| Kubernetes/Kafka IaC, migration runbook                                              | Phase 16     |
-| Tenant-scoped observability, SOC 2 evidence automation                               | Phase 17     |
-| This inventory                                                                       | Phase 18     |
-| Enterprise release checklist                                                         | Phase 19     |
-| Post-deploy tenant-onboarding validation                                             | Phase 20     |
-| SOC 2 audit cadence, tenant offboarding                                              | Phase 21     |
+| Enterprise business case & 10 success metrics | Phase 1 |
+| Institutional personas & enterprise connector catalog | Phase 2 |
+| 57 EFRs, 12 ENFRs | Phase 3 |
+| Enterprise build-plan (6 sub-phases), RACI | Phase 4 |
+| 8-layer architecture, 6 new ADRs, full 28-agent roster, full 22-memory-type taxonomy | Phase 5 |
+| Stack deltas, RLS/consent/plugin engineering standards | Phase 6 |
+| Tenant/consent/billing/plugin DDL | Phase 7 |
+| Tenant/admin/billing/consent API contracts | Phase 8 |
+| Admin console & plugin marketplace IA | Phase 9 |
+| Frontend/backend/AI representative code | Phases 10–12 |
+| STRIDE additions, full SOC 2 TSC mapping, residency design | Phase 13 |
+| Exhaustive cross-tenant test suite design | Phase 14 |
+| Enterprise capacity model | Phase 15 |
+| Kubernetes/Kafka IaC, migration runbook | Phase 16 |
+| Tenant-scoped observability, SOC 2 evidence automation | Phase 17 |
+| This inventory | Phase 18 |
+| Enterprise release checklist | Phase 19 |
+| Post-deploy tenant-onboarding validation | Phase 20 |
+| SOC 2 audit cadence, tenant offboarding | Phase 21 |
 
 **D.2 Audit-stakeholder onboarding path (net new — the MVP document has no
 equivalent audience).** A SOC 2 auditor or a prospective institutional
@@ -2076,18 +2076,18 @@ and dependent on the MVP document's Phase 19 having already passed.
 **D.1 Release checklist (enterprise-specific, additive to the MVP document's
 Phase 19, D.1 which remains in force).**
 
-| Item                                                                                    | Source          | Status                                               |
+| Item | Source | Status |
 | --------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------- |
-| MVP document Phase 19 fully released (hard dependency, Phase 4 D.2)                     | Phase 4         | Blocking                                             |
-| Exhaustive cross-tenant isolation suite: 100% pass, 0 exceptions                        | RISK-E7.1/E14.1 | Blocking — the single hardest gate at this tier      |
-| RLS policy present on every tenant-scoped table (automated lint)                        | Phase 6 D.2     | Blocking                                             |
-| Zero regression on MVP golden-dataset suite after 28-agent rollout                      | ESM-07          | Blocking                                             |
-| SOC 2 control matrix reviewed by a real Compliance Specialist / audit-readiness advisor | RISK-E13.1      | Blocking (pre-first-institutional-customer)          |
-| Per-tenant DPA signed and legally reviewed                                              | RISK-E13.2      | Blocking **per tenant**, not platform-wide           |
-| Plugin sandbox boundary tests: 100% pass                                                | Phase 14 D.4    | Blocking (only if Marketplace ships in this release) |
-| Data residency provisioning verified in at least one non-default region                 | ESM-10          | Blocking                                             |
-| Consent propagation measured < 5 min in staging                                         | ENFR-07         | Blocking                                             |
-| Cloud vendor / Kubernetes provider decided                                              | Inherited Q-6.1 | Blocking                                             |
+| MVP document Phase 19 fully released (hard dependency, Phase 4 D.2) | Phase 4 | Blocking |
+| Exhaustive cross-tenant isolation suite: 100% pass, 0 exceptions | RISK-E7.1/E14.1 | Blocking — the single hardest gate at this tier |
+| RLS policy present on every tenant-scoped table (automated lint) | Phase 6 D.2 | Blocking |
+| Zero regression on MVP golden-dataset suite after 28-agent rollout | ESM-07 | Blocking |
+| SOC 2 control matrix reviewed by a real Compliance Specialist / audit-readiness advisor | RISK-E13.1 | Blocking (pre-first-institutional-customer) |
+| Per-tenant DPA signed and legally reviewed | RISK-E13.2 | Blocking **per tenant**, not platform-wide |
+| Plugin sandbox boundary tests: 100% pass | Phase 14 D.4 | Blocking (only if Marketplace ships in this release) |
+| Data residency provisioning verified in at least one non-default region | ESM-10 | Blocking |
+| Consent propagation measured < 5 min in staging | ENFR-07 | Blocking |
+| Cloud vendor / Kubernetes provider decided | Inherited Q-6.1 | Blocking |
 
 **D.2 Go/no-go criteria.** Identical philosophy to the MVP document:
 evidence-gated, not calendar-gated. Additionally: **a design-partner pilot with
@@ -2116,7 +2116,7 @@ D.1 is the rollup of every enterprise-tier phase's remaining actions.
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                             | Mitigation                         |
+| ID | Risk | Mitigation |
 | ---------- | ------------------------------------------------------------------------------------------------ | ---------------------------------- |
 | RISK-E19.1 | Every blocking item is open simultaneously, same structural state as the MVP document's Phase 19 | Expected for a pre-code engagement |
 
@@ -2163,7 +2163,7 @@ D.1 → EFR-01–06, ESM-01/04/10.
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                                                      | Mitigation                                                                           |
+| ID | Risk | Mitigation |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | RISK-E20.1 | Smoke test (D.1) is the single most important test in this entire document and is currently only specified, not automated | Same disposition as MVP RISK-20.1 — automate before the first real tenant, not after |
 
@@ -2187,21 +2187,21 @@ enterprise tier, additive to the MVP document's Phase 21.
 
 **D.1 Maintenance calendar additions.**
 
-| Cadence                    | Activity                                                                                                                                                             |
+| Cadence | Activity |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Quarterly                  | Tenant access review (every `tenant_roles` grant re-confirmed as still appropriate — a direct SOC 2 CC6 control)                                                     |
-| Quarterly                  | Consent-grant audit sample (manually verify a sample of "active" consent grants actually reflect current individual intent, not just an unrevoked historical grant)  |
-| Annually (or per contract) | SOC 2 Type II audit engagement, once ~6–12 months of evidence (Phase 17, D.2) has accumulated                                                                        |
-| Per tenant offboarding     | Full data export offered to the departing tenant's admin + individual members; tenant data fully erasable on request, same verifiability standard as the MVP's FR-44 |
-| Ongoing                    | Plugin marketplace re-review cadence — an approved plugin is re-scanned on every version bump, not approved once and trusted forever                                 |
+| Quarterly | Tenant access review (every `tenant_roles` grant re-confirmed as still appropriate — a direct SOC 2 CC6 control) |
+| Quarterly | Consent-grant audit sample (manually verify a sample of "active" consent grants actually reflect current individual intent, not just an unrevoked historical grant) |
+| Annually (or per contract) | SOC 2 Type II audit engagement, once ~6–12 months of evidence (Phase 17, D.2) has accumulated |
+| Per tenant offboarding | Full data export offered to the departing tenant's admin + individual members; tenant data fully erasable on request, same verifiability standard as the MVP's FR-44 |
+| Ongoing | Plugin marketplace re-review cadence — an approved plugin is re-scanned on every version bump, not approved once and trusted forever |
 
 **D.2 Technical debt register (additive to the MVP document's TD-01–03).**
 
-| ID     | Item                                                                                                                             |
+| ID | Item |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | TD-E01 | Full (non-representative) RLS policy replication across every remaining tenant-scoped table beyond the two shown in Phase 7, D.2 |
-| TD-E02 | Migration runbook (Phase 16, D.3) dry-run against synthetic data, not yet performed                                              |
-| TD-E03 | Real audit-firm engagement to validate the SOC 2 control matrix (Phase 13, D.2)                                                  |
+| TD-E02 | Migration runbook (Phase 16, D.3) dry-run against synthetic data, not yet performed |
+| TD-E03 | Real audit-firm engagement to validate the SOC 2 control matrix (Phase 13, D.2) |
 
 **D.3 Roadmap beyond this tier.** Not specified further — per the source
 corpus's own explicit gap table (Enterprise Paper §22), monetization refinement,
@@ -2214,9 +2214,9 @@ D.1 → ESM-05, EFR-04, FR-44 (inherited).
 
 ### I. Risks and Issues
 
-| ID         | Risk                                                                                                          | Mitigation |
+| ID | Risk | Mitigation |
 | ---------- | ------------------------------------------------------------------------------------------------------------- | ---------- |
-| RISK-E21.1 | Technical debt register is thin for the same reason as the MVP document's — no code exists yet to accrue debt | Expected   |
+| RISK-E21.1 | Technical debt register is thin for the same reason as the MVP document's — no code exists yet to accrue debt | Expected |
 
 ### J. Quality Gate
 
@@ -2233,56 +2233,56 @@ Enterprise.**
 
 ## Appendix A — Consolidated Assumptions Register
 
-| ID      | Assumption                                                                                                | Opened at | Owner                | Validation method                               |
+| ID | Assumption | Opened at | Owner | Validation method |
 | ------- | --------------------------------------------------------------------------------------------------------- | --------- | -------------------- | ----------------------------------------------- |
-| A-E0.1  | No named enterprise design partner exists yet                                                             | Phase 0   | Program Manager      | Confirm at Phase 4 kickoff                      |
-| A-E2.1  | Three initial institutional segments only (university career services, corporate L&D, bootcamp placement) | Phase 2   | Product Manager      | Confirm before GTM expansion beyond these three |
-| A-E15.1 | Tens to low-hundreds of tenants, 50–20,000 workspaces each                                                | Phase 15  | Performance Engineer | Recalibrate against real design-partner data    |
+| A-E0.1 | No named enterprise design partner exists yet | Phase 0 | Program Manager | Confirm at Phase 4 kickoff |
+| A-E2.1 | Three initial institutional segments only (university career services, corporate L&D, bootcamp placement) | Phase 2 | Product Manager | Confirm before GTM expansion beyond these three |
+| A-E15.1 | Tens to low-hundreds of tenants, 50–20,000 workspaces each | Phase 15 | Performance Engineer | Recalibrate against real design-partner data |
 
 _(All MVP-tier assumptions, A-1.1 through A-15.1 in the companion document,
 remain in force unchanged and are not re-listed here.)_
 
 ## Appendix B — Consolidated Source Register
 
-| ID           | Source                                                                            | Role                                                                                            |
+| ID | Source | Role |
 | ------------ | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| SRC-EP-01    | `06-Vaeloom-Enterprise-Paper.md`                                                  | Canonical enterprise vision                                                                     |
-| SRC-EP-02    | `vaeloom-enterprise-paper.md`                                                     | Superseded duplicate                                                                            |
-| SRC-EP-03–07 | MVP-tier documents (spec, architecture, workflow, memory, complete-documentation) | Base system this tier extends                                                                   |
-| SRC-EP-08    | `00-Gap-Analysis-Report.md`                                                       | Prior doc-completeness baseline                                                                 |
-| SRC-EP-09    | `00-Documentation-Completion-Report.md`                                           | Records 8 enterprise category docs by title only — **content not available**, see Finding I-0.2 |
+| SRC-EP-01 | `06-Vaeloom-Enterprise-Paper.md` | Canonical enterprise vision |
+| SRC-EP-02 | `vaeloom-enterprise-paper.md` | Superseded duplicate |
+| SRC-EP-03–07 | MVP-tier documents (spec, architecture, workflow, memory, complete-documentation) | Base system this tier extends |
+| SRC-EP-08 | `00-Gap-Analysis-Report.md` | Prior doc-completeness baseline |
+| SRC-EP-09 | `00-Documentation-Completion-Report.md` | Records 8 enterprise category docs by title only — **content not available**, see Finding I-0.2 |
 
 ## Appendix C — Consolidated Risk Register (28 risks raised, this document)
 
-| ID         | Phase | Risk                                                                                     | Status                                               |
+| ID | Phase | Risk | Status |
 | ---------- | ----- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| RISK-E0.1  | 0     | No repository/infra/runtime attached                                                     | Open — structural                                    |
-| RISK-E0.2  | 0     | 8 enterprise category docs referenced but not provided; content newly authored here      | Open — flagged for domain-expert review              |
-| RISK-E1.1  | 1     | ESM-09 (NPS) has no real target without design-partner data                              | Open                                                 |
-| RISK-E2.1  | 2     | FERPA-adjacent scope inferred, not confirmed                                             | Open — legal review pending                          |
-| RISK-E3.1  | 3     | Billing/Licensing/Feature-Flags FRs entirely newly authored, no real pricing/legal input | Open                                                 |
-| RISK-E3.2  | 3     | 20 new agents stated as mechanical expansion in Phase 3, fully expanded in Phase 5       | Resolved by Phase 5 D.3                              |
-| RISK-E4.1  | 4     | Hard dependency on MVP Phase 19 release                                                  | Accepted, by design                                  |
-| RISK-E4.2  | 4     | 7c sub-phase most likely to regress MVP behavior                                         | Mitigated — golden-dataset gate                      |
-| RISK-E5.1  | 5     | RLS requires disciplined per-table application                                           | Mitigated — CI lint + exhaustive test                |
-| RISK-E5.2  | 5     | 28-agent orchestration complexity                                                        | Mitigated — QA + Reflection agents                   |
-| RISK-E6.1  | 6     | Mid-flight store migrations are nontrivial                                               | Mitigated — trigger-based, runbook exists            |
-| RISK-E7.1  | 7     | RLS must be replicated correctly on every table                                          | Mitigated — CI lint + exhaustive test (same as E5.1) |
-| RISK-E7.2  | 7     | Billing schema has no real pricing model behind it                                       | Mitigated — schema is pricing-model-agnostic         |
-| RISK-E8.1  | 8     | Cohort-summary endpoint is highest-consequence if consent-filtering bugs                 | Mitigated — release-blocking test coverage           |
-| RISK-E9.1  | 9     | k-anonymity floor newly introduced, not stakeholder-confirmed                            | Open — Privacy Engineer sign-off pending             |
-| RISK-E10.1 | 10    | Client tenant-context header must never be trusted server-side                           | Mitigated — RLS is the real boundary                 |
-| RISK-E11.1 | 11    | Code unexecuted, unreviewed                                                              | Open — resolves at repo attach                       |
-| RISK-E12.1 | 12    | Reflection/regression thresholds unvalidated                                             | Open — release-blocking calibration                  |
-| RISK-E13.1 | 13    | SOC 2 mapping is design-only, no real audit-firm input                                   | Open — release-blocking pre-first-customer           |
-| RISK-E13.2 | 13    | DPA/legal review not begun for any real tenant                                           | Open — gates per-tenant onboarding only              |
-| RISK-E14.1 | 14    | Exhaustive test generation depends on correct schema introspection                       | Mitigated — defense in depth via CI lint             |
-| RISK-E15.1 | 15    | RLS overhead unbenchmarked                                                               | Open — first real-engine benchmark pending           |
-| RISK-E16.1 | 16    | Migration runbook unrehearsed                                                            | Open — dry-run recommended before first trigger      |
-| RISK-E17.1 | 17    | Evidence automation has no retroactive data                                              | Expected, scoping note only                          |
-| RISK-E19.1 | 19    | All blocking release items open simultaneously                                           | Expected for pre-code engagement                     |
-| RISK-E20.1 | 20    | Tenant-onboarding smoke test not yet automated                                           | Open — automate before first real tenant             |
-| RISK-E21.1 | 21    | Technical debt register thin                                                             | Expected — no code exists yet                        |
+| RISK-E0.1 | 0 | No repository/infra/runtime attached | Open — structural |
+| RISK-E0.2 | 0 | 8 enterprise category docs referenced but not provided; content newly authored here | Open — flagged for domain-expert review |
+| RISK-E1.1 | 1 | ESM-09 (NPS) has no real target without design-partner data | Open |
+| RISK-E2.1 | 2 | FERPA-adjacent scope inferred, not confirmed | Open — legal review pending |
+| RISK-E3.1 | 3 | Billing/Licensing/Feature-Flags FRs entirely newly authored, no real pricing/legal input | Open |
+| RISK-E3.2 | 3 | 20 new agents stated as mechanical expansion in Phase 3, fully expanded in Phase 5 | Resolved by Phase 5 D.3 |
+| RISK-E4.1 | 4 | Hard dependency on MVP Phase 19 release | Accepted, by design |
+| RISK-E4.2 | 4 | 7c sub-phase most likely to regress MVP behavior | Mitigated — golden-dataset gate |
+| RISK-E5.1 | 5 | RLS requires disciplined per-table application | Mitigated — CI lint + exhaustive test |
+| RISK-E5.2 | 5 | 28-agent orchestration complexity | Mitigated — QA + Reflection agents |
+| RISK-E6.1 | 6 | Mid-flight store migrations are nontrivial | Mitigated — trigger-based, runbook exists |
+| RISK-E7.1 | 7 | RLS must be replicated correctly on every table | Mitigated — CI lint + exhaustive test (same as E5.1) |
+| RISK-E7.2 | 7 | Billing schema has no real pricing model behind it | Mitigated — schema is pricing-model-agnostic |
+| RISK-E8.1 | 8 | Cohort-summary endpoint is highest-consequence if consent-filtering bugs | Mitigated — release-blocking test coverage |
+| RISK-E9.1 | 9 | k-anonymity floor newly introduced, not stakeholder-confirmed | Open — Privacy Engineer sign-off pending |
+| RISK-E10.1 | 10 | Client tenant-context header must never be trusted server-side | Mitigated — RLS is the real boundary |
+| RISK-E11.1 | 11 | Code unexecuted, unreviewed | Open — resolves at repo attach |
+| RISK-E12.1 | 12 | Reflection/regression thresholds unvalidated | Open — release-blocking calibration |
+| RISK-E13.1 | 13 | SOC 2 mapping is design-only, no real audit-firm input | Open — release-blocking pre-first-customer |
+| RISK-E13.2 | 13 | DPA/legal review not begun for any real tenant | Open — gates per-tenant onboarding only |
+| RISK-E14.1 | 14 | Exhaustive test generation depends on correct schema introspection | Mitigated — defense in depth via CI lint |
+| RISK-E15.1 | 15 | RLS overhead unbenchmarked | Open — first real-engine benchmark pending |
+| RISK-E16.1 | 16 | Migration runbook unrehearsed | Open — dry-run recommended before first trigger |
+| RISK-E17.1 | 17 | Evidence automation has no retroactive data | Expected, scoping note only |
+| RISK-E19.1 | 19 | All blocking release items open simultaneously | Expected for pre-code engagement |
+| RISK-E20.1 | 20 | Tenant-onboarding smoke test not yet automated | Open — automate before first real tenant |
+| RISK-E21.1 | 21 | Technical debt register thin | Expected — no code exists yet |
 
 ## Appendix D — Glossary Additions (beyond the MVP document's Appendix D)
 
@@ -2305,30 +2305,30 @@ duplicated flat table.
 
 ## Appendix F — Final Project Quality Gate Summary
 
-| Phase                     | Design Axis | Execution Axis          | Overall                    |
+| Phase | Design Axis | Execution Axis | Overall |
 | ------------------------- | ----------- | ----------------------- | -------------------------- |
-| 0 Intake                  | 10/10       | N/A                     | PASSED                     |
-| 1 Discovery               | 10/10       | N/A                     | PASSED                     |
-| 2 Research/Domain         | 9/10        | N/A                     | PASSED                     |
-| 3 Requirements            | 9/10        | N/A                     | PASSED                     |
-| 4 Planning                | 9/10        | N/A                     | PASSED                     |
-| 5 Architecture            | 10/10       | N/A                     | PASSED                     |
-| 6 Tech Stack              | 10/10       | N/A                     | PASSED                     |
-| 7 Data Architecture       | 9/10        | NOT_EXECUTED            | PASSED (design)            |
-| 8 API Design              | 9/10        | NOT_EXECUTED            | PASSED (design)            |
-| 9 UI/UX                   | 9/10        | N/A                     | PASSED                     |
-| 10 Frontend Impl.         | 10/10       | NOT_EXECUTED            | APPROVED WITH ACTIONS      |
-| 11 Backend Impl.          | 10/10       | NOT_EXECUTED            | APPROVED WITH ACTIONS      |
-| 12 AI/ML Impl.            | 10/10       | NOT_EXECUTED            | APPROVED WITH ACTIONS      |
-| 13 Security/Compliance    | 9/10        | NOT_EXECUTED            | APPROVED WITH ACTIONS      |
-| 14 Testing                | 10/10       | NOT_EXECUTED            | APPROVED WITH ACTIONS      |
-| 15 Performance            | 9/10        | NOT_EXECUTED            | APPROVED WITH ACTIONS      |
-| 16 DevOps/CI-CD           | 10/10       | NOT_EXECUTED            | APPROVED WITH ACTIONS      |
-| 17 Observability          | 10/10       | NOT_EXECUTED            | APPROVED WITH ACTIONS      |
-| 18 Documentation          | 10/10       | N/A                     | PASSED                     |
-| 19 Release Readiness      | 10/10       | 0/10 blocking items met | **RELEASE NOT AUTHORIZED** |
-| 20 Post-Deploy Validation | 10/10       | NOT_EXECUTED            | APPROVED WITH ACTIONS      |
-| 21 Maintenance            | 10/10       | N/A                     | PASSED                     |
+| 0 Intake | 10/10 | N/A | PASSED |
+| 1 Discovery | 10/10 | N/A | PASSED |
+| 2 Research/Domain | 9/10 | N/A | PASSED |
+| 3 Requirements | 9/10 | N/A | PASSED |
+| 4 Planning | 9/10 | N/A | PASSED |
+| 5 Architecture | 10/10 | N/A | PASSED |
+| 6 Tech Stack | 10/10 | N/A | PASSED |
+| 7 Data Architecture | 9/10 | NOT_EXECUTED | PASSED (design) |
+| 8 API Design | 9/10 | NOT_EXECUTED | PASSED (design) |
+| 9 UI/UX | 9/10 | N/A | PASSED |
+| 10 Frontend Impl. | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 11 Backend Impl. | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 12 AI/ML Impl. | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 13 Security/Compliance | 9/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 14 Testing | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 15 Performance | 9/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 16 DevOps/CI-CD | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 17 Observability | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 18 Documentation | 10/10 | N/A | PASSED |
+| 19 Release Readiness | 10/10 | 0/10 blocking items met | **RELEASE NOT AUTHORIZED** |
+| 20 Post-Deploy Validation | 10/10 | NOT_EXECUTED | APPROVED WITH ACTIONS |
+| 21 Maintenance | 10/10 | N/A | PASSED |
 
 **Average design-axis score: 9.6/10.**
 

@@ -1,7 +1,7 @@
 # MVP-P14 — 03. Workstreams
 
-> **Phase:** MVP-P14 — Testing and Quality Engineering  
-> **Date:** 2026-08-22 · **Baseline:** `a69d7d7` (P13 remediation)  
+> **Phase:** MVP-P14 — Testing and Quality Engineering 
+> **Date:** 2026-08-22 · **Baseline:** `a69d7d7` (P13 remediation) 
 > **Phase rule:** Test ingest-memory, approvals, resume/ATS, lawful job handoff, Gmail, rights and isolation.
 
 ## BQ-01..06 + DoR Resolutions (per §8, §26)

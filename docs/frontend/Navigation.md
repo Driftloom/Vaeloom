@@ -14,7 +14,7 @@
 
 Vaeloom's navigation architecture is built on a persistent left sidebar that provides constant orientation across all 11 page routes, supplemented by secondary navigation patterns (tabs, breadcrumbs, command palette, deep links) that adapt to content depth and user expertise. The sidebar is collapsible on desktop and transforms to a hamburger menu on mobile, ensuring consistent access regardless of viewport size.
 
-The navigation system is designed for Vaeloom's information-dense workflows. Breadcrumbs provide context in the deeply nested Workspace page structure (Workspace > Career > Resume > Google SDE variant). The command palette (Cmd+K) enables power users to jump to any page, document, or agent without clicking through menus. Deep links allow users to bookmark any specific resource — a particular memory graph entity, a chat conversation with an agent, or a filtered job search.
+The navigation system is designed for Vaeloom's information-dense workflows. Breadcrumbs provide context in the deeply nested Workspace page structure (Workspace > Career > Resume > Google SDE variant). The command palette (Cmd+K) enables power users to jump to any page, document, or agent without clicking through menus. Deep links allow users to bookmark any specific resource â€” a particular memory graph entity, a chat conversation with an agent, or a filtered job search.
 
 **Audience:** Frontend engineers implementing navigation components, UX designers validating information architecture, QA engineers testing route transitions. **System fit:** Navigation is the primary user orientation mechanism, wrapping all page content and providing consistent access across form factors. **Why it matters:** Good navigation reduces user disorientation, enables power-user workflows through keyboard shortcuts, and ensures accessibility across desktop and mobile.
 
@@ -22,7 +22,7 @@ The navigation system is designed for Vaeloom's information-dense workflows. Bre
 
 - Achieve sub-300ms route transition time (p95) through lazy-loaded code chunks and prefetching
 - Enable full keyboard navigation with Cmd+K command palette for all 11 routes
-- Support deep-link navigation to any resource — documents, entities, chats, or filtered views
+- Support deep-link navigation to any resource â€” documents, entities, chats, or filtered views
 - Maintain persistent sidebar state (collapse, scroll position) across sessions
 - Adapt navigation to all form factors: sidebar on desktop, bottom tabs on mobile
 
@@ -43,7 +43,7 @@ The navigation system is designed for Vaeloom's information-dense workflows. Bre
 | FR-001 | Sidebar shall be persistent and collapsible across all pages | P0 |
 | FR-002 | Every route shall have a unique deep-link URL with Next.js App Router | P0 |
 | FR-003 | Command palette (Cmd+K) shall search across pages, documents, agents, and recent items | P1 |
-| FR-004 | Navigation items shall be conditionally rendered based on user role — never hidden with CSS | P0 |
+| FR-004 | Navigation items shall be conditionally rendered based on user role â€” never hidden with CSS | P0 |
 | FR-005 | Active navigation state shall be visually distinct and reflect current route | P0 |
 | FR-006 | Mobile navigation shall use bottom tab bar with thumb-zone-optimized placement | P1 |
 
@@ -55,47 +55,47 @@ The navigation system is designed for Vaeloom's information-dense workflows. Bre
 | NFR-002 | Command palette search latency | < 100ms | Performance API timing |
 | NFR-003 | Chunk load failure rate | < 0.1% | Sentry route chunk error tracking |
 | NFR-004 | Sidebar collapse state persistence across sessions | 100% | localStorage reads on mount |
-| NFR-005 | Navigation click-to-paint (p95) | < 300ms | Web Vitals — INP |
+| NFR-005 | Navigation click-to-paint (p95) | < 300ms | Web Vitals â€” INP |
 
 ## Architecture
 
 ```mermaid
 graph TD
-    classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
-    classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
-    classDef mobile fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
+ classDef primary fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
+ classDef pattern fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
+ classDef mobile fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
 
-    subgraph Primary["??? Primary Navigation (Sidebar)"]
-        direction TB
-        N1["Dashboard<br/>/"]
-        N2["Workspace<br/>/workspace"]
-        N3["Memory Graph<br/>/memory-graph"]
-        N4["Chat<br/>/chat"]
-        N5["Settings<br/>/settings"]
-    end
+ subgraph Primary["Primary Navigation (Sidebar)"]
+ direction TB
+ N1["Dashboard<br/>/"]
+ N2["Workspace<br/>/workspace"]
+ N3["Memory Graph<br/>/memory-graph"]
+ N4["Chat<br/>/chat"]
+ N5["Settings<br/>/settings"]
+ end
 
-    subgraph Patterns["?? Navigation Patterns"]
-        P1["Primary: Left sidebar, collapsible"]
-        P2["Secondary: Top bar tabs per page"]
-        P3["Breadcrumb: Page hierarchy indicator"]
-        P4["Search: Command palette (Cmd+K)"]
-        P5["Deep links: Direct URLs to any resource"]
-    end
+ subgraph Patterns["Navigation Patterns"]
+ P1["Primary: Left sidebar, collapsible"]
+ P2["Secondary: Top bar tabs per page"]
+ P3["Breadcrumb: Page hierarchy indicator"]
+ P4["Search: Command palette (Cmd+K)"]
+ P5["Deep links: Direct URLs to any resource"]
+ end
 
-    subgraph MobileNav["?? Mobile Navigation"]
-        M1["Bottom tab bar<br/>Primary destinations"]
-        M2["Hamburger menu<br/>Full sidebar access"]
-        M3["Swipe gestures<br/>Back navigation"]
-    end
+ subgraph MobileNav["Mobile Navigation"]
+ M1["Bottom tab bar<br/>Primary destinations"]
+ M2["Hamburger menu<br/>Full sidebar access"]
+ M3["Swipe gestures<br/>Back navigation"]
+ end
 
-    Primary --> Patterns --> MobileNav
+ Primary--> Patterns--> MobileNav
 
-    class N1,N2,N3,N4,N5 primary
-    class P1,P2,P3,P4,P5 pattern
-    class M1,M2,M3 mobile
+ class N1,N2,N3,N4,N5 primary
+ class P1,P2,P3,P4,P5 pattern
+ class M1,M2,M3 mobile
 ```
 
-> **Diagram:** Navigation architecture — **primary sidebar** (5 core routes) ? **5 navigation patterns** (sidebar, tabs, breadcrumbs, command palette, deep links) ? **mobile adaptation** (bottom tab bar, hamburger menu, swipe gestures).
+> **Diagram:** Navigation architecture â€” **primary sidebar** (5 core routes) ? **5 navigation patterns** (sidebar, tabs, breadcrumbs, command palette, deep links) ? **mobile adaptation** (bottom tab bar, hamburger menu, swipe gestures).
 
 ## Components
 
@@ -120,29 +120,29 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant S as Sidebar
-    participant C as CommandPalette
-    participant R as Next.js Router
-    participant CH as Route Chunk
+ participant U as User
+ participant S as Sidebar
+ participant C as CommandPalette
+ participant R as Next.js Router
+ participant CH as Route Chunk
 
-    U->>S: Click "Memory Graph"
-    S->>R: router.push('/memory-graph')
-    R->>R: Start route transition
-    R->>CH: Lazy-load /memory-graph chunk
-    CH-->>R: Chunk loaded
-    R->>R: Render page component
-    R-->>U: Memory Graph page visible
-    S->>S: Update active state to "Memory Graph"
+ U->>S: Click "Memory Graph"
+ S->>R: router.push('/memory-graph')
+ R->>R: Start route transition
+ R->>CH: Lazy-load /memory-graph chunk
+ CH-->>R: Chunk loaded
+ R->>R: Render page component
+ R-->>U: Memory Graph page visible
+ S->>S: Update active state to "Memory Graph"
 
-    Note over U,S: Command palette
-    U->>C: Press Cmd+K
-    C-->>U: Overlay opens with search input
-    U->>C: Type "memory"
-    C->>C: Fuse.js fuzzy search
-    C-->>U: Results: Memory Graph, Memory Health, Memory Settings
-    U->>C: Select "Memory Graph"
-    C->>R: Navigate to /memory-graph
+ Note over U,S: Command palette
+ U->>C: Press Cmd+K
+ C-->>U: Overlay opens with search input
+ U->>C: Type "memory"
+ C->>C: Fuse.js fuzzy search
+ C-->>U: Results: Memory Graph, Memory Health, Memory Settings
+ U->>C: Select "Memory Graph"
+ C->>R: Navigate to /memory-graph
 ```
 
 ## Data Flow
@@ -159,17 +159,17 @@ sequenceDiagram
 
 ## APIs
 
-N/A — Navigation is a client-side UI concern that operates within the Next.js App Router. Navigation data (sidebar items, preferences) is managed through server components and user preferences API, not dedicated navigation endpoints.
+N/A â€” Navigation is a client-side UI concern that operates within the Next.js App Router. Navigation data (sidebar items, preferences) is managed through server components and user preferences API, not dedicated navigation endpoints.
 
 ## Database
 
-N/A — Navigation data is not persisted in a database. Sidebar state uses localStorage; user navigation preferences are stored in the user profile through the user management API. Route definitions are static code in the Next.js App Router.
+N/A â€” Navigation data is not persisted in a database. Sidebar state uses localStorage; user navigation preferences are stored in the user profile through the user management API. Route definitions are static code in the Next.js App Router.
 
 ## Security
 
 | Concern | Mitigation |
 |---------|------------|
-| Role-based nav item visibility | Navigation items for admin or enterprise features must be conditionally rendered based on user role — never just hidden with CSS |
+| Role-based nav item visibility | Navigation items for admin or enterprise features must be conditionally rendered based on user role â€” never just hidden with CSS |
 | Protected routes with server-side checks | Client-side route guards are insufficient; every protected route must verify permissions server-side (Next.js middleware or API layer) |
 | Breadcrumb path information leakage | Breadcrumbs that reveal internal folder structures or system architecture should be validated against user permissions before display |
 
@@ -204,10 +204,10 @@ N/A — Navigation data is not persisted in a database. Sidebar state uses localSt
 
 | Metric | Alert Threshold | Severity | Dashboard |
 |--------|----------------|----------|-----------|
-| Route transition time (p95) | > 500ms | Warning | Grafana — Web Vitals (INP) |
-| Command palette search latency | > 100ms | Warning | Grafana — Performance Dashboard |
-| Chunk load failure rate | > 0.1% | Critical | Sentry — Route Chunk Errors |
-| Navigation click-to-paint (p95) | > 300ms | Warning | Grafana — Interaction to Next Paint |
+| Route transition time (p95) | > 500ms | Warning | Grafana â€” Web Vitals (INP) |
+| Command palette search latency | > 100ms | Warning | Grafana â€” Performance Dashboard |
+| Chunk load failure rate | > 0.1% | Critical | Sentry â€” Route Chunk Errors |
+| Navigation click-to-paint (p95) | > 300ms | Warning | Grafana â€” Interaction to Next Paint |
 
 ## Deployment
 
@@ -333,10 +333,10 @@ function BreadcrumbTrail() {
 | # | Practice | Rationale |
 |---|----------|----------|
 | 1 | Keep the sidebar persistent and collapsible | A persistent sidebar gives users constant orientation; collapsible mode frees screen space for content when needed |
-| 2 | Support keyboard shortcuts for common navigation | Cmd+K for command palette, Cmd+B for sidebar toggle — power users navigate faster and appreciate keyboard-first design |
-| 3 | Encode page state in URL search params | Filter selections, active tabs, and sidebar state should be reflected in the URL — users can share links with their exact view |
-| 4 | Use responsive navigation patterns per device | Mobile gets a bottom tab bar (thumb zone), tablet gets a hamburger, desktop gets a full sidebar — each form factor has different ergonomics |
-| 5 | Validate breadcrumb segments against user permissions | Never show breadcrumb paths to resources the user cannot access — this prevents information leakage |
+| 2 | Support keyboard shortcuts for common navigation | Cmd+K for command palette, Cmd+B for sidebar toggle â€” power users navigate faster and appreciate keyboard-first design |
+| 3 | Encode page state in URL search params | Filter selections, active tabs, and sidebar state should be reflected in the URL â€” users can share links with their exact view |
+| 4 | Use responsive navigation patterns per device | Mobile gets a bottom tab bar (thumb zone), tablet gets a hamburger, desktop gets a full sidebar â€” each form factor has different ergonomics |
+| 5 | Validate breadcrumb segments against user permissions | Never show breadcrumb paths to resources the user cannot access â€” this prevents information leakage |
 
 ## Risks
 
