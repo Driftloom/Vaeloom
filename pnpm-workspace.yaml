@@ -1,10 +1,17 @@
 packages:
-  - "apps/*"
-  - "packages/*"
-  - "sdk/*"
-  - "integrations/*"
-  - "connectors/*"
-  - "plugins/*"
-  - "infra/*"
-  - "scripts/*"
-  - "testing/*"
+  - 'apps/*'
+  - 'packages/*'
+  - 'sdk/*'
+  - 'integrations/*'
+  - 'connectors/*'
+  - 'plugins/*'
+  - 'infra/*'
+  - 'scripts/*'
+  - 'testing/*'
+
+overrides:
+  eslint: ^8.57.0
+
+peerDependencyRules:
+  allowedVersions:
+    eslint: 8
