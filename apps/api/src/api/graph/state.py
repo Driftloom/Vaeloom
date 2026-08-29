@@ -81,6 +81,10 @@ class VaeloomGraphState(TypedDict, total=False):
     result: dict[str, Any] | None
     error: str | None
     metadata: dict[str, Any]
+    # Handoff provenance (bounded, validated via contracts.AgentHandoff)
+    handoff: dict[str, Any] | None
+    # Evaluation result (bounded, typed)
+    evaluation: dict[str, Any] | None
 
 
 # Limits
@@ -162,6 +166,23 @@ def validate_graph_state(state: dict[str, Any]) -> None:
     if res is not None and _size_of(res) > MAX_RESULT_BYTES:
         raise ValueError(f"result too large > {MAX_RESULT_BYTES}")
 
+    # handoff bounded
+    validate_handoff_state(state)
+
+    # evaluation bounded (via contracts, never expose reasoning)
+    ev = state.get("evaluation")
+    if ev is not None:
+        try:
+            from .contracts import validate_evaluation  # type: ignore
+
+            validate_evaluation(ev)
+        except ValueError:
+            raise
+        except Exception:
+            pass
+        if _size_of(ev) > 2048:
+            raise ValueError("evaluation too large >2KB")
+
     # execution_status must be known
     status = state.get("execution_status")
     if status and status not in {
@@ -174,6 +195,23 @@ def validate_graph_state(state: dict[str, Any]) -> None:
 def validate_workspace_binding(state: dict[str, Any], workspace_id: str) -> None:
     if state.get("workspace_id") != workspace_id:
         raise ValueError(f"workspace mismatch: state {state.get('workspace_id')} != {workspace_id}")
+
+
+def validate_handoff_state(state: dict[str, Any]) -> None:
+    """Validate AgentHandoff if present — workspace binding + size + secret safety."""
+    h = state.get("handoff")
+    if h is None:
+        return
+    try:
+        from .contracts import validate_handoff
+    except Exception:
+        return
+    validate_handoff(h)
+    # workspace must match state workspace
+    if h.get("workspace_id") and h.get("workspace_id") != state.get("workspace_id"):
+        raise ValueError(f"handoff workspace mismatch: {h.get('workspace_id')} != {state.get('workspace_id')}")
+    # also run global secret check
+    validate_no_secrets(h)
 
 
 def build_initial_state(

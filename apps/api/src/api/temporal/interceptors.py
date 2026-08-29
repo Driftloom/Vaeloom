@@ -59,11 +59,48 @@ if HAS_TEMPORAL_INTERCEPTOR and HAS_OTEL:
                     span.record_exception(exc)
                     raise
 
+    # Workflow tracing (closes gap workflow→activity propagation §25)
+    try:
+        from temporalio.interceptor import WorkflowInboundInterceptor, ExecuteWorkflowInput  # type: ignore
+
+        _HAS_WF_INTERCEPTOR = True
+    except Exception:
+        _HAS_WF_INTERCEPTOR = False
+        WorkflowInboundInterceptor = object  # type: ignore
+        ExecuteWorkflowInput = object  # type: ignore
+
+    if _HAS_WF_INTERCEPTOR:
+
+        class _WorkflowTracingInterceptor(WorkflowInboundInterceptor):  # type: ignore
+            async def execute_workflow(self, input: ExecuteWorkflowInput) -> Any:
+                wf_name = getattr(input.defn, "name", "workflow")
+                span_name = f"temporal.workflow.{wf_name}"
+                with _tracer.start_as_current_span(
+                    span_name, kind=SpanKind.INTERNAL, attributes={"temporal.workflow.name": wf_name}
+                ) as span:
+                    try:
+                        result = await super().execute_workflow(input)
+                        span.set_status(StatusCode.OK)
+                        return result
+                    except Exception as exc:
+                        span.set_status(StatusCode.ERROR, str(exc)[:200])
+                        span.record_exception(exc)
+                        raise
+    else:
+        _WorkflowTracingInterceptor = None  # type: ignore
+
     class TracingInterceptor(Interceptor):
-        """Top-level Temporal interceptor that injects activity tracing."""
+        """Top-level Temporal interceptor that injects activity + workflow tracing."""
 
         def activity_inbound(self) -> _ActivityTracingInterceptor:
             return _ActivityTracingInterceptor(impl=self._impl)
+
+        def workflow_inbound(self):  # type: ignore[no-untyped-def]
+            if _WorkflowTracingInterceptor is None:
+                from contextlib import nullcontext as _nc
+
+                return _nc()  # type: ignore
+            return _WorkflowTracingInterceptor(impl=self._impl)  # type: ignore
 
         def __init__(self) -> None:
             # Base interceptor needs impl — use pass-through

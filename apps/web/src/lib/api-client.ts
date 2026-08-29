@@ -1678,10 +1678,21 @@ export const iamApi = {
 };
 
 export const adminApi = {
-  servicesHealth(): Promise<{ services: Array<{ name: string; status: string; uptime: string; latency_ms?: number; error?: string }>; checked_at: number }> {
+  servicesHealth(): Promise<{
+    services: Array<{
+      name: string;
+      status: string;
+      uptime: string;
+      latency_ms?: number;
+      error?: string;
+    }>;
+    checked_at: number;
+  }> {
     return apiClient.get('/admin/services/health');
   },
-  runAction(action: string): Promise<{ action: string; status: string; message?: string; diagnostics?: unknown }> {
+  runAction(
+    action: string,
+  ): Promise<{ action: string; status: string; message?: string; diagnostics?: unknown }> {
     return apiClient.post(`/admin/actions/${action}`, {});
   },
 };
@@ -1854,7 +1865,9 @@ export const billingApi = {
     return apiClient.get<InvoiceResponse[]>('/billing/invoices');
   },
   downloadInvoice(invoiceId: string): Promise<{ invoice_id: string; download_url: string }> {
-    return apiClient.get<{ invoice_id: string; download_url: string }>(`/billing/invoices/${invoiceId}/download`);
+    return apiClient.get<{ invoice_id: string; download_url: string }>(
+      `/billing/invoices/${invoiceId}/download`,
+    );
   },
 };
 
@@ -2086,6 +2099,15 @@ export const temporalApi = {
   }): Promise<{ workflow_id: string; run_id?: string | null; status: string }> {
     return apiClient.post('/temporal/workflows/connector-sync', body);
   },
+  startDurableAgent(body: {
+    workspace_id: string;
+    agent_id?: string;
+    request_id?: string;
+    input?: Record<string, unknown> | string;
+    correlation_id?: string;
+  }): Promise<{ workflow_id: string; run_id?: string | null; status: string }> {
+    return apiClient.post('/temporal/workflows/durable-agent', body);
+  },
 };
 
 export interface FeatureFlagItem {
@@ -2108,7 +2130,13 @@ export const featureFlagsApi = {
   },
   create(
     workspaceId: string,
-    body: { name: string; description?: string; enabled?: boolean; rollout_percentage?: number; category?: string },
+    body: {
+      name: string;
+      description?: string;
+      enabled?: boolean;
+      rollout_percentage?: number;
+      category?: string;
+    },
   ): Promise<FeatureFlagItem> {
     return apiClient.post<FeatureFlagItem>(
       `/feature-flags?workspace_id=${encodeURIComponent(workspaceId)}`,
@@ -2117,7 +2145,13 @@ export const featureFlagsApi = {
   },
   update(
     flagId: string,
-    body: { name?: string; description?: string; enabled?: boolean; rollout_percentage?: number; category?: string },
+    body: {
+      name?: string;
+      description?: string;
+      enabled?: boolean;
+      rollout_percentage?: number;
+      category?: string;
+    },
   ): Promise<FeatureFlagItem> {
     return apiClient.put<FeatureFlagItem>(`/feature-flags/${flagId}`, body);
   },
@@ -2172,7 +2206,10 @@ export const webhookApi = {
   get(id: string): Promise<WebhookItem> {
     return apiClient.get<WebhookItem>(`/webhooks/${encodeURIComponent(id)}`);
   },
-  update(id: string, body: Partial<{ name: string; url: string; active: boolean; events: string[] }>): Promise<WebhookItem> {
+  update(
+    id: string,
+    body: Partial<{ name: string; url: string; active: boolean; events: string[] }>,
+  ): Promise<WebhookItem> {
     return apiClient.put<WebhookItem>(`/webhooks/${encodeURIComponent(id)}`, body);
   },
   delete(id: string): Promise<void> {

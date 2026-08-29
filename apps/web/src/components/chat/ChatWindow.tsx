@@ -1,7 +1,15 @@
 ﻿'use client';
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { agentApi, agentCatalogApi, approvalApi, documentApi, type CatalogAgent } from '@/lib/api-client';
+import {
+  agentApi,
+  agentCatalogApi,
+  approvalApi,
+  documentApi,
+  temporalApi,
+  type CatalogAgent,
+} from '@/lib/api-client';
+import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
 import { useToast } from '@/components/shared/Toast';
 
 type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'error';
@@ -102,6 +110,10 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const [showAgents, setShowAgents] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const [attached, setAttached] = useState<File | null>(null);
+  // Durable execution (LG-18) — when enabled, chat uses Temporal DurableAgentRunWorkflow + ExecutionTimeline polling
+  const [durableMode, setDurableMode] = useState(false);
+  const [durableWorkflowId, setDurableWorkflowId] = useState<string | null>(null);
+  const [durableRagStatus, setDurableRagStatus] = useState<string | null>(null);
 
   const activeThread = useMemo(
     () => threads.find((t) => t.id === activeId) || null,
@@ -454,17 +466,213 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       if (attached) {
         const toUpload = attached;
         setAttached(null);
-        raw = rawBase ? `${rawBase}\n\n[Attached file: ${toUpload.name}]` : `[Attached file: ${toUpload.name}]`;
+        raw = rawBase
+          ? `${rawBase}\n\n[Attached file: ${toUpload.name}]`
+          : `[Attached file: ${toUpload.name}]`;
         fileContext = toUpload.name;
         // fire upload non-blocking but provide toast; chat includes filename context even if upload fails
         try {
           const doc = await documentApi.upload(toUpload, workspaceId);
-          toast({ tone: 'success', title: 'File attached', detail: `${doc.path} ΓÇö referenced in message` });
+          toast({
+            tone: 'success',
+            title: 'File attached',
+            detail: `${doc.path} — referenced in message`,
+          });
           fileContext = `${toUpload.name} (stored as ${doc.path})`;
           raw = rawBase ? `${rawBase}\n\n[File stored: ${doc.path}]` : `[File stored: ${doc.path}]`;
         } catch {
-          toast({ tone: 'error', title: 'Attach failed', detail: `${toUpload.name} not stored ΓÇö message sent with name only` });
+          toast({
+            tone: 'error',
+            title: 'Attach failed',
+            detail: `${toUpload.name} not stored — message sent with name only`,
+          });
         }
+      }
+      // Durable path (LG-18) — Temporal owns durability, LangGraph owns topology
+      if (durableMode) {
+        const userMsg: ChatMessage = {
+          id: Date.now().toString(),
+          role: 'user',
+          text: rawBase ? raw : raw,
+          timestamp: nowIso(),
+        };
+        const next = [...messages, userMsg];
+        setMessages(next);
+        if (activeId)
+          updateThread(activeId, (t) => ({
+            ...t,
+            messages: next,
+            title: t.messages.length === 0 ? raw.slice(0, 30) : t.title,
+          }));
+        else {
+          const id = Math.random().toString(36).slice(2, 7);
+          const th: Thread = {
+            id,
+            title: raw.slice(0, 30),
+            createdAt: nowIso(),
+            messages: next,
+            agentName: selected !== 'auto' ? selected : undefined,
+          };
+          setThreads((p) => [th, ...p]);
+          setActiveId(id);
+        }
+        setInput('');
+        setSlashOpen(false);
+        setMentionOpen(false);
+        setLoading(true);
+        const agentId = (Date.now() + 1).toString();
+        const agentForCall = selected === 'auto' ? undefined : selected;
+        const ph: ChatMessage = {
+          id: agentId,
+          role: 'agent',
+          text: '',
+          timestamp: nowIso(),
+          agentName: agentForCall || 'assistant',
+          confidence: agentForCall ? 0.98 : undefined,
+          streaming: true,
+        };
+        setMessages((p) => [...p, ph]);
+        if (activeId) updateThread(activeId, (t) => ({ ...t, messages: [...t.messages, ph] }));
+        try {
+          const reqId = `chat-${Date.now().toString(36)}`;
+          const start = await temporalApi.startDurableAgent({
+            workspace_id: workspaceId,
+            agent_id: agentForCall || 'memory',
+            request_id: reqId,
+            input: { message: raw, task: raw },
+            correlation_id: reqId,
+          });
+          const wfId =
+            (start as { workflow_id?: string; workflowId?: string }).workflow_id ||
+            (start as { workflowId?: string }).workflowId ||
+            `durable_run:${workspaceId}:${reqId}`;
+          setDurableWorkflowId(wfId);
+          // Poll until terminal (ExecutionTimeline polling handles UI; here also fetch final result for message)
+          // Fallback: also call agentApi.chat for immediate result when temporal disabled (503) already handled below
+          let attempts = 0;
+          let finalText = '';
+          let finalConf: number | undefined;
+          while (attempts < 40) {
+            attempts += 1;
+            await new Promise((r) => setTimeout(r, 1500));
+            try {
+              const st = await temporalApi.getStatus(wfId);
+              const q = (st.query as Record<string, unknown> | null | undefined) || {};
+              if (q && (q as Record<string, unknown>)['rag_status'])
+                setDurableRagStatus(String((q as Record<string, unknown>)['rag_status']));
+              const s = String(st.status || '').toLowerCase();
+              const qs = String(
+                ((q as Record<string, unknown>)['status'] as string) || '',
+              ).toLowerCase();
+              if (
+                ['completed', 'failed', 'cancelled', 'expired'].includes(s) ||
+                ['completed', 'failed', 'cancelled', 'expired'].includes(qs) ||
+                q['result']
+              ) {
+                const res =
+                  (q['result'] as Record<string, unknown> | undefined) ||
+                  (q as Record<string, unknown>);
+                finalText = String(
+                  (res as Record<string, unknown>)['summary'] ||
+                    (res as Record<string, unknown>)['text'] ||
+                    JSON.stringify(res).slice(0, 2000),
+                );
+                finalConf =
+                  typeof (res as Record<string, unknown>)['confidence'] === 'number'
+                    ? ((res as Record<string, unknown>)['confidence'] as number)
+                    : undefined;
+                if (finalText.includes('[object Object]'))
+                  finalText = JSON.stringify(res).slice(0, 2000);
+                break;
+              }
+            } catch {}
+          }
+          if (!finalText)
+            finalText =
+              'Durable execution in progress — see timeline. Refresh or check History for result.';
+          await streamText(finalText, agentId);
+          setMessages((p) =>
+            p.map((m) =>
+              m.id === agentId
+                ? { ...m, text: finalText, streaming: false, confidence: finalConf ?? m.confidence }
+                : m,
+            ),
+          );
+          setThreads((p) =>
+            p.map((t) => ({
+              ...t,
+              messages: t.messages.map((m) =>
+                m.id === agentId
+                  ? {
+                      ...m,
+                      text: finalText,
+                      streaming: false,
+                      confidence: finalConf ?? m.confidence,
+                    }
+                  : m,
+              ),
+            })),
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          // 503 temporal disabled → fallback to direct agent chat
+          if (
+            msg.includes('503') ||
+            msg.toLowerCase().includes('temporal is disabled') ||
+            msg.toLowerCase().includes('temporal client unavailable')
+          ) {
+            toast({
+              tone: 'error',
+              title: 'Durable unavailable, falling back',
+              detail: 'Temporal disabled — using direct chat.',
+            });
+            setDurableWorkflowId(null);
+            // fallback to legacy path by recalling without durableMode
+            setDurableMode(false);
+            // retry legacy inline
+            try {
+              const res: unknown = agentForCall
+                ? await agentApi.chat({ workspaceId, message: raw, agentName: agentForCall })
+                : await agentApi.chat({ workspaceId, message: raw });
+              const r = res as Record<string, unknown>;
+              let reply = '';
+              if (r && typeof r === 'object' && 'result' in r)
+                reply = String((r as { result: { summary?: string } }).result.summary || '');
+              else if (typeof r === 'string') reply = r;
+              else reply = JSON.stringify(r).slice(0, 2000);
+              if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
+              await streamText(reply, agentId);
+              setMessages((p) =>
+                p.map((m) => (m.id === agentId ? { ...m, text: reply, streaming: false } : m)),
+              );
+              setThreads((p) =>
+                p.map((t) => ({
+                  ...t,
+                  messages: t.messages.map((m) =>
+                    m.id === agentId ? { ...m, text: reply, streaming: false } : m,
+                  ),
+                })),
+              );
+            } catch (e2) {
+              const m2 = e2 instanceof Error ? e2.message : 'Failed';
+              setMessages((p) =>
+                p.map((m) =>
+                  m.id === agentId ? { ...m, text: m2, error: true, streaming: false } : m,
+                ),
+              );
+            }
+          } else {
+            setMessages((p) =>
+              p.map((m) =>
+                m.id === agentId ? { ...m, text: msg, error: true, streaming: false } : m,
+              ),
+            );
+            toast({ tone: 'error', title: 'Durable start failed', detail: msg });
+          }
+        } finally {
+          setLoading(false);
+        }
+        return;
       }
       const userMsg: ChatMessage = {
         id: Date.now().toString(),
@@ -600,7 +808,19 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         setLoading(false);
       }
     },
-    [input, loading, messages, workspaceId, selected, activeId, updateThread, toast, streamText, attached],
+    [
+      input,
+      loading,
+      messages,
+      workspaceId,
+      selected,
+      activeId,
+      updateThread,
+      toast,
+      streamText,
+      attached,
+      durableMode,
+    ],
   );
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -692,7 +912,17 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="hidden lg:inline text-xs text-text-dim">8 agents ┬╖ QA gate</span>
+            <span className="hidden lg:inline text-xs text-text-dim">8 agents · QA gate</span>
+            <label className="hidden sm:flex items-center gap-1.5 ml-2 text-xs border border-border/50 rounded-full px-2 py-1 cursor-pointer hover:bg-surface-hover">
+              <input
+                type="checkbox"
+                checked={durableMode}
+                onChange={(e) => setDurableMode(e.target.checked)}
+                className="accent-white"
+                aria-label="Durable mode"
+              />
+              Durable
+            </label>
             <button
               onClick={() => startNew()}
               className="ml-2 hidden sm:inline-flex rounded-full border border-border/50 px-3 py-1.5 text-xs hover:bg-surface-hover"
@@ -704,6 +934,15 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           <div className="max-w-[768px] w-full mx-auto px-4 md:px-6 py-8">
+            {durableWorkflowId && (
+              <div className="mb-6">
+                <ExecutionTimeline
+                  workflowId={durableWorkflowId}
+                  agentName={selected !== 'auto' ? selected : undefined}
+                  ragStatus={durableRagStatus}
+                />
+              </div>
+            )}
             {messages.length === 0 && !loading ? (
               <div className="py-10 md:py-16 text-center">
                 <div className="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center mx-auto text-sm font-bold">
