@@ -10,7 +10,7 @@ from api.database import get_db
 from api.dependencies import get_current_user, get_tenant_id
 from api.models.schema import GmailWatch
 from api.routers.gmail import router as gmail_router
-from api.services.gmail_service import gmail_service
+from api.services.gmail_service import gmail_service, hash_channel_token
 
 pytestmark = pytest.mark.asyncio
 
@@ -227,16 +227,29 @@ class TestGmailDraftEndpoints:
 class TestGmailWebhook:
     async def test_webhook_accepts_valid_channel(self, db_session, monkeypatch):
         monkeypatch.setattr(gmail_service, "_client", FakeGmailClient())
+        # Channel tokens are hashed at rest (FIND-SEC-010); Google sends the
+        # plaintext token, which the webhook hashes for comparison.
+        watch = GmailWatch(
+            workspace_id="tenant-1",
+            user_id="user-1",
+            topic="projects/p/topics/t",
+            channel_id="channel-1",
+            channel_token=hash_channel_token("known-channel-token"),
+            resource_id="resource-1",
+            history_id="100",
+            expiration=datetime.now(timezone.utc) + timedelta(days=7),
+            status="ACTIVE",
+        )
+        db_session.add(watch)
+        await db_session.commit()
         app = _build_app(db_session)
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            await ac.post("/api/v1/gmail/watch", json={"topic": "t"})
-            row = await _watch_row(db_session)
             res = await ac.post(
                 "/api/v1/gmail/webhook",
                 json={"historyId": 777},
                 headers={
                     "X-Goog-Channel-ID": "channel-1",
-                    "X-Goog-Channel-Token": row.channel_token or "",
+                    "X-Goog-Channel-Token": "known-channel-token",
                 },
             )
         assert res.status_code == 200

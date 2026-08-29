@@ -172,3 +172,62 @@
 8. Audit logging for approvals
 9. HMAC timing-safe comparison
 10. SQL parameterized queries (most queries)
+
+## Resolution (2026-08-29)
+
+Re-verified every sub-item against current source (see verification report).
+Summary:
+
+### RESOLVED (code fixed this pass)
+
+- **FIND-SEC-008** (HIGH): `middleware/ip_filter.py` now only trusts
+  `X-Forwarded-For` when the immediate peer is a configured trusted proxy
+  (`TRUSTED_PROXIES` / `settings.trusted_proxies`); otherwise it uses the real
+  peer IP. Default (no trusted proxies) = safe.
+- **FIND-SEC-010** (HIGH): Gmail channel tokens are now hashed (SHA-256) at rest
+  via `gmail_service.hash_channel_token`; the webhook hashes the incoming
+  `X-Goog-Channel-Token` for comparison. No plaintext tokens in DB.
+- **FIND-SEC-011** (PARTIAL→RESOLVED): removed `type` from `restricted_globals`
+  in `services/plugin_sandbox.py` (closes the `type.__subclasses__()` escape).
+  Subprocess isolation already present.
+- **FIND-SEC-014** (PARTIAL→RESOLVED): added `Cross-Origin-Opener-Policy` +
+  `Cross-Origin-Resource-Policy` to `middleware/security_headers.py`.
+- **FIND-SEC-015** (MED): `middleware/exception_handler.py` only returns
+  `correlation_id` in 500s when `settings.debug` (non-production).
+- **FIND-SEC-016** (MED): `services/webhook_service.py` redacts likely secrets
+  (`_redact_body`) from persisted response bodies.
+- **FIND-SEC-018** (PARTIAL→RESOLVED): added `/api/v1/gmail/webhook` to CSRF
+  `SKIP_PATHS` (it is authenticated by `X-Goog-Channel-Token` verification).
+- **FIND-SEC-020** (MED): added `middleware/body_size_limit.py`
+  (`BodySizeLimitMiddleware`, 25 MB default, configurable via
+  `settings.max_request_body_bytes`) mounted in `main.py`.
+
+### Already RESOLVED (verified, no code change needed)
+
+- **FIND-SEC-001/002/003/004/005/006/012/013/017** — JWT validation at startup,
+  CSRF no longer bypassed by bare `X-API-Key`, tenant middleware rejects missing
+  `tenant_id` (no header spoofing), approval workspace isolation enforced, auth
+  middleware rejects unauthenticated centrally, parameterized queries, correct
+  approval router location, no insecure config defaults, only Secure cookies.
+
+### PARTIAL (mitigated, documented follow-ups)
+
+- **FIND-SEC-009** (HIGH): rate-limit API-key bucket is now only granted to
+  **authenticated** requests (`request.state.user_id` set); anonymous arbitrary
+  `X-API-Key` strings fall back to the IP bucket, closing the anonymous bypass.
+  Full validation of the key against the `api_keys` store is recommended as a
+  follow-up to also prevent abuse by holders of valid keys.
+- **FIND-SEC-007**: CSRF token store is Redis-backed when `REDIS_URL` is set,
+  in-memory otherwise (single-worker). Acceptable; set `REDIS_URL` for
+  multi-worker.
+- **FIND-SEC-019** (MED): frontend refresh token remains in `localStorage`
+  (`apps/web/src/lib/api.ts`); moving to an httpOnly cookie is a separate
+  frontend refactor, deferred.
+
+### Verification
+
+- `tests/test_gmail_router.py` (webhook now hashes token),
+  `tests/test_rate_limit.py`, `tests/test_webhooks.py`,
+  `tests/test_plugin_service*.py`, `tests/test_main.py` — **90 passed**.
+- Remaining open items are documented follow-ups (009 key-store validation, 019
+  httpOnly cookie).
