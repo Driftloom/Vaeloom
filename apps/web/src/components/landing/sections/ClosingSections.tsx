@@ -11,28 +11,24 @@ import {
   SectionHeading,
 } from '@/components/landing/shared/LandingKit';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { CtaCoreScene, useSceneAvailable } from '@/components/landing/3d/SceneShell';
-import { useTheme } from '@/hooks/useTheme';
+import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 /* -------------------------------- Final CTA -------------------------------- */
 
 export function FinalCTA() {
-  const sceneAvailable = useSceneAvailable();
-  const { theme } = useTheme();
   return (
     <Section labelledBy="cta-title" className="overflow-hidden !py-24 sm:!py-32">
       <div className="landing-grid-bg absolute inset-0" aria-hidden="true" />
-      {sceneAvailable ? (
-        <div className="absolute inset-0 opacity-70" aria-hidden="true">
-          <CtaCoreScene theme={theme} />
-        </div>
-      ) : (
-        <div
-          className="absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-[110px]"
-          style={{ background: 'rgb(var(--landing-glow-a))' }}
-          aria-hidden="true"
-        />
-      )}
+      <StageSlot
+        beat="cta"
+        className="absolute inset-0 opacity-70"
+        fallback={
+          <div
+            className="absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-[110px]"
+            style={{ background: 'rgb(var(--landing-glow-a))' }}
+          />
+        }
+      />
       <Container className="relative text-center">
         <Reveal>
           <LogoMark size="lg" />

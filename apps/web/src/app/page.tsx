@@ -5,7 +5,7 @@ import { LandingScrollProvider } from '@/lib/landing/scroll';
 
 import LandingNav from '@/components/landing/sections/LandingNav';
 import { DustField } from '@/components/landing/3d/SceneShell';
-import StageCanvas from '@/components/landing/3d/StageCanvas';
+import { StageProvider } from '@/components/landing/3d/SceneShell';
 import HeroSection from '@/components/landing/sections/HeroSection';
 import { PrinciplesStrip, ProductDifference } from '@/components/landing/sections/ProductSections';
 import HowItWorks from '@/components/landing/sections/HowItWorks';
@@ -89,27 +89,28 @@ export default function LandingPage() {
       <LandingNav />
       <DustField />
       <LandingScrollProvider>
-        <StageCanvas />
-        <div className="relative z-10 overflow-x-clip">
-          <HeroSection />
-          <ProblemSection />
-          <PrinciplesStrip />
-          <ProductDifference />
-          <HowItWorks />
-          <MemorySection />
-          <AgentSection />
-          <ConnectorSection />
-          <OrganizationSection />
-          <ResumeSection />
-          <CareerSection />
-          <SchedulerSection />
-          <TrustSection />
-          <ProductPreview />
-          <CompoundingSection />
-          <FAQSection />
-          <FinalCTA />
-        </div>
-        <LandingFooter />
+        <StageProvider>
+          <div className="relative z-10 overflow-x-clip">
+            <HeroSection />
+            <ProblemSection />
+            <PrinciplesStrip />
+            <ProductDifference />
+            <HowItWorks />
+            <MemorySection />
+            <AgentSection />
+            <ConnectorSection />
+            <OrganizationSection />
+            <ResumeSection />
+            <CareerSection />
+            <SchedulerSection />
+            <TrustSection />
+            <ProductPreview />
+            <CompoundingSection />
+            <FAQSection />
+            <FinalCTA />
+          </div>
+          <LandingFooter />
+        </StageProvider>
       </LandingScrollProvider>
     </>
   );

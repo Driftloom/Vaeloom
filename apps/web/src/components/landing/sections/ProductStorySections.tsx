@@ -9,8 +9,7 @@ import {
   Section,
   SectionHeading,
 } from '@/components/landing/shared/LandingKit';
-import { ConnectorFlowScene, useSceneAvailable } from '@/components/landing/3d/SceneShell';
-import { useTheme } from '@/hooks/useTheme';
+import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 /** Chip positions approximating the six ring sources in connectorScene. */
 const SOURCE_CHIPS = [
@@ -27,8 +26,6 @@ const SOURCE_HUES = ['#22d3ee', '#818cf8', '#e879f9', '#34d399', '#fbbf24', '#f8
 /* ------------------------------ Connectors ------------------------------ */
 
 export function ConnectorSection() {
-  const sceneAvailable = useSceneAvailable();
-  const { theme } = useTheme();
   return (
     <Section id="connectors" labelledBy="connectors-title">
       <Container>
@@ -74,37 +71,39 @@ export function ConnectorSection() {
               />
             </svg>
 
-            {sceneAvailable ? (
-              <div
-                className="relative h-64 overflow-hidden rounded-2xl border border-border-subtle bg-black/40 md:h-72"
-                role="img"
-                aria-label="Six connector sources streaming into one ingestion core"
-              >
-                <ConnectorFlowScene theme={theme} fallback={null} />
-                <ul className="pointer-events-none absolute inset-0">
-                  {CONNECTORS.items.map((c, i) => (
-                    <li key={c.name} className={`absolute ${SOURCE_CHIPS[i]}`}>
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-background/70 px-2 py-0.5 text-[10px] font-medium text-text-secondary backdrop-blur-sm">
-                        <span
-                          className="h-1.5 w-1.5 rounded-full"
-                          style={{ background: SOURCE_HUES[i] }}
-                        />
-                        {c.name}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-primary-500/30 bg-surface-elevated p-4 text-center shadow-glow">
-                <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
-                  Layer
-                </p>
-                <p className="mt-1 font-display text-sm font-bold text-text">
-                  Ingestion · Parse · OCR
-                </p>
-              </div>
-            )}
+            <div
+              className="relative h-64 overflow-hidden rounded-2xl border border-border-subtle bg-black/40 md:h-72"
+              role="img"
+              aria-label="Six connector sources streaming into one ingestion core"
+            >
+              <StageSlot
+                beat="connectors"
+                className="absolute inset-0"
+                fallback={
+                  <div className="rounded-xl border border-primary-500/30 bg-surface-elevated p-4 text-center shadow-glow">
+                    <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+                      Layer
+                    </p>
+                    <p className="mt-1 font-display text-sm font-bold text-text">
+                      Ingestion · Parse · OCR
+                    </p>
+                  </div>
+                }
+              />
+              <ul className="pointer-events-none absolute inset-0">
+                {CONNECTORS.items.map((c, i) => (
+                  <li key={c.name} className={`absolute ${SOURCE_CHIPS[i]}`}>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-background/70 px-2 py-0.5 text-[10px] font-medium text-text-secondary backdrop-blur-sm">
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: SOURCE_HUES[i] }}
+                      />
+                      {c.name}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
             <svg
               width="56"

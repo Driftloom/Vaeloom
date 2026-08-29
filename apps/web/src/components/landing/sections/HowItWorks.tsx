@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { HOW_IT_WORKS } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
-import { JourneyScene, useSceneAvailable } from '@/components/landing/3d/SceneShell';
-import { useSectionProgress } from '@/lib/landing/scroll';
-import { useTheme } from '@/hooks/useTheme';
+import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 /**
  * The intelligence pipeline as a travel narrative. On capable devices a
@@ -17,9 +15,6 @@ export default function HowItWorks() {
   const [activeIdx, setActiveIdx] = useState(0);
   const cardRefs = useRef<Array<HTMLLIElement | null>>([]);
   const sectionRef = useRef<HTMLElement>(null);
-  const progressRef = useSectionProgress(sectionRef);
-  const sceneAvailable = useSceneAvailable();
-  const { theme } = useTheme();
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -59,46 +54,51 @@ export default function HowItWorks() {
           {/* Sticky journey visual / rail */}
           <div className="hidden lg:block">
             <div className="sticky top-28 h-[520px]">
-              {sceneAvailable ? (
-                <div className="relative h-full overflow-hidden rounded-3xl border border-border-subtle bg-black/40">
-                  <JourneyScene theme={theme} progressRef={progressRef} />
-                  <div className="pointer-events-none absolute bottom-5 left-5 right-5">
-                    <p className="font-mono text-5xl font-semibold text-primary-400 tabular-nums">
-                      {stage.n}
-                    </p>
-                    <p className="mt-1 font-display text-xl font-bold text-text">{stage.name}</p>
-                  </div>
-                  <p className="sr-only">
-                    Scroll-driven visualization of the nine-stage Vaeloom pipeline. Stage {stage.n}:{' '}
-                    {stage.name}.
-                  </p>
-                </div>
-              ) : (
-                <div className="sticky top-28 landing-panel rounded-3xl p-6" aria-hidden="true">
+              <div className="relative h-full overflow-hidden rounded-3xl border border-border-subtle bg-black/40">
+                <StageSlot
+                  beat="journey"
+                  className="absolute inset-0"
+                  fallback={
+                    <div
+                      className="landing-panel absolute inset-0 rounded-3xl p-6"
+                      aria-hidden="true"
+                    >
+                      <p className="font-mono text-5xl font-semibold text-primary-400 tabular-nums">
+                        {stage.n}
+                      </p>
+                      <p className="mt-2 font-display text-xl font-bold text-text">{stage.name}</p>
+                      <ol className="mt-6 space-y-1.5">
+                        {HOW_IT_WORKS.stages.map((s, i) => (
+                          <li key={s.n} className="flex items-center gap-2">
+                            <span
+                              className={`h-1 rounded-full transition-all duration-500 ${
+                                i === activeIdx ? 'w-8 bg-primary-400' : 'w-3 bg-border'
+                              }`}
+                            />
+                            <span
+                              className={`text-xs transition-colors ${
+                                i === activeIdx ? 'font-semibold text-text' : 'text-text-dim'
+                              }`}
+                            >
+                              {s.name}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  }
+                />
+                <div className="pointer-events-none absolute bottom-5 left-5 right-5">
                   <p className="font-mono text-5xl font-semibold text-primary-400 tabular-nums">
                     {stage.n}
                   </p>
-                  <p className="mt-2 font-display text-xl font-bold text-text">{stage.name}</p>
-                  <ol className="mt-6 space-y-1.5">
-                    {HOW_IT_WORKS.stages.map((s, i) => (
-                      <li key={s.n} className="flex items-center gap-2">
-                        <span
-                          className={`h-1 rounded-full transition-all duration-500 ${
-                            i === activeIdx ? 'w-8 bg-primary-400' : 'w-3 bg-border'
-                          }`}
-                        />
-                        <span
-                          className={`text-xs transition-colors ${
-                            i === activeIdx ? 'font-semibold text-text' : 'text-text-dim'
-                          }`}
-                        >
-                          {s.name}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
+                  <p className="mt-1 font-display text-xl font-bold text-text">{stage.name}</p>
                 </div>
-              )}
+                <p className="sr-only">
+                  Scroll-driven visualization of the nine-stage Vaeloom pipeline. Stage {stage.n}:{' '}
+                  {stage.name}.
+                </p>
+              </div>
             </div>
           </div>
 

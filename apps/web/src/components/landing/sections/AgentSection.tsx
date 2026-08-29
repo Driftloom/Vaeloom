@@ -3,13 +3,11 @@
 import { useRef, useState } from 'react';
 import { AGENTS } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
-import { AgentOrbitScene } from '@/components/landing/3d/SceneShell';
 import { StaticOrbit } from '@/components/landing/3d/StaticScenes';
 import { AGENT_HUES } from '@/components/landing/3d/scene-utils';
-import { useTheme } from '@/hooks/useTheme';
+import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 export default function AgentSection() {
-  const { theme } = useTheme();
   const [selectedId, setSelectedId] = useState(AGENTS.list[0]!.id);
   const selected = AGENTS.list.find((a) => a.id === selectedId) ?? AGENTS.list[0]!;
   const activeIndex = Math.max(
@@ -52,10 +50,9 @@ export default function AgentSection() {
                 role="img"
                 aria-label={`${selected.name} selected. Eight specialist agents orbiting the shared memory core.`}
               >
-                <AgentOrbitScene
-                  theme={theme}
-                  selected={selectedId}
-                  onSelect={setSelectedId}
+                <StageSlot
+                  beat="agents"
+                  className="absolute inset-0"
                   fallback={
                     <StaticOrbit
                       labels={AGENTS.list.map(({ id, name }) => ({

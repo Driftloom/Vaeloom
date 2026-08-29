@@ -9,9 +9,8 @@ import {
   Section,
   SectionHeading,
 } from '@/components/landing/shared/LandingKit';
-import { KnowledgeGraphScene, type GraphSelection } from '@/components/landing/3d/SceneShell';
 import { StaticGraph } from '@/components/landing/3d/StaticScenes';
-import { useTheme } from '@/hooks/useTheme';
+import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 /** Keyboard-operable curated nodes — indices match the canvas graph. */
 const CURATED_NODES = [
@@ -26,21 +25,7 @@ type TooltipState =
   | null;
 
 export default function MemorySection() {
-  const { theme } = useTheme();
   const [tooltip, setTooltip] = useState<TooltipState>(null);
-
-  const handleSelection = (sel: GraphSelection): void => {
-    if (!sel) return;
-    const curated = CURATED_NODES.find((c) => c.index === sel.index);
-    if (curated) setTooltip({ kind: 'curated', row: curated.row });
-    else
-      setTooltip({
-        kind: 'node',
-        label: sel.info.label,
-        typeName: sel.info.type,
-        connections: sel.info.connections,
-      });
-  };
 
   return (
     <Section id="memory" labelledBy="memory-title">
@@ -56,11 +41,7 @@ export default function MemorySection() {
         <Reveal className="mt-12">
           <div className="landing-panel relative overflow-hidden rounded-3xl p-4 sm:p-6">
             <div className="relative h-[360px] sm:h-[440px] lg:h-[500px]">
-              <KnowledgeGraphScene
-                theme={theme}
-                fallback={<StaticGraph />}
-                onSelectionChange={handleSelection}
-              />
+              <StageSlot beat="memory" className="absolute inset-0" fallback={<StaticGraph />} />
               {/* hover/read-out card */}
               {tooltip ? (
                 <div className="pointer-events-none absolute bottom-3 left-3 right-3 sm:left-auto sm:right-4 sm:w-80">

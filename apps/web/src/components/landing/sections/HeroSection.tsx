@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import { HERO } from '@/lib/landing/copy';
 import { StaticMemoryCore } from '@/components/landing/3d/StaticScenes';
-import { useSceneAvailable } from '@/components/landing/3d/SceneShell';
+import { StageSlot } from '@/components/landing/3d/SceneShell';
 import { useTheme } from '@/hooks/useTheme';
 
 function useIsMobile() {
@@ -21,7 +21,6 @@ function useIsMobile() {
 
 export default function HeroSection() {
   const { theme } = useTheme();
-  const sceneAvailable = useSceneAvailable();
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const isMobile = useIsMobile();
@@ -64,11 +63,7 @@ export default function HeroSection() {
           {/* Persistent Stage canvas (mounted once at page level) draws the
               living core behind everything; the static SVG fallback is rendered
               here only when WebGL/3D is unavailable. */}
-          {!sceneAvailable && (
-            <div className="absolute inset-0">
-              <StaticMemoryCore />
-            </div>
-          )}
+          <StageSlot beat="hero" className="absolute inset-0" fallback={<StaticMemoryCore />} />
           {/* Atmospheric grid — very subtle, provides scale */}
           <div className="landing-grid-bg absolute inset-0 opacity-60" />
           {/* Aurora — soft, not competing with text */}
