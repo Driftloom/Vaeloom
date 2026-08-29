@@ -604,6 +604,79 @@ async def _run_graph(payload: dict[str, Any]) -> dict[str, Any]:
             pass
 
 
+async def _revalidate_approval_for_execution(
+    db, approval_id: str, decision: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """ZT-02: re-validate an approval's CURRENT authorization before execution.
+
+    Permissions can change between approval creation and the signal that triggers
+    execution, so we must not trust the stored approval state. Returns
+    ``{"ok": True}`` when execution may proceed, otherwise
+    ``{"ok": False, "error": <reason>}``.
+    """
+    from datetime import UTC, datetime
+    from uuid import UUID
+
+    from sqlalchemy import select
+
+    from ..models.schema import Permission
+    from ..services.approval import ApprovalManager
+    from ..services.permission_service import permission_service
+
+    decision = decision or {}
+    try:
+        approval = await ApprovalManager().get_approval(approval_id, db)
+    except Exception:
+        return {"ok": False, "error": "approval not found"}
+
+    # 1) The approval must still be in the APPROVED state (not revoked/rejected).
+    if approval.status != "APPROVED":
+        return {"ok": False, "error": f"approval not approved (status={approval.status})"}
+
+    # 2) Freshness: refuse execution if the approval has expired.
+    now = datetime.now(UTC)
+    exp = approval.expires_at
+    if exp is not None:
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=UTC)
+        if exp < now:
+            return {"ok": False, "error": "approval expired"}
+
+    # 3) Scope + action integrity: execution must stay within the approval's
+    #    workspace and match the approved action (no approval-swap / cross-workspace reuse).
+    ws = str(approval.workspace_id) if approval.workspace_id is not None else None
+    req_payload = decision.get("payload") or {}
+    req_ws = decision.get("workspace_id") or req_payload.get("workspace_id")
+    if ws is not None and req_ws is not None and str(req_ws) != ws:
+        return {"ok": False, "error": "workspace mismatch"}
+    req_action = decision.get("action_type") or req_payload.get("action_type")
+    if req_action is not None and req_action != approval.action_type:
+        return {"ok": False, "error": "action_type mismatch"}
+
+    # 4) Re-check current workspace authorization (requester still owns the workspace).
+    if ws is not None and approval.requested_by is not None:
+        owner_ok = await permission_service.check(
+            user_id=str(approval.requested_by), workspace_id=ws, db=db
+        )
+        if not owner_ok:
+            return {"ok": False, "error": "workspace authorization revoked"}
+
+    # 5) Re-check explicit revocation of the agent/action permission.
+    if ws is not None and approval.agent_name and approval.action_type:
+        revoked = await db.execute(
+            select(Permission).where(
+                Permission.workspace_id == UUID(ws),
+                Permission.agent_name == approval.agent_name,
+                Permission.action_type == approval.action_type,
+                Permission.revoked_at.is_not(None),
+            )
+        )
+        if revoked.scalars().first() is not None:
+            return {"ok": False, "error": "permission revoked"}
+
+    return {"ok": True}
+
+
 @_activity.defn
 async def execute_approved_action(payload: dict[str, Any]) -> dict[str, Any]:
     """Re-validates permission at execution time (§14) then executes."""
@@ -614,13 +687,24 @@ async def execute_approved_action(payload: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         pass
     try:
-        from ..services.approval import ApprovalManager  # type: ignore
         from ..database import async_session_factory
 
         approval_id = str(payload.get("approval_id", ""))
-        decision = payload.get("decision", {})
-        # Permission re-check would happen here via current user/workspace scope.
-        logger.info("execute_approved_action approval=%s decision=%s", approval_id, decision.get("decision"))
+        decision = payload.get("decision", {}) or {}
+        if not approval_id:
+            return {"approval_id": approval_id, "executed": False, "error": "missing approval_id"}
+
+        async with async_session_factory() as db:
+            recheck = await _revalidate_approval_for_execution(db, approval_id, decision)
+        if not recheck.get("ok"):
+            logger.warning(
+                "execute_approved_action refusal: approval=%s reason=%s",
+                approval_id,
+                recheck.get("error"),
+            )
+            return {"approval_id": approval_id, "executed": False, "error": recheck.get("error")}
+
+        logger.info("execute_approved_action approved=%s decision=%s", approval_id, decision.get("decision"))
         return {"approval_id": approval_id, "executed": True}
     except Exception as e:
         try:
