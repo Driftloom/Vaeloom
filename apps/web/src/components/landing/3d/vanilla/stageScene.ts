@@ -1,78 +1,321 @@
-/**
- * Landing Stage — the single persistent WebGL canvas for the whole page.
- *
- * Phase B mounts only Beat 0 (the hero Memory Core). Later phases add the
- * remaining beats and a camera fly-through driven by `getProgress()` (the
- * shared page scroll progress). One renderer, one loop, no per-section
- * canvases for beats that live on the Stage.
- */
-
-import { createRenderer, runLoop, type SceneHandle } from './engine';
-import { createMemoryCore, type Pointer } from './memoryCoreScene';
-import { dprForTier, type QualityTier } from '@/lib/landing/hooks';
 import * as THREE from 'three';
+import type { Pointer } from './memoryCoreScene';
+import { createMemoryCore } from './memoryCoreScene';
+import { createKnowledgeGraph } from './knowledgeGraphScene';
+import { createAgentOrbit } from './agentOrbitScene';
+import { createConnectorFlow } from './connectorScene';
+import { createGrowth } from './growthScene';
+import { createJourney } from './journeyScene';
 
-const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
+export type QualityTier = 'high' | 'medium' | 'low';
+export type ThemeName = 'dark' | 'light';
 
-export type StageCfg = {
-  container: HTMLElement;
+export interface Beat {
+  name: string;
+  object: THREE.Object3D;
+  z: number;
+  frame: CameraKey;
+  hasPath?: boolean;
+  cameraFor: (localProgress: number) => CameraState;
+  tick: (t: number, dt: number, pointer: Pointer, rm: boolean, localProgress: number) => void;
+  dispose: () => void;
+}
+
+export interface CameraKey {
+  pos: [number, number, number];
+  look: [number, number, number];
+  fov: number;
+}
+
+export interface CameraState {
+  pos: [number, number, number];
+  look: [number, number, number];
+  fov: number;
+}
+
+export interface BuildStageOptions {
   theme: 'dark' | 'light';
   density: number;
   tier: QualityTier;
-  pointer?: Pointer;
-  /** reads the shared page scroll progress (0..1) each frame */
-  getProgress: () => number;
-};
+}
 
-export function mountStage({
-  container,
-  theme,
-  density,
-  tier,
-  pointer,
-  getProgress,
-}: StageCfg): SceneHandle {
-  const { renderer, scene, camera } = createRenderer(container);
-  camera.position.set(0, 0.9, 7.4);
+const GAP = 60;
 
-  // Beat 0 — the living Memory Core (reused from the hero scene).
-  const core = createMemoryCore(theme, density, tier, pointer, true);
-  const group = new THREE.Group();
-  core.objects.forEach((o) => group.add(o));
-  scene.add(group);
+const heroKF: CameraKey = { pos: [0, 0.9, 7.4], look: [0, 0, 0], fov: 42 };
+const memoryKF: CameraKey = { pos: [0, 1.4, 8.6], look: [0, 0, 0], fov: 48 };
+const agentsKF: CameraKey = { pos: [0, 1.9, 6.4], look: [0, 0, 0], fov: 50 };
+const connectorsKF: CameraKey = { pos: [0, 2.6, 6.8], look: [0, 0, 0], fov: 52 };
+const growthKF: CameraKey = { pos: [7.5, 5.5, 9.5], look: [0, 1.2, 0], fov: 55 };
+const ctaKF = heroKF;
 
-  const prefersReducedMotion =
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function cameraPath(localT: number): CameraState {
+  const a = localT * Math.PI * 2;
+  const x = Math.sin(a) * 0.6;
+  const y = Math.cos(a) * 0.4;
+  const camZ = 6.5 - localT * (27.2 + 5);
+  return {
+    pos: [x, y, camZ],
+    look: [x * 0.4, y * 0.4, camZ - 5],
+    fov: 55,
+  };
+}
 
-  const handle = runLoop(
-    container,
-    renderer,
-    scene,
-    camera,
+function cameraFor(key: CameraKey, localT: number): CameraState {
+  const z = key.pos[2];
+  return {
+    pos: [key.pos[0], key.pos[1], z],
+    look: [key.look[0], key.look[1], key.look[2]],
+    fov: key.fov,
+  };
+}
+
+export interface BuildStageResult {
+  beats: Beat[];
+  dispose: () => void;
+}
+
+export function buildStage(opts: BuildStageOptions): BuildStageResult {
+  const { theme, density, tier } = opts;
+  const hero = createMemoryCore(theme, density, tier, undefined, true);
+  const journey = createJourney(theme);
+  const memory = createKnowledgeGraph(theme);
+  const agents = createAgentOrbit(theme, [
+    'orchestrator',
+    'researcher',
+    'scholar',
+    'planner',
+    'writer',
+    'critic',
+    'journal',
+  ]);
+  const connectors = createConnectorFlow(theme, density);
+  const growth = createGrowth(theme);
+  const cta = createMemoryCore(theme, density, tier, undefined, false);
+
+  const beats: Beat[] = [
     {
-      cameraZ: 7.4,
-      tick: (dt, t) => {
-        const rm = prefersReducedMotion;
-        const s = core.update(t, dt, pointer, rm);
-
-        const p = clamp01(getProgress());
-        // Beat 0 (hero) owns the first ~14% of the page; later beats take over.
-        const heroP = clamp01(p / 0.14);
-
-        // scripted drift + parallax, easing out as we leave the hero beat
-        const ease = 1 - heroP * 0.55;
-        camera.position.x = Math.sin(t * 0.08) * 0.35 + s.x * 0.5 * ease;
-        camera.position.y = 0.15 + Math.sin(t * 0.06) * 0.12 + s.y * 0.4 * ease - heroP * 0.9;
-        camera.position.z = 7.4 + heroP * 2.8;
-        camera.lookAt(0, 0, 0);
-
-        // The core is the hero beat — hide it once we've scrolled well past so
-        // it doesn't bleed through the (semi-opaque) sections below.
-        group.visible = p < 0.22;
-        group.rotation.y = t * 0.02 + heroP * 0.4;
-      },
+      name: 'hero',
+      object: hero.objects,
+      z: 0,
+      frame: heroKF,
+      cameraFor: (lp: number) => cameraFor(heroKF, lp),
+      tick: (t, dt, p, rm) => hero.update(t, dt, p, rm),
+      dispose: hero.dispose,
     },
-    dprForTier(tier)[1],
+    {
+      name: 'journey',
+      object: journey.group,
+      z: -GAP,
+      frame: { pos: [0, 0, 6.5], look: [0, 0, 1.5], fov: 55 },
+      hasPath: true,
+      cameraFor: (lp: number) => cameraPath(lp),
+      tick: (_t, _dt, _p, _rm, lp) => journey.update(lp),
+      dispose: journey.dispose,
+    },
+    {
+      name: 'memory',
+      object: memory.group,
+      z: -GAP * 2,
+      frame: memoryKF,
+      cameraFor: (lp: number) => cameraFor(memoryKF, lp),
+      tick: (t) => memory.update(t),
+      dispose: memory.dispose,
+    },
+    {
+      name: 'agents',
+      object: agents.group,
+      z: -GAP * 3,
+      frame: agentsKF,
+      cameraFor: (lp: number) => cameraFor(agentsKF, lp),
+      tick: (t, dt) => agents.update(t, dt),
+      dispose: agents.dispose,
+    },
+    {
+      name: 'connectors',
+      object: connectors.group,
+      z: -GAP * 4,
+      frame: connectorsKF,
+      cameraFor: (lp: number) => cameraFor(connectorsKF, lp),
+      tick: (t, dt, _p, rm) => connectors.update(t, dt, rm),
+      dispose: connectors.dispose,
+    },
+    {
+      name: 'growth',
+      object: growth.group,
+      z: -GAP * 5,
+      frame: growthKF,
+      cameraFor: (lp: number) => cameraFor(growthKF, lp),
+      tick: (_t, _dt, _p, _rm, lp) => growth.update(lp),
+      dispose: growth.dispose,
+    },
+    {
+      name: 'cta',
+      object: cta.objects,
+      z: -GAP * 6,
+      frame: ctaKF,
+      cameraFor: (lp: number) => cameraFor(ctaKF, lp),
+      tick: (t, dt, p, rm) => cta.update(t, dt, p, rm),
+      dispose: cta.dispose,
+    },
+  ];
+
+  return {
+    beats,
+    dispose: () => {
+      beats.forEach((b) => b.dispose());
+    },
+  };
+}
+
+export interface StageHandle {
+  attachTo: (el: HTMLElement) => void;
+  setActiveBeat: (name: string, getProgress?: () => number) => void;
+  start: () => void;
+  stop: () => void;
+  resize: () => void;
+  getCanvas: () => HTMLCanvasElement;
+  dispose: () => void;
+}
+
+export interface CreateStageOptions {
+  theme: ThemeName;
+  density: number;
+  tier: QualityTier;
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+}
+
+export function createStage(opts: CreateStageOptions): StageHandle {
+  const built = buildStage(opts);
+  const beats = built.beats;
+
+  const canvas = document.createElement('canvas');
+  canvas.style.position = 'absolute';
+  canvas.style.inset = '0';
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.display = 'block';
+  canvas.style.pointerEvents = 'none';
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(
+    typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1,
   );
-  return handle;
+  renderer.setSize(1, 1, false);
+
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+  camera.position.set(0, 0.9, 7.4);
+  camera.lookAt(0, 0, 0);
+
+  const pointer: Pointer = { x: 0, y: 0 };
+  let parentEl: HTMLElement | null = null;
+  let activeIndex = 0;
+  let getProgress: () => number = () => 0;
+  const rm = prefersReducedMotion();
+
+  let raf = 0;
+  let last = 0;
+  let running = false;
+  let elapsed = 0;
+
+  function resize(): void {
+    if (!parentEl) return;
+    const w = Math.max(1, parentEl.clientWidth);
+    const h = Math.max(1, parentEl.clientHeight);
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+
+  function onPointer(e: PointerEvent): void {
+    const x = (e.clientX / window.innerWidth) * 2 - 1;
+    const y = -((e.clientY / window.innerHeight) * 2 - 1);
+    pointer.x = x;
+    pointer.y = y;
+  }
+
+  const tmpPos = new THREE.Vector3();
+  const tmpLook = new THREE.Vector3();
+  const curPos = new THREE.Vector3();
+  const curLook = new THREE.Vector3();
+
+  function frame(now: number): void {
+    raf = requestAnimationFrame(frame);
+    if (!last) last = now;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    elapsed += dt;
+
+    const beat: Beat = beats[activeIndex]!;
+    const progress = Math.min(1, Math.max(0, getProgress()));
+    const cs = beat.cameraFor(progress);
+
+    tmpPos.set(cs.pos[0], cs.pos[1], cs.pos[2] + beat.z);
+    tmpLook.set(cs.look[0], cs.look[1], cs.look[2] + beat.z);
+
+    const lerp = Math.min(1, dt * 6);
+    curPos.lerp(tmpPos, lerp);
+    curLook.lerp(tmpLook, lerp);
+    camera.position.copy(curPos);
+    camera.lookAt(curLook);
+    camera.fov += (cs.fov - camera.fov) * lerp;
+    camera.updateProjectionMatrix();
+
+    beats.forEach((b, i) => {
+      b.object.visible = i === activeIndex;
+    });
+
+    beat.tick(elapsed, dt, pointer, rm, progress);
+    renderer.render(beats[activeIndex]!.object, camera);
+  }
+
+  function attachTo(el: HTMLElement): void {
+    parentEl = el;
+    if (canvas.parentElement !== el) el.appendChild(canvas);
+    resize();
+  }
+
+  function setActiveBeat(name: string, getProg?: () => number): void {
+    const idx = beats.findIndex((b) => b.name === name);
+    if (idx < 0) return;
+    activeIndex = idx;
+    if (getProg) getProgress = getProg;
+    else getProgress = () => 0;
+  }
+
+  function start(): void {
+    if (running) return;
+    running = true;
+    last = 0;
+    raf = requestAnimationFrame(frame);
+  }
+  function stop(): void {
+    running = false;
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+  }
+
+  function dispose(): void {
+    stop();
+    if (typeof window !== 'undefined') window.removeEventListener('pointermove', onPointer);
+    built.dispose();
+    renderer.dispose();
+    if (canvas.parentElement) canvas.parentElement.removeChild(canvas);
+  }
+
+  if (typeof window !== 'undefined')
+    window.addEventListener('pointermove', onPointer, { passive: true });
+
+  return {
+    attachTo,
+    setActiveBeat,
+    start,
+    stop,
+    resize,
+    getCanvas: () => canvas,
+    dispose,
+  };
 }
