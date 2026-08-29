@@ -602,21 +602,44 @@ async def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
     task_lower = (state.get("task") or "").lower()
     if "prefer" in task_lower and ("concise" in task_lower or "brief" in task_lower or "short" in task_lower):
         try:
-            # Attach provenance marker; real persistence happens in activity/DB path when available
-            result.setdefault("provenance", {})["memory_candidate"] = {"type": "preference", "signal": "concise", "task": state.get("task","")[:200]}
-            # Best-effort async persist (fail-open, never blocks finalize)
-            import asyncio as _asyncio
+            # Attach provenance marker for observability/verification
+            result.setdefault("provenance", {})["memory_candidate"] = {"type": "preference", "signal": "concise", "task": state.get("task", "")[:200]}
+            # Best-effort async persist (fail-open, never blocks finalize).
+            # Skip in tests unless explicitly opted in (VAELOOM_TEST_MEMORY_WRITE=1); writes in prod.
             import os as _os
 
             if not _os.environ.get("PYTEST_CURRENT_TEST") or _os.environ.get("VAELOOM_TEST_MEMORY_WRITE") == "1":
                 try:
+                    from ..database import async_session_factory  # type: ignore
+                    from ..schemas.memory import MemoryCreate  # type: ignore
                     from ..services.memory_service import memory_service  # type: ignore
 
-                    # memory_service expects DB; we just tag result for verification
-                    # Real DB write is verified via E2E seeding in tests/graph/test_memory_closed_loop
-                    pass
-                except Exception:
-                    pass
+                    _ws = state.get("workspace_id")
+                    _uid = state.get("user_id")
+                    _ws = _ws if _ws not in (None, "unknown", "req-unknown") else None
+                    _uid = _uid if _uid not in (None, "unknown", "req-unknown") else None
+
+                    async with async_session_factory() as _db:
+                        await memory_service.create_memory(
+                            _db,
+                            MemoryCreate(
+                                type="preference",
+                                domain="user_preference",
+                                title="Communication preference",
+                                summary="User prefers concise/brief responses",
+                                content=f"User signaled preference for concise output during task: {state.get('task', '')[:200]}",
+                                workspace_id=_ws,
+                                metadata={"source": "graph_finalize_closed_loop", "signal": "concise"},
+                                tags=["preference", "auto-extracted"],
+                                source_type="agent",
+                            ),
+                            tenant_id=None,
+                            user_id=_uid,
+                        )
+                        await _db.commit()
+                    result["provenance"]["memory_persisted"] = True
+                except Exception as _mem_err:  # fail-open: never block finalize
+                    logger.warning("finalize memory closed-loop write skipped: %s", _mem_err)
         except Exception:
             pass
 

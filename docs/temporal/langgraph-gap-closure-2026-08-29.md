@@ -42,7 +42,7 @@ behind §32 final-gate items that need infrastructure.
 | ------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | F-03    | workspace leak in `MemoryService.search_memories` (tenant-only) | `search_memories`/`get_memory`/`list_memories`/`update_memory`/`delete_memory` now filter by authoritative `workspace_id` from auth context; router enforces via new `get_workspace_id` dependency                                                                      | **CLOSED (L3)**                    | `services/memory_service.py`; `routers/memory.py`; `dependencies.py`; `tests/test_memory_workspace_isolation.py` (3 tests pass)                                                               |
 | F-04    | KG workspace leak (`knowledge_nodes` tenant-only)               | `knowledge_nodes`/`knowledge_edges` now carry `workspace_id`; threaded through service (NULL-safe `OR :workspace_id IS NULL`), router (every endpoint scopes via `get_workspace_id`), ingestion pipeline edges, and recommendation queries                              | **CLOSED (L3)**                    | `alembic/versions/0025_knowledge_graph_workspace.py`; `services/knowledge_graph_service.py`; `routers/knowledge_graph.py`; `tests/test_knowledge_graph_workspace_isolation.py` (7 tests pass) |
-| F-05    | durable memory closed loop (marker-only)                        | not yet implemented                                                                                                                                                                                                                                                     | **OPEN**                           | `graph/__init__.py` finalize marker (prior audit)                                                                                                                                             |
+| F-05    | durable memory closed loop (marker-only)                        | closed: `finalize_node` now actually persists extracted preference candidates to `memory_service` (workspace/user scoped, fail-open) via `async_session_factory` instead of only tagging a provenance marker                                                            | **CLOSED (L3)**                    | `graph/nodes.py` `finalize_node`; `tests/test_memory_closed_loop.py` (2 tests pass)                                                                                                           |
 | F-06    | real pgvector RAG not proven                                    | no PostgreSQL/pgvector available in this env                                                                                                                                                                                                                            | **OPEN / NOT PROVEN (L1 BLOCKED)** | infra probe                                                                                                                                                                                   |
 | ZT-01   | Temporal start fail-open                                        | not yet investigated/changed                                                                                                                                                                                                                                            | **OPEN**                           | `temporal/worker.py` (not yet read this phase)                                                                                                                                                |
 | ZT-02   | approval permission re-check missing                            | `execute_approved_action` now re-validates the approval's CURRENT state before executing: must be APPROVED, unexpired, workspace-scoped (no cross-workspace reuse), action-matched (no approval-swap), requester still owns workspace, and not explicitly revoked       | **CLOSED (L3)**                    | `temporal/activities.py` (`_revalidate_approval_for_execution`); `tests/test_approval_execution_recheck.py` (6 tests pass)                                                                    |
@@ -167,6 +167,31 @@ L1/L2 runtime was exercised (no infra/creds).
   `test_tools_executor.py`. `88 passed` (executor suite).
 - **Caveat**: L1 (real Slack/GitHub/Graph creds) not exercised; behavior
   verified at unit level for the unconfigured path.
+
+### F-05 — Durable memory closed loop (L3, CLOSED)
+
+- **Problem**: `graph/nodes.py::finalize_node` only tagged a
+  `provenance["memory_candidate"]` marker and left a `pass` where the durable
+  write should happen — the memory closed loop was marker-only, so preferences
+  learned in a run were never persisted for later retrieval (reinforces the
+  "agent doesn't remember" gap).
+- **Fix**: when a task signals a preference
+  (`"prefer ... concise/brief/short"`), `finalize_node` now builds a
+  `MemoryCreate` and calls `memory_service.create_memory` through a session from
+  `api.database.async_session_factory`, scoped to `workspace_id`/`user_id` from
+  state (values `"unknown"`/`"req-unknown"` mapped to `None` so isolation is
+  preserved — F-03/F-04). The write is fail-open (any error is logged, never
+  blocks finalize) and skipped under `pytest` unless
+  `VAELOOM_TEST_MEMORY_WRITE=1` (writes in production).
+  `provenance["memory_persisted"]` records success for observability.
+- **Test**: `tests/test_memory_closed_loop.py` (2 tests) — one asserts
+  `create_memory` is invoked with the correct workspace/user scoping and
+  `memory_persisted=True`; one asserts no write when the task has no preference
+  signal.
+- **Caveat**: this path runs only when the LangGraph runtime is enabled
+  (`agent_react_enabled=True`); default is `False` (legacy `agentApi.chat`), so
+  the loop is dormant in default config — consistent with F-01. L1 (real
+  Postgres + LangGraph react agent) not exercised.
 
 ---
 
