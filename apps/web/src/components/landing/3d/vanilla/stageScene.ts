@@ -95,7 +95,11 @@ export function buildStage(opts: BuildStageOptions): BuildStageResult {
   const beats: Beat[] = [
     {
       name: 'hero',
-      object: hero.objects,
+      object: (() => {
+        const g = new THREE.Group();
+        hero.objects.forEach((o) => g.add(o));
+        return g;
+      })(),
       z: 0,
       frame: heroKF,
       cameraFor: (lp: number) => cameraFor(heroKF, lp),
@@ -150,7 +154,11 @@ export function buildStage(opts: BuildStageOptions): BuildStageResult {
     },
     {
       name: 'cta',
-      object: cta.objects,
+      object: (() => {
+        const g = new THREE.Group();
+        cta.objects.forEach((o) => g.add(o));
+        return g;
+      })(),
       z: -GAP * 6,
       frame: ctaKF,
       cameraFor: (lp: number) => cameraFor(ctaKF, lp),
