@@ -84,7 +84,7 @@ async def _run(dry_run: bool = False) -> None:
         # Fill gaps with at least one activity if empty (keep worker valid)
         if not acts and not wfs:
             continue
-        w = Worker(client, task_queue=qname, workflows=wfs, activities=acts, max_concurrent_activities=max_conc, graceful_shutdown_timeout=timedelta(seconds=30), interceptors=interceptors or None)  # type: ignore[arg-type]
+        w = Worker(client, task_queue=qname, workflows=wfs, activities=acts, max_concurrent_activities=max_conc, graceful_shutdown_timeout=timedelta(seconds=30), interceptors=interceptors or [])  # type: ignore[arg-type]
         workers.append(w)
         print(f"worker queue={qname} max_conc={max_conc} workflows={[c.__name__ for c in wfs]} activities={[a.__name__ for a in acts]}")
 
