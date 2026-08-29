@@ -51,7 +51,7 @@ behind §32 final-gate items that need infrastructure.
 | F-07    | context/RAG stack unification                                   | not yet mapped                                                                                                                                                                                                                                                    | **OPEN**                           | `memory_service`/`orchestrator`/`retrieval`                                                                                                                                                   |
 | F-08    | connector mock-success                                          | not yet changed                                                                                                                                                                                                                                                   | **OPEN**                           | `tools/executor.py`                                                                                                                                                                           |
 | F-10    | real LLM reasoning                                              | gated off; no creds to verify                                                                                                                                                                                                                                     | **OPEN / BLOCKED (L1)**            | `config.py:99`                                                                                                                                                                                |
-| F-11    | secret-key drift                                                | not yet unified                                                                                                                                                                                                                                                   | **OPEN**                           | `logging.py`=26, `temporal/validation.py`=21, `graph/state.py`=27                                                                                                                             |
+| F-11    | secret-key drift                                                | unified: `temporal/validation.py` is the single source of truth; `logging.py` and `graph/state.py` consume `SECRET_KEYS` (no forked copies); regression test asserts parity                                                                                       | **CLOSED (L3)**                    | `temporal/validation.py` (canonical, 31 keys); `logging.py`; `graph/state.py`; `tests/test_secret_keys_unified.py` (8 tests pass)                                                             |
 | F-12    | distributed scrape quota                                        | not yet changed                                                                                                                                                                                                                                                   | **OPEN**                           | per prior audit                                                                                                                                                                               |
 | F-13    | tracing exporter logging-only                                   | not yet changed                                                                                                                                                                                                                                                   | **OPEN**                           | `infra/monitoring/otelcol-config.yaml`                                                                                                                                                        |
 
@@ -120,6 +120,27 @@ L1/L2 runtime was exercised (no infra/creds).
   validated. Production middleware (`TenantMiddleware` in `main.py`) is what
   populates `workspace_id` from `X-Workspace-ID`/path — same mechanism F-03
   relies on.
+
+### F-11 — Secret-key drift unification (L3, CLOSED)
+
+- **Problem**: three divergent copies of the secret-detection key set existed in
+  `logging.py` (`_REDACT_KEYS`), `temporal/validation.py` (`SECRET_KEYS`), and
+  `graph/state.py` (`SECRET_KEYS` + `FORBIDDEN_GRAPH_KEYS`), risking silent
+  drift (a secret key added to one but not another would leak into logs /
+  workflow history / graph state).
+- **Fix**: `temporal/validation.py` now holds the canonical `SECRET_KEYS`
+  (31-key union). `logging.py` imports it as `_REDACT_KEYS`; `graph/state.py`
+  imports `SECRET_KEYS` (and sets `FORBIDDEN_GRAPH_KEYS = SECRET_KEYS`),
+  removing its forked fallback copy. No code path defines its own secret-key set
+  anymore.
+- **Test**: `tests/test_secret_keys_unified.py` (8 tests) asserts
+  `_REDACT_KEYS == GRAPH_SECRET_KEYS == CANONICAL_SECRET_KEYS`, that the graph
+  set is a superset, that the canonical set covers the expected keys, and that
+  `validate_no_secrets` rejects nested secret payloads.
+- **Test run**: 8 passed; `21 passed` (contract + langgraph integration).
+- **Note**: pre-existing `tests/test_logging.py` imports a non-existent
+  `StructuredJsonFormatter` from `api.logging` (refactor leftover) — unrelated
+  to this change; flagged, not fixed here.
 
 ---
 

@@ -12,49 +12,14 @@ from typing import Annotated, Any, Literal, TypedDict
 
 from langgraph.graph import add_messages
 
-# Reuse Temporal validation constants to keep single source of truth
-try:
-    from ..temporal.validation import SECRET_KEYS, validate_no_secrets, validate_payload_size
-except Exception:  # pragma: no cover - fallback if temporal not installed
-    # Keep in sync with api/temporal/validation.py SECRET_KEYS (36 keys)
-    SECRET_KEYS = frozenset({
-        "api_key", "apikey", "api-key", "access_token", "refresh_token",
-        "oauth_token", "client_secret", "client_id", "password", "authorization",
-        "bearer", "jwt", "private_key", "credential", "credentials", "cookie",
-        "session_secret", "secret", "token", "auth", "x-api-key", "x_api_key",
-        "sso", "session", "oauth", "api-key", "secret_reference",
-    })
-    def validate_no_secrets(obj: Any, path: str = "root") -> None:  # type: ignore[no-redef]
-        seen: set[int] = set()
-        def _check(o: Any, p: str) -> None:
-            oid = id(o)
-            if oid in seen:
-                return
-            seen.add(oid)
-            if isinstance(o, dict):
-                for k, v in o.items():
-                    if str(k).lower() in {s.lower() for s in SECRET_KEYS}:
-                        raise ValueError(f"payload rejected at {p}.{k}: forbidden secret key '{k}'")
-                    _check(v, f"{p}.{k}")
-            elif isinstance(o, (list, tuple, set)):
-                for i, v in enumerate(list(o)):
-                    _check(v, f"{p}[{i}]")
-        _check(obj, path)
-    def validate_payload_size(obj: Any, limit: int = 20480, limit_bytes: int | None = None, label: str = "payload") -> None:  # type: ignore[no-redef]
-        lim = limit_bytes if limit_bytes is not None else limit
-        s = json.dumps(obj, default=str)
-        sz = len(s.encode("utf-8"))
-        if sz > lim:
-            raise ValueError(f"{label} exceeds {lim} bytes (got {sz}) — store large bodies by reference")
+# Canonical secret keys live in api/temporal/validation.SECRET_KEYS — the single
+# source of truth shared by logging redaction, Temporal workflow-history validation,
+# and graph-state validation. Do not fork a copy here (previous drift was F-11).
+from ..temporal.validation import SECRET_KEYS, validate_no_secrets, validate_payload_size
 
 
-# Explicitly prohibited keys (superset of SECRET_KEYS for graph state)
-FORBIDDEN_GRAPH_KEYS = frozenset({
-    "api_key", "apikey", "api-key", "access_token", "refresh_token",
-    "oauth_token", "client_secret", "password", "authorization", "bearer",
-    "jwt", "private_key", "credential", "cookie", "session_secret",
-    "secret", "token", "auth", "x-api-key", "x_api_key", "secret_reference",
-})
+# Graph state is stricter than generic payloads; forbid the same canonical set.
+FORBIDDEN_GRAPH_KEYS = SECRET_KEYS
 
 # Bounded state definition
 class VaeloomGraphState(TypedDict, total=False):

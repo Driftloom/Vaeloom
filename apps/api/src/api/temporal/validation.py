@@ -9,30 +9,42 @@ from __future__ import annotations
 import json
 from typing import Any
 
-# Unified secret keys — matches logging._REDACT_KEYS expanded per audit
+# Canonical secret keys — SINGLE SOURCE OF TRUTH for secret detection across the
+# codebase (logging redaction, Temporal workflow-history validation, graph-state
+# validation). Keep this frozenset the only definition; do not fork copies elsewhere.
 SECRET_KEYS = frozenset(
     {
+        "password",
+        "passwordhash",
+        "password_hash",
+        "token",
+        "access_token",
+        "accesstoken",
+        "refresh_token",
+        "refreshtoken",
+        "secret",
+        "secret_reference",
+        "authorization",
+        "bearer",
+        "jwt",
         "api_key",
         "apikey",
         "api-key",
-        "token",
-        "access_token",
-        "refresh_token",
-        "secret",
-        "password",
-        "authorization",
-        "jwt",
-        "bearer",
-        "oauth",
-        "oauth_token",
+        "x-api-key",
+        "x_api_key",
         "client_secret",
         "client_id",  # client_id is not secret per se, but often paired — keep out of history if possible
-        "cookie",
+        "oauth",
+        "oauth_token",
         "credential",
         "credentials",
-        "sso",
-        "session",
         "private_key",
+        "cookie",
+        "set-cookie",
+        "session",
+        "session_secret",
+        "sso",
+        "auth",
     }
 )
 
