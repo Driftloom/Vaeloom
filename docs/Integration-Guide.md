@@ -45,13 +45,13 @@ eroded user trust.
 
 - Define the connector integration architecture and component boundaries
 - Establish standards for OAuth 2.0 implementation, token lifecycle, and scope
- management
+  management
 - Provide implementation patterns for webhook setup, signature verification,
- idempotency, and retry policies
+  idempotency, and retry policies
 - Document sync strategies (full, incremental, webhook-driven, reconciliation)
- with performance trade-offs
+  with performance trade-offs
 - Enable operational excellence through rate limiting, error queues, monitoring
- dashboards, and connector certification
+  dashboards, and connector certification
 
 ---
 
@@ -62,27 +62,27 @@ eroded user trust.
 - Connector SDK structure and usage patterns
 - OAuth 2.0 authorization flows (authorization code, PKCE, client credentials)
 - Webhook endpoint configuration, signature verification, retry policies, and
- idempotency
+  idempotency
 - Data synchronization strategies — full sync, incremental sync, webhook-driven
- sync, reconciliation
+  sync, reconciliation
 - Rate limiting — per-connector configuration, queue management, backpressure
- signals
+  signals
 - Error handling — transient vs permanent errors, retry policies, dead letter
- queue, alerting
+  queue, alerting
 - Connector manifest format and registration
 - Connector certification requirements and testing
 - Security — credential encryption, scope enforcement, audit logging, connector
- isolation
+  isolation
 
 ### Out of Scope
 
 - Internal agent-to-agent communication patterns (see
- [Event Architecture](./Architecture/Event-Architecture.md))
+  [Event Architecture](./Architecture/Event-Architecture.md))
 - Frontend UI for connector configuration and management
 - Database schema migrations for connector storage
 - Third-party API design or documentation
 - Custom enterprise SSO integration (see
- [Authentication](./Backend/Authentication.md))
+  [Authentication](./Backend/Authentication.md))
 - Connector plugin marketplace (see Future Improvements section)
 
 ---
@@ -1096,7 +1096,7 @@ curl -X POST https://api.Vaeloom.dev/webhooks/github \
 - [`Backend/Authentication.md`](./Backend/Authentication.md) — OAuth 2.0 flows, JWT, session management, token security
 - [`Backend/Authorization.md`](./Backend/Authorization.md) — Permission model, scope enforcement, ABAC
 - [`Architecture/Event-Architecture.md`](./Architecture/Event-Architecture.md) — Event bus, webhook ingestion, dead letter queue, event schema
-- [`Developer_Experience/Developer-Guide.md`](./Developer_Experience/Developer-Guide.md) — Adding a new connector, project navigation
+- [`developer-experience/Developer-Guide.md`](./developer-experience/Developer-Guide.md) — Adding a new connector, project navigation
 - [`Security/Encryption.md`](./Security/Encryption.md) — AES-256-GCM encryption, Secrets Manager integration
 - [`Security/Security-Architecture.md`](./Security/Security-Architecture.md) — Overall security architecture, threat model
 - [`Security/Audit-Logs.md`](./Security/Audit-Logs.md) — Audit logging requirements and retention

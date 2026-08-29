@@ -1,7 +1,7 @@
 # Finding 02 — Tenant Isolation Deep Dive
 
-**Verified:** `middleware/tenant.py`, `migrations/0005_rls.py`,
-`models/schema.py` **Date:** 2026-08-16
+**Status:** RESOLVED (verified 2026-08-29) **Verified:** `middleware/tenant.py`,
+`migrations/0005_rls.py`, `models/schema.py` **Date:** 2026-08-16
 
 ## TenantMiddleware Bug (`tenant.py:62-78`)
 
@@ -120,3 +120,22 @@ For **enterprise** (multi-tenant):
 - All 8 tenant_id tables need RLS policies
 - Frontend must send tenant headers
 - `set_rls_session_vars()` must be called from middleware or as a dependency
+
+## Resolution (2026-08-29)
+
+All three layers from the original finding are now in place:
+
+1. **Middleware mounted** — `TenantMiddleware` is added in `main.py:253`
+   (comment: "fixes RLS never-set bug (audit CRITICAL 2026-08-21)").
+2. **RLS session variable set** — `set_rls_session_vars()`
+   (middleware/tenant.py) sets `app.tenant_id`, `app.workspace_id`,
+   `app.user_id` via `SET LOCAL` (PgBouncer-safe, fail-closed); also invoked
+   from `database.get_db()`.
+3. **Frontend/request context** — `tenant_id` is derived ONLY from the JWT
+   (user-supplied `X-Tenant-ID` header is never trusted); `workspace_id` is
+   resolved from JWT → path param (`/workspaces/{workspace_id}/...`) → header,
+   so workspace scoping works without the frontend sending explicit headers.
+
+- RLS coverage is 42/42 (FORCE RLS) per migrations 0010/0019/0020/0023/0024.
+- Original 2026-08-16 snapshot predates the 2026-08-22/23 hardening and is
+  obsolete.

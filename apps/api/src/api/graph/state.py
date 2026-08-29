@@ -16,25 +16,36 @@ from langgraph.graph import add_messages
 try:
     from ..temporal.validation import SECRET_KEYS, validate_no_secrets, validate_payload_size
 except Exception:  # pragma: no cover - fallback if temporal not installed
+    # Keep in sync with api/temporal/validation.py SECRET_KEYS (36 keys)
     SECRET_KEYS = frozenset({
         "api_key", "apikey", "api-key", "access_token", "refresh_token",
-        "oauth_token", "client_secret", "password", "authorization", "bearer",
-        "jwt", "private_key", "credential", "cookie", "session_secret",
-        "secret", "token", "auth", "x-api-key",
+        "oauth_token", "client_secret", "client_id", "password", "authorization",
+        "bearer", "jwt", "private_key", "credential", "credentials", "cookie",
+        "session_secret", "secret", "token", "auth", "x-api-key", "x_api_key",
+        "sso", "session", "oauth", "api-key", "secret_reference",
     })
     def validate_no_secrets(obj: Any, path: str = "root") -> None:  # type: ignore[no-redef]
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                if str(k).lower() in SECRET_KEYS:
-                    raise ValueError(f"payload rejected at {path}.{k}: forbidden secret key '{k}'")
-                validate_no_secrets(v, f"{path}.{k}")
-        elif isinstance(obj, list):
-            for i, v in enumerate(obj):
-                validate_no_secrets(v, f"{path}[{i}]")
-    def validate_payload_size(obj: Any, limit: int = 20480) -> None:  # type: ignore[no-redef]
+        seen: set[int] = set()
+        def _check(o: Any, p: str) -> None:
+            oid = id(o)
+            if oid in seen:
+                return
+            seen.add(oid)
+            if isinstance(o, dict):
+                for k, v in o.items():
+                    if str(k).lower() in {s.lower() for s in SECRET_KEYS}:
+                        raise ValueError(f"payload rejected at {p}.{k}: forbidden secret key '{k}'")
+                    _check(v, f"{p}.{k}")
+            elif isinstance(o, (list, tuple, set)):
+                for i, v in enumerate(list(o)):
+                    _check(v, f"{p}[{i}]")
+        _check(obj, path)
+    def validate_payload_size(obj: Any, limit: int = 20480, limit_bytes: int | None = None, label: str = "payload") -> None:  # type: ignore[no-redef]
+        lim = limit_bytes if limit_bytes is not None else limit
         s = json.dumps(obj, default=str)
-        if len(s.encode()) > limit:
-            raise ValueError(f"payload too large: {len(s.encode())} > {limit}")
+        sz = len(s.encode("utf-8"))
+        if sz > lim:
+            raise ValueError(f"{label} exceeds {lim} bytes (got {sz}) — store large bodies by reference")
 
 
 # Explicitly prohibited keys (superset of SECRET_KEYS for graph state)
@@ -58,6 +69,7 @@ class VaeloomGraphState(TypedDict, total=False):
     category: str | None
     messages: Annotated[list[dict[str, Any]], add_messages]
     rag_context: dict[str, Any] | None  # {entities: list[8], documents: list[8], preferences: list[5]} refs only
+    rag_status: Literal["ok", "empty", "unavailable", "timeout", "error"] | None
     selected_agent: str | None
     selected_tool: str | None
     execution_status: Literal[
@@ -97,6 +109,10 @@ def validate_graph_state(state: dict[str, Any]) -> None:
             raise ValueError(f"graph state missing required field '{req}'")
         if len(state[req]) > 256:
             raise ValueError(f"graph state field '{req}' too long")
+        # UUID-ish workspace/user sanity (allow unknown for legacy tests)
+        if req in ("workspace_id", "user_id") and state[req] not in ("unknown", "req-unknown"):
+            # hard limit already; UUID format is validated at router/tenant layer — keep graph strict but not brittle
+            pass
     # Validate no secrets anywhere in state
     validate_no_secrets(state)
 
@@ -105,9 +121,9 @@ def validate_graph_state(state: dict[str, Any]) -> None:
         if k in state:
             raise ValueError(f"graph state contains forbidden key '{k}'")
 
-    # Payload size bounded
+    # Payload size bounded (use utf-8 bytes, not str len)
     try:
-        validate_payload_size(state, limit_bytes=MAX_STATE_BYTES)
+        validate_payload_size(state, limit_bytes=MAX_STATE_BYTES, label="graph_state")
     except TypeError:
         validate_payload_size(state, limit=MAX_STATE_BYTES)  # fallback for mock
 
@@ -135,6 +151,11 @@ def validate_graph_state(state: dict[str, Any]) -> None:
             raise ValueError("rag_context.documents too many")
         if len(rag.get("preferences", [])) > MAX_RAG_PREFERENCES:
             raise ValueError("rag_context.preferences too many")
+
+    # rag_status bounded
+    rs = state.get("rag_status")
+    if rs is not None and rs not in {"ok", "empty", "unavailable", "timeout", "error"}:
+        raise ValueError(f"unknown rag_status '{rs}'")
 
     # result bounded
     res = state.get("result")
@@ -195,6 +216,7 @@ def build_initial_state(
         "category": None,
         "messages": [{"role": "user", "content": task}] if task else [],
         "rag_context": None,
+        "rag_status": None,
         "selected_agent": str(aid) if aid else None,
         "selected_tool": None,
         "execution_status": "planning",

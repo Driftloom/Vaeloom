@@ -4,7 +4,7 @@
 | ------------------ | ------------ |
 | **ID**             | FINDING-001  |
 | **Severity**       | P0-CRITICAL  |
-| **Status**         | OPEN         |
+| **Status**         | RESOLVED     |
 | **Date**           | 2026-08-16   |
 | **Assigned Phase** | P07          |
 | **Owner**          | Backend Team |
@@ -41,3 +41,20 @@ filter in a new route), an attacker could access data from other tenants.
 
 - ADR-013: Multi-Tenancy
 - `docs/compliance/nist-ai-rfm-mapping.md` — MEASURE 5: Privacy
+
+## Resolution (2026-08-29)
+
+Verified RESOLVED against current `main` (hardening through 2026-08-23):
+
+- RLS now covers **42/42** tables via Alembic migrations `0010` (34, FORCE RLS),
+  `0019` (+3: document_chunks, memory_versions, embeddings), `0020` (+5: users,
+  agents, permissions, provider_keys, document_actions), `0023`/`0024`
+  (+resume_artifacts, resume_sources). All use `FORCE ROW LEVEL SECURITY`.
+- `TenantMiddleware` is mounted in `main.py:253`; `set_rls_session_vars()`
+  (middleware/tenant.py) sets `app.tenant_id`, `app.workspace_id`, `app.user_id`
+  GUCs, and `database.get_db()` also calls it per session (fail-closed).
+- Cross-tenant isolation is covered by `tests/test_rls_isolation.py` and
+  `tests/test_data_isolation.py` (workspace_id GUC enforcement). Remediation
+  step 3 satisfied.
+- Original "4 tables" snapshot (2026-08-16) predates the 0010/0019/0020/0023
+  hardening and is obsolete.

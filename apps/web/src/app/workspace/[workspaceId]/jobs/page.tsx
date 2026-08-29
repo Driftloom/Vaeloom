@@ -5,7 +5,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Tabs, TabPanel } from '@/components/shared/Tabs';
-import { schedulerApi, agentApi } from '@/lib/api-client';
+import { schedulerApi, agentApi, applicationApi } from '@/lib/api-client';
 import type { JobResponse } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
@@ -45,20 +45,60 @@ export default function JobsPage() {
     try {
       const raw = localStorage.getItem(`vaeloom.savedJobs.${workspaceId ?? 'default'}`);
       return raw ? (JSON.parse(raw) as Array<{ title: string; detail?: string }>) : [];
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   });
 
+  // Saved jobs: durable backend via POST /workspaces/{id}/applications (draft), localStorage as offline fallback
   useEffect(() => {
     if (!workspaceId) return;
-    try {
-      const raw = localStorage.getItem(`vaeloom.savedJobs.${workspaceId}`);
-      if (raw) setSaved(JSON.parse(raw) as Array<{ title: string; detail?: string }>);
-    } catch {}
+    let cancelled = false;
+    (async () => {
+      try {
+        const apps = await applicationApi.list(workspaceId);
+        // Map backend applications (status draft/saved) to saved jobs
+        const mapped = (apps as unknown as Array<Record<string, unknown>>)
+          .filter(
+            (a) =>
+              (a as Record<string, unknown>)['status'] === 'draft' ||
+              ((a as Record<string, unknown>)['metadata'] as Record<string, unknown>)?.['saved'],
+          )
+          .map((a) => ({
+            title: String(
+              (a as Record<string, unknown>)['job_external_id'] ??
+                ((a as Record<string, unknown>)['metadata'] as Record<string, unknown>)?.[
+                  'title'
+                ] ??
+                '',
+            ),
+            detail: String(
+              ((a as Record<string, unknown>)['metadata'] as Record<string, unknown>)?.['detail'] ??
+                '',
+            ),
+          }))
+          .filter((s) => s.title);
+        if (!cancelled && mapped.length > 0)
+          setSaved((prev) => (prev.length === 0 ? mapped : prev));
+      } catch {}
+      try {
+        const raw = localStorage.getItem(`vaeloom.savedJobs.${workspaceId}`);
+        if (!cancelled && raw) {
+          const parsed = JSON.parse(raw) as Array<{ title: string; detail?: string }>;
+          if (parsed.length > 0) setSaved((prev) => (prev.length === 0 ? parsed : prev));
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [workspaceId]);
 
   useEffect(() => {
     if (!workspaceId) return;
-    try { localStorage.setItem(`vaeloom.savedJobs.${workspaceId}`, JSON.stringify(saved)); } catch {}
+    try {
+      localStorage.setItem(`vaeloom.savedJobs.${workspaceId}`, JSON.stringify(saved));
+    } catch {}
   }, [saved, workspaceId]);
 
   const fetchJobs = useCallback(async () => {
@@ -130,17 +170,51 @@ export default function JobsPage() {
   const handleSave = useCallback(
     (item: { title: string; detail?: string }) => {
       setSaved((prev) => (prev.some((s) => s.title === item.title) ? prev : [...prev, item]));
+      // Durable backend (fail-open to local): POST /workspaces/{id}/applications draft
+      if (workspaceId) {
+        applicationApi
+          .create(workspaceId, {
+            job_external_id: item.title,
+            platform: 'saved',
+            status: 'draft',
+            metadata: { title: item.title, detail: item.detail ?? '', saved: true },
+          } as unknown as Record<string, unknown>)
+          .catch(() => {});
+      }
       toast({ tone: 'success', title: 'Saved', detail: item.title });
     },
-    [toast],
+    [toast, workspaceId],
   );
 
   const handleReject = useCallback(
     (title: string) => {
       setSaved((prev) => prev.filter((s) => s.title !== title));
+      // Best-effort backend remove: set outcome to rejected
+      if (workspaceId) {
+        applicationApi
+          .list(workspaceId)
+          .then((apps) => {
+            const hit = (apps as unknown as Array<Record<string, unknown>>).find(
+              (a) =>
+                (a as Record<string, unknown>)['job_external_id'] === title ||
+                ((a as Record<string, unknown>)['metadata'] as Record<string, unknown>)?.[
+                  'title'
+                ] === title,
+            );
+            if ((hit as unknown as Record<string, unknown>)?.['id'])
+              applicationApi
+                .updateOutcome(
+                  workspaceId,
+                  String((hit as unknown as Record<string, unknown>)['id']),
+                  { status: 'rejected' },
+                )
+                .catch(() => {});
+          })
+          .catch(() => {});
+      }
       toast({ tone: 'info', title: 'Removed', detail: title });
     },
-    [toast],
+    [toast, workspaceId],
   );
 
   const handleApply = useCallback(
@@ -168,21 +242,39 @@ export default function JobsPage() {
     [workspaceId, toast],
   );
 
-  const handleJobAction = useCallback(async (job: JobResponse, action: 'pause' | 'resume' | 'trigger' | 'delete') => {
-    try {
-      if (action === 'pause') await schedulerApi.pauseJob(job.id);
-      if (action === 'resume') await schedulerApi.resumeJob(job.id);
-      if (action === 'trigger') await schedulerApi.triggerJob(job.id);
-      if (action === 'delete') {
-        if (!window.confirm(`Delete job ${job.name}?`)) return;
-        await schedulerApi.deleteJob(job.id);
+  const handleJobAction = useCallback(
+    async (job: JobResponse, action: 'pause' | 'resume' | 'trigger' | 'delete') => {
+      try {
+        if (action === 'pause') await schedulerApi.pauseJob(job.id);
+        if (action === 'resume') await schedulerApi.resumeJob(job.id);
+        if (action === 'trigger') await schedulerApi.triggerJob(job.id);
+        if (action === 'delete') {
+          if (!window.confirm(`Delete job ${job.name}?`)) return;
+          await schedulerApi.deleteJob(job.id);
+        }
+        toast({
+          tone: 'success',
+          title:
+            action === 'delete'
+              ? 'Deleted'
+              : action === 'trigger'
+                ? 'Triggered'
+                : action === 'pause'
+                  ? 'Paused'
+                  : 'Resumed',
+          detail: job.name,
+        });
+        await fetchJobs();
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: `${action} failed`,
+          detail: err instanceof Error ? err.message : 'Please try again.',
+        });
       }
-      toast({ tone: 'success', title: action === 'delete' ? 'Deleted' : action === 'trigger' ? 'Triggered' : action === 'pause' ? 'Paused' : 'Resumed', detail: job.name });
-      await fetchJobs();
-    } catch (err) {
-      toast({ tone: 'error', title: `${action} failed`, detail: err instanceof Error ? err.message : 'Please try again.' });
-    }
-  }, [fetchJobs, toast]);
+    },
+    [fetchJobs, toast],
+  );
 
   const tabs = [
     { id: 'search', label: 'Job Search' },
@@ -353,9 +445,33 @@ export default function JobsPage() {
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {job.status === 'active' ? <button onClick={() => handleJobAction(job, 'pause')} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover">Pause</button> : <button onClick={() => handleJobAction(job, 'resume')} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover">Resume</button>}
-                  <button onClick={() => handleJobAction(job, 'trigger')} className="rounded-full border border-primary/30 px-3 py-1 text-xs text-primary hover:bg-primary/10">Trigger now</button>
-                  <button onClick={() => handleJobAction(job, 'delete')} className="rounded-full border border-red-500/20 px-3 py-1 text-xs text-red-400 hover:bg-red-500/10">Delete</button>
+                  {job.status === 'active' ? (
+                    <button
+                      onClick={() => handleJobAction(job, 'pause')}
+                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover"
+                    >
+                      Pause
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleJobAction(job, 'resume')}
+                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover"
+                    >
+                      Resume
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleJobAction(job, 'trigger')}
+                    className="rounded-full border border-primary/30 px-3 py-1 text-xs text-primary hover:bg-primary/10"
+                  >
+                    Trigger now
+                  </button>
+                  <button
+                    onClick={() => handleJobAction(job, 'delete')}
+                    className="rounded-full border border-red-500/20 px-3 py-1 text-xs text-red-400 hover:bg-red-500/10"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}

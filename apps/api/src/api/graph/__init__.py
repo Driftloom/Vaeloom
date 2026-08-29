@@ -121,9 +121,11 @@ def _build_graph():
 
     g.add_edge("finalize", END)
 
+    # MemorySaver is process-local, not durable — Temporal owns durability (§9).
+    # graph_retry = 0; Temporal owns activity retry 120s hb30s 2×; graph never becomes second durable engine.
+    # v1: no interrupt_before; approval interrupt is policy_check → waiting_approval finalizes, ApprovalWorkflow is durable truth
+    # To enable LangGraph interrupt for approval-gated tools, set interrupt_before=["tool_execute"] and switch to durable checkpointer
     compiled = g.compile(checkpointer=memory, interrupt_before=["tool_execute"] if False else None)
-    # v1: no interrupt_before; approval interrupt is policy_check raise → handled in evaluate
-    # To enable LangGraph interrupt for approval-gated tools, set interrupt_before=["tool_execute"]
     return compiled, memory
 
 
