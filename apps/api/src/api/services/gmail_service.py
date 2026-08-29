@@ -3,6 +3,7 @@
 MVP rule: Gmail is draft-only. Watch state is persisted per workspace so push
 notifications can be verified, renewed and reconciled without polling.
 """
+import hashlib
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -17,6 +18,16 @@ from ..schemas.gmail import DraftCreateRequest, WatchStatusResponse
 logger = logging.getLogger(__name__)
 
 WATCH_RENEWAL_HOURS = 24
+
+
+def hash_channel_token(token: str) -> str:
+    """Hash a Gmail channel token before persisting (FIND-SEC-010).
+
+    Channel tokens are verification secrets, not recoverable values, so a
+    salted-free SHA-256 hash avoids storing them in plaintext while still
+    allowing constant-time equality checks at webhook time.
+    """
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 class GmailService:
@@ -54,7 +65,7 @@ class GmailService:
         watch = existing.scalar_one_or_none()
         if watch:
             watch.channel_id = result["id"]
-            watch.channel_token = channel_token
+            watch.channel_token = hash_channel_token(channel_token)
             watch.resource_id = result.get("resourceId")
             watch.history_id = history_id
             watch.expiration = expiration
@@ -67,7 +78,7 @@ class GmailService:
                 user_id=str(user_id),
                 topic=topic,
                 channel_id=result["id"],
-                channel_token=channel_token,
+                channel_token=hash_channel_token(channel_token),
                 resource_id=result.get("resourceId"),
                 history_id=history_id,
                 expiration=expiration,

@@ -58,6 +58,12 @@ graph LR
 - [Usage Guide](./USAGE-GUIDE.md)
 - [Document Template](./TEMPLATE.md)
 
+**Note on stale numbers in phase docs:** Phase evidence files (`docs/phases/`)
+contain historical baselines that were accurate at the time of execution (e.g.,
+`2557` tests, `99` OpenAPI paths). These are frozen audit records and should NOT
+be modified. Current values: **2731 tests**, **110 OpenAPI paths**, **39 ADRs**
+— see `AGENTS.md` and `docs/backend/openapi.yaml`.
+
 ## Canonical Phase Sources (added 2026-08-11)
 
 | Item                                                    | Location                                                                                                                                                         | Role                                                                                               |

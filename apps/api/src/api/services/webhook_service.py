@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import re
 import uuid
 from datetime import UTC, datetime
 
@@ -13,6 +14,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import Webhook, WebhookDelivery
 from ..services.encryption import decrypt_value, encrypt_value, is_encrypted
+
+_SENSITIVE_RE = re.compile(
+    r"(?i)(authorization|api[_-]?key|access[_-]?token|secret|password|token)"
+    r"\s*[:=]\s*['\"]?[\w\-._=]+|Bearer\s+[\w\-._=]+"
+)
+
+
+def _redact_body(body: str) -> str:
+    """Mask likely secrets before persisting external response bodies (FIND-SEC-016)."""
+    if not body:
+        return body
+    return _SENSITIVE_RE.sub("[REDACTED]", body)[:2000]
 
 
 class WebhookService:
@@ -144,7 +157,7 @@ class WebhookService:
                     )
 
                 delivery.status_code = resp.status_code
-                delivery.response_body = resp.text[:2000]
+                delivery.response_body = _redact_body(resp.text)
                 delivery.status = "DELIVERED" if resp.is_success else "FAILED"
                 delivery.completed_at = datetime.now(UTC)
                 await db.commit()
@@ -160,7 +173,7 @@ class WebhookService:
                 else:
                     delivery.status = "FAILED"
                     delivery.completed_at = datetime.now(UTC)
-                    delivery.response_body = str(exc)[:2000]
+                    delivery.response_body = _redact_body(str(exc))
                     await db.commit()
 
     async def list_deliveries(self, webhook_id: uuid.UUID, db: AsyncSession) -> list[WebhookDelivery]:

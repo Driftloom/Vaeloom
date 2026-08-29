@@ -11,7 +11,7 @@ from ..schemas.gmail import (
     WatchStartRequest,
     WatchStatusResponse,
 )
-from ..services.gmail_service import gmail_service
+from ..services.gmail_service import gmail_service, hash_channel_token
 
 router = APIRouter()
 
@@ -107,12 +107,13 @@ async def gmail_push_webhook(
         raise HTTPException(400, "Missing X-Goog-Channel-ID header")
     if x_goog_resource_state and x_goog_resource_state not in ("sync", "exists", "update"):
         raise HTTPException(400, "Unsupported resource state")
-    if x_goog_channel_token:
-        from sqlalchemy import text
-        result = await db.execute(
-            text("SELECT id FROM gmail_watches WHERE channel_id = :cid AND channel_token = :token AND status = 'ACTIVE'"),  # nosec B608
-            {"cid": x_goog_channel_id, "token": x_goog_channel_token},
-        )
+        if x_goog_channel_token:
+            from sqlalchemy import text
+            token_hash = hash_channel_token(x_goog_channel_token)
+            result = await db.execute(
+                text("SELECT id FROM gmail_watches WHERE channel_id = :cid AND channel_token = :token AND status = 'ACTIVE'"),  # nosec B608
+                {"cid": x_goog_channel_id, "token": token_hash},
+            )
         if not result.fetchone():
             raise HTTPException(403, "Invalid channel token")
     else:

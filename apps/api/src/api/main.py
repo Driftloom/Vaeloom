@@ -237,6 +237,8 @@ async def _run_custom_migrations():
         logger.warning(f"Custom migration runner also failed: {e2}")
 
 
+from .middleware.body_size_limit import BodySizeLimitMiddleware
+
 app = FastAPI(
     title="Vaeloom Backend",
     version=settings.service_version,
@@ -248,6 +250,11 @@ app.add_middleware(
     requests_per_minute=settings.rate_limit_requests,
     window_seconds=settings.rate_limit_window,
     api_key_rate_limit=settings.api_key_rate_limit,
+)
+# Guard against DoS via oversized request bodies (FIND-SEC-020).
+app.add_middleware(
+    BodySizeLimitMiddleware,
+    max_bytes=getattr(settings, "max_request_body_bytes", 25 * 1024 * 1024),
 )
 # Tenant must be inner than Auth (added before Auth so Auth outer) → fixes RLS never-set bug (audit CRITICAL 2026-08-21)
 app.add_middleware(TenantMiddleware)

@@ -67,12 +67,24 @@ class IPAllowlistMiddleware(BaseHTTPMiddleware):
         )
 
     def _resolve_client_ip(self, request: Request) -> str | None:
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        if request.client:
-            return request.client.host
-        return None
+        peer = request.client.host if request.client else None
+        trusted_raw = getattr(settings, "trusted_proxies", "")
+        trusted_nets = _parse_allowlist(trusted_raw) if trusted_raw else []
+        # Only trust X-Forwarded-For when the immediate peer is a configured
+        # trusted proxy. Otherwise an attacker could spoof it to bypass the
+        # IP allowlist (FIND-SEC-008).
+        if peer and trusted_nets and self._ip_in_networks(peer, trusted_nets):
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                return forwarded.split(",")[0].strip()
+        return peer
+
+    def _ip_in_networks(self, ip: str, nets: list) -> bool:
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            return False
+        return any(addr in net for net in nets)
 
     def _is_allowed(self, client_ip: str) -> bool:
         try:

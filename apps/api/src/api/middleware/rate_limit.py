@@ -143,7 +143,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         api_key = request.headers.get(API_KEY_HEADER)
-        if api_key:
+        if api_key and getattr(request.state, "user_id", None):
             allowed, retry_after = await self._api_key_limiter.check(api_key)
             if not allowed:
                 logger.warning(

@@ -45,7 +45,7 @@ def _get_redis():
         return None
 
 MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
-SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc", "/metrics", "/csrf-token"})
+SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc", "/metrics", "/csrf-token", "/api/v1/gmail/webhook"})
 SKIP_PREFIXES = frozenset({"/api/v1/auth", "/scim"})
 
 

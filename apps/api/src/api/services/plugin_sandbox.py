@@ -28,7 +28,7 @@ def main():
             "len": len, "list": list, "map": map, "max": max,
             "min": min, "range": range, "round": round, "set": set,
             "slice": slice, "sorted": sorted, "str": str, "sum": sum,
-            "tuple": tuple, "type": type, "zip": zip, "reversed": reversed,
+            "tuple": tuple, "zip": zip, "reversed": reversed,
             "True": True, "False": False, "None": None,
             "Exception": Exception, "ValueError": ValueError,
             "TypeError": TypeError, "KeyError": KeyError,
