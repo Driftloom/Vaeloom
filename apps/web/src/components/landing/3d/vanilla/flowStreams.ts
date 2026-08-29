@@ -23,12 +23,12 @@ const IN_RIGHT_RATIO = 1.0; // right not reduced; left is the stronger inlet (se
 const OUT_START_R = 0.5;
 const OUT_END_R = 3.0;
 
-// corner spawn points (world space). The hero canvas is 130% tall and shifted
-// up 15% (HeroSection), so the bottom ~15% of the frustum is below the fold —
-// keep spawns inside the visible lower band (world y ~ -1.5) near the left/right
-// edges so the streams read as on-screen corner inlets, not off-screen sources.
-const SL = { x: -4.3, y: -1.6, z: -0.2 };
-const SR = { x: 4.1, y: -1.3, z: 0.2 };
+// corner spawn points (world space) — JUST outside frustum so lower
+// inlets streak from screen edge like upper streams. Hero cam 0,0.9,7.4
+// fov42 => half-w 5.05 half-h 2.84 at z0. Prev -4.3/-1.6 inside → mid-screen pop.
+// -5.6 is ~0.5 outside side + bottom, instantly visible from edge (not 1.5 deep invisible).
+const SL = { x: -5.6, y: -2.15, z: -0.35 };
+const SR = { x: 5.55, y: -1.98, z: 0.3 };
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
@@ -75,6 +75,9 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
   const prog = new Float32Array(count); // 0..1 progress along path
   const isOut = new Uint8Array(count);
   const odir = new Float32Array(count * 3); // outward direction for OUT
+  const spawnX = new Float32Array(count);
+  const spawnY = new Float32Array(count);
+  const spawnZ = new Float32Array(count);
 
   function pickColor(i: number, weighted: 'in' | 'out') {
     const r = Math.random();
@@ -99,38 +102,45 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
   const [prx, pry] = perpUnit(SR.x, SR.y);
 
   let i = 0;
-  // ---- IN_LEFT ----
+  // ---- IN_LEFT ---- tightened jet, now edge-visible + faster + brighter
   for (let n = 0; n < inLeft; n++, i++) {
     seed[i] = Math.random() * Math.PI * 2;
-    speed[i] = 0.15 + Math.random() * 0.15;
-    const amp = 0.35 + Math.random() * 0.6;
+    speed[i] = 0.22 + Math.random() * 0.18;
+    const amp = 0.14 + Math.random() * 0.22;
     pathAmpX[i] = plx * amp;
     pathAmpY[i] = ply * amp;
     kFreq[i] = 1.6 + Math.random() * 2.0;
     phase[i] = Math.random() * Math.PI * 2;
-    z0[i] = -1.6 + Math.random() * 3.2;
+    z0[i] = -0.9 + Math.random() * 1.8;
     kZ[i] = 1.0 + Math.random() * 1.5;
-    baseAlpha[i] = 0.78 + Math.random() * 0.22;
+    baseAlpha[i] = 0.88 + Math.random() * 0.12;
     prog[i] = Math.random();
     isOut[i] = 0;
+    // narrow origin + edge spawn → instant edge streak, not invisible deep outside
+    spawnX[i] = SL.x + (Math.random() - 0.5) * 0.55;
+    spawnY[i] = SL.y + (Math.random() - 0.5) * 0.3;
+    spawnZ[i] = SL.z + (Math.random() - 0.5) * 0.25;
     pickColor(i, 'in');
     const sr = Math.random();
-    sizes[i] = sr < 0.75 ? 0.07 + Math.random() * 0.03 : 0.1 + Math.random() * 0.03;
+    sizes[i] = sr < 0.6 ? 0.09 + Math.random() * 0.03 : 0.12 + Math.random() * 0.04;
   }
-  // ---- IN_RIGHT (slightly faster + phase-offset -> coordinated, not symmetric) ----
+  // ---- IN_RIGHT ---- matching jet, slightly faster
   for (let n = 0; n < inRight; n++, i++) {
     seed[i] = Math.random() * Math.PI * 2;
-    speed[i] = (0.15 + Math.random() * 0.15) * 1.15;
-    const amp = 0.35 + Math.random() * 0.6;
+    speed[i] = 0.24 + Math.random() * 0.18;
+    const amp = 0.14 + Math.random() * 0.22;
     pathAmpX[i] = prx * amp;
     pathAmpY[i] = pry * amp;
     kFreq[i] = 1.6 + Math.random() * 2.0;
     phase[i] = Math.random() * Math.PI * 2 + 0.7;
-    z0[i] = -1.6 + Math.random() * 3.2;
+    z0[i] = -0.9 + Math.random() * 1.8;
     kZ[i] = 1.0 + Math.random() * 1.5;
-    baseAlpha[i] = 0.6 + Math.random() * 0.3;
+    baseAlpha[i] = 0.82 + Math.random() * 0.18;
     prog[i] = Math.random();
     isOut[i] = 0;
+    spawnX[i] = SR.x + (Math.random() - 0.5) * 0.55;
+    spawnY[i] = SR.y + (Math.random() - 0.5) * 0.3;
+    spawnZ[i] = SR.z + (Math.random() - 0.5) * 0.25;
     pickColor(i, 'in');
     const sr = Math.random();
     sizes[i] = sr < 0.75 ? 0.05 + Math.random() * 0.025 : 0.08 + Math.random() * 0.025;
@@ -225,11 +235,11 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
         } else {
           const np = (prog[i]! + speed[i]! * motion * d) % 1;
           prog[i] = np;
-          // ease-in toward core (accelerate inward)
+          // ease-in toward core (accelerate inward) — per-particle jittered origin
           const e = np * np;
-          const sx = i < inLeft ? SL.x : SR.x;
-          const sy = i < inLeft ? SL.y : SR.y;
-          const sz = i < inLeft ? SL.z : SR.z;
+          const sx = spawnX[i]!;
+          const sy = spawnY[i]!;
+          const sz = spawnZ[i]!;
           const bx = sx + (0 - sx) * e;
           const by = sy + (0 - sy) * e;
           const bz = sz + (0 - sz) * e;

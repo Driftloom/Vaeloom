@@ -280,9 +280,19 @@ export function createAgentOrbit(
     updateLinks();
   }
   function dispose(): void {
-    (mesh.geometry as THREE.BufferGeometry).dispose();
-    (mesh.material as THREE.Material).dispose();
-    linkGeo.dispose();
+    group.traverse((obj) => {
+      const m = obj as THREE.Mesh;
+      if (m.geometry) m.geometry.dispose();
+      const mat = m.material as THREE.Material | THREE.Material[] | undefined;
+      if (mat) {
+        const mats = Array.isArray(mat) ? mat : [mat];
+        mats.forEach((mt) => {
+          const sm = mt as THREE.SpriteMaterial;
+          sm.map?.dispose();
+          mt.dispose();
+        });
+      }
+    });
   }
   return { group, update, focus, dispose };
 }

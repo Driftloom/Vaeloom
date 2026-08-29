@@ -57,7 +57,7 @@ export default function HowItWorks() {
               <div className="relative h-full overflow-hidden rounded-3xl border border-border-subtle bg-black/40">
                 <StageSlot beat="journey" className="absolute inset-0" />
                 <div className="pointer-events-none absolute bottom-5 left-5 right-5">
-                  <p className="font-mono text-5xl font-semibold text-primary-400 tabular-nums">
+                  <p className="font-mono text-5xl font-semibold text-text tabular-nums">
                     {stage.n}
                   </p>
                   <p className="mt-1 font-display text-xl font-bold text-text">{stage.name}</p>
@@ -86,7 +86,7 @@ export default function HowItWorks() {
                 }`}
               >
                 <div className="flex items-baseline gap-4">
-                  <span className="font-mono text-sm font-semibold text-primary-400 sm:hidden lg:inline">
+                  <span className="font-mono text-sm font-semibold text-text sm:hidden lg:inline">
                     {s.n}
                   </span>
                   <h3 className="text-lg font-bold text-text">{s.name}</h3>

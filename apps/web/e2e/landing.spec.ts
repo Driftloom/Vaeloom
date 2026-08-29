@@ -29,7 +29,7 @@ test.describe('landing functional', () => {
     const ids = await page.evaluate(() =>
       Array.from(document.querySelectorAll('[id]')).map((el) => el.id),
     );
-    for (const hash of ['#how-it-works', '#memory', '#agents', '#career', '#enterprise']) {
+    for (const hash of ['#how-it-works', '#memory', '#agents', '#career', '#trust']) {
       expect(ids, `${hash} target exists`).toContain(hash.slice(1));
     }
     // Regression guards: dead pricing anchor and false SOC 2 claim stay gone

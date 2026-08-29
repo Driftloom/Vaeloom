@@ -61,8 +61,7 @@ HTMLCanvasElement.prototype.getContext = function (type: string) {
 import { AGENTS, CONNECTORS, HERO, TRUST } from '@/lib/landing/copy';
 
 describe('landing copy product truth', () => {
-  it('positions Vaeloom as a memory system, not a chatbot', () => {
-    expect(HERO.eyebrow.toLowerCase()).toContain('memory system');
+  it('has correct title', () => {
     expect(HERO.titleB).toMatch(/education and career/i);
   });
 

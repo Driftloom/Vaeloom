@@ -22,7 +22,6 @@ import {
   TrustSection,
   CompoundingSection,
 } from '@/components/landing/sections/TrustCompoundingSections';
-import ProductPreview from '@/components/landing/sections/ProductPreview';
 import ProblemSection from '@/components/landing/sections/ProblemSection';
 import FAQSection from '@/components/landing/sections/FAQSection';
 import { FinalCTA, LandingFooter } from '@/components/landing/sections/ClosingSections';
@@ -104,7 +103,6 @@ export default function LandingPage() {
             <CareerSection />
             <SchedulerSection />
             <TrustSection />
-            <ProductPreview />
             <CompoundingSection />
             <FAQSection />
             <FinalCTA />

@@ -160,35 +160,33 @@ export function createConnectorFlow(
   const group = new THREE.Group();
   const ring = new THREE.Group();
   group.add(ring);
-  ring.add(
-    new THREE.Mesh(
-      new THREE.TorusGeometry(1.35, 0.02, 8, 96),
-      new THREE.MeshBasicMaterial({ color: palette.structure, transparent: true, opacity: 0.5 }),
-    ),
-  );
-  ring.add(
-    new THREE.Mesh(
-      new THREE.TorusGeometry(1.6, 0.008, 8, 96),
-      new THREE.MeshBasicMaterial({ color: palette.structure, transparent: true, opacity: 0.25 }),
-    ),
-  );
-  const coreHalo = new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: new THREE.CanvasTexture(glowTexture(palette.core)),
-      transparent: true,
-      opacity: 0.55,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    }),
-  );
+  const torus1Mat = new THREE.MeshBasicMaterial({
+    color: palette.structure,
+    transparent: true,
+    opacity: 0.5,
+  });
+  const torus1 = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.02, 8, 96), torus1Mat);
+  const torus2Mat = new THREE.MeshBasicMaterial({
+    color: palette.structure,
+    transparent: true,
+    opacity: 0.25,
+  });
+  const torus2 = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.008, 8, 96), torus2Mat);
+  ring.add(torus1, torus2);
+  const coreHaloMat = new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(glowTexture(palette.core)),
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const coreHalo = new THREE.Sprite(coreHaloMat);
   coreHalo.scale.setScalar(2.2);
   group.add(coreHalo);
-  group.add(
-    new THREE.Mesh(
-      new THREE.SphereGeometry(0.34, 24, 24),
-      new THREE.MeshBasicMaterial({ color: palette.core }),
-    ),
-  );
+  const coreGeo = new THREE.SphereGeometry(0.34, 24, 24);
+  const coreMat = new THREE.MeshBasicMaterial({ color: palette.core });
+  const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+  group.add(coreMesh);
   const perSource = Math.max(1, Math.round(34 * density));
   const nodeGeo = new THREE.OctahedronGeometry(0.17, 0);
   const streams = SOURCES.map((color, si) => {
@@ -224,10 +222,12 @@ export function createConnectorFlow(
     'position',
     new THREE.BufferAttribute(new Float32Array(SOURCES.length * 6), 3),
   );
-  const links = new THREE.LineSegments(
-    linkGeo,
-    new THREE.LineBasicMaterial({ color: palette.edge, transparent: true, opacity: 0.6 }),
-  );
+  const linkMat = new THREE.LineBasicMaterial({
+    color: palette.edge,
+    transparent: true,
+    opacity: 0.6,
+  });
+  const links = new THREE.LineSegments(linkGeo, linkMat);
   group.add(links);
   function update(t: number, dt: number, rm: boolean): void {
     const tt = rm ? 0 : t;
@@ -259,12 +259,21 @@ export function createConnectorFlow(
   }
   function dispose(): void {
     nodeGeo.dispose();
+    torus1.geometry.dispose();
+    torus1Mat.dispose();
+    torus2.geometry.dispose();
+    torus2Mat.dispose();
+    coreGeo.dispose();
+    coreMat.dispose();
+    coreHaloMat.map?.dispose();
+    coreHaloMat.dispose();
+    linkGeo.dispose();
+    linkMat.dispose();
     streams.forEach((st) => {
       (st.node.material as THREE.Material).dispose();
       (st.pts.material as THREE.Material).dispose();
       st.geo.dispose();
     });
-    linkGeo.dispose();
   }
   return { group, update, dispose };
 }

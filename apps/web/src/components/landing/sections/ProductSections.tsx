@@ -1,3 +1,5 @@
+'use client';
+
 import { DIFFERENCE, PRINCIPLES } from '@/lib/landing/copy';
 import {
   Container,
@@ -6,6 +8,7 @@ import {
   Section,
   SectionHeading,
 } from '@/components/landing/shared/LandingKit';
+import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 export function PrinciplesStrip() {
   return (
@@ -34,7 +37,8 @@ export function PrinciplesStrip() {
 
 export function ProductDifference() {
   return (
-    <Section labelledBy="difference-title" className="overflow-hidden">
+    <Section labelledBy="difference-title" className="relative overflow-hidden">
+      <StageSlot beat="difference" className="absolute inset-0 opacity-30" />
       <Container>
         <SectionHeading
           id="difference-title"

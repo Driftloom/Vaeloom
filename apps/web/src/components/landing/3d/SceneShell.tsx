@@ -21,6 +21,7 @@ import {
   useContext,
   useMemo,
   useRef,
+  useState,
   type ReactElement,
   type ReactNode,
 } from 'react';
@@ -31,13 +32,14 @@ import {
   useReducedMotionPref,
   useWebGLSupport,
 } from '@/lib/landing/hooks';
-import type { SceneHandle } from './vanilla/engine';
-import type { GraphSelection } from './KnowledgeGraphCanvas';
 import { useTheme } from '@/hooks/useTheme';
-import { useSectionProgress } from '@/lib/landing/scroll';
+import {
+  useSectionProgress,
+  usePageScrollSubscribe,
+  usePageScrollProgress,
+} from '@/lib/landing/scroll';
 import { createStage, type StageHandle } from './vanilla/stageScene';
-
-export type { GraphSelection };
+import { getBeatIndex, BEATS } from './vanilla/worldConstants';
 
 /** Resolved theme for scene wrappers (dark is SSR/brand default). */
 function useThemeValue(): Theme {
@@ -64,65 +66,6 @@ function useSceneGate() {
   return { ...view, webglReady, active: view.inView && !reduced, tier };
 }
 
-export function MemoryCoreScene({ theme, fallback }: { theme: Theme; fallback: ReactNode }) {
-  const gate = useSceneGate();
-  if (!gate.webglReady) return <>{fallback}</>;
-  return (
-    <div ref={gate.ref} className="h-full w-full">
-      <MemoryCoreCanvas theme={theme} tier={gate.tier} active={gate.active} />
-    </div>
-  );
-}
-
-export function KnowledgeGraphScene({
-  theme,
-  fallback,
-  onSelectionChange,
-}: {
-  theme: Theme;
-  fallback: ReactNode;
-  onSelectionChange: (sel: GraphSelection) => void;
-}) {
-  const gate = useSceneGate();
-  if (!gate.webglReady) return <>{fallback}</>;
-  return (
-    <div ref={gate.ref} className="h-full w-full">
-      <KnowledgeGraphCanvas
-        theme={theme}
-        tier={gate.tier}
-        active={gate.active}
-        onSelectionChange={onSelectionChange}
-      />
-    </div>
-  );
-}
-
-export function AgentOrbitScene({
-  theme,
-  fallback,
-  selected,
-  onSelect,
-}: {
-  theme: Theme;
-  fallback: ReactNode;
-  selected: string;
-  onSelect: (id: string) => void;
-}) {
-  const gate = useSceneGate();
-  if (!gate.webglReady) return <>{fallback}</>;
-  return (
-    <div ref={gate.ref} className="h-full w-full">
-      <AgentOrbitCanvas
-        theme={theme}
-        tier={gate.tier}
-        active={gate.active}
-        selected={selected}
-        onSelect={onSelect}
-      />
-    </div>
-  );
-}
-
 /** Whether rich 3D is available at all (support + motion + tier). */
 export function useSceneAvailable(): boolean {
   const supported = useWebGLSupport();
@@ -147,62 +90,6 @@ export function DustField() {
   );
 }
 
-/** Scroll-scrubbed pipeline journey (How It Works). Progress 0..1 via ref. */
-export function JourneyScene({
-  theme,
-  progressRef,
-}: {
-  theme: Theme;
-  progressRef: React.RefObject<number>;
-}) {
-  const gate = useSceneGate();
-  if (!gate.webglReady || gate.tier === 'low') return null;
-  return (
-    <div ref={gate.ref} className="h-full w-full">
-      <JourneyCanvas theme={theme} tier={gate.tier} progressRef={progressRef} />
-    </div>
-  );
-}
-
-/** Connector sources feeding the ingestion core. */
-export function ConnectorFlowScene({ theme, fallback }: { theme: Theme; fallback: ReactNode }) {
-  const gate = useSceneGate();
-  if (!gate.webglReady) return <>{fallback}</>;
-  return (
-    <div ref={gate.ref} className="h-full w-full">
-      <ConnectorCanvas theme={theme} tier={gate.tier} active={gate.active} />
-    </div>
-  );
-}
-
-/** Compounding lattice — progress-scrubbed assembly. */
-export function GrowthScene({
-  theme,
-  progressRef,
-}: {
-  theme: Theme;
-  progressRef: React.RefObject<number>;
-}) {
-  const gate = useSceneGate();
-  if (!gate.webglReady || gate.tier === 'low') return null;
-  return (
-    <div ref={gate.ref} className="h-full w-full">
-      <GrowthCanvas theme={theme} tier={gate.tier} progressRef={progressRef} />
-    </div>
-  );
-}
-
-/** Calm memory core behind the final CTA. */
-export function CtaCoreScene({ theme }: { theme: Theme }) {
-  const gate = useSceneGate();
-  if (!gate.webglReady || gate.tier === 'low') return null;
-  return (
-    <div ref={gate.ref} className="h-full w-full">
-      <CtaCoreCanvas theme={theme} tier={gate.tier} active={gate.active} />
-    </div>
-  );
-}
-
 /** Convenience hook for sections that need the resolved theme string. */
 export function useLandingTheme(themeClass?: string): Theme {
   return useMemo(() => (themeClass === 'light' ? 'light' : 'dark'), [themeClass]);
@@ -212,6 +99,7 @@ export function useLandingTheme(themeClass?: string): Theme {
 
 interface StageCtxValue {
   register: (beat: string, el: HTMLElement | null, getProgress: () => number) => void;
+  ready: boolean;
 }
 
 const StageCtx = createContext<StageCtxValue | null>(null);
@@ -221,6 +109,10 @@ const StageCtx = createContext<StageCtxValue | null>(null);
  * slot scrolls into view, the shared canvas is teleported into it and the
  * matching beat becomes active. This folds the per-section canvases into a
  * single renderer while preserving every section's existing layout.
+ *
+ * Beat switching is scroll-driven (not IntersectionObserver): the page progress
+ * 0..1 resolves to the active beat via worldConstants scrollRange, giving
+ * deterministic camera transitions between beats.
  */
 export function StageProvider({ children }: { children: ReactNode }): ReactElement {
   const available = useSceneAvailable();
@@ -231,8 +123,8 @@ export function StageProvider({ children }: { children: ReactNode }): ReactEleme
 
   const stageRef = useRef<StageHandle | null>(null);
   const slotsRef = useRef<Map<string, { el: HTMLElement; getProgress: () => number }>>(new Map());
-  const ratiosRef = useRef<Record<string, number>>({});
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const activeBeatRef = useRef('');
+  const [ready, setReady] = useState(false);
 
   const register = useCallback(
     (beat: string, el: HTMLElement | null, getProgress: () => number) => {
@@ -241,76 +133,96 @@ export function StageProvider({ children }: { children: ReactNode }): ReactEleme
         return;
       }
       slotsRef.current.set(beat, { el, getProgress });
-      if (observerRef.current) observerRef.current.observe(el);
     },
     [],
   );
 
-  useEffect(() => {
-    if (!available) return;
+  // Scroll-driven beat switching
+  const pageRef = usePageScrollProgress();
 
-    // Debug/QA + Playwright capture: ?stageBeat=<beat> pins the active beat
-    // so each scene can be screenshotted in isolation.
+  usePageScrollSubscribe(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    // Debug/QA + Playwright: ?stageBeat=<beat> pins the active beat
     const forcedBeat =
       typeof window !== 'undefined'
         ? (new URLSearchParams(window.location.search).get('stageBeat') ?? undefined)
         : undefined;
 
-    const stage = createStage({ theme, density, tier });
+    const p = pageRef.current ?? 0;
+
+    // Resolve active beat from scroll progress — iterate BEATS and find which
+    // scrollRange contains the current progress
+    let resolvedBeat = forcedBeat ?? '';
+    if (!forcedBeat) {
+      for (const b of BEATS) {
+        if (p >= b.scrollRange[0] && p <= b.scrollRange[1]) {
+          resolvedBeat = b.id;
+          break;
+        }
+      }
+      // Fallback: closest beat by distance
+      if (!resolvedBeat) {
+        let minDist = Infinity;
+        for (const b of BEATS) {
+          const mid = (b.scrollRange[0] + b.scrollRange[1]) / 2;
+          const dist = Math.abs(p - mid);
+          if (dist < minDist) {
+            minDist = dist;
+            resolvedBeat = b.id;
+          }
+        }
+      }
+    }
+
+    if (!resolvedBeat || resolvedBeat === activeBeatRef.current) return;
+    activeBeatRef.current = resolvedBeat;
+
+    const slot = slotsRef.current.get(resolvedBeat);
+    if (slot) {
+      stage.attachTo(slot.el);
+      stage.setActiveBeat(resolvedBeat, slot.getProgress);
+    }
+  });
+
+  useEffect(() => {
+    if (!available) return;
+
+    const stage = createStage({ theme, density, tier, onReady: () => setReady(true) });
     stageRef.current = stage;
     stage.start();
-
-    const pickActive = (): string => {
-      if (forcedBeat) return forcedBeat;
-      let activeBeat = '';
-      let max = 0;
-      Object.entries(ratiosRef.current).forEach(([b, r]) => {
-        if (r > max) {
-          max = r;
-          activeBeat = b;
-        }
-      });
-      return activeBeat;
-    };
-
-    const apply = () => {
-      const activeBeat = pickActive();
-      if (!activeBeat) return;
-      const slot = slotsRef.current.get(activeBeat);
-      if (slot) {
-        stage.attachTo(slot.el);
-        stage.setActiveBeat(activeBeat, slot.getProgress);
-      }
-    };
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          const beat = (e.target as HTMLElement).dataset['stageBeat'];
-          if (beat) ratiosRef.current[beat] = e.intersectionRatio;
-        });
-        apply();
-      },
-      { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
-    );
-    observerRef.current = observer;
-    slotsRef.current.forEach((slot) => observer.observe(slot.el));
-    apply();
 
     const onResize = () => stage.resize();
     window.addEventListener('resize', onResize);
 
     return () => {
       window.removeEventListener('resize', onResize);
-      observer.disconnect();
-      observerRef.current = null;
       stage.stop();
       stage.dispose();
       stageRef.current = null;
+      activeBeatRef.current = '';
+      setReady(false);
     };
-  }, [available, theme, density, tier]);
+    // Create the single WebGL context only when capability/tier changes.
+    // Theme changes are handled by setTheme() below — they must NOT tear
+    // down the renderer/canvas (that caused a flash on every toggle).
+  }, [available, density, tier]);
 
-  return <StageCtx.Provider value={{ register }}>{children}</StageCtx.Provider>;
+  // Theme switch: recolor the scene graph in place instead of rebuilding the
+  // whole stage. Skips the initial mount (the stage is already themed).
+  const themeInitialised = useRef(false);
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    if (!themeInitialised.current) {
+      themeInitialised.current = true;
+      return;
+    }
+    stage.setTheme(theme);
+  }, [theme]);
+
+  return <StageCtx.Provider value={{ register, ready }}>{children}</StageCtx.Provider>;
 }
 
 export function StageSlot({
@@ -336,6 +248,13 @@ export function StageSlot({
     return () => ctx.register(beat, null, () => 0);
   }, [ctx, beat, progressRef]);
 
+  // Keep the captured-scene poster on screen (and fade it out) while the live
+  // canvas fades in, so the hero never pops in over an empty beat on refresh.
+  // Only the hero is on screen during that initial gap; other beats are already
+  // live (ready) by the time they scroll into view, so they don't need a poster.
+  const showPoster = !available || beat === 'hero';
+  const posterOpacity = available && ctx?.ready ? 0 : 0.9;
+
   return (
     <div
       ref={ref}
@@ -344,7 +263,20 @@ export function StageSlot({
       className={className}
       style={{ position: 'absolute', inset: 0 }}
     >
-      {!available && (fallback ?? <StagePoster beat={beat} />)}
+      {showPoster && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            opacity: posterOpacity,
+            transition: 'opacity 600ms ease',
+            pointerEvents: 'none',
+          }}
+        >
+          {fallback ?? <StagePoster beat={beat} />}
+        </div>
+      )}
     </div>
   );
 }

@@ -23,9 +23,11 @@ import {
   useEffect,
   useRef,
   useCallback,
+  useState,
   type ReactNode,
   type RefObject,
 } from 'react';
+import { BEATS, type BeatDef } from '@/components/landing/3d/vanilla/worldConstants';
 
 type ScrollApi = {
   pageProgressRef: RefObject<number>;
@@ -130,4 +132,59 @@ export function useSectionProgress(
   }, [ref, register, viewLead, viewTrail]);
 
   return progressRef;
+}
+
+/**
+ * Resolve the currently active beat from page scroll progress.
+ * Returns the beat definition and local progress (0..1) within that beat.
+ */
+export function useActiveBeat(): { beat: BeatDef; local: number; index: number } {
+  const pageRef = usePageScrollProgress();
+  const [state, setState] = useState<{ beat: BeatDef; local: number; index: number }>(() => ({
+    beat: BEATS[0]!,
+    local: 0,
+    index: 0,
+  }));
+
+  usePageScrollSubscribe(() => {
+    const p = pageRef.current ?? 0;
+    // Find which beat's scrollRange contains the current progress
+    for (let i = 0; i < BEATS.length; i++) {
+      const b = BEATS[i]!;
+      const [start, end] = b.scrollRange;
+      if (p >= start && p <= end) {
+        const span = end - start;
+        const local = span > 0 ? (p - start) / span : 0;
+        setState({ beat: b, local, index: i });
+        return;
+      }
+    }
+    // Past last beat — clamp to CTA
+    const last = BEATS[BEATS.length - 1]!;
+    setState({ beat: last, local: 1, index: BEATS.length - 1 });
+  });
+
+  return state;
+}
+
+/**
+ * Returns active beat id string — lightweight version for StageProvider.
+ */
+export function useActiveBeatId(): string {
+  const pageRef = usePageScrollProgress();
+  const [id, setId] = useState(BEATS[0]!.id);
+
+  usePageScrollSubscribe(() => {
+    const p = pageRef.current ?? 0;
+    for (let i = 0; i < BEATS.length; i++) {
+      const b = BEATS[i]!;
+      if (p >= b.scrollRange[0] && p <= b.scrollRange[1]) {
+        setId(b.id);
+        return;
+      }
+    }
+    setId(BEATS[BEATS.length - 1]!.id);
+  });
+
+  return id;
 }

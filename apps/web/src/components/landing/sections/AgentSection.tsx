@@ -66,7 +66,9 @@ export default function AgentSection() {
                     }}
                     role="tab"
                     type="button"
+                    id={`agent-tab-${a.id}`}
                     aria-selected={a.id === selectedId}
+                    aria-controls="agent-tabpanel"
                     tabIndex={a.id === selectedId ? 0 : -1}
                     onClick={() => setSelectedId(a.id)}
                     className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
@@ -91,7 +93,8 @@ export default function AgentSection() {
           <Reveal delay={0.1}>
             <div
               role="tabpanel"
-              aria-label={`${selected.name} details`}
+              id="agent-tabpanel"
+              aria-labelledby={`agent-tab-${selected.id}`}
               className="landing-panel rounded-3xl p-6 sm:p-8"
             >
               <div className="flex items-center gap-3">

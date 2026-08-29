@@ -60,8 +60,12 @@ export default function HeroSection() {
           aria-hidden="true"
         >
           {/* The shared Stage canvas renders the living core into this slot
-              when WebGL is available; a static poster is shown otherwise. */}
-          <StageSlot beat="hero" className="absolute inset-0" />
+               when WebGL is available; a static poster is shown otherwise.
+               Centered/middle on desktop; dropped to the lower half on mobile
+               so it never sits dead-center behind the heading. */}
+          <div className="absolute inset-0 max-md:top-1/2">
+            <StageSlot beat="hero" className="absolute inset-0" />
+          </div>
           {/* Atmospheric grid — very subtle, provides scale */}
           <div className="landing-grid-bg absolute inset-0 opacity-60" />
           {/* Aurora — soft, not competing with text */}
@@ -100,7 +104,7 @@ export default function HeroSection() {
         >
           <h1
             id="hero-title"
-            className="mt-[1.2cm] max-w-4xl font-display text-4xl font-bold leading-[1.08] tracking-tight text-text sm:text-5xl lg:text-6xl"
+            className="mt-10 max-w-4xl font-display text-4xl font-bold leading-[1.08] tracking-tight text-text sm:text-5xl lg:text-6xl"
           >
             {HERO.titleA} <span className="landing-gradient-text">{HERO.titleB}</span>
           </h1>

@@ -134,7 +134,8 @@ export function ConnectorSection() {
 
 export function OrganizationSection() {
   return (
-    <Section labelledBy="org-title" className="bg-surface-50/60">
+    <Section labelledBy="org-title" className="relative bg-surface-50/60">
+      <StageSlot beat="organization" className="absolute inset-0 opacity-30" />
       <Container>
         <SectionHeading
           id="org-title"
@@ -171,7 +172,8 @@ export function OrganizationSection() {
 
 export function ResumeSection() {
   return (
-    <Section id="resume" labelledBy="resume-title">
+    <Section id="resume" labelledBy="resume-title" className="relative">
+      <StageSlot beat="resume" className="absolute inset-0 opacity-30" />
       <Container>
         <div className="grid items-start gap-10 lg:grid-cols-[1fr_1fr] lg:gap-16">
           <div>
@@ -335,7 +337,8 @@ export function CareerSection() {
 
 export function SchedulerSection() {
   return (
-    <Section id="scheduler" labelledBy="sched-title">
+    <Section id="scheduler" labelledBy="sched-title" className="relative">
+      <StageSlot beat="scheduler" className="absolute inset-0 opacity-30" />
       <Container>
         <div className="grid items-start gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-16">
           <div>

@@ -8,7 +8,6 @@
  */
 
 export const NAV_LINKS = [
-  { label: 'Product', href: '#product' },
   { label: 'Problem', href: '#problem' },
   { label: 'How it works', href: '#how-it-works' },
   { label: 'Memory', href: '#memory' },
@@ -18,13 +17,9 @@ export const NAV_LINKS = [
 ] as const;
 
 export const HERO = {
-  eyebrow: 'A memory system, not a chatbot',
   titleA: 'Your second brain for',
   titleB: 'education and career.',
   subtitle: '',
-  primaryCta: { label: 'Start building — free', href: '/signup' },
-  secondaryCta: { label: 'See how it works', href: '#how-it-works' },
-  credibility: 'Memory-first by design · Private by default · Nothing acts without your approval',
 } as const;
 
 /** Streams shown entering the hero memory core — real MVP connectors only. */

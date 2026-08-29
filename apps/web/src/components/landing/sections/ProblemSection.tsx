@@ -1,9 +1,13 @@
+'use client';
+
 import { PROBLEM } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
+import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 export default function ProblemSection() {
   return (
-    <Section id="problem" labelledBy="problem-title">
+    <Section id="problem" labelledBy="problem-title" className="relative">
+      <StageSlot beat="problem" className="absolute inset-0 opacity-40" />
       <Container>
         <SectionHeading
           id="problem-title"
