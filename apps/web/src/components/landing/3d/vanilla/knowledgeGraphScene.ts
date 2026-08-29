@@ -209,3 +209,72 @@ export function mountKnowledgeGraph({
     },
   };
 }
+
+export function createKnowledgeGraph(theme: 'dark' | 'light'): {
+  group: THREE.Group;
+  update: (t: number) => void;
+  setSelected: (i: number) => void;
+  dispose: () => void;
+} {
+  const palette = scenePalette(theme);
+  const group = new THREE.Group();
+  const { nodes, edges } = buildGraph();
+  const nodeGeo = new THREE.SphereGeometry(0.14, 14, 14);
+  const nodeMat = new THREE.MeshBasicMaterial();
+  const mesh = new THREE.InstancedMesh(nodeGeo, nodeMat, nodes.length);
+  mesh.frustumCulled = false;
+  const dummy = new THREE.Object3D();
+  const color = new THREE.Color();
+  nodes.forEach((n, i) => {
+    dummy.position.copy(n.pos);
+    dummy.scale.setScalar(n.type === 'project' || n.type === 'org' ? 1.35 : 1);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+    mesh.setColorAt(i, color.set(palette.nodes[n.type] ?? palette.core));
+  });
+  group.add(mesh);
+  const edgePos = new Float32Array(edges.length * 6);
+  const edgeCol = new Float32Array(edges.length * 6);
+  edges.forEach(([a, b], i) => {
+    const pa = nodes[a]!.pos;
+    const pb = nodes[b]!.pos;
+    edgePos.set([pa.x, pa.y, pa.z, pb.x, pb.y, pb.z], i * 6);
+  });
+  const edgeGeo = new THREE.BufferGeometry();
+  edgeGeo.setAttribute('position', new THREE.BufferAttribute(edgePos, 3));
+  edgeGeo.setAttribute('color', new THREE.BufferAttribute(edgeCol, 3));
+  const lines = new THREE.LineSegments(
+    edgeGeo,
+    new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }),
+  );
+  lines.frustumCulled = false;
+  group.add(lines);
+  function paintEdges(active: number): void {
+    const cDim = new THREE.Color(palette.edge);
+    const cHot = new THREE.Color(palette.edgeHot);
+    const cLink = new THREE.Color(palette.link);
+    edges.forEach(([a, b], i) => {
+      const hot = active >= 0 && (a === active || b === active);
+      const col = hot ? (a === active ? cHot : cLink) : cDim;
+      edgeCol.set([col.r, col.g, col.b], i * 6);
+      edgeCol.set([col.r, col.g, col.b], i * 6 + 3);
+    });
+    (edgeGeo.getAttribute('color') as THREE.BufferAttribute).needsUpdate = true;
+  }
+  paintEdges(-1);
+  function update(t: number): void {
+    mesh.rotation.y = t * 0.05;
+    mesh.rotation.x = 0.18;
+    lines.rotation.copy(mesh.rotation);
+  }
+  function setSelected(i: number): void {
+    paintEdges(i);
+  }
+  function dispose(): void {
+    nodeGeo.dispose();
+    nodeMat.dispose();
+    edgeGeo.dispose();
+    (lines.material as THREE.Material).dispose();
+  }
+  return { group, update, setSelected, dispose };
+}
