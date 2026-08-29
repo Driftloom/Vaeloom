@@ -176,8 +176,6 @@ export function buildStage(opts: BuildStageOptions): BuildStageResult {
 }
 
 export interface StageHandle {
-  attachTo: (el: HTMLElement) => void;
-  setActiveBeat: (name: string, getProgress?: () => number) => void;
   start: () => void;
   stop: () => void;
   resize: () => void;
@@ -189,6 +187,10 @@ export interface CreateStageOptions {
   theme: ThemeName;
   density: number;
   tier: QualityTier;
+  /** Total page scroll progress 0..1 — drives the continuous flythrough. */
+  getProgress: () => number;
+  /** Debug/QA: pin the camera to a single beat (e.g. ?stageBeat=memory). */
+  forcedBeat?: string;
 }
 
 function prefersReducedMotion(): boolean {
@@ -197,16 +199,15 @@ function prefersReducedMotion(): boolean {
 }
 
 export function createStage(opts: CreateStageOptions): StageHandle {
+  const { getProgress, forcedBeat } = opts;
   const built = buildStage(opts);
   const beats = built.beats;
+  const N = beats.length;
 
   const canvas = document.createElement('canvas');
-  canvas.style.position = 'absolute';
-  canvas.style.inset = '0';
   canvas.style.width = '100%';
   canvas.style.height = '100%';
   canvas.style.display = 'block';
-  canvas.style.pointerEvents = 'none';
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(
@@ -214,14 +215,19 @@ export function createStage(opts: CreateStageOptions): StageHandle {
   );
   renderer.setSize(1, 1, false);
 
-  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 4000);
   camera.position.set(0, 0.9, 7.4);
   camera.lookAt(0, 0, 0);
 
+  // Lay every beat out along -Z in a single root group so the camera flies
+  // through one continuous world instead of teleporting between canvases.
+  const root = new THREE.Group();
+  beats.forEach((b) => {
+    b.object.position.z = b.z;
+    root.add(b.object);
+  });
+
   const pointer: Pointer = { x: 0, y: 0 };
-  let parentEl: HTMLElement | null = null;
-  let activeIndex = 0;
-  let getProgress: () => number = () => 0;
   const rm = prefersReducedMotion();
 
   let raf = 0;
@@ -230,25 +236,23 @@ export function createStage(opts: CreateStageOptions): StageHandle {
   let elapsed = 0;
 
   function resize(): void {
-    if (!parentEl) return;
-    const w = Math.max(1, parentEl.clientWidth);
-    const h = Math.max(1, parentEl.clientHeight);
+    const el = canvas.parentElement;
+    if (!el) return;
+    const w = Math.max(1, el.clientWidth);
+    const h = Math.max(1, el.clientHeight);
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
 
   function onPointer(e: PointerEvent): void {
-    const x = (e.clientX / window.innerWidth) * 2 - 1;
-    const y = -((e.clientY / window.innerHeight) * 2 - 1);
-    pointer.x = x;
-    pointer.y = y;
+    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -((e.clientY / window.innerHeight) * 2 - 1);
   }
 
   const tmpPos = new THREE.Vector3();
   const tmpLook = new THREE.Vector3();
-  const curPos = new THREE.Vector3();
-  const curLook = new THREE.Vector3();
+  const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
   function frame(now: number): void {
     raf = requestAnimationFrame(frame);
@@ -257,41 +261,50 @@ export function createStage(opts: CreateStageOptions): StageHandle {
     last = now;
     elapsed += dt;
 
-    const beat: Beat = beats[activeIndex]!;
-    const progress = Math.min(1, Math.max(0, getProgress()));
-    const cs = beat.cameraFor(progress);
+    // Global page progress -> which segment of the world we're flying through.
+    const gp = forcedBeat
+      ? (Math.max(
+          0,
+          beats.findIndex((b) => b.name === forcedBeat),
+        ) +
+          0.5) /
+        (N - 1)
+      : Math.min(1, Math.max(0, getProgress()));
+    const t = gp * (N - 1);
+    const i = Math.min(Math.floor(t), N - 2);
+    const f = t - i;
+    const e = f * f * (3 - 2 * f); // smoothstep between adjacent beats
 
-    tmpPos.set(cs.pos[0], cs.pos[1], cs.pos[2]);
-    tmpLook.set(cs.look[0], cs.look[1], cs.look[2]);
+    const ca = beats[i]!.cameraFor(f);
+    const cb = beats[i + 1]!.cameraFor(0);
+    const za = beats[i]!.z;
+    const zb = beats[i + 1]!.z;
+    const pax = ca.pos[0];
+    const pay = ca.pos[1];
+    const paz = ca.pos[2] + za;
+    const pbx = cb.pos[0];
+    const pby = cb.pos[1];
+    const pbz = cb.pos[2] + zb;
+    const lax = ca.look[0];
+    const lay = ca.look[1];
+    const laz = ca.look[2] + za;
+    const lbx = cb.look[0];
+    const lby = cb.look[1];
+    const lbz = cb.look[2] + zb;
 
-    const lerp = Math.min(1, dt * 6);
-    curPos.lerp(tmpPos, lerp);
-    curLook.lerp(tmpLook, lerp);
-    camera.position.copy(curPos);
-    camera.lookAt(curLook);
-    camera.fov += (cs.fov - camera.fov) * lerp;
+    tmpPos.set(lerp(pax, pbx, e), lerp(pay, pby, e), lerp(paz, pbz, e));
+    tmpLook.set(lerp(lax, lbx, e), lerp(lay, lby, e), lerp(laz, lbz, e));
+    camera.position.copy(tmpPos);
+    camera.lookAt(tmpLook);
+    camera.fov = lerp(ca.fov, cb.fov, e);
     camera.updateProjectionMatrix();
 
-    beats.forEach((b, i) => {
-      b.object.visible = i === activeIndex;
+    beats.forEach((b, k) => {
+      b.object.visible = true; // always present; camera reveals the active beat
+      b.tick(elapsed, dt, pointer, rm, Math.min(1, Math.max(0, t - k)));
     });
 
-    beat.tick(elapsed, dt, pointer, rm, progress);
-    renderer.render(beats[activeIndex]!.object, camera);
-  }
-
-  function attachTo(el: HTMLElement): void {
-    parentEl = el;
-    if (canvas.parentElement !== el) el.appendChild(canvas);
-    resize();
-  }
-
-  function setActiveBeat(name: string, getProg?: () => number): void {
-    const idx = beats.findIndex((b) => b.name === name);
-    if (idx < 0) return;
-    activeIndex = idx;
-    if (getProg) getProgress = getProg;
-    else getProgress = () => 0;
+    renderer.render(root, camera);
   }
 
   function start(): void {
@@ -318,8 +331,6 @@ export function createStage(opts: CreateStageOptions): StageHandle {
     window.addEventListener('pointermove', onPointer, { passive: true });
 
   return {
-    attachTo,
-    setActiveBeat,
     start,
     stop,
     resize,

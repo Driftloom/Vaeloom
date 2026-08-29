@@ -54,7 +54,7 @@ export default function HowItWorks() {
           {/* Sticky journey visual / rail */}
           <div className="hidden lg:block">
             <div className="sticky top-28 h-[520px]">
-              <div className="relative h-full overflow-hidden rounded-3xl border border-border-subtle bg-black/40">
+              <div className="stage-host relative h-full overflow-hidden rounded-3xl border border-border-subtle bg-black/40">
                 <StageSlot beat="journey" className="absolute inset-0" />
                 <div className="pointer-events-none absolute bottom-5 left-5 right-5">
                   <p className="font-mono text-5xl font-semibold text-primary-400 tabular-nums">

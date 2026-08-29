@@ -17,7 +17,7 @@ import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 export function FinalCTA() {
   return (
-    <Section labelledBy="cta-title" className="overflow-hidden !py-24 sm:!py-32">
+    <Section labelledBy="cta-title" className="stage-host overflow-hidden !py-24 sm:!py-32">
       <div className="landing-grid-bg absolute inset-0" aria-hidden="true" />
       <StageSlot beat="cta" className="absolute inset-0 opacity-70" />
       <Container className="relative text-center">
