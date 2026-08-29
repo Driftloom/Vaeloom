@@ -249,9 +249,39 @@ export function StageProvider({ children }: { children: ReactNode }): ReactEleme
   useEffect(() => {
     if (!available) return;
 
+    // Debug/QA + Playwright capture: ?stageBeat=<beat> pins the active beat
+    // so each scene can be screenshotted in isolation.
+    const forcedBeat =
+      typeof window !== 'undefined'
+        ? (new URLSearchParams(window.location.search).get('stageBeat') ?? undefined)
+        : undefined;
+
     const stage = createStage({ theme, density, tier });
     stageRef.current = stage;
     stage.start();
+
+    const pickActive = (): string => {
+      if (forcedBeat) return forcedBeat;
+      let activeBeat = '';
+      let max = 0;
+      Object.entries(ratiosRef.current).forEach(([b, r]) => {
+        if (r > max) {
+          max = r;
+          activeBeat = b;
+        }
+      });
+      return activeBeat;
+    };
+
+    const apply = () => {
+      const activeBeat = pickActive();
+      if (!activeBeat) return;
+      const slot = slotsRef.current.get(activeBeat);
+      if (slot) {
+        stage.attachTo(slot.el);
+        stage.setActiveBeat(activeBeat, slot.getProgress);
+      }
+    };
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -259,26 +289,13 @@ export function StageProvider({ children }: { children: ReactNode }): ReactEleme
           const beat = (e.target as HTMLElement).dataset['stageBeat'];
           if (beat) ratiosRef.current[beat] = e.intersectionRatio;
         });
-        let activeBeat = '';
-        let max = 0;
-        Object.entries(ratiosRef.current).forEach(([b, r]) => {
-          if (r > max) {
-            max = r;
-            activeBeat = b;
-          }
-        });
-        if (activeBeat) {
-          const slot = slotsRef.current.get(activeBeat);
-          if (slot) {
-            stage.attachTo(slot.el);
-            stage.setActiveBeat(activeBeat, slot.getProgress);
-          }
-        }
+        apply();
       },
       { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
     );
     observerRef.current = observer;
     slotsRef.current.forEach((slot) => observer.observe(slot.el));
+    apply();
 
     const onResize = () => stage.resize();
     window.addEventListener('resize', onResize);
@@ -327,7 +344,33 @@ export function StageSlot({
       className={className}
       style={{ position: 'absolute', inset: 0 }}
     >
-      {!available && fallback}
+      {!available && (fallback ?? <StagePoster beat={beat} />)}
+    </div>
+  );
+}
+
+/**
+ * Poster fallback shown only when WebGL is unavailable (or reduced motion /
+ * low tier). Captured from the REAL scene via Playwright (never hand-drawn
+ * SVG) so the visual language stays consistent. A brand gradient sits behind
+ * it as a safety net if the asset is missing.
+ */
+function StagePoster({ beat }: { beat: string }): ReactElement {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute inset-0"
+      style={{
+        background:
+          'radial-gradient(circle at 50% 45%, rgba(124,140,248,0.18), rgba(10,12,20,0) 70%)',
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/landing/beats/${beat}.png`}
+        alt=""
+        className="h-full w-full object-cover opacity-90"
+      />
     </div>
   );
 }

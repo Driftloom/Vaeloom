@@ -88,56 +88,7 @@ export function CompoundingSection() {
             role="img"
             aria-label="Memory lattice assembling as you scroll — sparse at day one, dense by year one. Scroll to grow the memory."
           >
-            <StageSlot
-              beat="growth"
-              className="absolute inset-0"
-              fallback={
-                <div
-                  className="flex h-full items-end gap-3 sm:gap-6"
-                  role="img"
-                  aria-label="Memory density growing from day one to year one. Sparse at day one, connected by month one, strong by month six, deep by year one."
-                >
-                  {COMPOUNDING.milestones.map((m, i) => (
-                    <div key={m.when} className="group flex flex-1 flex-col items-center gap-3">
-                      {/* bar */}
-                      <div className="relative flex h-44 w-full items-end overflow-hidden rounded-t-xl border border-border-subtle bg-surface-elevated/50">
-                        <motion.div
-                          className="landing-density-bar w-full"
-                          initial={reduce ? false : { height: '4%' }}
-                          whileInView={{ height: `${m.density}%` }}
-                          viewport={{ once: true, margin: '-60px' }}
-                          transition={{ duration: 1.1, delay: i * 0.12, ease: [0.16, 1, 0.3, 1] }}
-                          style={{ height: `${m.density}%` }}
-                        >
-                          {/* nodes inside the "memory" */}
-                          <div className="absolute inset-x-0 bottom-0 h-full">
-                            {Array.from({ length: Math.round((m.density / 100) * 9) }).map(
-                              (_, d) => (
-                                <span
-                                  key={d}
-                                  className="absolute h-1 w-1 rounded-full bg-white/80"
-                                  style={{
-                                    left: `${15 + ((d * 37) % 70)}%`,
-                                    top: `${12 + ((d * 53) % 76)}%`,
-                                  }}
-                                  aria-hidden="true"
-                                />
-                              ),
-                            )}
-                          </div>
-                        </motion.div>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-mono text-xs font-semibold text-primary-300">{m.when}</p>
-                        <p className="mt-1 hidden max-w-[160px] text-[11px] leading-snug text-text-muted group-hover:block lg:block">
-                          {m.state}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              }
-            />
+            <StageSlot beat="growth" className="absolute inset-0" />
             <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center font-mono text-[11px] uppercase tracking-widest text-text-muted">
               scroll to compound
             </p>

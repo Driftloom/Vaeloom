@@ -76,20 +76,7 @@ export function ConnectorSection() {
               role="img"
               aria-label="Six connector sources streaming into one ingestion core"
             >
-              <StageSlot
-                beat="connectors"
-                className="absolute inset-0"
-                fallback={
-                  <div className="rounded-xl border border-primary-500/30 bg-surface-elevated p-4 text-center shadow-glow">
-                    <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
-                      Layer
-                    </p>
-                    <p className="mt-1 font-display text-sm font-bold text-text">
-                      Ingestion · Parse · OCR
-                    </p>
-                  </div>
-                }
-              />
+              <StageSlot beat="connectors" className="absolute inset-0" />
               <ul className="pointer-events-none absolute inset-0">
                 {CONNECTORS.items.map((c, i) => (
                   <li key={c.name} className={`absolute ${SOURCE_CHIPS[i]}`}>

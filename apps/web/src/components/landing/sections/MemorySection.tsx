@@ -9,7 +9,6 @@ import {
   Section,
   SectionHeading,
 } from '@/components/landing/shared/LandingKit';
-import { StaticGraph } from '@/components/landing/3d/StaticScenes';
 import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 /** Keyboard-operable curated nodes — indices match the canvas graph. */
@@ -41,7 +40,7 @@ export default function MemorySection() {
         <Reveal className="mt-12">
           <div className="landing-panel relative overflow-hidden rounded-3xl p-4 sm:p-6">
             <div className="relative h-[360px] sm:h-[440px] lg:h-[500px]">
-              <StageSlot beat="memory" className="absolute inset-0" fallback={<StaticGraph />} />
+              <StageSlot beat="memory" className="absolute inset-0" />
               {/* hover/read-out card */}
               {tooltip ? (
                 <div className="pointer-events-none absolute bottom-3 left-3 right-3 sm:left-auto sm:right-4 sm:w-80">

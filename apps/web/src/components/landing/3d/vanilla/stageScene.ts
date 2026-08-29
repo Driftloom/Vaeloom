@@ -261,8 +261,8 @@ export function createStage(opts: CreateStageOptions): StageHandle {
     const progress = Math.min(1, Math.max(0, getProgress()));
     const cs = beat.cameraFor(progress);
 
-    tmpPos.set(cs.pos[0], cs.pos[1], cs.pos[2] + beat.z);
-    tmpLook.set(cs.look[0], cs.look[1], cs.look[2] + beat.z);
+    tmpPos.set(cs.pos[0], cs.pos[1], cs.pos[2]);
+    tmpLook.set(cs.look[0], cs.look[1], cs.look[2]);
 
     const lerp = Math.min(1, dt * 6);
     curPos.lerp(tmpPos, lerp);

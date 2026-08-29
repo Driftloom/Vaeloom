@@ -55,39 +55,7 @@ export default function HowItWorks() {
           <div className="hidden lg:block">
             <div className="sticky top-28 h-[520px]">
               <div className="relative h-full overflow-hidden rounded-3xl border border-border-subtle bg-black/40">
-                <StageSlot
-                  beat="journey"
-                  className="absolute inset-0"
-                  fallback={
-                    <div
-                      className="landing-panel absolute inset-0 rounded-3xl p-6"
-                      aria-hidden="true"
-                    >
-                      <p className="font-mono text-5xl font-semibold text-primary-400 tabular-nums">
-                        {stage.n}
-                      </p>
-                      <p className="mt-2 font-display text-xl font-bold text-text">{stage.name}</p>
-                      <ol className="mt-6 space-y-1.5">
-                        {HOW_IT_WORKS.stages.map((s, i) => (
-                          <li key={s.n} className="flex items-center gap-2">
-                            <span
-                              className={`h-1 rounded-full transition-all duration-500 ${
-                                i === activeIdx ? 'w-8 bg-primary-400' : 'w-3 bg-border'
-                              }`}
-                            />
-                            <span
-                              className={`text-xs transition-colors ${
-                                i === activeIdx ? 'font-semibold text-text' : 'text-text-dim'
-                              }`}
-                            >
-                              {s.name}
-                            </span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                  }
-                />
+                <StageSlot beat="journey" className="absolute inset-0" />
                 <div className="pointer-events-none absolute bottom-5 left-5 right-5">
                   <p className="font-mono text-5xl font-semibold text-primary-400 tabular-nums">
                     {stage.n}

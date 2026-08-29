@@ -101,29 +101,18 @@ describe('landing copy product truth', () => {
 
 // ---- Structural / a11y invariants -----------------------------------------
 
-describe('landing static scenes', () => {
-  it('static graph fallback renders labeled SVG without canvas', async () => {
-    const { StaticGraph } = await import('@/components/landing/3d/StaticScenes');
-    const { container } = render(<StaticGraph />);
-    expect(container.querySelector('svg')).not.toBeNull();
-    expect(container.querySelector('canvas')).toBeNull();
-  });
-
-  it('static orbit fallback exposes agent chips', async () => {
-    const { StaticOrbit } = await import('@/components/landing/3d/StaticScenes');
-    const labels = [
-      { id: 'orchestrator', name: 'Orchestrator' },
-      { id: 'resume', name: 'Resume' },
-    ];
-    render(
-      <StaticOrbit
-        labels={labels}
-        activeIndex={0}
-        colors={{ orchestrator: '#818cf8', resume: '#34d399' }}
-      />,
+describe('landing scene fallbacks', () => {
+  it('renders Playwright poster fallbacks (no SVG) when WebGL unsupported', async () => {
+    const LandingPage = (await import('@/app/page')).default;
+    const { container } = render(
+      <ThemeProvider>
+        <LandingPage />
+      </ThemeProvider>,
     );
-    expect(screen.getByText('Orchestrator')).toBeInTheDocument();
-    expect(screen.getByText('Resume')).toBeInTheDocument();
+    const posters = container.querySelectorAll('img[src*="/landing/beats/"]');
+    expect(posters.length).toBeGreaterThan(0);
+    // The old hand-drawn SVG fallback must be gone.
+    expect(container.querySelector('.landing-flow-line')).toBeNull();
   });
 
   it('renders the full landing page with heading hierarchy and CTAs', async () => {

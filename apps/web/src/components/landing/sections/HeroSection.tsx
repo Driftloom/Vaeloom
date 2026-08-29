@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import { HERO } from '@/lib/landing/copy';
-import { StaticMemoryCore } from '@/components/landing/3d/StaticScenes';
 import { StageSlot } from '@/components/landing/3d/SceneShell';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -63,7 +62,7 @@ export default function HeroSection() {
           {/* Persistent Stage canvas (mounted once at page level) draws the
               living core behind everything; the static SVG fallback is rendered
               here only when WebGL/3D is unavailable. */}
-          <StageSlot beat="hero" className="absolute inset-0" fallback={<StaticMemoryCore />} />
+          <StageSlot beat="hero" className="absolute inset-0" />
           {/* Atmospheric grid — very subtle, provides scale */}
           <div className="landing-grid-bg absolute inset-0 opacity-60" />
           {/* Aurora — soft, not competing with text */}

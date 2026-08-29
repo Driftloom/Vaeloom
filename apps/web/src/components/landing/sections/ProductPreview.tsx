@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react';
 import { PREVIEW } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
-import { StaticGraph } from '@/components/landing/3d/StaticScenes';
 
 /**
  * Faithful HTML/CSS recreations of real Vaeloom surfaces, built from the
@@ -121,7 +120,13 @@ function GraphPreview() {
   return (
     <div className="relative">
       <div className="mx-auto max-h-64 max-w-64 opacity-90">
-        <StaticGraph />
+        {/* Real scene captured to a poster via Playwright (no hand-drawn SVG). */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/landing/beats/memory.png"
+          alt="Knowledge graph preview"
+          className="mx-auto max-h-64 max-w-64 opacity-90"
+        />
       </div>
       <div className="absolute bottom-1 right-1 flex gap-1" aria-hidden="true">
         {['person', 'skill', 'project'].map((t) => (
