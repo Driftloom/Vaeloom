@@ -85,23 +85,124 @@ TOOL_TIMEOUT_OVERRIDES = {
 
 # Per-workspace scraping quota (sliding window, in-process; matches the
 # MemoryBackend rate-limiter precedent). Applied to network-heavy fetches.
-_SCRAPE_TIMESTAMPS: dict[str, list[float]] = {}
+# ── Distributed scraping quota (F-12) ───────────────────────────────────────
+# The quota MUST be enforced per-workspace across all workers, not per-process.
+# We use a pluggable backend: in-memory by default (single worker / tests), and a
+# Redis-backed implementation automatically when a Redis URL is configured, so the
+# quota is shared across the fleet. Both backends expose `allowed(ws, limit, window)`.
+import os as _os
+import time as _time
+
+from typing import Protocol
 
 
-def _check_scrape_quota(workspace_id: str, limit: int = 20, window_s: float = 3600.0) -> bool:
-    """True if workspace is under the scraping quota; records the hit."""
-    import time as _time
+class ScrapeQuotaBackend(Protocol):
+    async def allowed(self, workspace_id: str, limit: int, window_s: float) -> bool:
+        """Return True and record the hit if the workspace is under quota."""
+        ...
 
-    now = _time.monotonic()
-    hits = _SCRAPE_TIMESTAMPS.get(workspace_id)
-    if hits is None:
-        hits = _SCRAPE_TIMESTAMPS[workspace_id] = []
-    while hits and hits[0] <= now - window_s:
-        hits.pop(0)
-    if len(hits) >= limit:
-        return False
-    hits.append(now)
-    return True
+
+class _InMemoryScrapeQuota:
+    """Process-local fallback; correct for a single worker, not across the fleet."""
+
+    def __init__(self) -> None:
+        self._store: dict[str, list[float]] = {}
+        self._lock = asyncio.Lock()
+
+    async def allowed(self, workspace_id: str, limit: int, window_s: float) -> bool:
+        async with self._lock:
+            now = _time.monotonic()
+            hits = self._store.get(workspace_id)
+            if hits is None:
+                hits = self._store[workspace_id] = []
+            while hits and hits[0] <= now - window_s:
+                hits.pop(0)
+            if len(hits) >= limit:
+                return False
+            hits.append(now)
+            return True
+
+
+class _RedisScrapeQuota:
+    """Shared quota across workers via a Redis sorted set of hit timestamps."""
+
+    def __init__(self, redis_url: str) -> None:
+        import redis.asyncio as _aioredis
+
+        self._r = _aioredis.from_url(redis_url, decode_responses=False)
+        self._prefix = "vaeloom:scrape_quota:"
+        self._store: dict[str, list[float]] = {}
+        self._lock = asyncio.Lock()
+
+    async def allowed(self, workspace_id: str, limit: int, window_s: float) -> bool:
+        key = f"{self._prefix}{workspace_id}"
+        now = _time.monotonic()
+        try:
+            # Drop stale hits, then decide before recording this one.
+            await self._r.zremrangebyscore(key, 0, now - window_s)
+            count = await self._r.zcard(key)
+            if count >= limit:
+                return False
+            await self._r.zadd(key, {f"{now}:{_uuid()}": now})
+            await self._r.expire(key, int(window_s) + 10)
+            return True
+        except Exception as e:  # Redis unreachable: degrade to local best-effort
+            logger.warning("scrape quota redis unavailable, local fallback: %s", e)
+            return await self._local_fallback(workspace_id, limit, window_s)
+
+    async def _local_fallback(self, workspace_id: str, limit: int, window_s: float) -> bool:
+        # Process-local best-effort so a down Redis never hard-blocks scraping.
+        async with self._lock:
+            hits = self._store.get(workspace_id)
+            if hits is None:
+                hits = self._store[workspace_id] = []
+            while hits and hits[0] <= now - window_s:
+                hits.pop(0)
+            if len(hits) >= limit:
+                return False
+            hits.append(now)
+            return True
+
+
+def _uuid() -> str:
+    return uuid_lib.uuid4().hex
+
+
+_QUOTA_BACKEND: ScrapeQuotaBackend | None = None
+
+
+def _get_quota_backend() -> ScrapeQuotaBackend:
+    """Lazily pick Redis when configured, else in-memory. Cache the choice.
+
+    Redis is used only when REDIS_URL/REDIS__URL is explicitly set (the config
+    default of localhost is just a placeholder and must not auto-activate a
+    backend that may be unreachable — see deployment runbook: "REDIS_URL is not
+    set - will use in-memory fallback").
+    """
+    global _QUOTA_BACKEND
+    if _QUOTA_BACKEND is not None:
+        return _QUOTA_BACKEND
+    redis_url = _os.environ.get("REDIS_URL") or _os.environ.get("REDIS__URL")
+    if redis_url:
+        try:
+            _QUOTA_BACKEND = _RedisScrapeQuota(redis_url)
+            logger.info("scrape quota backend: redis (%s)", redis_url)
+            return _QUOTA_BACKEND
+        except Exception as e:  # pragma: no cover - Redis init failure falls back
+            logger.warning("scrape quota redis init failed, using in-memory: %s", e)
+    _QUOTA_BACKEND = _InMemoryScrapeQuota()
+    return _QUOTA_BACKEND
+
+
+def set_scrape_quota_backend(backend: ScrapeQuotaBackend) -> None:
+    """Override backend (test seam / explicit distributed store)."""
+    global _QUOTA_BACKEND
+    _QUOTA_BACKEND = backend
+
+
+async def _check_scrape_quota(workspace_id: str, limit: int = 20, window_s: float = 3600.0) -> bool:
+    """True if the workspace is under its scraping quota; records the hit."""
+    return await _get_quota_backend().allowed(workspace_id, limit, window_s)
 
 
 # ── Dynamic tool registry (MCP-bridged tools) ─────────────────────────
@@ -2260,7 +2361,7 @@ async def _execute_browse_job_page(params: dict[str, Any], workspace_id: str) ->
         return {"status": "error", "tool": "browse_job_page",
                 "result": "Browser tools are disabled by configuration"}
     limit = getattr(_settings, "scrape_quota_per_hour", 20)
-    if not _check_scrape_quota(workspace_id, limit=limit):
+    if not await _check_scrape_quota(workspace_id, limit=limit):
         return {
             "status": "error", "tool": "browse_job_page",
             "result": f"Scraping quota exceeded ({limit}/hour per workspace) — try again later",
@@ -2316,7 +2417,7 @@ async def _execute_scrape_company_insights(params: dict[str, Any], workspace_id:
         return {"status": "error", "tool": "scrape_company_insights",
                 "result": "Browser tools are disabled by configuration"}
     limit = getattr(_settings, "scrape_quota_per_hour", 20)
-    if not _check_scrape_quota(workspace_id, limit=limit):
+    if not await _check_scrape_quota(workspace_id, limit=limit):
         return {
             "status": "error", "tool": "scrape_company_insights",
             "result": f"Scraping quota exceeded ({limit}/hour per workspace) — try again later",

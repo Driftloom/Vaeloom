@@ -52,7 +52,7 @@ behind §32 final-gate items that need infrastructure.
 | F-08    | connector mock-success                                          | scoped fix: 7 mutating/write connectors (Slack send, Gmail/Outlook draft, calendar create, GitHub issue/PR create) now return `status="not_configured"` (no fake side-effect) when unconfigured; read-only connector mock-fallbacks left (labeled mock, no side effect) | **CLOSED (L3, scoped)**            | `tools/executor.py` (`NOT_CONFIGURED` + `_connector_not_configured`); `tests/test_connector_not_configured.py`; `tests/test_tools_executor.py` mock-fallback updated                          |
 | F-10    | real LLM reasoning                                              | gated off; no creds to verify                                                                                                                                                                                                                                           | **OPEN / BLOCKED (L1)**            | `config.py:99`                                                                                                                                                                                |
 | F-11    | secret-key drift                                                | unified: `temporal/validation.py` is the single source of truth; `logging.py` and `graph/state.py` consume `SECRET_KEYS` (no forked copies); regression test asserts parity                                                                                             | **CLOSED (L3)**                    | `temporal/validation.py` (canonical, 31 keys); `logging.py`; `graph/state.py`; `tests/test_secret_keys_unified.py` (8 tests pass)                                                             |
-| F-12    | distributed scrape quota                                        | not yet changed                                                                                                                                                                                                                                                         | **OPEN**                           | per prior audit                                                                                                                                                                               |
+| F-12    | distributed scrape quota                                        | quota backend now pluggable: Redis-backed (shared across workers) when `REDIS_URL` set, else in-memory; Redis backend degrades to local best-effort if unreachable (never hard-blocks scraping)                                                                         | **CLOSED (L3)**                    | `tools/executor.py` (`ScrapeQuotaBackend`, `_InMemoryScrapeQuota`, `_RedisScrapeQuota`, `_check_scrape_quota` async); `tests/test_scrape_quota.py` (4 tests pass)                             |
 | F-13    | tracing exporter logging-only                                   | not yet changed                                                                                                                                                                                                                                                         | **OPEN**                           | `infra/monitoring/otelcol-config.yaml`                                                                                                                                                        |
 
 ---
@@ -192,6 +192,28 @@ L1/L2 runtime was exercised (no infra/creds).
   (`agent_react_enabled=True`); default is `False` (legacy `agentApi.chat`), so
   the loop is dormant in default config — consistent with F-01. L1 (real
   Postgres + LangGraph react agent) not exercised.
+
+### F-12 — Distributed scrape quota (L3, CLOSED)
+
+- **Problem**: `tools/executor.py` tracked scrape hits in a process-local dict
+  (`_SCRAPE_TIMESTAMPS`), so the per-workspace quota was not enforced across
+  workers — multiple replicas each count independently, defeating the limit.
+- **Fix**: introduced a `ScrapeQuotaBackend` protocol with two implementations:
+  `_InMemoryScrapeQuota` (process-local, single worker) and `_RedisScrapeQuota`
+  (sorted-set of hit timestamps in Redis, shared across the fleet).
+  `_get_quota_backend` selects Redis when `REDIS_URL`/`REDIS__URL` is set (the
+  config default localhost is intentionally NOT auto-activated — matches the
+  deploy runbook "in-memory fallback when REDIS_URL not set"), else in-memory.
+  `_check_scrape_quota` is now async and routes through the backend. The Redis
+  backend degrades to a local best-effort decision if Redis is unreachable, so
+  scraping is never hard-blocked by a down cache.
+- **Test**: `tests/test_scrape_quota.py` (4 tests) — in-memory enforces limit &
+  is per-workspace, Redis backend selected when `REDIS_URL` set (with a fake
+  client verifying sorted-set logic), and in-memory fallback when no Redis URL.
+  `88 passed` (executor suite, confirms the `await` call-site change is clean).
+- **Caveat**: true distributed enforcement requires a running Redis (L1 infra);
+  with Redis down it gracefully falls back to per-process counting, not
+  fleet-wide.
 
 ---
 
