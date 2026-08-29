@@ -172,8 +172,8 @@ internal links.
 > **CORRECTION (2026-08-29):** This finding is **FALSE**. `DOCUMENTATION-MAP.md`
 > (line 31) itself states **"~793" total documents across "22 categories"** — it
 > does **not** claim 178 / 15 categories. The "178" figure appears nowhere in
-> the file. Separately, the true on-disk count is **794 `.md` files in `docs/`
-> total** (375 in `docs/phases/`, 419 outside) — so the report's own "793
+> the file. Separately, the true on-disk count is **820 `.md` files in `docs/`
+> total** (397 in `docs/phases/`, 423 outside) — so the report's own "793
 > excluding phases" framing was also wrong (793 ≈ total _including_ phases). The
 > map's "~793" is therefore roughly accurate for the total corpus.
 
@@ -239,7 +239,7 @@ Sample (verified):
 **Impact:** MEDIUM — Broken cross-references to deprecated content (broader than
 originally stated — 47 files, not 6+).
 
-### FINDING C-9: 213 Files with TODO/WIP/PLACEHOLDER/TBD Markers (MEDIUM)
+### FINDING C-9: 214 Files with TODO/WIP/PLACEHOLDER/TBD Markers (MEDIUM)
 
 > **CORRECTION (2026-08-29):** Count corrected from 150 → **214** unique `.md`
 > files in `docs/` containing TODO/WIP/PLACEHOLDER/TBD/"Coming Soon"/"Not
@@ -266,7 +266,7 @@ Many documents contain hardcoded numbers that are now stale:
 | Test count    | 2557             | 2731                                 | AGENTS.md / pytest collect ✅                                                          |
 | ADR count     | 36               | 39                                   | ⚠️ AGENTS.md **already says 39** (the "36" was a false claim in this report; see §1.2) |
 | OpenAPI paths | 99               | 110                                  | `rg -c "^  /" openapi.yaml` ✅                                                         |
-| Doc count     | 256              | 794 total (375 phases + 419 outside) | `find docs -name "*.md"` (the "793 excluding phases" framing was wrong)                |
+| Doc count     | 256              | 820 total (397 phases + 423 outside) | `find docs -name "*.md"` (the "793 excluding phases" framing was wrong)                |
 | Coverage      | 94%              | 94% (unchanged)                      | Per AGENTS.md                                                                          |
 
 **Impact:** MEDIUM — Pervasive across hundreds of files.
