@@ -35,22 +35,27 @@ export function StageProvider({ children }: { children: React.ReactNode }): Reac
     if (!available) return;
     const el = containerRef.current;
     if (!el) return;
-    const scene: StageHandle = createStage({
-      theme: 'light',
-      density: 1,
-      tier: 'high',
-      forcedBeat,
-      getProgress: () => progressRef.current ?? 0,
-    });
+    let scene: StageHandle | null = null;
+    try {
+      scene = createStage({
+        theme: 'light',
+        density: 1,
+        tier: 'high',
+        forcedBeat,
+        getProgress: () => progressRef.current ?? 0,
+      });
+    } catch {
+      return;
+    }
     const canvas = scene.getCanvas();
     el.appendChild(canvas);
     scene.resize();
     scene.start();
-    const onResize = (): void => scene.resize();
+    const onResize = (): void => scene?.resize();
     window.addEventListener('resize', onResize);
     return () => {
       window.removeEventListener('resize', onResize);
-      scene.dispose();
+      scene?.dispose();
     };
   }, [available, forcedBeat, progressRef]);
 

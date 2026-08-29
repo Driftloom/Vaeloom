@@ -263,11 +263,10 @@ export function createStage(opts: CreateStageOptions): StageHandle {
 
     // Global page progress -> which segment of the world we're flying through.
     const gp = forcedBeat
-      ? (Math.max(
+      ? Math.max(
           0,
           beats.findIndex((b) => b.name === forcedBeat),
-        ) +
-          0.5) /
+        ) /
         (N - 1)
       : Math.min(1, Math.max(0, getProgress()));
     const t = gp * (N - 1);

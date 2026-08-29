@@ -12,6 +12,7 @@
 import { useEffect, useRef } from 'react';
 import { densityForTier, type QualityTier } from '@/lib/landing/hooks';
 import type { SceneHandle } from './vanilla/engine';
+import { useSceneAvailable } from './sceneAvailability';
 
 export default function DustFieldCanvas({
   theme,
@@ -21,8 +22,10 @@ export default function DustFieldCanvas({
   tier: QualityTier;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const available = useSceneAvailable();
 
   useEffect(() => {
+    if (!available) return;
     const el = ref.current;
     if (!el) return;
     let mounted = true;
@@ -61,7 +64,8 @@ export default function DustFieldCanvas({
       handleRef = null;
       disposeFn?.();
     };
-  }, [theme, tier]);
+  }, [available, theme, tier]);
 
+  if (!available) return null;
   return <div ref={ref} className="h-full w-full" />;
 }
