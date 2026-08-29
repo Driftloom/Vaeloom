@@ -111,8 +111,8 @@ describe('landing scene fallbacks', () => {
     );
     const posters = container.querySelectorAll('img[src*="/landing/beats/"]');
     expect(posters.length).toBeGreaterThan(0);
-    // The old hand-drawn SVG fallback must be gone.
-    expect(container.querySelector('.landing-flow-line')).toBeNull();
+    // The deleted StaticScenes module (hand-drawn SVG) must not be rendered.
+    expect(container.querySelector('svg#smc-glow')).toBeNull();
   });
 
   it('renders the full landing page with heading hierarchy and CTAs', async () => {
