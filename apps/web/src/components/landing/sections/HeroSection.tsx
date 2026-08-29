@@ -59,9 +59,8 @@ export default function HeroSection() {
           className="absolute inset-0 z-0 w-full h-[130%] top-[-15%] will-change-transform"
           aria-hidden="true"
         >
-          {/* Persistent Stage canvas (mounted once at page level) draws the
-              living core behind everything; the static SVG fallback is rendered
-              here only when WebGL/3D is unavailable. */}
+          {/* The shared Stage canvas renders the living core into this slot
+              when WebGL is available; a static poster is shown otherwise. */}
           <StageSlot beat="hero" className="absolute inset-0" />
           {/* Atmospheric grid — very subtle, provides scale */}
           <div className="landing-grid-bg absolute inset-0 opacity-60" />

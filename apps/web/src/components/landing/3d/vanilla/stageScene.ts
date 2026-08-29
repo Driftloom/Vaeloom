@@ -92,18 +92,26 @@ export function buildStage(opts: BuildStageOptions): BuildStageResult {
   const growth = createGrowth(theme);
   const cta = createMemoryCore(theme, density, tier, undefined, false);
 
+  const heroGroup = new THREE.Group();
+  hero.objects.forEach((o) => heroGroup.add(o));
+
   const beats: Beat[] = [
     {
       name: 'hero',
-      object: (() => {
-        const g = new THREE.Group();
-        hero.objects.forEach((o) => g.add(o));
-        return g;
-      })(),
+      object: heroGroup,
       z: 0,
       frame: heroKF,
-      cameraFor: (lp: number) => cameraFor(heroKF, lp),
-      tick: (t, dt, p, rm) => hero.update(t, dt, p, rm),
+      // Scroll-driven "going inside": as the hero section scrolls the camera
+      // pulls back + drops and the core spins, then the next beat takes over.
+      cameraFor: (lp: number) => ({
+        pos: [0, 0.9 - lp * 0.9, 7.4 + lp * 2.8],
+        look: [0, 0, 0],
+        fov: 42,
+      }),
+      tick: (t, dt, p, rm, lp) => {
+        hero.update(t, dt, p, rm);
+        heroGroup.rotation.y = lp * 0.4;
+      },
       dispose: hero.dispose,
     },
     {
@@ -326,4 +334,103 @@ export function createStage(opts: CreateStageOptions): StageHandle {
     getCanvas: () => canvas,
     dispose,
   };
+}
+
+export interface StageCfg {
+  container: HTMLElement;
+  theme: 'dark' | 'light';
+  density: number;
+  tier: QualityTier;
+  pointer?: Pointer;
+  /** reads the shared page scroll progress (0..1) each frame */
+  getProgress: () => number;
+}
+
+/**
+ * Phase B hero core — a single persistent canvas living behind the whole
+ * landing page. The shared page scroll progress drives the camera so the hero
+ * "goes inside" as you scroll (pulls back, drops, spins, then recedes).
+ */
+export function mountStage({ container, theme, density, tier, pointer, getProgress }: StageCfg) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(
+    typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1,
+  );
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+  camera.position.set(0, 0.9, 7.4);
+
+  const core = createMemoryCore(theme, density, tier, pointer, true);
+  const group = new THREE.Group();
+  core.objects.forEach((o) => group.add(o));
+  scene.add(group);
+
+  const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let raf = 0;
+  let last = 0;
+  let running = false;
+  let elapsed = 0;
+
+  function resize(): void {
+    const w = Math.max(1, container.clientWidth);
+    const h = Math.max(1, container.clientHeight);
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+
+  function frame(now: number): void {
+    raf = requestAnimationFrame(frame);
+    if (!last) last = now;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    elapsed += dt;
+
+    const rm = prefersReducedMotion;
+    const s = core.update(elapsed, dt, pointer, rm);
+
+    const p = clamp01(getProgress());
+    // Beat 0 (hero) owns the first ~14% of the page; later beats take over.
+    const heroP = clamp01(p / 0.14);
+    // scripted drift + parallax, easing out as we leave the hero beat
+    const ease = 1 - heroP * 0.55;
+    camera.position.x = Math.sin(elapsed * 0.08) * 0.35 + s.x * 0.5 * ease;
+    camera.position.y = 0.15 + Math.sin(elapsed * 0.06) * 0.12 + s.y * 0.4 * ease - heroP * 0.9;
+    camera.position.z = 7.4 + heroP * 2.8;
+    camera.lookAt(0, 0, 0);
+
+    // The core is the hero beat — hide it once we've scrolled well past so it
+    // doesn't bleed through the (semi-opaque) sections below.
+    group.visible = p < 0.22;
+    group.rotation.y = elapsed * 0.02 + heroP * 0.4;
+
+    renderer.render(scene, camera);
+  }
+
+  function start(): void {
+    if (running) return;
+    running = true;
+    last = 0;
+    raf = requestAnimationFrame(frame);
+  }
+  function stop(): void {
+    running = false;
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+  }
+  function dispose(): void {
+    stop();
+    core.dispose();
+    renderer.dispose();
+    if (renderer.domElement.parentElement) {
+      renderer.domElement.parentElement.removeChild(renderer.domElement);
+    }
+  }
+
+  resize();
+  return { start, stop, resize, dispose };
 }
