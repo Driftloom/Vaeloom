@@ -72,7 +72,7 @@ export function ConnectorSection() {
             </svg>
 
             <div
-              className="stage-host relative h-64 overflow-hidden rounded-2xl border border-border-subtle bg-black/40 md:h-72"
+              className="relative h-64 overflow-hidden rounded-2xl border border-border-subtle bg-black/40 md:h-72"
               role="img"
               aria-label="Six connector sources streaming into one ingestion core"
             >

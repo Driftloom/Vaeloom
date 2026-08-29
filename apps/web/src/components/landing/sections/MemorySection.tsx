@@ -38,7 +38,7 @@ export default function MemorySection() {
 
         {/* Interactive memory surface */}
         <Reveal className="mt-12">
-          <div className="landing-panel stage-host relative overflow-hidden rounded-3xl p-4 sm:p-6">
+          <div className="landing-panel relative overflow-hidden rounded-3xl p-4 sm:p-6">
             <div className="relative h-[360px] sm:h-[440px] lg:h-[500px]">
               <StageSlot beat="memory" className="absolute inset-0" />
               {/* hover/read-out card */}

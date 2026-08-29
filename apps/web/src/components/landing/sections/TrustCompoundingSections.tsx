@@ -84,7 +84,7 @@ export function CompoundingSection() {
 
         <div className="mx-auto mt-16 max-w-4xl">
           <div
-            className="stage-host relative h-[300px] overflow-hidden rounded-3xl border border-border-subtle bg-black/40 sm:h-[360px]"
+            className="relative h-[300px] overflow-hidden rounded-3xl border border-border-subtle bg-black/40 sm:h-[360px]"
             role="img"
             aria-label="Memory lattice assembling as you scroll — sparse at day one, dense by year one. Scroll to grow the memory."
           >

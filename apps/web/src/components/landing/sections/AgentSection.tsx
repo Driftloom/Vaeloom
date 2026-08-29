@@ -43,7 +43,7 @@ export default function AgentSection() {
         <div className="mt-14 grid items-center gap-8 lg:grid-cols-[1fr_1fr] lg:gap-12">
           {/* Orbit visual */}
           <Reveal>
-            <div className="landing-panel stage-host relative rounded-3xl p-4 sm:p-6">
+            <div className="landing-panel relative rounded-3xl p-4 sm:p-6">
               <div
                 className="relative mx-auto aspect-square w-full max-w-[480px]"
                 role="img"
