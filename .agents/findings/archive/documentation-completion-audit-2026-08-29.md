@@ -14,21 +14,26 @@
 > (see C-2, C-3, C-4, §1.2 ADR count, C-9, §5.2 paths, and the doc-count
 > framing). The "~82/100 honest score" was derived partly from those false
 > premises and should be re-derived.
+>
+> **SNAPSHOT NOTE:** Counts are point-in-time (2026-08-29). The repo has since
+> grown — CONT-P05/P06 phases added and ADR-040..043 added (now **43 ADRs**);
+> `docs/` is now **820 files (397 phases + 423 outside)**. Re-verify before
+> reuse.
 
 ---
 
 ## Executive Summary
 
-The Vaeloom project has **794 markdown files** in `docs/` total — **375 in
-`docs/phases/`** and **419 outside `docs/phases/`** (corrected from the
-previously stated "793 excluding phases"; 793 ≈ the total _including_ phases).
-The self-reported score of 93/100 was based on an audit from 2026-07-16, nearly
-6 weeks ago. Since then, significant code has been written, new features
-shipped, and the project has evolved substantially. **This audit finds the
-documentation corpus is comprehensive in breadth but has staleness, path/casing
-errors, and implementation-vs-documentation gaps.** _(Note: the "68–72/100"
-figure and the "~82/100 honest score" below were derived partly from findings
-later found to be false — see CORRECTION LOG.)_
+The Vaeloom project has **820 markdown files** in `docs/` total — **397 in
+`docs/phases/`** and **423 outside `docs/phases/`** (snapshot 2026-08-29; the
+repo has since grown with CONT-P05/P06 phases + ADR-040..043 to 43 ADRs). The
+self-reported score of 93/100 was based on an audit from 2026-07-16, nearly 6
+weeks ago. Since then, significant code has been written, new features shipped,
+and the project has evolved substantially. **This audit finds the documentation
+corpus is comprehensive in breadth but has staleness, path/casing errors, and
+implementation-vs-documentation gaps.** _(Note: the "68–72/100" figure and the
+"~82/100 honest score" below were derived partly from findings later found to be
+false — see CORRECTION LOG.)_
 
 ### Key Findings at a Glance
 
@@ -37,7 +42,7 @@ later found to be false — see CORRECTION LOG.)_
 | Duplicate/Title-Case directory links break on case-sensitive filesystems                                               | High     | ~13 categories      |
 | Documents referencing deprecated `Documents/` path                                                                     | Medium   | 47 files (was 6+)   |
 | docs/README.md casing — RETRACTED: `Developer_Experience` claim false; real issue is Title-Case cat dirs (see C-1/C-2) | High     | n/a                 |
-| Files with TODO/WIP/PLACEHOLDER/TBD markers                                                                            | Medium   | 213 files (was 150) |
+| Files with TODO/WIP/PLACEHOLDER/TBD markers                                                                            | Medium   | 214 files (was 150) |
 | Self-reported counts/numbers now stale                                                                                 | Medium   | Pervasive           |
 | CHANGELOG.md RETRACTED: `[0.2.0] - 2026-08-22` EXISTS; "missing 0.2.0" claim false (see C-3)                           | High     | n/a                 |
 | testing/smoke/ claims 12 cases — only 1 file exists in apps/api/tests/smoke/                                           | Medium   | 1 dir               |
@@ -70,36 +75,39 @@ later found to be false — see CORRECTION LOG.)_
 | `docs/integrations/`         | 1        | Just an integration matrix                    |
 | `docs/mcp/`                  | 3        | MCP server/tool definitions                   |
 | `docs/operations/`           | 18       | Ops runbooks + SRE docs                       |
-| `docs/phases/`               | 375      | MVP (325) + CONT (50) + ENT (0)               |
+| `docs/phases/`               | 397      | MVP (325) + CONT (72) + ENT (0)               |
 | `docs/product/`              | 35       | Product specs + 13 feature specs              |
 | `docs/project/`              | 1        | Just a README                                 |
 | `docs/prompts/`              | 81       | 66 phase prompts + agent/memory/rag           |
 | `docs/security/`             | 17       | Security architecture + compliance            |
 | `docs/temporal/`             | 9        | Temporal/LangGraph integration docs           |
 | `docs/testing/`              | 13       | Testing strategy docs                         |
-| **Total (excl phases)**      | **~420** | per-row sum above; 794 total incl. 375 phases |
+| **Total (excl phases)**      | **~423** | per-row sum above; 820 total incl. 397 phases |
 
 ### 1.2 ADR Coverage
 
-**39 ADRs present** (ADR-001 through ADR-039). All exist on disk:
+**43 ADRs present** (ADR-001 through ADR-043). All exist on disk:
 
-- ADR-001 through ADR-039: AGENTS.md already references **"39 ADRs (ADR-001
-  through ADR-039)"** — the claim in this report that "AGENTS.md says 36 ADRs"
-  is **FALSE**; AGENTS.md is current.
+- ADR-001 through ADR-039 were present at the 2026-08-29 snapshot;
+  **ADR-040..043 were added afterward by the CONT track** (tenant-cells control
+  plane, workload identity, data classes/residency, strangler adapter). This
+  report's earlier "39" was correct as a snapshot but the on-disk count is
+  now 43.
 - ADR-037: Hybrid Integration Framework
 - ADR-038: Temporal Durable Execution
 - ADR-039: LangGraph Durable Integration
 
-**Correction:** The ADR count is 39 and AGENTS.md already reflects this. No
-staleness gap.
+**Correction:** The original audit claimed "AGENTS.md says 36 ADRs" — that was
+FALSE (AGENTS.md already said 39). The on-disk count has since grown to 43
+(ADR-040..043).
 
 ### 1.3 Phase Documentation
 
-| Track | Phases              | Files | Status                           |
-| ----- | ------------------- | ----- | -------------------------------- |
-| MVP   | P00–P21 (22 phases) | 325   | ALL COMPLETE (closed 2026-08-22) |
-| CONT  | P00–P04 (5 phases)  | 50    | COMPLETE through P04             |
-| ENT   | P00–P21 (22 phases) | 0     | NOT STARTED                      |
+| Track | Phases              | Files | Status                                              |
+| ----- | ------------------- | ----- | --------------------------------------------------- |
+| MVP   | P00–P21 (22 phases) | 325   | ALL COMPLETE (closed 2026-08-22)                    |
+| CONT  | P00–P06 (7 phases)  | 72    | COMPLETE through P06 (P05/P06 added after snapshot) |
+| ENT   | P00–P21 (22 phases) | 0     | NOT STARTED                                         |
 
 **Phase evidence is thorough** — each completed phase has 10 files (source
 register, predecessor audit, workstreams, code-config, test results,
@@ -233,11 +241,11 @@ originally stated — 47 files, not 6+).
 
 ### FINDING C-9: 213 Files with TODO/WIP/PLACEHOLDER/TBD Markers (MEDIUM)
 
-> **CORRECTION (2026-08-29):** Count corrected from 150 → **213** unique `.md`
+> **CORRECTION (2026-08-29):** Count corrected from 150 → **214** unique `.md`
 > files in `docs/` containing TODO/WIP/PLACEHOLDER/TBD/"Coming Soon"/"Not
 > Implemented" markers (verified via repo-wide grep).
 
-213 documentation files contain markers like TODO, WIP, PLACEHOLDER, TBD,
+214 documentation files contain markers like TODO, WIP, PLACEHOLDER, TBD,
 "Coming Soon", or "Not Implemented". These are concentrated in:
 
 - Phase execution files (many have TBDs in risk registers and assumption logs —
@@ -413,7 +421,7 @@ plans.
 
 ### 3.10 Phase Documentation — 95/100
 
-**Strengths:** 376 files across 27 completed phases. Thorough evidence packages,
+**Strengths:** 397 files across 29 completed phases. Thorough evidence packages,
 gate reports, handoffs. The phase system is the most well-documented part of the
 project.
 
@@ -562,7 +570,7 @@ completion pass. Since then:
 
 This audit is critical by design, but the project deserves credit for:
 
-1. **Phase documentation system** — 376 files with structured evidence packages.
+1. **Phase documentation system** — 397 files with structured evidence packages.
    This is enterprise-grade traceability.
 2. **ADR collection** — 39 architecture decision records covering real
    decisions.
@@ -582,10 +590,10 @@ issues are staleness and a few broken links — not structural problems.
 ## 9. Conclusion
 
 The Vaeloom documentation corpus is **one of the most comprehensive I've audited
-for a project at this stage** — 794 files (419 outside phases + 375 in phases),
-39 ADRs, 375 phase evidence files, structured governance. However, the
-self-reported 93/100 score is inflated because it was measured 6 weeks ago
-before significant code evolution.
+for a project at this stage** — 820 files (423 outside phases + 397 in phases),
+43 ADRs (ADR-001..043), 397 phase evidence files, structured governance.
+However, the self-reported 93/100 score is inflated because it was measured 6
+weeks ago before significant code evolution.
 
 **Honest current score: ~82/100 — UNVERIFIED**
 
