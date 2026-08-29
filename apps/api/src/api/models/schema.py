@@ -21,6 +21,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
+from ..services.encryption import EncryptedString
 
 
 class User(Base):
@@ -253,7 +254,7 @@ class Memory(Base):
     status: Mapped[str] = mapped_column(String(20), default="PROCESSING")
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     summary: Mapped[str | None] = mapped_column(Text)
-    content: Mapped[str | None] = mapped_column(Text)
+    content: Mapped[str | None] = mapped_column(EncryptedString)
     content_hash: Mapped[str] = mapped_column(String(256), nullable=False)
     size: Mapped[int] = mapped_column(Integer, default=0)
     embedding = Column(Vector(1536))
@@ -1003,7 +1004,7 @@ class DocumentChunk(Base):
     document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     document_version_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("document_versions.id", ondelete="CASCADE"), nullable=True)
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(EncryptedString, nullable=False)
     start_offset: Mapped[int] = mapped_column(Integer, nullable=False)
     end_offset: Mapped[int] = mapped_column(Integer, nullable=False)
     token_count: Mapped[int] = mapped_column(Integer, nullable=False)

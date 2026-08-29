@@ -3,6 +3,7 @@ import hashlib
 import logging
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.types import Text as _SA_Text, TypeDecorator
 
 from ..config import settings
 from ..dependencies import require_role
@@ -44,6 +45,38 @@ def decrypt_value(ciphertext: str) -> str:
 def is_encrypted(value: str) -> bool:
     """Check if a value looks like a Fernet token (starts with 'gAAAAA')."""
     return isinstance(value, str) and value.startswith("gAAAAA")
+
+
+class EncryptedString(TypeDecorator):
+    """Transparent AES-256 (Fernet) encrypted TEXT column.
+
+    Encrypts on write, decrypts on read. Backward-compatible: values that are
+    not Fernet tokens are stored/returned as-is, so existing plaintext rows are
+    migrated gradually (only re-encrypted when written again).
+
+    Used for sensitive content fields (memories.content, document_chunks.content)
+    to satisfy the at-rest encryption requirement (FINDING-002).
+    """
+
+    impl = _SA_Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, str) and is_encrypted(value):
+            return value
+        return encrypt_value(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, str) and is_encrypted(value):
+            try:
+                return decrypt_value(value)
+            except Exception:
+                return value
+        return value
 
 
 class EncryptionService:
