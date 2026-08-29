@@ -282,6 +282,19 @@ app.add_middleware(
 app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
+
+from .temporal.client import TemporalUnavailableError as _TemporalUnavailableError  # noqa: E402
+
+
+@app.exception_handler(_TemporalUnavailableError)
+async def _temporal_unavailable_handler(request, exc: _TemporalUnavailableError):  # type: ignore[unused-arg]
+    # Fail-closed: durability was requested but Temporal is unreachable — refuse,
+    # do not silently fall back to a non-durable run.
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Temporal service unavailable — durable execution refused", "error": str(exc)},
+    )
+
 @app.get("/csrf-token", tags=["security"])
 async def get_csrf_token():
     token, cookie_value = create_csrf_token()
