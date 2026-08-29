@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { HOW_IT_WORKS } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
 import { JourneyScene, useSceneAvailable } from '@/components/landing/3d/SceneShell';
+import { useSectionProgress } from '@/lib/landing/scroll';
 import { useTheme } from '@/hooks/useTheme';
 
 /**
@@ -16,7 +17,7 @@ export default function HowItWorks() {
   const [activeIdx, setActiveIdx] = useState(0);
   const cardRefs = useRef<Array<HTMLLIElement | null>>([]);
   const sectionRef = useRef<HTMLElement>(null);
-  const progressRef = useRef(0);
+  const progressRef = useSectionProgress(sectionRef);
   const sceneAvailable = useSceneAvailable();
   const { theme } = useTheme();
 
@@ -35,24 +36,6 @@ export default function HowItWorks() {
     cardRefs.current.forEach((el) => el && obs.observe(el));
     return () => obs.disconnect();
   }, []);
-
-  // Scroll progress across the section -> journey camera (no re-renders).
-  useEffect(() => {
-    if (!sceneAvailable) return;
-    let raf = 0;
-    const update = (): void => {
-      raf = requestAnimationFrame(update);
-      const el = sectionRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const total = rect.height - vh * 0.5;
-      const p = total > 0 ? (-rect.top + vh * 0.5) / total : 0;
-      progressRef.current = Math.min(1, Math.max(0, p));
-    };
-    update();
-    return () => cancelAnimationFrame(raf);
-  }, [sceneAvailable]);
 
   const stage = HOW_IT_WORKS.stages[activeIdx] ?? HOW_IT_WORKS.stages[0]!;
 

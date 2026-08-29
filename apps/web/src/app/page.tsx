@@ -1,6 +1,7 @@
 ﻿import type { Metadata } from 'next';
 import { AuthRedirectProbe } from '@/components/shared/AuthRedirectProbe';
 import { SEO } from '@/lib/landing/copy';
+import { LandingScrollProvider } from '@/lib/landing/scroll';
 
 import LandingNav from '@/components/landing/sections/LandingNav';
 import { DustField } from '@/components/landing/3d/SceneShell';
@@ -86,26 +87,28 @@ export default function LandingPage() {
       <AuthRedirectProbe />
       <LandingNav />
       <DustField />
-      <div className="relative z-10 overflow-x-clip">
-        <HeroSection />
-        <ProblemSection />
-        <PrinciplesStrip />
-        <ProductDifference />
-        <HowItWorks />
-        <MemorySection />
-        <AgentSection />
-        <ConnectorSection />
-        <OrganizationSection />
-        <ResumeSection />
-        <CareerSection />
-        <SchedulerSection />
-        <TrustSection />
-        <ProductPreview />
-        <CompoundingSection />
-        <FAQSection />
-        <FinalCTA />
-      </div>
-      <LandingFooter />
+      <LandingScrollProvider>
+        <div className="relative z-10 overflow-x-clip">
+          <HeroSection />
+          <ProblemSection />
+          <PrinciplesStrip />
+          <ProductDifference />
+          <HowItWorks />
+          <MemorySection />
+          <AgentSection />
+          <ConnectorSection />
+          <OrganizationSection />
+          <ResumeSection />
+          <CareerSection />
+          <SchedulerSection />
+          <TrustSection />
+          <ProductPreview />
+          <CompoundingSection />
+          <FAQSection />
+          <FinalCTA />
+        </div>
+        <LandingFooter />
+      </LandingScrollProvider>
     </>
   );
 }

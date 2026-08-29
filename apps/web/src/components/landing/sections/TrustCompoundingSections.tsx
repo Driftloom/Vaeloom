@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { COMPOUNDING, TRUST } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
 import { GrowthScene, useSceneAvailable } from '@/components/landing/3d/SceneShell';
+import { useSectionProgress } from '@/lib/landing/scroll';
 import { useTheme } from '@/hooks/useTheme';
 
 /* --------------------------------- Trust ---------------------------------- */
@@ -75,25 +76,7 @@ export function CompoundingSection() {
   const sceneAvailable = useSceneAvailable();
   const { theme } = useTheme();
   const sectionRef = useRef<HTMLElement>(null);
-  const progressRef = useRef(0);
-
-  // Scroll progress across the section -> lattice assembly (no re-renders).
-  useEffect(() => {
-    if (!sceneAvailable) return;
-    let raf = 0;
-    const update = (): void => {
-      raf = requestAnimationFrame(update);
-      const el = sectionRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const total = rect.height - vh * 0.4;
-      const p = total > 0 ? (-rect.top + vh * 0.6) / total : 0;
-      progressRef.current = Math.min(1, Math.max(0, p));
-    };
-    update();
-    return () => cancelAnimationFrame(raf);
-  }, [sceneAvailable]);
+  const progressRef = useSectionProgress(sectionRef, { viewLead: 0.6, viewTrail: 0.4 });
 
   return (
     <Section labelledBy="compounding-title" className="overflow-hidden" innerRef={sectionRef}>
