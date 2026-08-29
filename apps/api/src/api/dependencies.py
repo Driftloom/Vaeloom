@@ -31,6 +31,17 @@ async def get_user_id(request: Request) -> str | None:
     return getattr(request.state, "user_id", None)
 
 
+async def get_workspace_id(request: Request) -> str | None:
+    """Authoritative workspace identity derived from the authenticated request context.
+
+    This is the security boundary for workspace scoping: it is sourced from the
+    TenantMiddleware-populated request state (set during authentication), NOT from
+    client-supplied query/body parameters. Service-layer queries MUST enforce this
+    value to prevent cross-workspace data leakage within the same tenant.
+    """
+    return getattr(request.state, "workspace_id", None)
+
+
 def require_role(role: str):
     async def role_checker(current_user: dict = Depends(get_current_user)):
         if not current_user:

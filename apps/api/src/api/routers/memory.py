@@ -5,7 +5,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user, get_tenant_id
+from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
 from ..models.schema import AgentAction, Memory
 from ..schemas.memory import (
     MemoryCreate,
@@ -26,10 +26,11 @@ async def list_memories(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    memories, total = await memory_service.list_memories(db, query, tenant_id)
+    memories, total = await memory_service.list_memories(db, query, tenant_id, workspace_id)
     return {
         "memories": [MemoryResponse.model_validate(m) for m in memories],
         "total": total,
@@ -56,7 +57,7 @@ async def get_agentic_feed(
 
     # Fetch memories for workspace
     mem_query = MemoryQuery(workspace_id=workspace_id, status="all", page=page, page_size=page_size)
-    memories, total = await memory_service.list_memories(db, mem_query, tenant_id)
+    memories, total = await memory_service.list_memories(db, mem_query, tenant_id, workspace_id)
 
     # Fetch recent agent actions for workspace if available
     actions: list[AgentAction] = []
@@ -163,12 +164,13 @@ async def get_memory_lineage(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     """Return full lineage for a memory: supersession chain + provenance + linked agent actions."""
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    memory = await memory_service.get_memory(db, memory_id, tenant_id)
+    memory = await memory_service.get_memory(db, memory_id, tenant_id, workspace_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
 
@@ -180,7 +182,7 @@ async def get_memory_lineage(
         visited.add(str(current.id))
         chain_backward.append(MemoryResponse.model_validate(current).model_dump(mode="json"))
         if current.supersedes_id:
-            nxt = await memory_service.get_memory(db, current.supersedes_id, tenant_id)
+            nxt = await memory_service.get_memory(db, current.supersedes_id, tenant_id, workspace_id)
             current = nxt
         else:
             break
@@ -188,14 +190,19 @@ async def get_memory_lineage(
     # Walk forward: find memories that supersede this one
     chain_forward: list[dict] = []
     try:
-        stmt = select(Memory).where(Memory.supersedes_id == memory_id).order_by(desc(Memory.created_at))
+        stmt = (
+            select(Memory)
+            .where(Memory.supersedes_id == memory_id)
+            .where(Memory.workspace_id == memory.workspace_id)
+            .order_by(desc(Memory.created_at))
+        )
         result = await db.execute(stmt)
         forwards = list(result.scalars().all())
         for f in forwards:
             chain_forward.append(MemoryResponse.model_validate(f).model_dump(mode="json"))
             # Recursively walk forward successors
             # Depth 2 only for simplicity
-            stmt2 = select(Memory).where(Memory.supersedes_id == f.id)
+            stmt2 = select(Memory).where(Memory.supersedes_id == f.id).where(Memory.workspace_id == memory.workspace_id)
             r2 = await db.execute(stmt2)
             for ff in r2.scalars().all():
                 chain_forward.append(MemoryResponse.model_validate(ff).model_dump(mode="json"))
@@ -261,10 +268,11 @@ async def get_memory(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    memory = await memory_service.get_memory(db, memory_id, tenant_id)
+    memory = await memory_service.get_memory(db, memory_id, tenant_id, workspace_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
     return MemoryResponse.model_validate(memory)
@@ -277,10 +285,11 @@ async def update_memory(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    memory = await memory_service.update_memory(db, memory_id, dto, tenant_id)
+    memory = await memory_service.update_memory(db, memory_id, dto, tenant_id, workspace_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
     return MemoryResponse.model_validate(memory)
@@ -292,10 +301,11 @@ async def delete_memory(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    deleted = await memory_service.delete_memory(db, memory_id, tenant_id)
+    deleted = await memory_service.delete_memory(db, memory_id, tenant_id, workspace_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Memory not found")
 
@@ -306,11 +316,12 @@ async def get_memory_history(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     """DB-backed version history for a memory — EXC-P12-03 durable history."""
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    memory = await memory_service.get_memory(db, memory_id, tenant_id)
+    memory = await memory_service.get_memory(db, memory_id, tenant_id, workspace_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
     try:
@@ -341,11 +352,12 @@ async def get_memory_chunks(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     """Chunk-level provenance for a memory's source document — obsidian chunk view."""
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    memory = await memory_service.get_memory(db, memory_id, tenant_id)
+    memory = await memory_service.get_memory(db, memory_id, tenant_id, workspace_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
     if not memory.source_uri:
@@ -385,10 +397,11 @@ async def search_memories(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    results = await memory_service.search_memories(db, dto, tenant_id)
+    results = await memory_service.search_memories(db, dto, tenant_id, workspace_id)
     return [
         MemorySearchResult(memory=MemoryResponse.model_validate(mem), score=score)
         for mem, score in results

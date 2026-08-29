@@ -12,6 +12,18 @@ from ..utils.sanitize import sanitize_text
 from .llm_service import LLMProviderError, llm_service
 
 
+def _to_uuid(value: str | uuid.UUID | None) -> uuid.UUID | None:
+    """Coerce a workspace/tenant identifier to UUID, accepting either a UUID or str."""
+    if value is None:
+        return None
+    if isinstance(value, uuid.UUID):
+        return value
+    try:
+        return uuid.UUID(value)
+    except (ValueError, TypeError):
+        return None
+
+
 class MemoryService:
     async def create_memory(
         self, db: AsyncSession, dto: MemoryCreate, tenant_id: str | None, user_id: str | None
@@ -57,7 +69,13 @@ class MemoryService:
         await db.refresh(memory)
         return memory
 
-    async def list_memories(self, db: AsyncSession, query: MemoryQuery, tenant_id: str | None) -> tuple[list[Memory], int]:
+    async def list_memories(
+        self,
+        db: AsyncSession,
+        query: MemoryQuery,
+        tenant_id: str | None,
+        workspace_id: str | None = None,
+    ) -> tuple[list[Memory], int]:
         stmt = select(Memory)
         count_stmt = select(func.count(Memory.id))
 
@@ -79,12 +97,13 @@ class MemoryService:
             conditions.append(Memory.domain == query.domain)
         if tenant_id:
             conditions.append(Memory.tenant_id == tenant_id)
-        if query.workspace_id:
-            try:
-                ws_uuid = uuid.UUID(query.workspace_id)
+        # Enforced workspace scoping (F-03): authoritative workspace_id from auth context
+        # takes precedence over any client-supplied DTO value.
+        enforced_ws = workspace_id or query.workspace_id
+        if enforced_ws:
+            ws_uuid = _to_uuid(enforced_ws)
+            if ws_uuid is not None:
                 conditions.append(Memory.workspace_id == ws_uuid)
-            except (ValueError, TypeError):
-                pass
         if query.tags:
             conditions.append(Memory.tags.overlap(query.tags))
 
@@ -102,10 +121,21 @@ class MemoryService:
 
         return memories, total
 
-    async def get_memory(self, db: AsyncSession, memory_id: uuid.UUID, tenant_id: str | None) -> Memory | None:
+    async def get_memory(
+        self,
+        db: AsyncSession,
+        memory_id: uuid.UUID,
+        tenant_id: str | None,
+        workspace_id: str | None = None,
+    ) -> Memory | None:
         stmt = select(Memory).where(Memory.id == memory_id)
         if tenant_id:
             stmt = stmt.where(Memory.tenant_id == tenant_id)
+        # Enforced workspace scoping (F-03)
+        if workspace_id:
+            ws_uuid = _to_uuid(workspace_id)
+            if ws_uuid is not None:
+                stmt = stmt.where(Memory.workspace_id == ws_uuid)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -119,8 +149,15 @@ class MemoryService:
             previous.status = "superseded"
             await db.flush()
 
-    async def update_memory(self, db: AsyncSession, memory_id: uuid.UUID, dto: MemoryUpdate, tenant_id: str | None) -> Memory | None:
-        memory = await self.get_memory(db, memory_id, tenant_id)
+    async def update_memory(
+        self,
+        db: AsyncSession,
+        memory_id: uuid.UUID,
+        dto: MemoryUpdate,
+        tenant_id: str | None,
+        workspace_id: str | None = None,
+    ) -> Memory | None:
+        memory = await self.get_memory(db, memory_id, tenant_id, workspace_id)
         if not memory:
             return None
 
@@ -186,8 +223,14 @@ class MemoryService:
         await db.refresh(memory)
         return memory
 
-    async def delete_memory(self, db: AsyncSession, memory_id: uuid.UUID, tenant_id: str | None) -> bool:
-        memory = await self.get_memory(db, memory_id, tenant_id)
+    async def delete_memory(
+        self,
+        db: AsyncSession,
+        memory_id: uuid.UUID,
+        tenant_id: str | None,
+        workspace_id: str | None = None,
+    ) -> bool:
+        memory = await self.get_memory(db, memory_id, tenant_id, workspace_id)
         if not memory:
             return False
         memory.status = "deleted"
@@ -196,7 +239,11 @@ class MemoryService:
         return True
 
     async def search_memories(
-        self, db: AsyncSession, dto: MemorySearch, tenant_id: str | None
+        self,
+        db: AsyncSession,
+        dto: MemorySearch,
+        tenant_id: str | None,
+        workspace_id: str | None = None,
     ) -> list[tuple[Memory, float]]:
         content_for_embedding = dto.query
         query_embedding = await llm_service.generate_embedding(content_for_embedding)
@@ -205,6 +252,13 @@ class MemoryService:
         conditions = [Memory.status == "active", Memory.embedding.isnot(None)]
         if tenant_id:
             conditions.append(Memory.tenant_id == tenant_id)
+        # Enforced workspace scoping (F-03): MemoryService.search_memories now scopes by
+        # the authoritative workspace_id, so workspace B cannot retrieve workspace A's
+        # memories even within the same tenant.
+        if workspace_id:
+            ws_uuid = _to_uuid(workspace_id)
+            if ws_uuid is not None:
+                conditions.append(Memory.workspace_id == ws_uuid)
         if dto.type:
             conditions.append(Memory.type == dto.type)
         if dto.domain:

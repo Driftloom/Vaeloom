@@ -1,0 +1,316 @@
+# Vaeloom — LangGraph Deep Zero-Trust Gap-Closure + L1 Verification
+
+**Report ID:** `langgraph-gap-closure-2026-08-29` **Mode:** CODE-CHANGE + TEST
+(zero-trust order) — read-only where L1 infra unavailable **Audit companion
+(prior):** `langgraph-deep-zero-trust-audit-2026-08-29.md` (CONDITIONAL)
+**Re-audit companion (prior):**
+`langgraph-zero-trust-e2e-reverification-2026-08-29.md` (CONDITIONAL
+IMPLEMENTATION) **Current HEAD:** `ca727d274956d5fb645e7716f10609faf028bceb`
+(branch `master`) **Audit prompt baseline referenced:** `aaf7c5b` (note: actual
+repo HEAD is `ca727d2`, 3 ahead; prompt's `f815d46` is not present in this
+repo's history — worked against real HEAD per rule #2/#3)
+
+---
+
+## 31.1 Executive Decision
+
+**CONDITIONAL** — code-level (L3) closure of F-03 achieved and tested; full L1
+production promotion **BLOCKED**.
+
+Rationale: This environment has **Docker available but no running stack and no
+credentials** for `DATABASE__URL`, `REDIS_URL`, `TEMPORAL_URL`,
+`LLM_API_KEY`/`OPENAI_API_KEY`, or real connectors (all env vars unset;
+`docker ps` shows no containers). Per the master prompt §35 STOP CONDITIONS, the
+following mandatory L1 gates cannot be exercised here and must NOT be reported
+as closed:
+
+- Real pgvector RAG (F-06) — no PostgreSQL/pgvector instance.
+- Real LLM agentic reasoning (F-10) — no LLM credentials.
+- Real connector execution (F-08 L1) — no connector credentials.
+- Real Temporal worker ×2 + SIGKILL chaos (J7, §25) — no Temporal running.
+- 10/20/50-VU performance (§24) — no live stack.
+
+Concrete, safe, testable closures that DO NOT require live infra were
+implemented and verified at L3. The durable/default promotion remains gated
+behind §32 final-gate items that need infrastructure.
+
+---
+
+## 31.2 Audit Reconciliation
+
+| Finding | Original Audit                                                  | Current Reality                                                                                                                                                                                    | Status                             | Evidence                                                                                                                        |
+| ------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| F-03    | workspace leak in `MemoryService.search_memories` (tenant-only) | `search_memories`/`get_memory`/`list_memories`/`update_memory`/`delete_memory` now filter by authoritative `workspace_id` from auth context; router enforces via new `get_workspace_id` dependency | **CLOSED (L3)**                    | `services/memory_service.py`; `routers/memory.py`; `dependencies.py`; `tests/test_memory_workspace_isolation.py` (3 tests pass) |
+| F-04    | KG workspace leak (`knowledge_nodes` tenant-only)               | `knowledge_nodes` INSERT uses only `tenant_id` (no `workspace_id` column); requires Alembic migration + service change                                                                             | **OPEN (needs migration)**         | `services/knowledge_graph_service.py:77-78`                                                                                     |
+| F-05    | durable memory closed loop (marker-only)                        | not yet implemented                                                                                                                                                                                | **OPEN**                           | `graph/__init__.py` finalize marker (prior audit)                                                                               |
+| F-06    | real pgvector RAG not proven                                    | no PostgreSQL/pgvector available in this env                                                                                                                                                       | **OPEN / NOT PROVEN (L1 BLOCKED)** | infra probe                                                                                                                     |
+| ZT-01   | Temporal start fail-open                                        | not yet investigated/changed                                                                                                                                                                       | **OPEN**                           | `temporal/worker.py` (not yet read this phase)                                                                                  |
+| ZT-02   | approval permission re-check missing                            | not yet implemented                                                                                                                                                                                | **OPEN (P0)**                      | `temporal/activities.py:608-625`                                                                                                |
+| F-01    | durable LangGraph not default                                   | unchanged (`temporal_enabled=False`, `agent_react_enabled=False`)                                                                                                                                  | **OPEN (by design until L1)**      | `config.py:99,106`                                                                                                              |
+| F-02    | no `Send` fan-out                                               | unchanged (no `Send`)                                                                                                                                                                              | **OPEN**                           | `graph/` grep                                                                                                                   |
+| F-07    | context/RAG stack unification                                   | not yet mapped                                                                                                                                                                                     | **OPEN**                           | `memory_service`/`orchestrator`/`retrieval`                                                                                     |
+| F-08    | connector mock-success                                          | not yet changed                                                                                                                                                                                    | **OPEN**                           | `tools/executor.py`                                                                                                             |
+| F-10    | real LLM reasoning                                              | gated off; no creds to verify                                                                                                                                                                      | **OPEN / BLOCKED (L1)**            | `config.py:99`                                                                                                                  |
+| F-11    | secret-key drift                                                | not yet unified                                                                                                                                                                                    | **OPEN**                           | `logging.py`=26, `temporal/validation.py`=21, `graph/state.py`=27                                                               |
+| F-12    | distributed scrape quota                                        | not yet changed                                                                                                                                                                                    | **OPEN**                           | per prior audit                                                                                                                 |
+| F-13    | tracing exporter logging-only                                   | not yet changed                                                                                                                                                                                    | **OPEN**                           | `infra/monitoring/otelcol-config.yaml`                                                                                          |
+
+---
+
+## 31.3 Real Runtime Evidence
+
+Only L3 (integration, SQLite test DB) evidence is available this session. No
+L1/L2 runtime was exercised (no infra/creds).
+
+**Journey (F-03 proxy — workspace isolation):**
+
+- Environment: SQLite test DB (`conftest.py` `db_session`,
+  `Base.metadata.create_all`, `cosine_distance` stubbed → 0.0)
+- Commit: `ca727d2` (post-change)
+- DB: SQLite (NOT PostgreSQL — L1 not proven)
+- Mock/fallback: `llm_service.generate_embedding` monkeypatched to fixed vector;
+  `cosine_distance` SQL function stubbed
+- Evidence tier: **L3 (integration)**
+- Results (3 tests, all pass):
+  - `test_search_memories_workspace_isolation`: wsA search returns only wsA
+    memory; wsB search returns only wsB memory; cross-workspace not returned.
+  - `test_get_memory_workspace_isolation`: get with wrong workspace → None;
+    correct workspace → found.
+  - `test_list_memories_workspace_isolation`: each workspace lists exactly its
+    own 1 memory.
+- Security result: workspace B cannot read workspace A memory within same
+  tenant. ✅ (app-layer)
+- Side-effect result: none.
+
+---
+
+## 31.4 Mock/Fallback Ledger
+
+| Component                               | Mock/Fallback         | Why                      | Prod reachable? | Prod enabled? | Safe? | Tested? |
+| --------------------------------------- | --------------------- | ------------------------ | --------------- | ------------- | ----- | ------- |
+| `llm_service.generate_embedding` (test) | monkeypatch fixed vec | test only                | n/a             | n/a           | yes   | yes     |
+| `cosine_distance` SQL fn (test)         | returns 0.0           | SQLite lacks pgvector    | n/a             | n/a           | yes   | yes     |
+| F-06 pgvector                           | NOT AVAILABLE         | no Postgres              | no              | no            | n/a   | no      |
+| F-10 real LLM                           | NOT AVAILABLE         | no creds                 | no              | no            | n/a   | no      |
+| F-08 real connector                     | NOT AVAILABLE         | no creds                 | no              | no            | n/a   | no      |
+| Temporal worker                         | DISABLED (default)    | `temporal_enabled=False` | yes (config)    | no            | n/a   | no      |
+
+---
+
+## 31.5 Security Verification
+
+- **Workspace isolation (F-03):** CLOSED at service/query layer (L3).
+  Authoritative `workspace_id` now sourced from auth context
+  (`get_workspace_id`) and enforced in all memory read/write paths. L1 (Postgres
+  RLS) still NOT PROVEN but app-layer filter provides defense-in-depth.
+- **Approval TOCTOU (ZT-02):** OPEN — `execute_approved_action` still lacks
+  re-check (P0, next).
+- **Secret handling (F-11):** OPEN — drift persists.
+- **Prompt injection:** unchanged (regex + optional LLM classifier off) — see
+  prior re-audit.
+- **Tool authorization / MCP / quota / RLS:** unchanged this phase.
+- **Temporal boundary (ZT-01):** OPEN — not yet investigated.
+
+---
+
+## 31.6 Memory Verification (F-03)
+
+- Does memory persist? Yes (existing capability).
+- Does memory survive a new request? App-layer path now workspace-scoped (L3).
+  Cross-request L1 not re-run.
+- Is memory workspace isolated? **YES at app/query layer (L3, tested).** L1
+  Postgres RLS not proven.
+- Is memory deduplicated? Existing `content_hash` logic (unchanged).
+- Does memory influence behavior? Not re-verified this phase (F-05 pending).
+- Is provenance preserved? Existing versioning (unchanged).
+
+---
+
+## 31.7 RAG Verification (F-06)
+
+- PostgreSQL used? **No** (unavailable).
+- pgvector used? **No**.
+- Vector(1536) used? Model defines `Vector(1536)`; not exercised.
+- Real embedding generated? No (mock only in tests).
+- Similarity search executed? Only stubbed `cosine_distance` on SQLite.
+- Workspace filtering applied? N/A (RAG not exercised).
+- Expected document retrieved? N/A.
+- Answer contains 42? **NOT PROVEN**.
+- Fallback used? SQLite only (forbidden for L1 gate; not used to claim pass).
+- **Status: NOT PROVEN / BLOCKED (no infra).**
+
+---
+
+## 31.8 Multi-Agent Verification (F-02)
+
+- LangGraph `Send` used? No.
+- Distinct agents executed? No (single DAG).
+- Inside one StateGraph run? N/A.
+- Parallel/sequential/merge real? N/A.
+- Any agent mocked? N/A.
+- **Status: NOT PROVEN.**
+
+---
+
+## 31.9 Checkpoint Verification (F-05/F-07)
+
+- Durable checkpoint? No — `MemorySaver` process-local (unchanged).
+- Backend? None (Postgres checkpointer not implemented).
+- Worker A dies → Worker B resumes from checkpoint? No — Temporal full activity
+  retry only.
+- **Status: NOT PROVEN / FAIL (honest).**
+
+---
+
+## 31.10 LLM Verification (F-10)
+
+- Real provider? No credentials.
+- Real model / BYOK? Config present; not exercised.
+- Real generation / tool selection / execution? Not exercised.
+- Mock / fallback? Deterministic/stub paths dominate (unchanged).
+- Token budget / timeout? Code present; not exercised.
+- **Status: BLOCKED (no creds).**
+
+---
+
+## 31.11 Performance (§24)
+
+Not executed. No live stack. k6 suite (`testing/performance/k6-*`) not re-run;
+prior numbers stale (F-LG-02).
+
+- 10/20/50 VU: NOT RUN.
+- p50/p95/p99/RPS/errors: NOT RUN.
+
+---
+
+## 31.12 Chaos (§25)
+
+Not executed (no worker/Temporal/Redis/Postgres running).
+
+- worker SIGKILL / Temporal restart / Redis restart / Postgres restart /
+  RAG-timeout / tool-timeout / LLM-timeout / approval-cancel: **NOT RUN**.
+
+---
+
+## 32. FINAL GATE (status)
+
+- [x] **F-03 CLOSED (L3)** — memory workspace isolation enforced at
+      service/query layer + tested.
+- [ ] F-04 — KG workspace isolation (needs Alembic migration adding
+      `workspace_id` to `knowledge_nodes`/`knowledge_edges` + service change).
+- [ ] ZT-02 — approval permission re-check (P0).
+- [ ] F-11 — secret source-of-truth unification.
+- [ ] F-08 — connector `NOT_CONFIGURED` states.
+- [ ] F-05 — durable memory closed loop.
+- [ ] F-06 — real pgvector RAG (L1 BLOCKED: no infra).
+- [ ] F-10 — real LLM reasoning (L1 BLOCKED: no creds).
+- [ ] L1 cross-workspace test green on real Postgres — BLOCKED.
+- [ ] L1 RAG answer contains 42 — BLOCKED.
+- [ ] L1 worker SIGKILL test — BLOCKED.
+- [ ] L1 10/20/50 VU — BLOCKED.
+
+**Mandatory for `READY FOR PRODUCTION`:** all L1 gates green. Currently
+**BLOCKED** on infrastructure/credentials.
+
+---
+
+## 34. REQUIRED FINAL REALITY STATEMENT
+
+**CURRENT REALITY** Default legacy `agentApi.chat` remains production path.
+LangGraph/Temporal opt-in, non-durable. This phase implemented and tested the
+F-03 workspace-isolation fix at the service/query layer (memory read/write paths
+now enforce authoritative `workspace_id` from auth context). KG isolation
+(F-04), approval re-check (ZT-02), secret unification (F-11), connector states
+(F-08), durable memory (F-05), real RAG (F-06), real LLM (F-10), multi-agent
+(F-02), checkpointing, and all chaos/perf L1 journeys remain open because they
+require live infrastructure and/or credentials not present in this environment.
+
+**WHAT IS PROVEN**
+
+- F-03 closed at L3 (integration): 3 passing tests prove workspace A memory is
+  not retrievable by workspace B within the same tenant, at the app/query layer.
+  Existing 34 memory tests still pass (no regression).
+
+**WHAT IS NOT PROVEN**
+
+- L1 PostgreSQL/pgvector RAG (F-06), L1 real LLM (F-10), L1 real connectors
+  (F-08), L1 Temporal worker×2 SIGKILL (J7), L1 10/20/50-VU performance, L1
+  Postgres RLS for workspace isolation (F-03 L1).
+
+**WHAT IS MOCK/FALLBACK**
+
+- Test-only: `llm_service.generate_embedding` monkeypatch, `cosine_distance` SQL
+  stub. Runtime: Temporal disabled, LLM gated off, connectors unconfigured, RLS
+  no-op on SQLite.
+
+**WHAT IS PARTIAL**
+
+- F-03 (L3 closed, L1 RLS unproven); durable memory (F-05) design present, not
+  implemented; tracing (F-13) exporter logging-only.
+
+**SECURITY RISKS**
+
+- P0: ZT-02 approval re-check missing; F-04 KG workspace leak. P1: F-11 secret
+  drift; ZT-01 Temporal fail-open; F-10 LLM gating. (F-03 P0 now mitigated at
+  app layer.)
+
+**PRODUCT GAPS**
+
+- Durable path non-default/non-durable; multi-agent not implemented; real RAG
+  unproven; evaluation metric-only; connectors mock in tests.
+
+**IMPLEMENTATION COMPLETED**
+
+- `dependencies.py`: added `get_workspace_id` (auth-context workspace source).
+- `services/memory_service.py`: `search_memories`, `get_memory`,
+  `list_memories`, `update_memory`, `delete_memory` now accept and enforce
+  `workspace_id`; added `_to_uuid` helper.
+- `routers/memory.py`: all memory endpoints source `workspace_id` from auth and
+  pass it; lineage forward-walks scoped by `workspace_id`.
+- `tests/test_memory_workspace_isolation.py`: 3 new L3 isolation tests (all
+  passing).
+
+**TESTS EXECUTED**
+
+```
+uv run --project apps/api python -m pytest tests/test_memory_workspace_isolation.py tests/test_memory_service.py tests/test_memory_filters.py -o addopts="" -q
+=> 37 passed (3 new + 34 existing)
+```
+
+**L1 JOURNEYS**
+
+- Only F-03 proxy journey executed (L3, see §31.3). J1–J10 L1 not executed
+  (BLOCKED: infra/creds).
+
+**REMAINING BLOCKERS**
+
+- No PostgreSQL/pgvector instance → F-06 L1.
+- No LLM/connector credentials → F-10/F-08 L1.
+- No Temporal/worker/Redis running → ZT-01/J7/chaos/perf L1.
+- F-04 needs Alembic migration (code change, no infra strictly required for unit
+  test but needs migration head alignment).
+
+**FINAL GATE** **BLOCKED** for `READY FOR PRODUCTION` / `READY FOR STAGING`
+promotion of the durable path. **CONDITIONAL** for continued code-level (L3) gap
+closure, which may proceed safely without live infra for F-04 (migration+unit),
+ZT-02, F-11, F-08, F-05. L1 gates require the infrastructure/credentials listed
+above before they can be honestly closed.
+
+---
+
+## Stop / Block note (§35)
+
+Per §35, implementation is **paused and reported** rather than continued with
+manufactured evidence:
+
+- pgvector unavailable for L1 RAG gate → cannot close F-06 here.
+- real LLM credentials unavailable → cannot close F-10 / L1 LLM journey.
+- Temporal/worker infrastructure cannot be run → cannot run J7 chaos / L1
+  worker-SIGKILL.
+- No regression of existing tests; no security control weakened; no mock
+  promoted to L1.
+
+Next safe steps (no infra required): F-04 (migration + service + test), ZT-02
+(approval re-check + test), F-11 (secret unification + test), F-08 (connector
+states + test), F-05 (durable memory loop + test). These can be implemented and
+L3-verified in subsequent steps. L1 gates remain BLOCKED pending environment.
