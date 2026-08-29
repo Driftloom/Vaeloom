@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import { HERO } from '@/lib/landing/copy';
-import { MemoryCoreScene } from '@/components/landing/3d/SceneShell';
 import { StaticMemoryCore } from '@/components/landing/3d/StaticScenes';
+import { useSceneAvailable } from '@/components/landing/3d/SceneShell';
 import { useTheme } from '@/hooks/useTheme';
 
 function useIsMobile() {
@@ -21,6 +21,7 @@ function useIsMobile() {
 
 export default function HeroSection() {
   const { theme } = useTheme();
+  const sceneAvailable = useSceneAvailable();
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const isMobile = useIsMobile();
@@ -60,12 +61,14 @@ export default function HeroSection() {
           className="absolute inset-0 z-0 w-full h-[130%] top-[-15%] will-change-transform"
           aria-hidden="true"
         >
-          {/* Base */}
-          <div className="absolute inset-0 bg-background" />
-          {/* 3D scene — covers entire hero, not a side card */}
-          <div className="absolute inset-0">
-            <MemoryCoreScene theme={theme} fallback={<StaticMemoryCore />} />
-          </div>
+          {/* Persistent Stage canvas (mounted once at page level) draws the
+              living core behind everything; the static SVG fallback is rendered
+              here only when WebGL/3D is unavailable. */}
+          {!sceneAvailable && (
+            <div className="absolute inset-0">
+              <StaticMemoryCore />
+            </div>
+          )}
           {/* Atmospheric grid — very subtle, provides scale */}
           <div className="landing-grid-bg absolute inset-0 opacity-60" />
           {/* Aurora — soft, not competing with text */}

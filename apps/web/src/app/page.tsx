@@ -5,6 +5,7 @@ import { LandingScrollProvider } from '@/lib/landing/scroll';
 
 import LandingNav from '@/components/landing/sections/LandingNav';
 import { DustField } from '@/components/landing/3d/SceneShell';
+import StageCanvas from '@/components/landing/3d/StageCanvas';
 import HeroSection from '@/components/landing/sections/HeroSection';
 import { PrinciplesStrip, ProductDifference } from '@/components/landing/sections/ProductSections';
 import HowItWorks from '@/components/landing/sections/HowItWorks';
@@ -88,6 +89,7 @@ export default function LandingPage() {
       <LandingNav />
       <DustField />
       <LandingScrollProvider>
+        <StageCanvas />
         <div className="relative z-10 overflow-x-clip">
           <HeroSection />
           <ProblemSection />

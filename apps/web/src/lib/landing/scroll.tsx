@@ -97,6 +97,12 @@ export function usePageScrollProgress(): RefObject<number> {
   return useLandingScroll().pageProgressRef;
 }
 
+/** Subscribe a callback to the (rAF-throttled) scroll flush. */
+export function usePageScrollSubscribe(cb: () => void): void {
+  const { register } = useLandingScroll();
+  useEffect(() => register(cb), [cb, register]);
+}
+
 /**
  * Local scroll progress for a section element, matching the previous
  * per-section math. `viewLead`/`viewTrail` are the viewport biases used by

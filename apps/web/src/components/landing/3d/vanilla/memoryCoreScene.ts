@@ -13,8 +13,56 @@ import { createParticleField } from './particleField';
 import { createStreams } from './streams';
 import { createFlowStreams } from './flowStreams';
 import { dprForTier, type QualityTier } from '@/lib/landing/hooks';
+import type { Object3D } from 'three';
 
 export type Pointer = { x: number; y: number };
+
+/**
+ * Builds the Memory Core sub-objects into one reusable assembly. It creates NO
+ * renderer and NO loop — both the hero canvas and the persistent landing `Stage`
+ * mount this, so the core geometry stays defined in exactly one place.
+ */
+export function createMemoryCore(
+  theme: 'dark' | 'light',
+  density: number,
+  _tier: QualityTier,
+  pointer?: Pointer,
+  streams = true,
+) {
+  const intelligenceCore = createIntelligenceCore(theme, { reducedMotion: false });
+  const particleField = createParticleField(theme, density);
+  const dataStreams = createStreams(theme, density, { outward: streams });
+  const flowStreams = streams ? createFlowStreams(theme, density) : null;
+
+  const smooth = { x: 0, y: 0 };
+
+  return {
+    objects: [
+      intelligenceCore.group,
+      particleField.points,
+      ...dataStreams.objects,
+      ...(flowStreams ? [flowStreams.points] : []),
+    ] as Object3D[],
+    update(t: number, dt: number, p: Pointer | undefined, reducedMotion: boolean) {
+      const targetX = p ? p.x : 0;
+      const targetY = p ? p.y : 0;
+      const pm = reducedMotion ? 0 : 1;
+      smooth.x += (targetX * pm - smooth.x) * Math.min(1, dt * 3);
+      smooth.y += (targetY * pm - smooth.y) * Math.min(1, dt * 3);
+      intelligenceCore.update(t, dt, { reducedMotion });
+      particleField.update(t, dt, smooth.x, smooth.y, reducedMotion);
+      dataStreams.update(t, dt, reducedMotion);
+      if (flowStreams) flowStreams.update(t, dt, reducedMotion);
+      return { x: smooth.x, y: smooth.y };
+    },
+    dispose() {
+      (intelligenceCore as { dispose?: () => void }).dispose?.();
+      (particleField as { dispose?: () => void }).dispose?.();
+      (dataStreams as { dispose?: () => void }).dispose?.();
+      (flowStreams as { dispose?: () => void } | null)?.dispose?.();
+    },
+  };
+}
 
 type Cfg = {
   container: HTMLElement;
@@ -39,27 +87,11 @@ export function mountMemoryCore({
   const { renderer, scene, camera } = createRenderer(container);
   camera.position.set(0, 0.9, 7.4);
 
-  /* Living Intelligence Core — multi-layer, coordinated motion */
-  const intelligenceCore = createIntelligenceCore(theme, { reducedMotion: false });
-  scene.add(intelligenceCore.group);
-
-  /* Volumetric particle field — fills the whole viewport from all directions */
-  const particleField = createParticleField(theme, density);
-  scene.add(particleField.points);
-
-  /* Bidirectional data streams — in (existing) + out (new) */
-  const dataStreams = createStreams(theme, density, { outward: streams });
-  dataStreams.objects.forEach((o) => scene.add(o));
-
-  /* Subtle inbound flow from lower-left/right corners toward the core */
-  const flowStreams = streams ? createFlowStreams(theme, density) : null;
-  if (flowStreams) scene.add(flowStreams.points);
+  const core = createMemoryCore(theme, density, tier, pointer, streams);
+  core.objects.forEach((o) => scene.add(o));
 
   const prefersReducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  // smoothed pointer for subtle parallax
-  const smooth = { x: 0, y: 0 };
 
   const handle = runLoop(
     container,
@@ -70,30 +102,10 @@ export function mountMemoryCore({
       cameraZ: 7.4,
       tick: (dt, t) => {
         const rm = prefersReducedMotion;
-
-        // ---- subtle mouse parallax -----------------------------------
-        const targetX = pointer ? pointer.x : 0;
-        const targetY = pointer ? pointer.y : 0;
-        const pm = rm ? 0 : 1;
-        smooth.x += (targetX * pm - smooth.x) * Math.min(1, dt * 3);
-        smooth.y += (targetY * pm - smooth.y) * Math.min(1, dt * 3);
-
-        // scripted camera drift + parallax offset (kept subtle)
-        camera.position.x = Math.sin(t * 0.08) * 0.35 + smooth.x * 0.5;
-        camera.position.y = 0.15 + Math.sin(t * 0.06) * 0.12 + smooth.y * 0.4;
+        const s = core.update(t, dt, pointer, rm);
+        camera.position.x = Math.sin(t * 0.08) * 0.35 + s.x * 0.5;
+        camera.position.y = 0.15 + Math.sin(t * 0.06) * 0.12 + s.y * 0.4;
         camera.lookAt(0, 0, 0);
-
-        // ---- core (coordinates its own sub-motions via shared t) -----
-        intelligenceCore.update(t, dt, { reducedMotion: rm });
-
-        // ---- particle field ------------------------------------------
-        particleField.update(t, dt, smooth.x, smooth.y, rm);
-
-        // ---- streams --------------------------------------------------
-        dataStreams.update(t, dt, rm);
-
-        // ---- inbound flow streams ------------------------------------
-        if (flowStreams) flowStreams.update(t, dt, rm);
       },
     },
     dprForTier(tier)[1],
