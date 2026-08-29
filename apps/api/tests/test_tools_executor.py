@@ -673,9 +673,8 @@ async def test_execute_draft_email_mock_fallback(monkeypatch):
     monkeypatch.setattr("api.clients.gmail_client.GmailClient", MockClient)
 
     result = await _execute_draft_email({"to": "a@b.com", "subject": "Hi", "body": "Hello"}, WS_ID)
-    assert result["status"] == "success"
-    assert result["result"]["status"] == "draft_simulated"
-    assert "draft_mock_" in result["result"]["draft_id"]
+    assert result["status"] == "not_configured"
+    assert result["result"] == "Gmail connector not configured"
 
 
 @pytest.mark.asyncio
@@ -715,9 +714,8 @@ async def test_execute_create_calendar_event_mock_fallback(monkeypatch):
     result = await _execute_create_calendar_event(
         {"title": "Standup", "start_time": "2025-01-01T09:00:00Z"}, WS_ID,
     )
-    assert result["status"] == "success"
-    assert result["result"]["status"] == "event_simulated"
-    assert "event_mock_" in result["result"]["event_id"]
+    assert result["status"] == "not_configured"
+    assert result["result"] == "Calendar connector not configured"
 
 
 @pytest.mark.asyncio

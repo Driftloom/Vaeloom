@@ -13,6 +13,21 @@ from ..utils.sanitize import sanitize_text
 
 logger = logging.getLogger(__name__)
 
+# Status returned when a mutating connector (Slack send, Gmail/Outlook draft,
+# calendar create, GitHub issue/PR create, ...) is invoked but its backing
+# integration is not configured. We must NOT fake a successful side-effect: the
+# agent must learn the action did not happen (zero-trust: no silent mock writes).
+NOT_CONFIGURED = "not_configured"
+
+
+def _connector_not_configured(tool: str, integration: str) -> dict[str, Any]:
+    return {
+        "status": NOT_CONFIGURED,
+        "tool": tool,
+        "result": f"{integration} connector not configured",
+        "note": f"{integration} API unavailable — connector not configured; no action was performed",
+    }
+
 
 class PermissionDeniedError(Exception):
     """Raised when the agent lacks the required scope for a tool call."""
@@ -1097,13 +1112,7 @@ async def _execute_draft_outlook_mail(params: dict[str, Any], workspace_id: str)
         client = GraphClient()
         draft = await client.create_draft(to=to, subject=subject, body=body)
         if draft is None:
-            mock_id = f"draft_outlk_mock_{uuid_lib.uuid4().hex[:8]}"
-            return {
-                "status": "success",
-                "tool": "draft_outlook_mail",
-                "result": {"draft_id": mock_id, "to": to, "subject": subject, "status": "draft_simulated"},
-                "note": "Graph API unavailable — draft simulated",
-            }
+            return _connector_not_configured("draft_outlook_mail", "Outlook/Graph")
         return {
             "status": "success",
             "tool": "draft_outlook_mail",
@@ -1151,13 +1160,7 @@ async def _execute_create_outlook_calendar_event(params: dict[str, Any], workspa
         client = GraphClient()
         event = await client.create_event(summary=title, start_time=start_time, end_time=end_time or start_time, description=description)
         if event is None:
-            mock_id = f"event_outlk_mock_{uuid_lib.uuid4().hex[:8]}"
-            return {
-                "status": "success",
-                "tool": "create_outlook_calendar_event",
-                "result": {"event_id": mock_id, "title": title, "start_time": start_time, "end_time": end_time or start_time, "status": "event_simulated"},
-                "note": "Graph API unavailable — event simulated",
-            }
+            return _connector_not_configured("create_outlook_calendar_event", "Outlook/Graph")
         return {
             "status": "success",
             "tool": "create_outlook_calendar_event",
@@ -1359,18 +1362,7 @@ async def _execute_draft_email(params: dict[str, Any], workspace_id: str) -> dic
         draft = await client.create_draft(to=to, subject=subject, body=body)
 
         if draft is None:
-            mock_id = f"draft_mock_{uuid_lib.uuid4().hex[:8]}"
-            return {
-                "status": "success",
-                "tool": "draft_email",
-                "result": {
-                    "draft_id": mock_id,
-                    "to": to,
-                    "subject": subject,
-                    "status": "draft_simulated",
-                },
-                "note": "Gmail API unavailable — draft simulated",
-            }
+            return _connector_not_configured("draft_email", "Gmail")
 
         return {
             "status": "success",
@@ -1411,19 +1403,7 @@ async def _execute_create_calendar_event(params: dict[str, Any], workspace_id: s
         )
 
         if event is None:
-            mock_id = f"event_mock_{uuid_lib.uuid4().hex[:8]}"
-            return {
-                "status": "success",
-                "tool": "create_calendar_event",
-                "result": {
-                    "event_id": mock_id,
-                    "title": title,
-                    "start_time": start_time,
-                    "end_time": end_time or start_time,
-                    "status": "event_simulated",
-                },
-                "note": "Calendar API unavailable — event simulated",
-            }
+            return _connector_not_configured("create_calendar_event", "Calendar")
 
         return {
             "status": "success",
@@ -1865,9 +1845,8 @@ async def _execute_create_github_issue(params: dict[str, Any], workspace_id: str
                 return {"status": "error", "tool": "create_github_issue", "result": f"GitHub API error {resp.status_code}: {resp.text[:300]}"}
     except Exception as e:
         logger.warning(f"create_github_issue live call failed: {e}")
-    # Mock approval-gated simulation
-    mock_id = f"issue_mock_{uuid_lib.uuid4().hex[:8]}"
-    return {"status": "success", "tool": "create_github_issue", "result": {"issue_id": mock_id, "url": f"https://github.com/{repo}/issues/mock", "title": title, "status": "simulated_requires_approval"}, "note": "GitHub API unavailable — issue creation simulated (approval-gated)"}
+    # No GitHub token: do NOT fake an issue creation. Report connector unavailable.
+    return _connector_not_configured("create_github_issue", "GitHub")
 
 
 def _github_headers() -> dict[str, str]:
@@ -2047,8 +2026,8 @@ async def _execute_create_github_pull_request(params: dict[str, Any], workspace_
                 return {"status": "error", "tool": "create_github_pull_request", "result": f"GitHub API error {resp.status_code}: {resp.text[:300]}"}
     except Exception as e:
         logger.warning(f"create_github_pull_request live call failed: {e}")
-    mock_id = f"pr_mock_{uuid_lib.uuid4().hex[:8]}"
-    return {"status": "success", "tool": "create_github_pull_request", "result": {"pr_id": mock_id, "url": f"https://github.com/{repo}/pull/mock", "title": title, "status": "simulated_requires_approval"}, "note": "GitHub API unavailable — PR creation simulated (approval-gated)"}
+    # No GitHub token: do NOT fake a PR creation. Report connector unavailable.
+    return _connector_not_configured("create_github_pull_request", "GitHub")
 
 
 async def _execute_send_slack_message(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -2075,7 +2054,7 @@ async def _execute_send_slack_message(params: dict[str, Any], workspace_id: str)
                     return {"status": "error", "tool": "send_slack_message", "result": data.get("error", "slack error")}
     except Exception as e:
         logger.warning(f"send_slack_message live call failed: {e}")
-    return {"status": "success", "tool": "send_slack_message", "result": {"ok": True, "ts": f"mock_{uuid_lib.uuid4().hex[:8]}", "channel": channel, "text": text[:100]}, "note": "Slack API unavailable — message simulated"}
+    return _connector_not_configured("send_slack_message", "Slack")
 
 
 async def _execute_sync_notion_pages(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
