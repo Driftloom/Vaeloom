@@ -8,6 +8,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0001"
@@ -189,7 +190,7 @@ def upgrade() -> None:
         sa.Column("workspace_id", sa.UUID(), nullable=False),
         sa.Column("source_type", sa.String(50), nullable=False),
         sa.Column("source_id", sa.UUID(), nullable=False),
-        sa.Column("vector", postgresql.VECTOR(dim=1536), nullable=True),
+        sa.Column("vector", Vector(1536), nullable=True),
         sa.Column("model_version", sa.String(100), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.PrimaryKeyConstraint("id"),
@@ -332,7 +333,7 @@ def upgrade() -> None:
         sa.Column("content", sa.Text(), nullable=True),
         sa.Column("content_hash", sa.String(256), nullable=False),
         sa.Column("size", sa.Integer(), nullable=False),
-        sa.Column("embedding", postgresql.VECTOR(dim=1536), nullable=True),
+        sa.Column("embedding", Vector(1536), nullable=True),
         sa.Column("metadata", postgresql.JSONB(), nullable=False),
         sa.Column("tags", sa.ARRAY(sa.String(255)), nullable=False),
         sa.Column("tenant_id", sa.UUID(), nullable=True),

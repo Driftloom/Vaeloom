@@ -8,6 +8,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0002"
@@ -137,7 +138,7 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("importance", sa.Float(), server_default="0.5", nullable=False),
         sa.Column("properties", postgresql.JSONB(), nullable=False),
-        sa.Column("embedding", postgresql.VECTOR(dim=1536), nullable=True),
+        sa.Column("embedding", Vector(1536), nullable=True),
         sa.Column("tenant_id", sa.String(255), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
@@ -211,7 +212,7 @@ def upgrade() -> None:
         "user_preference_vectors",
         sa.Column("user_id", sa.String(255), nullable=False),
         sa.Column("tenant_id", sa.String(255), nullable=False),
-        sa.Column("preference_vector", postgresql.VECTOR(dim=1536), nullable=True),
+        sa.Column("preference_vector", Vector(1536), nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.PrimaryKeyConstraint("user_id", "tenant_id"),
     )
