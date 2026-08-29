@@ -9,33 +9,41 @@
 > **Prior Score (self-reported):** 93/100 (from
 > `docs/00-documentation-completion-report.md`, dated 2026-07-16)
 
+> **CORRECTION LOG (2026-08-29):** This report was re-verified against the live
+> repository. Several findings were found INACCURATE and are corrected inline
+> (see C-2, C-3, C-4, §1.2 ADR count, C-9, §5.2 paths, and the doc-count
+> framing). The "~82/100 honest score" was derived partly from those false
+> premises and should be re-derived.
+
 ---
 
 ## Executive Summary
 
-The Vaeloom project has **793 markdown files** in `docs/` and **376 files** in
-`docs/phases/` — an enormous documentation corpus. The self-reported score of
-93/100 was based on an audit from 2026-07-16, nearly 6 weeks ago. Since then,
-significant code has been written, new features shipped, and the project has
-evolved substantially. **This audit finds the documentation corpus is
-comprehensive in breadth but has significant staleness, duplication, path
-errors, and implementation-vs-documentation gaps that reduce the honest score to
-approximately 68–72/100.**
+The Vaeloom project has **794 markdown files** in `docs/` total — **375 in
+`docs/phases/`** and **419 outside `docs/phases/`** (corrected from the
+previously stated "793 excluding phases"; 793 ≈ the total _including_ phases).
+The self-reported score of 93/100 was based on an audit from 2026-07-16, nearly
+6 weeks ago. Since then, significant code has been written, new features
+shipped, and the project has evolved substantially. **This audit finds the
+documentation corpus is comprehensive in breadth but has staleness, path/casing
+errors, and implementation-vs-documentation gaps.** _(Note: the "68–72/100"
+figure and the "~82/100 honest score" below were derived partly from findings
+later found to be false — see CORRECTION LOG.)_
 
 ### Key Findings at a Glance
 
-| Finding                                                                      | Severity | Count     |
-| ---------------------------------------------------------------------------- | -------- | --------- |
-| Duplicate directory pairs (case-insensitive Windows collisions)              | High     | 3 pairs   |
-| Documents referencing deprecated `Documents/` path                           | Medium   | 6+ files  |
-| docs/README.md broken links (Developer_Experience vs developer-experience)   | High     | 9 links   |
-| Files with TODO/WIP/PLACEHOLDER/TBD markers                                  | Medium   | 150 files |
-| Self-reported counts/numbers now stale                                       | Medium   | Pervasive |
-| CHANGELOG.md only covers 0.1.0 — no entries for 0.2.0 or 25+ features        | High     | 1 file    |
-| testing/smoke/ claims 12 cases — only 1 file exists in apps/api/tests/smoke/ | Medium   | 1 dir     |
-| No apps/api/tests/chaos/ or apps/api/tests/fuzz/ despite docs                | High     | 2 dirs    |
-| OpenAPI says 99 paths but execution status says 110                          | Medium   | 1 file    |
-| DOCUMENTATION-MAP.md claims 178 files across 15 categories — actual: 793+    | High     | 1 file    |
+| Finding                                                                                                                | Severity | Count               |
+| ---------------------------------------------------------------------------------------------------------------------- | -------- | ------------------- |
+| Duplicate/Title-Case directory links break on case-sensitive filesystems                                               | High     | ~13 categories      |
+| Documents referencing deprecated `Documents/` path                                                                     | Medium   | 47 files (was 6+)   |
+| docs/README.md casing — RETRACTED: `Developer_Experience` claim false; real issue is Title-Case cat dirs (see C-1/C-2) | High     | n/a                 |
+| Files with TODO/WIP/PLACEHOLDER/TBD markers                                                                            | Medium   | 213 files (was 150) |
+| Self-reported counts/numbers now stale                                                                                 | Medium   | Pervasive           |
+| CHANGELOG.md RETRACTED: `[0.2.0] - 2026-08-22` EXISTS; "missing 0.2.0" claim false (see C-3)                           | High     | n/a                 |
+| testing/smoke/ claims 12 cases — only 1 file exists in apps/api/tests/smoke/                                           | Medium   | 1 dir               |
+| No apps/api/tests/chaos/ or apps/api/tests/fuzz/ despite docs                                                          | High     | 2 dirs              |
+| OpenAPI says 99 paths but execution status says 110                                                                    | Medium   | 1 file              |
+| DOCUMENTATION-MAP.md RETRACTED: file itself says ~793 / 22 cats; "178 / 15" claim false (see C-4)                      | High     | n/a                 |
 
 ---
 
@@ -43,45 +51,47 @@ approximately 68–72/100.**
 
 ### 1.1 Top-Level File Counts
 
-| Location                     | Files    | Notes                                       |
-| ---------------------------- | -------- | ------------------------------------------- |
-| `docs/` (root-level)         | 33       | Mix of specs, reports, guides               |
-| `docs/adr/`                  | 39       | ADR-001 through ADR-039 — all present       |
-| `docs/ai/`                   | 24       | AI/Agent documentation                      |
-| `docs/architecture/`         | 19       | System architecture docs                    |
-| `docs/backend/`              | 23       | Backend specs + OpenAPI (7199 lines)        |
-| `docs/compliance/`           | 4        | EU AI Act, FERPA/COPPA, India DPDP, NIST    |
-| `docs/contributing/`         | 1        | Just a README                               |
-| `docs/database/`             | 11       | Schema, ERD, migrations, etc.               |
-| `docs/developer-experience/` | 9        | DevX guides (correctly named)               |
-| `docs/devops/`               | 13       | CI/CD, Docker, K8s, Terraform, etc.         |
-| `docs/engineering/`          | 29       | Standards + Implementation plans (18 files) |
-| `docs/enterprise/`           | 11       | Enterprise features                         |
-| `docs/frontend/`             | 25       | Frontend architecture + 3 HTML previews     |
-| `docs/guides/`               | 1        | Just a README                               |
-| `docs/integrations/`         | 1        | Just an integration matrix                  |
-| `docs/mcp/`                  | 3        | MCP server/tool definitions                 |
-| `docs/operations/`           | 18       | Ops runbooks + SRE docs                     |
-| `docs/phases/`               | 376      | MVP (325) + CONT (50) + ENT (0)             |
-| `docs/product/`              | 35       | Product specs + 13 feature specs            |
-| `docs/project/`              | 1        | Just a README                               |
-| `docs/prompts/`              | 81       | 66 phase prompts + agent/memory/rag         |
-| `docs/security/`             | 17       | Security architecture + compliance          |
-| `docs/temporal/`             | 9        | Temporal/LangGraph integration docs         |
-| `docs/testing/`              | 13       | Testing strategy docs                       |
-| **Total docs/**              | **~793** |                                             |
+| Location                     | Files    | Notes                                         |
+| ---------------------------- | -------- | --------------------------------------------- |
+| `docs/` (root-level)         | 33       | Mix of specs, reports, guides                 |
+| `docs/adr/`                  | 39       | ADR-001 through ADR-039 — all present         |
+| `docs/ai/`                   | 24       | AI/Agent documentation                        |
+| `docs/architecture/`         | 19       | System architecture docs                      |
+| `docs/backend/`              | 23       | Backend specs + OpenAPI (7199 lines)          |
+| `docs/compliance/`           | 4        | EU AI Act, FERPA/COPPA, India DPDP, NIST      |
+| `docs/contributing/`         | 1        | Just a README                                 |
+| `docs/database/`             | 11       | Schema, ERD, migrations, etc.                 |
+| `docs/developer-experience/` | 9        | DevX guides (correctly named)                 |
+| `docs/devops/`               | 13       | CI/CD, Docker, K8s, Terraform, etc.           |
+| `docs/engineering/`          | 29       | Standards + Implementation plans (18 files)   |
+| `docs/enterprise/`           | 11       | Enterprise features                           |
+| `docs/frontend/`             | 25       | Frontend architecture + 3 HTML previews       |
+| `docs/guides/`               | 1        | Just a README                                 |
+| `docs/integrations/`         | 1        | Just an integration matrix                    |
+| `docs/mcp/`                  | 3        | MCP server/tool definitions                   |
+| `docs/operations/`           | 18       | Ops runbooks + SRE docs                       |
+| `docs/phases/`               | 375      | MVP (325) + CONT (50) + ENT (0)               |
+| `docs/product/`              | 35       | Product specs + 13 feature specs              |
+| `docs/project/`              | 1        | Just a README                                 |
+| `docs/prompts/`              | 81       | 66 phase prompts + agent/memory/rag           |
+| `docs/security/`             | 17       | Security architecture + compliance            |
+| `docs/temporal/`             | 9        | Temporal/LangGraph integration docs           |
+| `docs/testing/`              | 13       | Testing strategy docs                         |
+| **Total (excl phases)**      | **~420** | per-row sum above; 794 total incl. 375 phases |
 
 ### 1.2 ADR Coverage
 
 **39 ADRs present** (ADR-001 through ADR-039). All exist on disk:
 
-- ADR-001 through ADR-036: Referenced in AGENTS.md as "36 ADRs" — **actual count
-  is 39** (ADR-037, 038, 039 exist but were added after the last count)
+- ADR-001 through ADR-039: AGENTS.md already references **"39 ADRs (ADR-001
+  through ADR-039)"** — the claim in this report that "AGENTS.md says 36 ADRs"
+  is **FALSE**; AGENTS.md is current.
 - ADR-037: Hybrid Integration Framework
 - ADR-038: Temporal Durable Execution
 - ADR-039: LangGraph Durable Integration
 
-**Gap:** AGENTS.md says "36 ADRs" but there are 39. The count is stale.
+**Correction:** The ADR count is 39 and AGENTS.md already reflects this. No
+staleness gap.
 
 ### 1.3 Phase Documentation
 
@@ -121,55 +131,43 @@ case-sensitive.
 **Remediation:** Standardize all directory names to lowercase. Update all
 internal links.
 
-### FINDING C-2: Broken Links in docs/README.md (HIGH)
+> **CORRECTION (2026-08-29):** Verified on-disk directories are lowercase only
+> (`ai/`, `architecture/`, `backend/`, `developer-experience/`, …) — there are
+> no separate Title-Case directories, so "duplicate directory pairs" is
+> imprecise (one lowercase dir, referenced by two casings). The real defect:
+> `docs/README.md` links ~13 categories in Title Case (`./AI/`,
+> `./Architecture/`, `./Backend/`, `./Database/`, `./DevOps/`, `./Engineering/`,
+> `./Enterprise/`, `./Frontend/`, `./Operations/`, `./Product/`, `./Security/`,
+> `./Testing/`, `./Contributing/`), which resolve on Windows but 404 on
+> Linux/macOS. Scope is broader than the 3 pairs listed above.
 
-The master README references `Developer_Experience/` (Title Case + underscore)
-but the actual directory is `developer-experience/` (lowercase + hyphen). This
-affects **9 linked documents**:
+### FINDING C-2: Broken Links in docs/README.md — RETRACTED (FALSE)
 
-| Referenced Path                                      | Actual Path                                          |
-| ---------------------------------------------------- | ---------------------------------------------------- |
-| `./Developer_Experience/Developer-Guide.md`          | `./developer-experience/Developer-Guide.md`          |
-| `./Developer_Experience/Setup.md`                    | `./developer-experience/Setup.md`                    |
-| `./Developer_Experience/API-Examples.md`             | `./developer-experience/API-Examples.md`             |
-| `./Developer_Experience/CLI.md`                      | `./developer-experience/CLI.md`                      |
-| `./Developer_Experience/Debugging.md`                | `./developer-experience/Debugging.md`                |
-| `./Developer_Experience/Scripts.md`                  | `./developer-experience/Scripts.md`                  |
-| `./Developer_Experience/Contributing.md`             | `./developer-experience/Contributing.md`             |
-| `./Developer_Experience/Environment.md`              | `./developer-experience/Environment.md`              |
-| `./Developer_Experience/Architecture-Walkthrough.md` | `./developer-experience/Architecture-Walkthrough.md` |
+> **CORRECTION (2026-08-29):** This finding is **FALSE**. `docs/README.md` uses
+> `./developer-experience/...` (lowercase + hyphen) correctly (lines 295–299);
+> there are **zero** `Developer_Experience` references. The 9-link table above
+> does not match the file. The genuine casing defect (Title-Case category
+> directories) is covered by **C-1**, not by a `Developer_Experience` mismatch.
 
-**Impact:** HIGH — 9 broken links in the master navigation document.
+### FINDING C-3: CHANGELOG.md is Stale — RETRACTED (FALSE)
 
-### FINDING C-3: CHANGELOG.md is Stale (HIGH)
+> **CORRECTION (2026-08-29):** This finding is **FALSE**. `CHANGELOG.md` already
+> contains `## [0.2.0] - 2026-08-22` (with a populated `### Added` section) and
+> a proper compare link to `v0.2.0`. The project version is confirmed as `0.2.0`
+> via `apps/api/src/api/config.py` (`service_version = "0.2.0"` — note the
+> report's cited path `apps/api/src/config/config.py` was also wrong; the file
+> is `apps/api/src/api/config.py`). No remediation is needed for the 0.2.0
+> entry.
 
-The CHANGELOG.md at the project root has only two sections:
+### FINDING C-4: DOCUMENTATION-MAP.md Counts Are Wrong — RETRACTED (FALSE)
 
-- `[Unreleased]` — lists 30+ features
-- `[0.1.0] - 2026-07-17` — initial release
-
-The project is at **v0.2.0** (per `apps/api/src/config/config.py:11` and
-OpenAPI). No 0.2.0 entry exists. The `[Unreleased]` section lists features that
-were shipped in 0.2.0 but never cut into a release entry. The CHANGELOG does not
-reflect the actual state of the project.
-
-**Impact:** HIGH — Anyone reviewing release history gets a misleading picture.
-
-**Remediation:** Create a proper `[0.2.0]` entry from the `[Unreleased]` section
-and the P21 evidence.
-
-### FINDING C-4: DOCUMENTATION-MAP.md Counts Are Wrong (HIGH)
-
-The `DOCUMENTATION-MAP.md` claims:
-
-- **178 total documents** across 15 categories
-- **"Stable" maturity** for all categories
-
-**Reality:** There are **793+ markdown files** in `docs/` alone (excluding
-`docs/phases/`), plus 376 in phases. The 178 count was accurate on 2026-07-16
-but is now **stale by 4.5x**.
-
-**Impact:** HIGH — The map is unreliable for navigation or auditing.
+> **CORRECTION (2026-08-29):** This finding is **FALSE**. `DOCUMENTATION-MAP.md`
+> (line 31) itself states **"~793" total documents across "22 categories"** — it
+> does **not** claim 178 / 15 categories. The "178" figure appears nowhere in
+> the file. Separately, the true on-disk count is **794 `.md` files in `docs/`
+> total** (375 in `docs/phases/`, 419 outside) — so the report's own "793
+> excluding phases" framing was also wrong (793 ≈ total _including_ phases). The
+> map's "~793" is therefore roughly accurate for the total corpus.
 
 ### FINDING C-5: OpenAPI Path Count Discrepancy (MEDIUM)
 
@@ -218,7 +216,8 @@ now matches the documentation more closely.
 
 ### FINDING C-8: Stale References to Deprecated Paths (MEDIUM)
 
-6+ files still reference the deprecated `Documents/` directory:
+**47 files** (not "6+") still reference the deprecated `Documents/` directory.
+Sample (verified):
 
 | File                                         | Reference                |
 | -------------------------------------------- | ------------------------ |
@@ -229,11 +228,16 @@ now matches the documentation more closely.
 | `docs/phases/cont-p00/01-source-register.md` | `Documents/` references  |
 | `docs/phases/cont-p00/README.md`             | `Documents/` references  |
 
-**Impact:** MEDIUM — Broken cross-references to deprecated content.
+**Impact:** MEDIUM — Broken cross-references to deprecated content (broader than
+originally stated — 47 files, not 6+).
 
-### FINDING C-9: 150 Files with TODO/WIP/PLACEHOLDER/TBD Markers (MEDIUM)
+### FINDING C-9: 213 Files with TODO/WIP/PLACEHOLDER/TBD Markers (MEDIUM)
 
-150 documentation files contain markers like TODO, WIP, PLACEHOLDER, TBD,
+> **CORRECTION (2026-08-29):** Count corrected from 150 → **213** unique `.md`
+> files in `docs/` containing TODO/WIP/PLACEHOLDER/TBD/"Coming Soon"/"Not
+> Implemented" markers (verified via repo-wide grep).
+
+213 documentation files contain markers like TODO, WIP, PLACEHOLDER, TBD,
 "Coming Soon", or "Not Implemented". These are concentrated in:
 
 - Phase execution files (many have TBDs in risk registers and assumption logs —
@@ -249,13 +253,13 @@ represent unfinished content.
 
 Many documents contain hardcoded numbers that are now stale:
 
-| Metric        | Documented Value | Current Value   | Source                            |
-| ------------- | ---------------- | --------------- | --------------------------------- |
-| Test count    | 2557             | 2731            | AGENTS.md / pytest collect        |
-| ADR count     | 36               | 39              | Filesystem count                  |
-| OpenAPI paths | 99               | 110             | `rg -c "^  /" openapi.yaml`       |
-| Doc count     | 256              | 793+            | `find docs -name "*.md" \| wc -l` |
-| Coverage      | 94%              | 94% (unchanged) | Per AGENTS.md                     |
+| Metric        | Documented Value | Current Value                        | Source                                                                                 |
+| ------------- | ---------------- | ------------------------------------ | -------------------------------------------------------------------------------------- |
+| Test count    | 2557             | 2731                                 | AGENTS.md / pytest collect ✅                                                          |
+| ADR count     | 36               | 39                                   | ⚠️ AGENTS.md **already says 39** (the "36" was a false claim in this report; see §1.2) |
+| OpenAPI paths | 99               | 110                                  | `rg -c "^  /" openapi.yaml` ✅                                                         |
+| Doc count     | 256              | 794 total (375 phases + 419 outside) | `find docs -name "*.md"` (the "793 excluding phases" framing was wrong)                |
+| Coverage      | 94%              | 94% (unchanged)                      | Per AGENTS.md                                                                          |
 
 **Impact:** MEDIUM — Pervasive across hundreds of files.
 
@@ -442,18 +446,18 @@ completion pass. Since then:
 
 ### 4.2 Documents That Need Updating
 
-| Document                                     | Last Updated   | Needs Update                                     |
-| -------------------------------------------- | -------------- | ------------------------------------------------ |
-| `docs/README.md`                             | 2026-07-17     | Yes — broken links, stale counts                 |
-| `docs/DOCUMENTATION-MAP.md`                  | 2026-07-16     | Yes — 178 → 793+ files                           |
-| `docs/00-documentation-completion-report.md` | 2026-07-16     | Yes — 93/100 score is stale                      |
-| `docs/IMPLEMENTATION-GAP-REPORT.md`          | 2026-07-18     | Yes — 3 gaps still open                          |
-| `docs/AUDIT-REPORT.md`                       | Pre-2026-07-16 | Yes — scores superseded                          |
-| `CHANGELOG.md`                               | 2026-07-17     | Yes — missing 0.2.0 entry                        |
-| `docs/backend/openapi.yaml`                  | 2026-08-25     | Partially — auto-generated but schema empty      |
-| `docs/engineering/Implementation/*`          | 2026-07-16     | Yes — build order plans are stale                |
-| All `docs/architecture/*`                    | 2026-07-16     | Yes — describe microservices, actual is monolith |
-| All `docs/devops/*`                          | 2026-07-16     | Yes — monitoring/alerting thresholds mismatch    |
+| Document                                     | Last Updated   | Needs Update                                                                          |
+| -------------------------------------------- | -------------- | ------------------------------------------------------------------------------------- |
+| `docs/README.md`                             | 2026-08-29     | Partial — Title-Case dir links (C-1); the `Developer_Experience` claim (C-2) is FALSE |
+| `docs/DOCUMENTATION-MAP.md`                  | (current)      | No — file already says ~793 / 22 cats (C-4 retracted)                                 |
+| `docs/00-documentation-completion-report.md` | 2026-07-16     | Yes — 93/100 score is stale                                                           |
+| `docs/IMPLEMENTATION-GAP-REPORT.md`          | 2026-07-18     | Yes — 3 gaps still open                                                               |
+| `docs/AUDIT-REPORT.md`                       | Pre-2026-07-16 | Yes — scores superseded                                                               |
+| `CHANGELOG.md`                               | 2026-08-22     | No — `[0.2.0]` entry EXISTS (C-3 retracted)                                           |
+| `docs/backend/openapi.yaml`                  | 2026-08-25     | Partially — auto-generated but schema empty                                           |
+| `docs/engineering/Implementation/*`          | 2026-07-16     | Yes — build order plans are stale                                                     |
+| All `docs/architecture/*`                    | 2026-07-16     | Yes — describe microservices, actual is monolith                                      |
+| All `docs/devops/*`                          | 2026-07-16     | Yes — monitoring/alerting thresholds mismatch                                         |
 
 ---
 
@@ -472,16 +476,16 @@ completion pass. Since then:
 
 ### 5.2 Features Implemented but Not Documented
 
-| Feature                        | Implementation                     | Documentation Status                            |
-| ------------------------------ | ---------------------------------- | ----------------------------------------------- |
-| Injection classifier           | `services/injection_classifier.py` | Not documented                                  |
-| CSRF Redis backend             | `middleware/csrf.py`               | Partially documented                            |
-| IP allowlist middleware        | `middleware/`                      | Not documented as separate doc                  |
-| Temporal/LangGraph integration | `apps/api/src/api/temporal/`       | `docs/temporal/` exists but no architecture doc |
-| Browser scraping tools         | `services/browser_tools.py`        | ADR-035 exists, no user guide                   |
-| Resume document pipeline       | `services/document_builder.py`     | ADR-034 exists, no user guide                   |
-| MCP native integration         | `services/mcp_client_service.py`   | ADR-036 exists, seed configs exist              |
-| Semantic ATS scoring           | `services/semantic_ats.py`         | Not documented                                  |
+| Feature                        | Implementation                                                                          | Documentation Status                            |
+| ------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Injection classifier           | `services/injection_classifier.py`                                                      | Not documented                                  |
+| CSRF Redis backend             | `middleware/csrf.py`                                                                    | Partially documented                            |
+| IP allowlist middleware        | `middleware/`                                                                           | Not documented as separate doc                  |
+| Temporal/LangGraph integration | `apps/api/src/api/temporal/`                                                            | `docs/temporal/` exists but no architecture doc |
+| Browser scraping tools         | `services/browser_service.py` (report's `browser_tools.py` not found)                   | ADR-035 exists, no user guide                   |
+| Resume document pipeline       | `services/document_builder.py`                                                          | ADR-034 exists, no user guide                   |
+| MCP native integration         | `services/mcp_client_service.py`                                                        | ADR-036 exists, seed configs exist              |
+| Semantic ATS scoring           | path unverified (no `semantic_ats.py` found; `calculate_semantic_ats_score` etc. exist) | Not documented                                  |
 
 ---
 
@@ -578,19 +582,29 @@ issues are staleness and a few broken links — not structural problems.
 ## 9. Conclusion
 
 The Vaeloom documentation corpus is **one of the most comprehensive I've audited
-for a project at this stage** — 793+ files, 39 ADRs, 376 phase evidence files,
-structured governance. However, the self-reported 93/100 score is inflated
-because it was measured 6 weeks ago before significant code evolution.
+for a project at this stage** — 794 files (419 outside phases + 375 in phases),
+39 ADRs, 375 phase evidence files, structured governance. However, the
+self-reported 93/100 score is inflated because it was measured 6 weeks ago
+before significant code evolution.
 
-**Honest current score: ~82/100**
+**Honest current score: ~82/100 — UNVERIFIED**
+
+> **CORRECTION (2026-08-29):** The "~82/100 honest score" was derived partly
+> from findings C-2, C-3, and C-4, all of which were found FALSE on
+> re-verification. Removing those, the defensible detractors are: stale
+> reference docs, the _genuine_ Title-Case link breakage (C-1, broader than
+> stated), missing chaos/fuzz/incomplete smoke (C-6), and the 47 `Documents/`
+> refs (C-8). The score should be re-derived; treat ~82/100 as indicative only.
 
 The gap is primarily from:
 
 - Stale reference documentation (not updated since 2026-07-16)
-- Broken internal links (Developer_Experience casing)
-- Missing test implementations (chaos, fuzz, incomplete smoke)
-- CHANGELOG not maintained for 0.2.0
-- Duplicate directories that will break on non-Windows systems
+- Broken internal links (Title-Case category directories — C-1, broader than
+  stated)
+- Missing test implementations (chaos, fuzz, incomplete smoke — C-6)
+- 47 deprecated `Documents/` cross-references (C-8, broader than stated)
+- _(RETRACTED: "Developer_Experience casing", "CHANGELOG not maintained for
+  0.2.0", and "duplicate directories" were found FALSE — see C-2, C-3, C-4.)_
 
 None of these are structural failures. They're all fixable with a focused 2-3
 day documentation refresh pass. The foundation is excellent.
