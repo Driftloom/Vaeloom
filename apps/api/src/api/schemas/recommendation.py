@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class GenerateRecommendationRequest(BaseModel):
     user_id: str
     tenant_id: str | None = None
+    workspace_id: str | None = None
     context_tags: list[str] | None = None
     context: dict[str, Any] | None = None
     top_n: int = Field(default=10, ge=1, le=50)

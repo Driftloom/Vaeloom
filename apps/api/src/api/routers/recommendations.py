@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, get_workspace_id
 from ..schemas.recommendation import (
     FeedbackRequest,
     GenerateRecommendationRequest,
@@ -20,9 +20,11 @@ async def generate_recommendations(
     dto: GenerateRecommendationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    dto.workspace_id = workspace_id
     row = await recommendation_service.generate(dto, db)
     return RecommendationResponse.model_validate(row._mapping)
 
@@ -33,10 +35,11 @@ async def get_trending(
     tenant_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401)
-    items = await recommendation_service.get_trending(limit, tenant_id, db)
+    items = await recommendation_service.get_trending(limit, tenant_id, db, workspace_id=workspace_id)
     return [RecommendationItem.model_validate(it) for it in items]
 
 

@@ -23,6 +23,7 @@ async def upgrade(conn) -> None:
             properties TEXT DEFAULT '{}',
             embedding TEXT,
             tenant_id TEXT NOT NULL,
+            workspace_id TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -35,6 +36,7 @@ async def upgrade(conn) -> None:
             relationship TEXT NOT NULL,
             weight REAL DEFAULT 1.0,
             properties TEXT DEFAULT '{}',
+            workspace_id TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """))

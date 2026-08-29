@@ -62,11 +62,11 @@ class RecommendationService:
                        COALESCE((properties->>'usageCount')::int, 0) AS usage_count,
                        1 - (embedding <=> :embedding::vector) AS distance
                 FROM knowledge_nodes
-                WHERE tenant_id = :tenant_id AND embedding IS NOT NULL
+                WHERE tenant_id = :tenant_id AND (workspace_id = :workspace_id OR :workspace_id IS NULL) AND embedding IS NOT NULL
                 ORDER BY distance DESC
                 LIMIT :top_n
             """),
-            {"embedding": embedding_str, "tenant_id": tenant_id, "top_n": top_n * 3},
+            {"embedding": embedding_str, "tenant_id": tenant_id, "workspace_id": getattr(dto, "workspace_id", None), "top_n": top_n * 3},
         )
         node_rows = nodes_result.fetchall() or []
 
@@ -193,8 +193,8 @@ class RecommendationService:
         )
         return row_result.fetchone()
 
-    async def get_trending(self, limit: int, tenant_id: str | None, db):
-        params: dict[str, Any] = {"limit": limit}
+    async def get_trending(self, limit: int, tenant_id: str | None, db, workspace_id: str | None = None):
+        params: dict[str, Any] = {"limit": limit, "workspace_id": workspace_id}
 
         tenant_clause = ""
         if tenant_id:
@@ -206,7 +206,7 @@ class RecommendationService:
                 SELECT id::text AS item_id, 'memory' AS item_type, title,
                        summary, metadata, COALESCE((metadata->>'usageCount')::int, 0) AS usage_count
                 FROM memories
-                WHERE status != 'deleted' {tenant_clause}
+                WHERE status != 'deleted' {tenant_clause} AND (workspace_id = :workspace_id OR :workspace_id IS NULL)
                 ORDER BY usage_count DESC
                 LIMIT :limit
             """),
@@ -220,7 +220,7 @@ class RecommendationService:
                        description AS summary, properties AS metadata,
                        COALESCE((properties->>'usageCount')::int, 0) AS usage_count
                 FROM knowledge_nodes
-                WHERE 1=1 {tenant_clause}
+                WHERE 1=1 {tenant_clause} AND (workspace_id = :workspace_id OR :workspace_id IS NULL)
                 ORDER BY usage_count DESC
                 LIMIT :limit
             """),

@@ -59,7 +59,7 @@ class KnowledgeGraphService:
             enriched.append(ns)
         return enriched
 
-    async def create_node(self, dto, tenant_id: str | None, db):
+    async def create_node(self, dto, tenant_id: str | None, db, workspace_id: str | None = None):
         node_id = uuid.uuid4()
         label = dto.label
         node_type = dto.type.value
@@ -74,9 +74,9 @@ class KnowledgeGraphService:
 
         result = await db.execute(
             text("""
-                INSERT INTO knowledge_nodes (id, label, type, description, importance, embedding, properties, tenant_id)
-                VALUES (:id, :label, :type, :description, :importance, :embedding, :properties, :tenant_id)
-                RETURNING id, label, type, description, importance, properties, tenant_id, created_at, updated_at
+                INSERT INTO knowledge_nodes (id, label, type, description, importance, embedding, properties, tenant_id, workspace_id)
+                VALUES (:id, :label, :type, :description, :importance, :embedding, :properties, :tenant_id, :workspace_id)
+                RETURNING id, label, type, description, importance, properties, tenant_id, workspace_id, created_at, updated_at
             """),
             {
                 "id": node_id,
@@ -87,6 +87,7 @@ class KnowledgeGraphService:
                 "embedding": embedding_str,
                 "properties": properties,
                 "tenant_id": effective_tenant,
+                "workspace_id": workspace_id,
             },
         )
         row = result.fetchone()
@@ -104,6 +105,7 @@ class KnowledgeGraphService:
         sort_order: str | None,
         tenant_id: str | None,
         db,
+        workspace_id: str | None = None,
     ):
         conditions = []
         params: dict[str, Any] = {}
@@ -111,6 +113,10 @@ class KnowledgeGraphService:
         if tenant_id:
             conditions.append("n.tenant_id = :tenant_id")
             params["tenant_id"] = tenant_id
+
+        if workspace_id:
+            conditions.append("n.workspace_id = :workspace_id")
+            params["workspace_id"] = workspace_id
 
         if type_filter:
             conditions.append("n.type = :type_filter")
@@ -148,7 +154,7 @@ class KnowledgeGraphService:
         result = await db.execute(
             text(f"""
                 SELECT n.id, n.label, n.type, n.description, n.importance,
-                       n.properties, n.tenant_id, n.created_at, n.updated_at
+                       n.properties, n.tenant_id, n.workspace_id, n.created_at, n.updated_at
                 FROM knowledge_nodes n
                 WHERE {where_clause}
                 ORDER BY n.{order_column} {order_dir}
@@ -159,17 +165,18 @@ class KnowledgeGraphService:
         rows = result.fetchall()
         return self._fix_rows(rows), total
 
-    async def get_node(self, node_id: uuid.UUID, db):
+    async def get_node(self, node_id: uuid.UUID, db, workspace_id: str | None = None):
         result = await db.execute(
             text("""
                 SELECT n.id, n.label, n.type, n.description, n.importance,
-                       n.properties, n.tenant_id, n.created_at, n.updated_at,
+                       n.properties, n.tenant_id, n.workspace_id, n.created_at, n.updated_at,
                        (SELECT COUNT(*) FROM knowledge_edges
                         WHERE source_id = n.id OR target_id = n.id) AS edge_count
                 FROM knowledge_nodes n
                 WHERE n.id = :node_id
+                  AND (n.workspace_id = :workspace_id OR :workspace_id IS NULL)
             """),
-            {"node_id": node_id},
+            {"node_id": node_id, "workspace_id": workspace_id},
         )
         return self._fix_row(result.fetchone())
 
@@ -232,13 +239,13 @@ class KnowledgeGraphService:
         )
         return result.fetchone()
 
-    async def create_edge(self, source_id: uuid.UUID, dto, db):
-        source = await self.get_node(source_id, db)
+    async def create_edge(self, source_id: uuid.UUID, dto, db, workspace_id: str | None = None):
+        source = await self.get_node(source_id, db, workspace_id)
         if not source:
             return None
 
         target_uuid = uuid.UUID(dto.target_id) if isinstance(dto.target_id, str) else dto.target_id
-        target = await self.get_node(target_uuid, db)
+        target = await self.get_node(target_uuid, db, workspace_id)
         if not target:
             return None
 
@@ -258,9 +265,9 @@ class KnowledgeGraphService:
 
         result = await db.execute(
             text("""
-                INSERT INTO knowledge_edges (id, source_id, target_id, relationship, weight, properties)
-                VALUES (:id, :source_id, :target_id, :relationship, :weight, :properties)
-                RETURNING id, source_id, target_id, relationship, weight, properties, created_at
+                INSERT INTO knowledge_edges (id, source_id, target_id, relationship, weight, properties, workspace_id)
+                VALUES (:id, :source_id, :target_id, :relationship, :weight, :properties, :workspace_id)
+                RETURNING id, source_id, target_id, relationship, weight, properties, workspace_id, created_at
             """),
             {
                 "id": edge_id,
@@ -269,6 +276,7 @@ class KnowledgeGraphService:
                 "relationship": dto.relationship,
                 "weight": weight,
                 "properties": properties,
+                "workspace_id": workspace_id,
             },
         )
         return self._fix_row(result.fetchone())
@@ -302,7 +310,7 @@ class KnowledgeGraphService:
         )
         return enriched, total
 
-    async def list_all_edges(self, page: int, page_size: int, relationship: str | None, db, tenant_id: str | None = None):
+    async def list_all_edges(self, page: int, page_size: int, relationship: str | None, db, tenant_id: str | None = None, workspace_id: str | None = None):
         offset = (page - 1) * page_size
         params: dict[str, Any] = {"limit": page_size, "offset_val": offset}
 
@@ -313,6 +321,9 @@ class KnowledgeGraphService:
         if tenant_id:
             conditions.append("src.tenant_id = :tenant_id")
             params["tenant_id"] = tenant_id
+        if workspace_id:
+            conditions.append("src.workspace_id = :workspace_id")
+            params["workspace_id"] = workspace_id
 
         where_clause = ""
         if conditions:
@@ -348,7 +359,7 @@ class KnowledgeGraphService:
         )
         return result.fetchone()
 
-    async def traverse(self, start_id: uuid.UUID, depth: int, mode: str, db):
+    async def traverse(self, start_id: uuid.UUID, depth: int, mode: str, db, workspace_id: str | None = None):
         from collections import deque
 
         visited = {start_id}
@@ -362,7 +373,7 @@ class KnowledgeGraphService:
             else:
                 current_id, lvl = queue.pop()
 
-            row = await self.get_node(current_id, db)
+            row = await self.get_node(current_id, db, workspace_id)
             if row:
                 result.append(row)
 
@@ -382,11 +393,11 @@ class KnowledgeGraphService:
 
         return result
 
-    async def find_shortest_path(self, from_id: uuid.UUID, to_id: uuid.UUID, max_depth: int, db):
+    async def find_shortest_path(self, from_id: uuid.UUID, to_id: uuid.UUID, max_depth: int, db, workspace_id: str | None = None):
         from collections import deque
 
         if from_id == to_id:
-            node = await self.get_node(from_id, db)
+            node = await self.get_node(from_id, db, workspace_id)
             return [node] if node else [], 0
 
         visited = {from_id}
@@ -425,7 +436,7 @@ class KnowledgeGraphService:
 
         nodes = []
         for pid in path_ids:
-            node = await self.get_node(pid, db)
+            node = await self.get_node(pid, db, workspace_id)
             if node:
                 nodes.append(node)
 

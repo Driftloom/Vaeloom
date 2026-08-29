@@ -401,7 +401,7 @@ async def _populate_graph_memory(
                     properties={"source_document_id": document_id, "chunk_count": len(chunks), "kind": "document_hub"},
                     tenant_id=workspace_id,
                 )
-                doc_row = await kg_service.create_node(doc_dto, tenant_id=workspace_id, db=session)
+                doc_row = await kg_service.create_node(doc_dto, tenant_id=workspace_id, db=session, workspace_id=workspace_id)
                 if doc_row:
                     doc_node_id = str(doc_row._mapping["id"])
             except Exception as e:
@@ -427,7 +427,7 @@ async def _populate_graph_memory(
                         properties={"aliases": ent.aliases, "source_document_id": document_id, "entity_type": ent.entity_type},
                         tenant_id=workspace_id,
                     )
-                    row = await kg_service.create_node(dto, tenant_id=workspace_id, db=session)
+                    row = await kg_service.create_node(dto, tenant_id=workspace_id, db=session, workspace_id=workspace_id)
                     if row:
                         label_to_node_id[ent.name.lower()] = str(row._mapping["id"])
                 except Exception as e:
@@ -443,7 +443,7 @@ async def _populate_graph_memory(
                         from api.schemas.knowledge_graph import CreateEdgeRequest as _EdgeReq
 
                         edge_dto = _EdgeReq(target_id=nid, relationship="contains", weight=0.8, properties={"source_document_id": document_id})
-                        await kg_service.create_edge(_UUID_DOC(doc_node_id), edge_dto, session)
+                        await kg_service.create_edge(_UUID_DOC(doc_node_id), edge_dto, session, workspace_id=workspace_id)
                     except Exception:
                         continue
 
@@ -460,7 +460,7 @@ async def _populate_graph_memory(
                         edge_dto = CreateEdgeRequest(
                             target_id=to_id, relationship=rel.relation_type, weight=max(0.1, min(1.0, rel.confidence)), properties={"source_document_id": document_id}
                         )
-                        await kg_service.create_edge(_UUID(from_id), edge_dto, session)
+                        await kg_service.create_edge(_UUID(from_id), edge_dto, session, workspace_id=workspace_id)
                     except Exception as e:
                         logger.debug("KG edge mirror failed %s->%s: %s", rel.from_entity, rel.to_entity, e)
                         continue
