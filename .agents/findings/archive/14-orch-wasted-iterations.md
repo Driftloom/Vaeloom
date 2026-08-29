@@ -4,7 +4,7 @@
 | ------------ | ----------------------------------------------- |
 | **ID**       | FIND-ORCH-005                                   |
 | **Severity** | P3-LOW                                          |
-| **Status**   | OPEN                                            |
+| **Status**   | RESOLVED                                        |
 | **Source**   | Orchestrator Loop Audit                         |
 | **File**     | `apps/api/src/api/orchestrator/loop.py:217-218` |
 

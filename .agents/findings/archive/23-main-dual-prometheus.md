@@ -4,7 +4,7 @@
 | ------------ | ---------------------------------- |
 | **ID**       | FIND-MAIN-004                      |
 | **Severity** | P2-MEDIUM                          |
-| **Status**   | OPEN                               |
+| **Status**   | RESOLVED                           |
 | **Source**   | main.py Audit                      |
 | **File**     | `apps/api/src/api/main.py:152-153` |
 

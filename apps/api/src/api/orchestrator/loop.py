@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from datetime import UTC
 from typing import Any
 
@@ -669,8 +670,11 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
         return agent.execute(profile)
 
     if agent_type == "ATSAgent":
-        parts = message.split(" vs ", 1) if " vs " in message.lower() else (message, "")
-        return agent.score(parts[0].strip(), parts[1].strip() if len(parts) > 1 else "")
+        # Case-insensitive split on "vs"/"vs." so "Resume A VS Resume B" works (FINDING-011)
+        parts = re.split(r"\s+vs\.?\s+", message, maxsplit=1, flags=re.IGNORECASE)
+        if len(parts) == 2:
+            return agent.score(parts[0].strip(), parts[1].strip())
+        return agent.score(message.strip(), "")
 
     if agent_type == "JobSearchAgent":
         return agent.search(keywords=keywords, user_skills=keywords, rejected_job_ids=[])

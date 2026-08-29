@@ -10,8 +10,9 @@ from prometheus_fastapi_instrumentator import Instrumentator
 # ── P1-37: pfi 7.1.0 crashes on FastAPI 0.141 _IncludedRouter (no .path) —
 # every request 500s. Upstream fixed in pfi 8.0.1 (2026-06-22) but 8.x
 # requires starlette>=1.0 which conflicts with pinned starlette==0.50.0 +
-# FastAPI 0.141. Patch the helper defensively until the coordinated
-# FastAPI/starlette/pfi upgrade lands.
+# FastAPI 0.141. The coordinated framework upgrade is intentionally
+# deferred, so this monkey-patch is the accepted resolution (no request
+# 500s; included routers are labeled "unknown").
 try:
     import prometheus_fastapi_instrumentator.routing as _pfi_routing
 
@@ -72,7 +73,7 @@ from .infrastructure.logging import (
     get_logger,
     setup_logging,
 )
-from .infrastructure.metrics import MetricsMiddleware
+
 from .infrastructure.opentelemetry import instrumement_fastapi, setup_opentelemetry
 from .middleware.api_version import APIVersionMiddleware
 from .middleware.auth import AuthMiddleware
@@ -266,7 +267,7 @@ app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(APIVersionMiddleware)
 app.add_middleware(PromptInjectionMiddleware)
 app.add_middleware(IdempotencyMiddleware)
-app.add_middleware(MetricsMiddleware)
+
 # IP allowlist always mounted (ADR-031) — no-op when empty, enforce when configured
 app.add_middleware(IPAllowlistMiddleware, allowlist_raw=settings.ip_allowlist or "")
 # CORS must be outermost (last added) so OPTIONS preflight is handled first
@@ -310,42 +311,50 @@ except Exception as e:
     logger.warning("OTel FastAPI instrumentation failed to load: %s", e)
 
 
-app.include_router(encryption_router, prefix="/api/v1", tags=["security"])
-app.include_router(health.router, prefix="/health", tags=["health"])
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-app.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["workspaces"])
-app.include_router(memory.router, prefix="/api/v1/memories", tags=["memory"])
-app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
-app.include_router(events.router, prefix="/api/v1/events", tags=["events"])
-app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
-app.include_router(integrations.router, prefix="/api/v1/integrations", tags=["integrations"])
-app.include_router(documents.router, prefix="/api/v1/documents", tags=["documents"])
-app.include_router(resumes.router, prefix="/api/v1/resumes", tags=["resumes"])
-app.include_router(applications.router, prefix="/api/v1/workspaces/{workspace_id}/applications", tags=["applications"])
-app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
-app.include_router(connectors.router, prefix="/api/v1/connectors", tags=["connectors"])
-app.include_router(scheduler.router, prefix="/api/v1/scheduler", tags=["scheduler"])
-app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
-app.include_router(knowledge_graph.router, prefix="/api/v1/knowledge-graph", tags=["knowledge-graph"])
-app.include_router(gdpr_router, prefix="/api/v1", tags=["gdpr"])
-app.include_router(consent_router, prefix="/api/v1", tags=["consent"])
-app.include_router(approval_router, prefix="/api/v1", tags=["approvals"])
-app.include_router(agent_costs_router, prefix="/api/v1", tags=["agents"])
-app.include_router(gmail.router, prefix="/api/v1", tags=["gmail"])
-app.include_router(provider_keys.router, prefix="/api/v1/provider-keys", tags=["provider-keys"])
-app.include_router(temporal_router.router, prefix="/api/v1/temporal", tags=["temporal"])
+def _safe_include(router, prefix, tags):
+    # FINDING-024: a single misbehaving router must not abort application boot.
+    try:
+        app.include_router(router, prefix=prefix, tags=tags)
+    except Exception as exc:  # pragma: no cover - boot resilience
+        logger.warning("Skipping router %s (%s) due to error: %s", tags, prefix, exc)
+
+
+_safe_include(encryption_router, "/api/v1", ["security"])
+_safe_include(health.router, "/health", ["health"])
+_safe_include(auth.router, "/api/v1/auth", ["auth"])
+_safe_include(workspaces.router, "/api/v1/workspaces", ["workspaces"])
+_safe_include(memory.router, "/api/v1/memories", ["memory"])
+_safe_include(agents.router, "/api/v1/agents", ["agents"])
+_safe_include(events.router, "/api/v1/events", ["events"])
+_safe_include(search.router, "/api/v1/search", ["search"])
+_safe_include(integrations.router, "/api/v1/integrations", ["integrations"])
+_safe_include(documents.router, "/api/v1/documents", ["documents"])
+_safe_include(resumes.router, "/api/v1/resumes", ["resumes"])
+_safe_include(applications.router, "/api/v1/workspaces/{workspace_id}/applications", ["applications"])
+_safe_include(notifications.router, "/api/v1/notifications", ["notifications"])
+_safe_include(connectors.router, "/api/v1/connectors", ["connectors"])
+_safe_include(scheduler.router, "/api/v1/scheduler", ["scheduler"])
+_safe_include(chat.router, "/api/v1/chat", ["chat"])
+_safe_include(knowledge_graph.router, "/api/v1/knowledge-graph", ["knowledge-graph"])
+_safe_include(gdpr_router, "/api/v1", ["gdpr"])
+_safe_include(consent_router, "/api/v1", ["consent"])
+_safe_include(approval_router, "/api/v1", ["approvals"])
+_safe_include(agent_costs_router, "/api/v1", ["agents"])
+_safe_include(gmail.router, "/api/v1", ["gmail"])
+_safe_include(provider_keys.router, "/api/v1/provider-keys", ["provider-keys"])
+_safe_include(temporal_router.router, "/api/v1/temporal", ["temporal"])
 
 # ── Enterprise routes (CF-06 / R6) ──────────────────────────────────
 # Out of MVP scope. Mounted only when explicitly enabled via
 # `enterprise_routes_enabled=true` (default off in MVP builds).
 if settings.enterprise_routes_enabled:
-    app.include_router(billing.router, prefix="/api/v1/billing", tags=["billing"])
-    app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
-    app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
-    app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
-    app.include_router(iam.router, prefix="/api/v1/iam", tags=["iam"])
-    app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["recommendations"])
-    app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
-    app.include_router(admin_console.router, prefix="", tags=["admin"])
-    app.include_router(scim_router, prefix="/scim", tags=["scim"])
-    app.include_router(feature_flags.router, prefix="/api/v1/feature-flags", tags=["feature-flags"])
+    _safe_include(billing.router, "/api/v1/billing", ["billing"])
+    _safe_include(plugins.router, "/api/v1/plugins", ["plugins"])
+    _safe_include(analytics.router, "/api/v1/analytics", ["analytics"])
+    _safe_include(audit.router, "/api/v1/audit", ["audit"])
+    _safe_include(iam.router, "/api/v1/iam", ["iam"])
+    _safe_include(recommendations.router, "/api/v1/recommendations", ["recommendations"])
+    _safe_include(webhooks.router, "/api/v1/webhooks", ["webhooks"])
+    _safe_include(admin_console.router, "", ["admin"])
+    _safe_include(scim_router, "/scim", ["scim"])
+    _safe_include(feature_flags.router, "/api/v1/feature-flags", ["feature-flags"])

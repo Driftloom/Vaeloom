@@ -4,7 +4,7 @@
 | ------------------ | ----------- |
 | **ID**             | FINDING-005 |
 | **Severity**       | P1-HIGH     |
-| **Status**         | OPEN        |
+| **Status**         | PARTIAL     |
 | **Date**           | 2026-08-16  |
 | **Assigned Phase** | P16         |
 | **Owner**          | DevOps Team |

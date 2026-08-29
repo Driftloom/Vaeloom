@@ -226,7 +226,7 @@ async def classify_intent(message: str) -> tuple[str, float]:
     return agents_in_category[0], confidence
 
 
-# ── MVP scope lock (INT-02 §2.2): 8 canonical agents ────────────────
+# ── MVP scope lock (INT-02 §2.2): 10 canonical agents ───────────────
 # Orchestrator + Organization, Memory, Resume, ATS, Job Search &
 # Application, Gmail, Scheduler. All other repo agents (career, learning,
 # research, github, coding, reminder, analytics, recommendation,
@@ -236,7 +236,6 @@ async def classify_intent(message: str) -> tuple[str, float]:
 MVP_CANONICAL_AGENTS = frozenset({
     "organization", "memory", "resume", "ats", "job_search",
     "application", "gmail", "scheduler", "planning", "research",
-    "connector",
 })
 
 # Categories that map only to canonical agents
@@ -248,7 +247,6 @@ MVP_CATEGORY_AGENT_MAP = {
     "schedule_time": ["scheduler"],
     "memory_extraction": ["memory"],
     "planning_research": ["planning", "research"],
-    "integrations": ["connector"],
 }
 
 

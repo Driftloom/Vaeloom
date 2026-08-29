@@ -4,7 +4,7 @@
 | ------------ | ------------------------------------------- |
 | **ID**       | FIND-ORCH-001                               |
 | **Severity** | P1-HIGH                                     |
-| **Status**   | OPEN                                        |
+| **Status**   | PARTIAL                                     |
 | **Source**   | Orchestrator Loop Audit                     |
 | **File**     | `apps/api/src/api/orchestrator/loop.py:119` |
 

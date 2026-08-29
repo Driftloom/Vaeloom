@@ -4,7 +4,7 @@
 | ------------ | ------------------------------------------- |
 | **ID**       | FIND-ORCH-002                               |
 | **Severity** | P2-MEDIUM                                   |
-| **Status**   | OPEN                                        |
+| **Status**   | RESOLVED                                    |
 | **Source**   | Orchestrator Loop Audit                     |
 | **File**     | `apps/api/src/api/orchestrator/loop.py:139` |
 

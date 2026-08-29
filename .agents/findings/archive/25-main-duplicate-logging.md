@@ -4,7 +4,7 @@
 | ------------ | ---------------------------------------------------------- |
 | **ID**       | FIND-MAIN-006                                              |
 | **Severity** | P3-LOW                                                     |
-| **Status**   | OPEN                                                       |
+| **Status**   | RESOLVED                                                   |
 | **Source**   | main.py Audit                                              |
 | **Files**    | `src/api/logging.py` + `src/api/infrastructure/logging.py` |
 
