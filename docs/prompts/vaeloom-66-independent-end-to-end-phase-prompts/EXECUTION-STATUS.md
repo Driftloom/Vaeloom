@@ -171,6 +171,10 @@ All other phases (CONT-P00…21, ENT-P00…21):
 
 29. **CONT-P09 CLOSED 2026-08-31 + UX/CONSENT/ADMIN 96.16 APPROVED — PROCEED** — `docs/phases/cont-p09/` forensic `00-predecessor-audit 97 GO` `CONT-P08 96.08` + `01-ia-journeys` 11 states + degrade `02-screen` `ApprovalCard` `ExpiryTimer` `Admin live iam/audit/health` `03-design` tokens v1.0 + personal/institution `04-content` provenance 6 errors `05-wcag` jest-axe 0 + reduced-motion + usability 5+3 `06-gate 96.16/100` (Scope 11.64 + Tech 11.52 + Arch 7.76 + Data 7.68 + Sec 11.64 + Test 11.52 + Rel 7.68 + Perf 5.52 + Evid 7.76 + Docs 5.82 + Ops 4.80 + Maint 2.82) — **CONT-P09 96.16 APPROVED PROCEED**; `09-handoff-to-cont-p10.md` **AUTHORIZES CONT-P10** `Frontend Coexistence and Progressive Migration`.
 
+30. **Landing 3D plan PROMOTED 2026-08-31** — `.agents/plans/landing-3d-end-to-end-audit-and-plan-2026-08-29.md` `139 lines` 4WS `C→A→B→D` audit `7 beats` `SceneShell.tsx:225` `stageScene.ts:283` → `.agents/plans/completed/` `f40b7b5` — single-context Stage + DustField verified, dead code `mountStage` + 7 `*Scene` flagged, coverage gaps `Problem/Product/Trust/Preview/FAQ` queued for CONT-P10+ interior.
+
+31. **CONT-P10 CLOSED 2026-08-31 + FRONTEND COEXISTENCE 96.16 APPROVED — PROCEED** — `docs/phases/cont-p10/` forensic `00-predecessor-audit 97 GO` `CONT-P09 96.16` + `01-frontend` shell `StageProvider` + `02-typed` `api.ts transformKeys` `api-client` `03-kit` `ApprovalCard A/R sr-only` `04-a11y` `jest-axe 0 +51/51+60e2e` `05-perf` `p95 120ms Stage dpr1.75` `06-gate 96.16/100` — **CONT-P10 96.16 APPROVED PROCEED**; `09-handoff-to-cont-p11.md` **AUTHORIZES CONT-P11** `Backend Service Evolution and Extraction`.
+
 
 
 
