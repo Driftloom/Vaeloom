@@ -169,6 +169,8 @@ All other phases (CONT-P00…21, ENT-P00…21):
 
 28. **2026-08-30 — F-40 parser gap CLOSED** — `apps/api/src/api/ingestion/parsers.py` unified whitelist 17 entries (pdf/md/markdown/docx/doc/txt/csv/xlsx/xls/pptx/ppt/jpg/jpeg/png/gif/webp/svg) + `TXTParser` `CSVParser` `XLSXParser` (openpyxl) `PPTXParser` (python-pptx) + OCR `image_to_data` mean confidence 0-1 + `apps/api/pyproject.toml` +openpyxl/python-pptx; `apps/api/tests/test_ingestion.py` 31 passed + `test_documents` 20 passed (`51/51`); `test-data/` corpus 318 manifest + `AUDIT-E2E-2026-08-30.md` `21/21 EXT OK` + `DATA-MANIFEST.json` — ingestion FR-06 Must now covered (`pdf/docx/pptx/xlsx/csv/txt/md/png/jpeg/gif/webp/svg`). Evidence: `.agents/findings/40-ingestion-parser-gap.md`.
 
+29. **CONT-P09 CLOSED 2026-08-31 + UX/CONSENT/ADMIN 96.16 APPROVED — PROCEED** — `docs/phases/cont-p09/` forensic `00-predecessor-audit 97 GO` `CONT-P08 96.08` + `01-ia-journeys` 11 states + degrade `02-screen` `ApprovalCard` `ExpiryTimer` `Admin live iam/audit/health` `03-design` tokens v1.0 + personal/institution `04-content` provenance 6 errors `05-wcag` jest-axe 0 + reduced-motion + usability 5+3 `06-gate 96.16/100` (Scope 11.64 + Tech 11.52 + Arch 7.76 + Data 7.68 + Sec 11.64 + Test 11.52 + Rel 7.68 + Perf 5.52 + Evid 7.76 + Docs 5.82 + Ops 4.80 + Maint 2.82) — **CONT-P09 96.16 APPROVED PROCEED**; `09-handoff-to-cont-p10.md` **AUTHORIZES CONT-P10** `Frontend Coexistence and Progressive Migration`.
+
 
 
 
