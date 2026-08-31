@@ -1,0 +1,7 @@
+[
+  {"id": "r1", "query": "senior engineer resume", "expected_doc_contains": "resume", "agent": "resume"},
+  {"id": "r2", "query": "organize my files", "expected_agent": "organization"},
+  {"id": "r3", "query": "search jobs for python engineer", "expected_tool": "search_jobs_board"},
+  {"id": "r4", "query": "gmail inbox deadlines", "expected_agent": "gmail"},
+  {"id": "r5", "query": "draft application for linear pm role", "expected_agent": "application", "approval_gated": true}
+]

@@ -317,6 +317,31 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
             except Exception as e:
                 logger.warning(f"RAG preference lookup failed: {e}")
 
+        # ── P1: ranking re-rank (weighted relevance+recency+importance) when we have enough candidates
+        # Over-fetch 20 LIKE candidates → score → keep top 8. Vector path already scored via distance.
+        try:
+            if (len(entities) >= 10 or len(documents) >= 10) or (entities or documents):
+                from ..services.search_ranking import search_ranking_service
+
+                # Convert to ranking service format without extra DB round-trips
+                all_cands: list[dict] = []
+                for e in entities:
+                    all_cands.append({"id": e["id"], "text": e["name"], "source": "entity", "metadata": {"importance": 0.5}, "score": 1.0})
+                for d in documents:
+                    all_cands.append({"id": d["id"], "text": d["path"], "source": "document", "metadata": {"summary": d["summary"], "created_at": None}, "score": 1.0})
+                if all_cands:
+                    ranked = search_ranking_service.rank_results(all_cands, query)
+                    # Re-build truncated lists preserving order via rank
+                    ent_ids = {r["id"] for r in ranked if r["source"] == "entity"}
+                    doc_ids = {r["id"] for r in ranked if r["source"] == "document"}
+                    # Keep original dicts but ordered by rank
+                    ent_order = {cid: i for i, cid in enumerate([r["id"] for r in ranked if r["source"] == "entity"])}
+                    doc_order = {cid: i for i, cid in enumerate([r["id"] for r in ranked if r["source"] == "document"])}
+                    entities.sort(key=lambda e: ent_order.get(e["id"], 999))
+                    documents.sort(key=lambda d: doc_order.get(d["id"], 999))
+        except Exception as _rank_err:
+            logger.debug(f"RAG ranking re-rank skipped: {_rank_err}")
+
         # Truncate
         try:
             from ..infrastructure.agent_observability import record_rag_latency

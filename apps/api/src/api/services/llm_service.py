@@ -199,11 +199,22 @@ class LLMService:
         else:
             result = await self._anthropic_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key)
 
-        # Track cost
+        # Track cost — also thread task_type routing hint (MODEL-001)
         latency_ms = (time.monotonic() - start) * 1000
         usage = result.get("usage", {})
         input_tokens = usage.get("prompt_tokens", usage.get("input_tokens", 0))
         output_tokens = usage.get("completion_tokens", usage.get("output_tokens", 0))
+        # If caller passed task_type != general, log routing tier for observability
+        try:
+            from .model_router import TASK_MODEL_MAP
+
+            tier = TASK_MODEL_MAP.get(task_type)
+            if tier and task_type != "general":
+                import logging as _lg
+
+                _lg.getLogger(__name__).debug(f"LLM route task_type={task_type}→tier={tier} model={effective_model}")
+        except Exception:
+            pass
         model_config = MODEL_CATALOG.get(model or self.model)
         if model_config:
             model_router.record_usage(
@@ -214,6 +225,15 @@ class LLMService:
                 output_tokens=output_tokens,
                 latency_ms=latency_ms,
             )
+        # Record prompt caching tokens if provider returned cached_tokens
+        try:
+            cached = usage.get("cached_tokens", usage.get("prompt_tokens_details", {}).get("cached_tokens", 0)) if isinstance(usage.get("prompt_tokens_details"), dict) else usage.get("cached_tokens", 0)
+            if cached:
+                import logging as _lg
+
+                _lg.getLogger(__name__).info(f"LLM cache hit task={task_type} cached={cached} total_in={input_tokens}")
+        except Exception:
+            pass
 
         return result
 

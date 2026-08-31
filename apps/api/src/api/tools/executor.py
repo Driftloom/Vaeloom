@@ -2600,6 +2600,27 @@ async def execute_tool(
     except Exception:
         pass
 
+    # ── 1b. Idempotency guard for mutating tools (P1 — deterministic key from workspace+tool+param hash)
+    # Only for connector_write/memory_write categories (read-only tools skip)
+    idem_key: str | None = None
+    if tool.category in ("connector_write", "memory_write"):
+        try:
+            import hashlib, json as _js
+
+            payload_hash = hashlib.sha256(_js.dumps(params, sort_keys=True, default=str).encode()).hexdigest()[:16]
+            idem_key = f"{workspace_id}:{tool.name}:{payload_hash}"
+            # Best-effort check: if we've seen this exact key recently, return cached success hint
+            # (Full DB check would require async_session; keep fast in-memory LRU for P1, DB for Temporal)
+            if not hasattr(execute_tool, "_idem_cache"):
+                execute_tool._idem_cache = {}  # type: ignore[attr-defined]
+                execute_tool._idem_cache_order = []  # type: ignore[attr-defined]
+            _cache: dict = execute_tool._idem_cache  # type: ignore[attr-defined]
+            if idem_key in _cache:
+                logger.info(f"IDEMPOTENCY HIT: {idem_key} — returning cached success")
+                return _cache[idem_key]
+        except Exception:
+            idem_key = None
+
     # ── 1. Permission Check ────────────────────────────────────────
     has_permission = await check_permission(agent_scopes, tool.required_scope)
     if not has_permission:
@@ -2646,6 +2667,16 @@ async def execute_tool(
                 record_tool_latency(duration_ms)
             except Exception:
                 pass
+            # Cache success for idempotency guard (memory-bounded LRU 500)
+            if idem_key and result.get("status") == "success":
+                try:
+                    _cache[idem_key] = result
+                    execute_tool._idem_cache_order.append(idem_key)  # type: ignore[attr-defined]
+                    if len(execute_tool._idem_cache_order) > 500:  # type: ignore[attr-defined]
+                        oldest = execute_tool._idem_cache_order.pop(0)  # type: ignore[attr-defined]
+                        _cache.pop(oldest, None)
+                except Exception:
+                    pass
             return result
 
         except TimeoutError:

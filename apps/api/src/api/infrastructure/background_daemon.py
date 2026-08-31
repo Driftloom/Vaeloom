@@ -580,6 +580,20 @@ WATCHER_REGISTRY = {
 }
 
 
+async def reflection_scan_wrapper() -> int:
+    """03:00 UTC reflection watcher — nightly memory consolidation (P1, best-effort)."""
+    try:
+        from .reflection_scheduler import reflection_scan
+
+        return await reflection_scan()
+    except Exception as e:
+        logger.debug(f"reflection wrapper failed: {e}")
+        return 0
+
+
+WATCHER_REGISTRY["reflection"] = reflection_scan_wrapper
+
+
 async def _dispatch_daily_watcher(name: str, hour_utc: int, now: datetime) -> int:
     """Gate a daily watcher to its UTC hour, route via durable queue when possible."""
     if not (now.hour == hour_utc and now.minute == 0):
@@ -615,6 +629,11 @@ async def _run_calendar_monitor(now: datetime) -> int:
 async def _run_job_finder(now: datetime) -> int:
     """02:00 UTC nightly: run JobSearch for active workspaces (tenant-scoped)."""
     return await _dispatch_daily_watcher("job_finder", 2, now)
+
+
+async def _run_reflection(now: datetime) -> int:
+    """03:00 UTC nightly: memory consolidation + preference learning (P1)."""
+    return await _dispatch_daily_watcher("reflection", 3, now)
 
 
 # ── Missed-run catch-up ─────────────────────────────────────────────
@@ -718,6 +737,7 @@ async def _daemon_tick(now: datetime) -> None:
             _run_gmail_watcher(now),
             _run_calendar_monitor(now),
             _run_job_finder(now),
+            _run_reflection(now),
             return_exceptions=True,
         )
         # Log exceptions if any poller raised
