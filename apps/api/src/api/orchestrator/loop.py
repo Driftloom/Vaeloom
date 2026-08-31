@@ -288,20 +288,51 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
                     logger.warning(f"RAG graph lookup failed: {e}")
 
             # ── Documents matching keywords (LIKE fallback or supplement) ──
+            # P1b: try Postgres tsvector BM25 rank first (true hybrid), fall back to LIKE on SQLite
             if not vector_done or len(documents) < 4:
+                tsv_tried = False
                 try:
-                    for kw in keywords[:3]:
-                        stmt = select(Document).where(Document.workspace_id == workspace_id).where(
-                            or_(Document.path.ilike(f"%{kw}%"), Document.summary.ilike(f"%{kw}%"))
-                        ).limit(5)
-                        res = await session.execute(stmt)
-                        for doc in res.scalars().all():
-                            if not any(d["id"] == str(doc.id) for d in documents):
-                                documents.append({"id": str(doc.id), "path": doc.path, "summary": (doc.summary or "")[:300]})
-                        if len(documents) >= 10:
-                            break
-                except Exception as e:
-                    logger.warning(f"RAG document lookup failed: {e}")
+                    from sqlalchemy import text as _ts_text
+
+                    # Only attempt tsvector when not SQLite (pgvector path implies Postgres)
+                    if "postgres" in _os.environ.get("DATABASE__URL", "").lower() if "_os" in locals() else False:
+                        # Requires docs to have tsv column via migration 0042 or fallback plainto_tsquery on path+summary
+                        q = " ".join(keywords[:5])
+                        ts_res = await session.execute(
+                            _ts_text("""
+                                SELECT id, path, summary,
+                                       ts_rank(to_tsvector('english', coalesce(path,'') || ' ' || coalesce(summary,'')),
+                                               plainto_tsquery('english', :q)) AS rank
+                                FROM documents
+                                WHERE workspace_id = :wid
+                                  AND to_tsvector('english', coalesce(path,'') || ' ' || coalesce(summary,'')) @@ plainto_tsquery('english', :q)
+                                ORDER BY rank DESC LIMIT 8
+                            """),
+                            {"q": q, "wid": workspace_id},
+                        )
+                        for row in ts_res.fetchall():
+                            did = str(row[0])
+                            if not any(d["id"] == did for d in documents):
+                                documents.append({"id": did, "path": row[1], "summary": (row[2] or "")[:300]})
+                        tsv_tried = True
+                        if documents:
+                            logger.info(f"RAG tsvector: {len(documents)} docs via BM25 rank for q='{q[:40]}'")
+                except Exception as te:
+                    logger.debug(f"RAG tsvector skipped: {te}")
+                if not tsv_tried:
+                    try:
+                        for kw in keywords[:3]:
+                            stmt = select(Document).where(Document.workspace_id == workspace_id).where(
+                                or_(Document.path.ilike(f"%{kw}%"), Document.summary.ilike(f"%{kw}%"))
+                            ).limit(5)
+                            res = await session.execute(stmt)
+                            for doc in res.scalars().all():
+                                if not any(d["id"] == str(doc.id) for d in documents):
+                                    documents.append({"id": str(doc.id), "path": doc.path, "summary": (doc.summary or "")[:300]})
+                            if len(documents) >= 10:
+                                break
+                    except Exception as e:
+                        logger.warning(f"RAG document lookup failed: {e}")
 
             # ── Preferences / memory snippets ───────────────────────────
             try:

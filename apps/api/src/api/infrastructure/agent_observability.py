@@ -192,6 +192,104 @@ def get_latency_snapshots() -> dict:
     }
 
 
+# ── P1b: workspace/global concurrency semaphore (CONC-001)
+import asyncio as _asyncio
+
+
+class WorkspaceConcurrencyLimiter:
+    """Per-workspace + global semaphore to bound total in-flight agents (CONC-001).
+
+    Prevents fan-out explosions (100 parallel supervisor requests ×3 agents = 300)
+    from saturating PG pool (30). Limits are env-tunable.
+    """
+
+    def __init__(self, per_workspace: int = 10, global_limit: int = 50):
+        import os as _os
+
+        self._per_ws = int(_os.getenv("VAELOOM_WS_CONCURRENCY", str(per_workspace)))
+        self._global = int(_os.getenv("VAELOOM_GLOBAL_CONCURRENCY", str(global_limit)))
+        self._ws_sem: dict[str, _asyncio.Semaphore] = {}
+        self._global_sem = _asyncio.Semaphore(self._global)
+        self._lock = _asyncio.Lock()
+
+    async def acquire(self, workspace_id: str) -> bool:
+        # Try global first (non-blocking)
+        if self._global_sem.locked():
+            # Global at capacity — still try but with 0 wait (fail-fast, caller returns rate-limit)
+            try:
+                await _asyncio.wait_for(self._global_sem.acquire(), timeout=0.1)
+            except _asyncio.TimeoutError:
+                return False
+        else:
+            await self._global_sem.acquire()
+        async with self._lock:
+            sem = self._ws_sem.get(workspace_id)
+            if sem is None:
+                sem = self._ws_sem[workspace_id] = _asyncio.Semaphore(self._per_ws)
+        if sem.locked():
+            # Workspace at capacity — release global and fail fast
+            self._global_sem.release()
+            try:
+                await _asyncio.wait_for(sem.acquire(), timeout=0.1)
+            except _asyncio.TimeoutError:
+                return False
+            # Re-acquire global after ws slot
+            try:
+                await _asyncio.wait_for(self._global_sem.acquire(), timeout=0.1)
+            except _asyncio.TimeoutError:
+                sem.release()
+                return False
+            return True
+        else:
+            # Check workspace slot availability non-blocking
+            try:
+                await _asyncio.wait_for(sem.acquire(), timeout=0.1)
+            except _asyncio.TimeoutError:
+                self._global_sem.release()
+                return False
+            return True
+
+    def release(self, workspace_id: str) -> None:
+        try:
+            self._global_sem.release()
+        except ValueError:
+            pass
+        sem = self._ws_sem.get(workspace_id)
+        if sem:
+            try:
+                sem.release()
+            except ValueError:
+                pass
+
+    def snapshot(self) -> dict:
+        return {"per_workspace": self._per_ws, "global": self._global, "workspaces_tracked": len(self._ws_sem)}
+
+
+workspace_limiter = WorkspaceConcurrencyLimiter()
+
+# OTel helper — returns a tracer if opentelemetry is installed, else no-op context manager
+try:
+    from opentelemetry import trace as _trace
+
+    def get_agent_tracer():
+        return _trace.get_tracer("vaeloom.agent")
+
+    def agent_span(name: str, **attrs):
+        tracer = get_agent_tracer()
+        return tracer.start_as_current_span(name, attributes=attrs)
+
+except Exception:
+
+    import contextlib
+
+    def get_agent_tracer():
+        return None
+
+    @contextlib.contextmanager
+    def agent_span(name: str, **attrs):
+        yield None
+
+
 # Singletons
 metrics_collector = AgentMetricsCollector()
 kill_switch = AgentKillSwitch()

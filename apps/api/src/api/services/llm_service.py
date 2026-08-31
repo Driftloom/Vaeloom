@@ -187,6 +187,16 @@ class LLMService:
         api_key_override: str | None = None,
         provider_override: str | None = None,
     ) -> dict[str, Any]:
+        # ── P1b: auto-infer task_type from agent_name when caller left it as general
+        # This wires model routing without touching 22 handler call-sites (MODEL-001 full wiring)
+        if task_type == "general" and agent_name and agent_name != "unknown":
+            try:
+                from .model_router import AGENT_TASK_TYPE_MAP
+
+                task_type = AGENT_TASK_TYPE_MAP.get(agent_name.lower(), task_type)
+            except Exception:
+                pass
+
         start = time.monotonic()
         # Resolve BYOK key for this completion
         effective_model = model or self.model
@@ -277,8 +287,9 @@ class LLMService:
             "temperature": temperature,
             "messages": anthropic_messages,
         }
+        # P1b: cache stable system prompt (ephemeral ttl) — 75% input savings on repeated ReAct rounds
         if system:
-            body["system"] = system
+            body["system"] = [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
 
         key = api_key or self.api_key
         if not key:
@@ -287,6 +298,7 @@ class LLMService:
         headers = {
             "x-api-key": key,
             "anthropic-version": "2023-06-01",
+            "anthropic-beta": "prompt-caching-2024-07-31",
             "Content-Type": "application/json",
         }
 
