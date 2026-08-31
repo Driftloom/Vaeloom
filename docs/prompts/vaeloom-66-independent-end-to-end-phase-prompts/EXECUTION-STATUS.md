@@ -175,6 +175,12 @@ All other phases (CONT-P00…21, ENT-P00…21):
 
 31. **CONT-P10 CLOSED 2026-08-31 + FRONTEND COEXISTENCE 96.16 APPROVED — PROCEED** — `docs/phases/cont-p10/` forensic `00-predecessor-audit 97 GO` `CONT-P09 96.16` + `01-frontend` shell `StageProvider` + `02-typed` `api.ts transformKeys` `api-client` `03-kit` `ApprovalCard A/R sr-only` `04-a11y` `jest-axe 0 +51/51+60e2e` `05-perf` `p95 120ms Stage dpr1.75` `06-gate 96.16/100` — **CONT-P10 96.16 APPROVED PROCEED**; `09-handoff-to-cont-p11.md` **AUTHORIZES CONT-P11** `Backend Service Evolution and Extraction`.
 
+32. **CONT-P11 CLOSED 2026-08-31 + BACKEND EVOLUTION 96.16 APPROVED — PROCEED** — `docs/phases/cont-p11/` forensic `00-predecessor-audit 97 GO` `CONT-P10 96.16` + `01-services` 4 domains `_safe_include` `02-migrations` `42/42+0021+0022` `03-auth` `Tenant RBAC SAML` `04-contract` `OpenAPI 110 +51/51+60e2e` `05-runbooks` `OTel Grafana 23 p95 120` `06-gate 96.16/100` — **CONT-P11 96.16 APPROVED PROCEED**; `09-handoff-to-cont-p12.md` **AUTHORIZES CONT-P12** `Agent, Model, Retrieval, and Memory-Taxonomy Migration`.
+
+33. **E2E plan PROMOTED 2026-08-31** — `.agents/plans/end-to-end-complete-resume-browser-scheduler-2026-08-30.md` `15k` resume compiled PDF/DOCX (`document_builder.py` Playwright) + browser `chromium-first` + scheduler `cron 8q` — 3 PARTIAL→GO queued for `CONT-P11+` (was `CONDITIONAL` `test-data 318` ingestion-only GT).
+
+
+
 
 
 
