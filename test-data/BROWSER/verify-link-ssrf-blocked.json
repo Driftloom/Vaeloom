@@ -1,0 +1,11 @@
+{
+  "url": "http://192.168.1.1/internal",
+  "verdict": "blocked_ssrf",
+  "checks": {
+    "https": false,
+    "reason": "private_ip",
+    "global_ip_check": false
+  },
+  "retrieved_at": "2026-08-30T12:00:00Z",
+  "source": "synthetic (mirrors verify_application_link SSRF guard)"
+}

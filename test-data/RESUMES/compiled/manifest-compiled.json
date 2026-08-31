@@ -1,0 +1,52 @@
+[
+  {
+    "file": "persona-a-classic-harvard.docx",
+    "size": 37426,
+    "sha256": "b4580b8847944b2e418240adfef419589aceea4e4fc77cc7c803ea4c40cf87d0"
+  },
+  {
+    "file": "persona-a-classic-harvard.pdf",
+    "size": 93543,
+    "sha256": "223e719b2f4ac1d75b99423d927a438cd9ac6d869a5496629180bedc0ebb8187",
+    "pages": 1
+  },
+  {
+    "file": "persona-a-tech-modern.docx",
+    "size": 37426,
+    "sha256": "12062545cc98a09df517ba5bb503515ad56c55cd05668491035ca8bee88779b0"
+  },
+  {
+    "file": "persona-a-tech-modern.pdf",
+    "size": 132450,
+    "sha256": "5d73124eea8a28b4e6d690c4b70984cada150463cc944088c4af95d3dfb7dbaa",
+    "pages": 1
+  },
+  {
+    "file": "persona-b-classic-harvard.docx",
+    "size": 37301,
+    "sha256": "1f04e8e158a0b10dd9c5dcbe14a3dab3bb85c17302f096f890f85f02bbcb6fb7"
+  },
+  {
+    "file": "persona-b-classic-harvard.pdf",
+    "size": 92735,
+    "sha256": "610bc1de23a97adf6b3549231c2073017befc9b9076d0d879697771cad27a016",
+    "pages": 1
+  },
+  {
+    "file": "persona-b-tech-modern.docx",
+    "size": 37301,
+    "sha256": "1f04e8e158a0b10dd9c5dcbe14a3dab3bb85c17302f096f890f85f02bbcb6fb7"
+  },
+  {
+    "file": "persona-b-tech-modern.pdf",
+    "size": 129433,
+    "sha256": "97729d0d7f0a9ae7f11a4f51acfc452de265cca5af28cb6b04958b17d2faf15c",
+    "pages": 1
+  },
+  {
+    "file": "persona-f-classic-harvard.pdf",
+    "size": 66021,
+    "sha256": "df4f5c98d7a221ffc093eac5a9b09abb579ba2e93792cb014c4080d20ac31081",
+    "pages": 1
+  }
+]

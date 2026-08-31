@@ -1,0 +1,12 @@
+{
+  "url": "https://acme.example.com/careers/expired-019",
+  "verdict": "expired",
+  "checks": {
+    "https": true,
+    "dns_public": true,
+    "quota_ok": true,
+    "http_status": 410
+  },
+  "retrieved_at": "2026-08-30T12:00:00Z",
+  "source": "synthetic (mirrors verify_application_link SSRF guard)"
+}

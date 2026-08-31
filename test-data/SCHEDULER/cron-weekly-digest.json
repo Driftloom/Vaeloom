@@ -1,0 +1,13 @@
+{
+  "id": "sched-002",
+  "name": "Weekly digest",
+  "cron": "0 9 * * 1",
+  "timezone": "Asia/Kolkata",
+  "payload": {
+    "action": "weekly_digest",
+    "workspace_id": "ws-persona-a"
+  },
+  "tenant_id": "test-tenant",
+  "enabled": true,
+  "created_at": "2026-08-30T12:00:00Z"
+}

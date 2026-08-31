@@ -1,0 +1,23 @@
+Software Engineer — Acme Corp | Careers
+Software Engineer — Acme Corp
+Location: Bengaluru, India (Hybrid) | Full-time | Experience: 2-4 years
+About Acme Corp
+Acme builds AI-native education tools. 200 employees, Series B, Bengaluru + Remote US. Culture: ownership, learning.
+Responsibilities
+Build backend services with Python, PostgreSQL, Docker, AWS
+Design OrderFlow API 10k RPS, tune indexes
+Collaborate with frontend React team, ship to 2k users
+Required Skills
+Python
+PostgreSQL
+Docker
+AWS
+Preferred Skills
+Kubernetes
+gRPC
+Redis
+Education: B.Tech/B.S. CS or equivalent
+Benefits
+Health, 18 LPA, equity, remote 2 days/week
+Posted: 2026-08-10 | Deadline: 2026-09-10 | Apply: https://acme.example.com/careers/001
+Source: Greenhouse board token acme

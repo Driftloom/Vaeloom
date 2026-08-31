@@ -1,0 +1,22 @@
+{
+  "company": "Acme Corp",
+  "website": "https://acme.example.com",
+  "retrieved_at": "2026-08-30T12:00:00Z",
+  "source": "synthetic stub (mirrors scrape_company_insights)",
+  "axes": {
+    "culture": 0.84,
+    "growth": 0.76,
+    "compensation": 0.72,
+    "work_life": 0.68
+  },
+  "facets": {
+    "employees": 200,
+    "stage": "Series B",
+    "locations": ["Bengaluru", "Remote US"],
+    "roles_open": 12,
+    "remote_pct": 0.64,
+    "top_skills": ["Python", "PostgreSQL", "Docker", "AWS"]
+  },
+  "why": "Stub mirrors BrowserService.aggregate_axes logic without live crawl; SSRF https-only + global-IP + quota 20/h respected",
+  "related_jobs": ["job-001", "job-011"]
+}

@@ -229,9 +229,9 @@ export default function AgentsPage() {
         </div>
       </header>
 
-      <div className="card flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="flex rounded bg-surface-hover p-1">
+      <div className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto max-w-full">
+          <div className="flex rounded bg-surface-hover p-1 shrink-0">
             {(['all', 'canonical', 'enterprise'] as const).map((v) => (
               <button
                 key={v}
@@ -248,12 +248,12 @@ export default function AgentsPage() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search agents, skills, tools..."
-            className="w-64 bg-background border border-border rounded-md px-3 py-1.5 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-primary"
+            className="w-full sm:w-64 bg-background border border-border rounded-md px-3 py-1.5 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-primary"
           />
         </div>
       </div>

@@ -1,0 +1,10 @@
+{
+  "workspace_id": "ws-persona-a",
+  "quota": {
+    "scrape_quota_per_hour": 20,
+    "used": 2,
+    "remaining": 18
+  },
+  "retrieved_at": "2026-08-30T12:00:00Z",
+  "source": "synthetic per config.py SCRAPE_QUOTA_PER_HOUR"
+}

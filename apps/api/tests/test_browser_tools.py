@@ -81,16 +81,16 @@ class TestUrlGuard:
 class TestQuota:
     async def test_sliding_window_blocks_after_limit(self):
         ws = f"ws-quota-{id(object())}"
-        assert _check_scrape_quota(ws, limit=3) is True
-        assert _check_scrape_quota(ws, limit=3) is True
-        assert _check_scrape_quota(ws, limit=3) is True
-        assert _check_scrape_quota(ws, limit=3) is False
+        assert await _check_scrape_quota(ws, limit=3) is True
+        assert await _check_scrape_quota(ws, limit=3) is True
+        assert await _check_scrape_quota(ws, limit=3) is True
+        assert await _check_scrape_quota(ws, limit=3) is False
 
     async def test_independent_workspaces(self):
         a, b = f"ws-a-{id(object())}", f"ws-b-{id(object())}"
-        assert _check_scrape_quota(a, limit=1) is True
-        assert _check_scrape_quota(a, limit=1) is False
-        assert _check_scrape_quota(b, limit=1) is True
+        assert await _check_scrape_quota(a, limit=1) is True
+        assert await _check_scrape_quota(a, limit=1) is False
+        assert await _check_scrape_quota(b, limit=1) is True
 
 
 class TestJobPostingExtraction:
@@ -364,7 +364,7 @@ class TestRegistryWiring:
     def test_tool_count_now_28(self):
         from api.tools.definitions import ALL_TOOLS
 
-        assert len(ALL_TOOLS) == 31
+        assert len(ALL_TOOLS) == 50
         # compile pipeline tools added in ADR-037
         for name in ("compile_resume_pdf", "compile_resume_docx", "compile_cover_letter"):
             assert name in ALL_TOOLS
