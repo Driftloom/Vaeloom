@@ -33,6 +33,15 @@ async def _get_user_workspace_ids(user_id: str, db: AsyncSession) -> list[str]:
     return sorted(ids)
 
 
+def _payload_hmac(payload: dict, secret: str) -> str:
+    """Deterministic HMAC over canonical JSON payload to detect drift (HNSW companion)."""
+    import hashlib
+    import hmac as _hmac
+
+    canonical = json.dumps(payload or {}, sort_keys=True, separators=(",", ":"), default=str)
+    return _hmac.new(secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()[:32]
+
+
 class ApprovalManager:
     async def request_approval(
         self,
@@ -48,6 +57,18 @@ class ApprovalManager:
         approval_id = uuid.uuid4()
         now = datetime.now(UTC)
         expires_at = now + timedelta(minutes=expires_in_minutes or 60)
+        # HMAC drift guard: embed payload hash in reason metadata side-channel when ENCRYPTION_KEY available
+        payload_sig = None
+        try:
+            import os
+
+            secret = os.getenv("ENCRYPTION_KEY", "") or os.getenv("JWT_SECRET", "")
+            if secret and payload:
+                payload_sig = _payload_hmac(payload, secret)
+        except Exception:
+            payload_sig = None
+        # Store sig as prefix in reason if needed, otherwise ignore (backward compat)
+        stored_reason = f"[hmac:{payload_sig}] {reason}" if payload_sig and reason else (f"[hmac:{payload_sig}]" if payload_sig else reason)
         await db.execute(
             text("""
                 INSERT INTO agent_approvals
@@ -63,7 +84,7 @@ class ApprovalManager:
                 "agent_name": agent_name,
                 "action_type": action_type,
                 "payload": payload if payload is not None else {},
-                "reason": reason,
+                "reason": stored_reason,
                 "requested_by": requested_by,
                 "expires_at": expires_at,
                 "created_at": now,
@@ -189,6 +210,22 @@ class ApprovalManager:
         current = await self.get_approval(approval_id, db, user_workspaces=user_workspaces)
         if current.status != "PENDING":
             raise HTTPException(status_code=409, detail=f"Approval already {current.status.lower()}")
+        # HMAC drift verification: warn if payload was tampered between request and decide
+        try:
+            import os
+            import re
+
+            secret = os.getenv("ENCRYPTION_KEY", "") or os.getenv("JWT_SECRET", "")
+            if secret and current.payload:
+                m = re.search(r"\[hmac:([0-9a-f]{32})\]", current.reason or "")
+                if m:
+                    expected = _payload_hmac(current.payload, secret)
+                    if m.group(1) != expected:
+                        import logging
+
+                        logging.getLogger(__name__).warning(f"Approval {approval_id} payload HMAC mismatch — possible drift/tamper")
+        except Exception:
+            pass
         now = datetime.now(UTC)
         await db.execute(
             text("""
