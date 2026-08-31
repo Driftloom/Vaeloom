@@ -286,7 +286,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
                 Select text in Source, then pick an inline action. Zero-hallucination: every bullet
                 keeps <code>% provenance: doc_&lt;id&gt;</code>.
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   onClick={() =>
                     handleInlineAi(

@@ -66,7 +66,10 @@ export default function DashboardPage() {
     { enabled: !!workspaceId },
   );
 
-  const { data: approvalsRes } = useSWR(workspaceId ? `approvals-pending-${workspaceId}` : null, () => approvalApi.list({ status: 'PENDING', page: 1, page_size: 5 }));
+  const { data: approvalsRes } = useSWR(
+    workspaceId ? `approvals-pending-${workspaceId}` : null,
+    () => approvalApi.list({ status: 'PENDING', page: 1, page_size: 5 }),
+  );
   const pendingCount = approvalsRes?.total ?? approvalsRes?.items?.length ?? 0;
   const events: Event[] = Array.isArray(eventsRes)
     ? eventsRes
@@ -81,7 +84,7 @@ export default function DashboardPage() {
   if (wsLoading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-10 w-64 bg-surface-hover rounded" />
+        <div className="h-10 w-full max-w-64 bg-surface-hover rounded" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className="card h-24">
@@ -129,12 +132,19 @@ export default function DashboardPage() {
       {(agentCount === 0 || memoryCount === 0) && <OnboardingChecklist workspaceId={workspaceId} />}
 
       {pendingCount > 0 && (
-        <Link href={`/workspace/${workspaceId}/approvals`} className="card border-amber-500/30 bg-amber-500/5 flex items-center justify-between hover:border-amber-500/50 transition-colors">
+        <Link
+          href={`/workspace/${workspaceId}/approvals`}
+          className="card border-amber-500/30 bg-amber-500/5 flex items-center justify-between hover:border-amber-500/50 transition-colors"
+        >
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/20 text-amber-700 font-mono text-sm">{pendingCount}</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/20 text-amber-700 font-mono text-sm">
+              {pendingCount}
+            </span>
             <div>
               <p className="font-medium text-text">Pending approvals</p>
-              <p className="text-xs text-text-muted">Agent suggestions require your review ΓÇö Files, Gmail, Schedule, Applications</p>
+              <p className="text-xs text-text-muted">
+                Agent suggestions require your review ΓÇö Files, Gmail, Schedule, Applications
+              </p>
             </div>
           </div>
           <span className="text-sm text-amber-700 font-medium">Review ΓåÆ</span>

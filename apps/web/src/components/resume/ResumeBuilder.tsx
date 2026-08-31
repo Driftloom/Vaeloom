@@ -658,7 +658,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
               className="bg-surface border border-border text-text rounded px-3 py-2 text-sm w-full"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label
                 htmlFor="tailor-role"

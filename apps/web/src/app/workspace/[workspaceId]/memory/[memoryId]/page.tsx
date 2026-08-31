@@ -96,7 +96,7 @@ export default function MemoryDetailPage() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-6 w-24 bg-surface-hover rounded" />
-        <div className="h-10 w-72 bg-surface-hover rounded" />
+        <div className="h-10 w-full max-w-72 bg-surface-hover rounded" />
         <div className="card h-96" />
       </div>
     );

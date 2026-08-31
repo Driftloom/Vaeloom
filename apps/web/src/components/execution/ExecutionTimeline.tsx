@@ -211,7 +211,7 @@ export function ExecutionTimeline({
       </ol>
 
       {/* Safe metadata only — never chain-of-thought / secrets */}
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
         <div>
           <span className="text-muted-foreground">Agent: </span>
           <span className="font-mono">

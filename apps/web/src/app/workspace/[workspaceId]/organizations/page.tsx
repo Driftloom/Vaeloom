@@ -63,17 +63,67 @@ const orgTree: OrgNode = {
 };
 
 const mockMembers: Member[] = [
-  { id: 'm1', name: 'Alice Chen', email: 'alice@acme.com', role: 'Admin', status: 'active', department: 'Engineering' },
-  { id: 'm2', name: 'Bob Martinez', email: 'bob@acme.com', role: 'Editor', status: 'active', department: 'Engineering' },
-  { id: 'm3', name: 'Carol Smith', email: 'carol@acme.com', role: 'Viewer', status: 'invited', department: 'Product' },
-  { id: 'm4', name: 'Dave Johnson', email: 'dave@acme.com', role: 'Editor', status: 'active', department: 'Design' },
-  { id: 'm5', name: 'Eve Williams', email: 'eve@acme.com', role: 'Admin', status: 'active', department: 'HR' },
+  {
+    id: 'm1',
+    name: 'Alice Chen',
+    email: 'alice@acme.com',
+    role: 'Admin',
+    status: 'active',
+    department: 'Engineering',
+  },
+  {
+    id: 'm2',
+    name: 'Bob Martinez',
+    email: 'bob@acme.com',
+    role: 'Editor',
+    status: 'active',
+    department: 'Engineering',
+  },
+  {
+    id: 'm3',
+    name: 'Carol Smith',
+    email: 'carol@acme.com',
+    role: 'Viewer',
+    status: 'invited',
+    department: 'Product',
+  },
+  {
+    id: 'm4',
+    name: 'Dave Johnson',
+    email: 'dave@acme.com',
+    role: 'Editor',
+    status: 'active',
+    department: 'Design',
+  },
+  {
+    id: 'm5',
+    name: 'Eve Williams',
+    email: 'eve@acme.com',
+    role: 'Admin',
+    status: 'active',
+    department: 'HR',
+  },
 ];
 
 const mockRoles: Role[] = [
-  { id: 'r1', name: 'Admin', description: 'Full access to all resources and settings.', permissions: ['read', 'write', 'delete', 'manage_members', 'manage_billing'] },
-  { id: 'r2', name: 'Editor', description: 'Can create and edit resources.', permissions: ['read', 'write'] },
-  { id: 'r3', name: 'Viewer', description: 'Read-only access to resources.', permissions: ['read'] },
+  {
+    id: 'r1',
+    name: 'Admin',
+    description: 'Full access to all resources and settings.',
+    permissions: ['read', 'write', 'delete', 'manage_members', 'manage_billing'],
+  },
+  {
+    id: 'r2',
+    name: 'Editor',
+    description: 'Can create and edit resources.',
+    permissions: ['read', 'write'],
+  },
+  {
+    id: 'r3',
+    name: 'Viewer',
+    description: 'Read-only access to resources.',
+    permissions: ['read'],
+  },
 ];
 
 function OrgTreeNode({ node, depth = 0 }: { node: OrgNode; depth?: number }) {
@@ -105,12 +155,20 @@ function OrgTreeNode({ node, depth = 0 }: { node: OrgNode; depth?: number }) {
         </span>
         <span className="text-xs text-text-muted font-mono ml-auto">{node.members} members</span>
       </div>
-      {expanded && hasChildren && node.children?.map((child) => <OrgTreeNode key={child.id} node={child} depth={depth + 1} />)}
+      {expanded &&
+        hasChildren &&
+        node.children?.map((child) => (
+          <OrgTreeNode key={child.id} node={child} depth={depth + 1} />
+        ))}
     </div>
   );
 }
 
-const memberStatusColors: Record<string, StatusVariant> = { active: 'success', invited: 'warning', inactive: 'neutral' };
+const memberStatusColors: Record<string, StatusVariant> = {
+  active: 'success',
+  invited: 'warning',
+  inactive: 'neutral',
+};
 const mStatusColor = (s: string): StatusVariant => memberStatusColors[s] ?? 'neutral';
 
 export default function OrganizationsPage() {
@@ -164,11 +222,15 @@ export default function OrganizationsPage() {
           <p className="mt-2 text-xs font-mono text-text-dim">
             Data source:{' '}
             {isLive ? (
-              <span className="text-success">GET /iam/users (live) — {iamRes?.items?.length ?? 0} user(s)</span>
+              <span className="text-success">
+                GET /iam/users (live) — {iamRes?.items?.length ?? 0} user(s)
+              </span>
             ) : iamLoading ? (
               <span>Loading GET /iam/users…</span>
             ) : (
-              <span>mockMembers fallback — backend IAM not reachable. Set ENTERPRISE_ROUTES_ENABLED=true</span>
+              <span>
+                mockMembers fallback — backend IAM not reachable. Set ENTERPRISE_ROUTES_ENABLED=true
+              </span>
             )}
           </p>
         </div>
@@ -180,34 +242,53 @@ export default function OrganizationsPage() {
           <Card padding="lg">
             <h2 className="text-lg font-display font-medium text-text mb-4">Organization Tree</h2>
             <OrgTreeNode node={orgTree} />
-            <p className="mt-4 text-xs text-text-dim font-mono">Mock tree — visual only (no backend org service)</p>
+            <p className="mt-4 text-xs text-text-dim font-mono">
+              Mock tree — visual only (no backend org service)
+            </p>
           </Card>
         </div>
 
         <div className="lg:col-span-2 space-y-6">
           <Card padding="lg">
             <h2 className="text-lg font-display font-medium text-text mb-4">Members</h2>
-            <div className="space-y-2">
-              <div className="grid grid-cols-4 gap-4 text-xs font-mono text-text-muted uppercase tracking-wider pb-2 border-b border-border">
-                <span>Name</span>
-                <span>Email</span>
-                <span>Role</span>
-                <span>Status</span>
+            <div className="hidden sm:block space-y-2 overflow-x-auto">
+              <div className="min-w-[520px]">
+                <div className="grid grid-cols-4 gap-4 text-xs font-mono text-text-muted uppercase tracking-wider pb-2 border-b border-border">
+                  <span>Name</span>
+                  <span>Email</span>
+                  <span>Role</span>
+                  <span>Status</span>
+                </div>
+                {members.map((m) => (
+                  <div
+                    key={m.id}
+                    className="grid grid-cols-4 gap-4 py-2 text-sm text-text hover:bg-background/50 rounded px-2 -mx-2 transition-colors"
+                  >
+                    <span className="font-medium truncate">{m.name}</span>
+                    <span className="text-text-muted truncate">{m.email}</span>
+                    <span className="font-mono text-xs truncate">{m.role}</span>
+                    <StatusBadge variant={mStatusColor(m.status)} label={m.status} />
+                  </div>
+                ))}
               </div>
+            </div>
+            {/* Mobile cards fallback — visible only < sm */}
+            <div className="sm:hidden space-y-2">
               {members.map((m) => (
-                <div
-                  key={m.id}
-                  className="grid grid-cols-4 gap-4 py-2 text-sm text-text hover:bg-background/50 rounded px-2 -mx-2 transition-colors"
-                >
-                  <span className="font-medium">{m.name}</span>
-                  <span className="text-text-muted">{m.email}</span>
-                  <span className="font-mono text-xs">{m.role}</span>
-                  <StatusBadge variant={mStatusColor(m.status)} label={m.status} />
+                <div key={`mob-${m.id}`} className="card p-3 flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{m.name}</span>
+                    <StatusBadge variant={mStatusColor(m.status)} label={m.status} />
+                  </div>
+                  <span className="text-xs text-text-muted truncate">{m.email}</span>
+                  <span className="font-mono text-xs text-text-muted">{m.role}</span>
                 </div>
               ))}
             </div>
             <p className="mt-3 text-xs text-text-dim font-mono">
-              {isLive ? 'Members derived from live IAM users (display_name, email, role, status)' : 'Showing mockMembers (5) — live IAM will override when available'}
+              {isLive
+                ? 'Members derived from live IAM users (display_name, email, role, status)'
+                : 'Showing mockMembers (5) — live IAM will override when available'}
             </p>
           </Card>
 
@@ -221,14 +302,21 @@ export default function OrganizationsPage() {
                       <h3 className="font-medium text-text">{role.name}</h3>
                       <p className="text-sm text-text-muted mt-1">{role.description}</p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setShowRoleModal(role.id === showRoleModal ? null : role.id)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowRoleModal(role.id === showRoleModal ? null : role.id)}
+                    >
                       {showRoleModal === role.id ? 'Hide' : 'View Permissions'}
                     </Button>
                   </div>
                   {showRoleModal === role.id && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {role.permissions.map((p) => (
-                        <span key={p} className="text-xs bg-surface-active text-text-muted px-2 py-1 rounded font-mono">
+                        <span
+                          key={p}
+                          className="text-xs bg-surface-active text-text-muted px-2 py-1 rounded font-mono"
+                        >
                           {p}
                         </span>
                       ))}
@@ -237,14 +325,25 @@ export default function OrganizationsPage() {
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-text-dim font-mono">Roles are mock — derived from static definitions (no /iam/roles live mapping yet)</p>
+            <p className="mt-3 text-xs text-text-dim font-mono">
+              Roles are mock — derived from static definitions (no /iam/roles live mapping yet)
+            </p>
           </Card>
         </div>
       </div>
 
-      <Modal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} title="Invite Member">
+      <Modal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        title="Invite Member"
+      >
         <div className="space-y-4">
-          <Input label="Email Address" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colleague@company.com" />
+          <Input
+            label="Email Address"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="colleague@company.com"
+          />
           <div className="space-y-1">
             <label className="block text-sm font-medium text-text">Role</label>
             <select
@@ -270,7 +369,9 @@ export default function OrganizationsPage() {
               Send Invite
             </Button>
           </div>
-          <p className="text-xs text-text-dim font-mono">Invite is local only — no POST /iam/organizations/invites backend yet</p>
+          <p className="text-xs text-text-dim font-mono">
+            Invite is local only — no POST /iam/organizations/invites backend yet
+          </p>
         </div>
       </Modal>
     </div>
