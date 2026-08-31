@@ -395,7 +395,36 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
 # ── Plan ────────────────────────────────────────────────────────────
 
 async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
-    logger.info(f"PLAN: agent={request.agent_name}, request={request.id}")
+    # P1c: OTel span per phase (optional, no-op if OTel not installed)
+    _cm = None
+    try:
+        from ..infrastructure.agent_observability import agent_span as _agent_span
+
+        _cm = _agent_span("loop.plan", agent=request.agent_name)
+    except Exception:
+        _cm = None
+    if _cm is None:
+        import contextlib as _cl
+
+        _cm = _cl.nullcontext()
+    with _cm:
+        logger.info(f"PLAN: agent={request.agent_name}, request={request.id}")
+        # Automated RAG context injection
+        rag_context: dict[str, Any] = {}
+        try:
+            rag_context = await _assemble_rag_context(request.workspace_id, request.message, request.agent)
+            if rag_context.get("entities") or rag_context.get("documents"):
+                logger.info(f"RAG injected: {len(rag_context.get('entities', []))} entities, {len(rag_context.get('documents', []))} docs, {len(rag_context.get('preferences', []))} prefs")
+        except Exception as e:
+            logger.warning(f"RAG injection failed (non-blocking): {e}")
+        return {
+            "agent_type": request.agent_name,
+            "message": request.message,
+            "workspace_id": request.workspace_id,
+            "rag_context": rag_context,
+            # Flatten for easy consumption by Act/ReAct
+            "context_prompt": _build_context_prompt(rag_context),
+        }
     # Automated RAG context injection
     rag_context: dict[str, Any] = {}
     try:

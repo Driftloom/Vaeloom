@@ -30,7 +30,13 @@ from api.agents.resume_agent.handler import ResumeAgent
 from api.agents.scheduler_agent.handler import SchedulerAgent
 from api.agents.security_agent.handler import SecurityAgent  # G10
 from api.infrastructure.agent_eval import detect_adversarial_prompt
-from api.infrastructure.agent_observability import AgentMetric, kill_switch, metrics_collector
+from api.infrastructure.agent_observability import (
+    AgentMetric,
+    agent_span,
+    kill_switch,
+    metrics_collector,
+    workspace_limiter,
+)
 
 from .loop import AgentRequest, run_agent_loop
 
@@ -401,6 +407,21 @@ async def handle(request: UserRequest) -> dict[str, Any]:
     agent = agent_cls()
     logger.info(f"Routed to agent: {agent.__class__.__name__}")
 
+    # P1c: workspace/global concurrency guard — fail-fast with rate-limit error
+    if not await workspace_limiter.acquire(request.workspace_id):
+        logger.warning(f"CONCURRENCY LIMIT: workspace {request.workspace_id} at capacity, rejecting")
+        return {
+            "agent_name": agent_name,
+            "action": "error",
+            "confidence": 0.0,
+            "result": {
+                "summary": "System at capacity for this workspace — please retry shortly.",
+                "details": None,
+                "proposals": [],
+                "questions": [],
+            },
+        }
+
     agent_request = AgentRequest(
         agent=agent,
         request_id=request.id,
@@ -409,7 +430,10 @@ async def handle(request: UserRequest) -> dict[str, Any]:
         agent_name=agent_name,
     )
     loop_start = time.monotonic()
-    loop_response = await run_agent_loop(agent_request)
+    # P1c: OTel span per orchestrator dispatch
+    with agent_span("orchestrator.handle", agent=agent_name, workspace_id=request.workspace_id):
+        loop_response = await run_agent_loop(agent_request)
+    workspace_limiter.release(request.workspace_id)
     loop_latency_ms = (time.monotonic() - loop_start) * 1000
 
     # Record agent metrics
