@@ -43,6 +43,9 @@ TASK_MODEL_MAP: dict[str, str] = {
     "reminder_check": "fast",
     "document_tag": "fast",
     "calendar_check": "fast",
+    "intent_classify": "fast",
+    "qa_validate": "fast",
+    "adversarial_scan": "fast",
     # Moderate tasks — use balanced models
     "memory_extract": "balanced",
     "memory_merge": "balanced",
@@ -56,6 +59,33 @@ TASK_MODEL_MAP: dict[str, str] = {
     "memory_consolidate": "powerful",
     "conflict_resolution": "powerful",
     "plan_generate": "powerful",
+}
+
+# Agent method → task_type mapping for MODEL-001 wiring
+# Used by loop.py to auto-route per agent without caller threading
+AGENT_TASK_TYPE_MAP: dict[str, str] = {
+    "organization": "document_tag",
+    "memory": "memory_extract",
+    "resume": "resume_generate",
+    "ats": "ats_score",
+    "job_search": "job_search",
+    "application": "cover_letter_generate",
+    "gmail": "email_classify",
+    "scheduler": "calendar_check",
+    "planning": "plan_generate",
+    "research": "document_summarize",
+    "career": "document_summarize",
+    "learning": "document_summarize",
+    "github": "document_summarize",
+    "coding": "document_summarize",
+    "reminder": "reminder_check",
+    "analytics": "document_summarize",
+    "recommendation": "document_summarize",
+    "reflection": "memory_consolidate",
+    "security": "adversarial_scan",
+    "connector": "document_summarize",
+    "plugin": "document_summarize",
+    "drive": "document_tag",
 }
 
 

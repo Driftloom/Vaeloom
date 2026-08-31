@@ -143,6 +143,55 @@ class AgentKillSwitch:
         self._overrides.clear()
 
 
+# ── OBS-001: Latency histograms (in-process, Prometheus bridge optional)
+# Lightweight histogram for retrieval / tool / embedding latencies.
+# Prometheus Histograms will scrape these via custom collector when available.
+class _LatencyHistogram:
+    def __init__(self, name: str, buckets: list[float] | None = None):
+        self.name = name
+        self.buckets = buckets or [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]
+        self._counts: list[int] = [0] * (len(self.buckets) + 1)
+        self._sum = 0.0
+        self._count = 0
+
+    def observe(self, value_ms: float) -> None:
+        self._sum += value_ms
+        self._count += 1
+        for i, b in enumerate(self.buckets):
+            if value_ms <= b:
+                self._counts[i] += 1
+                return
+        self._counts[-1] += 1
+
+    def snapshot(self) -> dict:
+        return {"name": self.name, "count": self._count, "sum_ms": round(self._sum, 2), "buckets": self.buckets, "counts": list(self._counts)}
+
+
+_rag_latency = _LatencyHistogram("vaeloom_rag_latency_ms", [5, 10, 25, 50, 100, 250, 500, 1000, 2500])
+_tool_latency = _LatencyHistogram("vaeloom_tool_latency_ms", [10, 50, 100, 250, 500, 1000, 5000, 10000, 30000])
+_embedding_latency = _LatencyHistogram("vaeloom_embedding_latency_ms", [50, 100, 250, 500, 1000, 2500, 5000])
+
+
+def record_rag_latency(ms: float) -> None:
+    _rag_latency.observe(ms)
+
+
+def record_tool_latency(ms: float) -> None:
+    _tool_latency.observe(ms)
+
+
+def record_embedding_latency(ms: float) -> None:
+    _embedding_latency.observe(ms)
+
+
+def get_latency_snapshots() -> dict:
+    return {
+        "rag": _rag_latency.snapshot(),
+        "tool": _tool_latency.snapshot(),
+        "embedding": _embedding_latency.snapshot(),
+    }
+
+
 # Singletons
 metrics_collector = AgentMetricsCollector()
 kill_switch = AgentKillSwitch()

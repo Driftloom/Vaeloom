@@ -200,6 +200,9 @@ class ReflectResult:
 
 async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent) -> dict[str, Any]:
     """Hybrid RAG: vector-ish + graph lookup before Plan/Act. Non-blocking, best-effort."""
+    import time as _t
+
+    _rag_start = _t.monotonic()
     if not workspace_id or not query.strip():
         return {"entities": [], "documents": [], "preferences": []}
     try:
@@ -315,9 +318,21 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
                 logger.warning(f"RAG preference lookup failed: {e}")
 
         # Truncate
+        try:
+            from ..infrastructure.agent_observability import record_rag_latency
+
+            record_rag_latency((_t.monotonic() - _rag_start) * 1000)
+        except Exception:
+            pass
         return {"entities": entities[:8], "documents": documents[:8], "preferences": preferences[:5]}
     except Exception as e:
         logger.warning(f"RAG assembler non-blocking error: {e}")
+        try:
+            from ..infrastructure.agent_observability import record_rag_latency
+
+            record_rag_latency((_t.monotonic() - _rag_start) * 1000)
+        except Exception:
+            pass
         return {"entities": [], "documents": [], "preferences": []}
 
 
@@ -490,10 +505,22 @@ async def _try_react_loop(
                             result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
                         except Exception as e:
                             result = {"status": "error", "tool": tname, "result": str(e)}
-                # Feed tool result back to LLM
+                # Feed tool result back to LLM — TOOL-002: sanitize tool output, never treat as instructions
                 # OpenAI expects assistant with tool_calls + tool role; Anthropic uses tool_result blocks — we add both forms for compat
+                try:
+                    from ..utils.sanitize import looks_like_prompt_injection, sanitize_tool_output
+
+                    raw_tool_str = json.dumps(result)
+                    if looks_like_prompt_injection(raw_tool_str):
+                        logger.warning(f"ReAct: tool '{tname}' output flagged as potential prompt injection — sanitizing")
+                    sanitized_content = sanitize_tool_output(raw_tool_str, tool_name=tname)
+                except Exception:
+                    sanitized_content = json.dumps(result)[:4000]
+                else:
+                    # sanitize_tool_output already caps at 4000
+                    sanitized_content = sanitized_content[:4000] if len(sanitized_content) > 4000 else sanitized_content
                 messages.append({"role": "assistant", "content": content_str or None, "tool_calls": [tc]})
-                messages.append({"role": "tool", "tool_call_id": tc.get("id", tname), "content": json.dumps(result)[:4000]})
+                messages.append({"role": "tool", "tool_call_id": tc.get("id", tname), "content": sanitized_content})
                 # Keep content for next round's synthesis
 
             # Loop continues — LLM will synthesise after seeing tool outputs
@@ -530,6 +557,17 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any =
                 "questions": [],
             },
         }
+
+    # ── MODEL-001: auto-route per-agent task_type → model hint (logged, does not override explicit model)
+    try:
+        from ..services.model_router import AGENT_TASK_TYPE_MAP, TASK_MODEL_MAP, model_router
+
+        task_hint = AGENT_TASK_TYPE_MAP.get(agent_name, "document_summarize")
+        tier_hint = TASK_MODEL_MAP.get(task_hint, "balanced")
+        logger.debug(f"MODEL ROUTE: agent={agent_name} hint={task_hint}→{tier_hint}")
+        # Hint is surfaced via log/metric; llm_service will use its own selection when task_type is threaded
+    except Exception:
+        pass
 
     # ── Dynamic ReAct (LLM-driven tool calling) — opt-in via AGENT_REACT_ENABLED ──
     # Static dispatch below is the deterministic primary path; ReAct is best-effort.

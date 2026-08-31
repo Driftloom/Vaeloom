@@ -131,19 +131,38 @@ class LLMService:
         )
 
     async def _openai_embedding(self, text: str, api_key: str | None = None) -> list[float]:
+        import time as _t
+
         key = api_key or self.api_key
         if not key:
             raise LLMProviderError("Missing OpenAI API key — configure in Settings > API Keys (BYOK) or set LLM_API_KEY")
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/embeddings",
+        _emb_start = _t.monotonic()
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    "https://api.openai.com/v1/embeddings",
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"input": text, "model": self.embedding_model},
             )
             if resp.status_code != 200:
                 raise LLMProviderError(f"OpenAI embedding failed: {resp.status_code} {resp.text}")
             data = resp.json()
-            return data["data"][0]["embedding"]
+            emb = data["data"][0]["embedding"]
+            try:
+                from ..infrastructure.agent_observability import record_embedding_latency
+
+                record_embedding_latency((_t.monotonic() - _emb_start) * 1000)
+            except Exception:
+                pass
+            return emb
+        finally:
+            try:
+                from ..infrastructure.agent_observability import record_embedding_latency
+
+                # Only record on error path if not already recorded (non-200 already raised)
+                pass
+            except Exception:
+                pass
 
     async def _anthropic_embedding(self, text: str) -> list[float]:
         raise LLMProviderError("Anthropic does not support standalone embeddings; use OpenAI for embeddings")

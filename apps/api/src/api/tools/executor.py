@@ -2583,6 +2583,7 @@ async def execute_tool(
 
     Flow:
     0. Input sanitization (ADR-031) — strip HTML/JS vectors before any tool sees payload
+    0b. Output schema validation (TOOL-002/TOOL-001) — validate handler result shape before returning
     1. Permission check (zero retries on denial)
     2. Execute with timeout
     3. Retry on transient failure (exponential backoff)
@@ -2626,8 +2627,25 @@ async def execute_tool(
             result = await asyncio.wait_for(
                 handler(params, workspace_id), timeout=timeout
             )
+            # ── 0b. Lightweight output validation (best-effort, never blocks on schema error)
+            # Ensures handler returns a dict with status/tool/result; if malformed, coerce to error shape.
+            try:
+                if not isinstance(result, dict):
+                    logger.warning(f"Tool {tool.name} returned non-dict: {type(result).__name__} — coercing")
+                    result = {"status": "error", "tool": tool.name, "result": str(result)[:2000]}
+                elif "status" not in result:
+                    # Missing status → assume success but flag
+                    result = {"status": "success", "tool": tool.name, "result": result}
+            except Exception:
+                pass
             duration_ms = int((time.monotonic() - start_time) * 1000)
             _audit_log(agent_id, tool.name, workspace_id, True, duration_ms, None)
+            try:
+                from ..infrastructure.agent_observability import record_tool_latency
+
+                record_tool_latency(duration_ms)
+            except Exception:
+                pass
             return result
 
         except TimeoutError:
