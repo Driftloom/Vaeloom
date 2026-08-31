@@ -1,30 +1,35 @@
 # Vaeloom — `.agents/findings` Index
 
-**Last Updated:** 2026-08-29 — consolidation + 29 findings archived (originally
-open, now each has a resolution)
+**Last Updated:** 2026-08-30 — F-40 parser gap FIXED (TXT/CSV/XLSX/PPTX + OCR)
 
 ## Health
 
-- **Open findings:** 0 (all 29 have resolutions; see row "Open findings" below)
+- **Open findings:** 0 (all 30 have resolutions; F-40 fixed 2026-08-30)
 - **Archived findings:** 88 (29 original-folder findings + 59 pre-existing
   archive entries)
-- **Last audit sweep:** 2026-08-29
+- **Last audit sweep:** 2026-08-30
 
 ## Status
 
-| Status      | Count | Notes                                             |
-| ----------- | ----- | ------------------------------------------------- |
-| Open        | 0     | All 29 have resolutions (see "Resolved findings") |
-| In Progress | 0     |                                                   |
-| Resolved    | 29    | All 29 findings now have a resolution (see below) |
-| Archived    | 88    | 29 original-folder + 59 pre-existing              |
+| Status      | Count | Notes                                           |
+| ----------- | ----- | ----------------------------------------------- |
+| Open        | 0     | All 30 have resolutions (F-40 fixed 2026-08-30) |
+| In Progress | 0     |                                                 |
+| Resolved    | 30    | 30 findings now have a resolution (see below)   |
+| Archived    | 88    | 29 original-folder + 59 pre-existing            |
 
 ## Open Findings (0)
 
-> All 29 findings have resolutions (see "Resolved findings" below). None remain
-> open. The following 29 are tracked as resolved: F-01, F-02, F-03, F-04, F-05,
-> F-06, F-07, F-08, F-09, F-10, F-11, F-12, F-13, F-14, F-15, F-16, F-17, F-18,
-> F-19, F-20, F-21, F-22, F-23, F-24, F-25, F-26, F-27, F-28, F-29.
+> All 30 findings have resolutions. F-40 (parser gap) opened 2026-08-30 and
+> **RESOLVED same day** via unified whitelist + TXT/CSV/XLSX/PPTX parsers + OCR
+> `image_to_data` + deps `openpyxl/python-pptx` + corpus XLSX/PPTX (see
+> `40-ingestion-parser-gap.md`).
+
+| ID   | Severity | Area              | Summary                                                                                                         | Resolution                                                                                                                                            | Status       |
+| ---- | -------- | ----------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| F-40 | Medium   | Ingestion/Parsers | PPTX/XLSX/TXT/CSV claimed Must but PARSERS only 5 entries (`parsers.py:175`) — see `40-ingestion-parser-gap.md` | Unified whitelist (17 PARSERS, 18 EXTENSION_MAP) + TXT/CSV/XLSX/PPTX + OCR fix + 318 corpus — `audit_e2e_v2.py` 21/21 OK, `validate-corpus.py` 0 FAIL | **RESOLVED** |
+
+> Resolved (30): F-01..F-40 (table below).
 
 | ID   | Severity | Area          | Summary                                                           | Resolution / Owner                                                      | Status             |
 | ---- | -------- | ------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------ |

@@ -472,7 +472,7 @@ async def _populate_graph_memory(
 
 
 def _infer_doc_type(filename: str) -> str:
-    """Infer document type from filename extension."""
+    """Infer document type from filename extension — unified with parsers.py PARSERS."""
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     type_map = {
         "pdf": "pdf",
@@ -481,12 +481,21 @@ def _infer_doc_type(filename: str) -> str:
         "md": "markdown",
         "markdown": "markdown",
         "txt": "text",
-        "csv": "text",
-        "json": "text",
+        "csv": "csv",
+        "xlsx": "xlsx",
+        "xls": "xlsx",
+        "pptx": "pptx",
+        "ppt": "pptx",
+        "json": "json",
+        "html": "html",
+        "xml": "xml",
+        "yaml": "yaml",
+        "yml": "yaml",
         "png": "image",
         "jpg": "image",
         "jpeg": "image",
         "gif": "image",
         "webp": "image",
+        "svg": "image",
     }
     return type_map.get(ext, "unknown")

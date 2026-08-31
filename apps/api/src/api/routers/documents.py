@@ -30,6 +30,8 @@ CONTENT_TYPES = {
     "markdown": "text/markdown; charset=utf-8",
     "text": "text/plain; charset=utf-8",
     "csv": "text/csv; charset=utf-8",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "json": "application/json; charset=utf-8",
     "html": "text/html; charset=utf-8",
     "xml": "application/xml; charset=utf-8",
