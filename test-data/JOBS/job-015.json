@@ -1,0 +1,33 @@
+{
+  "id": "job-015",
+  "title": "Data Scientist — StartupXYZ Variant 3",
+  "company": "StartupXYZ",
+  "location": "Boston, MA, USA",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "internship",
+  "required_skills": [
+    "Python",
+    "SQL",
+    "pandas",
+    "scikit-learn"
+  ],
+  "preferred_skills": [
+    "PyTorch",
+    "Airflow"
+  ],
+  "responsibilities": [
+    "Build data systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "Pursuing B.Tech/M.Tech"
+  ],
+  "salary": null,
+  "deadline": "2026-08-26T10:35:53.125249+00:00",
+  "published_at": "2026-07-27T10:35:53.125249+00:00",
+  "application_url": "https://startupxyz.example.com/careers/015",
+  "source": "greenhouse",
+  "source_url": "https://startupxyz.example.com/careers"
+}

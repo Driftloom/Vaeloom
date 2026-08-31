@@ -1,0 +1,26 @@
+{
+  "id": "app-persona-a-job-004-shortlisted",
+  "persona_id": "persona-a",
+  "job": {
+    "job_id": "job-004",
+    "title": "Frontend Engineer — CyberShield",
+    "company": "CyberShield",
+    "application_url": "https://cybershield.example.com/careers/004"
+  },
+  "status": "shortlisted",
+  "outcome": null,
+  "resume_version_id": "persona-a-resume-clean",
+  "cover_letter": null,
+  "timeline": [
+    {
+      "stage": "discovered",
+      "at": "2026-08-09T10:35:53.151041+00:00"
+    },
+    {
+      "stage": "shortlisted",
+      "at": "2026-08-12T10:35:53.151041+00:00"
+    }
+  ],
+  "updated_at": "2026-08-12T10:35:53.151041+00:00",
+  "created_at": "2026-08-09T10:35:53.151041+00:00"
+}

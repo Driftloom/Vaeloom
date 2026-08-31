@@ -1,0 +1,33 @@
+{
+  "id": "job-020",
+  "title": "DevOps Engineer — Globex Variant 2",
+  "company": "Globex",
+  "location": "Hyderabad, India",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "entry",
+  "required_skills": [
+    "Docker",
+    "Kubernetes",
+    "AWS",
+    "Terraform"
+  ],
+  "preferred_skills": [
+    "Go",
+    "Python"
+  ],
+  "responsibilities": [
+    "Build devops systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "29 LPA",
+  "deadline": "2026-08-28T10:35:53.125249+00:00",
+  "published_at": "2026-07-29T10:35:53.125249+00:00",
+  "application_url": "https://globex.example.com/careers/020",
+  "source": "company_career",
+  "source_url": "https://globex.example.com/careers"
+}

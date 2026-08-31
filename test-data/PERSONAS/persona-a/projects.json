@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Vaeloom Second Brain — AI Study Companion",
+    "description": "AI-native second brain for education: ingestion (PDF/DOCX/MD), chunk 1000/200, pgvector 1536, knowledge graph hub doc, hybrid retrieval, resume ATS.",
+    "technologies": [
+      "Python",
+      "FastAPI",
+      "React",
+      "PostgreSQL",
+      "pgvector",
+      "PyMuPDF"
+    ],
+    "role": "Full-Stack Developer",
+    "dates": "2025-01 — 2025-08",
+    "responsibilities": [
+      "Designed ingestion pipeline",
+      "Built chunking + embeddings",
+      "Implemented graph hub"
+    ],
+    "outcomes": [
+      "300 docs ingested",
+      "p95 120ms search",
+      "94% test cov"
+    ],
+    "repository": "https://github.com/aarav-mehta/vaeloom-brain",
+    "collaborators": [
+      "Emily Carter"
+    ]
+  },
+  {
+    "name": "CampusConnect — Web App",
+    "description": "MERN campus social + calendar, 2k users.",
+    "technologies": [
+      "React",
+      "Node.js",
+      "PostgreSQL",
+      "Docker"
+    ],
+    "role": "Backend",
+    "dates": "2024-08 — 2024-12",
+    "responsibilities": [
+      "Auth + RLS",
+      "Calendar sync"
+    ],
+    "outcomes": [
+      "Launched to 1200 DAU"
+    ],
+    "repository": "https://github.com/aarav-mehta/campus-connect"
+  }
+]

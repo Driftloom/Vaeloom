@@ -1,0 +1,3 @@
+Vaeloom TXT sample — contains Python and PostgreSQL skills.
+Line 2: Acme internship Jun-Aug 2025.
+Line 3: IIT Bombay B.Tech 2027.

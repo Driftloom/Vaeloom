@@ -1,0 +1,33 @@
+{
+  "id": "job-003",
+  "title": "Software Engineer — TalentBridge Variant 3",
+  "company": "TalentBridge",
+  "location": "Boston, MA, USA",
+  "remote": false,
+  "employment_type": "full-time",
+  "experience_level": "internship",
+  "required_skills": [
+    "Python",
+    "PostgreSQL",
+    "Docker",
+    "AWS"
+  ],
+  "preferred_skills": [
+    "Kubernetes",
+    "gRPC"
+  ],
+  "responsibilities": [
+    "Build backend systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "Pursuing B.Tech/M.Tech"
+  ],
+  "salary": null,
+  "deadline": null,
+  "published_at": "2026-08-15T10:35:53.125249+00:00",
+  "application_url": "https://talentbridge.example.com/careers/003",
+  "source": "company_career",
+  "source_url": "https://talentbridge.example.com/careers"
+}

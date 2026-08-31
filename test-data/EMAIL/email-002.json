@@ -1,0 +1,19 @@
+{
+  "id": "email-002",
+  "persona_id": "persona-a",
+  "subject": "Offer — Globex Staff Engineer",
+  "sender": "Globex HR",
+  "sender_email": "globex.hr@example.com",
+  "category": "offer",
+  "priority": "high",
+  "sent_at": "2026-08-13T19:35:53.159564+00:00",
+  "deadline": "2026-09-02T10:35:53.159564+00:00",
+  "has_task": true,
+  "body": "Congratulations Aarav! Offer extended. Please sign by 2026-09-02T10:35:53.159564+00:00.",
+  "labels": [
+    "offer",
+    "high"
+  ],
+  "expected_classification": "offer",
+  "expected_priority": "high"
+}

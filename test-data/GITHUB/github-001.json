@@ -1,0 +1,46 @@
+{
+  "id": "github-001",
+  "persona_id": "persona-a",
+  "repo": "octocat/Hello-World",
+  "url": "https://github.com/octocat/Hello-World",
+  "license": "MIT",
+  "license_url": "https://github.com/octocat/Hello-World/blob/master/LICENSE",
+  "stars": 3780,
+  "languages": [
+    "Ruby"
+  ],
+  "description": "My first repository on GitHub!",
+  "commits": [
+    {
+      "sha": "abc123",
+      "msg": "Initial commit",
+      "date": "2025-01-10"
+    },
+    {
+      "sha": "def456",
+      "msg": "Add README",
+      "date": "2025-01-12"
+    }
+  ],
+  "branches": [
+    "master"
+  ],
+  "issues": [
+    {
+      "id": 1,
+      "title": "Setup"
+    },
+    {
+      "id": 2,
+      "title": "Docs"
+    }
+  ],
+  "prs": [
+    {
+      "id": 1,
+      "title": "Fix typo"
+    }
+  ],
+  "releases": [],
+  "why": "Minimal repo for connector smoke test — public, MIT, no PII"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "email-006",
+  "persona_id": "persona-a",
+  "subject": "Recruiter Message — Backend Role",
+  "sender": "TalentBridge Recruiter",
+  "sender_email": "talentbridge.recruiter@example.com",
+  "category": "recruiter",
+  "priority": "high",
+  "sent_at": "2026-08-30T00:35:53.161707+00:00",
+  "deadline": null,
+  "has_task": true,
+  "body": "Saw your profile — quick call this week?",
+  "labels": [
+    "recruiter",
+    "high"
+  ],
+  "expected_classification": "recruiter",
+  "expected_priority": "high"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "email-026",
+  "persona_id": "persona-a",
+  "subject": "University — Fee Deadline Tomorrow",
+  "sender": "IIT Bombay Finance",
+  "sender_email": "iit.bombay.finance@example.com",
+  "category": "reminder",
+  "priority": "high",
+  "sent_at": "2026-08-30T05:35:53.172548+00:00",
+  "deadline": "2026-09-02T10:35:53.172548+00:00",
+  "has_task": true,
+  "body": "Reminder: deadline 2026-09-02T10:35:53.172548+00:00 approaching. Submit documents.",
+  "labels": [
+    "reminder",
+    "high"
+  ],
+  "expected_classification": "reminder",
+  "expected_priority": "high"
+}

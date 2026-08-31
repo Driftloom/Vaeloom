@@ -1,0 +1,33 @@
+{
+  "id": "job-016",
+  "title": "ML Engineer — TalentBridge",
+  "company": "TalentBridge",
+  "location": "Austin, TX, USA",
+  "remote": false,
+  "employment_type": "full-time",
+  "experience_level": "senior",
+  "required_skills": [
+    "Python",
+    "PyTorch",
+    "SQL",
+    "MLflow"
+  ],
+  "preferred_skills": [
+    "Kubernetes",
+    "AWS"
+  ],
+  "responsibilities": [
+    "Build ml systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "104587 USD",
+  "deadline": null,
+  "published_at": "2026-08-12T10:35:53.125249+00:00",
+  "application_url": "https://talentbridge.example.com/careers/016",
+  "source": "company_career",
+  "source_url": "https://talentbridge.example.com/careers"
+}

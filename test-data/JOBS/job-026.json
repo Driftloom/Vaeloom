@@ -1,0 +1,32 @@
+{
+  "id": "job-026",
+  "title": "Research Scientist — DataMinds Variant 2",
+  "company": "DataMinds",
+  "location": "Bengaluru, India",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "senior",
+  "required_skills": [
+    "Python",
+    "PyTorch",
+    "Research"
+  ],
+  "preferred_skills": [
+    "LaTeX",
+    "Publications"
+  ],
+  "responsibilities": [
+    "Build research systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "23 LPA",
+  "deadline": "2026-09-22T10:35:53.125249+00:00",
+  "published_at": "2026-08-23T10:35:53.125249+00:00",
+  "application_url": "https://dataminds.example.com/careers/026",
+  "source": "greenhouse",
+  "source_url": "https://dataminds.example.com/careers"
+}

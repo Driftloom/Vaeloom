@@ -1,0 +1,32 @@
+{
+  "id": "job-034",
+  "title": "Graduate Software Engineer — TalentBridge",
+  "company": "TalentBridge",
+  "location": "Bengaluru, India",
+  "remote": false,
+  "employment_type": "internship",
+  "experience_level": "entry",
+  "required_skills": [
+    "Python",
+    "Java",
+    "SQL"
+  ],
+  "preferred_skills": [
+    "AWS",
+    "Docker"
+  ],
+  "responsibilities": [
+    "Build grad systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": null,
+  "deadline": "2026-08-05T10:35:53.125249+00:00",
+  "published_at": "2026-07-06T10:35:53.125249+00:00",
+  "application_url": "https://talentbridge.example.com/careers/034",
+  "source": "greenhouse",
+  "source_url": "https://talentbridge.example.com/careers"
+}

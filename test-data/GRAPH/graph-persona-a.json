@@ -1,0 +1,179 @@
+{
+  "nodes": [
+    {
+      "id": "node-person-aarav",
+      "label": "Aarav Mehta",
+      "type": "person",
+      "properties": {
+        "email": "aarav.mehta@example.com"
+      }
+    },
+    {
+      "id": "node-university-iitb",
+      "label": "Indian Institute of Technology Bombay",
+      "type": "organization",
+      "properties": {
+        "type": "university"
+      }
+    },
+    {
+      "id": "node-degree-btech",
+      "label": "B.Tech CSE",
+      "type": "education",
+      "properties": {}
+    },
+    {
+      "id": "node-skill-python",
+      "label": "Python",
+      "type": "skill",
+      "properties": {
+        "aliases": [
+          "Python 3"
+        ]
+      }
+    },
+    {
+      "id": "node-skill-postgres",
+      "label": "PostgreSQL",
+      "type": "skill",
+      "properties": {
+        "aliases": [
+          "Postgres"
+        ]
+      }
+    },
+    {
+      "id": "node-skill-react",
+      "label": "React",
+      "type": "skill",
+      "properties": {
+        "aliases": [
+          "React.js",
+          "ReactJS"
+        ]
+      }
+    },
+    {
+      "id": "node-project-vaeloom",
+      "label": "Vaeloom Second Brain",
+      "type": "project",
+      "properties": {
+        "repo": "https://github.com/aarav-mehta/vaeloom-brain"
+      }
+    },
+    {
+      "id": "node-org-acme",
+      "label": "Acme Corp",
+      "type": "organization",
+      "properties": {}
+    },
+    {
+      "id": "node-cert-aws",
+      "label": "AWS Cloud Practitioner",
+      "type": "certification",
+      "properties": {
+        "date": "2025-03-10"
+      }
+    },
+    {
+      "id": "node-company-globex",
+      "label": "Globex",
+      "type": "organization",
+      "properties": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-001",
+      "source_id": "node-person-aarav",
+      "target_id": "node-university-iitb",
+      "relationship": "studied_at",
+      "weight": 1.0
+    },
+    {
+      "id": "edge-002",
+      "source_id": "node-person-aarav",
+      "target_id": "node-project-vaeloom",
+      "relationship": "worked_on",
+      "weight": 0.9
+    },
+    {
+      "id": "edge-003",
+      "source_id": "node-person-aarav",
+      "target_id": "node-skill-python",
+      "relationship": "has_skill",
+      "weight": 0.95
+    },
+    {
+      "id": "edge-004",
+      "source_id": "node-person-aarav",
+      "target_id": "node-skill-postgres",
+      "relationship": "has_skill",
+      "weight": 0.9
+    },
+    {
+      "id": "edge-005",
+      "source_id": "node-person-aarav",
+      "target_id": "node-skill-react",
+      "relationship": "has_skill",
+      "weight": 0.85
+    },
+    {
+      "id": "edge-006",
+      "source_id": "node-person-aarav",
+      "target_id": "node-cert-aws",
+      "relationship": "earned",
+      "weight": 0.8
+    },
+    {
+      "id": "edge-007",
+      "source_id": "node-person-aarav",
+      "target_id": "node-org-acme",
+      "relationship": "applied_to",
+      "weight": 0.7
+    },
+    {
+      "id": "edge-008",
+      "source_id": "node-project-vaeloom",
+      "target_id": "node-skill-python",
+      "relationship": "uses_skill",
+      "weight": 0.9
+    },
+    {
+      "id": "edge-009",
+      "source_id": "node-project-vaeloom",
+      "target_id": "node-skill-postgres",
+      "relationship": "uses_skill",
+      "weight": 0.9
+    },
+    {
+      "id": "edge-010",
+      "source_id": "node-project-vaeloom",
+      "target_id": "node-university-iitb",
+      "relationship": "belongs_to",
+      "weight": 0.6
+    },
+    {
+      "id": "edge-011",
+      "source_id": "node-project-vaeloom",
+      "target_id": "node-org-acme",
+      "relationship": "published_at",
+      "weight": 0.5,
+      "properties": {
+        "repo": "https://github.com/aarav-mehta/vaeloom-brain"
+      }
+    }
+  ],
+  "conflicts": [
+    {
+      "type": "duplicate_skill_alias",
+      "description": "React vs React.js vs ReactJS must resolve to single node-person-aarav edge has_skill React, not 3 nodes",
+      "expected": "single canonical node-skill-react with aliases"
+    },
+    {
+      "type": "date_conflict",
+      "description": "Resume 2027 vs transcript 2028 vs graph 2027 \u2014 preserve provenance",
+      "expected": "detect conflict, ask user"
+    }
+  ]
+}

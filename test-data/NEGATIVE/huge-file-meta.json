@@ -1,0 +1,6 @@
+{
+  "filename": "huge_11mb.pdf",
+  "size_bytes": 11534336,
+  "expected": "413 Payload Too Large per document_service.py:10MB guard",
+  "note": "Not stored as blob to keep repo small; test via mock upload size check"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "ats-keyword-trap",
+  "resume_id": "persona-f-resume-clean",
+  "job_id": "job-019",
+  "expected_verdict": "keyword_trap",
+  "note": "JD contains many keywords but messy resume has unsupported claims (React vs React.js aliases not unified)"
+}

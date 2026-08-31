@@ -1,0 +1,19 @@
+{
+  "id": "email-029",
+  "persona_id": "persona-a",
+  "subject": "Certificate — PostgreSQL Associate",
+  "sender": "PostgreSQL CE",
+  "sender_email": "postgresql.ce@example.com",
+  "category": "certificate",
+  "priority": "normal",
+  "sent_at": "2026-08-22T05:35:53.173909+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "Your certificate is ready for download.",
+  "labels": [
+    "certificate",
+    "normal"
+  ],
+  "expected_classification": "certificate",
+  "expected_priority": "normal"
+}

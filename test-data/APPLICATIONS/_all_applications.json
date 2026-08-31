@@ -1,0 +1,340 @@
+[
+  {
+    "id": "app-persona-a-job-001-discovered",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-001",
+      "title": "Software Engineer — Globex",
+      "company": "Globex",
+      "application_url": "https://acme.example.com/careers/001"
+    },
+    "status": "discovered",
+    "outcome": null,
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-06T10:35:53.150610+00:00"
+      },
+      {
+        "stage": "discovered",
+        "at": "2026-08-08T10:35:53.150610+00:00"
+      }
+    ],
+    "updated_at": "2026-08-08T10:35:53.150610+00:00",
+    "created_at": "2026-08-06T10:35:53.150610+00:00"
+  },
+  {
+    "id": "app-persona-a-job-004-shortlisted",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-004",
+      "title": "Frontend Engineer — CyberShield",
+      "company": "CyberShield",
+      "application_url": "https://cybershield.example.com/careers/004"
+    },
+    "status": "shortlisted",
+    "outcome": null,
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-09T10:35:53.151041+00:00"
+      },
+      {
+        "stage": "shortlisted",
+        "at": "2026-08-12T10:35:53.151041+00:00"
+      }
+    ],
+    "updated_at": "2026-08-12T10:35:53.151041+00:00",
+    "created_at": "2026-08-09T10:35:53.151041+00:00"
+  },
+  {
+    "id": "app-persona-a-job-007-tailoring",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-007",
+      "title": "Backend Engineer — Globex",
+      "company": "Globex",
+      "application_url": "https://globex.example.com/careers/007"
+    },
+    "status": "tailoring",
+    "outcome": null,
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-12T10:35:53.151471+00:00"
+      },
+      {
+        "stage": "tailoring",
+        "at": "2026-08-16T10:35:53.151471+00:00"
+      }
+    ],
+    "updated_at": "2026-08-16T10:35:53.151471+00:00",
+    "created_at": "2026-08-12T10:35:53.151471+00:00"
+  },
+  {
+    "id": "app-persona-a-job-010-submitted",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-010",
+      "title": "Full Stack Engineer — CloudForge",
+      "company": "CloudForge",
+      "application_url": "https://cloudforge.example.com/careers/010"
+    },
+    "status": "submitted",
+    "outcome": null,
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-18T10:35:53.152161+00:00"
+      },
+      {
+        "stage": "submitted",
+        "at": "2026-08-20T10:35:53.152161+00:00"
+      }
+    ],
+    "updated_at": "2026-08-20T10:35:53.152161+00:00",
+    "created_at": "2026-08-18T10:35:53.152161+00:00"
+  },
+  {
+    "id": "app-persona-a-job-013-interviewing",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-013",
+      "title": "Data Scientist — StartupXYZ",
+      "company": "StartupXYZ",
+      "application_url": "https://startupxyz.example.com/careers/013"
+    },
+    "status": "interviewing",
+    "outcome": null,
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-23T10:35:53.152658+00:00"
+      },
+      {
+        "stage": "interviewing",
+        "at": "2026-08-25T10:35:53.152658+00:00"
+      }
+    ],
+    "updated_at": "2026-08-25T10:35:53.152658+00:00",
+    "created_at": "2026-08-23T10:35:53.152658+00:00"
+  },
+  {
+    "id": "app-persona-a-job-016-resolved",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-016",
+      "title": "ML Engineer — TalentBridge",
+      "company": "TalentBridge",
+      "application_url": "https://talentbridge.example.com/careers/016"
+    },
+    "status": "resolved",
+    "outcome": "offer",
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-23T10:35:53.153411+00:00"
+      },
+      {
+        "stage": "resolved",
+        "at": "2026-08-29T10:35:53.153411+00:00"
+      }
+    ],
+    "updated_at": "2026-08-29T10:35:53.153411+00:00",
+    "created_at": "2026-08-23T10:35:53.153411+00:00"
+  },
+  {
+    "id": "app-persona-a-job-019-resolved",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-019",
+      "title": "DevOps Engineer — ProductHive",
+      "company": "ProductHive",
+      "application_url": "https://producthive.example.com/careers/019"
+    },
+    "status": "resolved",
+    "outcome": "rejected",
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-15T10:35:53.153867+00:00"
+      },
+      {
+        "stage": "resolved",
+        "at": "2026-08-18T10:35:53.153867+00:00"
+      }
+    ],
+    "updated_at": "2026-08-18T10:35:53.153867+00:00",
+    "created_at": "2026-08-15T10:35:53.153867+00:00"
+  },
+  {
+    "id": "app-persona-a-job-022-resolved",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-022",
+      "title": "Security Engineer — CloudForge",
+      "company": "CloudForge",
+      "application_url": "https://cloudforge.example.com/careers/022"
+    },
+    "status": "resolved",
+    "outcome": "withdrawn",
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-18T10:35:53.154274+00:00"
+      },
+      {
+        "stage": "resolved",
+        "at": "2026-08-22T10:35:53.154274+00:00"
+      }
+    ],
+    "updated_at": "2026-08-22T10:35:53.154274+00:00",
+    "created_at": "2026-08-18T10:35:53.154274+00:00"
+  },
+  {
+    "id": "app-persona-a-job-025-resolved",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-025",
+      "title": "Research Scientist — DataMinds",
+      "company": "DataMinds",
+      "application_url": "https://dataminds.example.com/careers/025"
+    },
+    "status": "resolved",
+    "outcome": "expired",
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-26T10:35:53.154843+00:00"
+      },
+      {
+        "stage": "resolved",
+        "at": "2026-08-30T10:35:53.154843+00:00"
+      }
+    ],
+    "updated_at": "2026-08-30T10:35:53.154843+00:00",
+    "created_at": "2026-08-26T10:35:53.154843+00:00"
+  },
+  {
+    "id": "app-persona-e-job-002-submitted",
+    "persona_id": "persona-e",
+    "job": {
+      "job_id": "job-002",
+      "title": "Software Engineer — StartupXYZ Variant 2",
+      "company": "StartupXYZ",
+      "application_url": "https://startupxyz.example.com/careers/002"
+    },
+    "status": "submitted",
+    "outcome": null,
+    "resume_version_id": "persona-e-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-15T10:35:53.155316+00:00"
+      },
+      {
+        "stage": "submitted",
+        "at": "2026-08-21T10:35:53.155316+00:00"
+      }
+    ],
+    "updated_at": "2026-08-21T10:35:53.155316+00:00",
+    "created_at": "2026-08-15T10:35:53.155316+00:00"
+  },
+  {
+    "id": "app-persona-e-job-005-interviewing",
+    "persona_id": "persona-e",
+    "job": {
+      "job_id": "job-005",
+      "title": "Frontend Engineer — Globex Variant 2",
+      "company": "Globex",
+      "application_url": "https://globex.example.com/careers/005"
+    },
+    "status": "interviewing",
+    "outcome": null,
+    "resume_version_id": "persona-e-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-23T10:35:53.155885+00:00"
+      },
+      {
+        "stage": "interviewing",
+        "at": "2026-08-26T10:35:53.155885+00:00"
+      }
+    ],
+    "updated_at": "2026-08-26T10:35:53.155885+00:00",
+    "created_at": "2026-08-23T10:35:53.155885+00:00"
+  },
+  {
+    "id": "app-persona-e-job-008-resolved",
+    "persona_id": "persona-e",
+    "job": {
+      "job_id": "job-008",
+      "title": "Backend Engineer — ResearchLabs Variant 2",
+      "company": "ResearchLabs",
+      "application_url": "https://researchlabs.example.com/careers/008"
+    },
+    "status": "resolved",
+    "outcome": "offer",
+    "resume_version_id": "persona-e-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-24T10:35:53.156356+00:00"
+      },
+      {
+        "stage": "resolved",
+        "at": "2026-08-28T10:35:53.156356+00:00"
+      }
+    ],
+    "updated_at": "2026-08-28T10:35:53.156356+00:00",
+    "created_at": "2026-08-24T10:35:53.156356+00:00"
+  },
+  {
+    "id": "app-persona-a-job-001-resolved",
+    "persona_id": "persona-a",
+    "job": {
+      "job_id": "job-001",
+      "title": "Software Engineer — Globex",
+      "company": "Globex",
+      "application_url": "https://acme.example.com/careers/001"
+    },
+    "status": "resolved",
+    "outcome": "duplicate",
+    "resume_version_id": "persona-a-resume-clean",
+    "cover_letter": null,
+    "timeline": [
+      {
+        "stage": "discovered",
+        "at": "2026-08-24T10:35:53.156835+00:00"
+      },
+      {
+        "stage": "resolved",
+        "at": "2026-08-27T10:35:53.156835+00:00"
+      }
+    ],
+    "updated_at": "2026-08-27T10:35:53.156835+00:00",
+    "created_at": "2026-08-24T10:35:53.156835+00:00"
+  }
+]

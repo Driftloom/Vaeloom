@@ -1,0 +1,11 @@
+{
+  "id": "mem-d-conflict-001",
+  "persona_id": "persona-d",
+  "type": "episodic",
+  "domain": "education",
+  "title": "Conflict \u2014 Grad date mismatch",
+  "content": "Resume says 2027, transcript says 2025-05-30 \u2014 system must detect conflict, preserve provenance.",
+  "expected_entities": [
+    "University"
+  ]
+}

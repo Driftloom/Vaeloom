@@ -1,0 +1,31 @@
+{
+  "id": "job-032",
+  "title": "SDE Intern — DataMinds Variant 2",
+  "company": "DataMinds",
+  "location": "Remote",
+  "remote": true,
+  "employment_type": "internship",
+  "experience_level": "internship",
+  "required_skills": [
+    "Python",
+    "PostgreSQL"
+  ],
+  "preferred_skills": [
+    "React",
+    "Docker"
+  ],
+  "responsibilities": [
+    "Build intern systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "Pursuing B.Tech/M.Tech"
+  ],
+  "salary": "135914 USD",
+  "deadline": "2026-09-15T10:35:53.125249+00:00",
+  "published_at": "2026-08-16T10:35:53.125249+00:00",
+  "application_url": "https://dataminds.example.com/careers/032",
+  "source": "jobs_board",
+  "source_url": "https://dataminds.example.com/careers"
+}

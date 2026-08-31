@@ -1,0 +1,12 @@
+{
+  "id": "mem-a-preference-001",
+  "persona_id": "persona-a",
+  "type": "preference",
+  "domain": "preference",
+  "title": "Preference \u2014 Prefers remote + Python/PostgreSQL",
+  "content": "User prefers remote internships, Python + PostgreSQL stack, rejects relocation. Inferred from 5 rejections of on-site frontend roles.",
+  "expected_entities": [
+    "Preference",
+    "Skill"
+  ]
+}

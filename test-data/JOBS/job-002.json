@@ -1,0 +1,33 @@
+{
+  "id": "job-002",
+  "title": "Software Engineer — StartupXYZ Variant 2",
+  "company": "StartupXYZ",
+  "location": "Boston, MA, USA",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "internship",
+  "required_skills": [
+    "Python",
+    "PostgreSQL",
+    "Docker",
+    "AWS"
+  ],
+  "preferred_skills": [
+    "Kubernetes",
+    "gRPC"
+  ],
+  "responsibilities": [
+    "Build backend systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "Pursuing B.Tech/M.Tech"
+  ],
+  "salary": null,
+  "deadline": null,
+  "published_at": "2026-08-27T10:35:53.125249+00:00",
+  "application_url": "https://startupxyz.example.com/careers/002",
+  "source": "lever",
+  "source_url": "https://startupxyz.example.com/careers"
+}

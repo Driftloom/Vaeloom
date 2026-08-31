@@ -1,0 +1,19 @@
+{
+  "id": "email-013",
+  "persona_id": "persona-a",
+  "subject": "Newsletter — Weekly Digest",
+  "sender": "Eng Weekly",
+  "sender_email": "eng.weekly@example.com",
+  "category": "newsletter",
+  "priority": "low",
+  "sent_at": "2026-08-02T06:35:53.165075+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "Weekly engineering digest: new tools released.",
+  "labels": [
+    "newsletter",
+    "low"
+  ],
+  "expected_classification": "newsletter",
+  "expected_priority": "low"
+}

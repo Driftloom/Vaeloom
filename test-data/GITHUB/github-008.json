@@ -1,0 +1,36 @@
+{
+  "id": "github-008",
+  "persona_id": "persona-f",
+  "repo": "alex-johnson/messy-proj",
+  "url": "https://github.com/alex-johnson/messy-proj",
+  "license": "MIT (synthetic messy)",
+  "languages": [
+    "JavaScript",
+    "Python"
+  ],
+  "description": "Messy project with alias duplicates React/React.js/ReactJS",
+  "commits": [
+    {
+      "sha": "m1",
+      "msg": "initial"
+    },
+    {
+      "sha": "m2",
+      "msg": "empty commit",
+      "date": "2025-05-01"
+    },
+    {
+      "sha": "m3",
+      "msg": "",
+      "date": "2025-05-02"
+    }
+  ],
+  "branches": [
+    "main",
+    "feature/final",
+    "feature/final2"
+  ],
+  "issues": [],
+  "prs": [],
+  "why": "Tests empty commits, branches, alias dedup"
+}

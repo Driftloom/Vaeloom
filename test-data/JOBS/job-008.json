@@ -1,0 +1,33 @@
+{
+  "id": "job-008",
+  "title": "Backend Engineer — ResearchLabs Variant 2",
+  "company": "ResearchLabs",
+  "location": "Remote",
+  "remote": true,
+  "employment_type": "full-time",
+  "experience_level": "mid",
+  "required_skills": [
+    "Java",
+    "Spring Boot",
+    "PostgreSQL",
+    "Redis"
+  ],
+  "preferred_skills": [
+    "Kafka",
+    "AWS"
+  ],
+  "responsibilities": [
+    "Build backend systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "107819 USD",
+  "deadline": "2026-08-25T10:35:53.125249+00:00",
+  "published_at": "2026-07-21T10:35:53.125249+00:00",
+  "application_url": "https://researchlabs.example.com/careers/008",
+  "source": "jobs_board",
+  "source_url": "https://researchlabs.example.com/careers"
+}

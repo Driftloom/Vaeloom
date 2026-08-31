@@ -1,0 +1,32 @@
+{
+  "id": "job-036",
+  "title": "Graduate Software Engineer — CyberShield Variant 3",
+  "company": "CyberShield",
+  "location": "San Francisco, CA, USA",
+  "remote": false,
+  "employment_type": "internship",
+  "experience_level": "mid",
+  "required_skills": [
+    "Python",
+    "Java",
+    "SQL"
+  ],
+  "preferred_skills": [
+    "AWS",
+    "Docker"
+  ],
+  "responsibilities": [
+    "Build grad systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": null,
+  "deadline": "2026-09-12T10:35:53.125249+00:00",
+  "published_at": "2026-08-13T10:35:53.125249+00:00",
+  "application_url": "https://cybershield.example.com/careers/036",
+  "source": "jobs_board",
+  "source_url": "https://cybershield.example.com/careers"
+}

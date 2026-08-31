@@ -1,0 +1,19 @@
+{
+  "id": "email-024",
+  "persona_id": "persona-a",
+  "subject": "Newsletter — Product Updates",
+  "sender": "Product Hive",
+  "sender_email": "product.hive@example.com",
+  "category": "newsletter",
+  "priority": "low",
+  "sent_at": "2026-08-05T05:35:53.171551+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "Weekly engineering digest: new tools released.",
+  "labels": [
+    "newsletter",
+    "low"
+  ],
+  "expected_classification": "newsletter",
+  "expected_priority": "low"
+}

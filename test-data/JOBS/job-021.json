@@ -1,0 +1,33 @@
+{
+  "id": "job-021",
+  "title": "DevOps Engineer — TalentBridge Variant 3",
+  "company": "TalentBridge",
+  "location": "San Francisco, CA, USA",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "entry",
+  "required_skills": [
+    "Docker",
+    "Kubernetes",
+    "AWS",
+    "Terraform"
+  ],
+  "preferred_skills": [
+    "Go",
+    "Python"
+  ],
+  "responsibilities": [
+    "Build devops systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "139507 USD",
+  "deadline": "2026-09-12T10:35:53.125249+00:00",
+  "published_at": "2026-08-13T10:35:53.125249+00:00",
+  "application_url": "https://talentbridge.example.com/careers/021",
+  "source": "lever",
+  "source_url": "https://talentbridge.example.com/careers"
+}

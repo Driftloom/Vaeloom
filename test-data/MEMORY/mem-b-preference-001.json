@@ -1,0 +1,11 @@
+{
+  "id": "mem-b-preference-001",
+  "persona_id": "persona-b",
+  "type": "preference",
+  "domain": "preference",
+  "title": "Preference \u2014 Rejects frontend repeatedly",
+  "content": "User rejected 5 frontend roles, prefers backend Java/Spring/PostgreSQL/Docker/AWS remote.",
+  "expected_entities": [
+    "Preference"
+  ]
+}

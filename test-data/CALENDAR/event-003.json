@@ -1,0 +1,10 @@
+{
+  "id": "event-003",
+  "persona_id": "persona-a",
+  "title": "Application Deadline — Globex SDE",
+  "start": "2026-09-02T16:05:53.176917",
+  "end": "2026-09-02T17:05:53.176918",
+  "type": "application_deadline",
+  "source": "application",
+  "has_conflict": false
+}

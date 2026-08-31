@@ -1,0 +1,26 @@
+{
+  "id": "app-persona-a-job-022-resolved",
+  "persona_id": "persona-a",
+  "job": {
+    "job_id": "job-022",
+    "title": "Security Engineer — CloudForge",
+    "company": "CloudForge",
+    "application_url": "https://cloudforge.example.com/careers/022"
+  },
+  "status": "resolved",
+  "outcome": "withdrawn",
+  "resume_version_id": "persona-a-resume-clean",
+  "cover_letter": null,
+  "timeline": [
+    {
+      "stage": "discovered",
+      "at": "2026-08-18T10:35:53.154274+00:00"
+    },
+    {
+      "stage": "resolved",
+      "at": "2026-08-22T10:35:53.154274+00:00"
+    }
+  ],
+  "updated_at": "2026-08-22T10:35:53.154274+00:00",
+  "created_at": "2026-08-18T10:35:53.154274+00:00"
+}

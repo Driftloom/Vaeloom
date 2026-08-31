@@ -1,0 +1,33 @@
+{
+  "id": "job-017",
+  "title": "ML Engineer — Acme Corp Variant 2",
+  "company": "Acme Corp",
+  "location": "Hyderabad, India",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "internship",
+  "required_skills": [
+    "Python",
+    "PyTorch",
+    "SQL",
+    "MLflow"
+  ],
+  "preferred_skills": [
+    "Kubernetes",
+    "AWS"
+  ],
+  "responsibilities": [
+    "Build ml systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "Pursuing B.Tech/M.Tech"
+  ],
+  "salary": "28 LPA",
+  "deadline": "2026-08-03T10:35:53.125249+00:00",
+  "published_at": "2026-07-04T10:35:53.125249+00:00",
+  "application_url": "https://acmecorp.example.com/careers/017",
+  "source": "jobs_board",
+  "source_url": "https://acmecorp.example.com/careers"
+}

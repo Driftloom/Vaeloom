@@ -1,0 +1,26 @@
+{
+  "id": "app-persona-a-job-010-submitted",
+  "persona_id": "persona-a",
+  "job": {
+    "job_id": "job-010",
+    "title": "Full Stack Engineer — CloudForge",
+    "company": "CloudForge",
+    "application_url": "https://cloudforge.example.com/careers/010"
+  },
+  "status": "submitted",
+  "outcome": null,
+  "resume_version_id": "persona-a-resume-clean",
+  "cover_letter": null,
+  "timeline": [
+    {
+      "stage": "discovered",
+      "at": "2026-08-18T10:35:53.152161+00:00"
+    },
+    {
+      "stage": "submitted",
+      "at": "2026-08-20T10:35:53.152161+00:00"
+    }
+  ],
+  "updated_at": "2026-08-20T10:35:53.152161+00:00",
+  "created_at": "2026-08-18T10:35:53.152161+00:00"
+}

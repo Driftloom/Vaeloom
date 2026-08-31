@@ -1,0 +1,19 @@
+{
+  "document": "RESUMES/persona-d-resume-conflict.pdf",
+  "expected_entities": [
+    "Person",
+    "University"
+  ],
+  "expected_relationships": [
+    "studied_at"
+  ],
+  "expected_memory_types": [
+    "profile",
+    "episodic"
+  ],
+  "features_tested": [
+    "conflict_detection",
+    "provenance"
+  ],
+  "notes": "Intentional conflict: resume says 2027 vs transcript 2025-05-30 \u2014 must preserve both, ask user"
+}

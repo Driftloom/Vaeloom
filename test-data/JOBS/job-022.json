@@ -1,0 +1,32 @@
+{
+  "id": "job-022",
+  "title": "Security Engineer — CloudForge",
+  "company": "CloudForge",
+  "location": "Boston, MA, USA",
+  "remote": false,
+  "employment_type": "full-time",
+  "experience_level": "senior",
+  "required_skills": [
+    "Python",
+    "AWS",
+    "Burp Suite"
+  ],
+  "preferred_skills": [
+    "Kubernetes",
+    "SOC2"
+  ],
+  "responsibilities": [
+    "Build cybersecurity systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "117422 USD",
+  "deadline": "2026-08-17T10:35:53.125249+00:00",
+  "published_at": "2026-07-18T10:35:53.125249+00:00",
+  "application_url": "https://cloudforge.example.com/careers/022",
+  "source": "lever",
+  "source_url": "https://cloudforge.example.com/careers"
+}

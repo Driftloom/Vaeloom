@@ -1,0 +1,32 @@
+{
+  "id": "job-006",
+  "title": "Frontend Engineer — TalentBridge Variant 3",
+  "company": "TalentBridge",
+  "location": "Bengaluru, India",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "mid",
+  "required_skills": [
+    "React",
+    "TypeScript",
+    "Tailwind"
+  ],
+  "preferred_skills": [
+    "Next.js",
+    "GraphQL"
+  ],
+  "responsibilities": [
+    "Build frontend systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": null,
+  "deadline": "2026-07-31T10:35:53.125249+00:00",
+  "published_at": "2026-07-01T10:35:53.125249+00:00",
+  "application_url": "https://talentbridge.example.com/careers/006",
+  "source": "lever",
+  "source_url": "https://talentbridge.example.com/careers"
+}

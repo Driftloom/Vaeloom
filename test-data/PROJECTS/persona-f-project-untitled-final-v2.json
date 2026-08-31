@@ -1,0 +1,21 @@
+{
+  "persona_id": "persona-f",
+  "name": "Project_Untitled_Final_v2",
+  "description": "Unclear project, duplicate files, conflicting tech list: React, React.js, ReactJS listed separately.",
+  "technologies": [
+    "React",
+    "React.js",
+    "ReactJS",
+    "Python",
+    "Python 3",
+    "PostgreSQL",
+    "Postgres"
+  ],
+  "role": "???",
+  "dates": "2025-?? — 2025-?? (conflicts)",
+  "responsibilities": [
+    "Did stuff"
+  ],
+  "outcomes": [],
+  "repository": "https://github.com/alex-johnson/messy-proj"
+}

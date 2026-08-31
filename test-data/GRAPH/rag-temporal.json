@@ -1,0 +1,10 @@
+{
+  "id": "rag-temporal",
+  "query": "What did I accomplish in 2025?",
+  "strategy": "temporal",
+  "expected_events": [
+    "Acme internship Jun-Aug 2025",
+    "AWS cert 2025-03-10",
+    "Vaeloom 2025-01-2025-08"
+  ]
+}

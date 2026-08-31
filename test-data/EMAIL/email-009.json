@@ -1,0 +1,19 @@
+{
+  "id": "email-009",
+  "persona_id": "persona-a",
+  "subject": "Document Request — Please Upload Certificate",
+  "sender": "InnovaTech HR",
+  "sender_email": "innovatech.hr@example.com",
+  "category": "doc_request",
+  "priority": "high",
+  "sent_at": "2026-08-12T12:35:53.163229+00:00",
+  "deadline": "2026-09-06T10:35:53.163229+00:00",
+  "has_task": true,
+  "body": "Please upload transcript and certificate by deadline.",
+  "labels": [
+    "doc_request",
+    "high"
+  ],
+  "expected_classification": "doc_request",
+  "expected_priority": "high"
+}

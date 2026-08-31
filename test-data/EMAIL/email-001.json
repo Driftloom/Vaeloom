@@ -1,0 +1,19 @@
+{
+  "id": "email-001",
+  "persona_id": "persona-a",
+  "subject": "Interview Invitation — Acme SDE Intern",
+  "sender": "Acme Recruiting",
+  "sender_email": "acme.recruiting@example.com",
+  "category": "interview",
+  "priority": "high",
+  "sent_at": "2026-08-08T14:35:53.159064+00:00",
+  "deadline": "2026-09-02T10:35:53.159064+00:00",
+  "has_task": true,
+  "body": "Dear Aarav, you are invited to interview for Interview Invitation — Acme SDE Intern. Please confirm availability. Deadline: 2026-09-02T10:35:53.159064+00:00",
+  "labels": [
+    "interview",
+    "high"
+  ],
+  "expected_classification": "interview",
+  "expected_priority": "high"
+}

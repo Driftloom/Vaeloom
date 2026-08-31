@@ -1,0 +1,14 @@
+# Resume — persona-d — clean
+
+- DR. SARAH CHEN — sarah.chen@example.com — Boston, MA
+
+- EDUCATION: Ph.D. CS, MIT, 2025-05-30, GPA 5.0/5.0
+
+- PUBLICATIONS: 3 papers, 47 citations, EduGraph NSF grant
+
+- EXPERIENCE: Research Assistant MIT 2021-2025
+
+- SKILLS: Python, R, PyTorch, LaTeX
+
+---
+*Generated synthetic for Vaeloom test corpus — contains dates, entities, tables*

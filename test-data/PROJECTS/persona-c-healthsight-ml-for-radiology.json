@@ -1,0 +1,24 @@
+{
+  "persona_id": "persona-c",
+  "name": "HealthSight — ML for Radiology",
+  "description": "PyTorch CNN for chest X-ray classification, 0.92 AUROC, MLflow tracking.",
+  "technologies": [
+    "Python",
+    "PyTorch",
+    "pandas",
+    "MLflow",
+    "SQL"
+  ],
+  "role": "ML Engineer",
+  "dates": "2025-03 — 2025-07",
+  "responsibilities": [
+    "Curated dataset",
+    "Trained model",
+    "Deployed batch inference"
+  ],
+  "outcomes": [
+    "0.92 AUROC",
+    "Paper submitted"
+  ],
+  "repository": "https://github.com/rohan-desai/healthsight"
+}

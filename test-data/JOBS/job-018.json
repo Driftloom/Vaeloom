@@ -1,0 +1,33 @@
+{
+  "id": "job-018",
+  "title": "ML Engineer — TalentBridge Variant 3",
+  "company": "TalentBridge",
+  "location": "Berlin, Germany",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "internship",
+  "required_skills": [
+    "Python",
+    "PyTorch",
+    "SQL",
+    "MLflow"
+  ],
+  "preferred_skills": [
+    "Kubernetes",
+    "AWS"
+  ],
+  "responsibilities": [
+    "Build ml systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "Pursuing B.Tech/M.Tech"
+  ],
+  "salary": null,
+  "deadline": "2026-09-16T10:35:53.125249+00:00",
+  "published_at": "2026-08-17T10:35:53.125249+00:00",
+  "application_url": "https://talentbridge.example.com/careers/018",
+  "source": "jobs_board",
+  "source_url": "https://talentbridge.example.com/careers"
+}

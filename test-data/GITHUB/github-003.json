@@ -1,0 +1,24 @@
+{
+  "id": "github-003",
+  "persona_id": "persona-a",
+  "repo": "aarav-mehta/campus-connect",
+  "url": "https://github.com/aarav-mehta/campus-connect",
+  "license": "MIT (synthetic)",
+  "languages": [
+    "JavaScript",
+    "TypeScript"
+  ],
+  "description": "Campus social + calendar",
+  "commits": [
+    {
+      "sha": "c1",
+      "msg": "init"
+    },
+    {
+      "sha": "c2",
+      "msg": "Add calendar sync",
+      "date": "2024-09-10"
+    }
+  ],
+  "why": "Second repo for persona-a graph fan-out"
+}

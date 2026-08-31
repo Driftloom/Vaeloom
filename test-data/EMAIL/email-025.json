@@ -1,0 +1,19 @@
+{
+  "id": "email-025",
+  "persona_id": "persona-a",
+  "subject": "Spam — Promo 90% Off",
+  "sender": "Promo Bot",
+  "sender_email": "promo.bot@example.com",
+  "category": "spam",
+  "priority": "low",
+  "sent_at": "2026-08-01T21:35:53.171946+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "You WON a prize!!! Click here $$$",
+  "labels": [
+    "spam",
+    "low"
+  ],
+  "expected_classification": "spam",
+  "expected_priority": "low"
+}

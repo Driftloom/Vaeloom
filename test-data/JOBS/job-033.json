@@ -1,0 +1,31 @@
+{
+  "id": "job-033",
+  "title": "SDE Intern — Acme Corp Variant 3",
+  "company": "Acme Corp",
+  "location": "Bengaluru, India",
+  "remote": false,
+  "employment_type": "internship",
+  "experience_level": "internship",
+  "required_skills": [
+    "Python",
+    "PostgreSQL"
+  ],
+  "preferred_skills": [
+    "React",
+    "Docker"
+  ],
+  "responsibilities": [
+    "Build intern systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "Pursuing B.Tech/M.Tech"
+  ],
+  "salary": null,
+  "deadline": "2026-08-22T10:35:53.125249+00:00",
+  "published_at": "2026-07-23T10:35:53.125249+00:00",
+  "application_url": "https://acmecorp.example.com/careers/033",
+  "source": "greenhouse",
+  "source_url": "https://acmecorp.example.com/careers"
+}

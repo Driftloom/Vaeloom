@@ -1,0 +1,14 @@
+# Resume — persona-c — clean
+
+- ROHAN DESAI — rohan.desai@example.com — Bengaluru, India
+
+- EDUCATION: M.Tech Data Science, IISc, 2026-07-20, CGPA 9.10/10
+
+- SKILLS: Python, SQL, PyTorch, pandas, scikit-learn, Airflow, MLflow
+
+- PROJECT: HealthSight — PyTorch CNN chest X-ray, AUROC 0.92
+
+- PUBLICATION: Desai et al. HealthSight, MICCAI 2025 (submitted)
+
+---
+*Generated synthetic for Vaeloom test corpus — contains dates, entities, tables*

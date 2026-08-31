@@ -1,0 +1,19 @@
+{
+  "id": "email-012",
+  "persona_id": "persona-a",
+  "subject": "SPAM — You Won Prize",
+  "sender": "Spam Sender",
+  "sender_email": "spam.sender@example.com",
+  "category": "spam",
+  "priority": "low",
+  "sent_at": "2026-07-30T12:35:53.164548+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "You WON a prize!!! Click here $$$",
+  "labels": [
+    "spam",
+    "low"
+  ],
+  "expected_classification": "spam",
+  "expected_priority": "low"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "email-018",
+  "persona_id": "persona-a",
+  "subject": "Congratulations — Internship Complete Acme",
+  "sender": "Acme HR",
+  "sender_email": "acme.hr@example.com",
+  "category": "certificate",
+  "priority": "normal",
+  "sent_at": "2026-08-19T09:35:53.168285+00:00",
+  "deadline": "2026-09-02T10:35:53.168285+00:00",
+  "has_task": false,
+  "body": "Your certificate is ready for download.",
+  "labels": [
+    "certificate",
+    "normal"
+  ],
+  "expected_classification": "certificate",
+  "expected_priority": "normal"
+}

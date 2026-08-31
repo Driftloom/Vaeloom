@@ -1,0 +1,51 @@
+{
+  "id": "persona-e",
+  "archetype": "Early-career Engineer",
+  "full_name": "Vikram Singh",
+  "email": "vikram.singh@example.com",
+  "location": "Hyderabad, India / Remote US",
+  "education": {
+    "degree": "B.Tech Information Technology",
+    "university": "IIIT Hyderabad",
+    "graduation_date": "2023-05-10",
+    "gpa": "8.90/10 CGPA",
+    "courses": [
+      "Software Engineering",
+      "Networks",
+      "DBMS"
+    ]
+  },
+  "skills": [
+    "Python",
+    "Go",
+    "PostgreSQL",
+    "AWS",
+    "Docker",
+    "Kubernetes",
+    "gRPC"
+  ],
+  "certifications": [
+    "CKA (2024)",
+    "AWS DevOps Professional (2025)"
+  ],
+  "languages": [
+    "English",
+    "Hindi",
+    "Telugu"
+  ],
+  "interests": [
+    "Distributed Systems",
+    "Platform"
+  ],
+  "career_goals": "Staff Engineer, platform track",
+  "preferences": {
+    "remote": true,
+    "stack": [
+      "Go",
+      "PostgreSQL",
+      "AWS"
+    ],
+    "relocation": true
+  },
+  "notes": "Multiple companies, promotions, resume evolution"
+}

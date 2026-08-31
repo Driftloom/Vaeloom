@@ -1,0 +1,19 @@
+{
+  "id": "email-014",
+  "persona_id": "persona-a",
+  "subject": "Social Notification — Someone liked your post",
+  "sender": "Social Network",
+  "sender_email": "social.network@example.com",
+  "category": "irrelevant",
+  "priority": "low",
+  "sent_at": "2026-08-13T09:35:53.165456+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "Social notification: someone liked your post.",
+  "labels": [
+    "irrelevant",
+    "low"
+  ],
+  "expected_classification": "irrelevant",
+  "expected_priority": "low"
+}

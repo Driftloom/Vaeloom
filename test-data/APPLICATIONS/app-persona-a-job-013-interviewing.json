@@ -1,0 +1,26 @@
+{
+  "id": "app-persona-a-job-013-interviewing",
+  "persona_id": "persona-a",
+  "job": {
+    "job_id": "job-013",
+    "title": "Data Scientist — StartupXYZ",
+    "company": "StartupXYZ",
+    "application_url": "https://startupxyz.example.com/careers/013"
+  },
+  "status": "interviewing",
+  "outcome": null,
+  "resume_version_id": "persona-a-resume-clean",
+  "cover_letter": null,
+  "timeline": [
+    {
+      "stage": "discovered",
+      "at": "2026-08-23T10:35:53.152658+00:00"
+    },
+    {
+      "stage": "interviewing",
+      "at": "2026-08-25T10:35:53.152658+00:00"
+    }
+  ],
+  "updated_at": "2026-08-25T10:35:53.152658+00:00",
+  "created_at": "2026-08-23T10:35:53.152658+00:00"
+}

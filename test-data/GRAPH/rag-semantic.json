@@ -1,0 +1,10 @@
+{
+  "id": "rag-semantic",
+  "query": "Which projects demonstrate backend engineering experience?",
+  "strategy": "semantic",
+  "expected_nodes": [
+    "node-project-vaeloom",
+    "node-project-orderflow"
+  ],
+  "note": "embedding cosine should rank OrderFlow + Vaeloom over frontend"
+}

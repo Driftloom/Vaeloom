@@ -1,0 +1,19 @@
+{
+  "id": "email-027",
+  "persona_id": "persona-a",
+  "subject": "Ambiguous — Re: Your Submission",
+  "sender": "Unknown Sender",
+  "sender_email": "unknown.sender@example.com",
+  "category": "ambiguous",
+  "priority": "normal",
+  "sent_at": "2026-08-04T21:35:53.172990+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "Following up on your recent submission — might need clarification.",
+  "labels": [
+    "ambiguous",
+    "normal"
+  ],
+  "expected_classification": "ambiguous",
+  "expected_priority": "normal"
+}

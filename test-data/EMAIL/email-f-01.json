@@ -1,0 +1,19 @@
+{
+  "id": "email-f-01",
+  "persona_id": "persona-a",
+  "subject": "Duplicate Interview — Same Thread",
+  "sender": "Acme Recruiting",
+  "sender_email": "acme.recruiting@example.com",
+  "category": "interview",
+  "priority": "high",
+  "sent_at": "2026-08-26T22:35:53.175208+00:00",
+  "deadline": "2026-08-30T10:35:53.175208+00:00",
+  "has_task": true,
+  "body": "Dear Alex, you are invited to interview for Duplicate Interview — Same Thread. Please confirm availability. Deadline: 2026-08-30T10:35:53.175208+00:00",
+  "labels": [
+    "interview",
+    "high"
+  ],
+  "expected_classification": "interview",
+  "expected_priority": "high"
+}

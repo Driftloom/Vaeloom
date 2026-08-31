@@ -1,0 +1,11 @@
+{
+  "id": "rag-conflict",
+  "query": "When do I graduate?",
+  "strategy": "conflict",
+  "facts": [
+    "Resume says 2027",
+    "Transcript says 2027-05-15",
+    "Persona-d resume says 2027 vs transcript 2025"
+  ],
+  "expected_behavior": "detect conflict, preserve provenance, ask user"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "mem-a-episodic-001",
+  "persona_id": "persona-a",
+  "type": "episodic",
+  "domain": "event",
+  "title": "Episodic \u2014 Hackathon Win 2024",
+  "content": "Won hackathon 2024, 2nd place among 120 teams \u2014 achievement.",
+  "expected_entities": [
+    "Event",
+    "Achievement"
+  ]
+}

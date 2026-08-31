@@ -1,0 +1,7 @@
+{
+  "id": "ats-high-match",
+  "resume_id": "persona-a-resume-clean",
+  "job_id": "job-031",
+  "expected_verdict": "high",
+  "note": "Resume Python/React/PostgreSQL strongly matches JD requires Python+PostgreSQL+Docker"
+}

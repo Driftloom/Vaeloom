@@ -1,0 +1,58 @@
+{
+  "id": "persona-b",
+  "archetype": "Backend-focused Student",
+  "full_name": "Emily Carter",
+  "email": "emily.carter@example.com",
+  "location": "San Francisco, CA, USA",
+  "education": {
+    "degree": "B.S. Computer Science",
+    "university": "Stanford University",
+    "graduation_date": "2026-06-12",
+    "gpa": "3.85/4.0 GPA",
+    "courses": [
+      "Distributed Systems",
+      "Databases",
+      "Cloud Computing",
+      "Software Engineering",
+      "Security"
+    ]
+  },
+  "skills": [
+    "Java",
+    "Spring Boot",
+    "PostgreSQL",
+    "Docker",
+    "AWS",
+    "Kubernetes",
+    "Redis"
+  ],
+  "certifications": [
+    "AWS Solutions Architect Associate (2025)",
+    "Oracle Java SE 11 Developer"
+  ],
+  "languages": [
+    "English",
+    "Spanish"
+  ],
+  "interests": [
+    "Backend Architecture",
+    "Platform Engineering"
+  ],
+  "career_goals": "Backend/Platform engineer, remote-first",
+  "preferences": {
+    "remote": true,
+    "stack": [
+      "Java",
+      "PostgreSQL",
+      "AWS"
+    ],
+    "relocation": false,
+    "role_family": "backend",
+    "rejects": [
+      "frontend",
+      "React",
+      "UI/UX"
+    ]
+  },
+  "notes": "Prefers backend, repeatedly rejects frontend — Preference memory test"
+}

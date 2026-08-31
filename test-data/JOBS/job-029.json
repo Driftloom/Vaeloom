@@ -1,0 +1,32 @@
+{
+  "id": "job-029",
+  "title": "Product Manager — Acme Corp Variant 2",
+  "company": "Acme Corp",
+  "location": "Hyderabad, India",
+  "remote": false,
+  "employment_type": "full-time",
+  "experience_level": "entry",
+  "required_skills": [
+    "Product",
+    "Agile",
+    "SQL"
+  ],
+  "preferred_skills": [
+    "AI",
+    "Analytics"
+  ],
+  "responsibilities": [
+    "Build product systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "14 LPA",
+  "deadline": "2026-08-25T10:35:53.125249+00:00",
+  "published_at": "2026-07-26T10:35:53.125249+00:00",
+  "application_url": "https://acmecorp.example.com/careers/029",
+  "source": "company_career",
+  "source_url": "https://acmecorp.example.com/careers"
+}

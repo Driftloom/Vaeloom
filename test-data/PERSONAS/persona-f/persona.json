@@ -1,0 +1,41 @@
+{
+  "id": "persona-f",
+  "archetype": "Messy User",
+  "full_name": "Alex Johnson",
+  "email": "alex.johnson@example.com",
+  "location": "Austin, TX, USA",
+  "education": {
+    "degree": "B.S. Computer Engineering",
+    "university": "University of Texas at Austin",
+    "graduation_date": "2027-05-15",
+    "gpa": "3.20/4.0 GPA (conflicts: resume says 3.6)",
+    "courses": [
+      "Embedded",
+      "Systems"
+    ]
+  },
+  "skills": [
+    "Python",
+    "JavaScript",
+    "C++",
+    "React",
+    "Node.js",
+    "PostgreSQL (alias Postgres)"
+  ],
+  "certifications": [
+    "CompTIA Security+ (2024) — duplicate cert files"
+  ],
+  "languages": [
+    "English"
+  ],
+  "interests": [
+    "Mixed"
+  ],
+  "career_goals": "Unclear — tests preference inference failure",
+  "preferences": {
+    "remote": null,
+    "stack": [],
+    "relocation": null
+  },
+  "notes": "Intentionally poor organization: duplicates, conflicting dates, incomplete metadata"
+}

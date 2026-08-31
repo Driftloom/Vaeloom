@@ -1,0 +1,54 @@
+{
+  "id": "persona-a",
+  "archetype": "CS Student",
+  "full_name": "Aarav Mehta",
+  "email": "aarav.mehta@example.com",
+  "location": "Mumbai, India",
+  "education": {
+    "degree": "B.Tech Computer Science & Engineering",
+    "university": "Indian Institute of Technology Bombay",
+    "graduation_date": "2027-05-15",
+    "gpa": "8.72/10 CGPA",
+    "courses": [
+      "Data Structures",
+      "Algorithms",
+      "DBMS",
+      "Operating Systems",
+      "Machine Learning",
+      "Computer Networks"
+    ]
+  },
+  "skills": [
+    "Python",
+    "React",
+    "PostgreSQL",
+    "TensorFlow",
+    "TypeScript",
+    "Docker",
+    "Git"
+  ],
+  "certifications": [
+    "AWS Cloud Practitioner (2025)",
+    "PostgreSQL Associate (2025)"
+  ],
+  "languages": [
+    "English",
+    "Hindi",
+    "Marathi"
+  ],
+  "interests": [
+    "AI for Education",
+    "Open Source"
+  ],
+  "career_goals": "AI-native product engineer, backend + AI",
+  "preferences": {
+    "remote": true,
+    "stack": [
+      "Python",
+      "PostgreSQL"
+    ],
+    "relocation": false,
+    "role_family": "backend+AI"
+  },
+  "notes": "Strong: Python/React/PostgreSQL/GitHub/AI project — Vaeloom scenario 02"
+}

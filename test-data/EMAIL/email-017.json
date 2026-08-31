@@ -1,0 +1,19 @@
+{
+  "id": "email-017",
+  "persona_id": "persona-a",
+  "subject": "Phishing-like SAFE — Verify Password",
+  "sender": "Security Alert",
+  "sender_email": "security.alert@example.com",
+  "category": "phishing",
+  "priority": "low",
+  "sent_at": "2026-08-29T01:35:53.167586+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "Verify your password at http://evil.example.com (SAFE SYNTHETIC — must be classified spam, never clicked)",
+  "labels": [
+    "phishing",
+    "low"
+  ],
+  "expected_classification": "spam",
+  "expected_priority": "low"
+}

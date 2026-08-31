@@ -1,0 +1,25 @@
+{
+  "id": "github-006",
+  "persona_id": "persona-d",
+  "repo": "sarah-chen/edugraph",
+  "url": "https://github.com/sarah-chen/edugraph",
+  "license": "CC-BY-4.0 (research code synthetic)",
+  "languages": [
+    "Python",
+    "LaTeX"
+  ],
+  "description": "EduGraph research — 3 papers 47 citations",
+  "commits": [
+    {
+      "sha": "s1",
+      "msg": "paper: edugraph main",
+      "date": "2023-06-15"
+    },
+    {
+      "sha": "s2",
+      "msg": "experiments batch2",
+      "date": "2024-02-20"
+    }
+  ],
+  "why": "Research repo linking to academic CV"
+}

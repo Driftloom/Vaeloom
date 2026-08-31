@@ -1,0 +1,26 @@
+{
+  "id": "app-persona-e-job-005-interviewing",
+  "persona_id": "persona-e",
+  "job": {
+    "job_id": "job-005",
+    "title": "Frontend Engineer — Globex Variant 2",
+    "company": "Globex",
+    "application_url": "https://globex.example.com/careers/005"
+  },
+  "status": "interviewing",
+  "outcome": null,
+  "resume_version_id": "persona-e-resume-clean",
+  "cover_letter": null,
+  "timeline": [
+    {
+      "stage": "discovered",
+      "at": "2026-08-23T10:35:53.155885+00:00"
+    },
+    {
+      "stage": "interviewing",
+      "at": "2026-08-26T10:35:53.155885+00:00"
+    }
+  ],
+  "updated_at": "2026-08-26T10:35:53.155885+00:00",
+  "created_at": "2026-08-23T10:35:53.155885+00:00"
+}

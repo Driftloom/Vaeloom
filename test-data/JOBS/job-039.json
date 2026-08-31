@@ -1,0 +1,30 @@
+{
+  "id": "job-039",
+  "title": "Entry-Level Backend — InnovaTech Variant 3",
+  "company": "InnovaTech",
+  "location": "Boston, MA, USA",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "internship",
+  "required_skills": [
+    "Python",
+    "PostgreSQL"
+  ],
+  "preferred_skills": [
+    "Docker"
+  ],
+  "responsibilities": [
+    "Build entry systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "Pursuing B.Tech/M.Tech"
+  ],
+  "salary": "99651 USD",
+  "deadline": "2026-08-06T10:35:53.125249+00:00",
+  "published_at": "2026-07-07T10:35:53.125249+00:00",
+  "application_url": "https://innovatech.example.com/careers/039",
+  "source": "jobs_board",
+  "source_url": "https://innovatech.example.com/careers"
+}

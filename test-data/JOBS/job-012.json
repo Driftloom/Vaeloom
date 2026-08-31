@@ -1,0 +1,32 @@
+{
+  "id": "job-012",
+  "title": "Full Stack Engineer — ResearchLabs Variant 3",
+  "company": "ResearchLabs",
+  "location": "Hyderabad, India",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "mid",
+  "required_skills": [
+    "Python",
+    "React",
+    "PostgreSQL"
+  ],
+  "preferred_skills": [
+    "Docker",
+    "AWS"
+  ],
+  "responsibilities": [
+    "Build fullstack systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": null,
+  "deadline": null,
+  "published_at": "2026-07-31T10:35:53.125249+00:00",
+  "application_url": "https://researchlabs.example.com/careers/012",
+  "source": "company_career",
+  "source_url": "https://researchlabs.example.com/careers"
+}

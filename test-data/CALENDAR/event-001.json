@@ -1,0 +1,10 @@
+{
+  "id": "event-001",
+  "persona_id": "persona-a",
+  "title": "Interview — Acme SDE Intern",
+  "start": "2026-08-31T19:05:53.176893",
+  "end": "2026-08-31T20:05:53.176910",
+  "type": "interview",
+  "source": "gmail",
+  "has_conflict": false
+}

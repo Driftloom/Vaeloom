@@ -1,0 +1,1 @@
+Vaeloom Second Brain project uses Python React Postgres. Built at IIT Bombay. Acme internship June - August 2025.

@@ -1,0 +1,1 @@
+Teh project uses Pythoon and PostgressQL. Recieve certificate for compleetion. (intentional OCR/spelling errors for sanitization test)

@@ -1,0 +1,1 @@
+PK placeholder pptx - not a real pptx, should raise UnsupportedFormatError per parsers.py:192

@@ -1,0 +1,24 @@
+{
+  "persona_id": "persona-e",
+  "name": "ShipFast — Platform Infra",
+  "description": "Platform at Acme (2023-24) then Staff at Globex (2024-26): migrated 12 services to K8s.",
+  "technologies": [
+    "Go",
+    "PostgreSQL",
+    "AWS",
+    "Docker",
+    "Kubernetes",
+    "gRPC"
+  ],
+  "role": "Staff Engineer",
+  "dates": "2023-06 — 2026-08",
+  "responsibilities": [
+    "Led migration",
+    "Built CI/CD"
+  ],
+  "outcomes": [
+    "Deploy time -60%",
+    "Cost -22%"
+  ],
+  "repository": "https://github.com/vikram-singh/shipfast"
+}

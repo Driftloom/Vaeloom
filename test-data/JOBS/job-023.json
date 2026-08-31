@@ -1,0 +1,32 @@
+{
+  "id": "job-023",
+  "title": "Security Engineer — DataMinds Variant 2",
+  "company": "DataMinds",
+  "location": "Bengaluru, India",
+  "remote": false,
+  "employment_type": "full-time",
+  "experience_level": "entry",
+  "required_skills": [
+    "Python",
+    "AWS",
+    "Burp Suite"
+  ],
+  "preferred_skills": [
+    "Kubernetes",
+    "SOC2"
+  ],
+  "responsibilities": [
+    "Build cybersecurity systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": null,
+  "deadline": "2026-09-07T10:35:53.125249+00:00",
+  "published_at": "2026-08-08T10:35:53.125249+00:00",
+  "application_url": "https://dataminds.example.com/careers/023",
+  "source": "greenhouse",
+  "source_url": "https://dataminds.example.com/careers"
+}

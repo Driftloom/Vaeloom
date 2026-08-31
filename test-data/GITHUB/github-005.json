@@ -1,0 +1,20 @@
+{
+  "id": "github-005",
+  "persona_id": "persona-c",
+  "repo": "rohan-desai/healthsight",
+  "url": "https://github.com/rohan-desai/healthsight",
+  "license": "MIT (synthetic)",
+  "languages": [
+    "Python",
+    "Jupyter Notebook"
+  ],
+  "description": "HealthSight chest X-ray CNN",
+  "commits": [
+    {
+      "sha": "h1",
+      "msg": "feat: train loop",
+      "date": "2025-04-12"
+    }
+  ],
+  "why": "ML repo with releases for GitHub connector"
+}

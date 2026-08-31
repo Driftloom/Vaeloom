@@ -1,0 +1,15 @@
+{
+  "document": "NEGATIVE/prompt-injection-simple.pdf",
+  "expected_entities": [
+    "Project"
+  ],
+  "expected_relationships": [],
+  "expected_memory_types": [
+    "document"
+  ],
+  "features_tested": [
+    "security.prompt_injection_quarantine",
+    "ingestion.needs_review"
+  ],
+  "notes": "Must be quarantined flag but still persisted \u2014 never executed as instruction"
+}

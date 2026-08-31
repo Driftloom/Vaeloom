@@ -1,0 +1,7 @@
+{
+  "id": "ats-medium-match",
+  "resume_id": "persona-b-resume-clean",
+  "job_id": "job-016",
+  "expected_verdict": "medium",
+  "note": "Backend Java/Spring matches infra but missing PyTorch/MLflow partially"
+}

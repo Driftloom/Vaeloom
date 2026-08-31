@@ -1,0 +1,19 @@
+{
+  "id": "email-021",
+  "persona_id": "persona-a",
+  "subject": "Recruiter — Remote Backend Offer",
+  "sender": "Remote Recruiter",
+  "sender_email": "remote.recruiter@example.com",
+  "category": "recruiter",
+  "priority": "high",
+  "sent_at": "2026-08-18T17:35:53.170086+00:00",
+  "deadline": null,
+  "has_task": true,
+  "body": "Saw your profile — quick call this week?",
+  "labels": [
+    "recruiter",
+    "high"
+  ],
+  "expected_classification": "recruiter",
+  "expected_priority": "high"
+}

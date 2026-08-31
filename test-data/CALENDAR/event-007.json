@@ -1,0 +1,11 @@
+{
+  "id": "event-007",
+  "persona_id": "persona-a",
+  "title": "Expired Deadline — Old Application",
+  "start": "2026-08-20T16:05:53.176928",
+  "end": "2026-08-20T16:05:53.176930",
+  "type": "application_deadline",
+  "source": "application",
+  "has_conflict": false,
+  "is_expired": true
+}

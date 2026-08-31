@@ -1,0 +1,10 @@
+{
+  "id": "event-005",
+  "persona_id": "persona-a",
+  "title": "Certificate Expiration — AWS Cloud Practitioner",
+  "start": "2028-03-10T00:00:00+00:00",
+  "end": "2028-03-10T01:00:00+00:00",
+  "type": "certificate_expiration",
+  "source": "certificate",
+  "has_conflict": false
+}

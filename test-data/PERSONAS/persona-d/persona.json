@@ -1,0 +1,47 @@
+{
+  "id": "persona-d",
+  "archetype": "Researcher",
+  "full_name": "Dr. Sarah Chen",
+  "email": "sarah.chen@example.com",
+  "location": "Boston, MA, USA",
+  "education": {
+    "degree": "Ph.D. Computer Science",
+    "university": "Massachusetts Institute of Technology",
+    "graduation_date": "2025-05-30",
+    "gpa": "5.0/5.0 GPA",
+    "courses": [
+      "Advanced ML",
+      "Research Methods",
+      "HCI"
+    ]
+  },
+  "skills": [
+    "Python",
+    "R",
+    "PyTorch",
+    "LaTeX",
+    "Research",
+    "Peer Review"
+  ],
+  "certifications": [
+    "MIT Research Excellence Award 2024"
+  ],
+  "languages": [
+    "English",
+    "Mandarin"
+  ],
+  "interests": [
+    "Human-AI Interaction",
+    "Education Tech"
+  ],
+  "career_goals": "Research Scientist",
+  "preferences": {
+    "remote": false,
+    "stack": [
+      "Python",
+      "Research"
+    ],
+    "relocation": true
+  },
+  "notes": "Papers/citations, conflict dates vs resume"
+}

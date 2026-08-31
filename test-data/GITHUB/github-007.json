@@ -1,0 +1,25 @@
+{
+  "id": "github-007",
+  "persona_id": "persona-e",
+  "repo": "vikram-singh/shipfast",
+  "url": "https://github.com/vikram-singh/shipfast",
+  "license": "MIT (synthetic)",
+  "languages": [
+    "Go",
+    "Dockerfile"
+  ],
+  "description": "ShipFast platform infra",
+  "commits": [
+    {
+      "sha": "v1",
+      "msg": "k8s migration",
+      "date": "2024-11-01"
+    },
+    {
+      "sha": "v2",
+      "msg": "ci/cd",
+      "date": "2025-01-10"
+    }
+  ],
+  "why": "Platform evidence across 3 companies"
+}

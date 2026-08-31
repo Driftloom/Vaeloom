@@ -1,0 +1,26 @@
+{
+  "id": "app-persona-a-job-025-resolved",
+  "persona_id": "persona-a",
+  "job": {
+    "job_id": "job-025",
+    "title": "Research Scientist — DataMinds",
+    "company": "DataMinds",
+    "application_url": "https://dataminds.example.com/careers/025"
+  },
+  "status": "resolved",
+  "outcome": "expired",
+  "resume_version_id": "persona-a-resume-clean",
+  "cover_letter": null,
+  "timeline": [
+    {
+      "stage": "discovered",
+      "at": "2026-08-26T10:35:53.154843+00:00"
+    },
+    {
+      "stage": "resolved",
+      "at": "2026-08-30T10:35:53.154843+00:00"
+    }
+  ],
+  "updated_at": "2026-08-30T10:35:53.154843+00:00",
+  "created_at": "2026-08-26T10:35:53.154843+00:00"
+}

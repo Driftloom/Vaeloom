@@ -1,0 +1,17 @@
+{
+  "id": "mem-a-career-001",
+  "persona_id": "persona-a",
+  "type": "career",
+  "domain": "experience",
+  "title": "Career \u2014 Acme Backend Intern",
+  "content": "Backend Intern at Acme Corp Jun-Aug 2025, built OrderFlow API Python+PostgreSQL latency 45ms p95.",
+  "expected_entities": [
+    "Organization",
+    "Experience",
+    "Skill"
+  ],
+  "expected_relationships": [
+    "worked_at",
+    "uses_skill"
+  ]
+}

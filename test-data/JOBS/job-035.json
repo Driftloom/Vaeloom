@@ -1,0 +1,32 @@
+{
+  "id": "job-035",
+  "title": "Graduate Software Engineer — StartupXYZ Variant 2",
+  "company": "StartupXYZ",
+  "location": "San Francisco, CA, USA",
+  "remote": false,
+  "employment_type": "internship",
+  "experience_level": "mid",
+  "required_skills": [
+    "Python",
+    "Java",
+    "SQL"
+  ],
+  "preferred_skills": [
+    "AWS",
+    "Docker"
+  ],
+  "responsibilities": [
+    "Build grad systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "141183 USD",
+  "deadline": null,
+  "published_at": "2026-07-23T10:35:53.125249+00:00",
+  "application_url": "https://startupxyz.example.com/careers/035",
+  "source": "lever",
+  "source_url": "https://startupxyz.example.com/careers"
+}

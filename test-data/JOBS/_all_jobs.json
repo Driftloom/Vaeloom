@@ -1,0 +1,1256 @@
+[
+  {
+    "id": "job-001",
+    "title": "Software Engineer — Globex",
+    "company": "Globex",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PostgreSQL",
+      "Docker",
+      "AWS"
+    ],
+    "preferred_skills": [
+      "Kubernetes",
+      "gRPC"
+    ],
+    "responsibilities": [
+      "Build backend systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": null,
+    "published_at": "2026-07-13T10:35:53.125249+00:00",
+    "application_url": "https://acme.example.com/careers/001",
+    "source": "greenhouse",
+    "source_url": "https://globex.example.com/careers"
+  },
+  {
+    "id": "job-002",
+    "title": "Software Engineer — StartupXYZ Variant 2",
+    "company": "StartupXYZ",
+    "location": "Boston, MA, USA",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PostgreSQL",
+      "Docker",
+      "AWS"
+    ],
+    "preferred_skills": [
+      "Kubernetes",
+      "gRPC"
+    ],
+    "responsibilities": [
+      "Build backend systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": null,
+    "published_at": "2026-08-27T10:35:53.125249+00:00",
+    "application_url": "https://startupxyz.example.com/careers/002",
+    "source": "lever",
+    "source_url": "https://startupxyz.example.com/careers"
+  },
+  {
+    "id": "job-003",
+    "title": "Software Engineer — TalentBridge Variant 3",
+    "company": "TalentBridge",
+    "location": "Boston, MA, USA",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PostgreSQL",
+      "Docker",
+      "AWS"
+    ],
+    "preferred_skills": [
+      "Kubernetes",
+      "gRPC"
+    ],
+    "responsibilities": [
+      "Build backend systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": null,
+    "published_at": "2026-08-15T10:35:53.125249+00:00",
+    "application_url": "https://talentbridge.example.com/careers/003",
+    "source": "company_career",
+    "source_url": "https://talentbridge.example.com/careers"
+  },
+  {
+    "id": "job-004",
+    "title": "Frontend Engineer — CyberShield",
+    "company": "CyberShield",
+    "location": "Remote",
+    "remote": true,
+    "employment_type": "full-time",
+    "experience_level": "internship",
+    "required_skills": [
+      "React",
+      "TypeScript",
+      "Tailwind"
+    ],
+    "preferred_skills": [
+      "Next.js",
+      "GraphQL"
+    ],
+    "responsibilities": [
+      "Build frontend systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": "2026-09-19T10:35:53.125249+00:00",
+    "published_at": "2026-08-20T10:35:53.125249+00:00",
+    "application_url": "https://cybershield.example.com/careers/004",
+    "source": "company_career",
+    "source_url": "https://cybershield.example.com/careers"
+  },
+  {
+    "id": "job-005",
+    "title": "Frontend Engineer — Globex Variant 2",
+    "company": "Globex",
+    "location": "Remote",
+    "remote": true,
+    "employment_type": "contract",
+    "experience_level": "internship",
+    "required_skills": [
+      "React",
+      "TypeScript",
+      "Tailwind"
+    ],
+    "preferred_skills": [
+      "Next.js",
+      "GraphQL"
+    ],
+    "responsibilities": [
+      "Build frontend systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": null,
+    "published_at": "2026-07-06T10:35:53.125249+00:00",
+    "application_url": "https://globex.example.com/careers/005",
+    "source": "company_career",
+    "source_url": "https://globex.example.com/careers"
+  },
+  {
+    "id": "job-006",
+    "title": "Frontend Engineer — TalentBridge Variant 3",
+    "company": "TalentBridge",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "mid",
+    "required_skills": [
+      "React",
+      "TypeScript",
+      "Tailwind"
+    ],
+    "preferred_skills": [
+      "Next.js",
+      "GraphQL"
+    ],
+    "responsibilities": [
+      "Build frontend systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": null,
+    "deadline": "2026-07-31T10:35:53.125249+00:00",
+    "published_at": "2026-07-01T10:35:53.125249+00:00",
+    "application_url": "https://talentbridge.example.com/careers/006",
+    "source": "lever",
+    "source_url": "https://talentbridge.example.com/careers"
+  },
+  {
+    "id": "job-007",
+    "title": "Backend Engineer — Globex",
+    "company": "Globex",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "internship",
+    "required_skills": [
+      "Java",
+      "Spring Boot",
+      "PostgreSQL",
+      "Redis"
+    ],
+    "preferred_skills": [
+      "Kafka",
+      "AWS"
+    ],
+    "responsibilities": [
+      "Build backend systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": null,
+    "published_at": "2026-07-18T10:35:53.125249+00:00",
+    "application_url": "https://globex.example.com/careers/007",
+    "source": "greenhouse",
+    "source_url": "https://globex.example.com/careers"
+  },
+  {
+    "id": "job-008",
+    "title": "Backend Engineer — ResearchLabs Variant 2",
+    "company": "ResearchLabs",
+    "location": "Remote",
+    "remote": true,
+    "employment_type": "full-time",
+    "experience_level": "mid",
+    "required_skills": [
+      "Java",
+      "Spring Boot",
+      "PostgreSQL",
+      "Redis"
+    ],
+    "preferred_skills": [
+      "Kafka",
+      "AWS"
+    ],
+    "responsibilities": [
+      "Build backend systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "107819 USD",
+    "deadline": "2026-08-25T10:35:53.125249+00:00",
+    "published_at": "2026-07-21T10:35:53.125249+00:00",
+    "application_url": "https://researchlabs.example.com/careers/008",
+    "source": "jobs_board",
+    "source_url": "https://researchlabs.example.com/careers"
+  },
+  {
+    "id": "job-009",
+    "title": "Backend Engineer — Globex Variant 3",
+    "company": "Globex",
+    "location": "Berlin, Germany",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "entry",
+    "required_skills": [
+      "Java",
+      "Spring Boot",
+      "PostgreSQL",
+      "Redis"
+    ],
+    "preferred_skills": [
+      "Kafka",
+      "AWS"
+    ],
+    "responsibilities": [
+      "Build backend systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": null,
+    "deadline": "2026-08-19T10:35:53.125249+00:00",
+    "published_at": "2026-07-20T10:35:53.125249+00:00",
+    "application_url": "https://globex.example.com/careers/009",
+    "source": "company_career",
+    "source_url": "https://globex.example.com/careers"
+  },
+  {
+    "id": "job-010",
+    "title": "Full Stack Engineer — CloudForge",
+    "company": "CloudForge",
+    "location": "Hyderabad, India",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "React",
+      "PostgreSQL"
+    ],
+    "preferred_skills": [
+      "Docker",
+      "AWS"
+    ],
+    "responsibilities": [
+      "Build fullstack systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": "33 LPA",
+    "deadline": "2026-08-15T10:35:53.125249+00:00",
+    "published_at": "2026-07-16T10:35:53.125249+00:00",
+    "application_url": "https://cloudforge.example.com/careers/010",
+    "source": "greenhouse",
+    "source_url": "https://cloudforge.example.com/careers"
+  },
+  {
+    "id": "job-011",
+    "title": "Software Engineer — Globex (duplicate listing)",
+    "company": "CyberShield",
+    "location": "Boston, MA, USA",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "mid",
+    "required_skills": [
+      "Python",
+      "React",
+      "PostgreSQL"
+    ],
+    "preferred_skills": [
+      "Docker",
+      "AWS"
+    ],
+    "responsibilities": [
+      "Build fullstack systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": null,
+    "deadline": "2026-09-11T10:35:53.125249+00:00",
+    "published_at": "2026-08-12T10:35:53.125249+00:00",
+    "application_url": "https://acme.example.com/careers/001",
+    "source": "lever",
+    "source_url": "https://cybershield.example.com/careers"
+  },
+  {
+    "id": "job-012",
+    "title": "Full Stack Engineer — ResearchLabs Variant 3",
+    "company": "ResearchLabs",
+    "location": "Hyderabad, India",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "mid",
+    "required_skills": [
+      "Python",
+      "React",
+      "PostgreSQL"
+    ],
+    "preferred_skills": [
+      "Docker",
+      "AWS"
+    ],
+    "responsibilities": [
+      "Build fullstack systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": null,
+    "deadline": null,
+    "published_at": "2026-07-31T10:35:53.125249+00:00",
+    "application_url": "https://researchlabs.example.com/careers/012",
+    "source": "company_career",
+    "source_url": "https://researchlabs.example.com/careers"
+  },
+  {
+    "id": "job-013",
+    "title": "Data Scientist — StartupXYZ",
+    "company": "StartupXYZ",
+    "location": "Boston, MA, USA",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "senior",
+    "required_skills": [
+      "Python",
+      "SQL",
+      "pandas",
+      "scikit-learn"
+    ],
+    "preferred_skills": [
+      "PyTorch",
+      "Airflow"
+    ],
+    "responsibilities": [
+      "Build data systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": null,
+    "deadline": "2026-09-05T10:35:53.125249+00:00",
+    "published_at": "2026-08-06T10:35:53.125249+00:00",
+    "application_url": "https://startupxyz.example.com/careers/013",
+    "source": "greenhouse",
+    "source_url": "https://startupxyz.example.com/careers"
+  },
+  {
+    "id": "job-014",
+    "title": "Data Scientist — Globex Variant 2",
+    "company": "Globex",
+    "location": "San Francisco, CA, USA",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "SQL",
+      "pandas",
+      "scikit-learn"
+    ],
+    "preferred_skills": [
+      "PyTorch",
+      "Airflow"
+    ],
+    "responsibilities": [
+      "Build data systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": "2026-08-19T10:35:53.125249+00:00",
+    "published_at": "2026-07-20T10:35:53.125249+00:00",
+    "application_url": "https://globex.example.com/careers/014",
+    "source": "company_career",
+    "source_url": "https://globex.example.com/careers"
+  },
+  {
+    "id": "job-015",
+    "title": "Data Scientist — StartupXYZ Variant 3",
+    "company": "StartupXYZ",
+    "location": "Boston, MA, USA",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "SQL",
+      "pandas",
+      "scikit-learn"
+    ],
+    "preferred_skills": [
+      "PyTorch",
+      "Airflow"
+    ],
+    "responsibilities": [
+      "Build data systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": "2026-08-26T10:35:53.125249+00:00",
+    "published_at": "2026-07-27T10:35:53.125249+00:00",
+    "application_url": "https://startupxyz.example.com/careers/015",
+    "source": "greenhouse",
+    "source_url": "https://startupxyz.example.com/careers"
+  },
+  {
+    "id": "job-016",
+    "title": "ML Engineer — TalentBridge",
+    "company": "TalentBridge",
+    "location": "Austin, TX, USA",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "senior",
+    "required_skills": [
+      "Python",
+      "PyTorch",
+      "SQL",
+      "MLflow"
+    ],
+    "preferred_skills": [
+      "Kubernetes",
+      "AWS"
+    ],
+    "responsibilities": [
+      "Build ml systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "104587 USD",
+    "deadline": null,
+    "published_at": "2026-08-12T10:35:53.125249+00:00",
+    "application_url": "https://talentbridge.example.com/careers/016",
+    "source": "company_career",
+    "source_url": "https://talentbridge.example.com/careers"
+  },
+  {
+    "id": "job-017",
+    "title": "ML Engineer — Acme Corp Variant 2",
+    "company": "Acme Corp",
+    "location": "Hyderabad, India",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PyTorch",
+      "SQL",
+      "MLflow"
+    ],
+    "preferred_skills": [
+      "Kubernetes",
+      "AWS"
+    ],
+    "responsibilities": [
+      "Build ml systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": "28 LPA",
+    "deadline": "2026-08-03T10:35:53.125249+00:00",
+    "published_at": "2026-07-04T10:35:53.125249+00:00",
+    "application_url": "https://acmecorp.example.com/careers/017",
+    "source": "jobs_board",
+    "source_url": "https://acmecorp.example.com/careers"
+  },
+  {
+    "id": "job-018",
+    "title": "ML Engineer — TalentBridge Variant 3",
+    "company": "TalentBridge",
+    "location": "Berlin, Germany",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PyTorch",
+      "SQL",
+      "MLflow"
+    ],
+    "preferred_skills": [
+      "Kubernetes",
+      "AWS"
+    ],
+    "responsibilities": [
+      "Build ml systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": "2026-09-16T10:35:53.125249+00:00",
+    "published_at": "2026-08-17T10:35:53.125249+00:00",
+    "application_url": "https://talentbridge.example.com/careers/018",
+    "source": "jobs_board",
+    "source_url": "https://talentbridge.example.com/careers"
+  },
+  {
+    "id": "job-019",
+    "title": "DevOps Engineer — ProductHive",
+    "company": "ProductHive",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "entry",
+    "required_skills": [
+      "Docker",
+      "Kubernetes",
+      "AWS",
+      "Terraform"
+    ],
+    "preferred_skills": [
+      "Go",
+      "Python"
+    ],
+    "responsibilities": [
+      "Build devops systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "21 LPA",
+    "deadline": "2026-08-25T10:35:53.125249+00:00",
+    "published_at": "2026-07-21T10:35:53.125249+00:00",
+    "application_url": "https://producthive.example.com/careers/019",
+    "source": "greenhouse",
+    "source_url": "https://producthive.example.com/careers"
+  },
+  {
+    "id": "job-020",
+    "title": "DevOps Engineer — Globex Variant 2",
+    "company": "Globex",
+    "location": "Hyderabad, India",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "entry",
+    "required_skills": [
+      "Docker",
+      "Kubernetes",
+      "AWS",
+      "Terraform"
+    ],
+    "preferred_skills": [
+      "Go",
+      "Python"
+    ],
+    "responsibilities": [
+      "Build devops systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "29 LPA",
+    "deadline": "2026-08-28T10:35:53.125249+00:00",
+    "published_at": "2026-07-29T10:35:53.125249+00:00",
+    "application_url": "https://globex.example.com/careers/020",
+    "source": "company_career",
+    "source_url": "https://globex.example.com/careers"
+  },
+  {
+    "id": "job-021",
+    "title": "DevOps Engineer — TalentBridge Variant 3",
+    "company": "TalentBridge",
+    "location": "San Francisco, CA, USA",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "entry",
+    "required_skills": [
+      "Docker",
+      "Kubernetes",
+      "AWS",
+      "Terraform"
+    ],
+    "preferred_skills": [
+      "Go",
+      "Python"
+    ],
+    "responsibilities": [
+      "Build devops systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "139507 USD",
+    "deadline": "2026-09-12T10:35:53.125249+00:00",
+    "published_at": "2026-08-13T10:35:53.125249+00:00",
+    "application_url": "https://talentbridge.example.com/careers/021",
+    "source": "lever",
+    "source_url": "https://talentbridge.example.com/careers"
+  },
+  {
+    "id": "job-022",
+    "title": "Security Engineer — CloudForge",
+    "company": "CloudForge",
+    "location": "Boston, MA, USA",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "senior",
+    "required_skills": [
+      "Python",
+      "AWS",
+      "Burp Suite"
+    ],
+    "preferred_skills": [
+      "Kubernetes",
+      "SOC2"
+    ],
+    "responsibilities": [
+      "Build cybersecurity systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "117422 USD",
+    "deadline": "2026-08-17T10:35:53.125249+00:00",
+    "published_at": "2026-07-18T10:35:53.125249+00:00",
+    "application_url": "https://cloudforge.example.com/careers/022",
+    "source": "lever",
+    "source_url": "https://cloudforge.example.com/careers"
+  },
+  {
+    "id": "job-023",
+    "title": "Security Engineer — DataMinds Variant 2",
+    "company": "DataMinds",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "entry",
+    "required_skills": [
+      "Python",
+      "AWS",
+      "Burp Suite"
+    ],
+    "preferred_skills": [
+      "Kubernetes",
+      "SOC2"
+    ],
+    "responsibilities": [
+      "Build cybersecurity systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": null,
+    "deadline": "2026-09-07T10:35:53.125249+00:00",
+    "published_at": "2026-08-08T10:35:53.125249+00:00",
+    "application_url": "https://dataminds.example.com/careers/023",
+    "source": "greenhouse",
+    "source_url": "https://dataminds.example.com/careers"
+  },
+  {
+    "id": "job-024",
+    "title": "Security Engineer — Acme Corp Variant 3",
+    "company": "Acme Corp",
+    "location": "San Francisco, CA, USA",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "entry",
+    "required_skills": [
+      "Python",
+      "AWS",
+      "Burp Suite"
+    ],
+    "preferred_skills": [
+      "Kubernetes",
+      "SOC2"
+    ],
+    "responsibilities": [
+      "Build cybersecurity systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "172674 USD",
+    "deadline": "2026-09-24T10:35:53.125249+00:00",
+    "published_at": "2026-08-25T10:35:53.125249+00:00",
+    "application_url": "https://acmecorp.example.com/careers/024",
+    "source": "company_career",
+    "source_url": "https://acmecorp.example.com/careers"
+  },
+  {
+    "id": "job-025",
+    "title": "Research Scientist — DataMinds",
+    "company": "DataMinds",
+    "location": "Berlin, Germany",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "senior",
+    "required_skills": [
+      "Python",
+      "PyTorch",
+      "Research"
+    ],
+    "preferred_skills": [
+      "LaTeX",
+      "Publications"
+    ],
+    "responsibilities": [
+      "Build research systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "30 LPA",
+    "deadline": "2026-09-20T10:35:53.125249+00:00",
+    "published_at": "2026-08-21T10:35:53.125249+00:00",
+    "application_url": "https://dataminds.example.com/careers/025",
+    "source": "company_career",
+    "source_url": "https://dataminds.example.com/careers"
+  },
+  {
+    "id": "job-026",
+    "title": "Research Scientist — DataMinds Variant 2",
+    "company": "DataMinds",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "senior",
+    "required_skills": [
+      "Python",
+      "PyTorch",
+      "Research"
+    ],
+    "preferred_skills": [
+      "LaTeX",
+      "Publications"
+    ],
+    "responsibilities": [
+      "Build research systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "23 LPA",
+    "deadline": "2026-09-22T10:35:53.125249+00:00",
+    "published_at": "2026-08-23T10:35:53.125249+00:00",
+    "application_url": "https://dataminds.example.com/careers/026",
+    "source": "greenhouse",
+    "source_url": "https://dataminds.example.com/careers"
+  },
+  {
+    "id": "job-027",
+    "title": "Research Scientist — Globex Variant 3",
+    "company": "Globex",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "senior",
+    "required_skills": [
+      "Python",
+      "PyTorch",
+      "Research"
+    ],
+    "preferred_skills": [
+      "LaTeX",
+      "Publications"
+    ],
+    "responsibilities": [
+      "Build research systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "15 LPA",
+    "deadline": "2026-08-25T10:35:53.125249+00:00",
+    "published_at": "2026-07-21T10:35:53.125249+00:00",
+    "application_url": "https://globex.example.com/careers/027",
+    "source": "company_career",
+    "source_url": "https://globex.example.com/careers"
+  },
+  {
+    "id": "job-028",
+    "title": "Product Manager — InnovaTech",
+    "company": "InnovaTech",
+    "location": "Boston, MA, USA",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "internship",
+    "required_skills": [
+      "Product",
+      "Agile",
+      "SQL"
+    ],
+    "preferred_skills": [
+      "AI",
+      "Analytics"
+    ],
+    "responsibilities": [
+      "Build product systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": null,
+    "published_at": "2026-08-18T10:35:53.125249+00:00",
+    "application_url": "https://innovatech.example.com/careers/028",
+    "source": "greenhouse",
+    "source_url": "https://innovatech.example.com/careers"
+  },
+  {
+    "id": "job-029",
+    "title": "Product Manager — Acme Corp Variant 2",
+    "company": "Acme Corp",
+    "location": "Hyderabad, India",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "entry",
+    "required_skills": [
+      "Product",
+      "Agile",
+      "SQL"
+    ],
+    "preferred_skills": [
+      "AI",
+      "Analytics"
+    ],
+    "responsibilities": [
+      "Build product systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "14 LPA",
+    "deadline": "2026-08-25T10:35:53.125249+00:00",
+    "published_at": "2026-07-26T10:35:53.125249+00:00",
+    "application_url": "https://acmecorp.example.com/careers/029",
+    "source": "company_career",
+    "source_url": "https://acmecorp.example.com/careers"
+  },
+  {
+    "id": "job-030",
+    "title": "Product Manager — ProductHive Variant 3",
+    "company": "ProductHive",
+    "location": "Boston, MA, USA",
+    "remote": false,
+    "employment_type": "full-time",
+    "experience_level": "senior",
+    "required_skills": [
+      "Product",
+      "Agile",
+      "SQL"
+    ],
+    "preferred_skills": [
+      "AI",
+      "Analytics"
+    ],
+    "responsibilities": [
+      "Build product systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "178284 USD",
+    "deadline": null,
+    "published_at": "2026-08-16T10:35:53.125249+00:00",
+    "application_url": "https://producthive.example.com/careers/030",
+    "source": "company_career",
+    "source_url": "https://producthive.example.com/careers"
+  },
+  {
+    "id": "job-031",
+    "title": "SDE Intern — CloudForge",
+    "company": "CloudForge",
+    "location": "Austin, TX, USA",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PostgreSQL"
+    ],
+    "preferred_skills": [
+      "React",
+      "Docker"
+    ],
+    "responsibilities": [
+      "Build intern systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": "2026-08-09T10:35:53.125249+00:00",
+    "published_at": "2026-07-10T10:35:53.125249+00:00",
+    "application_url": "https://cloudforge.example.com/careers/031",
+    "source": "lever",
+    "source_url": "https://cloudforge.example.com/careers"
+  },
+  {
+    "id": "job-032",
+    "title": "SDE Intern — DataMinds Variant 2",
+    "company": "DataMinds",
+    "location": "Remote",
+    "remote": true,
+    "employment_type": "internship",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PostgreSQL"
+    ],
+    "preferred_skills": [
+      "React",
+      "Docker"
+    ],
+    "responsibilities": [
+      "Build intern systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": "135914 USD",
+    "deadline": "2026-09-15T10:35:53.125249+00:00",
+    "published_at": "2026-08-16T10:35:53.125249+00:00",
+    "application_url": "https://dataminds.example.com/careers/032",
+    "source": "jobs_board",
+    "source_url": "https://dataminds.example.com/careers"
+  },
+  {
+    "id": "job-033",
+    "title": "SDE Intern — Acme Corp Variant 3",
+    "company": "Acme Corp",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PostgreSQL"
+    ],
+    "preferred_skills": [
+      "React",
+      "Docker"
+    ],
+    "responsibilities": [
+      "Build intern systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": null,
+    "deadline": "2026-08-22T10:35:53.125249+00:00",
+    "published_at": "2026-07-23T10:35:53.125249+00:00",
+    "application_url": "https://acmecorp.example.com/careers/033",
+    "source": "greenhouse",
+    "source_url": "https://acmecorp.example.com/careers"
+  },
+  {
+    "id": "job-034",
+    "title": "Graduate Software Engineer — TalentBridge",
+    "company": "TalentBridge",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "entry",
+    "required_skills": [
+      "Python",
+      "Java",
+      "SQL"
+    ],
+    "preferred_skills": [
+      "AWS",
+      "Docker"
+    ],
+    "responsibilities": [
+      "Build grad systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": null,
+    "deadline": "2026-08-05T10:35:53.125249+00:00",
+    "published_at": "2026-07-06T10:35:53.125249+00:00",
+    "application_url": "https://talentbridge.example.com/careers/034",
+    "source": "greenhouse",
+    "source_url": "https://talentbridge.example.com/careers"
+  },
+  {
+    "id": "job-035",
+    "title": "Graduate Software Engineer — StartupXYZ Variant 2",
+    "company": "StartupXYZ",
+    "location": "San Francisco, CA, USA",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "mid",
+    "required_skills": [
+      "Python",
+      "Java",
+      "SQL"
+    ],
+    "preferred_skills": [
+      "AWS",
+      "Docker"
+    ],
+    "responsibilities": [
+      "Build grad systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "141183 USD",
+    "deadline": null,
+    "published_at": "2026-07-23T10:35:53.125249+00:00",
+    "application_url": "https://startupxyz.example.com/careers/035",
+    "source": "lever",
+    "source_url": "https://startupxyz.example.com/careers"
+  },
+  {
+    "id": "job-036",
+    "title": "Graduate Software Engineer — CyberShield Variant 3",
+    "company": "CyberShield",
+    "location": "San Francisco, CA, USA",
+    "remote": false,
+    "employment_type": "internship",
+    "experience_level": "mid",
+    "required_skills": [
+      "Python",
+      "Java",
+      "SQL"
+    ],
+    "preferred_skills": [
+      "AWS",
+      "Docker"
+    ],
+    "responsibilities": [
+      "Build grad systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": null,
+    "deadline": "2026-09-12T10:35:53.125249+00:00",
+    "published_at": "2026-08-13T10:35:53.125249+00:00",
+    "application_url": "https://cybershield.example.com/careers/036",
+    "source": "jobs_board",
+    "source_url": "https://cybershield.example.com/careers"
+  },
+  {
+    "id": "job-037",
+    "title": "Entry-Level Backend — Globex",
+    "company": "Globex",
+    "location": "Bengaluru, India",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PostgreSQL"
+    ],
+    "preferred_skills": [
+      "Docker"
+    ],
+    "responsibilities": [
+      "Build entry systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": "30 LPA",
+    "deadline": "2026-08-30T10:35:53.125249+00:00",
+    "published_at": "2026-07-31T10:35:53.125249+00:00",
+    "application_url": "https://globex.example.com/careers/037",
+    "source": "lever",
+    "source_url": "https://globex.example.com/careers"
+  },
+  {
+    "id": "job-038",
+    "title": "Entry-Level Backend — TalentBridge Variant 2",
+    "company": "TalentBridge",
+    "location": "Remote",
+    "remote": true,
+    "employment_type": "internship",
+    "experience_level": "entry",
+    "required_skills": [
+      "Python",
+      "PostgreSQL"
+    ],
+    "preferred_skills": [
+      "Docker"
+    ],
+    "responsibilities": [
+      "Build entry systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "B.Tech/B.S. CS or equivalent"
+    ],
+    "salary": "175456 USD",
+    "deadline": "2026-08-25T10:35:53.125249+00:00",
+    "published_at": "2026-07-21T10:35:53.125249+00:00",
+    "application_url": "https://talentbridge.example.com/careers/038",
+    "source": "jobs_board",
+    "source_url": "https://talentbridge.example.com/careers"
+  },
+  {
+    "id": "job-039",
+    "title": "Entry-Level Backend — InnovaTech Variant 3",
+    "company": "InnovaTech",
+    "location": "Boston, MA, USA",
+    "remote": false,
+    "employment_type": "contract",
+    "experience_level": "internship",
+    "required_skills": [
+      "Python",
+      "PostgreSQL"
+    ],
+    "preferred_skills": [
+      "Docker"
+    ],
+    "responsibilities": [
+      "Build entry systems",
+      "Collaborate cross-functional",
+      "Ship to production"
+    ],
+    "education": [
+      "Pursuing B.Tech/M.Tech"
+    ],
+    "salary": "99651 USD",
+    "deadline": "2026-08-06T10:35:53.125249+00:00",
+    "published_at": "2026-07-07T10:35:53.125249+00:00",
+    "application_url": "https://innovatech.example.com/careers/039",
+    "source": "jobs_board",
+    "source_url": "https://innovatech.example.com/careers"
+  }
+]

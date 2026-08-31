@@ -1,0 +1,11 @@
+{
+  "id": "rag-keyword",
+  "query": "What projects used PostgreSQL?",
+  "strategy": "keyword",
+  "expected_nodes": [
+    "node-project-vaeloom"
+  ],
+  "expected_memory": [
+    "mem-a-document-001"
+  ]
+}

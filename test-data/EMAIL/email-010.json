@@ -1,0 +1,19 @@
+{
+  "id": "email-010",
+  "persona_id": "persona-a",
+  "subject": "Certificate Delivery — AWS Cloud Practitioner",
+  "sender": "AWS Training",
+  "sender_email": "aws.training@example.com",
+  "category": "certificate",
+  "priority": "normal",
+  "sent_at": "2026-08-13T10:35:53.163629+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "Your certificate is ready for download.",
+  "labels": [
+    "certificate",
+    "normal"
+  ],
+  "expected_classification": "certificate",
+  "expected_priority": "normal"
+}

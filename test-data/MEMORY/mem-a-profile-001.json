@@ -1,0 +1,20 @@
+{
+  "id": "mem-a-profile-001",
+  "persona_id": "persona-a",
+  "type": "profile",
+  "domain": "education",
+  "title": "Education \u2014 IIT Bombay B.Tech CSE 2027",
+  "content": "Aarav Mehta studies B.Tech CSE at IIT Bombay, expected 2027-05-15, CGPA 8.72. Courses: DBMS, ML.",
+  "expected_entities": [
+    "Person",
+    "University",
+    "Degree"
+  ],
+  "expected_relationships": [
+    "studied_at"
+  ],
+  "features": [
+    "memory.profile",
+    "kg.entity_extraction"
+  ]
+}

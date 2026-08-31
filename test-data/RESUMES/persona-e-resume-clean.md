@@ -1,0 +1,14 @@
+# Resume — persona-e — clean
+
+- VIKRAM SINGH — vikram.singh@example.com — Hyderabad / Remote US
+
+- EDUCATION: B.Tech IT, IIIT Hyderabad, 2023-05-10, CGPA 8.90/10
+
+- EXPERIENCE: Acme Corp — SDE I 2023-2024 — Globex — SDE II 2024-2025 — Staff 2025-2026 — migrated 12 services K8s, deploy -60%
+
+- SKILLS: Python, Go, PostgreSQL, AWS, Docker, Kubernetes, gRPC
+
+- CERTIFICATION: CKA 2024, AWS DevOps Professional 2025
+
+---
+*Generated synthetic for Vaeloom test corpus — contains dates, entities, tables*

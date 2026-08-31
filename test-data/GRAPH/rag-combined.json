@@ -1,0 +1,6 @@
+{
+  "id": "rag-combined",
+  "query": "Which backend projects did I complete after learning PostgreSQL?",
+  "strategy": "combined",
+  "note": "Requires temporal + skill + graph joined"
+}

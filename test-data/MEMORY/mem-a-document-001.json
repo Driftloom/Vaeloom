@@ -1,0 +1,18 @@
+{
+  "id": "mem-a-document-001",
+  "persona_id": "persona-a",
+  "type": "document",
+  "domain": "document",
+  "title": "Document \u2014 Resume PDF",
+  "content": "Resume PDF contains skills Python React PostgreSQL, project Vaeloom, internship Acme Jun-Aug 2025.",
+  "expected_entities": [
+    "Person",
+    "Skill",
+    "Project",
+    "Organization"
+  ],
+  "expected_relationships": [
+    "has_skill",
+    "worked_on"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "email-008",
+  "persona_id": "persona-a",
+  "subject": "Assessment Invitation — CodeChallenge",
+  "sender": "Assessment Bot",
+  "sender_email": "assessment.bot@example.com",
+  "category": "assessment",
+  "priority": "high",
+  "sent_at": "2026-08-24T11:35:53.162821+00:00",
+  "deadline": "2026-09-06T10:35:53.162821+00:00",
+  "has_task": true,
+  "body": "Complete coding assessment by 2026-09-06T10:35:53.162821+00:00. Link: https://assessment.example.com/abc",
+  "labels": [
+    "assessment",
+    "high"
+  ],
+  "expected_classification": "assessment",
+  "expected_priority": "high"
+}

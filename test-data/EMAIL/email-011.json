@@ -1,0 +1,19 @@
+{
+  "id": "email-011",
+  "persona_id": "persona-a",
+  "subject": "University Communication — Grades Published",
+  "sender": "IIT Bombay Admin",
+  "sender_email": "iit.bombay.admin@example.com",
+  "category": "university",
+  "priority": "normal",
+  "sent_at": "2026-08-27T08:35:53.164140+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "Semester grades published. Check portal.",
+  "labels": [
+    "university",
+    "normal"
+  ],
+  "expected_classification": "university",
+  "expected_priority": "normal"
+}

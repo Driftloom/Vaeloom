@@ -1,0 +1,31 @@
+{
+  "document": "RESUMES/persona-a-resume-clean.pdf",
+  "expected_entities": [
+    "Person",
+    "University",
+    "Python",
+    "PostgreSQL",
+    "Project",
+    "Organization",
+    "Achievement"
+  ],
+  "expected_relationships": [
+    "has_skill",
+    "studied_at",
+    "worked_on",
+    "uses_skill",
+    "earned"
+  ],
+  "expected_memory_types": [
+    "profile",
+    "document",
+    "career"
+  ],
+  "features_tested": [
+    "ingestion.pdf",
+    "memory.profile",
+    "kg.entity_extraction",
+    "rag.keyword"
+  ],
+  "notes": "ATS-clean one-page resume \u2014 traces to transcript + certificate + Acme internship"
+}

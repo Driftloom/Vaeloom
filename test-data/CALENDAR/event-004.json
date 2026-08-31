@@ -1,0 +1,11 @@
+{
+  "id": "event-004",
+  "persona_id": "persona-a",
+  "title": "Assignment Due — ML Project",
+  "start": "2026-08-31T19:35:53.176920",
+  "end": "2026-08-31T21:05:53.176923",
+  "type": "assignment",
+  "source": "manual",
+  "has_conflict": true,
+  "conflicts_with": "event-001"
+}

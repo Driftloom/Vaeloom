@@ -1,0 +1,26 @@
+{
+  "id": "app-persona-e-job-002-submitted",
+  "persona_id": "persona-e",
+  "job": {
+    "job_id": "job-002",
+    "title": "Software Engineer — StartupXYZ Variant 2",
+    "company": "StartupXYZ",
+    "application_url": "https://startupxyz.example.com/careers/002"
+  },
+  "status": "submitted",
+  "outcome": null,
+  "resume_version_id": "persona-e-resume-clean",
+  "cover_letter": null,
+  "timeline": [
+    {
+      "stage": "discovered",
+      "at": "2026-08-15T10:35:53.155316+00:00"
+    },
+    {
+      "stage": "submitted",
+      "at": "2026-08-21T10:35:53.155316+00:00"
+    }
+  ],
+  "updated_at": "2026-08-21T10:35:53.155316+00:00",
+  "created_at": "2026-08-15T10:35:53.155316+00:00"
+}

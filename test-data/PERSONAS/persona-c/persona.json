@@ -1,0 +1,51 @@
+{
+  "id": "persona-c",
+  "archetype": "Data/ML Student",
+  "full_name": "Rohan Desai",
+  "email": "rohan.desai@example.com",
+  "location": "Bengaluru, India",
+  "education": {
+    "degree": "M.Tech Data Science",
+    "university": "Indian Institute of Science",
+    "graduation_date": "2026-07-20",
+    "gpa": "9.10/10 CGPA",
+    "courses": [
+      "Statistical Learning",
+      "Deep Learning",
+      "Data Mining",
+      "Big Data",
+      "NLP"
+    ]
+  },
+  "skills": [
+    "Python",
+    "SQL",
+    "PyTorch",
+    "pandas",
+    "scikit-learn",
+    "Airflow",
+    "MLflow"
+  ],
+  "certifications": [
+    "Google Professional Data Engineer (2025)"
+  ],
+  "languages": [
+    "English",
+    "Hindi",
+    "Kannada"
+  ],
+  "interests": [
+    "MLOps",
+    "Healthcare AI"
+  ],
+  "career_goals": "ML Engineer / Data Scientist",
+  "preferences": {
+    "remote": true,
+    "stack": [
+      "Python",
+      "PyTorch"
+    ],
+    "relocation": false
+  },
+  "notes": "Strong pandas/PyTorch, academic CV"
+}

@@ -1,0 +1,32 @@
+{
+  "id": "job-024",
+  "title": "Security Engineer — Acme Corp Variant 3",
+  "company": "Acme Corp",
+  "location": "San Francisco, CA, USA",
+  "remote": false,
+  "employment_type": "internship",
+  "experience_level": "entry",
+  "required_skills": [
+    "Python",
+    "AWS",
+    "Burp Suite"
+  ],
+  "preferred_skills": [
+    "Kubernetes",
+    "SOC2"
+  ],
+  "responsibilities": [
+    "Build cybersecurity systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "172674 USD",
+  "deadline": "2026-09-24T10:35:53.125249+00:00",
+  "published_at": "2026-08-25T10:35:53.125249+00:00",
+  "application_url": "https://acmecorp.example.com/careers/024",
+  "source": "company_career",
+  "source_url": "https://acmecorp.example.com/careers"
+}

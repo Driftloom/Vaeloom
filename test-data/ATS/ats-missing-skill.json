@@ -1,0 +1,12 @@
+{
+  "id": "ats-missing-skill",
+  "resume_id": "persona-c-resume-clean",
+  "job_id": "job-019",
+  "expected_verdict": "missing_skill",
+  "note": "JD requires Docker/Kubernetes/AWS, resume has none — genuine gap",
+  "missing_required": [
+    "Docker",
+    "Kubernetes",
+    "AWS"
+  ]
+}

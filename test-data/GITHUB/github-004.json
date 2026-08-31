@@ -1,0 +1,24 @@
+{
+  "id": "github-004",
+  "persona_id": "persona-b",
+  "repo": "emily-carter/orderflow",
+  "url": "https://github.com/emily-carter/orderflow",
+  "license": "Apache-2.0 (synthetic)",
+  "languages": [
+    "Java",
+    "PostgreSQL"
+  ],
+  "description": "OrderFlow 10k RPS backend — Java Spring Boot",
+  "commits": [
+    {
+      "sha": "e1",
+      "msg": "feat: order API"
+    },
+    {
+      "sha": "e2",
+      "msg": "perf: index tuning",
+      "date": "2025-07-01"
+    }
+  ],
+  "why": "Backend evidence → Career memory"
+}

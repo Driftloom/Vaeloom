@@ -1,0 +1,32 @@
+{
+  "id": "job-027",
+  "title": "Research Scientist — Globex Variant 3",
+  "company": "Globex",
+  "location": "Bengaluru, India",
+  "remote": false,
+  "employment_type": "contract",
+  "experience_level": "senior",
+  "required_skills": [
+    "Python",
+    "PyTorch",
+    "Research"
+  ],
+  "preferred_skills": [
+    "LaTeX",
+    "Publications"
+  ],
+  "responsibilities": [
+    "Build research systems",
+    "Collaborate cross-functional",
+    "Ship to production"
+  ],
+  "education": [
+    "B.Tech/B.S. CS or equivalent"
+  ],
+  "salary": "15 LPA",
+  "deadline": "2026-08-25T10:35:53.125249+00:00",
+  "published_at": "2026-07-21T10:35:53.125249+00:00",
+  "application_url": "https://globex.example.com/careers/027",
+  "source": "company_career",
+  "source_url": "https://globex.example.com/careers"
+}

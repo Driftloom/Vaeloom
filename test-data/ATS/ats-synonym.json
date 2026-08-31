@@ -1,0 +1,26 @@
+{
+  "id": "ats-synonym",
+  "resume_id": "persona-a-resume-clean",
+  "job_id": "job-001",
+  "expected_verdict": "synonym",
+  "note": "Resume PostgreSQL vs JD Postgres; React vs ReactJS — should be semantic match not gap",
+  "synonyms": [
+    [
+      "PostgreSQL",
+      "Postgres"
+    ],
+    [
+      "React",
+      "React.js",
+      "ReactJS"
+    ],
+    [
+      "Python",
+      "Python 3"
+    ],
+    [
+      "JavaScript",
+      "JS"
+    ]
+  ]
+}

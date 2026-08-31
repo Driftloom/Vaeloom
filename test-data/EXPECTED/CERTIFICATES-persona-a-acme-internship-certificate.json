@@ -1,0 +1,17 @@
+{
+  "document": "CERTIFICATES/persona-a-acme-internship-certificate.pdf",
+  "expected_entities": [
+    "Person",
+    "Organization",
+    "Certificate"
+  ],
+  "expected_relationships": [
+    "earned",
+    "worked_at"
+  ],
+  "expected_memory_types": [
+    "episodic",
+    "career"
+  ],
+  "notes": "Cross-source link: resume + transcript + email-018 + github-002 + graph all reference Acme internship"
+}

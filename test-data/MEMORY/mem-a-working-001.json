@@ -1,0 +1,14 @@
+{
+  "id": "mem-a-working-001",
+  "persona_id": "persona-a",
+  "type": "working",
+  "domain": "conversation",
+  "title": "Working \u2014 Multi-turn context",
+  "content": "Session: user asked 'What projects used PostgreSQL?' then 'Which after learning it?' \u2014 must retain context across turns.",
+  "expected_entities": [],
+  "expected_relationships": [],
+  "features": [
+    "memory.working",
+    "rag.combined"
+  ]
+}

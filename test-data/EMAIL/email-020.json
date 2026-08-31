@@ -1,0 +1,19 @@
+{
+  "id": "email-020",
+  "persona_id": "persona-a",
+  "subject": "Rejection — StartupXYZ",
+  "sender": "StartupXYZ",
+  "sender_email": "startupxyz@example.com",
+  "category": "rejection",
+  "priority": "normal",
+  "sent_at": "2026-08-09T07:35:53.169346+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "After careful review, we will not move forward.",
+  "labels": [
+    "rejection",
+    "normal"
+  ],
+  "expected_classification": "rejection",
+  "expected_priority": "normal"
+}

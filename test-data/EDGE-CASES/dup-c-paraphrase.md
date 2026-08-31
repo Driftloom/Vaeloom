@@ -1,0 +1,1 @@
+The second brain project (Vaeloom) was built with Python, React.js and Postgres at IIT Bombay during the Acme internship June to August 2025.

@@ -1,0 +1,29 @@
+{
+  "persona_id": "persona-a",
+  "name": "Vaeloom Second Brain — AI Study Companion",
+  "description": "AI-native second brain for education: ingestion (PDF/DOCX/MD), chunk 1000/200, pgvector 1536, knowledge graph hub doc, hybrid retrieval, resume ATS.",
+  "technologies": [
+    "Python",
+    "FastAPI",
+    "React",
+    "PostgreSQL",
+    "pgvector",
+    "PyMuPDF"
+  ],
+  "role": "Full-Stack Developer",
+  "dates": "2025-01 — 2025-08",
+  "responsibilities": [
+    "Designed ingestion pipeline",
+    "Built chunking + embeddings",
+    "Implemented graph hub"
+  ],
+  "outcomes": [
+    "300 docs ingested",
+    "p95 120ms search",
+    "94% test cov"
+  ],
+  "repository": "https://github.com/aarav-mehta/vaeloom-brain",
+  "collaborators": [
+    "Emily Carter"
+  ]
+}

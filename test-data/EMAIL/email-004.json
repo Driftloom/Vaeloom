@@ -1,0 +1,19 @@
+{
+  "id": "email-004",
+  "persona_id": "persona-a",
+  "subject": "Application Confirmation — InnovaTech",
+  "sender": "InnovaTech ATS",
+  "sender_email": "innovatech.ats@example.com",
+  "category": "confirmation",
+  "priority": "normal",
+  "sent_at": "2026-08-27T14:35:53.160570+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "Your application was received. We will review shortly.",
+  "labels": [
+    "confirmation",
+    "normal"
+  ],
+  "expected_classification": "confirmation",
+  "expected_priority": "normal"
+}

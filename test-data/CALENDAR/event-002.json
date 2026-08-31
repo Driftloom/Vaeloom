@@ -1,0 +1,10 @@
+{
+  "id": "event-002",
+  "persona_id": "persona-a",
+  "title": "Exam — DBMS Final",
+  "start": "2026-09-02T01:05:53.176913",
+  "end": "2026-09-02T04:05:53.176915",
+  "type": "exam",
+  "source": "manual",
+  "has_conflict": false
+}

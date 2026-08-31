@@ -1,0 +1,26 @@
+{
+  "persona_id": "persona-b",
+  "name": "OrderFlow — Backend Order Service",
+  "description": "Java Spring Boot microservice handling 10k RPS, Postgres+Redis, AWS EKS.",
+  "technologies": [
+    "Java",
+    "Spring Boot",
+    "PostgreSQL",
+    "Redis",
+    "Docker",
+    "AWS",
+    "Kubernetes"
+  ],
+  "role": "Backend Engineer",
+  "dates": "2025-06 — 2025-08 (Intern Acme Corp)",
+  "responsibilities": [
+    "Designed order API",
+    "Tuned Postgres indexes",
+    "Added idempotency"
+  ],
+  "outcomes": [
+    "Latency 45ms p95",
+    "Zero data loss"
+  ],
+  "repository": "https://github.com/emily-carter/orderflow"
+}

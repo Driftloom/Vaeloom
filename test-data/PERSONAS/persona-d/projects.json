@@ -1,0 +1,24 @@
+[
+  {
+    "name": "EduGraph — Knowledge Graph for EdTech",
+    "description": "Research: graph-augmented retrieval for student memory, 3 papers, 47 citations.",
+    "technologies": [
+      "Python",
+      "PyTorch",
+      "LaTeX",
+      "Neo4j"
+    ],
+    "role": "Lead Researcher",
+    "dates": "2023-01 — 2025-05",
+    "responsibilities": [
+      "Designed study",
+      "Ran experiments"
+    ],
+    "outcomes": [
+      "3 papers",
+      "47 citations",
+      "NSF grant"
+    ],
+    "repository": "https://github.com/sarah-chen/edugraph"
+  }
+]

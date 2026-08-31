@@ -1,0 +1,11 @@
+{
+  "id": "rag-graph",
+  "query": "Which organizations are connected to projects where I used Python?",
+  "strategy": "graph",
+  "traversal": "Person->worked_on->Project->uses_skill Python->belongs_to Organization",
+  "expected_path": [
+    "node-person-aarav",
+    "node-project-vaeloom",
+    "node-skill-python"
+  ]
+}

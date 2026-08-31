@@ -1,0 +1,53 @@
+{
+  "id": "github-002",
+  "persona_id": "persona-a",
+  "repo": "aarav-mehta/vaeloom-brain",
+  "url": "https://github.com/aarav-mehta/vaeloom-brain",
+  "license": "MIT (synthetic, persona-owned)",
+  "languages": [
+    "Python",
+    "TypeScript",
+    "React"
+  ],
+  "description": "Vaeloom second brain — ingestion + graph + RAG",
+  "commits": [
+    {
+      "sha": "a1",
+      "msg": "feat: ingestion pipeline",
+      "date": "2025-02-01"
+    },
+    {
+      "sha": "a2",
+      "msg": "feat: graph hub",
+      "date": "2025-03-15"
+    },
+    {
+      "sha": "a3",
+      "msg": "fix: chunk overlap",
+      "date": "2025-04-02"
+    }
+  ],
+  "branches": [
+    "main",
+    "dev"
+  ],
+  "issues": [
+    {
+      "id": 10,
+      "title": "OCR confidence stub"
+    }
+  ],
+  "prs": [
+    {
+      "id": 5,
+      "title": "Add pgvector HNSW"
+    }
+  ],
+  "releases": [
+    {
+      "tag": "v0.1.0",
+      "date": "2025-04-10"
+    }
+  ],
+  "why": "Connects Repo→Project→Skills (Python/PostgreSQL/React)"
+}

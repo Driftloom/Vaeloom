@@ -1,0 +1,21 @@
+{
+  "persona_id": "persona-a",
+  "name": "CampusConnect — Web App",
+  "description": "MERN campus social + calendar, 2k users.",
+  "technologies": [
+    "React",
+    "Node.js",
+    "PostgreSQL",
+    "Docker"
+  ],
+  "role": "Backend",
+  "dates": "2024-08 — 2024-12",
+  "responsibilities": [
+    "Auth + RLS",
+    "Calendar sync"
+  ],
+  "outcomes": [
+    "Launched to 1200 DAU"
+  ],
+  "repository": "https://github.com/aarav-mehta/campus-connect"
+}

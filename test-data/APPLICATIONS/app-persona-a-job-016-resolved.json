@@ -1,0 +1,26 @@
+{
+  "id": "app-persona-a-job-016-resolved",
+  "persona_id": "persona-a",
+  "job": {
+    "job_id": "job-016",
+    "title": "ML Engineer — TalentBridge",
+    "company": "TalentBridge",
+    "application_url": "https://talentbridge.example.com/careers/016"
+  },
+  "status": "resolved",
+  "outcome": "offer",
+  "resume_version_id": "persona-a-resume-clean",
+  "cover_letter": null,
+  "timeline": [
+    {
+      "stage": "discovered",
+      "at": "2026-08-23T10:35:53.153411+00:00"
+    },
+    {
+      "stage": "resolved",
+      "at": "2026-08-29T10:35:53.153411+00:00"
+    }
+  ],
+  "updated_at": "2026-08-29T10:35:53.153411+00:00",
+  "created_at": "2026-08-23T10:35:53.153411+00:00"
+}

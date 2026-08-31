@@ -1,0 +1,19 @@
+{
+  "id": "email-003",
+  "persona_id": "persona-a",
+  "subject": "Application Rejected — DataMinds ML",
+  "sender": "DataMinds Hiring",
+  "sender_email": "dataminds.hiring@example.com",
+  "category": "rejection",
+  "priority": "normal",
+  "sent_at": "2026-08-02T09:35:53.160141+00:00",
+  "deadline": null,
+  "has_task": false,
+  "body": "After careful review, we will not move forward.",
+  "labels": [
+    "rejection",
+    "normal"
+  ],
+  "expected_classification": "rejection",
+  "expected_priority": "normal"
+}

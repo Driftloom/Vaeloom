@@ -1,0 +1,11 @@
+{
+  "id": "event-006",
+  "persona_id": "persona-a",
+  "title": "Interview — Globex (conflicts with Acme)",
+  "start": "2026-08-31T19:20:53.176925",
+  "end": "2026-08-31T20:20:53.176927",
+  "type": "interview",
+  "source": "gmail",
+  "has_conflict": true,
+  "conflicts_with": "event-001"
+}
