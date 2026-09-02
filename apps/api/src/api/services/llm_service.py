@@ -198,9 +198,30 @@ class LLMService:
                 pass
 
         start = time.monotonic()
-        # Resolve BYOK key for this completion
-        effective_model = model or self.model
-        inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+        # Resolve BYOK key for this completion + task-aware model selection (MODEL-001)
+        # If caller did not pick a model, route via TASK_MODEL_MAP tier → provider-appropriate model.
+        if not model and task_type != "general":
+            try:
+                from .model_router import model_router as _router
+
+                # Route with provider matching current default so anthropic defaults stay anthropic
+                default_provider = _infer_provider_from_model(self.model) if not provider_override else provider_override
+                routed = _router.select_model(task_type, provider=default_provider)
+                # Only override default when routed tier differs from default's tier (e.g., classify→fast)
+                default_cfg = MODEL_CATALOG.get(self.model)
+                if default_cfg is None or routed.tier != default_cfg.tier:
+                    effective_model = routed.name
+                    # Keep provider in sync with routed model
+                    inferred_provider = provider_override or routed.provider
+                else:
+                    effective_model = self.model
+                    inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+            except Exception:
+                effective_model = model or self.model
+                inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+        else:
+            effective_model = model or self.model
+            inferred_provider = provider_override or _infer_provider_from_model(effective_model)
         _prov, effective_key = await self._resolve_api_key(
             inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
         )
@@ -225,7 +246,7 @@ class LLMService:
                 _lg.getLogger(__name__).debug(f"LLM route task_type={task_type}→tier={tier} model={effective_model}")
         except Exception:
             pass
-        model_config = MODEL_CATALOG.get(model or self.model)
+        model_config = MODEL_CATALOG.get(effective_model)
         if model_config:
             model_router.record_usage(
                 agent_name=agent_name,

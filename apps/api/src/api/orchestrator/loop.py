@@ -293,9 +293,10 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
                 tsv_tried = False
                 try:
                     from sqlalchemy import text as _ts_text
+                    import os as _os2
 
-                    # Only attempt tsvector when not SQLite (pgvector path implies Postgres)
-                    if "postgres" in _os.environ.get("DATABASE__URL", "").lower() if "_os" in locals() else False:
+                    # Only attempt tsvector when Postgres (requires migration 0026)
+                    if "postgres" in _os2.environ.get("DATABASE__URL", "").lower():
                         # Requires docs to have tsv column via migration 0042 or fallback plainto_tsquery on path+summary
                         q = " ".join(keywords[:5])
                         ts_res = await session.execute(
@@ -361,7 +362,21 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
                 for d in documents:
                     all_cands.append({"id": d["id"], "text": d["path"], "source": "document", "metadata": {"summary": d["summary"], "created_at": None}, "score": 1.0})
                 if all_cands:
-                    ranked = search_ranking_service.rank_results(all_cands, query)
+                    # WS01: wire preference_vector into ranking via user_context (learning loop closure)
+                    _uc = None
+                    try:
+                        if preferences:
+                            _tags = [p.get("name","").lower() for p in preferences[:5] if p.get("name")]
+                            _types = list({p.get("metadata",{}).get("preferred_types",[]) for p in preferences if p.get("metadata")})
+                            # flatten
+                            flat_types = []
+                            for t in _types:
+                                if isinstance(t, list):
+                                    flat_types.extend(t)
+                            _uc = {"preferred_tags": _tags, "preferred_types": flat_types or ["memory","document"]}
+                    except Exception:
+                        _uc = None
+                    ranked = search_ranking_service.rank_results(all_cands, query, user_context=_uc)
                     # Re-build truncated lists preserving order via rank
                     ent_ids = {r["id"] for r in ranked if r["source"] == "entity"}
                     doc_ids = {r["id"] for r in ranked if r["source"] == "document"}
@@ -425,22 +440,6 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
             # Flatten for easy consumption by Act/ReAct
             "context_prompt": _build_context_prompt(rag_context),
         }
-    # Automated RAG context injection
-    rag_context: dict[str, Any] = {}
-    try:
-        rag_context = await _assemble_rag_context(request.workspace_id, request.message, request.agent)
-        if rag_context.get("entities") or rag_context.get("documents"):
-            logger.info(f"RAG injected: {len(rag_context.get('entities', []))} entities, {len(rag_context.get('documents', []))} docs, {len(rag_context.get('preferences', []))} prefs")
-    except Exception as e:
-        logger.warning(f"RAG injection failed (non-blocking): {e}")
-    return {
-        "agent_type": request.agent_name,
-        "message": request.message,
-        "workspace_id": request.workspace_id,
-        "rag_context": rag_context,
-        # Flatten for easy consumption by Act/ReAct
-        "context_prompt": _build_context_prompt(rag_context),
-    }
 
 
 def _build_context_prompt(rag: dict[str, Any]) -> str:
@@ -618,11 +617,29 @@ async def _try_react_loop(
 # ── Act ─────────────────────────────────────────────────────────────
 
 async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any = None) -> dict[str, Any]:
+    # Otel span for act phase (mirrors plan_phase)
+    _act_cm = None
+    try:
+        from ..infrastructure.agent_observability import agent_span as _act_span
+        _act_cm = _act_span("loop.act", agent=request.agent_name)
+    except Exception:
+        _act_cm = None
+    if _act_cm is None:
+        import contextlib as _cl2
+        _act_cm = _cl2.nullcontext()
+    with _act_cm:
+        return await _act_phase_inner(plan, request, on_token)
+
+
+async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token: Any = None) -> dict[str, Any]:
     agent = request.agent
     message = plan.get("message", request.message)
     # Enrich message with RAG context if available (plan_phase injected it)
+    # Context engineering cap: keep RAG prompt at most 2000 chars to prevent explosion
     context_prompt = plan.get("context_prompt", "")
     if context_prompt:
+        if len(context_prompt) > 2000:
+            context_prompt = context_prompt[:2000] + " …[truncated context]"
         message = f"{message}\n\n[Context from knowledge graph & documents:\n{context_prompt}]"
     agent_type = type(agent).__name__
     agent_name = request.agent_name
@@ -974,43 +991,64 @@ async def _dispatch_with_approval(
 # ── Observe ─────────────────────────────────────────────────────────
 
 async def observe_phase(act_result: dict[str, Any]) -> dict[str, Any]:
-    result = act_result.get("result", {})
-    logger.info(f"OBSERVE: action={act_result.get('action')}, summary={str(result.get('summary', ''))[:80]}")
-    return {
-        "observation": result.get("summary", ""),
-        "action": act_result.get("action"),
-        "confidence": act_result.get("confidence", 0.0),
-        "payload": act_result,
-    }
+    _cm = None
+    try:
+        from ..infrastructure.agent_observability import agent_span as _os
+        _cm = _os("loop.observe", action=act_result.get("action", ""))
+    except Exception:
+        _cm = None
+    if _cm is None:
+        import contextlib as _cl3
+        _cm = _cl3.nullcontext()
+    with _cm:
+        result = act_result.get("result", {})
+        logger.info(f"OBSERVE: action={act_result.get('action')}, summary={str(result.get('summary', ''))[:80]}")
+        return {
+            "observation": result.get("summary", ""),
+            "action": act_result.get("action"),
+            "confidence": act_result.get("confidence", 0.0),
+            "payload": act_result,
+        }
 
 
 # ── Reflect ─────────────────────────────────────────────────────────
 
 async def reflect_phase(request: AgentRequest, observe_result: dict[str, Any], iteration: int) -> ReflectResult:
-    action = observe_result.get("action", "")
-    confidence = observe_result.get("confidence", 0.0)
+    _cm = None
+    try:
+        from ..infrastructure.agent_observability import agent_span as _rs
+        agent_val = getattr(request, "agent_name", "unknown")
+        _cm = _rs("loop.reflect", agent=agent_val, iteration=iteration)
+    except Exception:
+        _cm = None
+    if _cm is None:
+        import contextlib as _cl4
+        _cm = _cl4.nullcontext()
+    with _cm:
+        action = observe_result.get("action", "")
+        confidence = observe_result.get("confidence", 0.0)
 
-    logger.info(f"REFLECT: action={action}, confidence={confidence}, iteration={iteration}")
+        logger.info(f"REFLECT: action={action}, confidence={confidence}, iteration={iteration}")
 
-    if action == "execute":
-        return ReflectResult(True, "Executed successfully")
+        if action == "execute":
+            return ReflectResult(True, "Executed successfully")
 
-    if action == "request_approval":
-        return ReflectResult(True, "Approval required — proposal ready")
+        if action == "request_approval":
+            return ReflectResult(True, "Approval required — proposal ready")
 
-    if action == "suggest" and confidence >= 0.7:
-        return ReflectResult(True, f"Good suggestion (confidence={confidence:.2f})")
+        if action == "suggest" and confidence >= 0.7:
+            return ReflectResult(True, f"Good suggestion (confidence={confidence:.2f})")
 
-    if action == "error":
-        return ReflectResult(iteration >= 2, "Error - escalating" if iteration >= 2 else "Error - retrying")
+        if action == "error":
+            return ReflectResult(iteration >= 2, "Error - escalating" if iteration >= 2 else "Error - retrying")
 
-    if action == "ask_clarification":
-        return ReflectResult(
-            iteration >= 2,
-            "Clarification needed - escalating" if iteration >= 2 else "Need more info",
-        )
+        if action == "ask_clarification":
+            return ReflectResult(
+                iteration >= 2,
+                "Clarification needed - escalating" if iteration >= 2 else "Need more info",
+            )
 
-    return ReflectResult(iteration >= 2, "Max iterations reached")
+        return ReflectResult(iteration >= 2, "Max iterations reached")
 
 
 # ── Improve ─────────────────────────────────────────────────────────
