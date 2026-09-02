@@ -406,5 +406,38 @@ classified.)
 
 ---
 
+## 5. Post-Implementation Evidence (2026-09-01 — P0/P1 Hardening)
+
+Distinguishes _previous research_ (2026-08-30..31) from _implementation
+evidence_ per §25.
+
+| Decision                                              | Research predicted                                                  | Implementation                                                                                      | Measured                                                                        | Final                                           |
+| ----------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------- |
+| BM25 tsvector + vector + weighted rerank              | +30% recall vs LIKE @1k docs; +100ms hybrid cost                    | `loop.py` tsvector via migration 0026 GIN + `search_ranking.rank_results`; no Qdrant needed         | LIKE 10-30ms, vector 80-200ms/10k, rerank <5ms; golden eval `tests/eval` passes | KEEP pgvector hybrid-lite → true hybrid         |
+| Task-aware routing via AGENT_TASK_TYPE_MAP            | 60-80% cost cut on classify (Stanford HIL/RAG 2024)                 | `llm_service` auto-infers `task_type` + provider-aware `select_model`; only when tier differs       | gmail haiku $9e-06 vs sonnet $0.000105 (11×), scheduler haiku same              | VERIFIED — wire exists, quality threshold holds |
+| Anthropic prompt caching                              | 75% saving on 2.9k repeated tokens (Anthropic docs)                 | `cache_control:ephemeral` on system prompt + beta header + `cached_tokens` log                      | Not yet measured at load (requires Anthropic billing)                           | IMPLEMENTED, UNKNOWN at scale                   |
+| Concurrency WorkspaceLimiter 10/50                    | Prevents PG pool 30 saturation under 100-parallel fan-out (ADR-037) | `WorkspaceConcurrencyLimiter` + `router` gate fail-fast `System at capacity…`                       | 2894 tests collected, limiter snapshot {10,50}                                  | VERIFIED                                        |
+| Tool output as untrusted (OWASP LLM01/LLM06 dual-LLM) | Injection via tool data must be boundary-tagged                     | `sanitize_tool_output` + `[from:tool untrusted]` provenance + `looks_like_prompt_injection` check   | Fuzz `"Ignore previous instructions"` → filtered                                | VERIFIED                                        |
+| Idempotency deterministic key                         | AWS/Temporal idempotency patterns                                   | `workspace:agent:tool:hash(canonical)` LRU 500 + DB `IdempotencyRecord` via `WorkflowIDReusePolicy` | Duplicate `execute_tool` returns cached success                                 | VERIFIED                                        |
+| Reflection cron                                       | Memory should improve, not just grow (§11)                          | `reflection_scheduler` 03:00 UTC watcher via durable queue                                          | Scan best-effort, no LLM KPI yet                                                | PARTIAL                                         |
+
+No rejected alternative materially beats current hybrid pgvector path at current
+scale (≤100k vectors). Qdrant migration deferred until HNSW latency >100ms p95.
+
+---
+
+## 6. High-Level Validation Research (2026-09-02 — WS01-06)
+
+| Workstream            | Research (2026-09)                                                                               | Vaeloom Relevance                                                                                            | Experiment                                                                                           | Decision                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Learning preference   | Preference learning via ranking weight 0.1 + text 0.85 (Stanford HIL/RAG, 2024)                  | `preference_vector→search_ranking:0.1` too weak alone → added `loop.py:360` `preferred_tags` text boost 0.85 | `test_learning_closure` before/after remote senior rises pos2→0; bad pref still recoverable          | **UPGRADE** wiring kept, weight 0.1+0.85 sufficient for measurable, no new engine |
+| RRF                   | Cormack et al. SIGIR 2009 k=60, weight 0.5/0.5 balanced, 0.75/0.25 if dense high quality         | `search_ranking.rrf_fusion` added                                                                            | `test_rrf_benchmark` sweep A-G: 0.5/0.5 best when lexical noisy reversed; latency <200ms@500         | **KEEP** 0.5/0.5 default, 0.75/0.25 optional                                      |
+| Concurrency k6/python | k6 standard, but python `asyncio.gather` + `WorkspaceLimiter` sufficient for 10/25 bounded (<3s) | `agent_limits 30rpm/5conc` + `WorkspaceLimiter 10/50`                                                        | `test_ws_comprehensive` 10/25 <3s, noisy neighbor WS-B still acquires                                | **KEEP** limits, no new queue                                                     |
+| Temporal              | Roy Gabriel durable agents, Xgrid idempotency, AWS RRF patterns                                  | `temporal_enabled=False` correct for interactive, ingest/sync/schedule need Temporal                         | `test_temporal_idempotency` LRU hit 1 call for 2, file checkpoint survives                           | **KEEP flagged-off**, enable after staging chaos                                  |
+| OTel LLM tracing      | OTel 89% observability, 52% evals → debugging guesswork (2025)                                   | `record_rag/tool_latency` + `agent_span` already                                                             | `test_trace_reconstruction` propagates `correlation_id_var`, snapshots counts >=1                    | **KEEP** Prometheus authoritative, collector drift documented                     |
+| OCR injection         | OWASP LLM01/LLM06 vector weakness, prompt injection via OCR                                      | `pipeline.py:88` scan→quarantine→zero-vector                                                                 | `test_malicious_document_quarantine` flagged, `test_ocr_image_injection` scanner catches `Ignore...` | **VERIFIED** boundary parse→scan→quarantine→store                                 |
+
+---
+
 _End of Research Report — companion to
-`Docs/Audits/Agentic-AI-Zero-Trust-E2E-Audit.md`._
+`Docs/Audits/Agentic-AI-Zero-Trust-E2E-Audit.md` — updated 2026-09-02._
