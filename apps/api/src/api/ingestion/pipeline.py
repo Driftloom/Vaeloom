@@ -240,10 +240,14 @@ async def _persist_chunks_with_embeddings(
         return
 
     # Pre-generate embeddings outside DB transaction to avoid holding transaction open on LLM calls
+    # WS06: quarantined chunks (prompt injection flagged) get zero-vector so they cannot poison ranking via embedding similarity
     chunk_embeddings: list[list[float] | None] = []
     for ch in chunks:
         emb = None
-        if ch.content and ch.content.strip():
+        if (ch.metadata or {}).get("quarantined"):
+            logger.info(f"WS06 quarantine: skipping embedding for chunk {ch.index} (zero vector)")
+            emb = [0.0] * 1536
+        elif ch.content and ch.content.strip():
             try:
                 emb = await llm_service.generate_embedding(ch.content)
             except Exception as e:

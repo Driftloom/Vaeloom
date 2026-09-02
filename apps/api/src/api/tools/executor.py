@@ -637,14 +637,11 @@ async def _execute_compile_resume_pdf(params: dict[str, Any], workspace_id: str)
     max_pages = int(params.get("max_pages") or params.get("maxPages") or 2)
     content, err = await _resolve_compile_content(params, workspace_id)
     if content is None:
-        # Deterministic mock content for tests/offline — still validates rendering path
-        content = {
-            "name": "Test Candidate",
-            "title": "Software Engineer",
-            "email": "test@example.com",
-            "summary": "Experienced engineer seeking role alignment.",
-            "experience": [{"role": "Engineer", "company": "ExampleCorp", "bullets": ["Built scalable services"]}],
-            "skills": [{"category": "Languages", "items": [{"name": "Python"}]}],
+        return {
+            "status": "error",
+            "tool": "compile_resume_pdf",
+            "result": "no resume content found — provide resume_id or resume_content",
+            "setup_hint": "create a resume via POST /api/v1/resumes or pass resume_content",
         }
     try:
         from api.services.document_builder import PlaywrightUnavailableError, document_builder
@@ -679,13 +676,11 @@ async def _execute_compile_resume_docx(params: dict[str, Any], workspace_id: str
     template_slug = params.get("template_slug") or params.get("templateSlug") or "minimalist-clean"
     content, err = await _resolve_compile_content(params, workspace_id)
     if content is None:
-        content = {
-            "name": "Test Candidate",
-            "title": "Software Engineer",
-            "email": "test@example.com",
-            "summary": "Experienced engineer.",
-            "experience": [{"role": "Engineer", "company": "ExampleCorp", "bullets": ["Built services"]}],
-            "skills": [{"category": "Languages", "items": [{"name": "Python"}]}],
+        return {
+            "status": "error",
+            "tool": "compile_resume_docx",
+            "result": "no resume content found — provide resume_id or resume_content",
+            "setup_hint": "create a resume via POST /api/v1/resumes or pass resume_content",
         }
     try:
         from api.services.document_builder import document_builder
@@ -715,13 +710,11 @@ async def _execute_compile_cover_letter(params: dict[str, Any], workspace_id: st
     recipient = params.get("recipient")
     content, err = await _resolve_compile_content(params, workspace_id)
     if content is None:
-        content = {
-            "name": "Test Candidate",
-            "email": "test@example.com",
-            "title": "Software Engineer",
-            "summary": "Candidate summary",
-            "experience": [],
-            "skills": [],
+        return {
+            "status": "error",
+            "tool": "compile_cover_letter",
+            "result": "no resume content found — provide resume_id or resume_content",
+            "setup_hint": "create a resume via POST /api/v1/resumes or pass resume_content",
         }
     if not body:
         body = f"Dear Hiring Manager,\n\nI am excited to apply for the {role or 'role'} at {company or 'your company'}. My background aligns with the requirements and I look forward to contributing.\n\nSincerely,\n{content.get('name', 'Candidate')}"
@@ -851,15 +844,7 @@ async def _execute_search_gmail(params: dict[str, Any], workspace_id: str) -> di
         emails = await client.fetch_emails(query=gmail_query, max_results=max_results)
 
         if emails is None:
-            return {
-                "status": "success",
-                "tool": "search_gmail",
-                "result": [
-                    {"id": f"mock_{i}", "subject": f"Mock Email {i}", "sender": "mock@example.com", "body": "Gmail API not configured"}
-                    for i in range(min(max_results, 3))
-                ],
-                "note": "Gmail API unavailable — returned mock data",
-            }
+            return _connector_not_configured("search_gmail", "Gmail")
 
         return {
             "status": "success",
@@ -896,15 +881,7 @@ async def _execute_search_jobs(params: dict[str, Any], workspace_id: str) -> dic
         jobs = await client.search_jobs(keywords=keywords_list, location=location)
 
         if jobs is None:
-            return {
-                "status": "success",
-                "tool": "search_jobs",
-                "result": [
-                    {"id": f"mock_{i}", "title": f"Mock {keywords_list[0]} Job {i}", "company": "Mock Corp", "location": location or "Remote"}
-                    for i in range(min(limit, 3))
-                ],
-                "note": "Job board API unavailable — returned mock data",
-            }
+            return _connector_not_configured("search_jobs", "Job Board")
 
         results = jobs[:limit]
         if remote_ok:
@@ -935,15 +912,7 @@ async def _execute_list_calendar_events(params: dict[str, Any], workspace_id: st
         events = await client.list_events(time_min=start_date if start_date else None, time_max=end_date if end_date else None)
 
         if events is None:
-            return {
-                "status": "success",
-                "tool": "list_calendar_events",
-                "result": [
-                    {"id": f"mock_{i}", "title": f"Mock Event {i}", "start_time": start_date or "2025-01-01T09:00:00Z", "end_time": end_date or "2025-01-01T10:00:00Z", "source": "calendar"}
-                    for i in range(3)
-                ],
-                "note": "Calendar API unavailable — returned mock data",
-            }
+            return _connector_not_configured("list_calendar_events", "Calendar")
 
         return {
             "status": "success",
@@ -967,11 +936,7 @@ async def _execute_list_drive_files(params: dict[str, Any], workspace_id: str) -
         client = DriveClient()
         files = await client.list_files(page_size=page_size, query=query)
         if files is None:
-            return {
-                "status": "success",
-                "tool": "list_drive_files",
-                "result": [
-                    {"id": f"mock_{i}", "name": f"Mock Drive File {i}.pdf", "mimeType": "application/pdf", "size": "12345", "modifiedTime": "2025-01-01T00:00:00Z"}
+            return _connector_not_configured("list_drive_files", "Drive")
                     for i in range(min(page_size, 3))
                 ],
                 "count": min(page_size, 3),
@@ -996,16 +961,7 @@ async def _execute_search_drive(params: dict[str, Any], workspace_id: str) -> di
         client = DriveClient()
         files = await client.search_files(query=query, page_size=page_size)
         if files is None:
-            return {
-                "status": "success",
-                "tool": "search_drive",
-                "result": [
-                    {"id": f"mock_search_{i}", "name": f"Mock Result {i} for '{query}'.pdf", "mimeType": "application/pdf", "size": "9999", "modifiedTime": "2025-01-01T00:00:00Z"}
-                    for i in range(min(page_size, 3))
-                ],
-                "count": min(page_size, 3),
-                "note": "Drive API unavailable — returned mock data",
-            }
+            return _connector_not_configured("search_drive", "Drive")
         return {"status": "success", "tool": "search_drive", "result": files, "count": len(files)}
     except Exception as e:
         logger.error(f"search_drive failed: {e}")
@@ -1034,14 +990,7 @@ async def _execute_download_drive_file(params: dict[str, Any], workspace_id: str
         else:
             content = await client.download_file(file_id)
         if content is None:
-            # mock content
-            mock = f"Mock content for Drive file {file_id} ({name})".encode()
-            return {
-                "status": "success",
-                "tool": "download_drive_file",
-                "result": {"file_id": file_id, "name": name, "size_bytes": len(mock), "content_base64": base64.b64encode(mock).decode(), "mime_type": mime_type},
-                "note": "Drive API unavailable — returned mock content",
-            }
+            return _connector_not_configured("download_drive_file", "Drive")
         return {
             "status": "success",
             "tool": "download_drive_file",
@@ -1067,16 +1016,7 @@ async def _execute_search_greenhouse_jobs(params: dict[str, Any], workspace_id: 
         client = GreenhouseClient()
         jobs = await client.search_jobs(board_token=board_token, keywords=keywords, location=location)
         if jobs is None:
-            return {
-                "status": "success",
-                "tool": "search_greenhouse_jobs",
-                "result": [
-                    {"id": f"mock_gh_{i}", "title": f"Mock Greenhouse Role {i}", "company": board_token, "location": location or "Remote", "apply_url": f"https://boards.greenhouse.io/{board_token}/jobs/mock{i}"}
-                    for i in range(min(limit, 3))
-                ],
-                "count": min(limit, 3),
-                "note": "Greenhouse API unavailable — returned mock data",
-            }
+            return _connector_not_configured("search_greenhouse_jobs", "Greenhouse")
         return {"status": "success", "tool": "search_greenhouse_jobs", "result": jobs[:limit], "count": min(len(jobs), limit)}
     except Exception as e:
         logger.error(f"search_greenhouse_jobs failed: {e}")
@@ -1098,16 +1038,7 @@ async def _execute_search_lever_jobs(params: dict[str, Any], workspace_id: str) 
         client = LeverClient()
         jobs = await client.search_jobs(company=company, keywords=keywords, location=location)
         if jobs is None:
-            return {
-                "status": "success",
-                "tool": "search_lever_jobs",
-                "result": [
-                    {"id": f"mock_lv_{i}", "title": f"Mock Lever Role {i}", "company": company, "location": location or "Remote", "apply_url": f"https://jobs.lever.co/{company}/mock{i}"}
-                    for i in range(min(limit, 3))
-                ],
-                "count": min(limit, 3),
-                "note": "Lever API unavailable — returned mock data",
-            }
+            return _connector_not_configured("search_lever_jobs", "Lever")
         return {"status": "success", "tool": "search_lever_jobs", "result": jobs[:limit], "count": min(len(jobs), limit)}
     except Exception as e:
         logger.error(f"search_lever_jobs failed: {e}")
@@ -1156,15 +1087,9 @@ async def _execute_search_jobs_board(params: dict[str, Any], workspace_id: str) 
         except Exception as e:
             logger.warning(f"jobs_board generic fan-out failed: {e}")
             sources["generic"] = "error"
-    # If still empty and we had at least one source, try to at least return mock aggregate
+    # If still empty, fail-closed — no mock aggregate (user said never mock)
     if not aggregated:
-        # deterministic mock aggregate
-        kw = (keywords[0] if keywords else "Role")
-        aggregated = [
-            {"id": f"mock_agg_{i}", "title": f"Mock Aggregated {kw} {i}", "company": company or board_token or "MockCo", "location": location or "Remote", "apply_url": f"https://example.com/jobs/mock{i}", "source": "mock"}
-            for i in range(min(limit, 3))
-        ]
-        sources["fallback"] = "mock"
+        return _connector_not_configured("search_jobs_board", "Job Board")
     # dedup by apply_url
     seen = set()
     deduped = []
@@ -1189,12 +1114,7 @@ async def _execute_search_outlook_mail(params: dict[str, Any], workspace_id: str
         client = GraphClient()
         mails = await client.search_mail(query=query, max_results=max_results)
         if mails is None:
-            return {
-                "status": "success",
-                "tool": "search_outlook_mail",
-                "result": [{"id": f"mock_outlk_{i}", "subject": f"Mock Outlook Mail {i}", "sender": "mock@outlook.com", "body": "Graph API not configured"} for i in range(min(max_results, 3))],
-                "note": "Graph API unavailable — returned mock data",
-            }
+            return _connector_not_configured("search_outlook_mail", "Outlook/Graph")
         return {"status": "success", "tool": "search_outlook_mail", "result": mails, "count": len(mails)}
     except Exception as e:
         logger.error(f"search_outlook_mail failed: {e}")
@@ -1233,15 +1153,7 @@ async def _execute_list_outlook_calendar_events(params: dict[str, Any], workspac
         client = GraphClient()
         events = await client.list_events(time_min=start_date or None, time_max=end_date or None)
         if events is None:
-            return {
-                "status": "success",
-                "tool": "list_outlook_calendar_events",
-                "result": [
-                    {"id": f"mock_outlk_ev_{i}", "title": f"Mock Outlook Event {i}", "start_time": start_date or "2025-01-01T09:00:00Z", "end_time": end_date or "2025-01-01T10:00:00Z", "source": "outlook_calendar"}
-                    for i in range(3)
-                ],
-                "note": "Graph API unavailable — returned mock data",
-            }
+            return _connector_not_configured("list_outlook_calendar_events", "Outlook/Graph")
         return {"status": "success", "tool": "list_outlook_calendar_events", "result": events, "count": len(events)}
     except Exception as e:
         logger.error(f"list_outlook_calendar_events failed: {e}")
@@ -1281,16 +1193,7 @@ async def _execute_list_onedrive_files(params: dict[str, Any], workspace_id: str
         client = GraphClient()
         files = await client.list_files(page_size=page_size, query=query or None)
         if files is None:
-            return {
-                "status": "success",
-                "tool": "list_onedrive_files",
-                "result": [
-                    {"id": f"mock_od_{i}", "name": f"Mock OneDrive File {i}.pdf", "mimeType": "application/pdf", "size": "12345", "modifiedTime": "2025-01-01T00:00:00Z"}
-                    for i in range(min(page_size, 3))
-                ],
-                "count": min(page_size, 3),
-                "note": "Graph API unavailable — returned mock data",
-            }
+            return _connector_not_configured("list_onedrive_files", "OneDrive/Graph")
         return {"status": "success", "tool": "list_onedrive_files", "result": files, "count": len(files)}
     except Exception as e:
         logger.error(f"list_onedrive_files failed: {e}")
@@ -1911,15 +1814,7 @@ async def _execute_fetch_github_repo(params: dict[str, Any], workspace_id: str) 
                     logger.warning(f"GitHub API {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
         logger.warning(f"fetch_github_repo live call failed: {e}")
-    # Mock fallback
-    mock_map = {
-        "repo": {"full_name": repo or "octocat/Hello-World", "description": f"Mock repo data for {repo}", "stars": 42, "forks": 7},
-        "commits": [{"sha": f"abc{i}", "message": f"Mock commit {i}"} for i in range(min(limit, 3))],
-        "pulls": [{"id": i, "title": f"Mock PR {i}"} for i in range(min(limit, 3))],
-        "issues": [{"id": i, "title": f"Mock Issue {i}"} for i in range(min(limit, 3))],
-        "profile": {"login": username or "octocat", "name": "Mock User", "public_repos": 8},
-    }
-    return {"status": "success", "tool": "fetch_github_repo", "result": mock_map.get(resource, mock_map["repo"]), "note": "GitHub API unavailable — returned mock data"}
+    return _connector_not_configured("fetch_github_repo", "GitHub")
 
 
 async def _execute_create_github_issue(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -1987,14 +1882,7 @@ async def _execute_search_github_repos(params: dict[str, Any], workspace_id: str
                 logger.warning(f"GitHub search {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
         logger.warning(f"search_github_repos live call failed: {e}")
-    # mock fallback
-    return {
-        "status": "success",
-        "tool": "search_github_repos",
-        "result": [{"full_name": f"mock/{query.replace(' ', '-')}-{i}", "description": f"Mock repo for {query}", "stargazers_count": 100 - i} for i in range(min(limit, 3))],
-        "count": min(limit, 3),
-        "note": "GitHub API unavailable — returned mock data",
-    }
+    return _connector_not_configured("search_github_repos", "GitHub")
 
 
 async def _execute_get_github_profile(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -2019,12 +1907,7 @@ async def _execute_get_github_profile(params: dict[str, Any], workspace_id: str)
             logger.warning(f"GitHub profile {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
         logger.warning(f"get_github_profile live call failed: {e}")
-    return {
-        "status": "success",
-        "tool": "get_github_profile",
-        "result": {"login": username, "name": "Mock User", "public_repos": 8, "followers": 42, "top_repos": [{"name": "mock-repo", "stargazers_count": 10}]},
-        "note": "GitHub API unavailable — returned mock data",
-    }
+    return _connector_not_configured("get_github_profile", "GitHub")
 
 
 async def _execute_list_github_issues(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -2048,13 +1931,7 @@ async def _execute_list_github_issues(params: dict[str, Any], workspace_id: str)
             logger.warning(f"GitHub list issues {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
         logger.warning(f"list_github_issues live call failed: {e}")
-    return {
-        "status": "success",
-        "tool": "list_github_issues",
-        "result": [{"id": i, "title": f"Mock Issue {i} for {repo}", "state": state} for i in range(min(limit, 3))],
-        "count": min(limit, 3),
-        "note": "GitHub API unavailable — returned mock data",
-    }
+    return _connector_not_configured("list_github_issues", "GitHub")
 
 
 async def _execute_read_github_file(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -2091,13 +1968,7 @@ async def _execute_read_github_file(params: dict[str, Any], workspace_id: str) -
             logger.warning(f"GitHub read file {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
         logger.warning(f"read_github_file live call failed: {e}")
-    mock_content = f"# Mock file {path}\nMock content for {repo}/{path} — GitHub API unavailable."
-    return {
-        "status": "success",
-        "tool": "read_github_file",
-        "result": {"path": path, "content": mock_content, "encoding": "utf-8", "sha": "mocksha"},
-        "note": "GitHub API unavailable — returned mock data",
-    }
+    return _connector_not_configured("read_github_file", "GitHub")
 
 
 async def _execute_create_github_pull_request(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -2387,16 +2258,13 @@ async def _execute_browse_job_page(params: dict[str, Any], workspace_id: str) ->
             "engine": fetched["engine"],
         }
     except Exception as e:
-        logger.warning(f"browse_job_page live fetch failed ({e}); returning mock fixture")
-
-    mock = dict(_MOCK_JOB_POSTING)
-    mock["source_url"] = url
-    return {
-        "status": "success",
-        "tool": "browse_job_page",
-        "result": mock,
-        "note": "Live browsing unavailable — returned deterministic mock fixture",
-    }
+        logger.warning(f"browse_job_page live fetch failed ({e})")
+        return {
+            "status": "error",
+            "tool": "browse_job_page",
+            "result": f"Live browsing unavailable: {e}",
+            "setup_hint": "Ensure browser_service is configured and Chromium installed (uv run --project apps/api playwright install chromium)",
+        }
 
 
 _INSIGHT_QUERIES = [
@@ -2509,11 +2377,10 @@ async def _execute_verify_application_link(params: dict[str, Any], workspace_id:
 
 async def _execute_mock(tool: ToolDefinition, params: dict[str, Any]) -> dict[str, Any]:
     return {
-        "status": "success",
+        "status": "error",
         "tool": tool.name,
-        "result": f"Mock result for {tool.name}",
-        "params_received": list(params.keys()),
-        "note": "Real implementation requires external connector or service",
+        "result": f"Tool {tool.name} not configured � no handler",
+        "setup_hint": "Configure connector or check tool registry",
     }
 
 
@@ -2600,17 +2467,16 @@ async def execute_tool(
     except Exception:
         pass
 
-    # ── 1b. Idempotency guard for mutating tools (P1 — deterministic key from workspace+tool+param hash)
-    # Only for connector_write/memory_write categories (read-only tools skip)
+    # ── 1b. Deterministic idempotency for consequential actions (P1 — workspace+agent+tool+canonical params)
+    # Only for connector_write/memory_write; read-only tools skip. Includes agent_id for per-agent isolation.
+    # Key: workspace_id:agent_id:tool:hash(canonical_params) — stable across retries, unique per resource.
     idem_key: str | None = None
     if tool.category in ("connector_write", "memory_write"):
         try:
             import hashlib, json as _js
 
-            payload_hash = hashlib.sha256(_js.dumps(params, sort_keys=True, default=str).encode()).hexdigest()[:16]
-            idem_key = f"{workspace_id}:{tool.name}:{payload_hash}"
-            # Best-effort check: if we've seen this exact key recently, return cached success hint
-            # (Full DB check would require async_session; keep fast in-memory LRU for P1, DB for Temporal)
+            payload_hash = hashlib.sha256(_js.dumps(params, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()[:16]
+            idem_key = f"{workspace_id}:{agent_id}:{tool.name}:{payload_hash}"
             if not hasattr(execute_tool, "_idem_cache"):
                 execute_tool._idem_cache = {}  # type: ignore[attr-defined]
                 execute_tool._idem_cache_order = []  # type: ignore[attr-defined]
@@ -2648,15 +2514,41 @@ async def execute_tool(
             result = await asyncio.wait_for(
                 handler(params, workspace_id), timeout=timeout
             )
-            # ── 0b. Lightweight output validation (best-effort, never blocks on schema error)
-            # Ensures handler returns a dict with status/tool/result; if malformed, coerce to error shape.
+            # ── 0b. Tool result schema validation (P1 — output_schema best-effort + hardening)
+            # Ensures handler returns dict with status/tool/result; malformed → error shape.
+            # If output_schema declares type array/object, validate top-level result type.
             try:
                 if not isinstance(result, dict):
                     logger.warning(f"Tool {tool.name} returned non-dict: {type(result).__name__} — coercing")
                     result = {"status": "error", "tool": tool.name, "result": str(result)[:2000]}
                 elif "status" not in result:
-                    # Missing status → assume success but flag
                     result = {"status": "success", "tool": tool.name, "result": result}
+                else:
+                    # Optional structural check against declared output_schema
+                    try:
+                        oschema = getattr(tool, "output_schema", None) or {}
+                        expected_type = oschema.get("type")
+                        inner = result.get("result")
+                        if expected_type == "array" and inner is not None and not isinstance(inner, list):
+                            logger.warning(f"Tool {tool.name} schema mismatch: expected array got {type(inner).__name__}")
+                            # Don't reject — tag but keep, to avoid destructive over-sanitization
+                            result["_schema_note"] = f"expected array, got {type(inner).__name__}"
+                        elif expected_type == "object" and inner is not None and not isinstance(inner, dict):
+                            # Many tools return list inside result dict — only flag if result itself is scalar
+                            if isinstance(inner, (str, int, float)):
+                                logger.debug(f"Tool {tool.name} object schema returned scalar")
+                    except Exception:
+                        pass
+                # Hard cap result size so unbounded tool output cannot blow context
+                try:
+                    raw = result.get("result")
+                    if isinstance(raw, str) and len(raw) > 8000:
+                        result["result"] = raw[:8000] + " …[truncated output]"
+                    elif isinstance(raw, list) and len(raw) > 100:
+                        result["result"] = raw[:100]
+                        result["_truncated"] = True
+                except Exception:
+                    pass
             except Exception:
                 pass
             duration_ms = int((time.monotonic() - start_time) * 1000)

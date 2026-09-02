@@ -147,7 +147,44 @@ class SearchRankingService:
         tags = result.get("metadata", {}).get("tags", [])
         if tags and preferred_tags and any(t in preferred_tags for t in tags):
             return 0.8
+        # WS01: also match preferred_tags against text for direct preference learning (e.g., "remote senior")
+        text = (result.get("text","") + " " + result.get("metadata",{}).get("summary","")).lower()
+        if preferred_tags and any(pt.lower() in text for pt in preferred_tags if pt):
+            return 0.85
         return 0.5
+
+    def rrf_fusion(self, dense_ranked: list[dict], lexical_ranked: list[dict], k: int = 60, weight_dense: float = 0.5, weight_lexical: float = 0.5) -> list[dict]:
+        """Reciprocal Rank Fusion (Cormack et al. SIGIR 2009) for hybrid retrieval.
+
+        Args:
+            dense_ranked: vector results ordered most→least relevant
+            lexical_ranked: lexical (tsvector/keyword) results ordered most→least
+            k: RRF constant (60 typical)
+            weight_dense/lexical: per-list weighting (WS02 experiments A-G sweep 0.25/0.75 etc.)
+        Returns fused list ordered by RRF score.
+        """
+        scores: dict[str, float] = {}
+        id_to_item: dict[str, dict] = {}
+        for rank, item in enumerate(dense_ranked):
+            iid = item.get("id","")
+            if not iid:
+                continue
+            scores[iid] = scores.get(iid, 0.0) + weight_dense * (1.0 / (k + rank + 1))
+            id_to_item[iid] = item
+        for rank, item in enumerate(lexical_ranked):
+            iid = item.get("id","")
+            if not iid:
+                continue
+            scores[iid] = scores.get(iid, 0.0) + weight_lexical * (1.0 / (k + rank + 1))
+            if iid not in id_to_item:
+                id_to_item[iid] = item
+        fused = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        out = []
+        for iid, sc in fused:
+            it = dict(id_to_item[iid])
+            it["_rrf_score"] = sc
+            out.append(it)
+        return out
 
 
 search_ranking_service = SearchRankingService()

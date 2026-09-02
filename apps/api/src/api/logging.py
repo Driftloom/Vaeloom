@@ -18,3 +18,19 @@ def _redact(obj):
     if isinstance(obj, (list, tuple)):
         return [_redact(item) for item in obj]
     return obj
+
+
+# Re-export canonical logging impl for legacy import path `api.logging.*`
+# (tests import StructuredJsonFormatter etc from api.logging; canonical lives in
+# api.infrastructure.logging — no duplicate implementation, just shim).
+try:
+    from api.infrastructure.logging import (  # noqa: F401,E402
+        CorrelationIDMiddleware,
+        PrettyFormatter,
+        RequestLoggingMiddleware,
+        StructuredJsonFormatter,
+        get_logger,
+        setup_logging,
+    )
+except Exception:  # pragma: no cover
+    pass
