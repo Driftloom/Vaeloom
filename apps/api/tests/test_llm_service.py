@@ -133,7 +133,11 @@ class TestLLMService:
         async def fake_post(self, url, headers=None, json=None, **kwargs):
             body = json
             assert "system" in body
-            assert body["system"] == "You are helpful"
+            sys_val = body["system"]
+            if isinstance(sys_val, list):
+                assert sys_val[0]["text"] == "You are helpful"
+            else:
+                assert sys_val == "You are helpful"
             return mock_resp
 
         monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)

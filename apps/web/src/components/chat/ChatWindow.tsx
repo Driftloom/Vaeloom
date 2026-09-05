@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
@@ -674,36 +674,17 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         }
         return;
       }
+      let currentThreadId = activeId;
+      if (!currentThreadId) {
+        currentThreadId = Math.random().toString(36).slice(2, 7);
+        setActiveId(currentThreadId);
+      }
       const userMsg: ChatMessage = {
         id: Date.now().toString(),
         role: 'user',
         text: fileContext && !rawBase ? raw : rawBase ? raw : raw,
         timestamp: nowIso(),
       };
-      const next = [...messages, userMsg];
-      setMessages(next);
-      if (activeId)
-        updateThread(activeId, (t) => ({
-          ...t,
-          messages: next,
-          title: t.messages.length === 0 ? raw.slice(0, 30) : t.title,
-        }));
-      else {
-        const id = Math.random().toString(36).slice(2, 7);
-        const th: Thread = {
-          id,
-          title: raw.slice(0, 30),
-          createdAt: nowIso(),
-          messages: next,
-          agentName: selected !== 'auto' ? selected : undefined,
-        };
-        setThreads((p) => [th, ...p]);
-        setActiveId(id);
-      }
-      setInput('');
-      setSlashOpen(false);
-      setMentionOpen(false);
-      setLoading(true);
       const agentId = (Date.now() + 1).toString();
       const agentForCall = selected === 'auto' ? undefined : selected;
       const ph: ChatMessage = {
@@ -716,8 +697,28 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         toolCalls: agentForCall ? [{ name: 'routing', status: 'running' }] : undefined,
         streaming: true,
       };
-      setMessages((p) => [...p, ph]);
-      if (activeId) updateThread(activeId, (t) => ({ ...t, messages: [...t.messages, ph] }));
+      const nextWithPh = [...messages, userMsg, ph];
+      setMessages(nextWithPh);
+      if (activeId) {
+        updateThread(currentThreadId, (t) => ({
+          ...t,
+          messages: nextWithPh,
+          title: t.messages.length === 0 ? raw.slice(0, 30) : t.title,
+        }));
+      } else {
+        const th: Thread = {
+          id: currentThreadId,
+          title: raw.slice(0, 30),
+          createdAt: nowIso(),
+          messages: nextWithPh,
+          agentName: selected !== 'auto' ? selected : undefined,
+        };
+        setThreads((p) => [th, ...p]);
+      }
+      setInput('');
+      setSlashOpen(false);
+      setMentionOpen(false);
+      setLoading(true);
       try {
         const res: unknown = agentForCall
           ? await agentApi.chat({ workspaceId, message: raw, agentName: agentForCall })
@@ -759,6 +760,9 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             };
           }) as ChatMessage['proposals'];
           questions = o?.questions as string[];
+          if (Array.isArray(questions) && questions.length > 0) {
+            reply = reply ? `${reply}\n\n${questions.join('\n\n')}` : questions.join('\n\n');
+          }
           conf = (r as { confidence?: number }).confidence;
           an = (r as { agent_name?: string }).agent_name || an;
           const d = o?.details as Record<string, unknown> | undefined;
@@ -774,7 +778,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           reply = String((r as { reply?: string }).reply || '');
         else if (typeof r === 'string') reply = r;
         else reply = JSON.stringify(r).slice(0, 2000);
-        if (!reply.trim()) reply = 'No response ΓÇö try rephrasing or @mention an agent.';
+        if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
         const final: Partial<ChatMessage> = {
           text: reply,
           confidence: conf,
@@ -791,12 +795,16 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           p.map((m) => (m.id === agentId ? { ...m, ...final, streaming: false } : m)),
         );
         setThreads((p) =>
-          p.map((t) => ({
-            ...t,
-            messages: t.messages.map((m) =>
-              m.id === agentId ? { ...m, ...final, streaming: false } : m,
-            ),
-          })),
+          p.map((t) =>
+            t.id === currentThreadId
+              ? {
+                  ...t,
+                  messages: t.messages.map((m) =>
+                    m.id === agentId ? { ...m, ...final, streaming: false } : m,
+                  ),
+                }
+              : t,
+          ),
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed';

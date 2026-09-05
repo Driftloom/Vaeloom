@@ -465,9 +465,8 @@ async def test_execute_search_gmail_mock_fallback(monkeypatch):
     monkeypatch.setattr("api.clients.gmail_client.GmailClient", MockGmail)
 
     result = await _execute_search_gmail({"query": "hello", "max_results": 5}, WS_ID)
-    assert result["status"] == "success"
-    assert "mock_" in result["result"][0]["id"]
-    assert "unavailable" in result.get("note", "")
+    assert result["status"] == "not_configured"
+    assert "Gmail connector not configured" in result["result"]
 
 
 # ── 10. _execute_search_jobs ─────────────────────────────────────
@@ -573,8 +572,8 @@ async def test_execute_list_calendar_events_mock_fallback(monkeypatch):
     monkeypatch.setattr("api.clients.calendar_client.CalendarClient", MockClient)
 
     result = await _execute_list_calendar_events({"start_date": "", "end_date": ""}, WS_ID)
-    assert result["status"] == "success"
-    assert "mock_" in result["result"][0]["id"]
+    assert result["status"] == "not_configured"
+    assert "Calendar connector not configured" in result["result"]
 
 
 # ── 12. _execute_rename_file ─────────────────────────────────────
@@ -734,10 +733,10 @@ async def test_execute_mock():
         required_scope="x", category="system",
     )
     result = await _execute_mock(tool, {"a": 1, "b": 2})
-    assert result["status"] == "success"
+    assert result["status"] == "error"
     assert result["tool"] == "unknown_tool"
-    assert "a" in result["params_received"]
-    assert "b" in result["params_received"]
+    assert "not configured" in result["result"]
+    assert "setup_hint" in result
 
 
 # ── 17. execute_tool() ─────────────────────────────────────────────
@@ -1189,8 +1188,8 @@ async def test_execute_search_jobs_none_result(monkeypatch):
             return None
     monkeypatch.setattr("api.clients.job_board_client.JobBoardClient", MockClient)
     result = await _execute_search_jobs({"keywords": ["engineer"], "limit": 5}, WS_ID)
-    assert result["status"] == "success"
-    assert "mock_" in result["result"][0]["id"]
+    assert result["status"] == "not_configured"
+    assert "Job Board connector not configured" in result["result"]
 
 
 @pytest.mark.asyncio

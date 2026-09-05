@@ -37,6 +37,33 @@ class CalendarClient:
         self._access_token: str | None = None
         self._configured = bool(self.client_id and self.client_secret and self.refresh_token)
 
+    @classmethod
+    async def for_workspace(cls, workspace_id: str | None = None) -> "CalendarClient":
+        if not workspace_id:
+            return cls()
+        try:
+            import uuid
+            from sqlalchemy import select
+            from api.database import async_session_factory
+            from api.models.schema import Connector
+            from api.services.encryption import decrypt_value
+
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(Connector).where(
+                        Connector.workspace_id == uuid.UUID(str(workspace_id)),
+                        Connector.type.in_(["calendar", "google_calendar", "google-calendar"]),
+                    ).limit(1)
+                )
+                conn = result.scalar_one_or_none()
+                if conn and conn.token_ref:
+                    token = decrypt_value(conn.token_ref)
+                    if token:
+                        return cls(refresh_token=token, workspace_id=workspace_id)
+        except Exception as e:
+            logger.debug(f"Could not load workspace calendar connector: {e}")
+        return cls(workspace_id=workspace_id)
+
     async def _refresh_access_token(self) -> str:
         if not self._configured:
             raise CalendarAuthError("Calendar API not configured")

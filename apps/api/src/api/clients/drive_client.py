@@ -38,6 +38,37 @@ class DriveClient:
         self._access_token: str | None = None
         self._configured = bool(self.client_id and self.client_secret and self.refresh_token)
 
+    @classmethod
+    async def for_workspace(cls, workspace_id: str | None = None) -> "DriveClient":
+        """Load DriveClient configured for a specific workspace.
+        First attempts to load the workspace's encrypted token from the database `connectors` table.
+        Falls back to settings.google_refresh_token if not configured at workspace level.
+        """
+        if not workspace_id:
+            return cls()
+        try:
+            import uuid
+            from sqlalchemy import select
+            from api.database import async_session_factory
+            from api.models.schema import Connector
+            from api.services.encryption import decrypt_value
+
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(Connector).where(
+                        Connector.workspace_id == uuid.UUID(str(workspace_id)),
+                        Connector.type.in_(["drive", "google_drive", "google-drive"]),
+                    ).limit(1)
+                )
+                conn = result.scalar_one_or_none()
+                if conn and conn.token_ref:
+                    token = decrypt_value(conn.token_ref)
+                    if token:
+                        return cls(refresh_token=token)
+        except Exception as e:
+            logger.debug(f"Could not load workspace connector: {e}")
+        return cls()
+
     async def _refresh_access_token(self) -> str:
         if not self._configured:
             raise DriveAuthError("Drive API not configured")

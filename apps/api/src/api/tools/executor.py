@@ -825,6 +825,12 @@ async def _execute_merge_entities(params: dict[str, Any], workspace_id: str) -> 
         return {"status": "error", "tool": "merge_entities", "result": str(e)}
 
 
+async def _get_client_for_workspace(client_cls: Any, workspace_id: str | None = None) -> Any:
+    if hasattr(client_cls, "for_workspace") and callable(getattr(client_cls, "for_workspace")):
+        return await client_cls.for_workspace(workspace_id)
+    return client_cls()
+
+
 async def _execute_search_gmail(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     query = params.get("query", "")
     max_results = params.get("max_results", 20)
@@ -840,7 +846,7 @@ async def _execute_search_gmail(params: dict[str, Any], workspace_id: str) -> di
         if after_date:
             gmail_query = f"{query} after:{after_date}" if query else f"after:{after_date}"
 
-        client = GmailClient()
+        client = await _get_client_for_workspace(GmailClient, workspace_id)
         emails = await client.fetch_emails(query=gmail_query, max_results=max_results)
 
         if emails is None:
@@ -908,7 +914,7 @@ async def _execute_list_calendar_events(params: dict[str, Any], workspace_id: st
         return {"status": "error", "result": f"Calendar client import failed: {e}"}
 
     try:
-        client = CalendarClient()
+        client = await _get_client_for_workspace(CalendarClient, workspace_id)
         events = await client.list_events(time_min=start_date if start_date else None, time_max=end_date if end_date else None)
 
         if events is None:
@@ -933,15 +939,10 @@ async def _execute_list_drive_files(params: dict[str, Any], workspace_id: str) -
     except ImportError as e:
         return {"status": "error", "result": f"Drive client import failed: {e}"}
     try:
-        client = DriveClient()
+        client = await _get_client_for_workspace(DriveClient, workspace_id)
         files = await client.list_files(page_size=page_size, query=query)
         if files is None:
             return _connector_not_configured("list_drive_files", "Drive")
-                    for i in range(min(page_size, 3))
-                ],
-                "count": min(page_size, 3),
-                "note": "Drive API unavailable — returned mock data",
-            }
         return {"status": "success", "tool": "list_drive_files", "result": files, "count": len(files)}
     except Exception as e:
         logger.error(f"list_drive_files failed: {e}")
@@ -958,7 +959,7 @@ async def _execute_search_drive(params: dict[str, Any], workspace_id: str) -> di
     except ImportError as e:
         return {"status": "error", "result": f"Drive client import failed: {e}"}
     try:
-        client = DriveClient()
+        client = await _get_client_for_workspace(DriveClient, workspace_id)
         files = await client.search_files(query=query, page_size=page_size)
         if files is None:
             return _connector_not_configured("search_drive", "Drive")
@@ -980,7 +981,7 @@ async def _execute_download_drive_file(params: dict[str, Any], workspace_id: str
     except ImportError as e:
         return {"status": "error", "result": f"Drive client import failed: {e}"}
     try:
-        client = DriveClient()
+        client = await _get_client_for_workspace(DriveClient, workspace_id)
         # Try metadata first for name
         meta = await client.get_file(file_id) if hasattr(client, "get_file") else None
         name = (meta or {}).get("name", f"{file_id}.bin")
@@ -1211,16 +1212,7 @@ async def _execute_search_onedrive(params: dict[str, Any], workspace_id: str) ->
         client = GraphClient()
         files = await client.search_files(query=query, page_size=page_size)
         if files is None:
-            return {
-                "status": "success",
-                "tool": "search_onedrive",
-                "result": [
-                    {"id": f"mock_od_search_{i}", "name": f"Mock OneDrive Result {i} for '{query}'.pdf", "mimeType": "application/pdf", "size": "9999", "modifiedTime": "2025-01-01T00:00:00Z"}
-                    for i in range(min(page_size, 3))
-                ],
-                "count": min(page_size, 3),
-                "note": "Graph API unavailable — returned mock data",
-            }
+            return _connector_not_configured("search_onedrive", "OneDrive/Graph")
         return {"status": "success", "tool": "search_onedrive", "result": files, "count": len(files)}
     except Exception as e:
         logger.error(f"search_onedrive failed: {e}")
@@ -1362,7 +1354,7 @@ async def _execute_draft_email(params: dict[str, Any], workspace_id: str) -> dic
         return {"status": "error", "result": f"Gmail client import failed: {e}"}
 
     try:
-        client = GmailClient()
+        client = await _get_client_for_workspace(GmailClient, workspace_id)
         draft = await client.create_draft(to=to, subject=subject, body=body)
 
         if draft is None:
@@ -1398,7 +1390,7 @@ async def _execute_create_calendar_event(params: dict[str, Any], workspace_id: s
         return {"status": "error", "result": f"Calendar client import failed: {e}"}
 
     try:
-        client = CalendarClient()
+        client = await _get_client_for_workspace(CalendarClient, workspace_id)
         event = await client.create_event(
             summary=title,
             start_time=start_time,
@@ -1777,6 +1769,37 @@ async def _execute_audit_ats_formatting(params: dict[str, Any], workspace_id: st
     }
 
 
+async def _get_workspace_connector_token(workspace_id: str | None, connector_types: list[str]) -> str | None:
+    if not workspace_id:
+        return None
+    try:
+        import uuid
+        from sqlalchemy import select
+        from api.database import async_session_factory
+        from api.models.schema import Connector
+        from api.services.encryption import decrypt_value
+
+        async with async_session_factory() as db:
+            result = await db.execute(
+                select(Connector).where(
+                    Connector.workspace_id == uuid.UUID(str(workspace_id)),
+                    Connector.type.in_(connector_types),
+                ).limit(1)
+            )
+            conn = result.scalar_one_or_none()
+            if conn and conn.token_ref:
+                return decrypt_value(conn.token_ref)
+    except Exception:
+        pass
+    return None
+
+
+async def _resolve_github_token(workspace_id: str | None = None) -> str:
+    import os
+    user_token = await _get_workspace_connector_token(workspace_id, ["github", "git"])
+    return user_token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_KEY") or ""
+
+
 async def _execute_fetch_github_repo(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     repo = params.get("repo", "")
     resource = params.get("resource", "repo")
@@ -1785,9 +1808,8 @@ async def _execute_fetch_github_repo(params: dict[str, Any], workspace_id: str) 
     if not repo and resource != "profile":
         return {"status": "error", "tool": "fetch_github_repo", "result": "repo (owner/name) is required"}
     try:
-        import os
         import httpx
-        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_KEY") or ""
+        token = await _resolve_github_token(workspace_id)
         headers = {"Accept": "application/vnd.github+json"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
@@ -1827,9 +1849,8 @@ async def _execute_create_github_issue(params: dict[str, Any], workspace_id: str
     # Approval gate: create_github_issue is consequential — caller must have approval
     # If no GitHub token, simulate
     try:
-        import os
         import httpx
-        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_KEY")
+        token = await _resolve_github_token(workspace_id)
         if token:
             headers = {"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}"}
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -1845,10 +1866,8 @@ async def _execute_create_github_issue(params: dict[str, Any], workspace_id: str
     return _connector_not_configured("create_github_issue", "GitHub")
 
 
-def _github_headers() -> dict[str, str]:
-    import os
-
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_KEY") or ""
+async def _github_headers_async(workspace_id: str | None = None) -> dict[str, str]:
+    token = await _resolve_github_token(workspace_id)
     headers = {"Accept": "application/vnd.github+json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -1865,7 +1884,7 @@ async def _execute_search_github_repos(params: dict[str, Any], workspace_id: str
     try:
         import httpx
 
-        headers = _github_headers()
+        headers = await _github_headers_async(workspace_id)
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
                 "https://api.github.com/search/repositories",
@@ -2010,7 +2029,8 @@ async def _execute_send_slack_message(params: dict[str, Any], workspace_id: str)
     try:
         import os
         import httpx
-        token = os.environ.get("SLACK_BOT_TOKEN")
+        user_token = await _get_workspace_connector_token(workspace_id, ["slack"])
+        token = user_token or os.environ.get("SLACK_BOT_TOKEN")
         if token:
             headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
             body: dict[str, Any] = {"channel": channel, "text": text}
@@ -2040,7 +2060,8 @@ async def _execute_sync_notion_pages(params: dict[str, Any], workspace_id: str) 
     try:
         import os
         import httpx
-        token = os.environ.get("NOTION_TOKEN") or os.environ.get("NOTION_API_KEY")
+        user_token = await _get_workspace_connector_token(workspace_id, ["notion"])
+        token = user_token or os.environ.get("NOTION_TOKEN") or os.environ.get("NOTION_API_KEY")
         if token:
             headers = {"Authorization": f"Bearer {token}", "Notion-Version": "2022-06-28", "Content-Type": "application/json"}
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -2379,7 +2400,7 @@ async def _execute_mock(tool: ToolDefinition, params: dict[str, Any]) -> dict[st
     return {
         "status": "error",
         "tool": tool.name,
-        "result": f"Tool {tool.name} not configured � no handler",
+        "result": f"Tool {tool.name} not configured — no handler",
         "setup_hint": "Configure connector or check tool registry",
     }
 

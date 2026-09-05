@@ -30,9 +30,11 @@ class DriveAgent(BaseAgent):
         super().__init__()
         self._client = None
 
-    async def _get_client(self):
+    async def _get_client(self, workspace_id: str | None = None):
+        from api.clients.drive_client import DriveClient
+        if workspace_id:
+            return await DriveClient.for_workspace(workspace_id)
         if self._client is None:
-            from api.clients.drive_client import DriveClient
             self._client = DriveClient()
         return self._client
 
@@ -50,7 +52,8 @@ class DriveAgent(BaseAgent):
         }
 
     async def process(self, request: Any) -> dict[str, Any]:
-        client = await self._get_client()
+        ws_id = getattr(request, "workspace_id", None) if hasattr(request, "workspace_id") else (request.get("workspace_id") if isinstance(request, dict) else None)
+        client = await self._get_client(workspace_id=ws_id)
         if not client._configured:
             return await self.fallback()
 

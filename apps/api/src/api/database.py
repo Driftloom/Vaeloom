@@ -5,12 +5,17 @@ from sqlalchemy.orm import DeclarativeBase
 
 from .config import settings
 
+connect_args = {}
+if "postgresql" in settings.database__url:
+    connect_args = {"statement_cache_size": 0, "prepared_statement_cache_size": 0}
+
 engine = create_async_engine(
     settings.database__url,
     pool_pre_ping=True,
     pool_size=getattr(settings, "db_pool_size", 20),
     max_overflow=getattr(settings, "db_max_overflow", 10),
     echo=settings.service_environment == "local",
+    connect_args=connect_args,
 )
 
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)

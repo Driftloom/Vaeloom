@@ -60,13 +60,13 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
         return
 
     try:
-        # SET LOCAL scopes the setting to the current transaction only.
-        # This is safe with PgBouncer transaction pooling.
-        await db.execute(text("SET LOCAL app.tenant_id = :tid"), {"tid": tenant_id})
+        # set_config(..., true) scopes the setting to the current transaction only (equivalent to SET LOCAL).
+        # Standard PostgreSQL function call that supports safe parameter binding, safe with PgBouncer.
+        await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant_id)})
         if workspace_id:
-            await db.execute(text("SET LOCAL app.workspace_id = :wid"), {"wid": workspace_id})
+            await db.execute(text("SELECT set_config('app.workspace_id', :wid, true)"), {"wid": str(workspace_id)})
         if user_id:
-            await db.execute(text("SET LOCAL app.user_id = :uid"), {"uid": user_id})
+            await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user_id)})
     except Exception as exc:
         # SQLite or non-PostgreSQL — RLS not applicable, ignore.
         # On PostgreSQL this should never fail; log and continue (fail-closed:

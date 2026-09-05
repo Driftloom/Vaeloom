@@ -33,6 +33,11 @@ MODEL_CATALOG: dict[str, ModelConfig] = {
     "claude-3-haiku-20240307": ModelConfig("claude-3-haiku-20240307", "anthropic", 200000, 0.00025, 0.00125, "fast"),
     "claude-3-5-sonnet-20241022": ModelConfig("claude-3-5-sonnet-20241022", "anthropic", 200000, 0.003, 0.015, "balanced"),
     "claude-3-opus-20240229": ModelConfig("claude-3-opus-20240229", "anthropic", 200000, 0.015, 0.075, "powerful"),
+    # Groq Cloud
+    "openai/gpt-oss-120b": ModelConfig("openai/gpt-oss-120b", "groq", 131072, 0.00015, 0.0006, "balanced"),
+    "qwen/qwen3.8-27b": ModelConfig("qwen/qwen3.8-27b", "groq", 131072, 0.00010, 0.0003, "fast"),
+    # Google Gemini
+    "gemini-embedding-2": ModelConfig("gemini-embedding-2", "google", 8192, 0.0, 0.0, "fast"),
 }
 
 # Task complexity mapping — which tier to use for each agent task type
@@ -111,7 +116,12 @@ class ModelRouter:
             if model.tier == tier and model.provider == provider:
                 return model
 
-        # Fallback: any model in the tier
+        # Fallback 1: any model from requested provider
+        for model in MODEL_CATALOG.values():
+            if model.provider == provider:
+                return model
+
+        # Fallback 2: any model in the tier
         for model in MODEL_CATALOG.values():
             if model.tier == tier:
                 return model

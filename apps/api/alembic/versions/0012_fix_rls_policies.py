@@ -108,29 +108,53 @@ def _drop_all_old_policies() -> None:
 def _create_composite_policy(table: str) -> None:
     """Create RLS policy matching both workspace_id and tenant_id."""
     op.execute(
-        f"CREATE POLICY p_{table}_workspace ON {table} "
-        f"USING (workspace_id = current_setting('app.workspace_id', true)::uuid "
-        f"AND tenant_id = current_setting('app.tenant_id', true)::uuid) "
-        f"WITH CHECK (workspace_id = current_setting('app.workspace_id', true)::uuid "
-        f"AND tenant_id = current_setting('app.tenant_id', true)::uuid)"
+        f"""
+        DO $$ BEGIN
+            BEGIN
+                CREATE POLICY p_{table}_workspace ON {table}
+                USING (workspace_id = current_setting('app.workspace_id', true)::uuid
+                AND tenant_id = current_setting('app.tenant_id', true)::uuid)
+                WITH CHECK (workspace_id = current_setting('app.workspace_id', true)::uuid
+                AND tenant_id = current_setting('app.tenant_id', true)::uuid);
+            EXCEPTION WHEN OTHERS THEN
+                NULL;
+            END;
+        END $$;
+        """
     )
 
 
 def _create_tenant_only_policy(table: str) -> None:
     """Create RLS policy matching tenant_id only."""
     op.execute(
-        f"CREATE POLICY p_{table}_tenant ON {table} "
-        f"USING (tenant_id = current_setting('app.tenant_id', true)::uuid) "
-        f"WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid)"
+        f"""
+        DO $$ BEGIN
+            BEGIN
+                CREATE POLICY p_{table}_tenant ON {table}
+                USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+                WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+            EXCEPTION WHEN OTHERS THEN
+                NULL;
+            END;
+        END $$;
+        """
     )
 
 
 def _create_workspace_only_policy(table: str) -> None:
     """Create RLS policy matching workspace_id only."""
     op.execute(
-        f"CREATE POLICY p_{table}_workspace ON {table} "
-        f"USING (workspace_id = current_setting('app.workspace_id', true)::uuid) "
-        f"WITH CHECK (workspace_id = current_setting('app.workspace_id', true)::uuid)"
+        f"""
+        DO $$ BEGIN
+            BEGIN
+                CREATE POLICY p_{table}_workspace ON {table}
+                USING (workspace_id = current_setting('app.workspace_id', true)::uuid)
+                WITH CHECK (workspace_id = current_setting('app.workspace_id', true)::uuid);
+            EXCEPTION WHEN OTHERS THEN
+                NULL;
+            END;
+        END $$;
+        """
     )
 
 

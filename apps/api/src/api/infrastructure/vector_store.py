@@ -52,7 +52,7 @@ class PGVectorStore(VectorStore):
                 dims = len(rec.vector) if rec.vector else None
                 stmt = text("""
                     INSERT INTO embeddings (id, source_type, source_id, vector, model_version, workspace_id, dimensions, source_table)
-                    VALUES (:id, :source_type, :source_id, :vector::vector, :model_version, :workspace_id, :dimensions, :source_table)
+                    VALUES (:id, :source_type, :source_id, CAST(:vector AS vector), :model_version, :workspace_id, :dimensions, :source_table)
                     ON CONFLICT (id) DO UPDATE SET
                         vector = EXCLUDED.vector,
                         model_version = EXCLUDED.model_version,
@@ -98,7 +98,7 @@ class PGVectorStore(VectorStore):
             SELECT id, vector, source_type, source_id, model_version, workspace_id
             FROM embeddings
             WHERE {where_clause} AND vector IS NOT NULL
-            ORDER BY vector <=> :vector_str::vector
+            ORDER BY vector <=> CAST(:vector_str AS vector)
             LIMIT :limit
         """)
         async with self._session_factory() as session:

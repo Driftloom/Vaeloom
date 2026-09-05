@@ -15,18 +15,18 @@ def _infer_provider_from_model(model: str | None) -> str:
     if not model:
         return settings.llm_provider
     m = model.strip().lower()
+    if m.startswith("groq/") or "groq" in m or m.startswith("openai/gpt-oss") or m.startswith("qwen/"):
+        return "groq"
+    if m.startswith("gemini") or m.startswith("google"):
+        return "google"
     if m.startswith("gpt") or m.startswith("text-embedding") or m.startswith("o1") or m.startswith("o3"):
         return "openai"
     if m.startswith("claude"):
         return "anthropic"
-    if m.startswith("gemini") or m.startswith("google"):
-        return "google"
     if m.startswith("mistral"):
         return "mistral"
     if m.startswith("cohere") or m.startswith("command"):
         return "cohere"
-    if "groq" in m:
-        return "groq"
     # fallback to catalog
     cfg = MODEL_CATALOG.get(model)
     if cfg:
@@ -85,16 +85,20 @@ class LLMService:
 
         # System fallback
         inferred_prov = _infer_provider_from_model(prov) if prov else settings.llm_provider
-        # For embedding case, provider is inferred as openai regardless of llm_provider
-        # Use system key if matches
         system_key = settings.llm_api_key
-        # If provider mismatch but we still have system key, use it only if provider matches llm_provider
+
+        if prov in ("google", "gemini"):
+            return prov, settings.gemini_api_key or system_key
+
         if inferred_prov == settings.llm_provider and system_key:
             return inferred_prov, system_key
-        # If provider is openai and llm_provider is openai, return same
+
         if prov == "openai" and system_key and settings.llm_provider == "openai":
             return prov, system_key
-        # Fallback still returns system key if available, else empty
+
+        if prov == "groq" and system_key and settings.llm_provider == "groq":
+            return prov, system_key
+
         return prov, system_key or self.api_key
 
     @retry(
@@ -115,20 +119,69 @@ class LLMService:
         if not text.strip():
             raise LLMProviderError("Cannot generate embedding for empty text")
 
-        # Embedding currently supports openai only; BYOK for openai embedding key
+        effective_prov = provider_override
+        if not effective_prov:
+            if self.embedding_model.startswith("gemini") or self.embedding_model.startswith("models/embedding"):
+                effective_prov = "google"
+            elif self.provider in ("google", "gemini"):
+                effective_prov = "google"
+            elif self.provider == "anthropic":
+                effective_prov = "anthropic"
+            elif self.provider == "openai":
+                effective_prov = "openai"
+            else:
+                effective_prov = "openai"
+
         prov, key = await self._resolve_api_key(
-            provider_override or "openai",
+            effective_prov,
             user_id=user_id,
             workspace_id=workspace_id,
             db=db,
             explicit_key=api_key_override,
         )
-        # If provider is not openai, anthropic can't embed - still try openai fallback for embeddings
+        if prov in ("google", "gemini"):
+            return await self._google_embedding(text, api_key=key)
         if prov == "openai":
             return await self._openai_embedding(text, api_key=key)
         raise LLMProviderError(
-            f"Provider '{prov}' does not support standalone embeddings; use OpenAI for embeddings. Configure BYOK openai key in Settings."
+            f"Provider '{prov}' does not support standalone embeddings; use Google (Gemini) or OpenAI for embeddings. Configure BYOK key in Settings."
         )
+
+    async def _google_embedding(self, text: str, api_key: str | None = None) -> list[float]:
+        import time as _t
+
+        key = api_key or settings.gemini_api_key or self.api_key
+        if not key:
+            raise LLMProviderError("Missing Gemini/Google API key — configure GEMINI_API_KEY")
+        _emb_start = _t.monotonic()
+        model_name = self.embedding_model or "gemini-embedding-2"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:embedContent"
+        body = {
+            "content": {"parts": [{"text": text}]},
+            "outputDimensionality": 1536,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    url,
+                    headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+                    json=body,
+                )
+                if resp.status_code != 200:
+                    raise LLMProviderError(f"Gemini embedding failed: {resp.status_code} {resp.text}")
+                data = resp.json()
+                emb = data.get("embedding", {}).get("values", [])
+                if not emb:
+                    raise LLMProviderError(f"Gemini embedding returned empty result: {data}")
+                try:
+                    from ..infrastructure.agent_observability import record_embedding_latency
+
+                    record_embedding_latency((_t.monotonic() - _emb_start) * 1000)
+                except Exception:
+                    pass
+                return emb
+        finally:
+            pass
 
     async def _openai_embedding(self, text: str, api_key: str | None = None) -> list[float]:
         import time as _t
@@ -225,8 +278,8 @@ class LLMService:
         _prov, effective_key = await self._resolve_api_key(
             inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
         )
-        if inferred_provider == "openai":
-            result = await self._openai_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key)
+        if inferred_provider in ("openai", "groq"):
+            result = await self._openai_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key, provider=inferred_provider)
         else:
             result = await self._anthropic_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key)
 
@@ -269,19 +322,21 @@ class LLMService:
         return result
 
     async def _openai_completion(
-        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None
+        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None, provider: str = "openai"
     ) -> dict[str, Any]:
         key = api_key or self.api_key
+        pname = "Groq" if provider == "groq" else "OpenAI"
         if not key:
-            raise LLMProviderError("Missing OpenAI API key — configure in Settings > API Keys (BYOK)")
+            raise LLMProviderError(f"Missing {pname} API key — configure in Settings > API Keys (BYOK)")
+        url = "https://api.groq.com/openai/v1/chat/completions" if provider == "groq" else "https://api.openai.com/v1/chat/completions"
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
+                url,
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens},
             )
             if resp.status_code != 200:
-                raise LLMProviderError(f"OpenAI completion failed: {resp.status_code} {resp.text}")
+                raise LLMProviderError(f"{pname} completion failed: {resp.status_code} {resp.text}")
             data = resp.json()
             choice = data["choices"][0]
             return {
@@ -367,24 +422,46 @@ class LLMService:
         _prov, effective_key = await self._resolve_api_key(
             inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
         )
-        if inferred_provider == "openai":
-            return await self._openai_tool_completion(messages, tools, effective_model, temperature, api_key=effective_key)
+        if inferred_provider in ("openai", "groq"):
+            return await self._openai_tool_completion(messages, tools, effective_model, temperature, api_key=effective_key, provider=inferred_provider)
         return await self._anthropic_tool_completion(messages, tools, effective_model, temperature, api_key=effective_key)
 
+    def _normalize_openai_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        import json as _json
+        cleaned = []
+        for msg in messages:
+            m = dict(msg)
+            if "tool_calls" in m and isinstance(m["tool_calls"], list):
+                tcs = []
+                for tc in m["tool_calls"]:
+                    tc_copy = dict(tc)
+                    if "function" in tc_copy and isinstance(tc_copy["function"], dict):
+                        fn = dict(tc_copy["function"])
+                        if isinstance(fn.get("arguments"), (dict, list)):
+                            fn["arguments"] = _json.dumps(fn["arguments"])
+                        tc_copy["function"] = fn
+                    tcs.append(tc_copy)
+                m["tool_calls"] = tcs
+            cleaned.append(m)
+        return cleaned
+
     async def _openai_tool_completion(
-        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None, provider: str = "openai"
     ) -> dict[str, Any]:
         key = api_key or self.api_key
+        pname = "Groq" if provider == "groq" else "OpenAI"
         if not key:
-            raise LLMProviderError("Missing OpenAI API key — configure BYOK")
+            raise LLMProviderError(f"Missing {pname} API key — configure BYOK")
+        url = "https://api.groq.com/openai/v1/chat/completions" if provider == "groq" else "https://api.openai.com/v1/chat/completions"
+        norm_messages = self._normalize_openai_messages(messages)
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
+                url,
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                json={"model": model, "messages": messages, "tools": tools, "temperature": temperature},
+                json={"model": model, "messages": norm_messages, "tools": tools, "temperature": temperature},
             )
             if resp.status_code != 200:
-                raise LLMProviderError(f"OpenAI tool completion failed: {resp.status_code} {resp.text}")
+                raise LLMProviderError(f"{pname} tool completion failed: {resp.status_code} {resp.text}")
             data = resp.json()
             choice = data["choices"][0]
             msg = choice["message"]
@@ -505,33 +582,36 @@ class LLMService:
             yield {"type": "done", "finish_reason": result.get("finish_reason") or ("tool_calls" if tool_calls else "end_turn")}
             return
 
-        if inferred_provider == "openai":
-            async for evt in self._openai_tool_completion_stream(messages, tools, effective_model, temperature, api_key=effective_key):
+        if inferred_provider in ("openai", "groq"):
+            async for evt in self._openai_tool_completion_stream(messages, tools, effective_model, temperature, api_key=effective_key, provider=inferred_provider):
                 yield evt
         else:
             async for evt in self._anthropic_tool_completion_stream(messages, tools, effective_model, temperature, api_key=effective_key):
                 yield evt
 
     async def _openai_tool_completion_stream(
-        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None, provider: str = "openai"
     ) -> AsyncGenerator[dict[str, Any], None]:
         import json as _json
 
         key = api_key or self.api_key
+        pname = "Groq" if provider == "groq" else "OpenAI"
         if not key:
-            raise LLMProviderError("Missing OpenAI API key — configure BYOK")
+            raise LLMProviderError(f"Missing {pname} API key — configure BYOK")
+        url = "https://api.groq.com/openai/v1/chat/completions" if provider == "groq" else "https://api.openai.com/v1/chat/completions"
         # Accumulate tool_call fragments by index: {"index": 0, "id"?, "function": {"name"?, "arguments"?}}
         fragments: dict[int, dict[str, Any]] = {}
         finish_reason: str | None = None
+        norm_messages = self._normalize_openai_messages(messages)
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
-                "POST", "https://api.openai.com/v1/chat/completions",
+                "POST", url,
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                json={"model": model, "messages": messages, "tools": tools, "temperature": temperature, "stream": True},
+                json={"model": model, "messages": norm_messages, "tools": tools, "temperature": temperature, "stream": True},
             ) as resp:
                 if resp.status_code != 200:
                     body = (await resp.aread())[:300]
-                    raise LLMProviderError(f"OpenAI tool stream failed: {resp.status_code} {body!r}")
+                    raise LLMProviderError(f"{pname} tool stream failed: {resp.status_code} {body!r}")
                 async for line in resp.aiter_lines():
                     if not line.startswith("data: "):
                         continue
@@ -662,27 +742,29 @@ class LLMService:
         _prov, effective_key = await self._resolve_api_key(
             inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
         )
-        if inferred_provider == "openai":
-            async for chunk in self._openai_completion_stream(messages, effective_model, temperature, max_tokens, api_key=effective_key):
+        if inferred_provider in ("openai", "groq"):
+            async for chunk in self._openai_completion_stream(messages, effective_model, temperature, max_tokens, api_key=effective_key, provider=inferred_provider):
                 yield chunk
         else:
             async for chunk in self._anthropic_completion_stream(messages, effective_model, temperature, max_tokens, api_key=effective_key):
                 yield chunk
 
     async def _openai_completion_stream(
-        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None
+        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None, provider: str = "openai"
     ) -> AsyncGenerator[dict[str, Any], None]:
         key = api_key or self.api_key
+        pname = "Groq" if provider == "groq" else "OpenAI"
         if not key:
-            raise LLMProviderError("Missing OpenAI API key — configure BYOK")
+            raise LLMProviderError(f"Missing {pname} API key — configure BYOK")
+        url = "https://api.groq.com/openai/v1/chat/completions" if provider == "groq" else "https://api.openai.com/v1/chat/completions"
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
-                "POST", "https://api.openai.com/v1/chat/completions",
+                "POST", url,
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens, "stream": True},
             ) as resp:
                 if resp.status_code != 200:
-                    raise LLMProviderError(f"OpenAI streaming completion failed: {resp.status_code}")
+                    raise LLMProviderError(f"{pname} streaming completion failed: {resp.status_code}")
                 async for line in resp.aiter_lines():
                     if not line.startswith("data: "):
                         continue
@@ -744,7 +826,14 @@ class LLMService:
                         yield {"type": "done", "finish_reason": "end_turn"}
 
     async def check_health(self) -> bool:
-        if self.provider == "openai":
+        if self.provider == "groq":
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://api.groq.com/openai/v1/models",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                )
+                return resp.status_code == 200
+        elif self.provider == "openai":
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(
                     "https://api.openai.com/v1/models",

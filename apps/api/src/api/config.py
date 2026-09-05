@@ -1,6 +1,22 @@
 import json
 import os
+from pathlib import Path
 from typing import Any, Literal
+
+try:
+    from dotenv import load_dotenv
+
+    # 1. Load root .env if present (non-overriding baseline)
+    root_env = Path(".env")
+    if root_env.exists():
+        load_dotenv(root_env, override=False)
+
+    # 2. Prioritize apps/api/.env (overriding root defaults with API cloud credentials)
+    for api_env in [Path("apps/api/.env"), Path(__file__).resolve().parent.parent.parent / ".env"]:
+        if api_env.exists():
+            load_dotenv(api_env, override=True)
+except Exception:
+    pass
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
@@ -16,6 +32,16 @@ class Settings(BaseSettings):
     database__url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom"
     redis__url: str = "redis://localhost:6379/0"
 
+    @field_validator("database__url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: Any) -> str:
+        if isinstance(v, str):
+            if v.startswith("postgresql://"):
+                v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+            if "sslmode=" in v:
+                v = v.replace("sslmode=", "ssl=")
+        return v
+
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_token_ttl: int = 3600
@@ -23,10 +49,11 @@ class Settings(BaseSettings):
 
     encryption_key: str = ""
 
-    llm_provider: Literal["anthropic", "openai"] = "anthropic"
+    llm_provider: Literal["anthropic", "openai", "groq", "google", "openrouter", "mistral", "cohere", "azure", "ollama", "custom"] = "groq"
     llm_api_key: str = ""
-    llm_model: str = "claude-3-5-sonnet-20241022"
-    embedding_model: str = "text-embedding-3-small"
+    llm_model: str = "openai/gpt-oss-120b"
+    gemini_api_key: str = ""
+    embedding_model: str = "gemini-embedding-2"
 
     google_client_id: str = ""
     google_client_secret: str = ""

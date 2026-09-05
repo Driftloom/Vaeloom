@@ -14,6 +14,9 @@ __pycache__/
 *.pyo
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.pytype/
+.pyre/
 .venv/
 .venv*/
 .venv-old/
@@ -37,12 +40,18 @@ build/
 .vscode/
 .vscode/settings.json
 .idea/
+.fleet/
 *.swp
 *.swo
+*.code-workspace
 
 # OS
 .DS_Store
 Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
 
 # Environment and Secrets
 .env
@@ -83,11 +92,17 @@ blob-report/
 # excluded directory, so we must not exclude `aaaduit/` itself.
 .agents/aaaduit/*
 !.agents/aaaduit/*.md
+.agents/skills/
 .claude/
 .cursor/
 .qoder/
 .zcode/
 .opencode/
+.gemini/
+.antigravity/
+.cline/
+.roo/
+.windsurf/
 
 # Vaeloom local orchestrator checkpoints (home ~/.vaeloom is outside repo, but repo-local .vaeloom/ if ever created)
 .vaeloom/

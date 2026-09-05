@@ -101,6 +101,7 @@ services:
       context: apps/api
       dockerfile: Dockerfile
     container_name: vaeloom-api
+    shm_size: '2gb'
     env_file:
       - .env.production
     environment:
@@ -136,6 +137,7 @@ services:
       dockerfile: Dockerfile
     command: ['python', '-m', 'api.workers.queue_worker']
     container_name: vaeloom-queue-worker
+    shm_size: '1gb'
     env_file:
       - .env.production
     environment:

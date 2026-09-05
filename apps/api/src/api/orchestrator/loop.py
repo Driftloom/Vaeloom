@@ -239,10 +239,10 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
                         try:
                             res = await session.execute(
                                 _text("""
-                                    SELECT source_id, source_type, 1 - (vector <=> :vec::vector) AS score
+                                    SELECT source_id, source_type, 1 - (vector <=> CAST(:vec AS vector)) AS score
                                     FROM embeddings
                                     WHERE workspace_id = :wid AND source_type IN ('entity', 'memory', 'document', 'document_chunk')
-                                    ORDER BY vector <=> :vec::vector
+                                    ORDER BY vector <=> CAST(:vec AS vector)
                                     LIMIT 8
                                 """),
                                 {"wid": workspace_id, "vec": vec_str},

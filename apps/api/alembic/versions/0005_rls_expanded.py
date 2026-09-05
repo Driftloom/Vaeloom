@@ -82,15 +82,19 @@ def upgrade() -> None:
         if not op.get_bind().dialect.has_table(op.get_bind(), table):
             continue
         op.execute(
-            f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"
-        )
-        op.execute(
             f"""
-            CREATE POLICY p_{table}_workspace ON {table}
-            USING (workspace_id = current_setting('app.workspace_id', true)::uuid
-                   AND tenant_id = current_setting('app.tenant_id', true)::uuid)
-            WITH CHECK (workspace_id = current_setting('app.workspace_id', true)::uuid
-                        AND tenant_id = current_setting('app.tenant_id', true)::uuid)
+            DO $$ BEGIN
+                BEGIN
+                    ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;
+                    CREATE POLICY p_{table}_workspace ON {table}
+                    USING (workspace_id = current_setting('app.workspace_id', true)::uuid
+                           AND tenant_id = current_setting('app.tenant_id', true)::uuid)
+                    WITH CHECK (workspace_id = current_setting('app.workspace_id', true)::uuid
+                                AND tenant_id = current_setting('app.tenant_id', true)::uuid);
+                EXCEPTION WHEN OTHERS THEN
+                    NULL;
+                END;
+            END $$;
             """
         )
 
