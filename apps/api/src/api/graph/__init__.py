@@ -14,12 +14,14 @@ logger = logging.getLogger(__name__)
 try:
     from langgraph.graph import StateGraph, START, END  # type: ignore
     from langgraph.checkpoint.memory import MemorySaver  # type: ignore
+    from langgraph.types import Send  # type: ignore  # native fan-out (F-02)
 
     HAS_LANGGRAPH = True
 except Exception as e:  # pragma: no cover
     StateGraph = None  # type: ignore
     START = END = None  # type: ignore
     MemorySaver = None  # type: ignore
+    Send = None  # type: ignore
     HAS_LANGGRAPH = False
     _LANGGRAPH_IMPORT_ERROR = str(e)
 else:
@@ -32,6 +34,46 @@ _COMPILED = None
 _CHECKPOINTER = None
 
 
+def route_fanout(state: VaeloomGraphState):
+    """supervisor -> native Send fan-out (F-02).
+
+    Fans out the FIRST parallel DAG layer into one Send-spawned fanout_worker
+    branch per agent; single-agent DAGs keep the previous direct edge. Any
+    error fails closed to "agent". v1 does not re-enter later sequential
+    layers (the previous behavior ran a single agent for the whole DAG).
+    """
+    if Send is None:
+        return "agent"
+    try:
+        from .nodes import MAX_FANOUT_BRANCHES
+
+        dag = (state.get("metadata") or {}).get("dag") or []
+        layer = next((l for l in dag if isinstance(l, list) and len(l) > 1), None)
+        if not layer:
+            return "agent"
+        if len(layer) > MAX_FANOUT_BRANCHES:
+            logger.warning(
+                "fan-out clamp: %d agents -> %d (§14 bound)", len(layer), MAX_FANOUT_BRANCHES
+            )
+        names = [str(a)[:64] for a in layer if str(a).strip()][:MAX_FANOUT_BRANCHES]
+        if len(names) <= 1:
+            return "agent"
+        logger.info("fan-out firing: %d parallel branches (%s)", len(names), ",".join(names))
+        return [
+            Send(
+                "fanout_worker",
+                {
+                    "selected_agent": name,
+                    "fanout_task": {"agent": name, "request_id": state.get("request_id")},
+                },
+            )
+            for name in names
+        ]
+    except Exception as e:
+        logger.warning("route_fanout fallback to single agent: %s", e)
+        return "agent"
+
+
 def _build_graph():
     if not HAS_LANGGRAPH:
         raise RuntimeError(f"langgraph not installed: {_LANGGRAPH_IMPORT_ERROR}")
@@ -39,6 +81,8 @@ def _build_graph():
     from .nodes import (
         agent_node,
         evaluate_node,
+        fan_in_node,
+        fanout_worker_node,
         finalize_node,
         policy_check_node,
         retrieve_context_node,
@@ -58,6 +102,8 @@ def _build_graph():
     g.add_node("retrieve_context", retrieve_context_node)
     g.add_node("route", route_node)
     g.add_node("supervisor", supervisor_node)
+    g.add_node("fanout_worker", fanout_worker_node)
+    g.add_node("fan_in", fan_in_node)
     g.add_node("agent", agent_node)
     g.add_node("tool_decision", tool_decision_node)
     g.add_node("policy_check", policy_check_node)
@@ -90,7 +136,11 @@ def _build_graph():
         return "agent"
 
     g.add_conditional_edges("route", after_route, {"supervisor": "supervisor", "agent": "agent"})
-    g.add_edge("supervisor", "agent")
+    g.add_conditional_edges(
+        "supervisor", route_fanout, {"agent": "agent", "fanout_worker": "fanout_worker"}
+    )
+    g.add_edge("fanout_worker", "fan_in")
+    g.add_edge("fan_in", "tool_decision")
 
     g.add_edge("agent", "tool_decision")
 
@@ -145,7 +195,9 @@ def get_graph_metadata() -> dict[str, Any]:
         "version": "v1",
         "nodes": [
             "validate_input", "retrieve_context", "route", "supervisor",
+            "fanout_worker", "fan_in",
             "agent", "tool_decision", "policy_check", "tool_execute", "evaluate", "finalize",
         ],
+        "send_fanout": bool(Send is not None),
         "checkpointer": "MemorySaver" if HAS_LANGGRAPH else None,
     }

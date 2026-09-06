@@ -230,6 +230,70 @@ async def supervisor_node(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# ── Native Send fan-out (F-02) ──────────────────────────────────────────────
+# Topology:
+#   supervisor -> route_fanout --+-- Send(fanout_worker, task_1) --+--> fan_in -> tool_decision ...
+#                                +-- Send(fanout_worker, task_2) --+
+# Branches are read-only analysis: agent_node never executes tools itself
+# (tool_execute lives downstream in the single main path), so fan-out cannot
+# multiply side effects. Each branch returns ONLY its branch_results entry —
+# never agent_node's raw update — so parallel branches cannot clobber the
+# shared scalar keys (selected_tool, execution_status, result).
+# v1 fans out the FIRST parallel layer only; later sequential layers are not
+# re-entered (the previous behavior ran a single agent for the whole DAG).
+MAX_FANOUT_BRANCHES = 8  # §14 fan-out bound (mirrors contracts.validate_agent_plan)
+
+
+async def fanout_worker_node(state: dict[str, Any]) -> dict[str, Any]:
+    """One Send-spawned branch: run a single agent, capture output as data.
+
+    Never raises — a failing branch records a failed entry so fan-in still
+    completes with the surviving branches (failure isolation).
+    """
+    ft = state.get("fanout_task") or {}
+    agent = str(ft.get("agent") or state.get("selected_agent") or state.get("agent_id") or "memory")[:64]
+    try:
+        out = await agent_node({**state, "selected_agent": agent})
+        result = out.get("result") or {}
+        entry = {
+            "agent": agent,
+            "status": out.get("execution_status") or "finalizing",
+            "summary": str(result.get("summary") or "")[:800],
+            "selected_tool": out.get("selected_tool"),
+        }
+    except Exception as e:
+        logger.warning("fanout branch failed agent=%s: %s", agent, e)
+        entry = {"agent": agent, "status": "failed", "error": str(e)[:500]}
+    return {"branch_results": [entry]}
+
+
+async def fan_in_node(state: dict[str, Any]) -> dict[str, Any]:
+    """Merge reducer-collected branch outputs into one result (F-02 fan-in).
+
+    Routes onward with no selected_tool, so the main flow continues through
+    tool_decision -> evaluate -> finalize exactly like the single-agent path.
+    """
+    branches = [b for b in (state.get("branch_results") or []) if isinstance(b, dict)]
+    failed = [b for b in branches if b.get("status") == "failed"]
+    succeeded = [b for b in branches if b.get("status") != "failed"]
+    summary = "; ".join(
+        f"{b.get('agent')}: {b.get('summary') or b.get('error') or ''}" for b in branches
+    )[:2000]
+    return {
+        "result": {
+            "summary": summary,
+            "fanout": {"branches": len(branches), "succeeded": len(succeeded), "failed": len(failed)},
+        },
+        "execution_status": "finalizing",
+        "metadata": {
+            **state.get("metadata", {}),
+            "node": "fan_in",
+            "fanout_branches": len(branches),
+            "fanout_failed": len(failed),
+        },
+    }
+
+
 async def agent_node(state: dict[str, Any]) -> dict[str, Any]:
     agent_id = state.get("selected_agent") or state.get("agent_id") or "memory"
     # Handoff validation if present (LG-09)

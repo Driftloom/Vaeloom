@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from operator import add
 from typing import Annotated, Any, Literal, TypedDict
 
 from langgraph.graph import add_messages
@@ -50,9 +51,21 @@ class VaeloomGraphState(TypedDict, total=False):
     handoff: dict[str, Any] | None
     # Evaluation result (bounded, typed)
     evaluation: dict[str, Any] | None
+    # Fan-out branch assignment for one Send-spawned branch (F-02)
+    fanout_task: dict[str, Any] | None
+    # Fan-out branch outputs — reducer-merged across parallel branches (F-02).
+    # The `add` reducer concatenates per-branch lists; without it parallel
+    # writes would silently overwrite each other (last write wins).
+    # NOTE: keep Annotated unwrapped (no `| None`) — langgraph only honors the
+    # reducer when it sits directly on the channel; Optional-wrapping hides it
+    # and parallel writes fail with INVALID_CONCURRENT_GRAPH_UPDATE.
+    branch_results: Annotated[list[dict[str, Any]], add]
 
 
 # Limits
+MAX_FANOUT_BRANCHES = 8  # §14 fan-out bound, shared with Send fan-out (F-02)
+MAX_BRANCH_RESULT_BYTES = 4096
+MAX_FANOUT_TASK_BYTES = 2048
 MAX_MESSAGES = 20
 MAX_MESSAGE_BYTES = 4096
 MAX_TASK_BYTES = 20480
@@ -147,6 +160,25 @@ def validate_graph_state(state: dict[str, Any]) -> None:
             pass
         if _size_of(ev) > 2048:
             raise ValueError("evaluation too large >2KB")
+
+    # fan-out branch outputs bounded (F-02)
+    br = state.get("branch_results")
+    if br is not None:
+        if not isinstance(br, list):
+            raise ValueError("branch_results must be list")
+        if len(br) > MAX_FANOUT_BRANCHES:
+            raise ValueError(f"branch_results too many: {len(br)} > {MAX_FANOUT_BRANCHES}")
+        for i, b in enumerate(br):
+            if _size_of(b) > MAX_BRANCH_RESULT_BYTES:
+                raise ValueError(f"branch_results[{i}] too large > {MAX_BRANCH_RESULT_BYTES}")
+
+    # fan-out task assignment bounded (F-02)
+    ft = state.get("fanout_task")
+    if ft is not None:
+        if not isinstance(ft, dict):
+            raise ValueError("fanout_task must be dict")
+        if _size_of(ft) > MAX_FANOUT_TASK_BYTES:
+            raise ValueError(f"fanout_task too large > {MAX_FANOUT_TASK_BYTES}")
 
     # execution_status must be known
     status = state.get("execution_status")
