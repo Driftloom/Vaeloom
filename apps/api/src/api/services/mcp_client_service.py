@@ -228,8 +228,8 @@ class _McpClientService:
                         return await operation(session)
 
     # ── Connector access ──────────────────────────────────────────────
-    async def _load_mcp_connector(self, connector_id, tenant_id: str | None, db) -> tuple[Any, dict]:
-        data = await connector_ext_service.get_decrypted(connector_id, tenant_id, db)
+    async def _load_mcp_connector(self, connector_id, tenant_id: str | None, db, workspace_id: str | None = None) -> tuple[Any, dict]:
+        data = await connector_ext_service.get_decrypted(connector_id, tenant_id, db, workspace_id=workspace_id)
         if data["type"] != "mcp":
             raise HTTPException(400, f"Connector {connector_id} is not an MCP connector")
         try:
@@ -240,7 +240,7 @@ class _McpClientService:
 
     # ── Discovery ─────────────────────────────────────────────────────
     async def list_tools(self, connector_id, tenant_id: str | None, db,
-                         refresh: bool = False) -> list[dict]:
+                         refresh: bool = False, workspace_id: str | None = None) -> list[dict]:
         key = str(connector_id)
         if not refresh:
             cached = self._discovery_cache.get(key)
@@ -251,7 +251,7 @@ class _McpClientService:
                     for t in cached[1]
                 ]
 
-        _data, cfg = await self._load_mcp_connector(connector_id, tenant_id, db)
+        _data, cfg = await self._load_mcp_connector(connector_id, tenant_id, db, workspace_id=workspace_id)
 
         async def op(session):
             result = await session.list_tools()
@@ -290,7 +290,7 @@ class _McpClientService:
 
     # ── Invocation ────────────────────────────────────────────────────
     async def call_tool(self, connector_id, tool_name: str, arguments: dict | None,
-                        tenant_id: str | None, db) -> dict:
+                        tenant_id: str | None, db, workspace_id: str | None = None) -> dict:
         # P2-42: bound arguments size to prevent context blowout
         if arguments is not None:
             import json as _json
@@ -301,7 +301,7 @@ class _McpClientService:
                 raise HTTPException(400, f"Invalid MCP arguments: {exc}") from exc
             if len(_args_json) > _MAX_ARGS_CHARS:
                 raise HTTPException(400, f"MCP arguments too large ({len(_args_json)} > {_MAX_ARGS_CHARS})")
-        _data, cfg = await self._load_mcp_connector(connector_id, tenant_id, db)
+        _data, cfg = await self._load_mcp_connector(connector_id, tenant_id, db, workspace_id=workspace_id)
 
         async def op(session):
             return await session.call_tool(tool_name, arguments or {})
@@ -351,24 +351,24 @@ class _McpClientService:
         return payload
 
     # ── Health ────────────────────────────────────────────────────────
-    async def test_connection(self, connector_id, tenant_id: str | None, db) -> dict:
+    async def test_connection(self, connector_id, tenant_id: str | None, db, workspace_id: str | None = None) -> dict:
         try:
-            tools = await self.list_tools(connector_id, tenant_id, db, refresh=True)
+            tools = await self.list_tools(connector_id, tenant_id, db, refresh=True, workspace_id=workspace_id)
             return {"status": "ok", "tools": len(tools)}
         except McpTransportError as e:
             return {"status": "failed", "error": str(e)}
 
     # ── Bridging into the tool executor ──────────────────────────────
-    async def bridge_connector_tools(self, connector_id, tenant_id: str | None, db) -> list[str]:
+    async def bridge_connector_tools(self, connector_id, tenant_id: str | None, db, workspace_id: str | None = None) -> list[str]:
         """Discover tools and register them into the executor's dynamic registry.
 
         Returns the list of registered namespaced tool names.
         """
         from ..tools.executor import mark_approval_gated, register_dynamic_tool
 
-        connector_row = await connector_ext_service.get(connector_id, tenant_id, db)
+        connector_row = await connector_ext_service.get(connector_id, tenant_id, db, workspace_id=workspace_id)
         server_slug = slugify(connector_row.name)
-        data = await self.list_tools(connector_id, tenant_id, db, refresh=True)
+        data = await self.list_tools(connector_id, tenant_id, db, refresh=True, workspace_id=workspace_id)
 
         registered: list[str] = []
         for t in data:

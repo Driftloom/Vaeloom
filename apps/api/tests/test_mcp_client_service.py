@@ -91,7 +91,7 @@ class TestDiscovery:
         svc = _McpClientService()
         connector_id = "11111111-1111-1111-1111-111111111111"
 
-        async def fake_get_decrypted(self, cid, tid, db=None):
+        async def fake_get_decrypted(self, cid, tid, db=None, workspace_id=None):
             return {
                 "id": cid, "workspace_id": None, "name": "Test Server",
                 "type": "mcp", "config": {"transport": "http", "url": "https://x"},
@@ -140,10 +140,10 @@ class TestBridging:
             workspace_id = "ws-1"
             type = "mcp"
 
-        async def fake_get(self, cid, tid, db=None):
+        async def fake_get(self, cid, tid, db=None, workspace_id=None):
             return Row()
 
-        async def fake_list(cid, tid, db=None, refresh=False):
+        async def fake_list(cid, tid, db=None, refresh=False, workspace_id=None):
             return [
                 {"name": "query", "description": "Run SQL", "input_schema": {"type": "object"},
                  "read_only_hint": True},
@@ -180,7 +180,7 @@ class TestBridging:
             workspace_id = "ws-owner"
             type = "mcp"
 
-        async def fake_get(self, cid, tid, db=None):
+        async def fake_get(self, cid, tid, db=None, workspace_id=None):
             return Row()
 
         async def fake_call(cid, tool_name, arguments, tenant_id, db):

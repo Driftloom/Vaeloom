@@ -528,3 +528,111 @@ class TestRuntimeContracts:
     def test_no_identity_no_contract(self):
         from api.orchestrator.loop import _runtime_contract
         assert _runtime_contract("unknown_xyz_agent", None) is None
+
+
+# ── P1 live harness proof: compiler / context / controller / policy ────
+
+class TestLiveHarnessWiring:
+    async def test_react_attaches_prompt_manifest(self, monkeypatch):
+        import api.orchestrator.loop as loop_mod
+        from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
+        from api.services.llm_service import llm_service
+
+        class VA(BaseAgent):
+            mission = "v"
+            tools = [Tool(name="search_documents", description="s")]
+            memory_scopes = MemoryScopes(read_types=[], write_types=[])
+            default_autonomy = "suggest"
+            async def fallback(self): raise AssertionError
+            def validate_output(self, output):
+                if "summary" in output and "questions" in output:
+                    return True, []
+                return False, ["missing summary/questions"]
+
+        monkeypatch.setattr(loop_mod.settings, "agent_react_enabled", True)
+        monkeypatch.setattr(loop_mod.settings, "llm_api_key", "test-key")
+        monkeypatch.setattr(loop_mod, "_REACT_AVAILABLE", True)
+        async def _fake_stream(*a, **k):
+            yield {"type": "text_delta", "text": '{"summary": "ok", "questions": []}'}
+            yield {"type": "done"}
+        monkeypatch.setattr(llm_service, "generate_completion_with_tools_stream", _fake_stream)
+        out = await loop_mod._try_react_loop(VA(), "hello world, manifest me", "ws", "memory")
+        assert out is not None and out["action"] == "suggest"
+        assert out["prompt_manifest"]["compiled"] is True
+        assert out["prompt_manifest"]["compiler_version"] == "v1.0.0"
+
+    async def test_rag_context_manifest_present(self):
+        from api.orchestrator.loop import AgentRequest, plan_phase
+        from api.orchestrator.state import LoopState
+        agent = MockAgent()
+        req = AgentRequest(agent, "ctx-1", "find my resume drafts", "ws", "memory")
+        plan = await plan_phase(req, LoopState("ctx-1", workspace_id="ws"))
+        manifest = (plan.get("rag_context", {}) or {}).get("context_manifest", {})
+        assert manifest.get("engine") == "context_engine/v1"
+        assert "strategy" in manifest and "fingerprint" in manifest
+
+    async def test_supervisor_prunes_respawn_cycles(self, monkeypatch):
+        import api.orchestrator.supervisor as sup
+
+        async def _subs(message):
+            return [("resume", 0.9), ("ats", 0.9)]
+        monkeypatch.setattr(sup, "_detect_subtasks", _subs)
+
+        async def _single(agent_name, message, workspace_id, request_id, context=None):
+            if agent_name == "ats":
+                return {"agent_name": "ats", "action": "suggest", "confidence": 0.9,
+                        "result": {"summary": "ATS score 50", "details": {}, "proposals": [], "questions": []},
+                        "status": "success"}
+            return {"agent_name": agent_name, "action": "suggest", "confidence": 0.9,
+                    "result": {"summary": f"{agent_name} done", "details": {}, "proposals": [], "questions": []},
+                    "status": "success"}
+        monkeypatch.setattr(sup, "_run_single_agent", _single)
+
+        out = await sup.run_supervisor("tailor my resume and check ats score please", "ws", "sup-cycle-1")
+        assert out["agent_name"] == "supervisor"
+        delegation = out.get("delegation", {})
+        # ATS<75 reinserts resume; the 3rd resume spawn is pruned — terminates.
+        assert delegation.get("spawn_counts", {}).get("resume", 0) <= 2
+
+    async def test_fallback_records_policy_shadow_log(self, monkeypatch):
+        import api.services.inference_policy as ipol
+        from api.services.llm_service import LLMService, llm_service, LLMTransientError
+        seen = []
+        async def _spy(agent_name, task_type, chain, reason):
+            seen.append((agent_name, task_type, list(chain), reason))
+            return {"ok": True}
+        monkeypatch.setattr(ipol, "record_fallback", _spy)
+        calls = []
+        async def _resolve(provider, user_id=None, workspace_id=None, db=None, explicit_key=None):
+            return provider, "k"
+        async def _openai(self, messages, tools, model, temperature, api_key=None, provider="openai"):
+            calls.append(model)
+            if len(calls) == 1:
+                raise LLMTransientError("boom", status_code=503)
+            return {"content": "", "role": "assistant", "tool_calls": [], "finish_reason": "stop", "usage": {}}
+        monkeypatch.setattr(llm_service, "_resolve_api_key", _resolve)
+        monkeypatch.setattr(LLMService, "_openai_tool_completion", _openai)
+        out = await _REAL_WITH_TOOLS(
+            llm_service,
+            [{"role": "user", "content": "hi"}], [{"type": "function", "function": {"name": "t"}}],
+            model="gpt-4o", temperature=0.0)
+        assert out["downgraded"] is True
+        assert seen and seen[0][2][0] == "gpt-4o"
+
+    async def test_executor_tags_shape_problems(self, monkeypatch):
+        from api.tools import executor as ex
+        from api.tools.definitions import ToolDefinition
+        # categorize_document declares an object schema; force a scalar inner
+        # result to prove inference_policy.validate_tool_output runs live.
+        async def _scalar(params, ws):
+            return {"status": "success", "tool": "categorize_document", "result": "oops-scalar"}
+        monkeypatch.setitem(ex.TOOL_DISPATCH, "categorize_document", _scalar)
+        ex.execute_tool._idem_cache = {}
+        ex.execute_tool._idem_cache_order = []
+        td = ToolDefinition(name="categorize_document", description="c", input_schema={},
+                            output_schema={"type": "object", "properties": {"status": {"type": "string"}}},
+                            required_scope="memory.write", category="memory_write")
+        out = await ex.execute_tool(td, {"document_id": "d1", "category": "x"},
+                                    agent_id="test-agent", agent_scopes=["memory.write"], workspace_id="ws-shape")
+        assert out["status"] == "success"  # tagged, never silently dropped
+        assert out.get("_shape_problems") == ["expected object, got str"]

@@ -96,6 +96,7 @@ class ProviderRegistry:
             ("gmail", "Gmail (Google)", ["connector.gmail.read", "connector.gmail.write"], ["search_gmail", "draft_email"]),
             ("google_calendar", "Google Calendar", ["connector.calendar.read", "connector.calendar.write"], ["list_calendar_events", "create_calendar_event"]),
             ("google_drive", "Google Drive", ["connector.drive.read"], ["list_drive_files", "search_drive", "download_drive_file"]),
+            ("google_docs", "Google Docs", ["connector.docs.read", "connector.docs.write"], ["create_google_doc", "read_google_doc", "append_google_doc", "replace_google_doc_text"]),
             ("github", "GitHub", ["connector.github.read", "connector.github.write"], ["fetch_github_repo", "search_github_repos", "get_github_profile", "list_github_issues", "read_github_file", "create_github_issue", "create_github_pull_request"]),
             ("greenhouse", "Greenhouse Boards", ["connector.jobs.read"], ["search_greenhouse_jobs", "search_jobs_board"]),
             ("lever", "Lever Postings", ["connector.jobs.read"], ["search_lever_jobs", "search_jobs_board"]),

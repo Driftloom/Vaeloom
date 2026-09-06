@@ -223,6 +223,72 @@ DOWNLOAD_DRIVE_FILE = ToolDefinition(
 )
 
 
+CREATE_GOOGLE_DOC = ToolDefinition(
+    name="create_google_doc",
+    description="Create a new Google Document via Google Docs API",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "Title of the new document"},
+            "initial_text": {"type": "string", "description": "Optional initial text/content to insert", "default": ""},
+        },
+        "required": ["title"],
+    },
+    output_schema={"type": "object", "properties": {"document_id": {"type": "string"}, "title": {"type": "string"}, "url": {"type": "string"}}},
+    required_scope="connector.docs.write",
+    category="connector_write",
+)
+
+READ_GOOGLE_DOC = ToolDefinition(
+    name="read_google_doc",
+    description="Read full content of a Google Document via Docs API (returns clean structured Markdown/text)",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string", "description": "Google Document ID"},
+        },
+        "required": ["document_id"],
+    },
+    output_schema={"type": "object", "properties": {"document_id": {"type": "string"}, "title": {"type": "string"}, "content": {"type": "string"}}},
+    required_scope="connector.docs.read",
+    category="connector_read",
+)
+
+APPEND_GOOGLE_DOC = ToolDefinition(
+    name="append_google_doc",
+    description="Append text or section to an existing Google Document via Docs API",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string", "description": "Google Document ID"},
+            "text": {"type": "string", "description": "Text to append"},
+        },
+        "required": ["document_id", "text"],
+    },
+    output_schema={"type": "object", "properties": {"status": {"type": "string"}, "document_id": {"type": "string"}}},
+    required_scope="connector.docs.write",
+    category="connector_write",
+)
+
+REPLACE_GOOGLE_DOC_TEXT = ToolDefinition(
+    name="replace_google_doc_text",
+    description="Replace placeholder text (e.g. {{candidate_name}}) in a Google Document via Docs API",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string", "description": "Google Document ID"},
+            "find_text": {"type": "string", "description": "Text or placeholder to search for"},
+            "replace_text": {"type": "string", "description": "Replacement text"},
+            "match_case": {"type": "boolean", "default": True},
+        },
+        "required": ["document_id", "find_text", "replace_text"],
+    },
+    output_schema={"type": "object", "properties": {"status": {"type": "string"}, "document_id": {"type": "string"}}},
+    required_scope="connector.docs.write",
+    category="connector_write",
+)
+
+
 SEARCH_GREENHOUSE_JOBS = ToolDefinition(
     name="search_greenhouse_jobs",
     description="Search Greenhouse boards (public, no auth) — supply board_token (e.g. 'openai', 'datadog')",
@@ -938,6 +1004,7 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
         CREATE_ENTITY, MERGE_ENTITIES, CATEGORIZE_DOCUMENT,
         SEARCH_GMAIL, SEARCH_JOBS, LIST_CALENDAR_EVENTS,
         LIST_DRIVE_FILES, SEARCH_DRIVE, DOWNLOAD_DRIVE_FILE,
+        CREATE_GOOGLE_DOC, READ_GOOGLE_DOC, APPEND_GOOGLE_DOC, REPLACE_GOOGLE_DOC_TEXT,
         SEARCH_GREENHOUSE_JOBS, SEARCH_LEVER_JOBS, SEARCH_JOBS_BOARD,
         SEARCH_OUTLOOK_MAIL, DRAFT_OUTLOOK_MAIL, LIST_OUTLOOK_CALENDAR_EVENTS, CREATE_OUTLOOK_CALENDAR_EVENT,
         LIST_ONEDRIVE_FILES, SEARCH_ONEDRIVE, DOWNLOAD_ONEDRIVE_FILE,

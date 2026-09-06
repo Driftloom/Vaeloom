@@ -29,7 +29,7 @@ def _connector_not_configured(tool: str, integration: str) -> dict[str, Any]:
     }
 
 
-class PermissionDeniedError(Exception):
+class PermissionDeniedError(PermissionError):
     """Raised when the agent lacks the required scope for a tool call."""
     pass
 
@@ -1022,6 +1022,115 @@ async def _execute_download_drive_file(params: dict[str, Any], workspace_id: str
     except Exception as e:
         logger.error(f"download_drive_file failed: {e}")
         return {"status": "error", "tool": "download_drive_file", "result": str(e)}
+
+
+async def _execute_create_google_doc(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    title = params.get("title", "Untitled Document")
+    initial_text = params.get("initial_text", "")
+    try:
+        from api.clients.docs_client import DocsClient
+    except ImportError as e:
+        return {"status": "error", "result": f"Docs client import failed: {e}"}
+    try:
+        client = await _get_client_for_workspace(DocsClient, workspace_id)
+        doc = await client.create_document(title=title)
+        if doc is None:
+            return _connector_not_configured("create_google_doc", "Google Docs")
+        doc_id = doc.get("documentId", "")
+        if initial_text and doc_id:
+            await client.append_text(doc_id, initial_text)
+        return {
+            "status": "success",
+            "tool": "create_google_doc",
+            "result": {
+                "document_id": doc_id,
+                "title": title,
+                "url": f"https://docs.google.com/document/d/{doc_id}/edit",
+            },
+        }
+    except Exception as e:
+        logger.error(f"create_google_doc failed: {e}")
+        return {"status": "error", "tool": "create_google_doc", "result": str(e)}
+
+
+async def _execute_read_google_doc(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    doc_id = params.get("document_id", "")
+    if not doc_id:
+        return {"status": "error", "tool": "read_google_doc", "result": "document_id is required"}
+    try:
+        from api.clients.docs_client import DocsClient
+    except ImportError as e:
+        return {"status": "error", "result": f"Docs client import failed: {e}"}
+    try:
+        client = await _get_client_for_workspace(DocsClient, workspace_id)
+        content = await client.read_document_text(doc_id)
+        if content is None:
+            return _connector_not_configured("read_google_doc", "Google Docs")
+        return {
+            "status": "success",
+            "tool": "read_google_doc",
+            "result": {
+                "document_id": doc_id,
+                "content": content,
+            },
+        }
+    except Exception as e:
+        logger.error(f"read_google_doc failed: {e}")
+        return {"status": "error", "tool": "read_google_doc", "result": str(e)}
+
+
+async def _execute_append_google_doc(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    doc_id = params.get("document_id", "")
+    text = params.get("text", "")
+    if not doc_id:
+        return {"status": "error", "tool": "append_google_doc", "result": "document_id is required"}
+    if not text:
+        return {"status": "error", "tool": "append_google_doc", "result": "text is required"}
+    try:
+        from api.clients.docs_client import DocsClient
+    except ImportError as e:
+        return {"status": "error", "result": f"Docs client import failed: {e}"}
+    try:
+        client = await _get_client_for_workspace(DocsClient, workspace_id)
+        res = await client.append_text(doc_id, text)
+        if res is None:
+            return _connector_not_configured("append_google_doc", "Google Docs")
+        return {
+            "status": "success",
+            "tool": "append_google_doc",
+            "result": {"status": "appended", "document_id": doc_id},
+        }
+    except Exception as e:
+        logger.error(f"append_google_doc failed: {e}")
+        return {"status": "error", "tool": "append_google_doc", "result": str(e)}
+
+
+async def _execute_replace_google_doc_text(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    doc_id = params.get("document_id", "")
+    find_text = params.get("find_text", "")
+    replace_text = params.get("replace_text", "")
+    match_case = params.get("match_case", True)
+    if not doc_id:
+        return {"status": "error", "tool": "replace_google_doc_text", "result": "document_id is required"}
+    if not find_text:
+        return {"status": "error", "tool": "replace_google_doc_text", "result": "find_text is required"}
+    try:
+        from api.clients.docs_client import DocsClient
+    except ImportError as e:
+        return {"status": "error", "result": f"Docs client import failed: {e}"}
+    try:
+        client = await _get_client_for_workspace(DocsClient, workspace_id)
+        res = await client.replace_text(doc_id, find_text, replace_text, match_case=match_case)
+        if res is None:
+            return _connector_not_configured("replace_google_doc_text", "Google Docs")
+        return {
+            "status": "success",
+            "tool": "replace_google_doc_text",
+            "result": {"status": "replaced", "document_id": doc_id},
+        }
+    except Exception as e:
+        logger.error(f"replace_google_doc_text failed: {e}")
+        return {"status": "error", "tool": "replace_google_doc_text", "result": str(e)}
 
 
 async def _execute_search_greenhouse_jobs(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -2445,6 +2554,10 @@ TOOL_DISPATCH: dict[str, Any] = {
     "search_drive": _execute_search_drive,
     "download_drive_file": _execute_download_drive_file,
     "download_file": _execute_download_drive_file,  # legacy alias
+    "create_google_doc": _execute_create_google_doc,
+    "read_google_doc": _execute_read_google_doc,
+    "append_google_doc": _execute_append_google_doc,
+    "replace_google_doc_text": _execute_replace_google_doc_text,
     "rename_file": _execute_rename_file,
     "move_file": _execute_move_file,
     "draft_email": _execute_draft_email,
@@ -2501,6 +2614,28 @@ async def execute_tool(
     """
     start_time = time.monotonic()
 
+    # ── Fail-closed workspace boundary check ───────────────────────
+    if not workspace_id or not str(workspace_id).strip():
+        logger.warning(
+            f"WORKSPACE_REQUIRED: agent={agent_id} tool={tool.name} attempted execution without workspace_id"
+        )
+        _audit_log(agent_id, tool.name, "", False, 0, "missing_workspace_id")
+        raise ValueError(f"workspace_id is required for tool execution (tool '{tool.name}')")
+
+    # ── Cross-workspace parameter tampering check ──────────────────
+    if params and "workspace_id" in params:
+        param_ws = str(params["workspace_id"]).strip()
+        ctx_ws = str(workspace_id).strip()
+        if param_ws and param_ws != ctx_ws:
+            logger.warning(
+                f"WORKSPACE_TAMPER_ATTEMPT: agent={agent_id} tool={tool.name} "
+                f"param_ws={param_ws} ctx_ws={ctx_ws}"
+            )
+            _audit_log(agent_id, tool.name, ctx_ws, False, 0, "cross_workspace_tamper")
+            raise PermissionDeniedError(
+                f"Cross-workspace tool execution prohibited: param workspace_id '{param_ws}' != context '{ctx_ws}'"
+            )
+
     # ── 0. Sanitize string params (ADR-031, closes F-11 / EXC-P13-04) ──────
     try:
         sanitized: dict[str, Any] = {}
@@ -2513,6 +2648,9 @@ async def execute_tool(
     # ── 1b. Deterministic idempotency for consequential actions (P1 — workspace+agent+tool+canonical params)
     # Only for connector_write/memory_write; read-only tools skip. Includes agent_id for per-agent isolation.
     # Key: workspace_id:agent_id:tool:hash(canonical_params) — stable across retries, unique per resource.
+    # Durability: UNIQUE(workspace_id, idem_key) row in tool_idempotency is the
+    # correctness mechanism (survives restarts); the in-memory LRU below is a
+    # fast-path cache only (Phase B §5).
     idem_key: str | None = None
     if tool.category in ("connector_write", "memory_write"):
         try:
@@ -2525,12 +2663,54 @@ async def execute_tool(
                 execute_tool._idem_cache_order = []  # type: ignore[attr-defined]
             _cache: dict = execute_tool._idem_cache  # type: ignore[attr-defined]
             if idem_key in _cache:
-                logger.info(f"IDEMPOTENCY HIT: {idem_key} — returning cached success")
+                logger.info(f"IDEMPOTENCY HIT (memory): {idem_key} — returning cached success")
                 return _cache[idem_key]
+            # Durable check: another worker (or a pre-crash attempt) may have won.
+            try:
+                from ..models.schema import ToolIdempotency
+                from ..database import async_session_factory as _idem_factory
+                from sqlalchemy import select as _idem_select
+
+                async with _idem_factory() as _idem_session:
+                    _row = (
+                        await _idem_session.execute(
+                            _idem_select(ToolIdempotency).where(
+                                ToolIdempotency.workspace_id == str(workspace_id),
+                                ToolIdempotency.idem_key == idem_key,
+                            )
+                        )
+                    ).scalar_one_or_none()
+                    if _row is not None and isinstance(_row.result_json, dict):
+                        logger.info(f"IDEMPOTENCY HIT (durable): {idem_key} — returning stored success")
+                        _cache[idem_key] = _row.result_json
+                        return _row.result_json
+            except Exception as _idem_exc:
+                logger.debug(f"Durable idempotency lookup skipped: {_idem_exc}")
         except Exception:
             idem_key = None
 
     # ── 1. Permission Check ────────────────────────────────────────
+    # 1a. AgentCard Declarative Capability Check (P1 Agent Authorization)
+    if agent_id:
+        try:
+            from api.orchestrator.card_registry import card_registry
+            card = card_registry.get(agent_id)
+            if card and card.tools:
+                # If card specifies allowed tools, tool.name must be in card.tools (or prefix match)
+                if tool.name not in card.tools and not any(tool.name.startswith(f"{t}:") or tool.name.startswith(f"{t}_") for t in card.tools):
+                    logger.warning(
+                        f"AGENT_CARD_DENIAL: agent={agent_id} tool={tool.name} not in card.tools={card.tools}"
+                    )
+                    _audit_log(agent_id, tool.name, workspace_id, False, 0, "agent_card_tool_unauthorized")
+                    raise PermissionDeniedError(
+                        f"Agent '{agent_id}' is not authorized to use tool '{tool.name}' per AgentCard specification"
+                    )
+        except PermissionDeniedError:
+            raise
+        except Exception:
+            pass
+
+    # 1b. Agent Scope Check
     has_permission = await check_permission(agent_scopes, tool.required_scope)
     if not has_permission:
         logger.warning(
@@ -2560,6 +2740,8 @@ async def execute_tool(
             # ── 0b. Tool result schema validation (P1 — output_schema best-effort + hardening)
             # Ensures handler returns dict with status/tool/result; malformed → error shape.
             # If output_schema declares type array/object, validate top-level result type.
+            # Phase B: inference_policy.validate_tool_output runs as the deterministic
+            # shape gate (type/required); problems are tagged, never silently dropped.
             try:
                 if not isinstance(result, dict):
                     logger.warning(f"Tool {tool.name} returned non-dict: {type(result).__name__} — coercing")
@@ -2580,6 +2762,14 @@ async def execute_tool(
                             # Many tools return list inside result dict — only flag if result itself is scalar
                             if isinstance(inner, (str, int, float)):
                                 logger.debug(f"Tool {tool.name} object schema returned scalar")
+                    except Exception:
+                        pass
+                    try:
+                        from ..services.inference_policy import validate_tool_output as _validate_tool_output
+                        _shape_problems = _validate_tool_output(result.get("result"), getattr(tool, "output_schema", None))
+                        if _shape_problems:
+                            logger.warning(f"Tool {tool.name} shape problems: {_shape_problems}")
+                            result["_shape_problems"] = _shape_problems[:5]
                     except Exception:
                         pass
                 # Hard cap result size so unbounded tool output cannot blow context
@@ -2603,6 +2793,7 @@ async def execute_tool(
             except Exception:
                 pass
             # Cache success for idempotency guard (memory-bounded LRU 500)
+            # + durable row so a post-crash retry observes the pre-crash success.
             if idem_key and result.get("status") == "success":
                 try:
                     _cache[idem_key] = result
@@ -2612,6 +2803,24 @@ async def execute_tool(
                         _cache.pop(oldest, None)
                 except Exception:
                     pass
+                try:
+                    from ..models.schema import ToolIdempotency as _IdemRow
+                    from ..database import async_session_factory as _store_factory
+
+                    async with _store_factory() as _store_session:
+                        _store_session.add(_IdemRow(
+                            workspace_id=str(workspace_id),
+                            idem_key=idem_key,
+                            tool_name=tool.name,
+                            agent_id=str(agent_id or ""),
+                            request_id=str(params.get("_request_id", "") or ""),
+                            status="succeeded",
+                            result_json=json.loads(json.dumps(result, default=str)),
+                        ))
+                        await _store_session.commit()
+                except Exception as _store_exc:
+                    # UNIQUE race: loser reads the winner's row on next attempt.
+                    logger.debug(f"Durable idempotency store skipped: {_store_exc}")
             return result
 
         except TimeoutError:
