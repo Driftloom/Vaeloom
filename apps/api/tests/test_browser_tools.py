@@ -79,6 +79,16 @@ class TestUrlGuard:
 
 
 class TestQuota:
+    @pytest.fixture(autouse=True)
+    def _pin_memory_backend(self):
+        # Deterministic quota regardless of REDIS_URL/network: pin the
+        # in-memory backend (same pattern as test_scrape_quota.py).
+        from api.tools import executor as ex
+
+        ex.set_scrape_quota_backend(ex._InMemoryScrapeQuota())
+        yield
+        ex.set_scrape_quota_backend(ex._InMemoryScrapeQuota())
+
     async def test_sliding_window_blocks_after_limit(self):
         ws = f"ws-quota-{id(object())}"
         assert await _check_scrape_quota(ws, limit=3) is True
@@ -160,24 +170,18 @@ class TestBrowseJobPage:
         assert r["status"] == "error"
 
     async def test_offline_returns_mock_fixture(self, monkeypatch):
+        # Contract (matches test_offline_honest_verdict et al.): total fetch
+        # failure yields an HONEST error, never a fabricated mock fixture.
         from api.services import browser_service as bsm
-        from api.services.document_builder import PlaywrightUnavailableError
-
-        async def unavailable(url):
-            raise PlaywrightUnavailableError("chromium missing")
 
         async def httpx_fail(url):
             raise RuntimeError("offline")
 
-        monkeypatch.setattr(bsm.browser_service, "fetch_rendered_text", unavailable)
+        monkeypatch.setattr(bsm.browser_service, "fetch_rendered_text", httpx_fail)
         r = await _execute_browse_job_page({"url": "https://jobs.stripe.com/123"}, "ws")
-        # handler catches engine failure inside fetch (which falls back to httpx
-        # internally); simulate total failure by patching both layers:
-        if r.get("status") != "success":
-            monkeypatch.setattr(bsm.browser_service, "fetch_rendered_text", httpx_fail)
-            r = await _execute_browse_job_page({"url": "https://jobs.stripe.com/123"}, "ws")
-        assert r["status"] == "success"
-        assert "mock" in (r.get("note") or "").lower() or r["result"]["title"]
+        assert r["status"] == "error"
+        assert "unavailable" in r["result"].lower()
+        assert "setup_hint" in r
 
     async def test_disabled_by_config(self, monkeypatch):
         import api.config as config_mod
@@ -189,7 +193,9 @@ class TestBrowseJobPage:
 
     async def test_quota_enforced(self, monkeypatch):
         import api.config as config_mod
+        from api.tools import executor as ex
 
+        ex.set_scrape_quota_backend(ex._InMemoryScrapeQuota())
         monkeypatch.setattr(config_mod.settings, "scrape_quota_per_hour", 1, raising=False)
         from api.services import browser_service as bsm
 

@@ -58,7 +58,7 @@ class QAAgent(BaseAgent):
             issues=["QA gate could not complete — passing with warning"],
         )
 
-    async def validate(self, agent_output: dict[str, Any]) -> QAValidationResult:
+    async def validate(self, agent_output: dict[str, Any], context: Any | None = None) -> QAValidationResult:
         """
         Run the QA validation checklist on an agent's output.
         Returns approved/rejected with issues.
@@ -153,6 +153,10 @@ class QAAgent(BaseAgent):
         except Exception:
             pass
 
+        # 6. LLM Grounding Judge — verify claims against source context (when available)
+        grounding_issues = await self._llm_grounding_judge(agent_output, context)
+        issues.extend(grounding_issues)
+
         if issues:
             logger.warning(f"QA REJECTED: {issues}")
             return QAValidationResult(
@@ -161,3 +165,48 @@ class QAAgent(BaseAgent):
 
         logger.info("QA APPROVED")
         return QAValidationResult(decision="approved", issues=[])
+
+    async def _llm_grounding_judge(self, agent_output: dict[str, Any], context: Any | None = None) -> list[str]:
+        """Verify output claims against retrieved source context using an LLM evaluator."""
+        from api.config import settings
+
+        if not settings.llm_api_key or not context:
+            return []
+
+        try:
+            from api.services.llm_service import llm_service
+
+            rag_ctx = getattr(context, "rag_context", {}) or {}
+            master_resume = getattr(context, "master_resume", {}) or {}
+            profile = getattr(context, "profile", {}) or {}
+
+            if not (rag_ctx or master_resume or profile):
+                return []
+
+            context_str = json.dumps({"rag": rag_ctx, "resume": master_resume, "profile": profile}, default=str)[:3000]
+            output_str = json.dumps(agent_output.get("result", {}), default=str)[:2000]
+
+            prompt = (
+                "You are an objective grounding judge. Compare the agent's output against the verified source context.\n"
+                "Check for fabricated metrics, invented employers, ungrounded technical skills, or claims not supported by the context.\n"
+                "Return ONLY valid JSON: {\"is_grounded\": bool, \"unsupported_claims\": [\"claim1\", ...]}\n\n"
+                f"SOURCE CONTEXT:\n{context_str}\n\n"
+                f"AGENT OUTPUT:\n{output_str}"
+            )
+
+            resp = await llm_service.generate_completion(
+                [{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=256,
+                task_type="qa_validate",
+            )
+            content = resp.get("content", "").strip()
+            import re
+            m = re.search(r"\{.*\}", content, re.DOTALL)
+            if m:
+                data = json.loads(m.group(0))
+                if not data.get("is_grounded", True):
+                    return [f"Grounding violation: {c}" for c in data.get("unsupported_claims", [])]
+        except Exception as exc:
+            logger.debug(f"LLM grounding judge skipped/failed: {exc}")
+        return []

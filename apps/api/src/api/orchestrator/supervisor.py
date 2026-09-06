@@ -206,6 +206,63 @@ async def _try_llm_planner(message: str, candidates: list[str]) -> list[list[str
         return None
 
 
+def _evaluate_conditional_branches(layer_results: list[dict[str, Any]], remaining_layers: list[list[str]]) -> list[list[str]]:
+    """Inspect intermediate results and dynamically add or prune DAG layers."""
+    updated = [list(l) for l in remaining_layers]
+    for r in layer_results:
+        aname = r.get("agent_name", "")
+        res = r.get("result", {}) or {}
+        # Dynamic Branch Rule 1: ATS score under threshold -> inject resume tailor/rewrite step if not already queued
+        if aname == "ats":
+            score = res.get("ats_score") or res.get("score")
+            if score is None:
+                summary_txt = str(res.get("summary", ""))
+                import re as _re
+                match = _re.search(r"(\d{1,3})\s*(?:/\s*100|%|points)?", summary_txt)
+                if match:
+                    try:
+                        score = float(match.group(1))
+                    except Exception:
+                        score = None
+            if score is not None and score < 75:
+                already_queued = any("resume" in l for l in updated)
+                if not already_queued:
+                    logger.info(f"Conditional DAG branch: ATS score {score} < 75 -> inserting resume rewrite layer")
+                    updated.insert(0, ["resume"])
+
+        # Dynamic Branch Rule 2: Explicit required_agents returned in result
+        required = res.get("required_agents", [])
+        if isinstance(required, list):
+            for req_ag in required:
+                if isinstance(req_ag, str) and not any(req_ag in l for l in updated):
+                    logger.info(f"Conditional DAG branch: dynamically adding required agent {req_ag}")
+                    updated.append([req_ag])
+
+    return updated
+
+
+def _detect_pending_approvals(layer_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Scan layer results for any actions or proposals requiring human approval."""
+    pending = []
+    for r in layer_results:
+        if r.get("action") == "request_approval":
+            pending.append({
+                "agent_name": r.get("agent_name"),
+                "reason": r.get("result", {}).get("summary", "Action requires approval"),
+                "payload": r.get("result"),
+            })
+        proposals = r.get("result", {}).get("proposals", [])
+        if isinstance(proposals, list):
+            for p in proposals:
+                if isinstance(p, dict) and p.get("requires_approval"):
+                    pending.append({
+                        "agent_name": r.get("agent_name"),
+                        "action_type": p.get("approval_type", "action"),
+                        "proposal": p,
+                    })
+    return pending
+
+
 async def run_supervisor(message: str, workspace_id: str, request_id: str | None = None) -> dict[str, Any]:
     """Execute multi-agent DAG and return merged response."""
     request_id = request_id or str(uuid.uuid4())
@@ -234,8 +291,12 @@ async def run_supervisor(message: str, workspace_id: str, request_id: str | None
     all_details: list[dict[str, Any]] = []
     summaries: list[str] = []
 
-    for layer_idx, layer in enumerate(layers):
-        logger.info(f"SUPERVISOR layer {layer_idx+1}/{len(layers)}: {layer}")
+    layers_to_run = list(layers)
+    layer_idx = 0
+
+    while layer_idx < len(layers_to_run):
+        layer = layers_to_run[layer_idx]
+        logger.info(f"SUPERVISOR layer {layer_idx+1}/{len(layers_to_run)}: {layer}")
         if len(layer) == 1:
             result = await _run_single_agent(layer[0], message, workspace_id, request_id, context)
             results = [result]
@@ -253,24 +314,165 @@ async def run_supervisor(message: str, workspace_id: str, request_id: str | None
             proposals = r.get("result", {}).get("proposals", [])
             all_proposals.extend(proposals)
 
+        # Dynamic conditional DAG evaluation based on intermediate results
+        remaining_layers = layers_to_run[layer_idx + 1:]
+        dyn_layers = _evaluate_conditional_branches(results, remaining_layers)
+        if dyn_layers != remaining_layers:
+            logger.info(f"SUPERVISOR dynamic DAG update: {dyn_layers}")
+            layers_to_run = layers_to_run[:layer_idx + 1] + dyn_layers
+
+        # Check for approval pause if subsequent work remains
+        pending_approvals = _detect_pending_approvals(results)
+        if pending_approvals and layer_idx + 1 < len(layers_to_run):
+            from .state import LoopState, save_checkpoint
+
+            state = LoopState(request_id, workspace_id=workspace_id)
+            state.add_phase(f"supervisor_pause_{layer_idx}", {
+                "status": "paused_awaiting_approval",
+                "layer_idx": layer_idx,
+                "remaining_layers": layers_to_run[layer_idx + 1:],
+                "context": context,
+                "all_details": all_details,
+                "all_proposals": all_proposals,
+                "summaries": summaries,
+                "pending_approvals": pending_approvals,
+                "message": message,
+            })
+            await save_checkpoint(state, workspace_id=workspace_id)
+            return {
+                "agent_name": "supervisor",
+                "action": "request_approval",
+                "status": "paused_awaiting_approval",
+                "confidence": 0.85,
+                "checkpoint_token": request_id,
+                "pending_approvals": pending_approvals,
+                "result": {
+                    "summary": f"Workflow paused at layer {layer_idx + 1} awaiting human approval.",
+                    "details": all_details,
+                    "proposals": all_proposals,
+                    "questions": [],
+                    "dag": layers_to_run,
+                },
+                "supervisor": True,
+                "dag": layers_to_run,
+            }
+
+        layer_idx += 1
+
     merged_summary = "\n".join(summaries) if summaries else "Multi-agent workflow completed."
-    # QA gate will still be applied by router.handle after supervisor returns; we do a light pre-check
 
     return {
         "agent_name": "supervisor",
         "action": "suggest",
         "confidence": 0.87,
+        "status": "success",
         "result": {
             "summary": merged_summary,
             "details": all_details,
             "proposals": all_proposals,
             "questions": [],
-            "dag": layers,
+            "dag": layers_to_run,
             "subtasks": [a for a, _ in subtasks],
         },
         "supervisor": True,
-        "dag": layers,
+        "dag": layers_to_run,
     }
+
+
+async def resume_supervisor(
+    request_id: str,
+    workspace_id: str,
+    approval_decision: dict[str, Any],
+) -> dict[str, Any]:
+    """Resume a paused supervisor DAG workflow using its persisted checkpoint."""
+    from .state import load_or_create_state, save_checkpoint
+
+    state = await load_or_create_state(request_id, workspace_id=workspace_id)
+    # Find latest pause phase
+    pause_key = None
+    for k in sorted(state.phases.keys(), reverse=True):
+        if k.startswith("supervisor_pause_"):
+            pause_key = k
+            break
+
+    if not pause_key:
+        return {
+            "agent_name": "supervisor",
+            "action": "error",
+            "confidence": 0.0,
+            "result": {"summary": f"No paused supervisor checkpoint found for {request_id}"},
+            "status": "not_found",
+        }
+
+    pause_data = state.phases[pause_key]
+    decision_str = str(approval_decision.get("decision", "")).lower()
+
+    if decision_str in ("rejected", "deny", "denied"):
+        state.add_phase(f"supervisor_resume_{pause_data['layer_idx']}", {
+            "status": "aborted",
+            "reason": approval_decision.get("reason", "Human rejected approval request"),
+        })
+        await save_checkpoint(state, workspace_id=workspace_id)
+        return {
+            "agent_name": "supervisor",
+            "action": "suggest",
+            "confidence": 0.9,
+            "status": "aborted",
+            "result": {
+                "summary": f"Workflow was aborted: {approval_decision.get('reason', 'Approval rejected by user.')}",
+                "details": pause_data.get("all_details", []),
+                "proposals": [],
+                "questions": [],
+            },
+            "supervisor": True,
+        }
+
+    # Approved: restore context and resume remaining layers
+    message = pause_data.get("message", "")
+    context = dict(pause_data.get("context", {}))
+    context["approval_decision"] = approval_decision
+    all_details = list(pause_data.get("all_details", []))
+    all_proposals = list(pause_data.get("all_proposals", []))
+    summaries = list(pause_data.get("summaries", []))
+    remaining_layers = list(pause_data.get("remaining_layers", []))
+
+    logger.info(f"SUPERVISOR resuming {request_id} with remaining layers: {remaining_layers}")
+
+    for idx, layer in enumerate(remaining_layers):
+        if len(layer) == 1:
+            result = await _run_single_agent(layer[0], message, workspace_id, request_id, context)
+            results = [result]
+        else:
+            results = await asyncio.gather(*[_run_single_agent(ag, message, workspace_id, request_id, context) for ag in layer])
+
+        for r in results:
+            aname = r.get("agent_name", "unknown")
+            summary = r.get("result", {}).get("summary", "")
+            if summary:
+                summaries.append(f"[{aname}] {summary}")
+                context[aname] = summary
+            all_details.append(r)
+            proposals = r.get("result", {}).get("proposals", [])
+            all_proposals.extend(proposals)
+
+    merged_summary = "\n".join(summaries) if summaries else "Resumed multi-agent workflow completed."
+    state.add_phase("supervisor_completed", {"status": "completed", "summary": merged_summary})
+    await save_checkpoint(state, workspace_id=workspace_id)
+
+    return {
+        "agent_name": "supervisor",
+        "action": "suggest",
+        "confidence": 0.88,
+        "status": "completed",
+        "result": {
+            "summary": merged_summary,
+            "details": all_details,
+            "proposals": all_proposals,
+            "questions": [],
+        },
+        "supervisor": True,
+    }
+
 
 
 async def run_supervisor_stream(message: str, workspace_id: str, request_id: str | None = None):

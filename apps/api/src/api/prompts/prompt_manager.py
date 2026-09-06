@@ -50,6 +50,15 @@ class PromptManager:
 
         prompt_file = PROMPT_FILES.get(agent_name)
         if prompt_file is None:
+            try:
+                from api.orchestrator.card_registry import get_agent_card
+                card = get_agent_card(agent_name)
+                if card:
+                    template = card.render_system_prompt()
+                    self._cache[agent_name] = template
+                    return template
+            except Exception as exc:
+                logger.debug("Card registry lookup skipped for %s: %s", agent_name, exc)
             prompt_file = PROMPT_FILES["base"]
 
         filepath = self._prompt_dir / prompt_file
@@ -77,7 +86,13 @@ class PromptManager:
         logger.info("Prompt cache cleared")
 
     def list_available_prompts(self) -> list[str]:
-        return list(PROMPT_FILES.keys())
+        prompts = set(PROMPT_FILES.keys())
+        try:
+            from api.orchestrator.card_registry import list_agent_cards
+            prompts.update(list_agent_cards().keys())
+        except Exception:
+            pass
+        return sorted(list(prompts))
 
     def set_prompt_dir(self, prompt_dir: str) -> None:
         self._prompt_dir = Path(prompt_dir)

@@ -134,11 +134,70 @@ class UserRequest:
         self.preferred_agent = preferred_agent
 
 
+async def _llm_classify_intent(message: str) -> tuple[str, float] | None:
+    """Classify ambiguous or low-confidence queries using a fast micro-LLM."""
+    from ..config import settings
+
+    if not settings.llm_api_key or len(message.strip()) < 3:
+        return None
+
+    try:
+        from ..services.llm_service import llm_service
+        import json
+        import re
+
+        agent_desc = [
+            "- organization: file and document organization, folders, categorization",
+            "- memory: remember facts, retrieve memory, notes, profile context",
+            "- resume: write, improve, tailor resume bullets or CV",
+            "- ats: calculate ATS match scores, detect skill gaps, format audit",
+            "- job_search: find jobs, roles, openings, browse listings",
+            "- application: prepare job application, cover letter, job submission",
+            "- gmail: check emails, draft replies, communication",
+            "- scheduler: calendar, schedule meetings, interview slots, deadlines",
+            "- career: long-term career strategy, promotions, career trajectory",
+            "- learning: study courses, learn skills, certifications",
+            "- research: company analysis, industry insights, market research",
+            "- github: GitHub repositories, pull requests, code evidence",
+            "- coding: technical interview questions, algorithms, coding challenges",
+            "- reminder: set reminders, deadlines, follow-ups",
+            "- analytics: performance metrics, reports, statistics",
+            "- recommendation: curated recommendations, career matches",
+        ]
+        system_prompt = (
+            "You are an intent classification engine. Classify the user query into exactly one of these agents:\n"
+            + "\n".join(agent_desc)
+            + "\n\nRespond strictly in valid JSON: {\"agent\": \"<agent_name>\", \"confidence\": <float 0.0 to 1.0>}"
+        )
+
+        resp = await llm_service.generate_completion(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message},
+            ],
+            temperature=0.0,
+            max_tokens=64,
+            task_type="intent_classify",
+        )
+        txt = resp.get("content", "").strip()
+        m = re.search(r"\{.*\}", txt, re.DOTALL)
+        if m:
+            data = json.loads(m.group(0))
+            ag = str(data.get("agent", "")).lower()
+            conf = float(data.get("confidence", 0.85))
+            if ag in AGENT_REGISTRY:
+                return ag, max(0.0, min(1.0, conf))
+    except Exception as exc:
+        logger.debug(f"Micro-LLM intent classification skipped/failed: {exc}")
+    return None
+
+
 async def classify_intent(message: str) -> tuple[str, float]:
     """
-    Two-stage intent classification — hardened tie-break + calibrated confidence.
-    Stage 1: Coarse category from keywords (with tie-break via disambiguation strength).
+    Two-stage intent classification with micro-LLM fallback and misroute telemetry.
+    Stage 1: Coarse category from keywords (fast-path).
     Stage 2: Specific agent within category.
+    Fallback: Micro-LLM intent classifier for ambiguous/low-confidence queries.
     Returns (agent_name, confidence).
     """
     msg_lower = message.lower()
@@ -150,6 +209,11 @@ async def classify_intent(message: str) -> tuple[str, float]:
 
     best_score = max(scores.values()) if scores else 0
     if best_score == 0:
+        # Check LLM before default memory fallback
+        llm_match = await _llm_classify_intent(message)
+        if llm_match:
+            logger.info(f"ROUTER_LLM_CLASSIFY: query='{message[:50]}' fallback -> {llm_match[0]} ({llm_match[1]:.2f})")
+            return llm_match
         return "memory", 0.5  # Default fallback
 
     # Gather all categories tied at best_score and break tie via disambiguation strength
@@ -175,15 +239,10 @@ async def classify_intent(message: str) -> tuple[str, float]:
                 return sum(1 for kw in ["connector", "integration", "connect", "setup", "configure"] if kw in msg_lower)
             return 0
         tied_sorted = sorted(tied, key=lambda c: _secondary(c), reverse=True)
-        # If tie still, prefer category with earlier definition order (stable)
         best_category = tied_sorted[0]
-        # If secondary couldn't break (all 0), keep first tied which is deterministic
 
-    confidence = min(best_score / 3.0, 1.0)  # Normalize — keep 3-denominator for compat (test expects 4 hits ->1.0)
-    # Confidence boost: if Stage2 disambiguation finds strong signal, lift low 2-hit to 0.75+
-    # This fixes "organize my files" (2 hits) being 0.66 <0.7 clarification -> now 0.8 routes correctly
+    confidence = min(best_score / 3.0, 1.0)
     if best_score == 2 and confidence < 0.75:
-        # Only boost if the category is unambiguous single-winner or secondary >0
         if len(tied) == 1 or _secondary(best_category) > 0:  # type: ignore
             confidence = 0.8
 
@@ -191,45 +250,37 @@ async def classify_intent(message: str) -> tuple[str, float]:
     agents_in_category = CATEGORY_AGENT_MAP.get(best_category, ["memory"])
 
     if len(agents_in_category) == 1:
-        return agents_in_category[0], confidence
+        fast_agent = agents_in_category[0]
+    elif best_category == "career_resume":
+        fast_agent = "ats" if any(kw in msg_lower for kw in ["score", "ats", "gap", "keyword"]) else "resume"
+    elif best_category == "job_search":
+        fast_agent = "application" if any(kw in msg_lower for kw in ["apply", "application", "submit", "cover letter"]) else "job_search"
+    elif best_category == "career_development":
+        fast_agent = "learning" if any(kw in msg_lower for kw in ["course", "learn", "training", "certification", "study"]) else "career"
+    elif best_category == "research_github":
+        fast_agent = "github" if any(kw in msg_lower for kw in ["github", "repository", "repo", "profile"]) else "research"
+    elif best_category == "planning_research":
+        fast_agent = "planning" if any(kw in msg_lower for kw in ["plan", "roadmap", "milestone", "goal", "strategy"]) else "research"
+    elif best_category == "reminders_analytics":
+        fast_agent = "reminder" if any(kw in msg_lower for kw in ["deadline", "remind", "follow up", "task", "todo"]) else "analytics"
+    elif best_category == "integrations":
+        fast_agent = "connector" if any(kw in msg_lower for kw in ["connector", "integration", "connect", "setup", "configure"]) else "plugin"
+    else:
+        fast_agent = agents_in_category[0]
 
-    # Disambiguate within category
-    if best_category == "career_resume":
-        if any(kw in msg_lower for kw in ["score", "ats", "gap", "keyword"]):
-            return "ats", confidence
-        return "resume", confidence
+    # If confident, return fast-path
+    if confidence >= 0.75:
+        return fast_agent, confidence
 
-    if best_category == "job_search":
-        if any(kw in msg_lower for kw in ["apply", "application", "submit", "cover letter"]):
-            return "application", confidence
-        return "job_search", confidence
+    # For ambiguous or low-confidence queries, trigger micro-LLM intent calibration
+    llm_match = await _llm_classify_intent(message)
+    if llm_match:
+        logger.info(f"ROUTER_LLM_CLASSIFY: query='{message[:50]}' fast={fast_agent}({confidence:.2f}) -> llm={llm_match[0]}({llm_match[1]:.2f})")
+        return llm_match
 
-    if best_category == "career_development":
-        if any(kw in msg_lower for kw in ["course", "learn", "training", "certification", "study"]):
-            return "learning", confidence
-        return "career", confidence
-
-    if best_category == "research_github":
-        if any(kw in msg_lower for kw in ["github", "repository", "repo", "profile"]):
-            return "github", confidence
-        return "research", confidence
-
-    if best_category == "planning_research":
-        if any(kw in msg_lower for kw in ["plan", "roadmap", "milestone", "goal", "strategy"]):
-            return "planning", confidence
-        return "research", confidence
-
-    if best_category == "reminders_analytics":
-        if any(kw in msg_lower for kw in ["deadline", "remind", "follow up", "task", "todo"]):
-            return "reminder", confidence
-        return "analytics", confidence
-
-    if best_category == "integrations":
-        if any(kw in msg_lower for kw in ["connector", "integration", "connect", "setup", "configure"]):
-            return "connector", confidence
-        return "plugin", confidence
-
-    return agents_in_category[0], confidence
+    # Log telemetry for low-confidence routes
+    logger.info(f"ROUTER_LOW_CONFIDENCE: query='{message[:50]}' agent={fast_agent} conf={confidence:.2f}")
+    return fast_agent, confidence
 
 
 # ── MVP scope lock (INT-02 §2.2): 10 canonical agents ───────────────
@@ -287,6 +338,28 @@ async def handle(request: UserRequest) -> dict[str, Any]:
     from ..config import settings
 
     logger.info(f"Handling request {request.id}: {request.message} (preferred={getattr(request, 'preferred_agent', None)})")
+
+    # ── 0. Adversarial screen FIRST (Wave 2, 2026-09-06) ─────────────
+    # Untrusted input is screened before classification/routing/inference.
+    # Previously this ran after intent classification, so low-confidence
+    # attacks (e.g. PII requests) exited as ask_clarification and were never
+    # screened. fail-closed on critical detections.
+    adversarial = detect_adversarial_prompt(request.message)
+    if adversarial:
+        critical = [d for d in adversarial if d["severity"] == "critical"]
+        if critical:
+            logger.warning("Adversarial prompt detected: %s", critical)
+            return {
+                "agent_name": "orchestrator",
+                "action": "error",
+                "confidence": 0.0,
+                "result": {
+                    "summary": "Your input was flagged for potential security concerns. Please rephrase.",
+                    "details": None,
+                    "proposals": [],
+                    "questions": [],
+                },
+            }
 
     # ── 1. Intent Classification (explicit agent override for enterprise chat) ──
     preferred = getattr(request, 'preferred_agent', None)
@@ -376,7 +449,8 @@ async def handle(request: UserRequest) -> dict[str, Any]:
             },
         }
 
-    # Adversarial prompt detection
+    # Adversarial prompt detection — defense in depth (primary screen is step 0
+    # at the top of handle(); this catches anything re-entering past it).
     adversarial = detect_adversarial_prompt(request.message)
     if adversarial:
         critical = [d for d in adversarial if d["severity"] == "critical"]

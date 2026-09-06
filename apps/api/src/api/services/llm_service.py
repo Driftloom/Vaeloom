@@ -38,6 +38,14 @@ class LLMProviderError(Exception):
     pass
 
 
+class LLMTransientError(LLMProviderError):
+    """Raised on retryable provider errors like HTTP 429 (Rate Limit) and HTTP 5xx."""
+
+    def __init__(self, message: str, status_code: int = 500):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 class LLMService:
     def __init__(self) -> None:
         self.provider = settings.llm_provider
@@ -222,9 +230,24 @@ class LLMService:
 
     @retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
+        wait=wait_exponential(multiplier=0.5, min=0.5, max=10),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError, LLMTransientError)),
+        reraise=True,
     )
+    async def _generate_completion_with_retry(
+        self,
+        messages: list[dict[str, Any]],
+        effective_model: str,
+        temperature: float,
+        max_tokens: int,
+        inferred_provider: str,
+        effective_key: str | None,
+    ) -> dict[str, Any]:
+        if inferred_provider in ("openai", "groq"):
+            return await self._openai_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key, provider=inferred_provider)
+        else:
+            return await self._anthropic_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key)
+
     async def generate_completion(
         self,
         messages: list[dict[str, Any]],
@@ -264,7 +287,6 @@ class LLMService:
                 default_cfg = MODEL_CATALOG.get(self.model)
                 if default_cfg is None or routed.tier != default_cfg.tier:
                     effective_model = routed.name
-                    # Keep provider in sync with routed model
                     inferred_provider = provider_override or routed.provider
                 else:
                     effective_model = self.model
@@ -275,13 +297,49 @@ class LLMService:
         else:
             effective_model = model or self.model
             inferred_provider = provider_override or _infer_provider_from_model(effective_model)
-        _prov, effective_key = await self._resolve_api_key(
-            inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
-        )
-        if inferred_provider in ("openai", "groq"):
-            result = await self._openai_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key, provider=inferred_provider)
-        else:
-            result = await self._anthropic_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key)
+
+        # Build fallback tier candidates for resilient degraded operation
+        fallback_candidates = [effective_model]
+        curr_cfg = MODEL_CATALOG.get(effective_model)
+        if curr_cfg:
+            if curr_cfg.tier == "powerful":
+                # Fallback to balanced, then fast
+                fallback_candidates.extend([m.name for m in MODEL_CATALOG.values() if m.provider == curr_cfg.provider and m.tier == "balanced"][:1])
+                fallback_candidates.extend([m.name for m in MODEL_CATALOG.values() if m.provider == curr_cfg.provider and m.tier == "fast"][:1])
+            elif curr_cfg.tier == "balanced":
+                # Fallback to fast
+                fallback_candidates.extend([m.name for m in MODEL_CATALOG.values() if m.provider == curr_cfg.provider and m.tier == "fast"][:1])
+
+        result: dict[str, Any] | None = None
+        last_exc: Exception | None = None
+
+        for candidate_model in fallback_candidates:
+            candidate_provider = provider_override or _infer_provider_from_model(candidate_model)
+            _prov, effective_key = await self._resolve_api_key(
+                candidate_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
+            )
+            try:
+                result = await self._generate_completion_with_retry(
+                    messages=messages,
+                    effective_model=candidate_model,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    inferred_provider=candidate_provider,
+                    effective_key=effective_key,
+                )
+                effective_model = candidate_model
+                break
+            except (LLMProviderError, httpx.TimeoutException, httpx.NetworkError) as exc:
+                last_exc = exc
+                import logging as _lg
+                _lg.getLogger(__name__).warning(f"Model {candidate_model} failed ({exc}); attempting failover...")
+                continue
+
+        if result is None:
+            if last_exc:
+                raise last_exc
+            raise LLMProviderError("All model tier candidates failed to generate completion")
+
 
         # Track cost — also thread task_type routing hint (MODEL-001)
         latency_ms = (time.monotonic() - start) * 1000
@@ -335,6 +393,8 @@ class LLMService:
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens},
             )
+            if resp.status_code in (429, 500, 502, 503, 504):
+                raise LLMTransientError(f"{pname} transient error: {resp.status_code} {resp.text}", status_code=resp.status_code)
             if resp.status_code != 200:
                 raise LLMProviderError(f"{pname} completion failed: {resp.status_code} {resp.text}")
             data = resp.json()
@@ -380,6 +440,8 @@ class LLMService:
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
+            if resp.status_code in (429, 500, 502, 503, 504):
+                raise LLMTransientError(f"Anthropic transient error: {resp.status_code} {resp.text}", status_code=resp.status_code)
             if resp.status_code != 200:
                 raise LLMProviderError(f"Anthropic completion failed: {resp.status_code} {resp.text}")
             data = resp.json()
@@ -401,8 +463,9 @@ class LLMService:
 
     @retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
+        wait=wait_exponential(multiplier=0.5, min=0.5, max=10),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError, LLMTransientError)),
+        reraise=True,
     )
     async def generate_completion_with_tools(
         self,
@@ -460,6 +523,8 @@ class LLMService:
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"model": model, "messages": norm_messages, "tools": tools, "temperature": temperature},
             )
+            if resp.status_code in (429, 500, 502, 503, 504):
+                raise LLMTransientError(f"{pname} transient tool error: {resp.status_code} {resp.text}", status_code=resp.status_code)
             if resp.status_code != 200:
                 raise LLMProviderError(f"{pname} tool completion failed: {resp.status_code} {resp.text}")
             data = resp.json()
@@ -505,6 +570,8 @@ class LLMService:
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
+            if resp.status_code in (429, 500, 502, 503, 504):
+                raise LLMTransientError(f"Anthropic transient tool error: {resp.status_code} {resp.text}", status_code=resp.status_code)
             if resp.status_code != 200:
                 raise LLMProviderError(f"Anthropic tool completion failed: {resp.status_code} {resp.text}")
             data = resp.json()
@@ -854,4 +921,8 @@ class LLMService:
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
+LLMService._ORIGINAL_GENERATE_COMPLETION = LLMService.generate_completion
+LLMService._ORIGINAL_GENERATE_COMPLETION_WITH_TOOLS = LLMService.generate_completion_with_tools
+
 llm_service = LLMService()
+

@@ -118,3 +118,14 @@ class TestPromptManager:
         manager.reload()
         prompt2 = manager.get_prompt("base")
         assert prompt1 is not prompt2
+
+    def test_specialist_agent_card_prompt_loading(self, manager):
+        # Specialist agents without files should load from card_registry
+        app_prompt = manager.get_prompt("application")
+        assert "application" in app_prompt
+        assert "SAFETY GUIDELINES" in app_prompt
+        assert "STRICT OUTPUT CONTRACT" in app_prompt
+
+        ats_prompt = manager.get_prompt("ats")
+        assert "ats" in ats_prompt
+        assert "SAFETY GUIDELINES" in ats_prompt

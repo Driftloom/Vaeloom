@@ -15,6 +15,7 @@ class ToolDefinition(BaseModel):
     output_schema: dict[str, Any]
     required_scope: str
     category: str  # memory_read | memory_write | connector_read | connector_write | system
+    trust_class: str = "first_party"  # core_trusted | first_party | mcp.read | mcp.workspace.write | mcp.external.write | untrusted
 
 
 # ── Memory Read Tools ──────────────────────────────────────────────

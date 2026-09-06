@@ -48,6 +48,68 @@ def _get_circuit_breaker(agent_name: str) -> CircuitBreaker:
     return _circuit_breakers[agent_name]
 
 
+# ── Spend & Quota Gate (Wave 1, 2026-09-06) ──────────────────────────
+
+async def _check_spend_and_quota(workspace_id: str, agent_name: str) -> str | None:
+    """Enforce daily request quota + USD spend budget before LLM work.
+
+    Returns an error summary string when the loop must stop, else None.
+    Quota reuses temporal/quota.py (one system, both loop paths). Spend uses
+    services/agent_costs.py budgets. Fail-open locally, fail-closed in
+    non-local environments (mirrors quota.py semantics).
+    """
+    # ── Daily request quota (shared Redis counters with Temporal path) ──
+    try:
+        from ..temporal.quota import check_and_reserve
+
+        allowed, cur = await check_and_reserve(workspace_id, metric="requests", increment=1)
+        if not allowed:
+            logger.warning(f"Quota gate: workspace={workspace_id} agent={agent_name} daily requests exhausted ({cur})")
+            return f"Daily request quota exhausted for this workspace ({cur} used). Please try again tomorrow."
+    except ImportError as e:
+        logger.error(f"Quota gate: temporal.quota unavailable: {e}")
+        try:
+            if settings.service_environment != "local":
+                return "Quota service unavailable — loop halted (fail-closed in non-local)."
+        except Exception:
+            pass
+    except Exception as e:
+        logger.warning(f"Quota gate check failed (non-blocking): {e}")
+
+    # ── USD spend budget ──
+    try:
+        from ..services.agent_costs import agent_cost_tracker
+
+        status = await agent_cost_tracker.check_budget(workspace_id)
+        if not status.get("allowed", True):
+            logger.warning(
+                f"Budget gate: workspace={workspace_id} agent={agent_name} spent={status.get('spent_usd')} limit={status.get('limit_usd')}"
+            )
+            return (
+                f"Workspace LLM spend budget exhausted "
+                f"(${status.get('spent_usd', 0):.4f} / ${status.get('limit_usd', 0):.4f}). "
+                f"Please raise the budget or try again in the next period."
+            )
+    except Exception as e:
+        logger.warning(f"Budget gate check failed (non-blocking): {e}")
+    return None
+
+
+def _ceiling_error_card(agent_name: str, summary: str) -> dict[str, Any]:
+    """User-facing error card for ceiling/quota/budget stops (matches rate-limit shape)."""
+    return {
+        "agent_name": agent_name,
+        "action": "error",
+        "confidence": 0.0,
+        "result": {
+            "summary": summary,
+            "details": None,
+            "proposals": [],
+            "questions": [],
+        },
+    }
+
+
 # ── Approval Lookup ────────────────────────────────────────────────
 
 async def fetch_pending_approvals(workspace_id: str) -> list[dict[str, Any]]:
@@ -219,6 +281,12 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
         documents: list[dict[str, Any]] = []
         preferences: list[dict[str, Any]] = []
 
+        import uuid as _uuid
+        try:
+            w_uuid = _uuid.UUID(str(workspace_id))
+        except Exception:
+            w_uuid = workspace_id
+
         async with async_session_factory() as session:
             # ── Vector search (hybrid, preferred) — pgvector <=> distance ──
             # AC-05: skip expensive embedding on short queries, in tests, or without vector store (saves latency on every plan)
@@ -232,7 +300,6 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
                     if has_vector_store or _os.environ.get("ENABLE_VECTOR_RAG") == "1":
                         from api.services.llm_service import llm_service
                         from sqlalchemy import text as _text
-                        import uuid as _uuid
                         vec = await llm_service.generate_embedding(query[:2000])
                         vec_str = "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
                         # Try embeddings table (works on Postgres with pgvector; falls back on SQLite mock)
@@ -275,7 +342,7 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
                 try:
                     # Filter by read_types if agent declares them; otherwise search all
                     for kw in keywords[:3]:
-                        stmt = select(Entity).where(Entity.workspace_id == workspace_id).where(Entity.canonical_name.ilike(f"%{kw}%")).limit(5)
+                        stmt = select(Entity).where(Entity.workspace_id == w_uuid).where(Entity.canonical_name.ilike(f"%{kw}%")).limit(5)
                         if read_types and "any" not in read_types:
                             stmt = stmt.where(or_(*[Entity.type == rt for rt in read_types if rt]))
                         res = await session.execute(stmt)
@@ -309,7 +376,7 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
                                   AND to_tsvector('english', coalesce(path,'') || ' ' || coalesce(summary,'')) @@ plainto_tsquery('english', :q)
                                 ORDER BY rank DESC LIMIT 8
                             """),
-                            {"q": q, "wid": workspace_id},
+                            {"q": q, "wid": str(w_uuid)},
                         )
                         for row in ts_res.fetchall():
                             did = str(row[0])
@@ -323,7 +390,7 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
                 if not tsv_tried:
                     try:
                         for kw in keywords[:3]:
-                            stmt = select(Document).where(Document.workspace_id == workspace_id).where(
+                            stmt = select(Document).where(Document.workspace_id == w_uuid).where(
                                 or_(Document.path.ilike(f"%{kw}%"), Document.summary.ilike(f"%{kw}%"))
                             ).limit(5)
                             res = await session.execute(stmt)
@@ -338,7 +405,7 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
             # ── Preferences / memory snippets ───────────────────────────
             try:
                 # Look for preference-type entities
-                stmt = select(Entity).where(Entity.workspace_id == workspace_id).where(Entity.type == "preference").limit(10)
+                stmt = select(Entity).where(Entity.workspace_id == w_uuid).where(Entity.type == "preference").limit(10)
                 res = await session.execute(stmt)
                 for pref in res.scalars().all():
                     # If query overlaps preference name, keep it
@@ -432,11 +499,24 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
                 logger.info(f"RAG injected: {len(rag_context.get('entities', []))} entities, {len(rag_context.get('documents', []))} docs, {len(rag_context.get('preferences', []))} prefs")
         except Exception as e:
             logger.warning(f"RAG injection failed (non-blocking): {e}")
+
+        # Wave 4: Standardized Workspace Memory Context Loader
+        agent_context = None
+        try:
+            from .context_loader import context_loader
+            agent_context = await context_loader.load_context(
+                workspace_id=request.workspace_id,
+                rag_context=rag_context,
+            )
+        except Exception as e:
+            logger.warning(f"Context loading failed (non-blocking): {e}")
+
         return {
             "agent_type": request.agent_name,
             "message": request.message,
             "workspace_id": request.workspace_id,
             "rag_context": rag_context,
+            "agent_context": agent_context,
             # Flatten for easy consumption by Act/ReAct
             "context_prompt": _build_context_prompt(rag_context),
         }
@@ -462,12 +542,11 @@ async def _try_react_loop(
     workspace_id: str,
     agent_name: str,
     on_token: Any = None,
+    context: Any | None = None,
 ) -> dict[str, Any] | None:
-    """Attempt dynamic LLM-driven tool calling. Returns result dict or None to fallback.
+    """Attempt dynamic LLM-driven tool calling with AgentCard prompt and schema contracts.
 
-    Opt-in via AGENT_REACT_ENABLED (default off) — static dispatch is the deterministic
-    primary path. `on_token` is an optional sync callback receiving incremental text
-    deltas for live SSE streaming.
+    Returns result dict or None to fallback.
     """
     if not settings.agent_react_enabled:
         return None
@@ -480,9 +559,15 @@ async def _try_react_loop(
     try:
         from ..services.llm_service import llm_service
         import json
+        from .card_registry import get_agent_card
 
-        # Build tool schemas — least-privilege: only offer tools the agent is explicitly allowed (OWASP LLM06/PATI)
-        declared = {t.name for t in getattr(agent, "tools", []) or []}
+        # Retrieve declarative AgentCard for prompt templating & schema verification
+        card = getattr(agent, "card", None) or get_agent_card(agent_name)
+
+        # Build tool schemas — least-privilege: only offer tools the agent or its card is explicitly allowed (OWASP LLM06/PATI)
+        card_tools = set(card.tools) if (card and getattr(card, "tools", None)) else set()
+        agent_tools = {t.name for t in getattr(agent, "tools", []) or []}
+        declared = agent_tools | card_tools
         ordered = [td for td in ALL_TOOLS.values() if td.name in declared]
         # Offer MCP-bridged tools (workspace ownership is enforced at call time)
         try:
@@ -502,15 +587,33 @@ async def _try_react_loop(
             for td in ordered
         ]
 
-        system_content = (getattr(agent, "mission", "") or f"You are the {agent_name} agent.").strip()
-        system_content += " You have access to tools. Call them when they help answer the user's request. After tool results, synthesise a helpful answer."
+        # Render structured system prompt with safety boundaries, profile, and contracts
+        if hasattr(agent, "get_system_prompt"):
+            system_content = agent.get_system_prompt(context=context)
+        elif card and hasattr(card, "render_system_prompt"):
+            system_content = card.render_system_prompt(context=context)
+        else:
+            system_content = (getattr(agent, "mission", "") or f"You are the {agent_name} agent.").strip()
+            system_content += " You have access to tools. Call them when they help answer the user's request. After tool results, synthesise a helpful answer."
 
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": system_content},
             {"role": "user", "content": message},
         ]
 
-        for _round in range(3):
+        # Loop budget: configurable max rounds per card or global setting
+        card_max = getattr(card, "max_react_rounds", None) if card else None
+        max_rounds = max(1, int(card_max or getattr(settings, "agent_max_react_rounds", 5) or 5))
+
+        for _round in range(max_rounds):
+            # Per-round spend re-check: every round burns an LLM call. On
+            # exhaustion return the card directly (NOT None) so we don't fall
+            # through to static dispatch and spend more. Round 0 already passed
+            # the act-phase gate.
+            if _round > 0:
+                ceiling_msg = await _check_spend_and_quota(workspace_id, agent_name)
+                if ceiling_msg:
+                    return _ceiling_error_card(agent_name, ceiling_msg)
             # Streaming round — real text deltas forwarded via on_token as they arrive
             content_str = ""
             tool_calls: list[dict[str, Any]] = []
@@ -538,9 +641,47 @@ async def _try_react_loop(
             # No tool calls → LLM produced direct answer
             if not tool_calls:
                 if content_str.strip():
+                    parsed_json = None
+                    cleaned = content_str.strip()
+                    if cleaned.startswith("```json"):
+                        cleaned = cleaned[7:]
+                        if cleaned.endswith("```"):
+                            cleaned = cleaned[:-3]
+                        cleaned = cleaned.strip()
+                    elif cleaned.startswith("```"):
+                        cleaned = cleaned[3:]
+                        if cleaned.endswith("```"):
+                            cleaned = cleaned[:-3]
+                        cleaned = cleaned.strip()
+
+                    if cleaned.startswith("{") and cleaned.endswith("}"):
+                        try:
+                            parsed_json = json.loads(cleaned)
+                        except Exception:
+                            parsed_json = None
+
+                    if parsed_json and isinstance(parsed_json, dict):
+                        if hasattr(agent, "validate_output"):
+                            agent.validate_output(parsed_json)
+                        elif card and hasattr(card, "validate_output"):
+                            card.validate_output(parsed_json)
+
+                        if "summary" in parsed_json or "proposals" in parsed_json:
+                            return {
+                                "agent_name": agent_name,
+                                "action": parsed_json.get("action", getattr(card, "autonomy", "suggest") if card else "suggest"),
+                                "confidence": 0.92,
+                                "result": parsed_json if "summary" in parsed_json else {
+                                    "summary": parsed_json.get("summary", content_str[:800]),
+                                    "details": parsed_json.get("details", content_str),
+                                    "proposals": parsed_json.get("proposals", []),
+                                    "questions": parsed_json.get("questions", []),
+                                },
+                            }
+
                     return {
                         "agent_name": agent_name,
-                        "action": "suggest",
+                        "action": getattr(card, "autonomy", "suggest") if card else "suggest",
                         "confidence": 0.88,
                         "result": {"summary": content_str[:800], "details": content_str, "proposals": [], "questions": []},
                     }
@@ -638,8 +779,14 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
     # Context engineering cap: keep RAG prompt at most 2000 chars to prevent explosion
     context_prompt = plan.get("context_prompt", "")
     if context_prompt:
-        if len(context_prompt) > 2000:
-            context_prompt = context_prompt[:2000] + " …[truncated context]"
+        try:
+            from ..infrastructure.context_budget import calculate_budget, truncate_text_to_tokens
+
+            budget = calculate_budget(total_budget=8192)
+            context_prompt = truncate_text_to_tokens(context_prompt, max_tokens=budget.rag_cap)
+        except Exception:
+            if len(context_prompt) > 2000:
+                context_prompt = context_prompt[:2000] + " …[truncated context]"
         message = f"{message}\n\n[Context from knowledge graph & documents:\n{context_prompt}]"
     agent_type = type(agent).__name__
     agent_name = request.agent_name
@@ -660,6 +807,11 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
             },
         }
 
+    # ── Spend & quota gate (Wave 1) — one check covers static + ReAct + stream ──
+    ceiling_msg = await _check_spend_and_quota(request.workspace_id, agent_name)
+    if ceiling_msg:
+        return _ceiling_error_card(agent_name, ceiling_msg)
+
     # ── MODEL-001: auto-route per-agent task_type → model hint (logged, does not override explicit model)
     try:
         from ..services.model_router import AGENT_TASK_TYPE_MAP, TASK_MODEL_MAP, model_router
@@ -675,7 +827,15 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
     # Static dispatch below is the deterministic primary path; ReAct is best-effort.
     if settings.agent_react_enabled:
         try:
-            react_result = await _try_react_loop(agent, message, request.workspace_id, agent_name, on_token=on_token)
+            agent_context = plan.get("agent_context")
+            react_result = await _try_react_loop(
+                agent,
+                message,
+                request.workspace_id,
+                agent_name,
+                on_token=on_token,
+                context=agent_context,
+            )
             if react_result is not None:
                 logger.info(f"ACT: ReAct loop succeeded for {agent_name}")
                 return react_result
@@ -700,8 +860,9 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
             pass
 
     try:
+        agent_context = plan.get("agent_context")
         result = await asyncio.wait_for(
-            cb.call(_dispatch_agent(agent_type, agent, message, request)),
+            cb.call(_dispatch_agent(agent_type, agent, message, request, context=agent_context)),
             timeout=timeout,
         )
         # Audit success — log action + summary size, never payload
@@ -755,7 +916,7 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
         await _rate_limiter.release(agent_name)
 
 
-def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: AgentRequest):
+def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: AgentRequest, context: Any | None = None):
     """Return a coroutine for the given agent type (used by circuit breaker).
 
     Handles all 8 canonical MVP agents + 14 enterprise agents.
@@ -768,7 +929,7 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
     keywords = [w for w in message.split() if len(w) > 2]
 
     # ── Canonical MVP agents ──────────────────────────────────────────
-    if agent_type == "OrganizationAgent":
+    if agent_type == "OrganizationAgent" or registry_key == "organization":
         docs = [{"id": f"doc_{request.id}", "filename": message}]
         # Organization file moves/renames are consequential — approval-gated per ADR-031
         async def _org_handler(has_approval: bool):
@@ -797,32 +958,42 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
             return result
         return _dispatch_with_approval(request, agent, "file_organize", _org_handler)
 
-    if agent_type == "ResumeAgent":
-        # Use extracted keywords as skills instead of raw message blob (fixes synthetic single-string skill)
-        skill_list = keywords if keywords else ([message.strip()] if message.strip() else [])
+    if agent_type == "ResumeAgent" or registry_key == "resume":
+        # Hydrate from AgentContext if available, else keywords
+        profile_skills = context.profile.get("skills") if (context and hasattr(context, "profile") and isinstance(context.profile, dict)) else None
+        skill_list = profile_skills or keywords or ([message.strip()] if message.strip() else [])
         profile = {
-            "name": "User",
-            "email": "user@example.com",
-            "education": [],
-            "experience": [],
+            "name": (context.profile.get("name") if context and hasattr(context, "profile") and isinstance(context.profile, dict) else None) or "User",
+            "email": (context.profile.get("email") if context and hasattr(context, "profile") and isinstance(context.profile, dict) else None) or "user@example.com",
+            "education": (context.profile.get("education") if context and hasattr(context, "profile") and isinstance(context.profile, dict) else None) or [],
+            "experience": (context.profile.get("experience") if context and hasattr(context, "profile") and isinstance(context.profile, dict) else None) or [],
             "skills": skill_list,
         }
         return agent.execute(profile)
 
-    if agent_type == "ATSAgent":
+    if agent_type == "ATSAgent" or registry_key == "ats":
         # Case-insensitive split on "vs"/"vs." so "Resume A VS Resume B" works (FINDING-011)
         parts = re.split(r"\s+vs\.?\s+", message, maxsplit=1, flags=re.IGNORECASE)
         if len(parts) == 2:
             return agent.score(parts[0].strip(), parts[1].strip())
         return agent.score(message.strip(), "")
 
-    if agent_type == "JobSearchAgent":
-        return agent.search(keywords=keywords, user_skills=keywords, rejected_job_ids=[])
+    if agent_type == "JobSearchAgent" or registry_key == "job_search":
+        profile_skills = context.profile.get("skills") if (context and hasattr(context, "profile") and isinstance(context.profile, dict)) else None
+        user_skills = profile_skills or keywords
+        return agent.search(keywords=keywords, user_skills=user_skills, rejected_job_ids=[])
 
-    if agent_type == "ApplicationAgent":
-        job = {"id": f"job_{request.id}", "title": message, "company": "Target Company"}
+    if agent_type == "ApplicationAgent" or registry_key == "application":
+        company_name = "Specified Company"
+        match = re.search(r"\b(?:at|for)\s+([A-Z][A-Za-z0-9&]+)", message)
+        if match:
+            company_name = match.group(1)
+        job = {"id": f"job_{request.id}", "title": message, "company": company_name}
+        user_prof = (context.profile if context and hasattr(context, "profile") and isinstance(context.profile, dict) else None) or {"name": "User", "skills": []}
+        master_res = (context.master_resume if context and hasattr(context, "master_resume") and isinstance(context.master_resume, dict) else None) or {}
+        resume_str = json.dumps(master_res) if master_res else ""
         return _dispatch_with_approval(request, agent, "job_application", lambda has_approval: agent.prepare(
-            job=job, resume_text="", user_profile={"name": "User", "skills": []}, has_approval=has_approval
+            job=job, resume_text=resume_str, user_profile=user_prof, has_approval=has_approval
         ))
 
     if agent_type in ("GmailAgent", "GmailAgentHandler") or registry_key == "gmail":
@@ -864,11 +1035,13 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
     # ── Enterprise agents ─────────────────────────────────────────────
     if agent_type == "CareerAgent" or registry_key == "career":
         # Route to best Career method by keywords
+        profile_skills = context.profile.get("skills") if (context and hasattr(context, "profile") and isinstance(context.profile, dict)) else None
+        career_skills = profile_skills or keywords
         if any(kw in msg_lower for kw in ["gap", "missing skill", "skill gap"]):
-            return agent.identify_skill_gaps(current_skills=keywords, target_role=message[:120])
+            return agent.identify_skill_gaps(current_skills=career_skills, target_role=message[:120])
         if any(kw in msg_lower for kw in ["course", "recommend", "learn", "training"]):
-            return agent.recommend_courses(skill_gaps=keywords)
-        return agent.analyze_career_path(current_role=message[:120] or "Current Role", skills=keywords, target_role=None)
+            return agent.recommend_courses(skill_gaps=career_skills)
+        return agent.analyze_career_path(current_role=message[:120] or "Current Role", skills=career_skills, target_role=None)
 
     if agent_type == "LearningAgent" or registry_key == "learning":
         if any(kw in msg_lower for kw in ["progress", "track", "completed"]):
@@ -922,11 +1095,12 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
         return agent.get_activity_trends(metrics=keywords or ["activity"], period="30d")
 
     if agent_type == "RecommendationAgent" or registry_key == "recommendation":
+        rec_skills = (context.profile.get("skills") if (context and hasattr(context, "profile") and isinstance(context.profile, dict)) else None) or keywords or [message[:40]]
         if any(kw in msg_lower for kw in ["connection", "network", "mentor"]):
             return agent.suggest_connections(profile={"title": message[:60], "industry": "General"})
         if any(kw in msg_lower for kw in ["content", "article", "curate"]):
             return agent.curate_content(interests=keywords or [message[:40]])
-        return agent.match_jobs(profile={"skills": keywords or [message[:40]], "experience": message[:120]})
+        return agent.match_jobs(profile={"skills": rec_skills, "experience": message[:120]})
 
     if agent_type == "ReflectionAgent" or registry_key == "reflection":
         if any(kw in msg_lower for kw in ["goal", "track goal"]):
@@ -957,11 +1131,22 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
         return agent.browse_plugins(category=None, query=message)
 
     if agent_type == "PlanningAgent" or registry_key == "planning":
+        plan_exp = (context.profile.get("experience") if (context and hasattr(context, "profile") and isinstance(context.profile, dict)) else None)
+        bg = (str(plan_exp) if plan_exp else None) or message[:200]
         if any(kw in msg_lower for kw in ["milestone", "milestone", "checkpoint"]):
             return agent.suggest_milestones(roadmap={"title": message[:80]}, timeline_months=12)
         if any(kw in msg_lower for kw in ["resource", "recommend"]):
             return agent.recommend_resources(topic=message[:80] or "career", skill_level="intermediate")
-        return agent.build_roadmap(profile={"background": message[:200]}, goals=[message[:120]])
+        return agent.build_roadmap(profile={"background": bg}, goals=[message[:120]])
+
+    if agent_type == "MemoryConsolidatorAgent" or registry_key in ("consolidator", "memory_consolidator"):
+        from ..agents.memory.consolidator import memory_consolidator
+        return memory_consolidator.consolidate_trajectory(
+            workspace_id=request.workspace_id,
+            agent_name=request.agent_name,
+            user_prompt=message,
+            summary=message,
+        )
 
     logger.warning(
         "dispatch_unknown_agent",
@@ -1054,16 +1239,33 @@ async def reflect_phase(request: AgentRequest, observe_result: dict[str, Any], i
 # ── Improve ─────────────────────────────────────────────────────────
 
 async def improve_phase(state: LoopState, request: AgentRequest) -> AgentResponse:
-    logger.info("IMPROVE: packaging final result")
+    logger.info("IMPROVE: packaging final result and consolidating trajectory")
 
+    final_summary = "Task completed"
     for i in range(2, -1, -1):
         key = f"observe_{i}"
         if key in state.phases:
             payload = state.phases[key].get("payload", {})
-            summary = payload.get("result", {}).get("summary", "Task completed")
-            return AgentResponse(status="success", final_result=summary)
+            final_summary = payload.get("result", {}).get("summary", "Task completed")
+            break
 
-    return AgentResponse(status="success", final_result="Task completed")
+    # Wave 5: Memory Learning Closure (Self-Improvement)
+    try:
+        from ..agents.memory.consolidator import memory_consolidator
+
+        # Non-blocking trajectory consolidation into persistent workspace memory
+        asyncio.create_task(
+            memory_consolidator.consolidate_trajectory(
+                workspace_id=request.workspace_id,
+                agent_name=request.agent_name,
+                user_prompt=request.message,
+                summary=str(final_summary),
+            )
+        )
+    except Exception as exc:
+        logger.debug(f"Learning trajectory consolidation skipped (non-blocking): {exc}")
+
+    return AgentResponse(status="success", final_result=final_summary)
 
 
 # ── Escalate ────────────────────────────────────────────────────────
@@ -1160,6 +1362,19 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
         yield {"event": "reflect", "data": {"iteration": iteration, "is_satisfied": reflect_result.is_satisfied, "reason": reflect_result.reason}}
 
         if reflect_result.is_satisfied:
+            # QA Verification Gate: validate schema, PII, harm, and grounding before commit
+            from ..agents.qa_agent.handler import QAAgent
+
+            qa_agent = QAAgent()
+            qa_res = await qa_agent.validate(act_result, context=plan.get("agent_context"))
+            state.add_phase(f"qa_{iteration}", {"decision": qa_res.decision, "issues": qa_res.issues})
+            await save_checkpoint(state)
+            yield {"event": "qa", "data": {"iteration": iteration, "decision": qa_res.decision, "issues": qa_res.issues}}
+
+            if qa_res.decision == "rejected" and iteration < 2:
+                logger.warning(f"QA REJECTED stream iteration {iteration}: {qa_res.issues} — retrying for self-correction")
+                continue
+
             improve_resp = await improve_phase(state, request)
             # If the winning iteration already streamed REAL LLM tokens (ReAct path),
             # don't re-emit the full text. Static dispatch has no LLM stream →
@@ -1207,6 +1422,18 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
         await save_checkpoint(state)
 
         if reflect_result.is_satisfied:
+            # QA Verification Gate: validate schema, PII, harm, and grounding before commit
+            from ..agents.qa_agent.handler import QAAgent
+
+            qa_agent = QAAgent()
+            qa_res = await qa_agent.validate(act_result, context=plan.get("agent_context"))
+            state.add_phase(f"qa_{iteration}", {"decision": qa_res.decision, "issues": qa_res.issues})
+            await save_checkpoint(state)
+
+            if qa_res.decision == "rejected" and iteration < 2:
+                logger.warning(f"QA REJECTED loop iteration {iteration}: {qa_res.issues} — retrying for self-correction")
+                continue
+
             return await improve_phase(state, request)
 
     return await escalate_to_user(state)

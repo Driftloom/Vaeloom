@@ -414,13 +414,17 @@ class _McpClientService:
 def _make_tool_definition(bridged_name: str, server_slug: str, t: dict):
     from ..tools.definitions import ToolDefinition
 
+    is_read = bool(t.get("read_only_hint"))
+    trust_class = "mcp.read" if is_read else "mcp.workspace.write"
+
     return ToolDefinition(
         name=bridged_name,
         description=f"[MCP:{server_slug}] {t.get('description') or t['name']}"[:300],
         input_schema=t.get("input_schema") or {"type": "object"},
         output_schema={"type": "object"},
         required_scope="connector.mcp.execute",
-        category="connector_read" if t.get("read_only_hint") else "connector_write",
+        category="connector_read" if is_read else "connector_write",
+        trust_class=trust_class,
     )
 
 

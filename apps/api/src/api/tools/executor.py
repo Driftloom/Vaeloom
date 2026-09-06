@@ -129,12 +129,19 @@ class _RedisScrapeQuota:
     def __init__(self, redis_url: str) -> None:
         import redis.asyncio as _aioredis
 
+        self._redis_url = redis_url
         self._r = _aioredis.from_url(redis_url, decode_responses=False)
         self._prefix = "vaeloom:scrape_quota:"
         self._store: dict[str, list[float]] = {}
         self._lock = asyncio.Lock()
 
-    async def allowed(self, workspace_id: str, limit: int, window_s: float) -> bool:
+    def _rebuild_client(self) -> None:
+        import redis.asyncio as _aioredis
+
+        self._r = _aioredis.from_url(self._redis_url, decode_responses=False)
+
+    async def allowed(self, workspace_id: str, limit: int, window_s: float,
+                      _retried: bool = False) -> bool:
         key = f"{self._prefix}{workspace_id}"
         now = _time.monotonic()
         try:
@@ -146,12 +153,22 @@ class _RedisScrapeQuota:
             await self._r.zadd(key, {f"{now}:{_uuid()}": now})
             await self._r.expire(key, int(window_s) + 10)
             return True
-        except Exception as e:  # Redis unreachable: degrade to local best-effort
+        except Exception as e:
+            # Stale loop-bound client (tests, worker restarts): rebuild once
+            # and retry so hits are not split-brained across Redis/local.
+            if not _retried and "Event loop is closed" in str(e):
+                try:
+                    self._rebuild_client()
+                    return await self.allowed(workspace_id, limit, window_s, _retried=True)
+                except Exception:
+                    pass
+            # Redis unreachable: degrade to local best-effort
             logger.warning("scrape quota redis unavailable, local fallback: %s", e)
             return await self._local_fallback(workspace_id, limit, window_s)
 
     async def _local_fallback(self, workspace_id: str, limit: int, window_s: float) -> bool:
         # Process-local best-effort so a down Redis never hard-blocks scraping.
+        now = time.time()
         async with self._lock:
             hits = self._store.get(workspace_id)
             if hits is None:
@@ -216,6 +233,11 @@ _BASE_APPROVAL_GATED = frozenset({
     "create_outlook_calendar_event", "draft_email", "draft_outlook_mail",
     "rename_file", "move_file", "categorize_document",
     "create_entity", "merge_entities",
+    # Wave 2 (2026-09-06): code execution must never auto-run from an LLM
+    # loop, even sandboxed. compile_* (own-artifact generation), notify_user
+    # (notification), web_search (read-only fetch) stay OPEN by decision —
+    # see docs/phases/agentic-safety-w2/01-wave-report.md.
+    "execute_code_sandbox",
 })
 
 

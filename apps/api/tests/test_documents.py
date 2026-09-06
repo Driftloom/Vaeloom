@@ -205,3 +205,69 @@ class TestDocumentContentAndOperations:
             headers=headers,
         )
         assert res.status_code == 404
+
+
+class TestDocumentStorageMirror:
+    """Upload <-> object-storage convergence (storage_mirror_enabled flag)."""
+
+    async def _auth_header(self, client: AsyncClient) -> dict:
+        res = await client.post("/api/v1/auth/signup", json={
+            "email": f"mirror{uuid.uuid4().hex[:8]}@test.com", "password": "Test1234!",
+        })
+        return {"Authorization": f"Bearer {res.json()['access_token']}"}
+
+    async def _create_workspace(self, client: AsyncClient, headers: dict) -> str:
+        res = await client.post("/api/v1/workspaces", json={"name": "Mirror WS"}, headers=headers)
+        return res.json()["id"]
+
+    async def _upload(self, client: AsyncClient, headers: dict, ws_id: str) -> dict:
+        res = await client.post(
+            f"/api/v1/documents?workspace_id={ws_id}",
+            files={"file": ("mirror.txt", b"mirror bytes", "text/plain")},
+            headers=headers,
+        )
+        assert res.status_code == 201
+        return res.json()
+
+    async def test_mirror_disabled_by_default(self, client: AsyncClient):
+        from api.config import settings
+
+        assert settings.storage_mirror_enabled is False
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        body = await self._upload(client, headers, ws_id)
+        assert body["raw_storage_key"] is None
+
+    async def test_mirror_enabled_sets_key(self, client: AsyncClient, monkeypatch):
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "storage_mirror_enabled", True)
+        calls = []
+
+        async def fake_upload(key: str, data: bytes) -> str:
+            calls.append((key, data))
+            return key
+
+        monkeypatch.setattr(
+            "api.services.storage_service.storage_service.upload", fake_upload)
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        body = await self._upload(client, headers, ws_id)
+        expected = f"storage/{ws_id}/{body['id']}/mirror.txt"
+        assert body["raw_storage_key"] == expected
+        assert calls == [(expected, b"mirror bytes")]
+
+    async def test_mirror_failure_still_uploads(self, client: AsyncClient, monkeypatch):
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "storage_mirror_enabled", True)
+
+        async def boom(key: str, data: bytes) -> str:
+            raise RuntimeError("minio down")
+
+        monkeypatch.setattr(
+            "api.services.storage_service.storage_service.upload", boom)
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        body = await self._upload(client, headers, ws_id)
+        assert body["raw_storage_key"] is None

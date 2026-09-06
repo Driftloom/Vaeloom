@@ -211,6 +211,40 @@ class TestParsers:
         assert result.metadata["ocr_confidence"] == 0.0
         assert result.metadata["needs_review"] is True
 
+    async def test_image_parser_computed_confidence(self, monkeypatch):
+        from api.ingestion.parsers import ImageParser
+
+        mock_pytesseract = MagicMock()
+        mock_pytesseract.image_to_string.return_value = "sharp scan text"
+        mock_pytesseract.image_to_data.return_value = {"conf": [95, 90, 85]}
+        monkeypatch.setitem(sys.modules, "pytesseract", mock_pytesseract)
+
+        mock_PIL = MagicMock()
+        mock_PIL.Image = MagicMock()
+        monkeypatch.setitem(sys.modules, "PIL", mock_PIL)
+
+        parser = ImageParser()
+        result = await parser.parse(b"fake image")
+        assert result.metadata["ocr_confidence"] == 0.9
+        assert result.metadata["needs_review"] is False
+
+    async def test_image_parser_low_confidence_needs_review(self, monkeypatch):
+        from api.ingestion.parsers import ImageParser
+
+        mock_pytesseract = MagicMock()
+        mock_pytesseract.image_to_string.return_value = "blurry scan text"
+        mock_pytesseract.image_to_data.return_value = {"conf": [40, 30, -1]}
+        monkeypatch.setitem(sys.modules, "pytesseract", mock_pytesseract)
+
+        mock_PIL = MagicMock()
+        mock_PIL.Image = MagicMock()
+        monkeypatch.setitem(sys.modules, "PIL", mock_PIL)
+
+        parser = ImageParser()
+        result = await parser.parse(b"fake image")
+        assert result.metadata["ocr_confidence"] == 0.35
+        assert result.metadata["needs_review"] is True
+
     async def test_image_parser_ocr_exception(self, monkeypatch):
         from api.ingestion.parsers import ImageParser
 
@@ -428,6 +462,56 @@ class TestDedup:
         from api.ingestion.dedup import _fallback_dedup
 
         result = _fallback_dedup("ws1", "hash", "unique_file.pdf")
+        assert result is None
+
+    async def test_filename_similarity(self):
+        from api.ingestion.dedup import filename_similarity
+
+        assert filename_similarity("resume_final2.pdf", "resume_final.pdf") >= 0.85
+        assert filename_similarity("Resume_Final.pdf", "resume_final.pdf") == 1.0
+        assert filename_similarity("resume.pdf", "project_report.pdf") < 0.85
+
+    async def test_check_dedup_fuzzy_match(self, monkeypatch):
+        from api.ingestion.dedup import check_dedup
+
+        mock_no_result = MagicMock()
+        mock_no_result.scalar_one_or_none.return_value = None
+
+        mock_candidates = MagicMock()
+        mock_candidates.all.return_value = [
+            ("fuzzy-doc-uuid", "resume_final.pdf"),
+            ("other-uuid", "notes.txt"),
+        ]
+
+        mock_session = AsyncMock()
+        mock_session.execute.side_effect = [mock_no_result, mock_no_result, mock_candidates]
+
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__.return_value = mock_session
+        mock_factory = MagicMock(return_value=mock_cm)
+        monkeypatch.setattr("api.database.async_session_factory", mock_factory)
+
+        result = await check_dedup("ws1", "hash999", "resume_final2.pdf")
+        assert result == "fuzzy-doc-uuid"
+
+    async def test_check_dedup_fuzzy_no_match(self, monkeypatch):
+        from api.ingestion.dedup import check_dedup
+
+        mock_no_result = MagicMock()
+        mock_no_result.scalar_one_or_none.return_value = None
+
+        mock_candidates = MagicMock()
+        mock_candidates.all.return_value = [("other-uuid", "notes.txt")]
+
+        mock_session = AsyncMock()
+        mock_session.execute.side_effect = [mock_no_result, mock_no_result, mock_candidates]
+
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__.return_value = mock_session
+        mock_factory = MagicMock(return_value=mock_cm)
+        monkeypatch.setattr("api.database.async_session_factory", mock_factory)
+
+        result = await check_dedup("ws1", "hash999", "totally_different_name_xyz.pdf")
         assert result is None
 
 

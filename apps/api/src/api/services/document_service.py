@@ -1,9 +1,12 @@
+import logging
 import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 
 from ..models.schema import Document, DocumentAction
+
+logger = logging.getLogger(__name__)
 
 EXTENSION_MAP = {
     "pdf": "pdf",
@@ -75,6 +78,24 @@ class DocumentService:
         db.add(doc)
         await db.flush()
         await db.refresh(doc)
+        # Storage convergence: mirror bytes to object storage (S3/MinIO) and
+        # record the key, so pipeline versions (storage/{ws}/{doc}/vN_...)
+        # and the document row reference the same object. Fail-open: inline
+        # `content` remains the source of truth when storage is unavailable.
+        # Gated by settings.storage_mirror_enabled (temporal_enabled precedent)
+        # so offline/unit tests never touch the network.
+        try:
+            from ..config import settings as _settings
+
+            if _settings.storage_mirror_enabled:
+                from .storage_service import storage_service
+
+                storage_key = f"storage/{workspace_id}/{doc.id}/{filename}"
+                await storage_service.upload(storage_key, content)
+                doc.raw_storage_key = storage_key
+                await db.flush()
+        except Exception as e:
+            logger.warning("Object-storage mirror failed (non-blocking): %s", e)
         return doc
 
     async def list_for_workspace(

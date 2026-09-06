@@ -91,6 +91,12 @@ class Settings(BaseSettings):
     storage_secret_key: str = ""
     storage_bucket: str = "vaeloom"
     storage_region: str = "us-east-1"
+    # Object-storage mirror on document upload — opt-in per temporal_enabled
+    # precedent. When True, upload PUTs bytes to storage/{ws}/{doc}/{file}
+    # and records raw_storage_key (converges upload path with pipeline
+    # DocumentVersion storage keys). Fail-open when storage is unreachable.
+    # Keep False in local/.env.example for offline tests; enable in prod.
+    storage_mirror_enabled: bool = False
 
     ip_allowlist: str = ""
     retention_policies: str = ""
@@ -133,6 +139,12 @@ class Settings(BaseSettings):
     # _try_react_loop gracefully falls back to static, so ON is safe.
     # Convergence (ADR-037): both tiers now share executor audit/timeout.
     agent_react_enabled: bool = False
+    # Agentic scale-safety ceilings (Wave 1, 2026-09-06).
+    # Max ReAct tool-calling rounds per loop invocation (replaces hardcoded 3).
+    agent_max_react_rounds: int = 5
+    # Default daily USD spend budget per workspace enforced on the loop path.
+    # 0.0 = disabled (no budget → unlimited, backward compatible).
+    agent_default_daily_budget_usd: float = 0.0
     # Browser/scraping tools (browse_job_page etc.) — network-heavy fetches are
     # quota-limited per workspace (sliding hour window).
     browser_tools_enabled: bool = True

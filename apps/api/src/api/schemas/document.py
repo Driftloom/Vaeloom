@@ -11,6 +11,7 @@ class DocumentResponse(BaseModel):
     path: str
     type: str
     summary: str | None = None
+    raw_storage_key: str | None = None
     metadata: dict[str, Any] | None = Field(None, validation_alias="metadata_")
     deleted_at: datetime | None = None
     created_at: datetime

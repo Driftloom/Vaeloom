@@ -12,8 +12,9 @@ STATE_DIR = Path(os.environ.get("VAELOOM_STATE_DIR", str(Path.home() / ".vaeloom
 
 
 class LoopState:
-    def __init__(self, request_id: str):
+    def __init__(self, request_id: str, workspace_id: str | None = None):
         self.request_id = request_id
+        self.workspace_id = str(workspace_id) if workspace_id else None
         self.phases: dict[str, Any] = {}
         self.created_at: str = datetime.now(UTC).isoformat()
         self.updated_at: str = self.created_at
@@ -25,6 +26,7 @@ class LoopState:
     def to_dict(self) -> dict[str, Any]:
         return {
             "request_id": self.request_id,
+            "workspace_id": self.workspace_id,
             "phases": self._serialize_phases(),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
@@ -45,36 +47,63 @@ class LoopState:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "LoopState":
-        state = cls(data["request_id"])
+        state = cls(data["request_id"], workspace_id=data.get("workspace_id"))
         state.phases = data.get("phases", {})
         state.created_at = data.get("created_at", "")
         state.updated_at = data.get("updated_at", "")
         return state
 
 
-async def load_or_create_state(request_id: str) -> LoopState:
+
+from .state_store import get_state_store
+
+async def load_or_create_state(request_id: str, workspace_id: str | None = None) -> LoopState:
+    try:
+        data = await get_state_store().load(request_id)
+        if data:
+            logger.info(f"Loaded existing state for {request_id}")
+            st = LoopState.from_dict(data)
+            if workspace_id and not st.workspace_id:
+                st.workspace_id = str(workspace_id)
+            return st
+    except Exception as exc:
+        logger.warning(f"StateStore load failed for {request_id}: {exc}")
+
+    # Fallback to local file if state store returned None
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     state_file = STATE_DIR / f"{request_id}.json"
     if state_file.exists():
         try:
             data = json.loads(await asyncio.to_thread(state_file.read_text))
-            logger.info(f"Loaded existing state for {request_id}")
-            return LoopState.from_dict(data)
+            logger.info(f"Loaded existing state from local file for {request_id}")
+            st = LoopState.from_dict(data)
+            if workspace_id and not st.workspace_id:
+                st.workspace_id = str(workspace_id)
+            return st
         except (json.JSONDecodeError, OSError) as e:
             logger.warning(f"Failed to load state for {request_id}: {e}")
-    return LoopState(request_id)
+    return LoopState(request_id, workspace_id=workspace_id)
 
 
-async def save_checkpoint(state: LoopState):
+async def save_checkpoint(state: LoopState, workspace_id: str | None = None):
+    wid = workspace_id or getattr(state, "workspace_id", None)
+    # Primary: Save via pluggable StateStore (Database/Redis/Composite/File)
+    try:
+        await get_state_store().save(state.request_id, state.to_dict(), wid)
+        logger.info(f"Checkpoint saved for {state.request_id}: phases={list(state.phases.keys())}")
+        return
+    except Exception as exc:
+        logger.warning(f"StateStore save failed for {state.request_id}, falling back to local file: {exc}")
+
+    # Fallback: Direct local file write
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     state_file = STATE_DIR / f"{state.request_id}.json"
     try:
-        # Offload blocking disk I/O to a worker thread so the event loop is
-        # never stalled by synchronous writes (FINDING-013).
         await asyncio.to_thread(
             state_file.write_text,
             json.dumps(state.to_dict(), indent=2, default=str),
         )
-        logger.info(f"Checkpoint saved for {state.request_id}: phases={list(state.phases.keys())}")
+        logger.info(f"Checkpoint saved to local file for {state.request_id}: phases={list(state.phases.keys())}")
     except OSError as e:
         logger.error(f"Failed to save checkpoint for {state.request_id}: {e}")
+

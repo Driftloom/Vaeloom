@@ -15,6 +15,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.dmypy.json
+dmypy.json
 .pytype/
 .pyre/
 .venv/
@@ -41,6 +43,7 @@ build/
 .vscode/settings.json
 .idea/
 .fleet/
+.zed/
 *.swp
 *.swo
 *.code-workspace
@@ -55,11 +58,13 @@ $RECYCLE.BIN/
 
 # Environment and Secrets
 .env
+.env.*.local
 .env.local
 .env.development
 .env.development.local
 .env.production
 .env.production.local
+.env.test
 .env.test.local
 infra/kubernetes/secrets/*.yaml
 *.pem
@@ -144,6 +149,8 @@ query_engine-*.node
 .coverage.*
 cov_*.txt
 htmlcov/
+coverage.xml
+coverage.json
 
 # Generated OpenAPI specs (regenerated from code)
 docs/openapi.json
