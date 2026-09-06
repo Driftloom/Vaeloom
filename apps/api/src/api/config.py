@@ -107,6 +107,14 @@ class Settings(BaseSettings):
     agent_timeout_seconds: int = 120
     agent_circuit_failure_threshold: int = 3
     agent_circuit_recovery_timeout: float = 30.0
+    # ── Phase B per-run hard ceilings (§13). These bound every run even when
+    # the workspace daily budget is 0.0 (unlimited) — a run is never unbounded.
+    agent_max_iterations_per_run: int = 3
+    agent_max_tool_calls_per_run: int = 12
+    agent_max_tokens_per_run: int = 12000
+    agent_max_cost_per_run_usd: float = 0.50
+    agent_max_duration_s: float = 120.0
+    agent_max_graph_replans: int = 2
     # JSON string or dict: {"memory": {"failure_threshold": 5, "recovery_timeout": 15}, ...}
     agent_circuit_config: dict[str, dict[str, Any]] | str = {}
 

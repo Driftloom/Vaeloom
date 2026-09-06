@@ -197,20 +197,40 @@ def _simple_cron_match(cron: str, now: datetime) -> bool:
 # ── Extracted executors (shared by daemon inline mode + queue worker) ──
 
 
-async def execute_agent_schedule_job(schedule_id: str, agent_id: str, input_data: dict[str, Any] | None) -> dict[str, Any]:
+async def execute_agent_schedule_job(
+    schedule_id: str,
+    agent_id: str,
+    input_data: dict[str, Any] | None,
+    envelope: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Execute one agent schedule. Runs in the queue worker (durable mode) or
     inline (degraded mode). Marks last_run_at on success or failure attempt."""
     from uuid import UUID
 
     from api.database import async_session_factory
+    from api.middleware.tenant import TenantContext
     from api.models.schema import AgentSchedule
     from api.schemas.agent import AgentExecute
     from api.services.agent_service import agent_service
 
+    ctx = TenantContext.get()
+    ctx_tid = ctx.get("tenant_id")
+    ctx_uid = ctx.get("user_id")
+
+    tid = None
+    if ctx_tid and ctx_tid != "default":
+        with contextlib.suppress(ValueError):
+            tid = UUID(ctx_tid)
+
+    uid = None
+    if ctx_uid and ctx_uid != "system":
+        with contextlib.suppress(ValueError):
+            uid = UUID(ctx_uid)
+
     async with async_session_factory() as db:
         dto = AgentExecute(input=input_data or {}, stream=False)
         try:
-            result = await agent_service.execute_agent(db, UUID(agent_id), dto, tenant_id=None, user_id=None)
+            result = await agent_service.execute_agent(db, UUID(agent_id), dto, tenant_id=tid, user_id=uid)
             status = "success"
             error = None
         except Exception as e:
@@ -302,10 +322,28 @@ async def _run_due_agent_schedules(now: datetime) -> int:
                         continue
                     logger.info(f"DAEMON: agent_schedule due {sched.id} cron='{sched.cron}' agent={sched.agent_id}")
                     dedup_key = f"agent_sched:{sched.id}:{now.strftime('%Y%m%d%H%M')}"
+
+                    from api.infrastructure.background_envelope import create_background_envelope
+                    from api.models.schema import Agent
+                    agent_obj = await db.get(Agent, sched.agent_id)
+                    tenant_id = str(agent_obj.tenant_id or "default") if agent_obj else "default"
+                    workspace_id = str(agent_obj.workspace_id or "default") if agent_obj else "default"
+                    user_id = str(agent_obj.user_id or "system") if agent_obj else "system"
+
+                    envelope = create_background_envelope(
+                        tenant_id=tenant_id,
+                        workspace_id=workspace_id,
+                        user_id=user_id,
+                        agent_id=str(sched.agent_id),
+                        action="schedule.agent_run",
+                        payload={"schedule_id": str(sched.id), "input": sched.input or {}},
+                    )
+
                     data = {
                         "schedule_id": str(sched.id),
                         "agent_id": str(sched.agent_id),
                         "input": sched.input or {},
+                        "envelope": envelope,
                     }
                     ran = False
                     if r is not None:
@@ -318,9 +356,14 @@ async def _run_due_agent_schedules(now: datetime) -> int:
                                     await r.delete(f"vaeloom:daemon:claim:{dedup_key}")
                     else:
                         if _degraded_inline_allowed():
-                            # Degraded inline mode (local/dev/tests) — execute directly
-                            await execute_agent_schedule_job(str(sched.id), str(sched.agent_id), sched.input or {})
-                            ran = True
+                            # Degraded inline mode (local/dev/tests) — execute directly with TenantContext
+                            from api.middleware.tenant import TenantContext
+                            TenantContext.set(tenant_id, workspace_id, user_id)
+                            try:
+                                await execute_agent_schedule_job(str(sched.id), str(sched.agent_id), sched.input or {}, envelope=envelope)
+                                ran = True
+                            finally:
+                                TenantContext.clear()
                         else:
                             logger.error(
                                 f"DAEMON durable required but Redis unavailable — skipping agent_schedule {sched.id} (prod fail-closed). "

@@ -291,18 +291,68 @@ async def run_supervisor(message: str, workspace_id: str, request_id: str | None
     all_details: list[dict[str, Any]] = []
     summaries: list[str] = []
 
+    # Phase B §8: LoopController bounds the delegation fan-out — sub-agent
+    # spawns, delegation cycles (A->B->A across layers), and wall-clock are
+    # enforced here, on the live multi-agent path.
+    from ..services.agent_contracts import ContractViolation, LoopController, LoopPolicy
+    try:
+        from ..config import settings as _settings
+        _delegation_policy = LoopPolicy(
+            max_iterations=len(layers) + 4,
+            max_tool_calls=12 * max(1, len(candidate_names)),
+            max_sub_agents=max(3, len(candidate_names)),
+            max_duration_s=float(getattr(_settings, "agent_max_duration_s", 120.0) or 120.0),
+        )
+    except Exception:
+        _delegation_policy = LoopPolicy()
+    _controller = LoopController(_delegation_policy)
+    _controller_snapshot: dict[str, Any] = {}
+
     layers_to_run = list(layers)
     layer_idx = 0
 
     while layer_idx < len(layers_to_run):
         layer = layers_to_run[layer_idx]
         logger.info(f"SUPERVISOR layer {layer_idx+1}/{len(layers_to_run)}: {layer}")
+        try:
+            _controller.before_step(f"layer:{layer_idx}")
+        except ContractViolation as _cv:
+            logger.warning(f"SUPERVISOR loop bound hit at layer {layer_idx}: {_cv}")
+            break
+        # Delegation bounds: max sub-agents via the controller; per-agent
+        # re-spawn capped at 2 (initial + one conditional refinement) so a
+        # dynamically injected resume->ats->resume->ats... cycle cannot loop
+        # forever, while legitimate single refinement still runs.
+        _spawn_counts: dict[str, int] = _controller_snapshot.get("spawn_counts", {}) if isinstance(_controller_snapshot, dict) else {}
+        _pruned: list[str] = []
+        for _ag in layer:
+            _spawn_counts[_ag] = int(_spawn_counts.get(_ag, 0)) + 1
+            if _spawn_counts[_ag] > 2:
+                logger.warning(f"SUPERVISOR cycle bound: agent '{_ag}' spawned 3x — pruning from layer {layer_idx}")
+                continue
+            try:
+                if _ag not in _controller.delegation_chain:
+                    _controller.record_delegation(_ag)
+            except ContractViolation as _cv:
+                logger.warning(f"SUPERVISOR delegation bound hit for {_ag}: {_cv}")
+                _spawn_counts[_ag] -= 1
+                continue
+            _pruned.append(_ag)
+        layer = _pruned
+        if not layer:
+            # Entire layer pruned by cycle/delegation bounds — stop instead of
+            # re-running a pruned agent.
+            logger.warning(f"SUPERVISOR layer {layer_idx} fully pruned by bounds — stopping DAG")
+            break
         if len(layer) == 1:
             result = await _run_single_agent(layer[0], message, workspace_id, request_id, context)
             results = [result]
         else:
             # Parallel execution
             results = await asyncio.gather(*[_run_single_agent(ag, message, workspace_id, request_id, context) for ag in layer])
+        _controller.commit_step(f"layer:{layer_idx}")
+        _controller_snapshot = _controller.snapshot()
+        _controller_snapshot["spawn_counts"] = _spawn_counts
 
         for r in results:
             aname = r.get("agent_name", "unknown")
@@ -337,6 +387,7 @@ async def run_supervisor(message: str, workspace_id: str, request_id: str | None
                 "summaries": summaries,
                 "pending_approvals": pending_approvals,
                 "message": message,
+                "delegation": _controller_snapshot,
             })
             await save_checkpoint(state, workspace_id=workspace_id)
             return {
@@ -376,6 +427,7 @@ async def run_supervisor(message: str, workspace_id: str, request_id: str | None
         },
         "supervisor": True,
         "dag": layers_to_run,
+        "delegation": _controller_snapshot,
     }
 
 

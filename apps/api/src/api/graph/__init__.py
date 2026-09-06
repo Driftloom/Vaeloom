@@ -165,9 +165,28 @@ def _build_graph():
             return "finalize"
         if status == "waiting_approval":
             return "finalize"  # approval interrupt handled via graph interrupt (v2)
+        if status == "needs_replan":
+            # Genuine replan edge (Phase B §7): bounded by max graph replans so
+            # the graph cannot cycle without limit. The attempt counter lives
+            # in metadata and is incremented by evaluate_node per replan.
+            try:
+                from .state import MAX_GRAPH_REPLANS
+            except Exception:
+                MAX_GRAPH_REPLANS = 2
+            try:
+                from api.config import settings as _settings
+                ceiling = int(getattr(_settings, "agent_max_graph_replans", MAX_GRAPH_REPLANS) or MAX_GRAPH_REPLANS)
+            except Exception:
+                ceiling = MAX_GRAPH_REPLANS
+            attempt = int((state.get("metadata") or {}).get("attempt", 0) or 0)
+            if attempt <= ceiling:
+                logger.info("graph replan: attempt %d/%d — routing back to agent", attempt, ceiling)
+                return "agent"
+            logger.warning("graph replan budget exhausted (attempt=%d ceiling=%d) — finalizing as failed", attempt, ceiling)
+            return "finalize"
         return "finalize"
 
-    g.add_conditional_edges("evaluate", after_evaluate, {"finalize": "finalize"})
+    g.add_conditional_edges("evaluate", after_evaluate, {"finalize": "finalize", "agent": "agent"})
 
     g.add_edge("finalize", END)
 

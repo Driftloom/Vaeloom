@@ -242,11 +242,12 @@ class LLMService:
         max_tokens: int,
         inferred_provider: str,
         effective_key: str | None,
+        json_mode: bool = False,
     ) -> dict[str, Any]:
         if inferred_provider in ("openai", "groq"):
-            return await self._openai_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key, provider=inferred_provider)
+            return await self._openai_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key, provider=inferred_provider, json_mode=json_mode)
         else:
-            return await self._anthropic_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key)
+            return await self._anthropic_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key, json_mode=json_mode)
 
     async def generate_completion(
         self,
@@ -262,7 +263,12 @@ class LLMService:
         db=None,
         api_key_override: str | None = None,
         provider_override: str | None = None,
+        json_mode: bool = False,
     ) -> dict[str, Any]:
+        """Generate a completion. json_mode=True requests provider-native JSON
+        enforcement (Phase B §11): OpenAI/Groq get response_format json_object;
+        Anthropic gets an explicit JSON-only system instruction (no native
+        equivalent). The result carries json_mode metadata for provenance."""
         # ── P1b: auto-infer task_type from agent_name when caller left it as general
         # This wires model routing without touching 22 handler call-sites (MODEL-001 full wiring)
         if task_type == "general" and agent_name and agent_name != "unknown":
@@ -326,6 +332,7 @@ class LLMService:
                     max_tokens=max_tokens,
                     inferred_provider=candidate_provider,
                     effective_key=effective_key,
+                    json_mode=json_mode,
                 )
                 effective_model = candidate_model
                 break
@@ -340,6 +347,18 @@ class LLMService:
                 raise last_exc
             raise LLMProviderError("All model tier candidates failed to generate completion")
 
+
+        # Model downgrade observability (Phase B §12): callers can see whether
+        # the requested model served or a fallback tier won.
+        try:
+            result["model"] = effective_model
+            result["fallback_chain"] = list(fallback_candidates[: fallback_candidates.index(effective_model) + 1])
+            result["downgraded"] = effective_model != fallback_candidates[0]
+            if result["downgraded"]:
+                from .inference_policy import record_fallback as _record_fallback
+                _record_fallback(agent_name, task_type, result["fallback_chain"], "tier failover")
+        except Exception:
+            pass
 
         # Track cost — also thread task_type routing hint (MODEL-001)
         latency_ms = (time.monotonic() - start) * 1000
@@ -380,18 +399,22 @@ class LLMService:
         return result
 
     async def _openai_completion(
-        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None, provider: str = "openai"
+        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None, provider: str = "openai", json_mode: bool = False
     ) -> dict[str, Any]:
         key = api_key or self.api_key
         pname = "Groq" if provider == "groq" else "OpenAI"
         if not key:
             raise LLMProviderError(f"Missing {pname} API key — configure in Settings > API Keys (BYOK)")
         url = "https://api.groq.com/openai/v1/chat/completions" if provider == "groq" else "https://api.openai.com/v1/chat/completions"
+        body: dict[str, Any] = {"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
+        if json_mode:
+            # Provider-native structured enforcement (Phase B §11).
+            body["response_format"] = {"type": "json_object"}
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
                 url,
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens},
+                json=body,
             )
             if resp.status_code in (429, 500, 502, 503, 504):
                 raise LLMTransientError(f"{pname} transient error: {resp.status_code} {resp.text}", status_code=resp.status_code)
@@ -404,10 +427,11 @@ class LLMService:
                 "role": choice["message"]["role"],
                 "finish_reason": choice["finish_reason"],
                 "usage": data.get("usage", {}),
+                "json_mode": json_mode,
             }
 
     async def _anthropic_completion(
-        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None
+        self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None, json_mode: bool = False
     ) -> dict[str, Any]:
         system = None
         anthropic_messages = []
@@ -416,6 +440,10 @@ class LLMService:
                 system = msg["content"]
             else:
                 anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
+        if json_mode:
+            # No native response_format: constrain via explicit instruction (validated downstream).
+            _instr = "Respond with a single valid JSON object only. No prose, no fences."
+            system = f"{system}\n\n{_instr}" if system else _instr
 
         body: dict[str, Any] = {
             "model": model,
@@ -459,6 +487,7 @@ class LLMService:
                     "input_tokens": usage.get("input_tokens", 0),
                     "output_tokens": usage.get("output_tokens", 0),
                 },
+                "json_mode": json_mode,
             }
 
     @retry(
@@ -480,14 +509,65 @@ class LLMService:
         api_key_override: str | None = None,
         provider_override: str | None = None,
     ) -> dict[str, Any]:
-        effective_model = model or self.model
-        inferred_provider = provider_override or _infer_provider_from_model(effective_model)
-        _prov, effective_key = await self._resolve_api_key(
-            inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
-        )
-        if inferred_provider in ("openai", "groq"):
-            return await self._openai_tool_completion(messages, tools, effective_model, temperature, api_key=effective_key, provider=inferred_provider)
-        return await self._anthropic_tool_completion(messages, tools, effective_model, temperature, api_key=effective_key)
+        """Tool-calling completion with capability-aware fallback (Phase B §12).
+
+        Never falls back to a model that cannot satisfy tool calling:
+        embedding-only models are excluded from candidates. Downgrades stay
+        within tool-capable chat models and are recorded in the result
+        (fallback_chain / downgraded) for provenance.
+        """
+        from .model_router import MODEL_CATALOG as _CAT
+
+        requested = model or self.model
+        candidates = [requested]
+        _cfg = _CAT.get(requested)
+        if _cfg:
+            if _cfg.tier == "powerful":
+                candidates += [m.name for m in _CAT.values()
+                               if m.provider == _cfg.provider and m.tier == "balanced" and "embedding" not in m.name][:1]
+                candidates += [m.name for m in _CAT.values()
+                               if m.provider == _cfg.provider and m.tier == "fast" and "embedding" not in m.name][:1]
+            elif _cfg.tier == "balanced":
+                candidates += [m.name for m in _CAT.values()
+                               if m.provider == _cfg.provider and m.tier == "fast" and "embedding" not in m.name][:1]
+        # Dedupe, keep order; drop embedding-only models (no tool support).
+        seen: set[str] = set()
+        candidates = [c for c in candidates
+                      if "embedding" not in c and not (c in seen or seen.add(c))]
+
+        last_exc: Exception | None = None
+        for candidate_model in candidates:
+            candidate_provider = provider_override or _infer_provider_from_model(candidate_model)
+            _prov, effective_key = await self._resolve_api_key(
+                candidate_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
+            )
+            try:
+                if candidate_provider in ("openai", "groq"):
+                    result = await self._openai_tool_completion(messages, tools, candidate_model, temperature, api_key=effective_key, provider=candidate_provider)
+                else:
+                    result = await self._anthropic_tool_completion(messages, tools, candidate_model, temperature, api_key=effective_key)
+                result["model"] = candidate_model
+                result["fallback_chain"] = list(candidates[: candidates.index(candidate_model) + 1])
+                result["downgraded"] = candidate_model != candidates[0]
+                if result["downgraded"]:
+                    import logging as _lg
+                    _lg.getLogger(__name__).warning(
+                        f"Tool-call model downgraded {candidates[0]} -> {candidate_model} (capability-preserving fallback)")
+                    try:
+                        from .inference_policy import record_fallback as _record_fallback
+                        _record_fallback("unknown", "tool_calling", result["fallback_chain"],
+                                         "tool-capability-preserving failover")
+                    except Exception:
+                        pass
+                return result
+            except (LLMProviderError, LLMTransientError, httpx.TimeoutException, httpx.NetworkError) as exc:
+                last_exc = exc
+                import logging as _lg
+                _lg.getLogger(__name__).warning(f"Tool-call model {candidate_model} failed ({exc}); attempting capability-preserving failover...")
+                continue
+        if last_exc:
+            raise last_exc
+        raise LLMProviderError("All tool-capable model candidates failed")
 
     def _normalize_openai_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         import json as _json

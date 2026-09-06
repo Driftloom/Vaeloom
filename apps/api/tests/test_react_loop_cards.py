@@ -191,7 +191,8 @@ async def test_act_phase_react_integration(monkeypatch):
     async def mock_stream(messages, tools=None):
         yield {
             "type": "text_delta",
-            "text": '{"summary": "Act phase direct answer", "proposals": []}',
+            # Valid resume contract: summary + proposals + questions.
+            "text": '{"summary": "Act phase direct answer", "proposals": [], "questions": []}',
         }
         yield {"type": "done"}
 

@@ -93,6 +93,7 @@ class AgentCard(BaseModel):
     eval_threshold: float = 0.85
     max_react_rounds: int = 5
     autonomy: str = "suggest"
+    status: str = "ACTIVE"
     safety_guidelines: list[str] = Field(default_factory=lambda: list(DEFAULT_SAFETY_GUIDELINES))
     metadata: dict[str, Any] = Field(default_factory=dict)
 

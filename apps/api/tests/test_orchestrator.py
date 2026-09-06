@@ -8,28 +8,28 @@ pytestmark = pytest.mark.asyncio
 
 class MockAgent:
     async def execute(self, *args, **kwargs):
-        return {"action": "execute", "confidence": 1.0, "result": {"summary": "done", "details": {}, "proposals": [], "questions": []}}
+        return {"agent_name": "mock", "action": "execute", "confidence": 1.0, "result": {"summary": "done", "details": {}, "proposals": [], "questions": []}}
 
     async def search(self, *args, **kwargs):
-        return {"action": "execute", "confidence": 1.0, "result": {"summary": "found", "details": {}, "proposals": [], "questions": []}}
+        return {"agent_name": "mock", "action": "execute", "confidence": 1.0, "result": {"summary": "found", "details": {}, "proposals": [], "questions": []}}
 
     async def score(self, *args, **kwargs):
-        return {"action": "suggest", "confidence": 0.8, "result": {"summary": "scored", "details": {}, "proposals": [], "questions": []}}
+        return {"agent_name": "mock", "action": "suggest", "confidence": 0.8, "result": {"summary": "scored", "details": {}, "proposals": [], "questions": []}}
 
     async def prepare(self, *args, **kwargs):
-        return {"action": "execute", "confidence": 1.0, "result": {"summary": "prepared", "details": {}, "proposals": [], "questions": []}}
+        return {"agent_name": "mock", "action": "execute", "confidence": 1.0, "result": {"summary": "prepared", "details": {}, "proposals": [], "questions": []}}
 
     async def classify_emails(self, *args, **kwargs):
-        return {"action": "execute", "confidence": 1.0, "result": {"summary": "classified", "details": {}, "proposals": [], "questions": []}}
+        return {"agent_name": "mock", "action": "execute", "confidence": 1.0, "result": {"summary": "classified", "details": {}, "proposals": [], "questions": []}}
 
     async def process(self, *args, **kwargs):
-        return {"action": "execute", "confidence": 1.0, "result": {"summary": "processed", "details": {}, "proposals": [], "questions": []}}
+        return {"agent_name": "mock", "action": "execute", "confidence": 1.0, "result": {"summary": "processed", "details": {}, "proposals": [], "questions": []}}
 
     async def check_conflicts(self, *args, **kwargs):
-        return {"action": "execute", "confidence": 1.0, "result": {"summary": "checked", "details": {}, "proposals": [], "questions": []}}
+        return {"agent_name": "mock", "action": "execute", "confidence": 1.0, "result": {"summary": "checked", "details": {}, "proposals": [], "questions": []}}
 
     async def fallback(self):
-        return {"action": "execute", "confidence": 1.0, "result": {"summary": "fallback done", "details": {}, "proposals": [], "questions": []}}
+        return {"agent_name": "mock", "action": "execute", "confidence": 1.0, "result": {"summary": "fallback done", "details": {}, "proposals": [], "questions": []}}
 
 
 class MockAgentWithFallback:
@@ -351,12 +351,20 @@ class TestRunAgentLoop:
         req = AgentRequest(agent, "loop-r1", "do something", "ws1")
         resp = await run_agent_loop(req)
         assert resp.status == "success"
-    async def test_max_iterations_returns_success(self, tmp_path, monkeypatch):
+    async def test_max_iterations_qa_failure_is_explicit(self, tmp_path, monkeypatch):
+        # Phase B §21: a run whose output fails QA on every iteration must NOT
+        # be reported as success (legacy fake completion). It terminates as
+        # failed with reason qa_failed.
         from api.orchestrator.loop import run_agent_loop, AgentRequest, act_phase
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
 
+        # Varying outputs: real effort each iteration (no no_progress trip),
+        # but confidence 0.0 keeps QA rejecting every round.
+        attempts = []
+
         async def never_satisfying_act(plan, request):
-            return {"action": "suggest", "confidence": 0.0, "result": {"summary": "still trying", "details": {}, "proposals": [], "questions": []}}
+            attempts.append(1)
+            return {"agent_name": "mock", "action": "suggest", "confidence": 0.0, "result": {"summary": f"still trying #{len(attempts)}", "details": {}, "proposals": [], "questions": []}}
 
         from api.orchestrator import loop as loop_module
         monkeypatch.setattr(loop_module, "act_phase", never_satisfying_act)
@@ -365,7 +373,8 @@ class TestRunAgentLoop:
         req = AgentRequest(agent, "loop-r2", "tricky task", "ws1")
 
         resp = await run_agent_loop(req)
-        assert resp.status == "success"
+        assert resp.status == "failed"
+        assert resp.termination_reason == "qa_failed"
 
     async def test_max_iterations_escalates(self, tmp_path, monkeypatch):
         from api.orchestrator.loop import run_agent_loop, AgentRequest, reflect_phase
@@ -377,6 +386,20 @@ class TestRunAgentLoop:
 
         from api.orchestrator import loop as loop_module
         monkeypatch.setattr(loop_module, "reflect_phase", never_satisfied)
+
+        # Varying outputs so the run exercises the iteration ceiling
+        # (identical outputs terminate earlier as no_progress — see
+        # test_runtime_phase_b.py::TestLoopSafety).
+        attempts = []
+
+        async def varying_act(plan, request, on_token=None):
+            attempts.append(1)
+            out = await request.agent.execute()
+            out = dict(out)
+            out["result"] = dict(out["result"], summary=f"attempt #{len(attempts)} working")
+            return out
+
+        monkeypatch.setattr(loop_module, "act_phase", varying_act)
 
         agent = _make_agent("TestAgent")
         req = AgentRequest(agent, "loop-escalate", "hard task", "ws1")

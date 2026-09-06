@@ -30,14 +30,29 @@ class StateStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def save(self, request_id: str, state_dict: dict[str, Any], workspace_id: str | None = None) -> None:
-        """Persist state dictionary for request_id."""
+    async def save(
+        self,
+        request_id: str,
+        state_dict: dict[str, Any],
+        workspace_id: str | None = None,
+        expected_version: int | None = None,
+    ) -> int:
+        """Persist state dictionary for request_id.
+
+        Returns the new state_version. When expected_version is given, the
+        store must raise ConcurrentUpdateError instead of overwriting a newer
+        checkpoint (optimistic concurrency, Phase B §3).
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def delete(self, request_id: str) -> None:
         """Remove state for request_id."""
         raise NotImplementedError
+
+
+class ConcurrentUpdateError(Exception):
+    """Optimistic-concurrency conflict on checkpoint save."""
 
 
 class FileStateStore(StateStore):
@@ -66,13 +81,36 @@ class FileStateStore(StateStore):
             logger.warning(f"FileStateStore failed to read {request_id}: {exc}")
             return None
 
-    async def save(self, request_id: str, state_dict: dict[str, Any], workspace_id: str | None = None) -> None:
+    async def save(
+        self,
+        request_id: str,
+        state_dict: dict[str, Any],
+        workspace_id: str | None = None,
+        expected_version: int | None = None,
+    ) -> int:
         dir_path = self.state_dir
         dir_path.mkdir(parents=True, exist_ok=True)
         file_path = dir_path / f"{request_id}.json"
-        payload = json.dumps(state_dict, indent=2, default=str)
+        payload_dict = dict(state_dict)
+        if expected_version is not None and file_path.exists():
+            try:
+                raw = await asyncio.to_thread(file_path.read_text)
+                stored = json.loads(raw)
+                stored_version = int(stored.get("state_version", 1))
+                if stored_version != expected_version:
+                    raise ConcurrentUpdateError(
+                        f"checkpoint {request_id}: expected v{expected_version}, stored v{stored_version}"
+                    )
+            except ConcurrentUpdateError:
+                raise
+            except (json.JSONDecodeError, OSError, ValueError, TypeError):
+                pass
+        new_version = int(payload_dict.get("state_version", 1)) + 1
+        payload_dict["state_version"] = new_version
+        payload = json.dumps(payload_dict, indent=2, default=str)
         await asyncio.to_thread(file_path.write_text, payload)
-        logger.debug(f"FileStateStore saved checkpoint for {request_id}")
+        logger.debug(f"FileStateStore saved checkpoint for {request_id} v{new_version}")
+        return new_version
 
     async def delete(self, request_id: str) -> None:
         file_path = self.state_dir / f"{request_id}.json"
@@ -111,7 +149,13 @@ class DatabaseStateStore(StateStore):
             logger.warning(f"DatabaseStateStore load failed for {request_id}: {exc}")
         return None
 
-    async def save(self, request_id: str, state_dict: dict[str, Any], workspace_id: str | None = None) -> None:
+    async def save(
+        self,
+        request_id: str,
+        state_dict: dict[str, Any],
+        workspace_id: str | None = None,
+        expected_version: int | None = None,
+    ) -> int:
         factory = self._get_factory()
         try:
             from sqlalchemy import select
@@ -121,19 +165,50 @@ class DatabaseStateStore(StateStore):
                 stmt = select(LoopCheckpoint).where(LoopCheckpoint.request_id == request_id)
                 res = await session.execute(stmt)
                 row = res.scalar_one_or_none()
+                payload = dict(state_dict)
                 if row:
-                    row.state_json = state_dict
+                    stored_version = int((row.state_json or {}).get("state_version", 1))
+                    try:
+                        row_version_col = int(getattr(row, "state_version", stored_version) or stored_version)
+                    except (TypeError, ValueError):
+                        row_version_col = stored_version
+                    current = max(stored_version, row_version_col)
+                    if expected_version is not None and current != expected_version:
+                        raise ConcurrentUpdateError(
+                            f"checkpoint {request_id}: expected v{expected_version}, stored v{current}"
+                        )
+                    new_version = current + 1
+                    payload["state_version"] = new_version
+                    row.state_json = payload
+                    try:
+                        row.state_version = new_version
+                    except Exception:
+                        pass
                     if workspace_id:
                         row.workspace_id = str(workspace_id)
                 else:
-                    new_ckpt = LoopCheckpoint(
-                        request_id=request_id,
-                        workspace_id=str(workspace_id) if workspace_id else None,
-                        state_json=state_dict,
-                    )
+                    new_version = int(payload.get("state_version", 1)) + 1
+                    payload["state_version"] = new_version
+                    try:
+                        new_ckpt = LoopCheckpoint(
+                            request_id=request_id,
+                            workspace_id=str(workspace_id) if workspace_id else None,
+                            state_json=payload,
+                            state_version=new_version,
+                        )
+                    except TypeError:
+                        # Older DBs without the state_version column (pre-0029).
+                        new_ckpt = LoopCheckpoint(
+                            request_id=request_id,
+                            workspace_id=str(workspace_id) if workspace_id else None,
+                            state_json=payload,
+                        )
                     session.add(new_ckpt)
                 await session.commit()
-                logger.debug(f"DatabaseStateStore saved checkpoint for {request_id}")
+                logger.debug(f"DatabaseStateStore saved checkpoint for {request_id} v{new_version}")
+                return new_version
+        except ConcurrentUpdateError:
+            raise
         except Exception as exc:
             logger.warning(f"DatabaseStateStore save failed for {request_id}: {exc}")
             raise
@@ -164,8 +239,19 @@ class MemoryStateStore(StateStore):
         data = self._data.get(request_id)
         return json.loads(json.dumps(data, default=str)) if data else None
 
-    async def save(self, request_id: str, state_dict: dict[str, Any], workspace_id: str | None = None) -> None:
+    async def save(
+        self, request_id: str, state_dict: dict[str, Any], workspace_id: str | None = None,
+        expected_version: int | None = None,
+    ) -> int:
+        if expected_version is not None and request_id in self._data:
+            stored_version = int(self._data[request_id].get("state_version", 1))
+            if stored_version != expected_version:
+                raise ConcurrentUpdateError(
+                    f"checkpoint {request_id}: expected v{expected_version}, stored v{stored_version}"
+                )
         self._data[request_id] = json.loads(json.dumps(state_dict, default=str))
+        self._data[request_id]["state_version"] = int(state_dict.get("state_version", 1)) + 1
+        return int(self._data[request_id]["state_version"])
 
     async def delete(self, request_id: str) -> None:
         self._data.pop(request_id, None)
@@ -204,15 +290,22 @@ class RedisStateStore(StateStore):
             logger.warning(f"RedisStateStore failed to load {request_id}: {exc}")
         return None
 
-    async def save(self, request_id: str, state_dict: dict[str, Any], workspace_id: str | None = None) -> None:
+    async def save(
+        self, request_id: str, state_dict: dict[str, Any], workspace_id: str | None = None,
+        expected_version: int | None = None,
+    ) -> int:
         client = await self._get_client()
         if not client:
-            return
+            return int(state_dict.get("state_version", 1))
         try:
-            payload = json.dumps(state_dict, default=str)
+            payload_dict = dict(state_dict)
+            payload_dict["state_version"] = int(state_dict.get("state_version", 1)) + 1
+            payload = json.dumps(payload_dict, default=str)
             await client.set(self._key(request_id), payload, ex=self.ttl)
+            return int(payload_dict["state_version"])
         except Exception as exc:
             logger.warning(f"RedisStateStore failed to save {request_id}: {exc}")
+            return int(state_dict.get("state_version", 1))
 
     async def delete(self, request_id: str) -> None:
         client = await self._get_client()
@@ -237,9 +330,15 @@ class CompositeStateStore(StateStore):
             return data
         return await self.fallback.load(request_id)
 
-    async def save(self, request_id: str, state_dict: dict[str, Any], workspace_id: str | None = None) -> None:
-        await self.primary.save(request_id, state_dict, workspace_id)
-        await self.fallback.save(request_id, state_dict, workspace_id)
+    async def save(
+        self, request_id: str, state_dict: dict[str, Any], workspace_id: str | None = None,
+        expected_version: int | None = None,
+    ) -> int:
+        new_version = await self.primary.save(request_id, state_dict, workspace_id, expected_version)
+        merged = dict(state_dict)
+        merged["state_version"] = new_version
+        await self.fallback.save(request_id, merged, workspace_id, None)
+        return new_version
 
     async def delete(self, request_id: str) -> None:
         await self.primary.delete(request_id)

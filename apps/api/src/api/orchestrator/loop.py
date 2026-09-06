@@ -5,6 +5,7 @@ from datetime import UTC
 from typing import Any
 
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..infrastructure.agent_limits import AgentRateLimiter, AgentRateLimitError
@@ -158,86 +159,205 @@ async def fetch_pending_approvals(workspace_id: str) -> list[dict[str, Any]]:
         return []
 
 
-async def lookup_approval(
-    workspace_id: str,
+def _canonical_payload_hash(payload: dict | None) -> str:
+    import hashlib
+    import json
+    if not payload:
+        return ""
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+async def _lookup_approval_internal(
+    workspace_id: str | None,
     agent_name: str,
     action_type: str,
+    payload: dict | None = None,
+    approval_id: str | None = None,
+    consume: bool = True,
+    db: AsyncSession | None = None,
 ) -> dict[str, Any] | None:
-    """Look up an approved approval decision for the given agent/action.
-
-    Returns the approval record if found and APPROVED, None otherwise.
-    This replaces the hardcoded has_approval=False in the agent loop.
-    """
     import json
-
+    from datetime import UTC, datetime
     from ..database import async_session_factory
 
+    async def _do_lookup(session: AsyncSession) -> dict[str, Any] | None:
+        now = datetime.now(UTC)
+
+        # 1. Expire stale pending approvals
+        await session.execute(
+            text("""
+                UPDATE agent_approvals
+                SET status = 'EXPIRED', updated_at = :now
+                WHERE status = 'PENDING' AND expires_at IS NOT NULL AND expires_at < :now
+            """),
+            {"now": now},
+        )
+        await session.commit()
+
+        # 2. Query candidates with status APPROVED and unexpired
+        query_parts = [
+            "SELECT id, workspace_id, agent_name, action_type, payload, status, reason, expires_at",
+            "FROM agent_approvals",
+            "WHERE agent_name = :agent_name",
+            "AND action_type = :action_type",
+            "AND status = 'APPROVED'",
+            "AND (expires_at IS NULL OR expires_at > :now)",
+        ]
+        params: dict[str, Any] = {
+            "agent_name": agent_name,
+            "action_type": action_type,
+            "now": now,
+        }
+
+        if workspace_id:
+            query_parts.append("AND workspace_id = :workspace_id")
+            params["workspace_id"] = str(workspace_id)
+        if approval_id:
+            query_parts.append("AND id = :approval_id")
+            params["approval_id"] = str(approval_id)
+
+        query_parts.append("ORDER BY created_at DESC LIMIT 10")
+        stmt = " ".join(query_parts)
+
+        result = await session.execute(text(stmt), params)
+        rows = result.fetchall()
+
+        for row in rows:
+            row_id = str(row[0])
+            stored_payload = row[4]
+            if isinstance(stored_payload, str):
+                try:
+                    stored_payload = json.loads(stored_payload)
+                except (json.JSONDecodeError, TypeError):
+                    stored_payload = {}
+            elif not isinstance(stored_payload, dict):
+                stored_payload = {}
+
+            # Verify payload match if caller passed payload
+            if payload is not None and stored_payload:
+                expected_hash = _canonical_payload_hash(payload)
+                actual_hash = _canonical_payload_hash(stored_payload)
+                if expected_hash != actual_hash:
+                    reason = row[6] or ""
+                    if f"[hmac:{actual_hash[:32]}]" not in reason and expected_hash != actual_hash:
+                        continue
+
+            if consume:
+                # Atomic consumption — only 1 worker wins
+                update_res = await session.execute(
+                    text("""
+                        UPDATE agent_approvals
+                        SET status = 'CONSUMED', updated_at = :now
+                        WHERE id = :id AND status = 'APPROVED'
+                    """),
+                    {"id": row_id, "now": now},
+                )
+                await session.commit()
+                if update_res.rowcount == 0:
+                    continue
+
+            return {
+                "id": row_id,
+                "workspace_id": str(row[1]) if row[1] else None,
+                "agent_name": row[2],
+                "action_type": row[3],
+                "payload": stored_payload,
+                "status": "CONSUMED" if consume else row[5],
+            }
+
+        return None
+
     try:
-        async with async_session_factory() as db:
-            from datetime import datetime
-            now = datetime.now(UTC)
-
-            # Expire any stale approvals
-            await db.execute(
-                text("""
-                    UPDATE agent_approvals
-                    SET status = 'EXPIRED', updated_at = :now
-                    WHERE status = 'PENDING' AND expires_at IS NOT NULL AND expires_at < :now
-                """),
-                {"now": now},
-            )
-            await db.commit()
-
-            # Look up approved approvals for this agent/action
-            result = await db.execute(
-                text("""
-                    SELECT id, workspace_id, agent_name, action_type, payload, status
-                    FROM agent_approvals
-                    WHERE workspace_id = :workspace_id
-                      AND agent_name = :agent_name
-                      AND action_type = :action_type
-                      AND status = 'APPROVED'
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                """),
-                {
-                    "workspace_id": workspace_id,
-                    "agent_name": agent_name,
-                    "action_type": action_type,
-                },
-            )
-            row = result.fetchone()
-            if row:
-                # Handle payload: may be JSON string (SQLite) or dict (PostgreSQL)
-                payload = row[4]
-                if isinstance(payload, str):
-                    try:
-                        payload = json.loads(payload)
-                    except (json.JSONDecodeError, TypeError):
-                        payload = {}
-                elif not isinstance(payload, dict):
-                    payload = {}
-                return {
-                    "id": str(row[0]),
-                    "workspace_id": str(row[1]),
-                    "agent_name": row[2],
-                    "action_type": row[3],
-                    "payload": payload,
-                    "status": row[5],
-                }
-            return None
+        if db is not None:
+            return await _do_lookup(db)
+        async with async_session_factory() as session:
+            return await _do_lookup(session)
     except Exception as exc:
         logger.warning(f"Approval lookup failed (non-blocking): {exc}")
         return None
 
 
+async def inspect_approval(
+    workspace_id: str | None,
+    agent_name: str,
+    action_type: str,
+    payload: dict | None = None,
+    approval_id: str | None = None,
+    db: AsyncSession | None = None,
+) -> dict[str, Any] | None:
+    """Inspect if an active, unexpired APPROVED approval exists without consuming it."""
+    return await _lookup_approval_internal(
+        workspace_id=workspace_id,
+        agent_name=agent_name,
+        action_type=action_type,
+        payload=payload,
+        approval_id=approval_id,
+        consume=False,
+        db=db,
+    )
+
+
+async def consume_approval_for_action(
+    workspace_id: str | None,
+    agent_name: str,
+    action_type: str,
+    payload: dict | None = None,
+    approval_id: str | None = None,
+    db: AsyncSession | None = None,
+) -> dict[str, Any] | None:
+    """Atomically consume an active, unexpired APPROVED approval for consequential execution."""
+    return await _lookup_approval_internal(
+        workspace_id=workspace_id,
+        agent_name=agent_name,
+        action_type=action_type,
+        payload=payload,
+        approval_id=approval_id,
+        consume=True,
+        db=db,
+    )
+
+
+async def lookup_approval(
+    workspace_id: str | None,
+    agent_name: str,
+    action_type: str,
+    payload: dict | None = None,
+    approval_id: str | None = None,
+    consume: bool = True,
+    db: AsyncSession | None = None,
+) -> dict[str, Any] | None:
+    """Look up and optionally consume an approval decision for the given agent/action.
+
+    Consequential execution paths default to consume=True (single-use token semantics).
+    """
+    if consume:
+        return await consume_approval_for_action(
+            workspace_id=workspace_id,
+            agent_name=agent_name,
+            action_type=action_type,
+            payload=payload,
+            approval_id=approval_id,
+            db=db,
+        )
+    return await inspect_approval(
+        workspace_id=workspace_id,
+        agent_name=agent_name,
+        action_type=action_type,
+        payload=payload,
+        approval_id=approval_id,
+        db=db,
+    )
+
+
 class AgentRequest:
-    def __init__(self, agent: BaseAgent, request_id: str, message: str, workspace_id: str, agent_name: str = ""):
+    def __init__(self, agent: BaseAgent, request_id: str, message: str, workspace_id: str, agent_name: str = "", db: Any = None):
         self.agent = agent
         self.id = request_id
         self.message = message
         self.workspace_id = workspace_id
         self.agent_name = agent_name or self._derive_agent_name()
+        self.db = db
 
     def _derive_agent_name(self) -> str:
         name = type(self.agent).__name__
@@ -247,15 +367,56 @@ class AgentRequest:
 
 
 class AgentResponse:
-    def __init__(self, status: str, final_result: Any):
+    def __init__(self, status: str, final_result: Any, termination_reason: str | None = None):
         self.status = status
         self.final_result = final_result
+        self.termination_reason = termination_reason
 
 
 class ReflectResult:
     def __init__(self, is_satisfied: bool, reason: str = ""):
         self.is_satisfied = is_satisfied
         self.reason = reason
+
+
+def _runtime_contract(agent_name: str, agent: BaseAgent | None = None):
+    """Resolve the enforceable runtime contract for an agent (Phase B §8).
+
+    The contract is synthesized from the AgentCard + agent-declared tools
+    (real tool names) and returned ephemerally — never overwriting registry
+    seeds. Returns None when the agent declares no tool identity, in which
+    case only scope checks apply (static handlers are policy-coded).
+    """
+    try:
+        card_tools: set[str] = set()
+        try:
+            from .card_registry import get_agent_card
+            _card = getattr(agent, "card", None) or get_agent_card(agent_name or "")
+            if _card is not None:
+                card_tools.update(getattr(_card, "tools", []) or [])
+        except Exception:
+            pass
+        try:
+            card_tools.update(t.name for t in (getattr(agent, "tools", []) or []))
+        except Exception:
+            pass
+        if not card_tools:
+            return None
+        from ..services.agent_contracts import AgentContract, LoopPolicy
+        return AgentContract(
+            agent_id=(agent_name or "unknown").lower(),
+            version="runtime-v1",
+            mission=getattr(agent, "mission", "") or (agent_name or "unknown"),
+            allowed_tools=sorted(card_tools),
+            memory_read_scopes=list(getattr(getattr(agent, "memory_scopes", None), "read_types", []) or []),
+            memory_write_scopes=list(getattr(getattr(agent, "memory_scopes", None), "write_types", []) or []),
+            autonomy="SUGGEST",
+            risk_class="medium",
+            loop=LoopPolicy(),
+        )
+    except Exception as exc:
+        logger.debug(f"Runtime contract resolution skipped for {agent_name}: {exc}")
+        return None
 
 
 # ── RAG Pre-Execution Context Assembler ───────────────────────────
@@ -455,6 +616,65 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
         except Exception as _rank_err:
             logger.debug(f"RAG ranking re-rank skipped: {_rank_err}")
 
+        # ── Phase B §10: ContextEngine policy over the retrieved candidates ──
+        # The SQL/vector lookups above are candidate suppliers; the engine is
+        # the policy layer that decides what the agent actually sees
+        # (strategy -> filter -> rank -> compress -> validate), and its
+        # manifest (strategy, fingerprint, kept/excluded) is persisted for
+        # provenance. Selection stays observable; raw content never enters
+        # the manifest — ids and fingerprints only.
+        context_manifest: dict[str, Any] = {"strategy": "vector", "engine": "context_engine/v1"}
+        try:
+            from ..services.context_engine import (
+                ContextItem as _CI,
+                assemble as _assemble,
+                compress_to_budget as _compress,
+                context_fingerprint as _cf,
+                filter_items as _filter,
+                plan_retrieval as _plan_retrieval,
+                rank_items as _rank_items,
+                validate_assembly as _validate_assembly,
+            )
+            _rplan = _plan_retrieval(query, task_type=getattr(agent, "mission", "general")[:64])
+            _items: list[_CI] = []
+            for e in entities:
+                _items.append(_CI(kind="memory", content=f"{e.get('name','')} ({e.get('type','')})",
+                                  relevance=0.7, confidence=0.6, freshness=0.5,
+                                  provenance=f"ws:{workspace_id}:{e.get('id','')}",
+                                  permission_scope="workspace"))
+            for d in documents:
+                _items.append(_CI(kind="evidence", content=f"{d.get('path','')} — {(d.get('summary','') or '')[:500]}",
+                                  relevance=0.6, confidence=0.6, freshness=0.5,
+                                  provenance=f"ws:{workspace_id}:{d.get('id','')}",
+                                  permission_scope="workspace"))
+            for p in preferences:
+                _items.append(_CI(kind="user", content=str(p.get("name", "")),
+                                  relevance=0.5, confidence=0.7, freshness=0.6,
+                                  provenance=f"ws:{workspace_id}:{p.get('id','')}",
+                                  permission_scope="workspace"))
+            _kept, _excluded = _filter(_items, workspace_id=str(workspace_id or ""))
+            _ranked = _rank_items(_kept, limit=16)
+            _compressed, _dropped = _compress(_ranked, token_budget=2000)
+            _assembled = _assemble(_compressed)
+            _violations = _validate_assembly(_assembled, _compressed, workspace_id=str(workspace_id or ""))
+            context_manifest = {
+                "strategy": _rplan.strategy,
+                "strategy_reason": _rplan.reason,
+                "engine": "context_engine/v1",
+                "candidates": len(_items),
+                "kept": len(_compressed),
+                "excluded": len(_excluded),
+                "excluded_reasons": sorted(set(_excluded))[:8],
+                "compressed_kinds": _dropped[:8],
+                "violations": _violations[:5],
+                "fingerprint": _cf(_compressed) if _compressed else "",
+                "token_budget": 2000,
+            }
+            if _violations:
+                logger.warning(f"ContextEngine assembly violations: {_violations}")
+        except Exception as _ce:
+            logger.debug(f"ContextEngine policy skipped: {_ce}")
+
         # Truncate
         try:
             from ..infrastructure.agent_observability import record_rag_latency
@@ -462,7 +682,8 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
             record_rag_latency((_t.monotonic() - _rag_start) * 1000)
         except Exception:
             pass
-        return {"entities": entities[:8], "documents": documents[:8], "preferences": preferences[:5]}
+        return {"entities": entities[:8], "documents": documents[:8], "preferences": preferences[:5],
+                "context_manifest": context_manifest}
     except Exception as e:
         logger.warning(f"RAG assembler non-blocking error: {e}")
         try:
@@ -601,6 +822,39 @@ async def _try_react_loop(
             {"role": "user", "content": message},
         ]
 
+        # Phase B §9: PromptCompiler manifest for provenance. The compiler runs
+        # over the same parts (trusted system + quarantined untrusted context)
+        # and its manifest — prompt_id/version, layers, budget, content hash,
+        # injection flag — is attached to results. Message content is unchanged
+        # (no behavior change); the manifest makes construction deterministic
+        # enough for replay/provenance.
+        prompt_manifest: dict[str, Any] = {"compiler": "prompt_compiler/v1", "compiled": False}
+        try:
+            from ..services.prompt_compiler import PromptCompiler, PromptLayers
+            _tool_desc = "\n".join(f"- {td.name}: {td.description}" for td in ordered[:12])
+            _layers = PromptLayers(
+                platform_policy="Vaeloom agent runtime: least-privilege tools, approval gates, workspace isolation.",
+                safety_policy="\n".join(getattr(card, "safety_guidelines", []) or []) if card else "",
+                agent_contract=getattr(card, "description", "") or getattr(agent, "mission", ""),
+                task_contract=message[:2000],
+                user_intent=message[:2000],
+                memory_context="",
+                evidence="",
+                tool_context=_tool_desc,
+                observations="",
+                current_state="",
+                output_contract=json.dumps(getattr(card, "output_schema", {}) or {})[:2000] if card else "",
+            )
+            _compiled = PromptCompiler().compile(
+                _layers, agent_name=agent_name,
+                agent_version=getattr(card, "version", "v1.0") if card else "v1.0",
+                task_type=agent_name,
+                untrusted_sources={"tool_context": "tool-registry", "evidence": "rag_context"},
+            )
+            prompt_manifest = {**_compiled.manifest, "compiled": True}
+        except Exception as _pc_exc:
+            logger.debug(f"PromptCompiler manifest skipped: {_pc_exc}")
+
         # Loop budget: configurable max rounds per card or global setting
         card_max = getattr(card, "max_react_rounds", None) if card else None
         max_rounds = max(1, int(card_max or getattr(settings, "agent_max_react_rounds", 5) or 5))
@@ -661,10 +915,61 @@ async def _try_react_loop(
                             parsed_json = None
 
                     if parsed_json and isinstance(parsed_json, dict):
-                        if hasattr(agent, "validate_output"):
-                            agent.validate_output(parsed_json)
-                        elif card and hasattr(card, "validate_output"):
-                            card.validate_output(parsed_json)
+                        # Structured-output gate (Phase B §11): validation controls
+                        # flow. Invalid output gets one repair round with the
+                        # errors fed back; persistent failure is an explicit
+                        # validation failure, never a silent success.
+                        _ok, _errs = True, []
+                        try:
+                            if hasattr(agent, "validate_output"):
+                                _ok, _errs = agent.validate_output(parsed_json)
+                            elif card and hasattr(card, "validate_output"):
+                                _ok, _errs = card.validate_output(parsed_json)
+                        except Exception as _ve:
+                            _ok, _errs = False, [str(_ve)]
+                        if not _ok:
+                            logger.warning(f"ReAct: structured validation failed for {agent_name}: {_errs} — repair round")
+                            messages.append({"role": "assistant", "content": content_str or None, "tool_calls": []})
+                            messages.append({"role": "user", "content": (
+                                "Your previous response failed output validation with these errors:\n"
+                                + "\n".join(f"- {e}" for e in _errs[:5])
+                                + "\nRespond with corrected JSON matching the output contract."
+                            )})
+                            try:
+                                from ..services.llm_service import llm_service as _repair_llm
+                                _repair = await _repair_llm.generate_completion(
+                                    messages=messages, temperature=0.0, max_tokens=800,
+                                )
+                                _repaired = (_repair.get("content") or "").strip()
+                                if _repaired.startswith("{") and _repaired.endswith("}"):
+                                    try:
+                                        parsed_json = json.loads(_repaired)
+                                    except Exception:
+                                        pass
+                                    else:
+                                        try:
+                                            if hasattr(agent, "validate_output"):
+                                                _ok, _errs = agent.validate_output(parsed_json)
+                                            elif card and hasattr(card, "validate_output"):
+                                                _ok, _errs = card.validate_output(parsed_json)
+                                        except Exception as _ve2:
+                                            _ok, _errs = False, [str(_ve2)]
+                            except Exception as _re:
+                                logger.warning(f"ReAct: validation repair call failed: {_re}")
+                            if not _ok:
+                                return {
+                                    "agent_name": agent_name,
+                                    "action": "error",
+                                    "confidence": 0.0,
+                                    "result": {
+                                        "summary": "Response validation failed — output did not match the agent contract.",
+                                        "details": "; ".join(_errs[:5]),
+                                        "proposals": [],
+                                        "questions": [],
+                                    },
+                                    "validation_errors": _errs[:10],
+                                    "prompt_manifest": prompt_manifest,
+                                }
 
                         if "summary" in parsed_json or "proposals" in parsed_json:
                             return {
@@ -677,6 +982,7 @@ async def _try_react_loop(
                                     "proposals": parsed_json.get("proposals", []),
                                     "questions": parsed_json.get("questions", []),
                                 },
+                                "prompt_manifest": prompt_manifest,
                             }
 
                     return {
@@ -684,6 +990,7 @@ async def _try_react_loop(
                         "action": getattr(card, "autonomy", "suggest") if card else "suggest",
                         "confidence": 0.88,
                         "result": {"summary": content_str[:800], "details": content_str, "proposals": [], "questions": []},
+                        "prompt_manifest": prompt_manifest,
                     }
                 return None
 
@@ -719,17 +1026,37 @@ async def _try_react_loop(
                     logger.warning(f"ReAct: tool '{tname}' denied — scope {td.required_scope} not in agent allowed {agent_allowed_scopes}")
                     result = {"status": "error", "tool": tname, "result": f"Permission denied: scope {td.required_scope} not allowed for agent {agent_name}"}
                 else:
-                    # Approval gate for high-risk writes — fail closed, require human (OWASP LLM06 excessive autonomy)
-                    from ..tools.executor import approval_gated_tools
-
-                    if tname in approval_gated_tools():
-                        logger.info(f"ReAct: tool '{tname}' requires approval — not auto-executing")
-                        result = {"status": "error", "tool": tname, "result": f"Approval required for {tname} — awaiting user approval", "requires_approval": True}
+                    # Enforceable AgentContract (Phase B §8): the runtime contract's
+                    # tool allow-list is checked here, on the live path — a denied
+                    # tool is never executed, regardless of what the LLM requested.
+                    # The runtime contract is synthesized from the AgentCard +
+                    # agent-declared tools (real tool names), never the doc seeds.
+                    _contract_denied: str | None = None
+                    try:
+                        _contract = _runtime_contract(agent_name, agent)
+                        if _contract is not None:
+                            _contract.check_tool(tname)
+                    except Exception as _ce:
+                        from ..services.agent_contracts import ContractViolation as _CV
+                        if isinstance(_ce, _CV):
+                            logger.warning(f"ReAct: contract denial for {agent_name}/{tname}: {_ce}")
+                            _contract_denied = f"Contract denied: {tname} not allowed for agent {agent_name}"
+                        else:
+                            logger.debug(f"ReAct: contract check skipped: {_ce}")
+                    if _contract_denied is not None:
+                        result = {"status": "error", "tool": tname, "result": _contract_denied}
                     else:
-                        try:
-                            result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
-                        except Exception as e:
-                            result = {"status": "error", "tool": tname, "result": str(e)}
+                        # Approval gate for high-risk writes — fail closed, require human (OWASP LLM06 excessive autonomy)
+                        from ..tools.executor import approval_gated_tools
+
+                        if tname in approval_gated_tools():
+                            logger.info(f"ReAct: tool '{tname}' requires approval — not auto-executing")
+                            result = {"status": "error", "tool": tname, "result": f"Approval required for {tname} — awaiting user approval", "requires_approval": True}
+                        else:
+                            try:
+                                result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
+                            except Exception as e:
+                                result = {"status": "error", "tool": tname, "result": str(e)}
                 # Feed tool result back to LLM — TOOL-002: sanitize tool output, never treat as instructions
                 # OpenAI expects assistant with tool_calls + tool role; Anthropic uses tool_result blocks — we add both forms for compat
                 try:
@@ -741,11 +1068,13 @@ async def _try_react_loop(
                     sanitized_content = sanitize_tool_output(raw_tool_str, tool_name=tname)
                 except Exception:
                     sanitized_content = json.dumps(result)[:4000]
-                else:
-                    # sanitize_tool_output already caps at 4000
-                    sanitized_content = sanitized_content[:4000] if len(sanitized_content) > 4000 else sanitized_content
+                try:
+                    from ..services.prompt_compiler import quarantine
+                    quarantined_tool_output, _ = quarantine(sanitized_content, source=f"tool:{tname}")
+                except Exception:
+                    quarantined_tool_output = f"<untrusted-data source=\"tool:{tname}\">\n{sanitized_content}\n</untrusted-data>"
                 messages.append({"role": "assistant", "content": content_str or None, "tool_calls": [tc]})
-                messages.append({"role": "tool", "tool_call_id": tc.get("id", tname), "content": sanitized_content})
+                messages.append({"role": "tool", "tool_call_id": tc.get("id", tname), "content": quarantined_tool_output})
                 # Keep content for next round's synthesis
 
             # Loop continues — LLM will synthesise after seeing tool outputs
@@ -787,7 +1116,12 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
         except Exception:
             if len(context_prompt) > 2000:
                 context_prompt = context_prompt[:2000] + " …[truncated context]"
-        message = f"{message}\n\n[Context from knowledge graph & documents:\n{context_prompt}]"
+        try:
+            from ..services.prompt_compiler import quarantine
+            quarantined_ctx, _ = quarantine(context_prompt, source="rag_context")
+        except Exception:
+            quarantined_ctx = f"<untrusted-data source=\"rag_context\">\n{context_prompt}\n</untrusted-data>"
+        message = f"{message}\n\n[Context from knowledge graph & documents:\n{quarantined_ctx}]"
     agent_type = type(agent).__name__
     agent_name = request.agent_name
 
@@ -928,12 +1262,35 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
     msg_lower = message.lower()
     keywords = [w for w in message.split() if len(w) > 2]
 
+    # ── Zero-Trust Agent Authorization Gate (AgentCard convergence) ──────
+    from .card_registry import card_registry, get_agent_card
+    card_name = request.agent_name or registry_key or agent_type
+    card = getattr(agent, "card", None) or get_agent_card(card_name)
+    if card is None:
+        card = card_registry.get(registry_key) or card_registry.get(agent_type)
+    if card is None:
+        card = card_registry.get_or_create(card_name, agent)
+
+    if card:
+        card_status = getattr(card, "status", None) or (card.metadata.get("status") if hasattr(card, "metadata") else None) or "ACTIVE"
+        if card_status != "ACTIVE":
+            raise PermissionError(f"Agent '{card.name}' is inactive (status={card_status})")
+
+    # ── Enforceable runtime contract (Phase B §8) ─────────────────────
+    # Static handlers are policy-coded (approval lookups per action); the
+    # runtime contract adds tool-identity observability. Missing tool identity
+    # does not fail closed here — dynamic tool calls are gated separately in
+    # the ReAct path and at the executor boundary (Phase A).
+    _contract = _runtime_contract(request.agent_name or card_name, agent)
+    if _contract is None:
+        logger.debug(f"No runtime contract tools for '{card_name}' — scope checks only")
+
     # ── Canonical MVP agents ──────────────────────────────────────────
     if agent_type == "OrganizationAgent" or registry_key == "organization":
-        docs = [{"id": f"doc_{request.id}", "filename": message}]
+        stable_docs = [{"filename": message}]
         # Organization file moves/renames are consequential — approval-gated per ADR-031
         async def _org_handler(has_approval: bool):
-            result = await agent.execute(docs)
+            result = await agent.execute([{"id": f"doc_{request.id}", "filename": message}])
             # Enrich proposals with approval metadata (human-in-loop)
             try:
                 res = result.get("result", {}) if isinstance(result, dict) else {}
@@ -956,7 +1313,7 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
             except Exception as e:
                 logger.warning(f"Organization approval enrichment failed: {e}")
             return result
-        return _dispatch_with_approval(request, agent, "file_organize", _org_handler)
+        return _dispatch_with_approval(request, agent, "file_organize", _org_handler, payload={"docs": stable_docs})
 
     if agent_type == "ResumeAgent" or registry_key == "resume":
         # Hydrate from AgentContext if available, else keywords
@@ -988,13 +1345,19 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
         match = re.search(r"\b(?:at|for)\s+([A-Z][A-Za-z0-9&]+)", message)
         if match:
             company_name = match.group(1)
-        job = {"id": f"job_{request.id}", "title": message, "company": company_name}
+        stable_job = {"title": message, "company": company_name}
         user_prof = (context.profile if context and hasattr(context, "profile") and isinstance(context.profile, dict) else None) or {"name": "User", "skills": []}
         master_res = (context.master_resume if context and hasattr(context, "master_resume") and isinstance(context.master_resume, dict) else None) or {}
         resume_str = json.dumps(master_res) if master_res else ""
-        return _dispatch_with_approval(request, agent, "job_application", lambda has_approval: agent.prepare(
-            job=job, resume_text=resume_str, user_profile=user_prof, has_approval=has_approval
-        ))
+        return _dispatch_with_approval(
+            request,
+            agent,
+            "job_application",
+            lambda has_approval: agent.prepare(
+                job={"id": f"job_{request.id}", **stable_job}, resume_text=resume_str, user_profile=user_prof, has_approval=has_approval
+            ),
+            payload={"job": stable_job},
+        )
 
     if agent_type in ("GmailAgent", "GmailAgentHandler") or registry_key == "gmail":
         emails = [{"id": f"email_{request.id}", "subject": message, "sender": "unknown", "body": message}]
@@ -1017,12 +1380,16 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
                     except Exception:
                         pass
             return result
-        return _dispatch_with_approval(request, agent, "drive_sync", _drive_handler)
+        return _dispatch_with_approval(request, agent, "drive_sync", _drive_handler, payload={"action": "drive_sync"})
 
     if agent_type == "SchedulerAgent" or registry_key == "scheduler":
-        return _dispatch_with_approval(request, agent, "calendar_write", lambda has_approval: agent.check_conflicts(
-            events=[], has_approval=has_approval
-        ))
+        return _dispatch_with_approval(
+            request,
+            agent,
+            "calendar_write",
+            lambda has_approval: agent.check_conflicts(events=[], has_approval=has_approval),
+            payload={"events": []},
+        )
 
     if agent_type in ("MemoryAgent", "MemoryAgentHandler") or registry_key == "memory":
         return agent.execute(
@@ -1160,16 +1527,20 @@ async def _dispatch_with_approval(
     agent: BaseAgent,
     action_type: str,
     handler,
+    payload: dict | None = None,
 ):
     """Dispatch an agent action that requires approval lookup."""
     approval = await lookup_approval(
         workspace_id=request.workspace_id,
         agent_name=request.agent_name,
         action_type=action_type,
+        payload=payload,
+        consume=True,
+        db=getattr(request, "db", None),
     )
-    has_approval = approval is not None and approval.get("status") == "APPROVED"
+    has_approval = approval is not None and approval.get("status") in ("APPROVED", "CONSUMED")
     if has_approval:
-        logger.info(f"APPROVAL FOUND: {approval['id']} for action {action_type}")
+        logger.info(f"APPROVAL CONSUMED: {approval['id']} for action {action_type}")
     return await handler(has_approval)
 
 
@@ -1375,6 +1746,20 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
                 logger.warning(f"QA REJECTED stream iteration {iteration}: {qa_res.issues} — retrying for self-correction")
                 continue
 
+            if qa_res.decision == "rejected":
+                try:
+                    state.terminate("failed", "qa_failed")
+                except Exception:
+                    pass
+                await save_checkpoint(state)
+                yield {"event": "error", "data": {"status": "failed", "result": "Run failed: output did not pass verification"}}
+                yield {"event": "done", "data": {"status": "failed", "result": "Run failed: output did not pass verification"}}
+                return
+
+            try:
+                state.terminate("success", "success")
+            except Exception:
+                pass
             improve_resp = await improve_phase(state, request)
             # If the winning iteration already streamed REAL LLM tokens (ReAct path),
             # don't re-emit the full text. Static dispatch has no LLM stream →
@@ -1396,23 +1781,205 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
 # ── Main Loop ───────────────────────────────────────────────────────
 
 async def run_agent_loop(request: AgentRequest) -> AgentResponse:
+    """Safety-wired agent loop (Phase B §3-6, §8, §13-15).
+
+    Guarantees over the legacy counter-only loop:
+    - versioned durable state with run identity + provenance manifest
+    - resume: terminal states return the stored outcome without re-execution;
+      completed side effects (idempotency keys) are never blindly replayed
+    - hard per-run budgets (iterations/tools/tokens/cost/duration) even when
+      the workspace daily budget is unlimited
+    - explicit termination reasons (SUCCESS/FAILURE/NO_PROGRESS/CYCLE/
+      TIMEOUT/TOKEN_BUDGET/TOOL_BUDGET/COST_BUDGET/POLICY_STOP/...)
+    - structured-validation failures terminate as qa_failed, never success
+    - trajectory evaluation persisted post-run (non-blocking)
+    """
+    from .loop_safety import LoopSafetyTracker, fingerprint as _fp
+    from .state import DEFAULT_RUN_BUDGETS
+
     logger.info(f"START loop: request={request.id}, agent={request.agent_name}")
     state = await load_or_create_state(request.id)
+    if request.workspace_id and not state.workspace_id:
+        state.workspace_id = str(request.workspace_id)
 
-    for iteration in range(3):
-        logger.info(f"--- Iteration {iteration + 1}/3 ---")
+    # Resume short-circuit: a terminal run must never re-execute side effects.
+    if state.is_terminal and state.termination_reason:
+        logger.info(f"RESUME terminal run {request.id}: {state.status}/{state.termination_reason} — no re-execution")
+        final = "Task completed"
+        for i in range(2, -1, -1):
+            payload = (state.phases.get(f"observe_{i}", {}) or {}).get("payload", {})
+            final = (payload.get("result", {}) or {}).get("summary", final)
+            if final != "Task completed":
+                break
+        return AgentResponse(status=state.status, final_result=final, termination_reason=state.termination_reason)
+
+    # Run identity + budgets (hard per-run ceilings; daily budget is separate).
+    import hashlib as _hl
+    state.run_id = state.run_id or request.id
+    state.agent_id = request.agent_name or state.agent_id
+    try:
+        from .card_registry import get_agent_card as _gac
+        _c = getattr(request.agent, "card", None) or _gac(request.agent_name or "")
+        if _c is not None:
+            state.agent_version = getattr(_c, "version", state.agent_version) or state.agent_version
+    except Exception:
+        pass
+    state.goal_fingerprint = _fp(request.message)
+    try:
+        def _num(name: str, default: float) -> float:
+            try:
+                val = getattr(settings, name, None)
+            except Exception:
+                val = None
+            if val is None:
+                return default
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                return default
+
+        run_budgets = {
+            "max_iterations": _num("agent_max_iterations_per_run", 3),
+            "max_tool_calls": _num("agent_max_tool_calls_per_run", 12),
+            "max_tokens": _num("agent_max_tokens_per_run", 12000),
+            "max_cost_usd": _num("agent_max_cost_per_run_usd", 0.50),
+            "max_duration_s": _num("agent_max_duration_s", 120.0),
+        }
+    except Exception:
+        run_budgets = dict(DEFAULT_RUN_BUDGETS)
+    state.budgets = {**dict(DEFAULT_RUN_BUDGETS), **run_budgets}
+    max_iters = max(1, int(state.budgets.get("max_iterations", 3)))
+
+    tracker = LoopSafetyTracker(
+        max_iterations=max_iters,
+        max_tool_calls=int(state.budgets.get("max_tool_calls", 12)),
+        max_tokens=int(state.budgets.get("max_tokens", 12000)),
+        max_cost_usd=float(state.budgets.get("max_cost_usd", 0.50)),
+        max_duration_s=float(state.budgets.get("max_duration_s", 120.0)),
+    )
+    # Restore tracker progress on resume (counts survive restarts via phases).
+    try:
+        _saved = state.phases.get("safety_tracker", {}) or {}
+        tracker.tool_calls = int(_saved.get("tool_calls", 0))
+        tracker.tokens_used = int(_saved.get("tokens_used", 0))
+        tracker.cost_usd = float(_saved.get("cost_usd", 0.0))
+        tracker.tool_fingerprints = list(_saved.get("tool_fingerprints", []))
+        tracker.observation_fingerprints = list(_saved.get("observation_fingerprints", []))
+        tracker.plan_fingerprints = list(_saved.get("plan_fingerprints", []))
+    except Exception:
+        pass
+    start_iter = int(state.iteration or 0)
+    if start_iter >= max_iters and not state.is_terminal:
+        state.terminate("escalated", "max_iterations")
+        await save_checkpoint(state)
+        return AgentResponse(status=state.status, final_result="max retries exceeded",
+                             termination_reason=state.termination_reason)
+
+    for iteration in range(start_iter, max_iters):
+        logger.info(f"--- Iteration {iteration + 1}/{max_iters} ---")
+        state.iteration = iteration
+
+        # Budget gate before new work (TOKEN/COST/TIMEOUT/TOOL budgets).
+        _budget_hit = tracker.check_budgets()
+        if _budget_hit in ("tool_budget", "token_budget", "cost_budget", "timeout"):
+            state.terminate("failed", _budget_hit)
+            state.add_phase(f"terminated_{iteration}", {"reason": _budget_hit, "safety": tracker.snapshot()})
+            await save_checkpoint(state)
+            return AgentResponse(status=state.status,
+                                 final_result=f"Run stopped: {_budget_hit} budget exhausted",
+                                 termination_reason=state.termination_reason)
 
         plan = await plan_phase(request, state)
+        plan_fp = tracker.record_plan({"message": plan.get("message", ""), "agent": plan.get("agent_type", "")})
+        state.plan_fingerprint = plan_fp
+        # Context provenance: retrieval ids + fingerprint persisted (ids, not content).
+        try:
+            _rag = plan.get("rag_context", {}) or {}
+            _ids = ([e.get("id") for e in _rag.get("entities", []) if e.get("id")]
+                    + [d.get("id") for d in _rag.get("documents", []) if d.get("id")])
+            state.retrieval_ids = _ids[:16]
+            tracker.record_retrieval(state.retrieval_ids)
+            try:
+                from ..services.context_engine import context_fingerprint as _cf, ContextItem as _CI
+                _items = [_CI(kind="memory", content=e.get("name", ""), provenance=f"ws:{state.workspace_id}:{e.get('id','')}")
+                          for e in _rag.get("entities", [])[:8]]
+                state.context_fingerprint = _cf(_items) if _items else ""
+            except Exception:
+                state.context_fingerprint = _fp(state.retrieval_ids)
+            # ContextEngine manifest persisted verbatim (ids/fingerprints only).
+            try:
+                _cm = _rag.get("context_manifest")
+                if isinstance(_cm, dict):
+                    state.add_phase(f"context_manifest_{iteration}", _cm)
+            except Exception:
+                pass
+            # Prompt manifest: compiler version + prompt version recorded for provenance.
+            try:
+                from ..services.prompt_compiler import COMPILER_VERSION as _cv
+                state.compiler_version = _cv
+            except Exception:
+                pass
+            try:
+                from .card_registry import get_agent_card as _gac2
+                _c2 = getattr(request.agent, "card", None) or _gac2(request.agent_name or "")
+                if _c2 is not None:
+                    state.prompt_version = f"card:{getattr(_c2, 'name', '')}@{getattr(_c2, 'version', '')}"
+            except Exception:
+                pass
+        except Exception:
+            pass
         state.add_phase(f"plan_{iteration}", plan)
         await save_checkpoint(state)
 
         act_result = await act_phase(plan, request)
+        # Record tool/observation fingerprints for cycle + progress detection.
+        try:
+            for _tc in (act_result.get("tool_calls") or []):
+                _fn = (_tc.get("function", {}) or {})
+                tracker.record_tool(f"{_fn.get('name','')}:{_fp(_fn.get('arguments', {}))}")
+        except Exception:
+            pass
+        # Completed side effects enter durable state (resume never replays them blindly).
+        try:
+            _res = act_result.get("result", {}) if isinstance(act_result, dict) else {}
+            for _p in (_res.get("proposals", []) or []):
+                if isinstance(_p, dict) and _p.get("idem_key"):
+                    state.record_tool_call(str(_p.get("tool", act_result.get("agent_name", ""))), str(_p["idem_key"]), "proposed")
+        except Exception:
+            pass
         state.add_phase(f"act_{iteration}", act_result)
         await save_checkpoint(state)
 
         observe_result = await observe_phase(act_result)
+        obs_fp = tracker.record_observation(observe_result.get("observation", ""))
+        state.record_observation(observe_result.get("observation", ""))
         state.add_phase(f"observe_{iteration}", observe_result)
         await save_checkpoint(state)
+        state.add_phase("safety_tracker", {
+            "tool_calls": tracker.tool_calls, "tokens_used": tracker.tokens_used,
+            "cost_usd": tracker.cost_usd, "tool_fingerprints": tracker.tool_fingerprints[-12:],
+            "observation_fingerprints": tracker.observation_fingerprints[-12:],
+            "plan_fingerprints": tracker.plan_fingerprints[-12:],
+        })
+        await save_checkpoint(state)
+
+        # Cycle + no-progress detection (explicit termination, observable).
+        if tracker.detect_cycle() == "cycle_detected":
+            state.terminate("failed", "cycle_detected")
+            state.add_phase(f"terminated_{iteration}", {"reason": "cycle_detected", "safety": tracker.snapshot()})
+            await save_checkpoint(state)
+            logger.warning(f"CYCLE detected run={request.id} iter={iteration} — terminating")
+            return AgentResponse(status=state.status,
+                                 final_result="Run stopped: repeated action cycle detected with no progress",
+                                 termination_reason=state.termination_reason)
+        if tracker.detect_no_progress(len(state.completed_tool_calls)) == "no_progress":
+            state.terminate("failed", "no_progress")
+            state.add_phase(f"terminated_{iteration}", {"reason": "no_progress", "safety": tracker.snapshot()})
+            await save_checkpoint(state)
+            logger.warning(f"NO-PROGRESS run={request.id} iter={iteration} — terminating")
+            return AgentResponse(status=state.status,
+                                 final_result="Run stopped: no progress across iterations",
+                                 termination_reason=state.termination_reason)
 
         reflect_result = await reflect_phase(request, observe_result, iteration)
         state.add_phase(f"reflect_{iteration}", {
@@ -1430,10 +1997,52 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
             state.add_phase(f"qa_{iteration}", {"decision": qa_res.decision, "issues": qa_res.issues})
             await save_checkpoint(state)
 
-            if qa_res.decision == "rejected" and iteration < 2:
+            if qa_res.decision == "rejected" and iteration < max_iters - 1:
                 logger.warning(f"QA REJECTED loop iteration {iteration}: {qa_res.issues} — retrying for self-correction")
                 continue
 
-            return await improve_phase(state, request)
+            if qa_res.decision == "rejected":
+                # Validation failure is explicit — never reported as success.
+                state.terminate("failed", "qa_failed")
+                state.add_phase(f"terminated_{iteration}", {"reason": "qa_failed", "issues": qa_res.issues})
+                await save_checkpoint(state)
+                _eval_fail(state, request)
+                return AgentResponse(status=state.status,
+                                     final_result="Run failed: output did not pass verification",
+                                     termination_reason=state.termination_reason)
 
+            state.terminate("success", "success")
+            resp = await improve_phase(state, request)
+            await save_checkpoint(state)
+            _eval_ok(state, request, resp)
+            resp.termination_reason = state.termination_reason
+            return resp
+
+    state.terminate("escalated", "max_iterations")
+    await save_checkpoint(state)
     return await escalate_to_user(state)
+
+
+def _eval_ok(state, request, resp=None) -> None:
+    """Persist trajectory evaluation post-run (non-blocking, Phase B §15)."""
+    try:
+        from ..services.trajectory_eval import evaluate_trajectory
+        result = evaluate_trajectory(state.to_dict())
+        state.add_phase("trajectory_eval", result)
+        import asyncio as _aio
+        try:
+            loop = _aio.get_running_loop()
+            loop.create_task(save_checkpoint(state))
+        except RuntimeError:
+            pass
+    except Exception as exc:
+        logger.debug(f"Trajectory eval skipped: {exc}")
+
+
+def _eval_fail(state, request) -> None:
+    try:
+        from ..services.trajectory_eval import evaluate_trajectory
+        result = evaluate_trajectory(state.to_dict())
+        state.add_phase("trajectory_eval", result)
+    except Exception as exc:
+        logger.debug(f"Trajectory eval skipped: {exc}")

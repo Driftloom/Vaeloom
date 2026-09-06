@@ -40,7 +40,8 @@ class VaeloomGraphState(TypedDict, total=False):
     selected_tool: str | None
     execution_status: Literal[
         "planning", "routing", "retrieving", "executing_tool",
-        "waiting_approval", "finalizing", "completed", "failed", "cancelled"
+        "waiting_approval", "finalizing", "completed", "failed", "cancelled",
+        "needs_replan",
     ]
     approval_state: dict[str, Any] | None  # {approval_id, status, decision}
     interrupt_state: dict[str, Any] | None
@@ -64,6 +65,7 @@ class VaeloomGraphState(TypedDict, total=False):
 
 # Limits
 MAX_FANOUT_BRANCHES = 8  # §14 fan-out bound, shared with Send fan-out (F-02)
+MAX_GRAPH_REPLANS = 2  # Phase B §7: bounded replan edge (evaluate -> agent)
 MAX_BRANCH_RESULT_BYTES = 4096
 MAX_FANOUT_TASK_BYTES = 2048
 MAX_MESSAGES = 20
@@ -184,7 +186,8 @@ def validate_graph_state(state: dict[str, Any]) -> None:
     status = state.get("execution_status")
     if status and status not in {
         "planning", "routing", "retrieving", "executing_tool",
-        "waiting_approval", "finalizing", "completed", "failed", "cancelled"
+        "waiting_approval", "finalizing", "completed", "failed", "cancelled",
+        "needs_replan",
     }:
         raise ValueError(f"unknown execution_status '{status}'")
 

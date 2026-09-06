@@ -635,12 +635,42 @@ class LoopCheckpoint(Base):
     request_id: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     workspace_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     state_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    state_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
         Index("idx_loop_checkpoints_workspace_id", "workspace_id"),
         Index("idx_loop_checkpoints_request_id", "request_id"),
+    )
+
+
+class ToolIdempotency(Base):
+    """Durable side-effect idempotency for consequential tool calls (Phase B).
+
+    One row per (workspace_id, idem_key). The UNIQUE constraint is the
+    correctness mechanism: concurrent duplicate executions race on INSERT and
+    exactly one wins; losers read the winner's stored result instead of
+    re-executing the side effect. Survives process restarts (unlike the
+    executor's in-memory LRU, which remains as a fast-path cache only).
+    """
+
+    __tablename__ = "tool_idempotency"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    idem_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    agent_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    request_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="success")
+    result_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "idem_key", name="uq_tool_idempotency_ws_key"),
+        Index("idx_tool_idempotency_ws_tool", "workspace_id", "tool_name"),
     )
 
 

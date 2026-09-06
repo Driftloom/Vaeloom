@@ -27,6 +27,7 @@ TOOL_RISK: dict[str, ToolRisk] = {
     "search_documents": "SEARCH", "query_graph": "SEARCH", "get_entity": "READ",
     "search_gmail": "SEARCH", "search_jobs": "SEARCH", "list_calendar_events": "READ",
     "list_drive_files": "READ", "search_drive": "SEARCH",
+    "read_google_doc": "READ", "create_google_doc": "WRITE", "append_google_doc": "WRITE", "replace_google_doc_text": "WRITE",
     "create_entity": "WRITE", "merge_entities": "WRITE", "categorize_document": "WRITE",
     "draft_outlook_mail": "WRITE", "draft_email": "WRITE",
     "create_calendar_event": "ACT", "create_outlook_calendar_event": "ACT",

@@ -643,7 +643,9 @@ async def evaluate_node(state: dict[str, Any]) -> dict[str, Any]:
         pass
 
     if replan:
-        return {"execution_status": "failed", "evaluation": eval_res, "metadata": {**state.get("metadata", {}), "node": "evaluate", "attempt": attempt + 1}}
+        # Genuine replan signal: stay out of finalize so the router can send
+        # the run back to the agent node with an incremented attempt budget.
+        return {"execution_status": "needs_replan", "evaluation": eval_res, "metadata": {**state.get("metadata", {}), "node": "evaluate", "attempt": attempt + 1}}
     if has_result:
         return {"execution_status": "completed", "evaluation": eval_res, "metadata": {**state.get("metadata", {}), "node": "evaluate"}}
     return {"execution_status": "failed", "evaluation": eval_res, "metadata": {**state.get("metadata", {}), "node": "evaluate"}}

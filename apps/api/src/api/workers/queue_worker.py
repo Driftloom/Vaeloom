@@ -213,8 +213,14 @@ class BullMQWorker:
 # ── Wiring ─────────────────────────────────────────────────────────────────────
 
 
-async def handle_event_publish(data: dict[str, Any]) -> dict[str, Any]:
+async def handle_event_publish(data: dict[str, Any], db: Any = None) -> dict[str, Any]:
     """Handle 'event.publish' jobs from the API events queue."""
+    from api.database import async_session_factory
+    from api.infrastructure.background_envelope import (
+        BackgroundSecurityError,
+        verify_background_envelope,
+    )
+    from api.middleware.tenant import TenantContext, check_user_workspace_access
     from api.orchestrator.router import UserRequest, handle
 
     event_type = data.get("type", "unknown")
@@ -223,13 +229,47 @@ async def handle_event_publish(data: dict[str, Any]) -> dict[str, Any]:
     logger.info("Event publish: type=%s tenant=%s", event_type, data.get("tenantId"))
 
     if event_type == "agent.execute":
-        request = UserRequest(
-            request_id=str(uuid.uuid4()),
-            message=payload.get("message", ""),
-            workspace_id=payload.get("workspaceId", "default"),
-        )
-        result = await handle(request)
-        return {"status": "processed", "agent_result": result}
+        # ZERO-TRUST SECURITY ENVELOPE VERIFICATION
+        envelope = data.get("envelope") or payload.get("envelope")
+        if not envelope:
+            raise BackgroundSecurityError("Missing required background security envelope for agent.execute")
+
+        valid, reason, verified = verify_background_envelope(envelope)
+        if not valid or not verified:
+            raise BackgroundSecurityError(f"Security envelope validation failed: {reason}")
+
+        target_ws = str(payload.get("workspaceId") or verified.get("workspace_id"))
+        if target_ws != str(verified.get("workspace_id")):
+            raise BackgroundSecurityError(
+                f"Envelope workspace_id ({verified.get('workspace_id')}) does not match payload workspaceId ({target_ws})"
+            )
+
+        tenant_id = str(verified.get("tenant_id"))
+        workspace_id = str(verified.get("workspace_id"))
+        user_id = str(verified.get("user_id"))
+
+        # Authoritative database workspace access check
+        if db is not None:
+            has_access = await check_user_workspace_access(db, workspace_id, user_id, tenant_id)
+        else:
+            async with async_session_factory() as session:
+                has_access = await check_user_workspace_access(session, workspace_id, user_id, tenant_id)
+        if not has_access:
+            raise BackgroundSecurityError(
+                f"User {user_id} is not authorized to access workspace {workspace_id}"
+            )
+
+        TenantContext.set(tenant_id, workspace_id, user_id)
+        try:
+            request = UserRequest(
+                request_id=str(uuid.uuid4()),
+                message=payload.get("message", ""),
+                workspace_id=workspace_id,
+            )
+            result = await handle(request)
+            return {"status": "processed", "agent_result": result}
+        finally:
+            TenantContext.clear()
 
     return {"status": "acknowledged", "event_type": event_type}
 
@@ -249,19 +289,49 @@ async def handle_schedule_agent_run(data: dict[str, Any]) -> dict[str, Any]:
     Raises on failure so BullMQWorker retries with backoff.
     """
     from api.infrastructure.background_daemon import execute_agent_schedule_job
+    from api.infrastructure.background_envelope import (
+        BackgroundSecurityError,
+        verify_background_envelope,
+    )
+    from api.middleware.tenant import TenantContext
 
     schedule_id = data.get("schedule_id", "")
     agent_id = data.get("agent_id", "")
     if not schedule_id or not agent_id:
         return {"status": "skipped", "reason": "missing schedule_id/agent_id"}
 
-    result = await execute_agent_schedule_job(schedule_id, agent_id, data.get("input") or {})
-    if result.get("status") == "failed":
-        raise RuntimeError(result.get("error") or f"agent schedule {schedule_id} execution failed")
-    logger.info(
-        "schedule.agent_run %s done (catchup=%s)", schedule_id, bool(data.get("catchup"))
-    )
-    return result
+    # ZERO-TRUST SECURITY ENVELOPE VERIFICATION
+    envelope = data.get("envelope")
+    if not envelope:
+        raise BackgroundSecurityError("Missing required security envelope for schedule.agent_run")
+
+    valid, reason, verified = verify_background_envelope(envelope)
+    if not valid or not verified:
+        raise BackgroundSecurityError(f"Security envelope validation failed: {reason}")
+
+    if verified.get("action") != "schedule.agent_run":
+        raise BackgroundSecurityError(f"Envelope action ({verified.get('action')}) does not match schedule.agent_run")
+
+    if str(verified.get("agent_id")) != str(agent_id):
+        raise BackgroundSecurityError(
+            f"Envelope agent_id ({verified.get('agent_id')}) does not match job agent_id ({agent_id})"
+        )
+
+    tenant_id = str(verified.get("tenant_id"))
+    workspace_id = str(verified.get("workspace_id"))
+    user_id = str(verified.get("user_id"))
+
+    TenantContext.set(tenant_id, workspace_id, user_id)
+    try:
+        result = await execute_agent_schedule_job(schedule_id, agent_id, data.get("input") or {}, envelope=verified)
+        if result.get("status") == "failed":
+            raise RuntimeError(result.get("error") or f"agent schedule {schedule_id} execution failed")
+        logger.info(
+            "schedule.agent_run %s done (catchup=%s)", schedule_id, bool(data.get("catchup"))
+        )
+        return result
+    finally:
+        TenantContext.clear()
 
 
 async def handle_schedule_job_run(data: dict[str, Any]) -> dict[str, Any]:

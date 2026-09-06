@@ -62,7 +62,11 @@ class TestIdempotency:
 
     async def test_non_consequential_path_ignores_key(self, client: AsyncClient):
         headers = await self._auth_header(client)
-        headers_with_key = {**headers, "Idempotency-Key": "key-3"}
+        # Phase A requires an authoritative workspace for memory writes.
+        ws_res = await client.get("/api/v1/workspaces", headers=headers)
+        assert ws_res.status_code == 200
+        workspace_id = ws_res.json()[0]["id"]
+        headers_with_key = {**headers, "Idempotency-Key": "key-3", "X-Workspace-ID": workspace_id}
         payload = {"type": "note", "title": "No Idempotency"}
 
         first = await client.post("/api/v1/memories", json=payload, headers=headers_with_key)
