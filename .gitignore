@@ -113,6 +113,7 @@ blob-report/
 .vaeloom/
 tmp/
 temp/
+scratch/
 
 # Graphify knowledge graph — ALL outputs (build artifacts, cache, exports, temp files)
 graphify-out/
