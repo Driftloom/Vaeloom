@@ -31,7 +31,12 @@ target_metadata = Base.metadata
 
 
 def get_database_url() -> str:
-    url = os.environ.get("DATABASE__URL") or os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+    url = (
+        os.environ.get("VAELOOM_TARGET_URL")
+        or os.environ.get("DATABASE_URL")
+        or os.environ.get("DATABASE__URL")
+        or config.get_main_option("sqlalchemy.url")
+    )
     if url and url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
     if url and "sslmode=" in url:
@@ -60,6 +65,7 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     db_url = get_database_url()
+    print(f"ALEMBIC CONNECTING TO: {db_url}")
     if db_url:
         configuration["sqlalchemy.url"] = db_url
     connect_args = {}

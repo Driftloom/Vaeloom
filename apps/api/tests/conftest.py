@@ -100,12 +100,13 @@ def _build_test_app(db_session):
     test_app = FastAPI()
 
     test_app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-    test_app.add_middleware(AuthMiddleware)
-    # Mirror production middleware stack so workspace scoping (X-Workspace-ID / path
-    # param -> request.state.workspace_id) is exercised by API-level isolation tests.
+    # Mirror production middleware stack: Tenant inner, Auth outer (Auth runs first to populate user/tenant)
     from api.middleware.tenant import TenantMiddleware
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
-    test_app.add_middleware(TenantMiddleware)
+    test_session_factory = async_sessionmaker(db_session.bind, expire_on_commit=False)
+    test_app.add_middleware(TenantMiddleware, session_factory=test_session_factory)
+    test_app.add_middleware(AuthMiddleware)
     test_app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
     test_app.add_exception_handler(Exception, generic_exception_handler)
 
@@ -280,7 +281,7 @@ async def mock_connector_test(monkeypatch):
     """Mock connector test_connection — no real HTTP calls."""
     from api.services.connector_ext_service import ConnectorExtService
 
-    async def fake_test_connection(self, connector_id, tenant_id=None, db=None):
+    async def fake_test_connection(self, connector_id, tenant_id=None, db=None, **kwargs):
         return {"status": "ok", "code": 200}
 
     monkeypatch.setattr(ConnectorExtService, "test_connection", fake_test_connection)

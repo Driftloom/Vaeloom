@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
-from ..models.schema import AgentAction, Memory
+from ..models.schema import AgentAction, Memory, Workspace, WorkspaceUser
 from ..schemas.memory import (
     MemoryCreate,
     MemoryQuery,
@@ -18,6 +18,28 @@ from ..schemas.memory import (
 from ..services.memory_service import memory_service
 
 router = APIRouter()
+
+
+async def check_user_workspace_access(
+    db: AsyncSession, user_id: str, workspace_id: str | uuid.UUID
+) -> bool:
+    """Validate that the user owns or is an active member of the specified workspace."""
+    try:
+        uid = uuid.UUID(str(user_id))
+        wid = uuid.UUID(str(workspace_id))
+    except (ValueError, TypeError):
+        return False
+    r1 = await db.execute(
+        select(Workspace.id).where(Workspace.id == wid, Workspace.user_id == uid)
+    )
+    if r1.scalar_one_or_none() is not None:
+        return True
+    r2 = await db.execute(
+        select(WorkspaceUser.id).where(
+            WorkspaceUser.workspace_id == wid, WorkspaceUser.user_id == uid
+        )
+    )
+    return r2.scalar_one_or_none() is not None
 
 
 @router.get("", response_model=dict)
@@ -54,6 +76,15 @@ async def get_agentic_feed(
     """
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    if workspace_id and user_id:
+        has_access = await check_user_workspace_access(db, user_id, workspace_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
 
     # Fetch memories for workspace
     mem_query = MemoryQuery(workspace_id=workspace_id, status="all", page=page, page_size=page_size)
@@ -170,9 +201,23 @@ async def get_memory_lineage(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    memory = await memory_service.get_memory(db, memory_id, tenant_id, workspace_id)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    memory = await memory_service.get_memory(db, memory_id, tenant_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
+
+    if memory.workspace_id and user_id:
+        has_access = await check_user_workspace_access(db, user_id, memory.workspace_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
+    if workspace_id and str(memory.workspace_id) != str(workspace_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: Memory does not belong to specified workspace",
+        )
 
     # Walk supersession chain backwards (resolve supersedes_id chain)
     chain_backward: list[dict] = []
@@ -254,11 +299,33 @@ async def create_memory(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    user_id = current_user.get("sub") or current_user.get("user_id")
-    memory = await memory_service.create_memory(db, dto, tenant_id, user_id)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+
+    # Authoritative workspace validation:
+    # 1. If auth context workspace_id exists and client DTO specifies a different one -> 403
+    if workspace_id and dto.workspace_id and str(dto.workspace_id) != str(workspace_id):
+        raise HTTPException(status_code=403, detail="Forbidden: Mismatched workspace ID")
+
+    target_ws = workspace_id or (str(dto.workspace_id) if dto.workspace_id else None)
+    if not target_ws:
+        raise HTTPException(
+            status_code=400,
+            detail="Workspace ID is required to create a memory. Workspace ownership is mandatory.",
+        )
+    if user_id:
+        has_access = await check_user_workspace_access(db, user_id, target_ws)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
+
+    target_ws_uuid = uuid.UUID(str(target_ws))
+    memory = await memory_service.create_memory(db, dto, tenant_id, user_id, workspace_id=target_ws_uuid)
     return MemoryResponse.model_validate(memory)
 
 
@@ -272,9 +339,22 @@ async def get_memory(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    memory = await memory_service.get_memory(db, memory_id, tenant_id, workspace_id)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    memory = await memory_service.get_memory(db, memory_id, tenant_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
+    if memory.workspace_id and user_id:
+        has_access = await check_user_workspace_access(db, user_id, memory.workspace_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
+    if workspace_id and str(memory.workspace_id) != str(workspace_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: Memory does not belong to specified workspace",
+        )
     return MemoryResponse.model_validate(memory)
 
 
@@ -289,10 +369,26 @@ async def update_memory(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    memory = await memory_service.update_memory(db, memory_id, dto, tenant_id, workspace_id)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    memory = await memory_service.get_memory(db, memory_id, tenant_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
-    return MemoryResponse.model_validate(memory)
+    if memory.workspace_id and user_id:
+        has_access = await check_user_workspace_access(db, user_id, memory.workspace_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
+    if workspace_id and str(memory.workspace_id) != str(workspace_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: Memory does not belong to specified workspace",
+        )
+    updated = await memory_service.update_memory(db, memory_id, dto, tenant_id, str(memory.workspace_id))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    return MemoryResponse.model_validate(updated)
 
 
 @router.delete("/{memory_id}", status_code=204)
@@ -305,7 +401,23 @@ async def delete_memory(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    deleted = await memory_service.delete_memory(db, memory_id, tenant_id, workspace_id)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    memory = await memory_service.get_memory(db, memory_id, tenant_id)
+    if not memory:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    if memory.workspace_id and user_id:
+        has_access = await check_user_workspace_access(db, user_id, memory.workspace_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
+    if workspace_id and str(memory.workspace_id) != str(workspace_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: Memory does not belong to specified workspace",
+        )
+    deleted = await memory_service.delete_memory(db, memory_id, tenant_id, str(memory.workspace_id))
     if not deleted:
         raise HTTPException(status_code=404, detail="Memory not found")
 
@@ -321,9 +433,22 @@ async def get_memory_history(
     """DB-backed version history for a memory — EXC-P12-03 durable history."""
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    memory = await memory_service.get_memory(db, memory_id, tenant_id, workspace_id)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    memory = await memory_service.get_memory(db, memory_id, tenant_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
+    if memory.workspace_id and user_id:
+        has_access = await check_user_workspace_access(db, user_id, memory.workspace_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
+    if workspace_id and str(memory.workspace_id) != str(workspace_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: Memory does not belong to specified workspace",
+        )
     try:
         from ..services.memory_versioning import get_history_db
 
@@ -357,9 +482,22 @@ async def get_memory_chunks(
     """Chunk-level provenance for a memory's source document — obsidian chunk view."""
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    memory = await memory_service.get_memory(db, memory_id, tenant_id, workspace_id)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    memory = await memory_service.get_memory(db, memory_id, tenant_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
+    if memory.workspace_id and user_id:
+        has_access = await check_user_workspace_access(db, user_id, memory.workspace_id)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
+    if workspace_id and str(memory.workspace_id) != str(workspace_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: Memory does not belong to specified workspace",
+        )
     if not memory.source_uri:
         return {"memory_id": str(memory_id), "chunks": [], "total": 0}
     try:
@@ -401,7 +539,16 @@ async def search_memories(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    results = await memory_service.search_memories(db, dto, tenant_id, workspace_id)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    target_ws = workspace_id or (str(dto.workspace_id) if getattr(dto, "workspace_id", None) else None)
+    if target_ws and user_id:
+        has_access = await check_user_workspace_access(db, user_id, target_ws)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
+    results = await memory_service.search_memories(db, dto, tenant_id, target_ws)
     return [
         MemorySearchResult(memory=MemoryResponse.model_validate(mem), score=score)
         for mem, score in results

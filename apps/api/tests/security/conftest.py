@@ -325,7 +325,7 @@ async def mock_llm(monkeypatch):
 async def mock_connector_test(monkeypatch):
     from api.services.connector_ext_service import ConnectorExtService
 
-    async def fake_test_connection(self, connector_id, tenant_id=None, db=None):
+    async def fake_test_connection(self, connector_id, tenant_id=None, db=None, **kwargs):
         return {"status": "ok", "code": 200}
 
     monkeypatch.setattr(ConnectorExtService, "test_connection", fake_test_connection)

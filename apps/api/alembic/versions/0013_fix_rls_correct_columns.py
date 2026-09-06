@@ -153,10 +153,11 @@ def upgrade() -> None:
         if op.get_bind().dialect.has_table(op.get_bind(), table):
             _create_tenant_only(table)
 
-    # Step 3: Ensure FORCE RLS on all policy-bearing tables (prevents table-owner bypass)
+    # Step 3: Ensure ENABLE and FORCE RLS on all policy-bearing tables (prevents table-owner bypass)
     all_rls_tables = COMPOSITE + WORKSPACE_ONLY + TENANT_ONLY
     for table in all_rls_tables:
         if op.get_bind().dialect.has_table(op.get_bind(), table):
+            op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
             op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
 
 

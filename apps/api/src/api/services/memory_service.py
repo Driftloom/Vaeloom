@@ -26,8 +26,19 @@ def _to_uuid(value: str | uuid.UUID | None) -> uuid.UUID | None:
 
 class MemoryService:
     async def create_memory(
-        self, db: AsyncSession, dto: MemoryCreate, tenant_id: str | None, user_id: str | None
+        self,
+        db: AsyncSession,
+        dto: MemoryCreate,
+        tenant_id: str | None,
+        user_id: str | None,
+        workspace_id: uuid.UUID | str | None = None,
     ) -> Memory:
+        resolved_ws_id = workspace_id or dto.workspace_id
+        if resolved_ws_id and isinstance(resolved_ws_id, str):
+            try:
+                resolved_ws_id = uuid.UUID(resolved_ws_id)
+            except (ValueError, TypeError):
+                pass
         content_for_embedding = dto.content or dto.title or dto.summary or ""
         embedding = None
         if content_for_embedding.strip():
@@ -35,7 +46,7 @@ class MemoryService:
                 embedding = await llm_service.generate_embedding(
                     content_for_embedding,
                     user_id=user_id,
-                    workspace_id=str(dto.workspace_id) if dto.workspace_id else None,
+                    workspace_id=str(resolved_ws_id) if resolved_ws_id else None,
                     db=db,
                 )
             except LLMProviderError:
@@ -47,7 +58,7 @@ class MemoryService:
         # Lineage: model/prompt/tool/retrieval per CONT-P12-R06 (stored via 0027 lineage JSONB)
         lineage = (dto.metadata or {}).get("lineage") if dto.metadata else None
         if lineage is None:
-            lineage = {"model": getattr(dto, "model", None) or "unknown", "taxonomy_version": taxonomy_version, "workspace_id": str(dto.workspace_id) if dto.workspace_id else None}
+            lineage = {"model": getattr(dto, "model", None) or "unknown", "taxonomy_version": taxonomy_version, "workspace_id": str(resolved_ws_id) if resolved_ws_id else None}
         memory = Memory(
             id=uuid.uuid4(),
             type=dto.type,
@@ -62,7 +73,7 @@ class MemoryService:
             tags=dto.tags,
             tenant_id=tenant_id,
             user_id=user_id,
-            workspace_id=dto.workspace_id,
+            workspace_id=resolved_ws_id,
             source_type=dto.source_type,
             source_uri=dto.source_uri,
             source_label=dto.source_label,

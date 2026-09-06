@@ -1,9 +1,10 @@
+import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import String, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.schema import Entity, Memory, MemoryRecord
+from ..models.schema import Entity, Memory, MemoryRecord, User, Workspace
 
 
 def _extract_facets(results: list[dict]) -> dict:
@@ -98,9 +99,28 @@ class SearchService:
         offset: int = 0,
         db: AsyncSession = None,
         filters: dict | None = None,
+        workspace_id: str | None = None,
     ):
         pattern = f"%{query}%"
         results = []
+
+        ws_uuid = None
+        if workspace_id:
+            try:
+                ws_uuid = uuid.UUID(str(workspace_id))
+            except (ValueError, TypeError):
+                ws_uuid = workspace_id
+
+        tid_uuid = None
+        if tenant_id:
+            try:
+                tid_uuid = uuid.UUID(str(tenant_id))
+            except (ValueError, TypeError):
+                tid_uuid = tenant_id
+
+        # Fail closed if no authoritative security context is provided (P0 Search Fail-Closed)
+        if not ws_uuid and not tid_uuid:
+            return {"results": [], "total": 0, "facet_counts": {}, "provenance_required": True}
 
         if not sources or "memory" in sources:
             memory_stmt = select(Memory).where(
@@ -110,8 +130,10 @@ class SearchService:
                     Memory.content.ilike(pattern),
                 )
             )
-            if tenant_id:
-                memory_stmt = memory_stmt.where(Memory.tenant_id == tenant_id)
+            if ws_uuid:
+                memory_stmt = memory_stmt.where(Memory.workspace_id == ws_uuid)
+            if tid_uuid:
+                memory_stmt = memory_stmt.where(Memory.tenant_id == tid_uuid)
             memory_result = await db.execute(memory_stmt)
             for mem in memory_result.scalars().all():
                 score = 2.0 if query.lower() in mem.title.lower() else 1.0
@@ -135,13 +157,26 @@ class SearchService:
             record_stmt = select(MemoryRecord).where(
                 cast(MemoryRecord.content, String).ilike(pattern)
             )
-            # F-22 fix: tenant-scoped — RLS is primary, this is defense-in-depth
-            if tenant_id:
-                record_stmt = record_stmt.where(MemoryRecord.workspace_id.isnot(None))
+            if ws_uuid:
+                record_stmt = record_stmt.where(MemoryRecord.workspace_id == ws_uuid)
+                if tid_uuid:
+                    ws_subquery = (
+                        select(Workspace.id)
+                        .join(User, Workspace.user_id == User.id)
+                        .where(User.tenant_id == tid_uuid)
+                    )
+                    record_stmt = record_stmt.where(MemoryRecord.workspace_id.in_(ws_subquery))
+            elif tid_uuid:
+                ws_subquery = (
+                    select(Workspace.id)
+                    .join(User, Workspace.user_id == User.id)
+                    .where(User.tenant_id == tid_uuid)
+                )
+                record_stmt = record_stmt.where(MemoryRecord.workspace_id.in_(ws_subquery))
             record_result = await db.execute(record_stmt)
             recs = record_result.scalars().all()
-            if tenant_id:
-                recs = [r for r in recs if getattr(r, "workspace_id", None) is not None]
+            if ws_uuid:
+                recs = [r for r in recs if getattr(r, "workspace_id", None) == ws_uuid]
             for rec in recs:
                 rec_created = getattr(rec, "created_at", None)
                 results.append({
@@ -164,12 +199,26 @@ class SearchService:
                     cast(Entity.aliases, String).ilike(pattern),
                 )
             )
-            if tenant_id:
-                entity_stmt = entity_stmt.where(Entity.workspace_id.isnot(None))
+            if ws_uuid:
+                entity_stmt = entity_stmt.where(Entity.workspace_id == ws_uuid)
+                if tid_uuid:
+                    ws_subquery = (
+                        select(Workspace.id)
+                        .join(User, Workspace.user_id == User.id)
+                        .where(User.tenant_id == tid_uuid)
+                    )
+                    entity_stmt = entity_stmt.where(Entity.workspace_id.in_(ws_subquery))
+            elif tid_uuid:
+                ws_subquery = (
+                    select(Workspace.id)
+                    .join(User, Workspace.user_id == User.id)
+                    .where(User.tenant_id == tid_uuid)
+                )
+                entity_stmt = entity_stmt.where(Entity.workspace_id.in_(ws_subquery))
             entity_result = await db.execute(entity_stmt)
             ents = entity_result.scalars().all()
-            if tenant_id:
-                ents = [e for e in ents if getattr(e, "workspace_id", None) is not None]
+            if ws_uuid:
+                ents = [e for e in ents if getattr(e, "workspace_id", None) == ws_uuid]
             for ent in ents:
                 score = 2.0 if query.lower() in ent.canonical_name.lower() else 1.5
                 ent_created = getattr(ent, "created_at", None)

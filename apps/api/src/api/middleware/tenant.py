@@ -75,11 +75,59 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
         _log.getLogger(__name__).debug("set_rls_session_vars skipped: %s", exc)
 
 
+async def check_user_workspace_access(session: AsyncSession, workspace_id: str, user_id: str, tenant_id: str | None = None) -> bool:
+    """Check if a user has authorized access to a workspace within tenant boundary."""
+    import uuid as _uuid
+    from sqlalchemy import select, or_, cast, String
+    from ..models.schema import Workspace, WorkspaceUser, User
+
+    try:
+        ws_uuid = str(_uuid.UUID(str(workspace_id)))
+        uid = str(_uuid.UUID(str(user_id)))
+    except (ValueError, TypeError):
+        return False
+
+    stmt = (
+        select(Workspace.id)
+        .outerjoin(WorkspaceUser, cast(WorkspaceUser.workspace_id, String) == cast(Workspace.id, String))
+        .join(User, cast(Workspace.user_id, String) == cast(User.id, String))
+        .where(
+            cast(Workspace.id, String) == ws_uuid,
+            or_(
+                cast(Workspace.user_id, String) == uid,
+                cast(WorkspaceUser.user_id, String) == uid,
+            ),
+        )
+    )
+    if tenant_id:
+        try:
+            tid_uuid = str(_uuid.UUID(str(tenant_id)))
+            stmt = stmt.where(cast(User.tenant_id, String) == tid_uuid)
+        except (ValueError, TypeError):
+            pass
+
+    res = await session.execute(stmt)
+    return res.scalar_one_or_none() is not None
+
+
 class TenantMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, session_factory=None):
+        super().__init__(app)
+        self.session_factory = session_factory
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        # Pass OPTIONS preflight through
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        # Skip public paths where workspace context is not applicable
+        from .auth import PUBLIC_PATHS, PUBLIC_PREFIXES
+        path = request.url.path
+        if path in PUBLIC_PATHS or any(path.startswith(p) for p in PUBLIC_PREFIXES):
+            return await call_next(request)
+
         jwt_tenant_id = getattr(request.state, "tenant_id", None)
         jwt_user_id = getattr(request.state, "user_id", None)
-        # Workspace_id can come from JWT (if present), X-Workspace-ID header, or path param
         jwt_workspace_id = getattr(request.state, "workspace_id", None)
         header_workspace_id = request.headers.get("X-Workspace-ID", "") or request.headers.get("X-WORKSPACE-ID", "")
         path_workspace_id = request.path_params.get("workspace_id") if hasattr(request, "path_params") and request.path_params else None
@@ -94,18 +142,38 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     tenant_id, header_tenant_id,
                 )
         else:
-            # Never trust user-supplied headers for tenant context.
-            # If JWT has no tenant_id, leave tenant_id as None (RLS will match zero rows).
             tenant_id = None
 
-        # Workspace_id: prefer JWT, then path param, then header (validated against ownership via require_workspace_access)
+        # Authoritative Workspace Identity (P0):
+        # Client-supplied workspace ID (header or path param) is NEVER authoritative by itself.
+        # It must be validated against database ownership or membership for the authenticated user and tenant.
         workspace_id = None
-        if jwt_workspace_id:
-            workspace_id = str(jwt_workspace_id)
-        elif path_workspace_id:
-            workspace_id = str(path_workspace_id)
-        elif header_workspace_id:
-            workspace_id = str(header_workspace_id)
+        requested_workspace_id = header_workspace_id or path_workspace_id or jwt_workspace_id
+
+        if requested_workspace_id:
+            if not jwt_user_id:
+                workspace_id = None
+            else:
+                import uuid as _uuid
+                from starlette.responses import JSONResponse
+                try:
+                    ws_uuid = _uuid.UUID(str(requested_workspace_id))
+                    uid = _uuid.UUID(str(jwt_user_id))
+                except (ValueError, TypeError):
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "Forbidden: Invalid workspace ID format"},
+                    )
+
+                sf = self.session_factory or async_session_factory
+                async with sf() as session:
+                    has_access = await check_user_workspace_access(session, str(requested_workspace_id), str(jwt_user_id), tenant_id)
+                    if not has_access:
+                        return JSONResponse(
+                            status_code=403,
+                            content={"detail": "Forbidden: Access to specified workspace denied"},
+                        )
+                    workspace_id = str(requested_workspace_id)
 
         user_id = str(jwt_user_id) if jwt_user_id else None
 
