@@ -148,17 +148,52 @@ class ChatMessage(BaseModel):
     agentName: str | None = None
 
 
+async def _verify_workspace_access(workspace_id: str, current_user: dict, db: AsyncSession) -> None:
+    """Verify caller owns or is member of workspace — fail-closed (IDOR guard).
+
+    Returns 404 (not 403) to avoid workspace existence enumeration.
+    Matches temporal.py _verify_workflow_workspace_access pattern.
+    """
+    from sqlalchemy import select as _sel
+
+    from ..models.schema import Workspace, WorkspaceUser
+
+    try:
+        from uuid import UUID as _UUID
+
+        ws_uuid = _UUID(str(workspace_id))
+        uid = _UUID(str(current_user.get("sub") or current_user.get("user_id")))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    try:
+        r1 = await db.execute(_sel(Workspace).where(Workspace.id == ws_uuid, Workspace.user_id == uid))
+        if r1.scalar_one_or_none():
+            return
+        r2 = await db.execute(_sel(WorkspaceUser).where(WorkspaceUser.workspace_id == ws_uuid, WorkspaceUser.user_id == uid))
+        if r2.scalar_one_or_none():
+            return
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail="Authorization check failed")
+
+
 @router.post("/chat", status_code=200)
 async def chat(
     dto: ChatMessage,
     request: Request,
     current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     High-level chat endpoint: auto-classifies intent, routes to the right agent,
     runs the agentic loop, and returns the result. If dto.agentName is provided
     (enterprise explicit routing), honors it with high confidence.
     """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    await _verify_workspace_access(dto.workspaceId, current_user, db)
     req = UserRequest(
         request_id=str(uuid.uuid4()),
         message=dto.message,
@@ -174,6 +209,7 @@ async def chat_stream(
     dto: ChatMessage,
     request: Request,
     current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Streaming orchestrator chat — phase-by-phase SSE.
@@ -188,6 +224,10 @@ async def chat_stream(
     from ..config import settings
     from ..infrastructure.agent_eval import detect_adversarial_prompt
     from ..infrastructure.agent_observability import kill_switch
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    await _verify_workspace_access(dto.workspaceId, current_user, db)
 
     req_id = str(uuid.uuid4())
     preferred = dto.agentName.strip().lower() if dto.agentName else None

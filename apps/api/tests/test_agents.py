@@ -99,7 +99,8 @@ class TestAgents:
             "message": "hello",
             "workspaceId": "00000000-0000-0000-0000-000000000000",
         }, headers=headers)
-        assert res.status_code in (200, 401, 500)
+        # Zero UUID is not owned → fail-closed 404 (IDOR guard)
+        assert res.status_code in (200, 401, 404, 500)
 
     async def test_agent_execute(self, client: AsyncClient):
         headers = await self._auth_header(client)

@@ -14,17 +14,35 @@ class TestChat:
 
     async def test_send_message(self, client: AsyncClient):
         headers = await self._auth_header(client)
+        ws = await client.post("/api/v1/workspaces", json={"name": "chat-ws"}, headers=headers)
+        assert ws.status_code in (200, 201), ws.text
+        ws_id = ws.json().get("id") or ws.json().get("workspace_id")
         res = await client.post(
-            "/api/v1/chat/workspaces/default/chat",
+            f"/api/v1/chat/workspaces/{ws_id}/chat",
             json={"message": "hello"},
             headers=headers,
         )
         assert res.status_code == 200
         assert "reply" in res.json()
 
+    async def test_chat_cross_workspace_denied(self, client: AsyncClient):
+        headers_a = await self._auth_header(client)
+        ws = await client.post("/api/v1/workspaces", json={"name": "chat-ws-a"}, headers=headers_a)
+        ws_id = ws.json().get("id") or ws.json().get("workspace_id")
+        res2 = await client.post("/api/v1/auth/signup", json={
+            "email": "chat-b@test.com", "password": "Test1234!",
+        })
+        headers_b = {"Authorization": f"Bearer {res2.json()['access_token']}"}
+        denied = await client.post(
+            f"/api/v1/chat/workspaces/{ws_id}/chat",
+            json={"message": "hello"},
+            headers=headers_b,
+        )
+        assert denied.status_code == 404, denied.text
+
     async def test_chat_requires_auth(self, client: AsyncClient):
         res = await client.post(
-            "/api/v1/chat/workspaces/default/chat",
+            "/api/v1/chat/workspaces/00000000-0000-0000-0000-000000000000/chat",
             json={"message": "hello"},
         )
         assert res.status_code == 401

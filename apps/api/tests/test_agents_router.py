@@ -72,10 +72,32 @@ class TestAgentsRouterCoverage:
 
     async def test_chat_endpoint(self, client: AsyncClient):
         headers = await self._auth_header(client)
+        # Unknown workspace → fail-closed 404 (IDOR guard)
         res = await client.post("/api/v1/agents/chat", json={
             "message": "hello", "workspaceId": str(uuid.uuid4()),
         }, headers=headers)
-        assert res.status_code in (200, 500)
+        assert res.status_code in (200, 404, 500)
+
+    async def test_chat_cross_workspace_denied(self, client: AsyncClient):
+        """User B must get 404 on user A's workspace (IDOR regression)."""
+        headers_a = await self._auth_header(client)
+        ws = await client.post("/api/v1/workspaces", json={"name": "ws-a"}, headers=headers_a)
+        assert ws.status_code in (200, 201), ws.text
+        ws_id = ws.json().get("id") or ws.json().get("workspace_id")
+        # Second user
+        res2 = await client.post("/api/v1/auth/signup", json={
+            "email": "agent-cov-b@test.com", "password": "Test1234!",
+        })
+        headers_b = {"Authorization": f"Bearer {res2.json()['access_token']}"}
+        denied = await client.post("/api/v1/agents/chat", json={
+            "message": "hello", "workspaceId": ws_id,
+        }, headers=headers_b)
+        assert denied.status_code == 404, denied.text
+        # Owner still works
+        ok = await client.post("/api/v1/agents/chat", json={
+            "message": "hello", "workspaceId": ws_id,
+        }, headers=headers_a)
+        assert ok.status_code in (200, 500), ok.text
 
     # --- list_executions ---
 
