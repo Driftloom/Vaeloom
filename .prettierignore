@@ -12,3 +12,5 @@ package-lock.json
 *.jpg
 # integrity-pinned prompt pack: SHA256SUMS manifest must stay valid
 docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/
+# test-data corpus: DATA-MANIFEST.json SHA256 must stay valid (see test-data/validate-corpus.py)
+test-data/
