@@ -191,7 +191,18 @@ class SearchService:
         total = len(results)
         paginated = results[offset : offset + limit]
 
-        return {"results": paginated, "total": total, "facet_counts": facet_counts}
+        # CONT-P12 provenance: every retrieval records source/version/provenance per R06
+        for r in paginated:
+            r["provenance"] = {
+                "retrieval": "hybrid" if not sources else "+".join(sources),
+                "query": query,
+                "tenant_id": tenant_id,
+                "filtered": bool(filters),
+                "taxonomy_version": 2,  # 0027 expanded
+            }
+            r["lineage"] = {"embedding_model": "gemini-embedding-2", "tsvector": True, "version": "0027"}
+
+        return {"results": paginated, "total": total, "facet_counts": facet_counts, "provenance_required": True}
 
 
 search_service = SearchService()

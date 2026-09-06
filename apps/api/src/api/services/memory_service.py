@@ -41,6 +41,13 @@ class MemoryService:
             except LLMProviderError:
                 embedding = None
 
+        # CONT-P12 expand-contract: taxonomy_version 1 (legacy 6) vs 2 (expanded 22) — no guess
+        from ..schemas.memory import ENTERPRISE_MEMORY_TYPES
+        taxonomy_version = 2 if dto.type in ENTERPRISE_MEMORY_TYPES else 1
+        # Lineage: model/prompt/tool/retrieval per CONT-P12-R06 (stored via 0027 lineage JSONB)
+        lineage = (dto.metadata or {}).get("lineage") if dto.metadata else None
+        if lineage is None:
+            lineage = {"model": getattr(dto, "model", None) or "unknown", "taxonomy_version": taxonomy_version, "workspace_id": str(dto.workspace_id) if dto.workspace_id else None}
         memory = Memory(
             id=uuid.uuid4(),
             type=dto.type,
@@ -62,6 +69,14 @@ class MemoryService:
             connector_id=dto.connector_id,
             supersedes_id=dto.supersedes_id,
         )
+        # Set additive columns if present (SQLAlchemy will ignore on SQLite if missing)
+        try:
+            setattr(memory, "taxonomy_version", taxonomy_version)
+            setattr(memory, "lineage", lineage)
+            setattr(memory, "confidence", 1.0)
+            setattr(memory, "contradiction_flags", [])
+        except Exception:
+            pass
         if dto.supersedes_id:
             await self._mark_superseded(db, dto.supersedes_id, tenant_id)
         db.add(memory)

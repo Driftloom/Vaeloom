@@ -113,6 +113,15 @@ class Settings(BaseSettings):
             return json.loads(v)
         return v or {}
 
+    @field_validator("agent_kill_switches", mode="before")
+    @classmethod
+    def parse_kill_switches(cls, v: Any) -> dict[str, bool]:
+        if isinstance(v, str):
+            if not v.strip():
+                return {}
+            return json.loads(v)
+        return v or {}
+
     prompt_injection_check: bool = True
     prompt_dir: str = ""
     mvp_scope_enforced: bool = True
@@ -154,6 +163,16 @@ class Settings(BaseSettings):
     langgraph_checkpoint_backend: str = "memory"  # memory|postgres|redis (memory = MemorySaver)
     langgraph_max_messages: int = 20
     langgraph_max_state_bytes: int = 20480
+
+    # ── CONT-P12 Agent/Model/Retrieval kill switches & lineage (ADR-040..043) ──
+    agent_kill_switches: dict[str, bool] = {}  # {"memory": false, "retrieval": false}
+    agent_shadow_enabled: bool = False  # WS-12.1 shadow compare 8->28 agents
+    agent_shadow_percent: int = 0  # 0-100 percent via request_id hash
+    retrieval_hybrid_enabled: bool = True  # WS-12.2: ILIKE + pgvector + KG + tsvector
+    retrieval_provenance_required: bool = True  # WS-12.2 lineage
+    eval_shadow_enabled: bool = False
+    model_lineage_enabled: bool = True  # WS-12.3 cost/lineage
+    ai_bill_of_materials_enabled: bool = True
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 

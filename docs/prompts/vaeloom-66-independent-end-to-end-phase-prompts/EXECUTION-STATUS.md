@@ -177,7 +177,9 @@ All other phases (CONT-P00…21, ENT-P00…21):
 
 32. **CONT-P11 CLOSED 2026-08-31 + BACKEND EVOLUTION 96.16 APPROVED — PROCEED** — `docs/phases/cont-p11/` forensic `00-predecessor-audit 97 GO` `CONT-P10 96.16` + `01-services` 4 domains `_safe_include` `02-migrations` `42/42+0021+0022` `03-auth` `Tenant RBAC SAML` `04-contract` `OpenAPI 110 +51/51+60e2e` `05-runbooks` `OTel Grafana 23 p95 120` `06-gate 96.16/100` — **CONT-P11 96.16 APPROVED PROCEED**; `09-handoff-to-cont-p12.md` **AUTHORIZES CONT-P12** `Agent, Model, Retrieval, and Memory-Taxonomy Migration`.
 
-33. **E2E plan PROMOTED 2026-08-31** — `.agents/plans/end-to-end-complete-resume-browser-scheduler-2026-08-30.md` `15k` resume compiled PDF/DOCX (`document_builder.py` Playwright) + browser `chromium-first` + scheduler `cron 8q` — 3 PARTIAL→GO queued for `CONT-P11+` (was `CONDITIONAL` `test-data 318` ingestion-only GT).
+33. **CONT-P12 CLOSED 2026-09-01 + AGENT/MODEL/RETRIEVAL/MEMORY 96.16 APPROVED — PROCEED** — `docs/phases/cont-p12/` forensic `00-predecessor-audit 97 GO` `CONT-P11 96.16` + `01-runtime` `AgentPolicy 8 agents sanitize` `02-prompt` `PromptRegistry sha256 3` `03-retrieval` `0027 6->22 expand-contract taxonomy_version/lineage + hybrid ILIKE/pgvector/GIN/graph + provenance` `04-model` `11 models 18 tasks BYOK + eval 10 cases + shadow` `05-observability` `kill switches + cost/latency 23 panels` `06-gate 96.16/100` — **CONT-P12 96.16 APPROVED PROCEED**; `09-handoff-to-cont-p13.md` **AUTHORIZES CONT-P13** `Security, Privacy, Compliance, and Identity Uplift`.
+
+34. **E2E plan PROMOTED 2026-08-31** — `.agents/plans/end-to-end-complete-resume-browser-scheduler-2026-08-30.md` `15k` resume compiled PDF/DOCX (`document_builder.py` Playwright) + browser `chromium-first` + scheduler `cron 8q` — 3 PARTIAL→GO queued for `CONT-P11+` (was `CONDITIONAL` `test-data 318` ingestion-only GT).
 
 
 

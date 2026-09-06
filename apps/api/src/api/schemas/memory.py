@@ -4,13 +4,25 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-# Canonical 6 memory types per 01-mvp-spec.md (spec says 6, prompt says 22 — spec wins for MVP)
-# + legacy test compat: "note" and "fact" appear in existing unit tests and are treated as aliases
-MemoryType = Literal["profile", "document", "career", "episodic", "preference", "working", "note", "fact"]
+# Canonical 6 memory types per 01-mvp-spec.md + expand-contract 16 additive per CONT-P12 ADR-040..043
+# Spec 6 stay valid; enterprise 16 added additively (no rewrite, no guess) per 0027 migration.
+# Legacy test compat: "note" and "fact" aliases kept.
+MemoryType = Literal[
+    "profile", "document", "career", "episodic", "preference", "working", "note", "fact",
+    "project", "skill", "organization", "relationship", "event", "insight", "goal", "feedback",
+    "decision", "knowledge", "reference", "contact", "financial", "health", "learning", "workflow",
+]
+
+# Enterprise additive types (16) for expand-contract provenance
+ENTERPRISE_MEMORY_TYPES: set[str] = {
+    "project", "skill", "organization", "relationship", "event", "insight", "goal", "feedback",
+    "decision", "knowledge", "reference", "contact", "financial", "health", "learning", "workflow",
+}
+CANONICAL_6: set[str] = {"profile", "document", "career", "episodic", "preference", "working"}
 
 
 class MemoryCreate(BaseModel):
-    type: MemoryType = Field(..., description="One of the 6 canonical memory types")
+    type: MemoryType = Field(..., description="One of 22 memory types (6 canonical + 16 enterprise additive per CONT-P12 expand-contract 0027)")
     domain: str | None = Field(None, max_length=100)
     title: str | None = None
     summary: str | None = None
@@ -33,7 +45,10 @@ class MemoryCreate(BaseModel):
 
 
 class MemoryUpdate(BaseModel):
-    type: str | None = Field(None, min_length=1, max_length=100)
+    type: str | None = Field(None, min_length=1, max_length=100, description="22 types allowed; see 0027 ck_memories_type_valid")
+    taxonomy_version: int | None = Field(None, ge=1, le=2, description="expand-contract version 1=legacy 6, 2=expanded 22")
+    lineage: dict[str, Any] | None = Field(None, description="model/prompt/tool/retrieval lineage per CONT-P12-R06")
+    confidence: float | None = Field(None, ge=0.0, le=1.0, description="contradiction/confidence per WS-12.2 task 4")
     domain: str | None = Field(None, max_length=100)
     title: str | None = None
     summary: str | None = None
