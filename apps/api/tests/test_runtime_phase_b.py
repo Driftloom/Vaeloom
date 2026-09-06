@@ -598,7 +598,7 @@ class TestLiveHarnessWiring:
         import api.services.inference_policy as ipol
         from api.services.llm_service import LLMService, llm_service, LLMTransientError
         seen = []
-        async def _spy(agent_name, task_type, chain, reason):
+        def _spy(agent_name, task_type, chain, reason):
             seen.append((agent_name, task_type, list(chain), reason))
             return {"ok": True}
         monkeypatch.setattr(ipol, "record_fallback", _spy)
