@@ -179,6 +179,43 @@ async def _verify_workspace_access(workspace_id: str, current_user: dict, db: As
         raise HTTPException(status_code=503, detail="Authorization check failed")
 
 
+class CancelRun(BaseModel):
+    workspaceId: str
+
+
+@router.post("/runs/{request_id}/cancel", status_code=200)
+async def cancel_run(
+    request_id: str,
+    dto: CancelRun,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cooperative cancellation of an active agent run (§31).
+
+    Sets the durable cancel flag; the orchestrator loop (and any worker
+    driving it) observes the flag before its next consequential step and
+    terminates as cancelled/user_cancel without further side effects.
+    Workspace binding is verified twice (caller membership + checkpoint
+    ownership); unknown runs return 404 to avoid enumeration.
+    """
+    from ..orchestrator.state import load_or_create_state, request_cancel
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    await _verify_workspace_access(dto.workspaceId, current_user, db)
+    try:
+        state = await load_or_create_state(request_id)
+    except Exception:
+        raise HTTPException(status_code=503, detail="Run lookup failed")
+    if not state.phases or (state.workspace_id and str(state.workspace_id) != str(dto.workspaceId)):
+        raise HTTPException(status_code=404, detail="Run not found")
+    ok = await request_cancel(request_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return {"request_id": request_id, "status": state.status if state.is_terminal else "cancel_requested",
+            "failure_code": "CANCELLATION" if not state.is_terminal else None}
+
+
 @router.post("/chat", status_code=200)
 async def chat(
     dto: ChatMessage,
@@ -454,7 +491,7 @@ async def update_agent(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    agent = await agent_service.update_agent(agent_id, dto, db)
+    agent = await agent_service.update_agent(agent_id, dto, db, tenant_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     return AgentResponse.model_validate(agent)
@@ -465,10 +502,11 @@ async def deactivate_agent(
     agent_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    deleted = await agent_service.deactivate_agent(agent_id, db)
+    deleted = await agent_service.deactivate_agent(agent_id, db, tenant_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Agent not found")
 

@@ -315,6 +315,16 @@ class LLMService:
             elif curr_cfg.tier == "balanced":
                 # Fallback to fast
                 fallback_candidates.extend([m.name for m in MODEL_CATALOG.values() if m.provider == curr_cfg.provider and m.tier == "fast"][:1])
+            # Muse §23 provider diversity: same-tier models on OTHER providers,
+            # chat-only (embeddings excluded — no generation support). Candidates
+            # without a resolvable key are skipped at call time (missing-key
+            # errors continue the chain, never abort it), so semantics only
+            # change by tier — never by capability.
+            fallback_candidates.extend([
+                m.name for m in MODEL_CATALOG.values()
+                if m.provider != curr_cfg.provider and m.tier == curr_cfg.tier
+                and "embedding" not in m.name and m.name not in fallback_candidates
+            ][:2])
 
         result: dict[str, Any] | None = None
         last_exc: Exception | None = None
@@ -530,6 +540,12 @@ class LLMService:
             elif _cfg.tier == "balanced":
                 candidates += [m.name for m in _CAT.values()
                                if m.provider == _cfg.provider and m.tier == "fast" and "embedding" not in m.name][:1]
+            # Muse §23: same-tier cross-provider tool-capable models. Provider
+            # mismatches and missing keys fail over (never abort); temperature,
+            # tools, and tier are unchanged across the hop.
+            candidates += [m.name for m in _CAT.values()
+                           if m.provider != _cfg.provider and m.tier == _cfg.tier
+                           and "embedding" not in m.name][:2]
         # Dedupe, keep order; drop embedding-only models (no tool support).
         seen: set[str] = set()
         candidates = [c for c in candidates

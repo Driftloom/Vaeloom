@@ -19,6 +19,41 @@ from api.services.llm_service import llm_service
 logger = logging.getLogger(__name__)
 
 
+# Muse §17 bounded memory admission. Every candidate extracted from a
+# trajectory/feedback is scored before it may enter long-term memory:
+#   score = 0.5 * source_quality + 0.3 * novelty + 0.2 * signal
+# source_quality: user_correction 1.0 > llm_feedback 0.8 > heuristic 0.6 >
+#   unknown 0.5. novelty: 1.0 when no matching entity exists, 0.4 on merge
+#   (merges still pass — they only touch metadata, never invent facts).
+# signal: name length capped at 12 chars (2-char fragments need corroboration).
+# Threshold 0.65 admits all legitimate extractions (min observed: 0.67 for
+# short skill names) while rejecting unknown-source fragments. Merges always
+# pass. Genuinely conflicting preference values are linked via metadata
+# instead of overwriting. Every decision is audited in item metadata
+# (score, reason, timestamp) — writes stay auditable.
+ADMISSION_THRESHOLD = 0.65
+
+_SOURCE_QUALITY = {
+    "user_correction": 1.0,
+    "llm_feedback": 0.8,
+    "heuristic_preference": 0.6,
+    "heuristic_skill": 0.6,
+}
+
+
+def admission_score(source: str, is_novel: bool, name: str = "") -> tuple[float, str]:
+    """Deterministic admission score + reason for a candidate memory."""
+    quality = _SOURCE_QUALITY.get(source, 0.5)
+    novelty = 1.0 if is_novel else 0.4
+    signal = min(1.0, max(0.0, len((name or "").strip()) / 12.0))
+    score = round(0.5 * quality + 0.3 * novelty + 0.2 * signal, 3)
+    if not is_novel:
+        return score, "merge-existing"
+    if score >= ADMISSION_THRESHOLD:
+        return score, "admitted"
+    return score, "rejected-low-signal"
+
+
 class MemoryConsolidatorAgent(BaseAgent):
     """Consolidates interaction trajectories and feedback into persistent memory."""
 
@@ -107,6 +142,7 @@ class MemoryConsolidatorAgent(BaseAgent):
                 deduped[key] = item
 
         persisted_count = 0
+        rejected_items: list[dict[str, Any]] = []
         if deduped and workspace_id:
             try:
                 try:
@@ -115,7 +151,9 @@ class MemoryConsolidatorAgent(BaseAgent):
                     w_uuid = uuid.uuid4()
 
                 async def _persist_to_session(sess):
+                    from datetime import UTC, datetime
                     count = 0
+                    rejected: list[dict[str, Any]] = []
                     for (etype, ename), item in deduped.items():
                         stmt = (
                             select(Entity)
@@ -126,12 +164,41 @@ class MemoryConsolidatorAgent(BaseAgent):
                         )
                         res = await sess.execute(stmt)
                         existing = res.scalars().first()
+                        source = str((item.get("metadata") or {}).get("source", "heuristic_preference"))
+                        score, decision = admission_score(source, is_novel=existing is None, name=item.get("name", ""))
+                        meta = dict(item.get("metadata") or {})
+                        meta.update({
+                            "admission_score": score,
+                            "admission_decision": decision,
+                            "admitted_at": datetime.now(UTC).isoformat(),
+                        })
+                        item["metadata"] = meta
+                        if existing is None and decision == "rejected-low-signal":
+                            rejected.append({"type": etype, "name": item["name"], "score": score})
+                            continue
                         if existing:
-                            meta = existing.metadata_ or {}
-                            meta.update(item.get("metadata", {}))
-                            meta["updated_from_trajectory"] = True
-                            existing.metadata_ = meta
+                            meta_old = existing.metadata_ or {}
+                            meta_old.update(item.get("metadata", {}))
+                            meta_old["updated_from_trajectory"] = True
+                            existing.metadata_ = meta_old
                         else:
+                            # Contradiction link: same-type preferences with a
+                            # different value reference each other instead of
+                            # silently overwriting trusted information.
+                            if etype == "preference":
+                                try:
+                                    _sib = (await sess.execute(
+                                        select(Entity)
+                                        .where(Entity.workspace_id == w_uuid)
+                                        .where(Entity.type == "preference")
+                                        .limit(10)
+                                    )).scalars().all()
+                                    _other = [str(getattr(e, "canonical_name", "")) for e in _sib
+                                              if str(getattr(e, "canonical_name", "")).lower() != ename.lower()]
+                                    if _other:
+                                        meta["coexists_with"] = _other[:5]
+                                except Exception:
+                                    pass
                             new_ent = Entity(
                                 id=uuid.uuid4(),
                                 workspace_id=w_uuid,
@@ -142,13 +209,13 @@ class MemoryConsolidatorAgent(BaseAgent):
                             sess.add(new_ent)
                         count += 1
                     await sess.commit()
-                    return count
+                    return count, rejected
 
                 if session is not None:
-                    persisted_count = await _persist_to_session(session)
+                    persisted_count, rejected_items = await _persist_to_session(session)
                 else:
                     async with async_session_factory() as sess:
-                        persisted_count = await _persist_to_session(sess)
+                        persisted_count, rejected_items = await _persist_to_session(sess)
             except Exception as exc:
                 logger.warning(f"MemoryConsolidator upsert error (non-blocking): {exc}")
 
@@ -156,6 +223,8 @@ class MemoryConsolidatorAgent(BaseAgent):
             "status": "success",
             "consolidated_count": persisted_count,
             "items": list(deduped.values()),
+            "rejected_count": len(rejected_items),
+            "rejected": rejected_items[:20],
         }
 
     def _extract_heuristics(self, text: str) -> list[dict[str, Any]]:

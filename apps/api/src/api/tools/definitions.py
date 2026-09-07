@@ -899,7 +899,11 @@ SYNC_NOTION_PAGES = ToolDefinition(
 
 EXECUTE_CODE_SANDBOX = ToolDefinition(
     name="execute_code_sandbox",
-    description="Safe sandboxed Python/JavaScript execution for coding problems",
+    description=(
+        "Approval-gated Python/JavaScript execution for coding problems "
+        "(same-host subprocess with pattern filter + timeout + tmp cwd; "
+        "NOT an OS sandbox — treat output as untrusted)"
+    ),
     input_schema={
         "type": "object",
         "properties": {

@@ -134,6 +134,96 @@ class UserRequest:
         self.preferred_agent = preferred_agent
 
 
+# ── Muse §7 capability-aware selection ─────────────────────────────
+# Agents are never selected merely by static-dictionary name. This scorer
+# ranks candidates on keyword strength + capability (ACTIVE card with tools)
+# + availability (kill-switch) + cost-tier fit, and is consulted on the live
+# path (tie-breaks and low-confidence arbitration). Deterministic, no LLM.
+
+def _agent_keyword_score(agent_name: str, msg_lower: str) -> float:
+    """Best category keyword strength among categories containing the agent."""
+    best = 0
+    for category, agents in CATEGORY_AGENT_MAP.items():
+        if agent_name in agents:
+            kws = CATEGORY_KEYWORDS.get(category, [])
+            hits = sum(1 for kw in kws if kw in msg_lower)
+            if kws:
+                best = max(best, hits / max(1, len(kws)))
+    return round(min(1.0, best * 2.0), 3)
+
+
+def _agent_capability(agent_name: str) -> tuple[float, str]:
+    """Capability factor: ACTIVE card with declared tools scores full.
+
+    Returns (factor, reason). Unknown agents score 0 (fail-closed signal).
+    """
+    try:
+        from .card_registry import get_agent_card
+        card = get_agent_card(agent_name)
+        if card is None:
+            return 0.0, "no-card"
+        status = getattr(card, "status", "ACTIVE") or "ACTIVE"
+        if status != "ACTIVE":
+            return 0.0, f"card-{status}"
+        tools = getattr(card, "tools", []) or []
+        if not tools:
+            return 0.4, "card-no-tools"
+        return 1.0, f"card-tools-{len(tools)}"
+    except Exception:
+        return 0.0, "card-unreadable"
+
+
+def _agent_available(agent_name: str) -> tuple[float, str]:
+    """Availability factor from the kill-switch (fail-fast, no side effects)."""
+    try:
+        from ..infrastructure.agent_observability import kill_switch
+        if kill_switch.is_enabled(agent_name):
+            return 1.0, "enabled"
+        return 0.0, "killed"
+    except Exception:
+        return 1.0, "switch-unreadable"
+
+
+def _task_cost_fit(agent_name: str, msg_lower: str) -> tuple[float, str]:
+    """Cost-tier fit: simple queries prefer fast-tier agents, complex prefer
+    balanced/powerful. Small weight — never overrides clear keyword intent."""
+    try:
+        from ..services.model_router import AGENT_TASK_TYPE_MAP, TASK_MODEL_MAP
+        words = len(msg_lower.split())
+        complex_cues = (" and ", "compare", "multi-step", "research", "strategy", "plan")
+        tier = TASK_MODEL_MAP.get(AGENT_TASK_TYPE_MAP.get(agent_name, ""), "balanced")
+        if words <= 8 and not any(c in msg_lower for c in complex_cues):
+            return (1.0, "simple-fast-fit") if tier == "fast" else (0.6, "simple-nonfast")
+        return (1.0, "complex-tier-fit") if tier in ("balanced", "powerful") else (0.6, "complex-fast")
+    except Exception:
+        return 0.6, "tier-unknown"
+
+
+def score_agent_candidates(message: str, candidates: list[str] | None = None) -> list[dict[str, Any]]:
+    """Rank agent candidates for a message. Returns [{agent, score, reasons}]
+    sorted by score desc. Score = 0.55*keyword + 0.20*capability +
+    0.15*availability + 0.10*cost_fit. Availability 0 excludes the agent
+    from viable picks (fail-closed); capability 0 heavily penalizes."""
+    msg_lower = (message or "").lower()
+    names = list(candidates) if candidates else list(AGENT_REGISTRY.keys())
+    ranked: list[dict[str, Any]] = []
+    for name in names:
+        kw = _agent_keyword_score(name, msg_lower)
+        cap, cap_why = _agent_capability(name)
+        avail, avail_why = _agent_available(name)
+        cost, cost_why = _task_cost_fit(name, msg_lower)
+        if avail <= 0.0:
+            continue  # fail-closed: killed agents are not viable picks
+        score = round(0.55 * kw + 0.20 * cap + 0.15 * avail + 0.10 * cost, 3)
+        if cap <= 0.0:
+            score = round(score * 0.3, 3)  # unknown agents sink, never vanish
+        ranked.append({"agent": name, "score": score,
+                       "reasons": {"keyword": kw, "capability": f"{cap}:{cap_why}",
+                                   "availability": avail_why, "cost_fit": f"{cost}:{cost_why}"}})
+    ranked.sort(key=lambda r: (-r["score"], r["agent"]))
+    return ranked
+
+
 async def _llm_classify_intent(message: str) -> tuple[str, float] | None:
     """Classify ambiguous or low-confidence queries using a fast micro-LLM."""
     from ..config import settings
@@ -239,6 +329,25 @@ async def classify_intent(message: str) -> tuple[str, float]:
                 return sum(1 for kw in ["connector", "integration", "connect", "setup", "configure"] if kw in msg_lower)
             return 0
         tied_sorted = sorted(tied, key=lambda c: _secondary(c), reverse=True)
+        # Muse §7: capability-aware tie-break. When disambiguation strength
+        # also ties, prefer the category whose agent scores higher on
+        # capability/availability/cost — never by dictionary order alone.
+        try:
+            _top_secs = sorted({_secondary(c) for c in tied_sorted}, reverse=True)
+            if len(_top_secs) > 1 and _top_secs[0] == _top_secs[1]:
+                _tied_cats = [c for c in tied_sorted if _secondary(c) == _top_secs[0]]
+                _cands: list[str] = []
+                for _c in _tied_cats:
+                    _cands.extend(CATEGORY_AGENT_MAP.get(_c, []))
+                _ranked = score_agent_candidates(message, sorted(set(_cands)))
+                if _ranked:
+                    _by_agent = {r["agent"]: r["score"] for r in _ranked}
+                    _cat_score = {c: max([_by_agent.get(a, 0.0) for a in CATEGORY_AGENT_MAP.get(c, [])] or [0.0]) for c in _tied_cats}
+                    _best_cat = max(_tied_cats, key=lambda c: (_cat_score[c], -_tied_cats.index(c)))
+                    if _cat_score[_best_cat] > 0:
+                        tied_sorted = sorted(tied_sorted, key=lambda c: (c != _best_cat, tied_sorted.index(c)))
+        except Exception:
+            pass
         best_category = tied_sorted[0]
 
     confidence = min(best_score / 3.0, 1.0)
@@ -271,6 +380,21 @@ async def classify_intent(message: str) -> tuple[str, float]:
     # If confident, return fast-path
     if confidence >= 0.75:
         return fast_agent, confidence
+
+    # Muse §7: capability-aware arbitration before the micro-LLM fallback.
+    # When the scorer decisively prefers a viable agent (margin >= 0.15 at
+    # score >= 0.6), take it — capability/availability/cost evidence beats a
+    # weak keyword signal and saves the model call. Otherwise fall through.
+    try:
+        _arb_cands = sorted(set(agents_in_category + [fast_agent]))
+        _arb = score_agent_candidates(message, _arb_cands)
+        if len(_arb) >= 1:
+            _second = _arb[1]["score"] if len(_arb) > 1 else 0.0
+            if _arb[0]["score"] >= 0.6 and (_arb[0]["score"] - _second) >= 0.15:
+                logger.info(f"ROUTER_SCORER: query='{message[:50]}' fast={fast_agent}({confidence:.2f}) -> scorer={_arb[0]['agent']}({_arb[0]['score']:.2f})")
+                return _arb[0]["agent"], max(confidence, min(0.85, _arb[0]["score"]))
+    except Exception:
+        pass
 
     # For ambiguous or low-confidence queries, trigger micro-LLM intent calibration
     llm_match = await _llm_classify_intent(message)

@@ -238,6 +238,10 @@ _BASE_APPROVAL_GATED = frozenset({
     # (notification), web_search (read-only fetch) stay OPEN by decision —
     # see docs/phases/agentic-safety-w2/01-wave-report.md.
     "execute_code_sandbox",
+    # Phase B: Google Docs mutating tools (connector_write) added without a
+    # gate — closed here per the Tier-3 redteam contract that every
+    # memory_write/connector_write tool must be approval-gated.
+    "create_google_doc", "append_google_doc", "replace_google_doc_text",
 })
 
 
@@ -2861,6 +2865,7 @@ def _audit_log(
     success: bool,
     duration_ms: int,
     error: str | None,
+    action_tier: str | None = None,
 ):
     """
     Append-only audit log. Records metadata only — never payload content.
@@ -2875,4 +2880,12 @@ def _audit_log(
     }
     if error:
         log_entry["error"] = error
+    if action_tier:
+        log_entry["action_tier"] = action_tier
+    else:
+        try:
+            from ..services.inference_policy import action_tier as _tier_of
+            log_entry["action_tier"] = _tier_of(tool_name)
+        except Exception:
+            pass
     logger.info(f"AUDIT: {log_entry}")

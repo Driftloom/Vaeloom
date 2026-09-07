@@ -234,14 +234,32 @@ async def _lookup_approval_internal(
             elif not isinstance(stored_payload, dict):
                 stored_payload = {}
 
-            # Verify payload match if caller passed payload
+            # Verify payload match if caller passed payload (handoff invariant #7:
+            # approvals bind to the stable canonical hash of the action payload;
+            # a tampered/swapped payload MUST invalidate the match — unkeyed
+            # canonical equality is the binding check and needs no secret).
             if payload is not None and stored_payload:
+                import re as _re
                 expected_hash = _canonical_payload_hash(payload)
                 actual_hash = _canonical_payload_hash(stored_payload)
                 if expected_hash != actual_hash:
-                    reason = row[6] or ""
-                    if f"[hmac:{actual_hash[:32]}]" not in reason and expected_hash != actual_hash:
-                        continue
+                    continue
+                # Defense in depth: when a secret is available, verify the
+                # keyed reason-HMAC (same derivation as
+                # ApprovalManager.request_approval). A present-but-wrong HMAC
+                # means the row was tampered with after creation → skip.
+                # Rows without HMAC (legacy) pass on equality alone.
+                try:
+                    import os as _os
+                    _secret = _os.getenv("ENCRYPTION_KEY", "") or _os.getenv("JWT_SECRET", "")
+                    if _secret:
+                        from ..services.approval import _payload_hmac as _phmac
+                        _m = _re.search(r"\[hmac:([0-9a-f]{32})\]", row[6] or "")
+                        if _m and _m.group(1) != _phmac(stored_payload, _secret):
+                            logger.warning(f"Approval {row_id} reason-HMAC mismatches stored payload — possible tampering, skipping")
+                            continue
+                except Exception:
+                    pass
 
             if consume:
                 # Atomic consumption — only 1 worker wins
@@ -351,13 +369,15 @@ async def lookup_approval(
 
 
 class AgentRequest:
-    def __init__(self, agent: BaseAgent, request_id: str, message: str, workspace_id: str, agent_name: str = "", db: Any = None):
+    def __init__(self, agent: BaseAgent, request_id: str, message: str, workspace_id: str, agent_name: str = "", db: Any = None, correlation_id: str | None = None):
         self.agent = agent
         self.id = request_id
         self.message = message
         self.workspace_id = workspace_id
         self.agent_name = agent_name or self._derive_agent_name()
         self.db = db
+        # §29 trace correlation (middleware/queue/envelope or run id).
+        self.correlation_id = correlation_id or request_id
 
     def _derive_agent_name(self) -> str:
         name = type(self.agent).__name__
@@ -371,6 +391,11 @@ class AgentResponse:
         self.status = status
         self.final_result = final_result
         self.termination_reason = termination_reason
+        try:
+            from .state import failure_code_for
+            self.failure_code = failure_code_for(status, termination_reason)
+        except Exception:
+            self.failure_code = "OK" if status == "success" else "TOOL_FAILURE"
 
 
 class ReflectResult:
@@ -421,8 +446,17 @@ def _runtime_contract(agent_name: str, agent: BaseAgent | None = None):
 
 # ── RAG Pre-Execution Context Assembler ───────────────────────────
 
-async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent) -> dict[str, Any]:
-    """Hybrid RAG: vector-ish + graph lookup before Plan/Act. Non-blocking, best-effort."""
+async def _assemble_rag_context(
+    workspace_id: str,
+    query: str,
+    agent: BaseAgent,
+    session_factory: Any | None = None,
+) -> dict[str, Any]:
+    """Hybrid RAG: vector-ish + graph lookup before Plan/Act. Non-blocking, best-effort.
+
+    session_factory is injectable for tests (defaults to the production
+    factory). Production callers must not pass it.
+    """
     import time as _t
 
     _rag_start = _t.monotonic()
@@ -430,7 +464,6 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
         return {"entities": [], "documents": [], "preferences": []}
     try:
         from sqlalchemy import or_, select
-        from api.database import async_session_factory
         from api.models.schema import Document, Entity
 
         read_types = getattr(getattr(agent, "memory_scopes", None), "read_types", []) or []
@@ -448,7 +481,12 @@ async def _assemble_rag_context(workspace_id: str, query: str, agent: BaseAgent)
         except Exception:
             w_uuid = workspace_id
 
-        async with async_session_factory() as session:
+        _session_factory = session_factory
+        if _session_factory is None:
+            from api.database import async_session_factory as _default_factory
+            _session_factory = _default_factory
+
+        async with _session_factory() as session:
             # ── Vector search (hybrid, preferred) — pgvector <=> distance ──
             # AC-05: skip expensive embedding on short queries, in tests, or without vector store (saves latency on every plan)
             vector_done = False
@@ -1774,6 +1812,12 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
             return
 
     escalated = await escalate_to_user(state)
+    try:
+        if not state.is_terminal:
+            state.terminate("escalated", "max_iterations")
+            await save_checkpoint(state)
+    except Exception:
+        pass
     yield {"event": "error", "data": {"status": escalated.status, "result": escalated.final_result}}
     yield {"event": "done", "data": {"status": escalated.status, "result": escalated.final_result}}
 
@@ -1817,6 +1861,13 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
     import hashlib as _hl
     state.run_id = state.run_id or request.id
     state.agent_id = request.agent_name or state.agent_id
+    # §29: adopt caller correlation (durable so post-restart traces join).
+    try:
+        _corr = getattr(request, "correlation_id", None)
+        if _corr and state.correlation_id in (None, "", request.id, state.run_id):
+            state.correlation_id = str(_corr)
+    except Exception:
+        pass
     try:
         from .card_registry import get_agent_card as _gac
         _c = getattr(request.agent, "card", None) or _gac(request.agent_name or "")
@@ -1878,6 +1929,25 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
     for iteration in range(start_iter, max_iters):
         logger.info(f"--- Iteration {iteration + 1}/{max_iters} ---")
         state.iteration = iteration
+
+        # §31 cooperative cancellation: re-read the durable flag so an API
+        # cancel (or worker restart observing it) stops the run BEFORE any
+        # further consequential step. No new side effects after this point.
+        try:
+            _fresh = await load_or_create_state(request.id)
+            if _fresh.cancel_requested:
+                state.cancel_requested = True
+                state.cancel_requested_at = _fresh.cancel_requested_at
+        except Exception:
+            pass
+        if state.cancel_requested:
+            state.terminate("cancelled", "user_cancel")
+            state.add_phase(f"terminated_{iteration}", {"reason": "user_cancel"})
+            await save_checkpoint(state)
+            logger.info(f"CANCELLED run={request.id} iter={iteration} — no further side effects")
+            return AgentResponse(status=state.status,
+                                 final_result="Run cancelled by user request",
+                                 termination_reason=state.termination_reason)
 
         # Budget gate before new work (TOKEN/COST/TIMEOUT/TOOL budgets).
         _budget_hit = tracker.check_budgets()

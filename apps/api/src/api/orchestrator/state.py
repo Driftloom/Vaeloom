@@ -53,6 +53,50 @@ TERMINATION_REASONS = frozenset({
     "dependency_failure",  # DB/vector/queue/provider outage
 })
 
+# Muse §30 failure taxonomy: every terminal run maps to an explicit code.
+# Kept stable for operators; termination_reason stays the fine-grained cause.
+FAILURE_CODES = frozenset({
+    "OK",
+    "AUTHORIZATION_FAILURE",
+    "VALIDATION_FAILURE",
+    "MODEL_FAILURE",
+    "TOOL_FAILURE",
+    "RETRIEVAL_FAILURE",
+    "MEMORY_FAILURE",
+    "APPROVAL_REQUIRED",
+    "APPROVAL_FAILURE",
+    "TIMEOUT",
+    "CANCELLATION",
+    "RETRY_EXHAUSTED",
+    "CHECKPOINT_FAILURE",
+    "POLICY_FAILURE",
+})
+
+_TERMINATION_TO_FAILURE_CODE = {
+    "success": "OK",
+    "qa_failed": "VALIDATION_FAILURE",
+    "failure": "TOOL_FAILURE",
+    "no_progress": "POLICY_FAILURE",
+    "cycle_detected": "POLICY_FAILURE",
+    "max_iterations": "RETRY_EXHAUSTED",
+    "timeout": "TIMEOUT",
+    "token_budget": "POLICY_FAILURE",
+    "tool_budget": "POLICY_FAILURE",
+    "cost_budget": "POLICY_FAILURE",
+    "user_cancel": "CANCELLATION",
+    "policy_stop": "POLICY_FAILURE",
+    "dependency_failure": "TOOL_FAILURE",
+}
+
+
+def failure_code_for(status: str, reason: str | None) -> str:
+    """Map (status, termination_reason) to the §30 failure taxonomy."""
+    if status == "paused_awaiting_approval":
+        return "APPROVAL_REQUIRED"
+    if not reason:
+        return "OK" if status in ("success", "running") else "TOOL_FAILURE"
+    return _TERMINATION_TO_FAILURE_CODE.get(reason, "TOOL_FAILURE")
+
 # Default per-run hard ceilings (Phase B §13). These apply even when the
 # workspace daily budget is 0.0 (unlimited) — a run is never unbounded.
 DEFAULT_RUN_BUDGETS: dict[str, float] = {
@@ -85,6 +129,14 @@ class LoopState:
         self.request_id = request_id
         self.run_id = request_id  # stable execution identity across retries/restarts
         self.migrated_from: str | None = None  # set only by v1 -> v2 migration
+        # §29 trace correlation: caller-provided (middleware/queue/envelope)
+        # or defaults to the run id. Never a secret.
+        self.correlation_id = request_id
+        # §31 cooperative cancellation: set via request_cancel(); the loop
+        # checks it before every act phase and stops without further side
+        # effects. Durable (checkpointed) so worker restarts honor it.
+        self.cancel_requested = False
+        self.cancel_requested_at: str | None = None
         self.workspace_id = str(workspace_id) if workspace_id else None
         self.agent_id = ""
         self.agent_version = "v1.0"
@@ -168,6 +220,9 @@ class LoopState:
             "schema_version": STATE_SCHEMA_VERSION,
             "request_id": self.request_id,
             "run_id": self.run_id,
+            "correlation_id": self.correlation_id,
+            "cancel_requested": self.cancel_requested,
+            "cancel_requested_at": self.cancel_requested_at,
             "workspace_id": self.workspace_id,
             "agent_id": self.agent_id,
             "agent_version": self.agent_version,
@@ -225,7 +280,8 @@ class LoopState:
             "run_id", "agent_id", "agent_version", "workflow_version", "graph_version",
             "iteration", "phase", "status", "termination_reason", "goal_fingerprint",
             "plan_fingerprint", "model_name", "model_provider", "prompt_version",
-            "compiler_version", "context_fingerprint",
+            "compiler_version", "context_fingerprint", "correlation_id",
+            "cancel_requested", "cancel_requested_at",
         ):
             if field in data:
                 setattr(state, field, data[field])
@@ -277,6 +333,37 @@ async def load_or_create_state(request_id: str, workspace_id: str | None = None)
     return LoopState(request_id, workspace_id=workspace_id)
 
 
+async def request_cancel(request_id: str) -> bool:
+    """Request cooperative cancellation of a run (§31).
+
+    Sets the durable flag; the loop (and any worker driving it) observes it
+    before the next consequential step and terminates as
+    cancelled/user_cancel without further side effects. Returns False only
+    when no checkpoint exists (nothing to cancel) — never raises for a
+    missing run. Terminal runs are left untouched (idempotent).
+    """
+    try:
+        state = await load_or_create_state(request_id)
+    except Exception as exc:
+        logger.warning(f"Cancel lookup failed for {request_id}: {exc}")
+        return False
+    if not state.phases:
+        # No checkpoint exists yet (fresh state) — nothing to cancel.
+        # A real run always persists at least one phase per checkpoint.
+        return False
+    if state.is_terminal:
+        return True
+    state.cancel_requested = True
+    state.cancel_requested_at = datetime.now(UTC).isoformat()
+    try:
+        await save_checkpoint(state)
+    except Exception as exc:
+        logger.warning(f"Cancel checkpoint save failed for {request_id}: {exc}")
+        return False
+    logger.info(f"Cancel requested for run {request_id}")
+    return True
+
+
 async def save_checkpoint(
     state: LoopState,
     workspace_id: str | None = None,
@@ -290,6 +377,25 @@ async def save_checkpoint(
     instead of silently last-write-winning.
     """
     wid = workspace_id or getattr(state, "workspace_id", None)
+    # Merge-before-write (§31 crash-safety): the in-memory copy may be stale
+    # relative to a concurrent writer (cancel endpoint, supervisor resume,
+    # crash-retry). Monotonic durable signals must survive:
+    # - cancel_requested is once-True: a stored True always wins.
+    # - terminal status is once-terminal: a stored terminal outcome always
+    #   wins over a stale non-terminal copy (prevents un-completing runs).
+    try:
+        _stored = await get_state_store().load(state.request_id)
+    except Exception:
+        _stored = None
+    if isinstance(_stored, dict):
+        if _stored.get("cancel_requested") and not state.cancel_requested:
+            state.cancel_requested = True
+            state.cancel_requested_at = _stored.get("cancel_requested_at") or state.cancel_requested_at
+            logger.info(f"Merged concurrent cancel flag into checkpoint for {state.request_id}")
+        if _stored.get("status") in TERMINAL_STATUSES and not state.is_terminal:
+            state.status = _stored.get("status")
+            state.termination_reason = _stored.get("termination_reason")
+            logger.warning(f"Preserved stored terminal outcome for {state.request_id} over stale in-memory copy")
     # Primary: Save via pluggable StateStore (Database/Redis/Composite/File)
     try:
         from .state_store import ConcurrentUpdateError as _CUE

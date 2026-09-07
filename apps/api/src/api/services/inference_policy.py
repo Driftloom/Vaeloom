@@ -42,6 +42,54 @@ def classify_tool(tool_name: str) -> ToolRisk:
     return TOOL_RISK.get(tool_name, "ANALYZE")
 
 
+# Muse §26 consequential-action model. Maps the fine-grained ToolRisk onto
+# five action tiers with explicit approval semantics. This table is
+# DECLARATIVE: it never grants authorization by itself. The loader-level
+# guarantee (proven by test) is that every CONSEQUENTIAL_WRITE or higher
+# tool is a member of the executor's approval-gated set — model output
+# saying "approved"/"send it"/"execute" can never substitute for the
+# single-use approval token consumed at the executor boundary.
+ActionTier = Literal[
+    "READ", "LOW_RISK_WRITE", "CONSEQUENTIAL_WRITE",
+    "EXTERNAL_COMMUNICATION", "FINANCIAL_LEGAL_IRREVERSIBLE",
+]
+
+_TOOL_RISK_TO_ACTION_TIER: dict[ToolRisk, ActionTier] = {
+    "READ": "READ",
+    "SEARCH": "READ",
+    "ANALYZE": "READ",
+    "TRANSFORM": "LOW_RISK_WRITE",
+    "WRITE": "CONSEQUENTIAL_WRITE",
+    "ACT": "EXTERNAL_COMMUNICATION",
+    "DESTRUCTIVE": "FINANCIAL_LEGAL_IRREVERSIBLE",
+}
+
+# Tools whose blast radius exceeds their static risk class (external send,
+# irreversible publish). Explicit so the mapping stays reviewable.
+_ACTION_TIER_OVERRIDES: dict[str, ActionTier] = {
+    "send_slack_message": "EXTERNAL_COMMUNICATION",
+    "draft_email": "EXTERNAL_COMMUNICATION",
+    "draft_outlook_mail": "EXTERNAL_COMMUNICATION",
+    "create_github_issue": "EXTERNAL_COMMUNICATION",
+    "create_github_pull_request": "EXTERNAL_COMMUNICATION",
+    "execute_code_sandbox": "FINANCIAL_LEGAL_IRREVERSIBLE",
+}
+
+
+def action_tier(tool_name: str) -> ActionTier:
+    """Consequential-action tier for a tool (deterministic, no LLM)."""
+    if tool_name in _ACTION_TIER_OVERRIDES:
+        return _ACTION_TIER_OVERRIDES[tool_name]
+    if tool_name.startswith("mcp__"):
+        return "EXTERNAL_COMMUNICATION"  # untrusted external tools fail high
+    return _TOOL_RISK_TO_ACTION_TIER.get(classify_tool(tool_name), "CONSEQUENTIAL_WRITE")
+
+
+def tier_requires_approval(tier: ActionTier) -> bool:
+    """Tiers at/above CONSEQUENTIAL_WRITE must hold a consumed approval token."""
+    return tier in ("CONSEQUENTIAL_WRITE", "EXTERNAL_COMMUNICATION", "FINANCIAL_LEGAL_IRREVERSIBLE")
+
+
 @dataclass
 class RouteDecision:
     model: str

@@ -14,6 +14,39 @@ from .llm_service import llm_service
 
 
 class AgentService:
+    async def _require_workspace_member(
+        self, db: AsyncSession, workspace_id: str, user_id: str | None
+    ) -> None:
+        """Fail-closed workspace membership check (service layer).
+
+        Mirrors the router IDOR guard but raises ValueError (mapped to 404)
+        to avoid workspace enumeration. user_id None (trusted system/daemon
+        path, governed by envelope auth) skips the check.
+        """
+        if not user_id:
+            return
+        from ..models.schema import Workspace, WorkspaceUser
+
+        try:
+            ws_uuid = uuid.UUID(str(workspace_id))
+            uid = uuid.UUID(str(user_id))
+        except Exception:
+            raise ValueError("Workspace not found")
+        try:
+            r1 = await db.execute(select(Workspace).where(Workspace.id == ws_uuid, Workspace.user_id == uid))
+            if r1.scalar_one_or_none() is not None:
+                return
+            r2 = await db.execute(
+                select(WorkspaceUser).where(WorkspaceUser.workspace_id == ws_uuid, WorkspaceUser.user_id == uid)
+            )
+            if r2.scalar_one_or_none() is not None:
+                return
+            raise ValueError("Workspace not found")
+        except ValueError:
+            raise
+        except Exception:
+            raise ValueError("Workspace not found")
+
     async def register_agent(self, dto: AgentCreate, tenant_id: str | None, user_id: str | None, db: AsyncSession) -> Agent:
         agent = Agent(
             name=sanitize_text(dto.name),
@@ -67,8 +100,17 @@ class AgentService:
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def update_agent(self, agent_id: uuid.UUID, dto: AgentUpdate, db: AsyncSession) -> Agent | None:
-        agent = await self.get_agent(db, agent_id, None)
+    async def update_agent(
+        self, agent_id: uuid.UUID, dto: AgentUpdate, db: AsyncSession, tenant_id: str | None
+    ) -> Agent | None:
+        # Fail closed: writes require an authenticated tenant scope. A missing
+        # tenant must never widen to an unfiltered cross-tenant update
+        # (GATE2-F1). Reads keep the legacy `if tenant_id` pattern.
+        if not tenant_id:
+            return None
+        agent = await self.get_agent(db, agent_id, tenant_id)
+        # Fail closed: without a tenant match the row must not resolve, even
+        # if the caller guessed a valid cross-tenant id (GATE2-F1).
         if not agent:
             return None
         if dto.name is not None:
@@ -84,10 +126,12 @@ class AgentService:
         await db.refresh(agent)
         return agent
 
-    async def deactivate_agent(self, agent_id: uuid.UUID, db: AsyncSession) -> bool:
-        stmt = select(Agent).where(Agent.id == agent_id)
-        result = await db.execute(stmt)
-        agent = result.scalar_one_or_none()
+    async def deactivate_agent(self, agent_id: uuid.UUID, db: AsyncSession, tenant_id: str | None) -> bool:
+        # Fail closed on missing tenant (GATE2-F1).
+        if not tenant_id:
+            return False
+        agent = await self.get_agent(db, agent_id, tenant_id)
+        # Fail closed on tenant mismatch (GATE2-F1).
         if not agent:
             return False
         agent.status = "inactive"
@@ -117,6 +161,22 @@ class AgentService:
     ) -> AgentExecution:
         agent = await self.get_agent(db, agent_id, tenant_id)
         if not agent:
+            raise ValueError(f"Agent {agent_id} not found or inactive")
+        if (agent.status or "") != "active":
+            # Inactive agents must not execute (the error message always
+            # claimed this; now it is enforced) — GATE2-F2.
+            raise ValueError(f"Agent {agent_id} not found or inactive")
+        # Workspace binding wins over caller-supplied context (GATE2-F2):
+        # a workspace-bound agent runs only for its members; a caller
+        # override for a global agent must pass membership or fail closed.
+        try:
+            _input = dto.input if isinstance(dto.input, dict) else {}
+            _eff_ws = agent.workspace_id or _input.get("workspace_id") or _input.get("workspaceId")
+            if _eff_ws:
+                await self._require_workspace_member(db, str(_eff_ws), user_id)
+        except ValueError:
+            raise
+        except Exception:
             raise ValueError(f"Agent {agent_id} not found or inactive")
 
         execution = AgentExecution(
@@ -201,6 +261,17 @@ class AgentService:
     ) -> AsyncGenerator[dict[str, Any], None]:
         agent = await self.get_agent(db, agent_id, tenant_id)
         if not agent:
+            raise ValueError(f"Agent {agent_id} not found or inactive")
+        if (agent.status or "") != "active":
+            raise ValueError(f"Agent {agent_id} not found or inactive")
+        try:
+            _input = dto.input if isinstance(dto.input, dict) else {}
+            _eff_ws = agent.workspace_id or _input.get("workspace_id") or _input.get("workspaceId")
+            if _eff_ws:
+                await self._require_workspace_member(db, str(_eff_ws), user_id)
+        except ValueError:
+            raise
+        except Exception:
             raise ValueError(f"Agent {agent_id} not found or inactive")
 
         config = agent.config or {}

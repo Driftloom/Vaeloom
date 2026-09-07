@@ -18,7 +18,7 @@ class CodingAgent(BaseAgent):
         Tool(name="solve_challenge", description="Solve a coding challenge with explanation"),
         Tool(name="review_code", description="Review code for correctness, style, and optimization"),
         Tool(name="generate_practice", description="Generate practice problems for interview prep"),
-        Tool(name="execute_code_sandbox", description="Safe sandboxed Python/JS execution for coding problems"),
+        Tool(name="execute_code_sandbox", description="Approval-gated code execution (bounded subprocess, not an OS sandbox)"),
         Tool(name="fetch_github_repo", description="Fetch repository context for code review"),
         Tool(name="read_github_file", description="Read file from GitHub repo for review"),
         Tool(name="search_github_repos", description="Search GitHub repos for examples"),
