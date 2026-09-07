@@ -1,0 +1,127 @@
+# ─── Vaeloom Staging — Isolated Chaos Target ──────────────────────────
+# Usage:
+#   cp .env.staging.example .env.staging
+#   # fill staging-only secrets (must differ from .env.production)
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+#   # then run the staging gate (see docs/audits/muse-final-staging-readiness.md Policy Exclusions)
+#   uv run --project apps/api python -m pytest apps/api/tests/test_target_vaeloom_rls_isolation.py apps/api/tests/test_rls_live_pg.py -v -o addopts=""
+#   # SIGKILL / Redis chaos only against this stack (never prod):
+#   docker kill -s 9 vaeloom-staging-worker   # then: docker compose -f docker-compose.staging.yml up -d vaeloom-staging-worker
+#   docker compose -f docker-compose.staging.yml stop vaeloom-staging-redis   # then: up -d vaeloom-staging-redis
+
+name: vaeloom-staging
+
+networks:
+  vaeloom-staging-net:
+    name: vaeloom-staging-network
+    driver: bridge
+
+volumes:
+  staging-postgres-data:
+  staging-redis-data:
+
+services:
+  postgres-staging:
+    image: pgvector/pgvector:pg16
+    container_name: vaeloom-staging-postgres
+    environment:
+      POSTGRES_DB: vaeloom_staging
+      POSTGRES_USER: vaeloom_staging
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?err}
+    ports:
+      - '${STAGING_POSTGRES_PORT:-5543}:5432'
+    volumes:
+      - staging-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U vaeloom_staging -d vaeloom_staging']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - vaeloom-staging-net
+    restart: unless-stopped
+
+  redis-staging:
+    image: redis:7-alpine
+    container_name: vaeloom-staging-redis
+    command: redis-server --appendonly yes --requirepass ${STAGING_REDIS_PASSWORD:?err}
+    ports:
+      - '${STAGING_REDIS_PORT:-6380}:6379'
+    volumes:
+      - staging-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${STAGING_REDIS_PASSWORD}', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - vaeloom-staging-net
+    restart: unless-stopped
+
+  api-staging:
+    build: ./apps/api
+    container_name: vaeloom-staging-api
+    # Staging API: migrations via Base.metadata.create_all; override CMD to
+    # ensure pydantic email extra is present (builder layer can be stale).
+    command:
+      [
+        'sh',
+        '-c',
+        "pip install -q 'pydantic[email]' && uvicorn api.main:app --host 0.0.0.0 --port 8000",
+      ]
+    environment:
+      SERVICE_NAME: vaeloom-staging-api
+      SERVICE_VERSION: '0.2.0'
+      SERVICE_ENVIRONMENT: staging
+      LOG_LEVEL: DEBUG
+      DATABASE__URL: postgresql+asyncpg://vaeloom_staging:${STAGING_POSTGRES_PASSWORD:?err}@postgres-staging:5432/vaeloom_staging
+      REDIS__URL: redis://:${STAGING_REDIS_PASSWORD}@redis-staging:6379/0
+      RATE_LIMIT_REDIS_URL: redis://:${STAGING_REDIS_PASSWORD}@redis-staging:6379/1
+      JWT_SECRET: ${STAGING_JWT_SECRET:?err}
+      JWT_ALGORITHM: HS256
+      ENCRYPTION_KEY: ${STAGING_ENCRYPTION_KEY:?err}
+      ALLOWED_ORIGINS: '["https://staging.vaeloom.app"]'
+      STORAGE_ACCESS_KEY: vaeloom
+      STORAGE_SECRET_KEY: vaeloom_dev_minio
+      STORAGE_BUCKET: vaeloom-storage
+      STORAGE_ENDPOINT: http://vaeloom-minio:9000
+      STORAGE_REGION: us-east-1
+      STORAGE_MIRROR_ENABLED: 'false'
+    ports:
+      - '${STAGING_API_PORT:-18000}:8000'
+    depends_on:
+      postgres-staging:
+        condition: service_healthy
+      redis-staging:
+        condition: service_healthy
+    networks:
+      - vaeloom-staging-net
+    restart: unless-stopped
+
+  worker-staging:
+    build: ./apps/api
+    container_name: vaeloom-staging-worker
+    command: ['python', '-m', 'api.workers.queue_worker']
+    environment:
+      SERVICE_NAME: vaeloom-staging-worker
+      SERVICE_VERSION: '0.2.0'
+      SERVICE_ENVIRONMENT: staging
+      LOG_LEVEL: DEBUG
+      DATABASE__URL: postgresql+asyncpg://vaeloom_staging:${STAGING_POSTGRES_PASSWORD:?err}@postgres-staging:5432/vaeloom_staging
+      REDIS__URL: redis://:${STAGING_REDIS_PASSWORD}@redis-staging:6379/0
+      RATE_LIMIT_REDIS_URL: redis://:${STAGING_REDIS_PASSWORD}@redis-staging:6379/1
+      JWT_SECRET: ${STAGING_JWT_SECRET:?err}
+      ENCRYPTION_KEY: ${STAGING_ENCRYPTION_KEY:?err}
+      STORAGE_ACCESS_KEY: vaeloom
+      STORAGE_SECRET_KEY: vaeloom_dev_minio
+      STORAGE_BUCKET: vaeloom-storage
+      STORAGE_ENDPOINT: http://vaeloom-minio:9000
+      STORAGE_REGION: us-east-1
+    depends_on:
+      postgres-staging:
+        condition: service_healthy
+      redis-staging:
+        condition: service_healthy
+    networks:
+      - vaeloom-staging-net
+    restart: unless-stopped

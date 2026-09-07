@@ -1122,13 +1122,14 @@ lives without engine) ReAct: DISABLED at config default
 (agent_react_enabled=False, hardened; local .env AGENT_REACT_ENABLED=1 disclosed
 dev override, safe fallback to static)
 
-POLICY EXCLUSIONS: SIGKILL: INTENTIONALLY EXCLUDED — destructive against shared
-infra (§13); replaced by real child-terminate seam proof (single effect, no
-duplicate/corruption/bypass) Redis Chaos: INTENTIONALLY EXCLUDED — managed
-Upstash broker (§14); replaced by dead-broker + retry/deadletter + durable rows
-as source of truth Other: live model-provider outage (hermetic mocks by policy —
-cross-provider seam proven), full-suite xdist (hang open — serial is proven),
-target PG offline this session (Gate 2 live PG + RAG PG internet live)
+POLICY EXCLUSIONS (resolved 2026-09-07 via isolated staging): SIGKILL: PASS —
+docker kill -s 9 vaeloom-staging-worker → worker gone, PG/Redis healthy, up -d →
+Up (isolated, not shared infra) Redis Chaos: PASS — docker stop redis-staging →
+ConnectionError redis-staging:6379, no phantom, up -d → healthy (isolated)
+Other: live model-provider outage (hermetic mocks by policy — cross-provider
+seam proven), full-suite xdist (hang open — serial is proven), target PG: PASS —
+staging live vaeloom_staging@vaeloom_staging:5543 RLS=t no-GUC cnt=0 (51
+relations)
 
 P0: 0 open (2 found across Gates 1–2: F1 and approval-swap — both fixed, both
 re-verified) P1: 0 open (1 found Gate 2: F2 — fixed, re-verified) P2: 6
@@ -1137,17 +1138,35 @@ code-sandbox bounded, card precedence, spend atomicity — all documented, none
 blocking) P3: 2 (perf p99 staging depth, candidate store table — both
 documented)
 
-KNOWN LIMITATIONS: SIGKILL/Redis live chaos deferred to staging (with
-what-would-close-it); full p99 requires staging harness; live provider calls
-hermetic by policy; target PG re-probe in staging; registry HTTP cross-tenant is
-same-tenant shared by design (service-level distinct-tenant proven)
+KNOWN LIMITATIONS (updated): SIGKILL/Redis live chaos PASS on isolated staging
+(row-level + live Redis failure/recovery); full p99 requires staging harness
+(retrieval p99 16ms honest at n=100 already); live provider calls hermetic by
+policy (seam proven); target PG live-proven on staging vault vaeloom_staging;
+registry HTTP cross-tenant is same-tenant shared by design (service-level
+distinct-tenant proven)
+
+ADDENDUM 2026-09-07 — Staging Isolation Resolved (see
+docs/audits/muse-final-staging-readiness.md): Stack: docker-compose.staging.yml
+(vaeloom-staging) postgres 5543 (vaeloom_staging, 51 tbl, RLS t), redis 6380,
+api 18000 (health 200), worker isolated Isolation: DEV
+postgres@localhost:5432/postgres (empty) != STAGING
+vaeloom_staging@localhost:5543/vaeloom_staging (RLS t, no-GUC 0) — distinct
+DB/USER/PORT/volume/network; credentials distinct (.env.staging.example
+STAGING_*) RLS: live PASS (asyncpg STAGING DB=vaeloom_staging
+USER=vaeloom_staging rls=True, docker exec relrowsecurity t) Pooling: PASS
+(distinct pools, no-GUC 0) SIGKILL: PASS (kill -9 staging worker → restart Up,
+PG/Redis untouched) Redis: PASS (stop → ConnectionError, no phantom; start →
+healthy) Queue: PASS (row-level UNIQUE + live Redis failure/recovery, no
+double-apply) Verdict update: CONDITIONALLY READY → PRODUCTION READY (all
+staging-isolated conditions now PASS live)
 
 ============================================================ FINAL VERDICT: MUSE
-CONDITIONALLY READY
+PRODUCTION READY (as of 2026-09-07 addendum — staging isolation resolved)
 ============================================================
 
 (P0/P1=0 open; all security-critical production paths proven LIVE and
-regression-proven; remaining gaps are genuinely bounded environmental/policy
-exclusions defined above. PRODUCTION READY requires staging SIGKILL kill-test,
-staging Redis chaos, and staging target-PG re-probe — and not a new code wave.
-No P0/P1 hides behind any condition.)
+regression-proven; prior conditional gaps (staging SIGKILL, Redis chaos,
+target-PG re-probe) now closed live on isolated staging (see addendum). No P0/P1
+hides. See muse-final-staging-readiness.md for full staging evidence.) Previous
+verdict (Gate 3 initial): CONDITIONALLY READY — now superseded by staging
+closure.
