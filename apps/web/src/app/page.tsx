@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 import { AuthRedirectProbe } from '@/components/shared/AuthRedirectProbe';
 import { SEO } from '@/lib/landing/copy';
 import { LandingScrollProvider } from '@/lib/landing/scroll';

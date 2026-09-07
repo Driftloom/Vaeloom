@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';

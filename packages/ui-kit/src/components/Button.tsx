@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Spinner } from './Spinner';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -22,7 +22,7 @@ export const Button: React.FC<ButtonProps> = ({
     'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants: Record<string, string> = {
-    // Canonical primary action family â€” indigo with guaranteed-contrast label.
+    // Canonical primary action family — indigo with guaranteed-contrast label.
     primary:
       'bg-action text-action-fg hover:bg-action-hover active:bg-action-active focus:ring-accent',
     secondary:

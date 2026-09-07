@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * Canonical confirmation dialog (Phase 02A / F-12).

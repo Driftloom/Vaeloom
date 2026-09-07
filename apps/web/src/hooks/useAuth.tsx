@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * Central auth session (Phase 02A / F-16).

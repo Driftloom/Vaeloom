@@ -44,14 +44,14 @@ interface Thread {
 }
 
 const SLASH = [
-  { trigger: '/organize', desc: 'Organize workspace files', agent: 'organization', icon: 'Γùº' },
-  { trigger: '/remember', desc: 'Extract memories', agent: 'memory', icon: 'ΓùÄ' },
-  { trigger: '/resume', desc: 'Generate resume', agent: 'resume', icon: 'Γëí' },
-  { trigger: '/ats', desc: 'ATS score', agent: 'ats', icon: 'Γûú' },
-  { trigger: '/jobs', desc: 'Search jobs', agent: 'job_search', icon: 'Γù⌐' },
-  { trigger: '/apply', desc: 'Draft application', agent: 'application', icon: 'Γ£ë' },
-  { trigger: '/email', desc: 'Draft email (approval)', agent: 'gmail', icon: 'Γ£ë' },
-  { trigger: '/schedule', desc: 'Calendar & reminders', agent: 'scheduler', icon: 'Γù╖' },
+  { trigger: '/organize', desc: 'Organize workspace files', agent: 'organization', icon: '◧' },
+  { trigger: '/remember', desc: 'Extract memories', agent: 'memory', icon: '◎' },
+  { trigger: '/resume', desc: 'Generate resume', agent: 'resume', icon: '≡' },
+  { trigger: '/ats', desc: 'ATS score', agent: 'ats', icon: '▣' },
+  { trigger: '/jobs', desc: 'Search jobs', agent: 'job_search', icon: '◩' },
+  { trigger: '/apply', desc: 'Draft application', agent: 'application', icon: '✉' },
+  { trigger: '/email', desc: 'Draft email (approval)', agent: 'gmail', icon: '✉' },
+  { trigger: '/schedule', desc: 'Calendar & reminders', agent: 'scheduler', icon: '◷' },
 ];
 
 const QUICK = [
@@ -122,7 +122,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const canonical = useMemo(() => {
     const list = catalog.filter((c) => c.isCanonical);
     if (list.length) return list;
-    // fallback ΓÇö 10 canonical now (planning + research promoted as main)
+    // fallback — 10 canonical now (planning + research promoted as main)
     const fallback: CatalogAgent[] = [
       {
         name: 'organization',
@@ -858,12 +858,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             onClick={() => startNew(selected)}
             className="text-xs text-text-muted hover:text-text"
           >
-            ∩╝ï New
+            ＋ New
           </button>
         </div>
         <div className="px-3 py-2 border-b border-border/40">
           <p className="text-xs text-text-dim">
-            Single agentic chat ΓÇö just ask. Orchestrator routes to planning, research & 8
+            Single agentic chat — just ask. Orchestrator routes to planning, research & 8
             specialists behind the scenes.
           </p>
         </div>
@@ -880,7 +880,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 >
                   <p className="text-sm text-text truncate pr-2">{t.title}</p>
                   <p className="text-xs text-text-dim mt-0.5">
-                    {fmtRel(t.createdAt)} ┬╖ {t.messages.length} msgs
+                    {fmtRel(t.createdAt)} · {t.messages.length} msgs
                   </p>
                 </button>
               ))}
@@ -889,7 +889,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         </div>
         <div className="p-3 border-t border-border/40">
           <p className="text-xs text-text-dim leading-relaxed">
-            BYOK ΓåÆ <span className="font-mono text-text">Settings ΓåÆ API Keys</span>
+            BYOK → <span className="font-mono text-text">Settings → API Keys</span>
           </p>
         </div>
       </aside>
@@ -908,7 +908,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             </button>
             <h1 className="text-sm font-medium text-text">Chat</h1>
             <span className="hidden sm:inline text-xs text-text-dim font-mono">
-              ┬╖ {workspaceId.slice(0, 8)}
+              · {workspaceId.slice(0, 8)}
             </span>
             <span
               className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${selected === 'auto' ? 'border-border/50 text-text-dim' : 'bg-white text-black border-white'}`}
@@ -1040,7 +1040,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                   {t.name}
                                   <span className="text-text-dim">
                                     {t.status}
-                                    {t.latencyMs ? ` ┬╖ ${t.latencyMs}ms` : ''}
+                                    {t.latencyMs ? ` · ${t.latencyMs}ms` : ''}
                                   </span>
                                 </div>
                               ))}
@@ -1104,7 +1104,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                     )}
                                     {p.status === 'error' && (
                                       <p className="text-xs text-red-400 mt-2">
-                                        Action failed ΓÇö pending approvals live in Notifications
+                                        Action failed — pending approvals live in Notifications
                                       </p>
                                     )}
                                   </div>
@@ -1156,7 +1156,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 text-xs text-text-dim">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        Thinking ┬╖ routing + QA
+                        Thinking · routing + QA
                       </div>
                       <div className="mt-2 flex gap-1">
                         <span className="w-1.5 h-1.5 bg-text-dim rounded-full animate-bounce" />
@@ -1217,7 +1217,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               <div className="mb-2 flex items-center gap-2 text-xs border border-border/50 rounded-full px-3 py-1.5 bg-surface">
                 <span className="truncate">{attached.name}</span>
                 <button onClick={() => setAttached(null)} className="ml-auto">
-                  Γ£ò
+                  ✕
                 </button>
               </div>
             )}
@@ -1245,7 +1245,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                   className="hidden"
                   onChange={(e) => setAttached(e.target.files?.[0] || null)}
                 />
-                ∩╝ï
+                ＋
               </label>
               <textarea
                 ref={inputRef}
@@ -1254,7 +1254,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 onChange={(e) => handleInput(e.target.value)}
                 onKeyDown={onKey}
                 rows={1}
-                placeholder={selected === 'auto' ? 'Ask anythingΓÇª' : 'Message @' + selected}
+                placeholder={selected === 'auto' ? 'Ask anything…' : 'Message @' + selected}
                 className="flex-1 max-h-[120px] min-h-[24px] resize-none bg-transparent text-sm placeholder:text-text-dim focus:outline-none py-2"
                 onInput={(e) => {
                   const t = e.currentTarget;
@@ -1268,12 +1268,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 disabled={loading || (!input.trim() && !attached)}
                 className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-zinc-200"
               >
-                Γåæ
+                ↑
               </button>
             </div>
             <p className="mt-2 text-center text-xs text-text-dim">
-              ΓÅÄ send ┬╖ ΓçºΓÅÄ newline ┬╖ <span className="font-mono">@</span> agents ┬╖{' '}
-              <span className="font-mono">/</span> commands ┬╖ {input.length}/10000
+              ⏎ send · ⇧⏎ newline · <span className="font-mono">@</span> agents ·{' '}
+              <span className="font-mono">/</span> commands · {input.length}/10000
             </p>
           </div>
         </div>

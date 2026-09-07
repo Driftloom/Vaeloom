@@ -1,4 +1,4 @@
-﻿import { createHmac } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { verifyGithubSignature } from './auth';
 import { GithubIntegration } from './github.integration';
 

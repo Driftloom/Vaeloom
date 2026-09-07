@@ -27,6 +27,14 @@ jest.mock('../../../../lib/api', () => ({
   },
 }));
 
+jest.mock('../../../../lib/api-client', () => ({
+  temporalApi: {
+    startConnectorSync: jest.fn().mockRejectedValue({ status: 503 }),
+    getStatus: jest.fn(),
+    cancel: jest.fn(),
+  },
+}));
+
 describe('ConnectorsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();

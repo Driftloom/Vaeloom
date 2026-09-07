@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import { useParams } from 'next/navigation';
@@ -110,10 +110,10 @@ export default function DashboardPage() {
         </h1>
         <p className="text-text-muted">
           {agentsFailed || memoriesFailed ? (
-            'Could not load workspace stats ΓÇö see cards below.'
+            'Could not load workspace stats — see cards below.'
           ) : agentCount === 0 && memoryCount === 0 ? (
             <>
-              No agents or memories yet ΓÇö{' '}
+              No agents or memories yet —{' '}
               <a href={`/workspace/${workspaceId}/files`} className="text-primary underline">
                 upload a file
               </a>{' '}
@@ -143,11 +143,11 @@ export default function DashboardPage() {
             <div>
               <p className="font-medium text-text">Pending approvals</p>
               <p className="text-xs text-text-muted">
-                Agent suggestions require your review ΓÇö Files, Gmail, Schedule, Applications
+                Agent suggestions require your review — Files, Gmail, Schedule, Applications
               </p>
             </div>
           </div>
-          <span className="text-sm text-amber-700 font-medium">Review ΓåÆ</span>
+          <span className="text-sm text-amber-700 font-medium">Review →</span>
         </Link>
       )}
 

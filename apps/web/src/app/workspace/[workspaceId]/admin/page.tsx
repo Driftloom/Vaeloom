@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import React, { useState, useEffect } from 'react';
 import { Button, Modal } from '@vaeloom/ui-kit';
@@ -40,11 +40,46 @@ interface AuditEvent {
 }
 
 const mockUsers: User[] = [
-  { id: '1', name: 'Alice Chen', email: 'alice@example.com', role: 'admin', status: 'active', lastActive: '2 min ago' },
-  { id: '2', name: 'Bob Martinez', email: 'bob@example.com', role: 'member', status: 'active', lastActive: '1 hour ago' },
-  { id: '3', name: 'Carol Smith', email: 'carol@example.com', role: 'member', status: 'invited', lastActive: 'Never' },
-  { id: '4', name: 'Dave Johnson', email: 'dave@example.com', role: 'viewer', status: 'suspended', lastActive: '3 days ago' },
-  { id: '5', name: 'Eve Williams', email: 'eve@example.com', role: 'admin', status: 'active', lastActive: '5 min ago' },
+  {
+    id: '1',
+    name: 'Alice Chen',
+    email: 'alice@example.com',
+    role: 'admin',
+    status: 'active',
+    lastActive: '2 min ago',
+  },
+  {
+    id: '2',
+    name: 'Bob Martinez',
+    email: 'bob@example.com',
+    role: 'member',
+    status: 'active',
+    lastActive: '1 hour ago',
+  },
+  {
+    id: '3',
+    name: 'Carol Smith',
+    email: 'carol@example.com',
+    role: 'member',
+    status: 'invited',
+    lastActive: 'Never',
+  },
+  {
+    id: '4',
+    name: 'Dave Johnson',
+    email: 'dave@example.com',
+    role: 'viewer',
+    status: 'suspended',
+    lastActive: '3 days ago',
+  },
+  {
+    id: '5',
+    name: 'Eve Williams',
+    email: 'eve@example.com',
+    role: 'admin',
+    status: 'active',
+    lastActive: '5 min ago',
+  },
 ];
 
 const mockServices: Service[] = [
@@ -57,17 +92,72 @@ const mockServices: Service[] = [
 ];
 
 const mockAuditLog: AuditEvent[] = [
-  { id: 'a1', user: 'Alice Chen', action: 'workspace.delete', resource: 'Workspace "Dev"', timestamp: '2026-07-18 19:23:04', ip: '192.168.1.10' },
-  { id: 'a2', user: 'Bob Martinez', action: 'user.invite', resource: 'carol@example.com', timestamp: '2026-07-18 18:15:22', ip: '192.168.1.11' },
-  { id: 'a3', user: 'Eve Williams', action: 'settings.update', resource: 'Agent Autonomy', timestamp: '2026-07-18 17:00:01', ip: '10.0.0.5' },
-  { id: 'a4', user: 'System', action: 'backup.complete', resource: 'Daily Backup', timestamp: '2026-07-18 03:00:00', ip: '127.0.0.1' },
-  { id: 'a5', user: 'Alice Chen', action: 'role.update', resource: 'Dave Johnson -> viewer', timestamp: '2026-07-17 14:30:00', ip: '192.168.1.10' },
-  { id: 'a6', user: 'System', action: 'cache.cleared', resource: 'Redis Cache', timestamp: '2026-07-17 03:00:00', ip: '127.0.0.1' },
+  {
+    id: 'a1',
+    user: 'Alice Chen',
+    action: 'workspace.delete',
+    resource: 'Workspace "Dev"',
+    timestamp: '2026-07-18 19:23:04',
+    ip: '192.168.1.10',
+  },
+  {
+    id: 'a2',
+    user: 'Bob Martinez',
+    action: 'user.invite',
+    resource: 'carol@example.com',
+    timestamp: '2026-07-18 18:15:22',
+    ip: '192.168.1.11',
+  },
+  {
+    id: 'a3',
+    user: 'Eve Williams',
+    action: 'settings.update',
+    resource: 'Agent Autonomy',
+    timestamp: '2026-07-18 17:00:01',
+    ip: '10.0.0.5',
+  },
+  {
+    id: 'a4',
+    user: 'System',
+    action: 'backup.complete',
+    resource: 'Daily Backup',
+    timestamp: '2026-07-18 03:00:00',
+    ip: '127.0.0.1',
+  },
+  {
+    id: 'a5',
+    user: 'Alice Chen',
+    action: 'role.update',
+    resource: 'Dave Johnson -> viewer',
+    timestamp: '2026-07-17 14:30:00',
+    ip: '192.168.1.10',
+  },
+  {
+    id: 'a6',
+    user: 'System',
+    action: 'cache.cleared',
+    resource: 'Redis Cache',
+    timestamp: '2026-07-17 03:00:00',
+    ip: '127.0.0.1',
+  },
 ];
 
-const roleColors: Record<UserRole, StatusVariant> = { admin: 'info', member: 'success', viewer: 'neutral' };
-const statusColors: Record<UserStatus, StatusVariant> = { active: 'success', invited: 'warning', suspended: 'error' };
-const serviceColors: Record<string, StatusVariant> = { operational: 'success', degraded: 'warning', down: 'error', maintenance: 'neutral' };
+const roleColors: Record<UserRole, StatusVariant> = {
+  admin: 'info',
+  member: 'success',
+  viewer: 'neutral',
+};
+const statusColors: Record<UserStatus, StatusVariant> = {
+  active: 'success',
+  invited: 'warning',
+  suspended: 'error',
+};
+const serviceColors: Record<string, StatusVariant> = {
+  operational: 'success',
+  degraded: 'warning',
+  down: 'error',
+  maintenance: 'neutral',
+};
 const svcColor = (s: string): StatusVariant => serviceColors[s] ?? 'neutral';
 
 export default function AdminPage() {
@@ -81,9 +171,25 @@ export default function AdminPage() {
   const paginatedAudit = auditLog.slice((auditPage - 1) * pageSize, auditPage * pageSize);
   const totalPages = Math.ceil(auditLog.length / pageSize);
 
-  const { data: iamRes, isLoading: iamLoading, error: iamError } = useSWR('admin-iam-users', () => iamApi.listUsers({ page: 1, page_size: 20 }).catch(() => null), { revalidateOnFocus: false });
-  const { data: auditRes, isLoading: auditLoading } = useSWR('admin-audit-events', () => auditApi.queryEvents({ page: 1, page_size: 20 }).catch(() => null), { revalidateOnFocus: false });
-  const { data: healthRes, isLoading: healthLoading } = useSWR('admin-health', () => adminApi.servicesHealth().catch(() => null), { revalidateOnFocus: false });
+  const {
+    data: iamRes,
+    isLoading: iamLoading,
+    error: iamError,
+  } = useSWR(
+    'admin-iam-users',
+    () => iamApi.listUsers({ page: 1, page_size: 20 }).catch(() => null),
+    { revalidateOnFocus: false },
+  );
+  const { data: auditRes, isLoading: auditLoading } = useSWR(
+    'admin-audit-events',
+    () => auditApi.queryEvents({ page: 1, page_size: 20 }).catch(() => null),
+    { revalidateOnFocus: false },
+  );
+  const { data: healthRes, isLoading: healthLoading } = useSWR(
+    'admin-health',
+    () => adminApi.servicesHealth().catch(() => null),
+    { revalidateOnFocus: false },
+  );
 
   useEffect(() => {
     if (iamRes?.items?.length) {
@@ -107,7 +213,7 @@ export default function AdminPage() {
         action: e.action,
         resource: e.resource + (e.resource_id ? `:${e.resource_id.slice(0, 6)}` : ''),
         timestamp: new Date(e.created_at).toLocaleString(),
-        ip: (e.metadata as Record<string, unknown>)?.['ip'] as string ?? '—',
+        ip: ((e.metadata as Record<string, unknown>)?.['ip'] as string) ?? '—',
       }));
       setAuditLog(mapped);
     }
@@ -121,40 +227,63 @@ export default function AdminPage() {
         if (s === 'down' || s === 'unhealthy') return 'down';
         return 'operational';
       };
-      const mapped: Service[] = healthRes.services.map((svc: { name: string; status: string; uptime: string }) => ({
-        id: svc.name,
-        name: svc.name,
-        status: mapStatus(svc.status),
-        uptime: svc.uptime,
-      }));
+      const mapped: Service[] = healthRes.services.map(
+        (svc: { name: string; status: string; uptime: string }) => ({
+          id: svc.name,
+          name: svc.name,
+          status: mapStatus(svc.status),
+          uptime: svc.uptime,
+        }),
+      );
       setServices(mapped);
     }
   }, [healthRes]);
 
   if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Admin" />;
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2000);
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const health = await fetch(`${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000'}/health`).then((r) => r.json()).catch(() => null);
+      const health = await fetch(
+        `${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000'}/health`,
+      )
+        .then((r) => r.json())
+        .catch(() => null);
       if (health) showToast(`Health: ${health.status ?? 'ok'}`);
       else showToast('Health check failed — backend unreachable');
-    } finally { setRefreshing(false); }
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const userColumns: Column<User>[] = [
     { key: 'name', header: 'Name' },
     { key: 'email', header: 'Email' },
-    { key: 'role', header: 'Role', render: (u) => <StatusBadge variant={roleColors[u.role]} label={u.role} /> },
-    { key: 'status', header: 'Status', render: (u) => <StatusBadge variant={statusColors[u.status]} label={u.status} /> },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (u) => <StatusBadge variant={roleColors[u.role]} label={u.role} />,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (u) => <StatusBadge variant={statusColors[u.status]} label={u.status} />,
+    },
     { key: 'lastActive', header: 'Last Active', className: 'text-text-muted text-sm' },
   ];
 
   const auditColumns: Column<AuditEvent>[] = [
     { key: 'user', header: 'User' },
-    { key: 'action', header: 'Action', render: (e) => <span className="font-mono text-sm">{e.action}</span> },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (e) => <span className="font-mono text-sm">{e.action}</span>,
+    },
     { key: 'resource', header: 'Resource', className: 'text-text-muted' },
     { key: 'timestamp', header: 'Timestamp', className: 'text-text-muted font-mono text-sm' },
     { key: 'ip', header: 'IP', className: 'text-text-muted font-mono text-sm' },
@@ -162,29 +291,59 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
-      {toast && <div role="alert" className="fixed top-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-xl text-text text-sm animate-in">{toast}</div>}
+      {toast && (
+        <div
+          role="alert"
+          className="fixed top-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-xl text-text text-sm animate-in"
+        >
+          {toast}
+        </div>
+      )}
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-display font-medium text-text mb-2">Admin Dashboard</h1>
-          <p className="text-text-muted">System administration, user management, and audit controls. {iamLoading || auditLoading ? 'Syncing...' : iamError ? 'Using fallback mock data (backend IAM not reachable)' : 'Live data from backend IAM & Audit.'}</p>
+          <p className="text-text-muted">
+            System administration, user management, and audit controls.{' '}
+            {iamLoading || auditLoading
+              ? 'Syncing...'
+              : iamError
+                ? 'Using fallback mock data (backend IAM not reachable)'
+                : 'Live data from backend IAM & Audit.'}
+          </p>
         </div>
-        <Button variant="secondary" onClick={handleRefresh} disabled={refreshing}>{refreshing ? 'Checking…' : 'Refresh health'}</Button>
+        <Button variant="secondary" onClick={handleRefresh} disabled={refreshing}>
+          {refreshing ? 'Checking…' : 'Refresh health'}
+        </Button>
       </header>
 
       <section>
-        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">User Management</h2>
+        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
+          User Management
+        </h2>
         <div className="card overflow-hidden">
           <Table columns={userColumns} data={users} keyExtractor={(u) => u.id} />
         </div>
-        <p className="text-xs text-text-dim mt-2">Source: <span className="font-mono">{iamRes?.items ? 'GET /iam/users (live)' : 'mockUsers fallback — enable ENTERPRISE_ROUTES_ENABLED=true on backend'}</span></p>
+        <p className="text-xs text-text-dim mt-2">
+          Source:{' '}
+          <span className="font-mono">
+            {iamRes?.items
+              ? 'GET /iam/users (live)'
+              : 'mockUsers fallback — enable ENTERPRISE_ROUTES_ENABLED=true on backend'}
+          </span>
+        </p>
       </section>
 
       <section>
-        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">System Health</h2>
+        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
+          System Health
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {services.map((svc) => (
             <div key={svc.id} className="card flex items-center justify-between">
-              <div><p className="font-medium text-text">{svc.name}</p><p className="text-xs text-text-muted font-mono mt-1">Uptime: {svc.uptime}</p></div>
+              <div>
+                <p className="font-medium text-text">{svc.name}</p>
+                <p className="text-xs text-text-muted font-mono mt-1">Uptime: {svc.uptime}</p>
+              </div>
               <StatusBadge variant={svcColor(svc.status)} label={svc.status} />
             </div>
           ))}
@@ -192,21 +351,40 @@ export default function AdminPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">Audit Log</h2>
+        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
+          Audit Log
+        </h2>
         <div className="card overflow-hidden">
           <Table columns={auditColumns} data={paginatedAudit} keyExtractor={(e) => e.id} />
           <div className="flex items-center justify-between p-4 border-t border-border">
-            <span className="text-sm text-text-muted">Page {auditPage} of {totalPages} · {auditLog.length} entries {auditRes?.items ? '(live)' : '(mock)'}</span>
+            <span className="text-sm text-text-muted">
+              Page {auditPage} of {totalPages} · {auditLog.length} entries{' '}
+              {auditRes?.items ? '(live)' : '(mock)'}
+            </span>
             <div className="flex gap-2">
-              <button className="btn-secondary" disabled={auditPage <= 1} onClick={() => setAuditPage(auditPage - 1)}>Previous</button>
-              <button className="btn-secondary" disabled={auditPage >= totalPages} onClick={() => setAuditPage(auditPage + 1)}>Next</button>
+              <button
+                className="btn-secondary"
+                disabled={auditPage <= 1}
+                onClick={() => setAuditPage(auditPage - 1)}
+              >
+                Previous
+              </button>
+              <button
+                className="btn-secondary"
+                disabled={auditPage >= totalPages}
+                onClick={() => setAuditPage(auditPage + 1)}
+              >
+                Next
+              </button>
             </div>
           </div>
         </div>
       </section>
 
       <section>
-        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">Quick Actions</h2>
+        <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
+          Quick Actions
+        </h2>
         <div className="flex flex-wrap gap-4">
           <Button
             variant="secondary"
@@ -262,7 +440,11 @@ export default function AdminPage() {
           </Button>
         </div>
         <p className="text-xs text-text-dim mt-2 font-mono">
-          Source: {healthRes?.services ? 'GET /admin/services/health (live)' : 'mockServices fallback — enable ENTERPRISE_ROUTES_ENABLED'} · Quick Actions call POST /admin/actions/&#123;action&#125; (live)
+          Source:{' '}
+          {healthRes?.services
+            ? 'GET /admin/services/health (live)'
+            : 'mockServices fallback — enable ENTERPRISE_ROUTES_ENABLED'}{' '}
+          · Quick Actions call POST /admin/actions/&#123;action&#125; (live)
         </p>
       </section>
     </div>

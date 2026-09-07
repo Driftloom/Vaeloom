@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -31,7 +31,7 @@ const statusVariant: Record<string, StatusVariant> = {
 };
 
 function formatDate(iso?: string): string {
-  if (!iso) return 'ΓÇö';
+  if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -245,15 +245,15 @@ export default function ApplicationsPage() {
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
                 <span className="font-mono text-text-dim">Company</span>
-                <p className="text-text">{getAppCompany(selected) || 'ΓÇö'}</p>
+                <p className="text-text">{getAppCompany(selected) || '—'}</p>
               </div>
               <div>
                 <span className="font-mono text-text-dim">Platform</span>
-                <p className="text-text">{selected.platform ?? 'ΓÇö'}</p>
+                <p className="text-text">{selected.platform ?? '—'}</p>
               </div>
               <div>
                 <span className="font-mono text-text-dim">Job ID</span>
-                <p className="font-mono text-text">{selected.job_external_id ?? 'ΓÇö'}</p>
+                <p className="font-mono text-text">{selected.job_external_id ?? '—'}</p>
               </div>
               <div>
                 <span className="font-mono text-text-dim">Created</span>
@@ -289,7 +289,7 @@ export default function ApplicationsPage() {
                   onChange={(e) => setEditOutcome(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 >
-                  <option value="">ΓÇö</option>
+                  <option value="">—</option>
                   <option value="offer">offer</option>
                   <option value="rejected">rejected</option>
                   <option value="withdrawn">withdrawn</option>
@@ -308,7 +308,7 @@ export default function ApplicationsPage() {
                 disabled={saving}
                 className="rounded-full bg-white px-4 py-1.5 text-sm text-black disabled:opacity-40"
               >
-                {saving ? 'SavingΓÇª' : 'Save'}
+                {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>

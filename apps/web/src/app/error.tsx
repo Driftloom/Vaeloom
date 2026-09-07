@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { ErrorState } from '@/components/shared/ErrorState';
 import { captureError } from '@/lib/error-tracking';

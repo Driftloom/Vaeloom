@@ -1,4 +1,4 @@
-﻿import { verifySlackSignature } from './auth';
+import { verifySlackSignature } from './auth';
 import { createHmac } from 'node:crypto';
 import { SlackIntegration } from './slack.integration';
 

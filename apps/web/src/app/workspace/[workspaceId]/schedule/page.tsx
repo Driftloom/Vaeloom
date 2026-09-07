@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -195,7 +195,7 @@ export default function SchedulePage() {
             ),
           );
         } else {
-          // No backend approval ΓÇö local proposed resolution
+          // No backend approval — local proposed resolution
           setEvents((prev) =>
             prev.map((ev) =>
               ev.id === e.id
@@ -212,7 +212,7 @@ export default function SchedulePage() {
           toast({
             tone: decision === 'approve' ? 'success' : 'info',
             title: decision === 'approve' ? 'Approved locally' : 'Rejected locally',
-            detail: 'No approval record ΓÇö marked in UI. Create via agent for real approval gate.',
+            detail: 'No approval record — marked in UI. Create via agent for real approval gate.',
           });
         }
       } catch (err) {
@@ -280,7 +280,7 @@ export default function SchedulePage() {
         <div>
           <h1 className="text-3xl font-display font-medium text-text mb-1">Schedule</h1>
           <p className="text-text-muted text-sm">
-            Workspace-scoped ┬╖ calendar + list ┬╖ Gmail vs agent vs you ┬╖ proposed events need
+            Workspace-scoped · calendar + list · Gmail vs agent vs you · proposed events need
             approval
           </p>
         </div>
@@ -310,7 +310,7 @@ export default function SchedulePage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search title or typeΓÇª"
+          placeholder="Search title or type…"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-48"
         />
         <select
@@ -493,7 +493,7 @@ export default function SchedulePage() {
                         onClick={() => handleApprove(event, 'approve')}
                         className="flex-1 rounded-full bg-white text-black text-xs py-1.5 disabled:opacity-40"
                       >
-                        {busyApprove === event.id ? 'ApprovingΓÇª' : 'Approve'}
+                        {busyApprove === event.id ? 'Approving…' : 'Approve'}
                       </button>
                       <button
                         disabled={busyApprove === event.id}
@@ -529,7 +529,7 @@ export default function SchedulePage() {
                 {getSourceBadge(selected).label}
               </span>
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-mono">
-                {selected.category} ┬╖ {selected.type}
+                {selected.category} · {selected.type}
               </span>
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs">
                 {selected.status}
@@ -635,9 +635,9 @@ export default function SchedulePage() {
       </Modal>
 
       <p className="text-xs text-text-dim mt-3">
-        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) ΓÇö migrated 2026-08-21;
-        Gmail-extracted events are read via Gmail connector, agent-proposed events via the
-        scheduler/gmail agents.
+        Workspace filter is server-side (`GET /events?workspace_id=` + RLS `workspace_id` index) —
+        migrated 2026-08-21; Gmail-extracted events are read via Gmail connector, agent-proposed
+        events via the scheduler/gmail agents.
       </p>
     </div>
   );

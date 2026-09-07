@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -10,7 +10,7 @@ import type { JobResponse } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 function formatDate(iso?: string): string {
-  if (!iso) return 'ΓÇö';
+  if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -229,7 +229,7 @@ export default function JobsPage() {
         toast({
           tone: 'success',
           title: 'Application started',
-          detail: `${title} ΓÇö check Approvals for approval or Applications for status`,
+          detail: `${title} — check Approvals for approval or Applications for status`,
         });
       } catch (err) {
         toast({
@@ -303,7 +303,7 @@ export default function JobsPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSearch();
               }}
-              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineerΓÇª"
+              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineer…"
               className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
             />
             <button
@@ -311,21 +311,21 @@ export default function JobsPage() {
               disabled={searching || !query.trim()}
               className="rounded-full bg-white px-5 py-2 text-sm text-black disabled:opacity-40"
             >
-              {searching ? 'SearchingΓÇª' : 'Search'}
+              {searching ? 'Searching…' : 'Search'}
             </button>
           </div>
           <p className="text-xs text-text-dim mt-2">
-            Powered by the Job Search agent ΓÇö results include match explanation and fit summary.
+            Powered by the Job Search agent — results include match explanation and fit summary.
           </p>
         </div>
 
-        {searching && <LoadingSpinner text="Searching jobsΓÇª" />}
+        {searching && <LoadingSpinner text="Searching jobs…" />}
         {!searching && searchResult && (
           <div className="space-y-4">
             <div className="card">
               <h3 className="font-medium text-text mb-2">Results</h3>
               <p className="text-sm text-text-muted whitespace-pre-wrap">
-                {searchResult.summary || 'No summary returned ΓÇö try a different query.'}
+                {searchResult.summary || 'No summary returned — try a different query.'}
               </p>
               {searchResult.questions && searchResult.questions.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -376,7 +376,7 @@ export default function JobsPage() {
               </div>
             ) : (
               <p className="text-sm text-text-muted">
-                No structured proposals returned ΓÇö the summary above contains the ranked matches.
+                No structured proposals returned — the summary above contains the ranked matches.
                 Save interesting roles from the summary and use Apply to start an approval-gated
                 application (you will get a deep link after approval).
               </p>
@@ -483,7 +483,7 @@ export default function JobsPage() {
         {saved.length === 0 ? (
           <EmptyState
             title="No saved jobs"
-            description="Save roles from the Job Search tab ΓÇö they persist here. Apply requires approval and will give you a deep link to the application."
+            description="Save roles from the Job Search tab — they persist here. Apply requires approval and will give you a deep link to the application."
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

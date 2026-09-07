@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -110,7 +110,7 @@ export default function ConnectorsPage() {
       toast({
         tone: 'success',
         title: 'Connector created',
-        detail: `${meta?.name ?? provider} ΓÇö ${meta?.scopes.join(', ')}`,
+        detail: `${meta?.name ?? provider} — ${meta?.scopes.join(', ')}`,
       });
       setPendingProvider(null);
     } catch (err) {
@@ -267,7 +267,7 @@ export default function ConnectorsPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-display font-medium text-text mb-2">Connectors</h1>
         <p className="text-text-muted">
-          Least-privilege OAuth. Each connector shows the exact scopes granted ΓÇö review before
+          Least-privilege OAuth. Each connector shows the exact scopes granted — review before
           connecting. Sync progress and errors surface inline with retry.
         </p>
       </header>
@@ -303,7 +303,7 @@ export default function ConnectorsPage() {
                         {meta?.name ?? conn.provider}
                       </h3>
                       <p className="text-xs font-mono text-text-muted">
-                        {conn.provider} ┬╖ {meta?.scopes.join(', ') ?? 'ΓÇö'}
+                        {conn.provider} · {meta?.scopes.join(', ') ?? '—'}
                       </p>
                     </div>
                   </div>
@@ -381,7 +381,7 @@ export default function ConnectorsPage() {
                       disabled={busy === `revoke-${conn.id}`}
                       onClick={() => handleRevoke(conn)}
                     >
-                      {busy === `revoke-${conn.id}` ? 'RevokingΓÇª' : 'Revoke'}
+                      {busy === `revoke-${conn.id}` ? 'Revoking…' : 'Revoke'}
                     </button>
                   </div>
                 </div>
@@ -436,7 +436,7 @@ export default function ConnectorsPage() {
                   disabled={isBusy}
                   onClick={() => setPendingProvider(provider)}
                 >
-                  {isBusy ? 'ConnectingΓÇª' : 'Connect'}
+                  {isBusy ? 'Connecting…' : 'Connect'}
                 </button>
               </div>
             );
@@ -480,7 +480,7 @@ export default function ConnectorsPage() {
                 disabled={busy === `connect-${pendingProvider}`}
                 onClick={() => handleConnect(pendingProvider)}
               >
-                {busy === `connect-${pendingProvider}` ? 'ConnectingΓÇª' : 'Continue to OAuth'}
+                {busy === `connect-${pendingProvider}` ? 'Connecting…' : 'Continue to OAuth'}
               </button>
             </div>
           </div>

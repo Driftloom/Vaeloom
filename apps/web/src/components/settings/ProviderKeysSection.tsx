@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { providerKeysApi, type ProviderKeyResponse } from '@/lib/api-client';

@@ -1,8 +1,8 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* ─────────────────────────────────────────────────────────────────────────────
  * Vaeloom dual-theme design tokens (Phase 02A / Wave 03)
  *
  * DARK (default): PURE BLACK canvas (#000000, brand reference) with a
@@ -10,7 +10,7 @@
  * LIGHT: premium near-white enterprise surfaces with refined indigo accents.
  *
  * Values are R G B triplets consumed by tailwind.config.ts with alpha support.
- * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€*/
+ * ────────────────────────────────────────────────────────────────────────────*/
 
 :root,
 .dark {
@@ -103,10 +103,10 @@
 
   --text: 23 26 43;             /* #171A2B */
   --text-secondary: 79 86 111;  /* #4F566F */
-  /* Muted/dim tuned to clear WCAG AA (â‰¥5.0:1) on every real surface,
+  /* Muted/dim tuned to clear WCAG AA (≥5.0:1) on every real surface,
      including tinted #F7F8FC canvas and #F1F3F9 hover fills. */
-  --text-muted: 88 97 123;      /* #58617B â‰ˆ 5.6:1 */
-  --text-dim: 98 107 131;       /* #626B83 â‰ˆ 5.1:1 */
+  --text-muted: 88 97 123;      /* #58617B ≈ 5.6:1 */
+  --text-dim: 98 107 131;       /* #626B83 ≈ 5.1:1 */
   --text-200: 55 60 92;
   --text-300: 79 86 111;
   --text-400: 98 107 131;
@@ -185,7 +185,7 @@
 }
 
 @layer components {
-  /* Canonical primary action â€” one family for the whole product. */
+  /* Canonical primary action — one family for the whole product. */
   .btn-primary {
     @apply bg-action text-action-fg font-semibold px-6 py-3 rounded-lg
            hover:bg-action-hover active:bg-action-active disabled:opacity-50
