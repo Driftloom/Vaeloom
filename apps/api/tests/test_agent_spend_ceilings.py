@@ -167,6 +167,15 @@ async def test_react_rounds_follow_settings(monkeypatch):
     monkeypatch.setattr(settings, "llm_api_key", "mock-key")
     monkeypatch.setattr(settings, "agent_max_react_rounds", 2)
 
+    # Isolate from card-registry pollution: _dispatch_agent's get_or_create
+    # side effect (Phase A authorization gate) permanently registers a
+    # fallback `_stub` card with default max_react_rounds=5, which would
+    # otherwise win over this test's explicit settings override via the
+    # `card_max or settings` precedence in _try_react_loop.
+    from api.orchestrator.card_registry import card_registry
+    for _leaked in ("_stub", "stub"):
+        card_registry._cards.pop(_leaked, None)
+
     calls = {"n": 0}
 
     async def fake_stream(*args, **kwargs):
@@ -180,7 +189,6 @@ async def test_react_rounds_follow_settings(monkeypatch):
 
     # Patch BOTH class and singleton (instance attrs shadow class patches).
     monkeypatch.setattr(LLMService, "generate_completion_with_tools_stream", fake_stream)
-    monkeypatch.setattr(llm_service, "generate_completion_with_tools_stream", fake_stream, raising=False)
 
     result = await loop_mod._try_react_loop(
         _StubAgent(), "do a multi-step research task", "ws-ceil-1", "stub"

@@ -12,14 +12,22 @@ async def _signup(client: AsyncClient, email: str) -> str:
     return res.json()["access_token"]
 
 
+async def _ws_headers(client: AsyncClient, email: str) -> dict:
+    """Auth headers incl. authoritative workspace (Phase A requires it for memory writes)."""
+    token = await _signup(client, email)
+    headers = {"Authorization": f"Bearer {token}"}
+    ws_res = await client.get("/api/v1/workspaces", headers=headers)
+    assert ws_res.status_code == 200
+    return {**headers, "X-Workspace-ID": ws_res.json()[0]["id"]}
+
+
 @pytest.mark.asyncio
 class TestMemoryQuality:
     """Verify memory creation, retrieval, and quality attributes."""
 
     async def test_memory_create_with_valid_type(self, client: AsyncClient):
         """Memory creation with valid type should succeed."""
-        token = await _signup(client, "ai-eval-1@test.com")
-        headers = {"Authorization": f"Bearer {token}"}
+        headers = await _ws_headers(client, "ai-eval-1@test.com")
 
         res = await client.post(
             "/api/v1/memories",
@@ -34,8 +42,7 @@ class TestMemoryQuality:
 
     async def test_memory_create_all_types(self, client: AsyncClient):
         """All valid memory types should be creatable."""
-        token = await _signup(client, "ai-eval-types@test.com")
-        headers = {"Authorization": f"Bearer {token}"}
+        headers = await _ws_headers(client, "ai-eval-types@test.com")
 
         valid_types = ["profile", "document", "career", "episodic", "preference", "working"]
         for mem_type in valid_types:
@@ -69,8 +76,7 @@ class TestMemoryQuality:
 
     async def test_memory_deduplication(self, client: AsyncClient):
         """Duplicate memories should be handled gracefully."""
-        token = await _signup(client, "ai-eval-dedup@test.com")
-        headers = {"Authorization": f"Bearer {token}"}
+        headers = await _ws_headers(client, "ai-eval-dedup@test.com")
 
         content = "Exact duplicate content for testing"
         res1 = await client.post(

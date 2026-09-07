@@ -176,7 +176,9 @@ class TestLLMService:
         monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
 
         svc = LLMService()
-        with pytest.raises(LLMProviderError, match="Anthropic completion failed: 500"):
+        # HTTP 500 is classified transient (retry, then raise last error):
+        # LLMTransientError subclasses LLMProviderError.
+        with pytest.raises(LLMProviderError, match="Anthropic transient error: 500"):
             await svc.generate_completion([{"role": "user", "content": "Hi"}])
 
     async def test_generate_completion_openai_http_401(self, monkeypatch):

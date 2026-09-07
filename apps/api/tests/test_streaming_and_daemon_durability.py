@@ -259,9 +259,18 @@ class TestToolStreamParsers:
         assert events[-1]["finish_reason"] == "tool_use"
 
     @pytest.mark.asyncio
-    async def test_no_key_delegates_to_buffered_contract(self):
+    async def test_no_key_delegates_to_buffered_contract(self, monkeypatch):
         """No API key → buffered fallback emits single-shot text_delta + done."""
         from api.services.llm_service import llm_service
+
+        # Hermetic precondition: the dev environment may carry live provider
+        # keys (.env), which would take the real streaming branch. Force the
+        # no-key path this contract is about (class-level patch; see note in
+        # test_react_loop_cards.py about singleton shadows).
+        from api.services.llm_service import LLMService
+        async def _no_key(self, provider, user_id=None, workspace_id=None, db=None, explicit_key=None):
+            return provider, None
+        monkeypatch.setattr(LLMService, "_resolve_api_key", _no_key)
 
         events = [e async for e in llm_service.generate_completion_with_tools_stream(messages=[{"role": "user", "content": "hi"}], tools=[])]
         assert events[0]["type"] == "text_delta"
@@ -413,7 +422,7 @@ class TestDaemonEnqueuer:
 
         executed: list[tuple] = []
 
-        async def _fake_exec(schedule_id, agent_id, input_data):
+        async def _fake_exec(schedule_id, agent_id, input_data, envelope=None):
             executed.append((schedule_id, agent_id, input_data))
             return {"status": "success", "error": None, "summary": "ok"}
 

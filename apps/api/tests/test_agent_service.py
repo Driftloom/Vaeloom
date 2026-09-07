@@ -34,6 +34,7 @@ def _make_agent(**overrides):
     a.config = overrides.get("config", {})
     a.user_id = overrides.get("user_id")
     a.tenant_id = overrides.get("tenant_id")
+    a.workspace_id = overrides.get("workspace_id")
     a.created_at = overrides.get("created_at", datetime.now(timezone.utc))
     a.updated_at = overrides.get("updated_at", datetime.now(timezone.utc))
     return a
@@ -177,7 +178,7 @@ class TestAgentService:
         agent = _make_agent()
         with patch.object(service, 'get_agent', new=AsyncMock()) as mock_get:
             mock_get.return_value = agent
-            result = await service.update_agent(agent.id, agent_update_dto, mock_db)
+            result = await service.update_agent(agent.id, agent_update_dto, mock_db, str(uuid.uuid4()))
             assert result is agent
             assert agent.name == "Updated"
             assert agent.description == "New desc"
@@ -189,8 +190,26 @@ class TestAgentService:
     async def test_update_agent_not_found(self, service, mock_db, agent_update_dto):
         with patch.object(service, 'get_agent', new=AsyncMock()) as mock_get:
             mock_get.return_value = None
-            result = await service.update_agent(uuid.uuid4(), agent_update_dto, mock_db)
+            result = await service.update_agent(uuid.uuid4(), agent_update_dto, mock_db, str(uuid.uuid4()))
             assert result is None
+
+    async def test_update_agent_missing_tenant_denied(self, service, mock_db, agent_update_dto):
+        """Fail closed: no tenant scope → no write, even for a known id."""
+        agent = _make_agent()
+        with patch.object(service, 'get_agent', new=AsyncMock()) as mock_get:
+            mock_get.return_value = agent
+            assert await service.update_agent(agent.id, agent_update_dto, mock_db, None) is None
+            mock_get.assert_not_awaited()
+
+    async def test_update_agent_passes_tenant_scope(self, service, mock_db, agent_update_dto):
+        """Tenant must scope the lookup (GATE2-F1): the service forwards it."""
+        agent = _make_agent()
+        with patch.object(service, 'get_agent', new=AsyncMock()) as mock_get:
+            mock_get.return_value = agent
+            tid = str(uuid.uuid4())
+            result = await service.update_agent(agent.id, agent_update_dto, mock_db, tid)
+            assert result is agent
+            mock_get.assert_awaited_once_with(mock_db, agent.id, tid)
 
     async def test_update_agent_partial(self, service, mock_db):
         dto = MagicMock()
@@ -201,7 +220,7 @@ class TestAgentService:
         agent = _make_agent()
         with patch.object(service, 'get_agent', new=AsyncMock()) as mock_get:
             mock_get.return_value = agent
-            result = await service.update_agent(agent.id, dto, mock_db)
+            result = await service.update_agent(agent.id, dto, mock_db, str(uuid.uuid4()))
             assert result is agent
 
     # ── deactivate_agent ──────────────────────────────────────────────
@@ -209,15 +228,21 @@ class TestAgentService:
     async def test_deactivate_agent_found(self, service, mock_db):
         agent = _make_agent()
         mock_db.execute.return_value = _MockScalarResult(scalar=agent)
-        result = await service.deactivate_agent(agent.id, mock_db)
+        result = await service.deactivate_agent(agent.id, mock_db, str(uuid.uuid4()))
         assert result is True
         assert agent.status == "inactive"
         mock_db.flush.assert_awaited()
 
     async def test_deactivate_agent_not_found(self, service, mock_db):
         mock_db.execute.return_value = _MockScalarResult(scalar=None)
-        result = await service.deactivate_agent(uuid.uuid4(), mock_db)
+        result = await service.deactivate_agent(uuid.uuid4(), mock_db, str(uuid.uuid4()))
         assert result is False
+
+    async def test_deactivate_agent_missing_tenant_denied(self, service, mock_db):
+        agent = _make_agent()
+        mock_db.execute.return_value = _MockScalarResult(scalar=agent)
+        assert await service.deactivate_agent(agent.id, mock_db, None) is False
+        assert agent.status == "active"  # untouched
 
     # ── schedule_agent ────────────────────────────────────────────────
 

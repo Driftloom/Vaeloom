@@ -10,7 +10,7 @@ from api.config import settings
 from api.orchestrator.base import AgentContext, BaseAgent
 from api.orchestrator.card import AgentCard
 from api.orchestrator.loop import _try_react_loop, act_phase, AgentRequest
-from api.services.llm_service import llm_service
+from api.services.llm_service import LLMService
 
 
 class DummyAgent(BaseAgent):
@@ -52,8 +52,12 @@ async def test_react_loop_direct_structured_answer(monkeypatch):
 
     captured_messages = []
 
-    # Stream generator yielding direct answer
-    async def mock_stream(messages, tools=None):
+    # Stream generator yielding direct answer.
+    # NOTE: patched at CLASS level with explicit self — patching the
+    # llm_service singleton instance leaves a shadowing __dict__ entry after
+    # teardown (pytest restores by assignment) that hijacks later tests'
+    # class-level patches. Never patch the singleton instance bare.
+    async def mock_stream(self, messages, tools=None):
         captured_messages.extend(messages)
         yield {
             "type": "text_delta",
@@ -61,7 +65,7 @@ async def test_react_loop_direct_structured_answer(monkeypatch):
         }
         yield {"type": "done"}
 
-    monkeypatch.setattr(llm_service, "generate_completion_with_tools_stream", mock_stream)
+    monkeypatch.setattr(LLMService, "generate_completion_with_tools_stream", mock_stream)
 
     agent = DummyAgent()
     ctx = AgentContext(workspace_id="ws_123", profile={"name": "Alice Tester"})
@@ -95,7 +99,7 @@ async def test_react_loop_tool_execution_flow(monkeypatch):
     call_count = 0
 
     # Stream generator yielding tool_calls in round 0, and final text in round 1
-    async def mock_stream(messages, tools=None):
+    async def mock_stream(self, messages, tools=None):
         nonlocal call_count
         if call_count == 0:
             call_count += 1
@@ -121,7 +125,7 @@ async def test_react_loop_tool_execution_flow(monkeypatch):
             }
         yield {"type": "done"}
 
-    monkeypatch.setattr(llm_service, "generate_completion_with_tools_stream", mock_stream)
+    monkeypatch.setattr(LLMService, "generate_completion_with_tools_stream", mock_stream)
 
     agent = DummyAgent()
     result = await _try_react_loop(
@@ -142,7 +146,7 @@ async def test_react_loop_approval_gated_tool(monkeypatch):
 
     rounds_messages = []
 
-    async def mock_stream(messages, tools=None):
+    async def mock_stream(self, messages, tools=None):
         rounds_messages.append(list(messages))
         if len(rounds_messages) == 1:
             # First round: LLM tries to call draft_email (which is in approval_gated_tools)
@@ -166,7 +170,7 @@ async def test_react_loop_approval_gated_tool(monkeypatch):
             }
         yield {"type": "done"}
 
-    monkeypatch.setattr(llm_service, "generate_completion_with_tools_stream", mock_stream)
+    monkeypatch.setattr(LLMService, "generate_completion_with_tools_stream", mock_stream)
 
     agent = DummyAgent()
     result = await _try_react_loop(
@@ -188,7 +192,7 @@ async def test_act_phase_react_integration(monkeypatch):
     monkeypatch.setattr(settings, "agent_react_enabled", True)
     monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
 
-    async def mock_stream(messages, tools=None):
+    async def mock_stream(self, messages, tools=None):
         yield {
             "type": "text_delta",
             # Valid resume contract: summary + proposals + questions.
@@ -196,7 +200,7 @@ async def test_act_phase_react_integration(monkeypatch):
         }
         yield {"type": "done"}
 
-    monkeypatch.setattr(llm_service, "generate_completion_with_tools_stream", mock_stream)
+    monkeypatch.setattr(LLMService, "generate_completion_with_tools_stream", mock_stream)
 
     plan = {
         "agent": "resume",

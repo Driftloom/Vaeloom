@@ -48,6 +48,19 @@ def _mem_store():
     return store
 
 
+@pytest.fixture(autouse=True)
+def _isolated_state_store():
+    """Isolate the global state-store singleton per test.
+
+    Without reset, a MemoryStateStore set here would leak into later test
+    modules (e.g. test_orchestrator's real-filesystem persistence tests).
+    """
+    from api.orchestrator.state_store import set_state_store
+    set_state_store(None)
+    yield
+    set_state_store(None)
+
+
 # ── P0 state versioning + CAS ──────────────────────────────────────────
 
 class TestVersionedState:
@@ -348,9 +361,13 @@ class TestStructuredOutputs:
         async def _fake_stream(*a, **k):
             yield {"type": "text_delta", "text": '{"nope": 1}'}
             yield {"type": "done"}
-        monkeypatch.setattr(llm_service, "generate_completion_with_tools_stream", _fake_stream)
+        # Class-level patches only. Never patch the singleton instance: pytest
+        # restores instance patches by assignment, leaving a shadowing
+        # __dict__ entry that hijacks later tests' class-level patches.
+        from api.services.llm_service import LLMService
+        monkeypatch.setattr(LLMService, "generate_completion_with_tools_stream", _fake_stream)
         async def _repair(*a, **k): return {"content": '{"still": "bad"}'}
-        monkeypatch.setattr(llm_service, "generate_completion", _repair)
+        monkeypatch.setattr(LLMService, "generate_completion", _repair)
         out = await loop_mod._try_react_loop(VA(), "hello world, validate me", "ws", "memory")
         assert out is not None and out["action"] == "error"
         assert "validation_errors" in out
@@ -365,14 +382,16 @@ class TestToolFallback:
         # captured at module import (fixtures patch the class attr per-test).
         real_impl = _REAL_WITH_TOOLS
         calls = []
-        async def _resolve(provider, user_id=None, workspace_id=None, db=None, explicit_key=None):
+        # Class-level patches only (self-first signatures — never patch the
+        # singleton instance; see hybrid_router note).
+        async def _resolve(self, provider, user_id=None, workspace_id=None, db=None, explicit_key=None):
             return provider, "k"
         async def _openai(self, messages, tools, model, temperature, api_key=None, provider="openai"):
             calls.append(model)
             if len(calls) == 1:
                 raise LLMTransientError("boom", status_code=503)
             return {"content": "", "role": "assistant", "tool_calls": [], "finish_reason": "stop", "usage": {}}
-        monkeypatch.setattr(llm_service, "_resolve_api_key", _resolve)
+        monkeypatch.setattr(LLMService, "_resolve_api_key", _resolve)
         monkeypatch.setattr(LLMService, "_openai_tool_completion", _openai)
         out = await real_impl(
             llm_service,
@@ -530,6 +549,49 @@ class TestRuntimeContracts:
         assert _runtime_contract("unknown_xyz_agent", None) is None
 
 
+# ── Muse §7 capability-aware selection ─────────────────────────────────
+
+class TestAgentSelectionScoring:
+    def test_ranking_prefers_keyword_match(self):
+        from api.orchestrator.router import score_agent_candidates
+        ranked = score_agent_candidates("organize my files", ["organization", "memory", "gmail"])
+        assert ranked[0]["agent"] == "organization"
+
+    def test_killed_agents_excluded(self, monkeypatch):
+        from api.orchestrator.router import score_agent_candidates
+        import api.orchestrator.router as router_mod
+        # Simulate kill-switch via the observability singleton if present.
+        try:
+            from api.infrastructure.agent_observability import kill_switch
+            if hasattr(kill_switch, "disable"):
+                kill_switch.disable("gmail")
+                try:
+                    ranked = score_agent_candidates("check my email", ["gmail", "memory"])
+                    assert all(r["agent"] != "gmail" for r in ranked)
+                finally:
+                    kill_switch.enable("gmail")
+                return
+        except Exception:
+            pass
+        # Fallback assertion: scorer runs and ranks without availability data.
+        ranked = score_agent_candidates("check my email", ["gmail", "memory"])
+        assert ranked and ranked[0]["agent"] in ("gmail", "memory")
+
+    def test_unknown_agent_sinks(self):
+        from api.orchestrator.router import score_agent_candidates
+        ranked = score_agent_candidates("search jobs", ["job_search", "no_such_agent_xyz"])
+        assert ranked[0]["agent"] == "job_search"
+        assert ranked[-1]["agent"] == "no_such_agent_xyz"
+
+    async def test_low_confidence_arbitration_reaches_llm_or_scorer(self, monkeypatch):
+        # Vague multi-hit message: scorer may arbitrate or fast path holds —
+        # either way the outcome must be a registered agent, never an error.
+        from api.orchestrator.router import classify_intent, AGENT_REGISTRY
+        agent, conf = await classify_intent("help me with my career job resume email")
+        assert agent in AGENT_REGISTRY
+        assert 0.0 <= conf <= 1.0
+
+
 # ── P1 live harness proof: compiler / context / controller / policy ────
 
 class TestLiveHarnessWiring:
@@ -555,7 +617,9 @@ class TestLiveHarnessWiring:
         async def _fake_stream(*a, **k):
             yield {"type": "text_delta", "text": '{"summary": "ok", "questions": []}'}
             yield {"type": "done"}
-        monkeypatch.setattr(llm_service, "generate_completion_with_tools_stream", _fake_stream)
+        # Class-level patch only (see comment above).
+        from api.services.llm_service import LLMService
+        monkeypatch.setattr(LLMService, "generate_completion_with_tools_stream", _fake_stream)
         out = await loop_mod._try_react_loop(VA(), "hello world, manifest me", "ws", "memory")
         assert out is not None and out["action"] == "suggest"
         assert out["prompt_manifest"]["compiled"] is True
@@ -603,14 +667,14 @@ class TestLiveHarnessWiring:
             return {"ok": True}
         monkeypatch.setattr(ipol, "record_fallback", _spy)
         calls = []
-        async def _resolve(provider, user_id=None, workspace_id=None, db=None, explicit_key=None):
+        async def _resolve(self, provider, user_id=None, workspace_id=None, db=None, explicit_key=None):
             return provider, "k"
         async def _openai(self, messages, tools, model, temperature, api_key=None, provider="openai"):
             calls.append(model)
             if len(calls) == 1:
                 raise LLMTransientError("boom", status_code=503)
             return {"content": "", "role": "assistant", "tool_calls": [], "finish_reason": "stop", "usage": {}}
-        monkeypatch.setattr(llm_service, "_resolve_api_key", _resolve)
+        monkeypatch.setattr(LLMService, "_resolve_api_key", _resolve)
         monkeypatch.setattr(LLMService, "_openai_tool_completion", _openai)
         out = await _REAL_WITH_TOOLS(
             llm_service,

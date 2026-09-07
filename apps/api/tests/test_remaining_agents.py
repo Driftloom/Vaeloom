@@ -21,7 +21,7 @@ class TestJobSearchAgentRemaining:
         agent = JobSearchAgent()
         assert agent._client is None
         mock_cls = MagicMock()
-        monkeypatch.setattr("api.clients.job_board_client.JobBoardClient", lambda: mock_cls)
+        monkeypatch.setattr("api.clients.job_board_client.JobBoardClient", lambda *a, **k: mock_cls)
         client = await agent._get_client()
         assert client is mock_cls
         assert agent._client is mock_cls
@@ -222,7 +222,7 @@ class TestSchedulerAgentRemaining:
         agent = SchedulerAgent()
         assert agent._client is None
         mock_cls = MagicMock()
-        monkeypatch.setattr("api.clients.calendar_client.CalendarClient", lambda: mock_cls)
+        monkeypatch.setattr("api.clients.calendar_client.CalendarClient", lambda *a, **k: mock_cls)
         client = await agent._get_client()
         assert client is mock_cls
         assert agent._client is mock_cls

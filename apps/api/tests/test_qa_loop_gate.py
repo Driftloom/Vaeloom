@@ -7,7 +7,7 @@ from api.agents.qa_agent.handler import QAAgent
 from api.config import settings
 from api.orchestrator.base import AgentContext, BaseAgent
 from api.orchestrator.loop import AgentRequest, run_agent_loop
-from api.services.llm_service import llm_service
+from api.services.llm_service import LLMService
 
 
 from api.agents.resume_agent.handler import ResumeAgent
@@ -33,7 +33,11 @@ async def test_llm_grounding_judge_flags_discrepancy(monkeypatch):
             "role": "assistant",
         }
 
-    monkeypatch.setattr(llm_service, "generate_completion", mock_llm_completion)
+    # Class-level patch only. (Do NOT also patch the singleton instance:
+    # pytest restores instance patches by assignment, which would leave THIS
+    # test's grounding mock as a permanent shadow, poisoning later tests'
+    # QA grounding judges. See Phase B report §19.)
+    monkeypatch.setattr(LLMService, "generate_completion", mock_llm_completion)
 
     qa = QAAgent()
     agent_output = {

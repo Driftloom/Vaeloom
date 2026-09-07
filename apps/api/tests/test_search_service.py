@@ -1,3 +1,8 @@
+"""SearchService tests — scoped to the fail-closed contract (Phase A):
+every search requires an authoritative workspace_id and/or tenant_id;
+unscoped calls return empty. Mocks carry workspace_id so the Python-side
+equality filters (record/entity branches) keep them.
+"""
 import uuid
 from unittest.mock import MagicMock
 
@@ -6,6 +11,8 @@ import pytest
 from api.services.search_service import SearchService
 
 pytestmark = pytest.mark.asyncio
+
+WS = "ws-1"
 
 
 @pytest.fixture
@@ -17,6 +24,7 @@ def mock_memory(**kwargs):
     defaults = dict(
         id=uuid.uuid4(), title="Test Memory", type="note",
         summary="A summary", content="Some content", tenant_id="t-1",
+        workspace_id=WS,
     )
     defaults.update(kwargs)
     return type("Memory", (), defaults)()
@@ -25,7 +33,7 @@ def mock_memory(**kwargs):
 def mock_record(**kwargs):
     defaults = dict(
         id=uuid.uuid4(), content={"text": "Record content"},
-        type="observation", confidence=0.95,
+        type="observation", confidence=0.95, workspace_id=WS,
     )
     defaults.update(kwargs)
     return type("MemoryRecord", (), defaults)()
@@ -34,7 +42,7 @@ def mock_record(**kwargs):
 def mock_entity(**kwargs):
     defaults = dict(
         id=uuid.uuid4(), canonical_name="Test Entity",
-        type="person", aliases=["TE", "Test"],
+        type="person", aliases=["TE", "Test"], workspace_id=WS,
     )
     defaults.update(kwargs)
     return type("Entity", (), defaults)()
@@ -61,7 +69,7 @@ class TestSearchAll:
             return results.pop(0)
 
         db.execute = execute
-        result = await svc.search_all("Hello", tenant_id=None, sources=None, limit=20, offset=0, db=db)
+        result = await svc.search_all("Hello", tenant_id="t-1", workspace_id=WS, sources=None, limit=20, offset=0, db=db)
         assert result["total"] == 3
         assert result["results"][0]["score"] == 2.0
 
@@ -76,7 +84,7 @@ class TestSearchAll:
             return mem_result
 
         db.execute = execute
-        result = await svc.search_all("hello", tenant_id=None, sources=["memory"], limit=20, offset=0, db=db)
+        result = await svc.search_all("hello", tenant_id="t-1", workspace_id=WS, sources=["memory"], limit=20, offset=0, db=db)
         assert result["total"] == 1
         assert result["results"][0]["source"] == "memory"
 
@@ -91,7 +99,7 @@ class TestSearchAll:
             return rec_result
 
         db.execute = execute
-        result = await svc.search_all("Record", tenant_id=None, sources=["memory_record"], limit=20, offset=0, db=db)
+        result = await svc.search_all("Record", tenant_id="t-1", workspace_id=WS, sources=["memory_record"], limit=20, offset=0, db=db)
         assert result["total"] == 1
         assert result["results"][0]["source"] == "memory_record"
 
@@ -106,7 +114,7 @@ class TestSearchAll:
             return ent_result
 
         db.execute = execute
-        result = await svc.search_all("Unique", tenant_id=None, sources=["entity"], limit=20, offset=0, db=db)
+        result = await svc.search_all("Unique", tenant_id="t-1", workspace_id=WS, sources=["entity"], limit=20, offset=0, db=db)
         assert result["total"] == 1
         assert result["results"][0]["source"] == "entity"
 
@@ -142,7 +150,7 @@ class TestSearchAll:
             return results.pop(0)
 
         db.execute = execute
-        result = await svc.search_all("test", tenant_id=None, sources=None, limit=2, offset=1, db=db)
+        result = await svc.search_all("test", tenant_id="t-1", workspace_id=WS, sources=None, limit=2, offset=1, db=db)
         assert result["total"] == 3
         assert len(result["results"]) == 2
 
@@ -156,7 +164,7 @@ class TestSearchAll:
             return results.pop(0)
 
         db.execute = execute
-        result = await svc.search_all("nothing", tenant_id=None, sources=None, limit=20, offset=0, db=db)
+        result = await svc.search_all("nothing", tenant_id="t-1", workspace_id=WS, sources=None, limit=20, offset=0, db=db)
         assert result["total"] == 0
         assert result["results"] == []
 
@@ -171,7 +179,7 @@ class TestSearchAll:
             return mem_result
 
         db.execute = execute
-        result = await svc.search_all("hello", tenant_id=None, sources=["memory"], limit=20, offset=0, db=db)
+        result = await svc.search_all("hello", tenant_id="t-1", workspace_id=WS, sources=["memory"], limit=20, offset=0, db=db)
         assert result["results"][0]["score"] == 1.0
 
     async def test_search_entity_partial_score(self, svc):
@@ -185,7 +193,7 @@ class TestSearchAll:
             return ent_result
 
         db.execute = execute
-        result = await svc.search_all("hello", tenant_id=None, sources=["entity"], limit=20, offset=0, db=db)
+        result = await svc.search_all("hello", tenant_id="t-1", workspace_id=WS, sources=["entity"], limit=20, offset=0, db=db)
         assert result["results"][0]["score"] == 1.5
 
     async def test_search_record_with_non_dict_content(self, svc):
@@ -199,6 +207,32 @@ class TestSearchAll:
             return rec_result
 
         db.execute = execute
-        result = await svc.search_all("data", tenant_id=None, sources=["memory_record"], limit=20, offset=0, db=db)
+        result = await svc.search_all("data", tenant_id="t-1", workspace_id=WS, sources=["memory_record"], limit=20, offset=0, db=db)
         assert result["total"] == 1
         assert "data" in result["results"][0]["text"]
+
+    async def test_unscoped_search_fails_closed(self, svc):
+        """No workspace AND no tenant → empty, without touching the DB."""
+        db = MagicMock()
+
+        async def execute(stmt):  # pragma: no cover - must not run
+            raise AssertionError("DB must not be queried without security context")
+
+        db.execute = execute
+        result = await svc.search_all("Hello", tenant_id=None, sources=None, limit=20, offset=0, db=db)
+        assert result["total"] == 0
+        assert result["results"] == []
+
+    async def test_cross_workspace_records_filtered(self, svc):
+        rec_result = MagicMock()
+        rec_result.scalars.return_value.all.return_value = [
+            mock_record(workspace_id="ws-other"),
+        ]
+        db = MagicMock()
+
+        async def execute(stmt):
+            return rec_result
+
+        db.execute = execute
+        result = await svc.search_all("Record", tenant_id="t-1", workspace_id=WS, sources=["memory_record"], limit=20, offset=0, db=db)
+        assert result["total"] == 0
