@@ -86,6 +86,16 @@ class Settings(BaseSettings):
     rate_limit_window: int = 60
     api_key_rate_limit: int = 1000
 
+    # Consequential HTTP idempotency (middleware/idempotency.py): when True,
+    # a storage lookup failure BEFORE the side effect executes returns 503
+    # instead of passing through (fail-closed). Store failures AFTER the side
+    # effect already ran cannot be un-executed; those always pass the original
+    # response through but tag it `Idempotency-Stored: false` so callers know
+    # replay protection is not durable. Default False preserves local/dev
+    # behavior; production HIPAA/GDPR paths should set
+    # IDEMPOTENCY_FAIL_CLOSED=true.
+    idempotency_fail_closed: bool = False
+
     storage_endpoint: str = "http://localhost:9000"
     storage_access_key: str = ""
     storage_secret_key: str = ""

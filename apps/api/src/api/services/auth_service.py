@@ -53,6 +53,15 @@ class AuthService:
 
         access_token, refresh_token = await self.issue_token(str(user.id), email, tenant_id=str(user.tenant_id) if user.tenant_id else None, db=db)
 
+        # Durability before response: get_db commits in yield-teardown (after
+        # the response is sent), so a fast follow-up request (e.g. immediate
+        # workspace creation after signup) could otherwise observe the new
+        # user row as missing and fail its FK check (staging gate 2026-09-07:
+        # intermittent 2/10 FK violations). Committing here makes the
+        # bootstrap rows (tenant/user/workspace/session) durable before the
+        # 201 is sent; the later get_db commit is then a harmless no-op.
+        await db.commit()
+
         return AuthResponse(
             access_token=access_token,
             refresh_token=refresh_token,

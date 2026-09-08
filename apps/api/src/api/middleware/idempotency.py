@@ -62,22 +62,50 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         try:
             replayed = await self._replay(key, path, req_hash)
-        except Exception:  # pragma: no cover - fail-open on lookup errors
+        except Exception:
+            try:
+                from ..config import settings as _idem_settings
+
+                _fail_closed = bool(getattr(_idem_settings, "idempotency_fail_closed", False))
+            except Exception:
+                _fail_closed = False
+            if _fail_closed:
+                logger.error("Idempotency lookup failed; fail-closed 503 (consequential path)")
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "Idempotency store unavailable — consequential request refused"},
+                    headers={"Idempotency-Lookup": "failed"},
+                )
             logger.exception("Idempotency lookup failed; passing through")
             replayed = None
         if replayed is not None:
             return replayed
 
         response = await call_next(request)
+        # Consume the body once, up front: _store must never be the owner of
+        # the only read (a store failure after a partial read would otherwise
+        # leave an exhausted iterator and an empty body to the client).
         try:
-            body_bytes = await self._store(key, path, req_hash, response)
+            raw_body = b"".join([chunk async for chunk in response.body_iterator])
+        except Exception:
+            logger.exception("Idempotency body read failed; passing response through")
+            return response
+        try:
+            await self._store(key, path, req_hash, response, body_bytes=raw_body)
             response = Response(
-                content=body_bytes,
+                content=raw_body,
                 status_code=response.status_code,
                 headers=dict(response.headers),
             )
-        except Exception:  # pragma: no cover - fail-open on store errors
-            logger.exception("Idempotency store failed; passing response through")
+        except Exception:
+            # The side effect already executed, so a 503 here cannot prevent a
+            # duplicate — it would only lie about what happened. Pass the real
+            # bytes through but tag them so the caller knows replay protection
+            # was NOT durably recorded and must retry with the same key.
+            logger.exception("Idempotency store failed; passing response through (not durably recorded)")
+            headers = dict(response.headers)
+            headers["Idempotency-Stored"] = "false"
+            response = Response(content=raw_body, status_code=response.status_code, headers=headers)
         return response
 
     async def _replay(self, key: str, path: str, req_hash: str) -> Response | None:
@@ -107,8 +135,11 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 headers={REPLAYED_HEADER: "true"},
             )
 
-    async def _store(self, key: str, path: str, req_hash: str, response: Response) -> bytes:
-        body_bytes = b"".join([chunk async for chunk in response.body_iterator])
+    async def _store(
+        self, key: str, path: str, req_hash: str, response: Response, body_bytes: bytes | None = None
+    ) -> bytes:
+        if body_bytes is None:  # backward compat: consume when caller did not pre-read
+            body_bytes = b"".join([chunk async for chunk in response.body_iterator])
         body_text = body_bytes.decode("utf-8", errors="replace")
         now = datetime.now(UTC)
         async with self._session_factory() as session:

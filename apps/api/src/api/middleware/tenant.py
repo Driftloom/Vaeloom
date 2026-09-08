@@ -165,7 +165,17 @@ class TenantMiddleware(BaseHTTPMiddleware):
                         content={"detail": "Forbidden: Invalid workspace ID format"},
                     )
 
-                sf = self.session_factory or async_session_factory
+                # Lazy import: api.database must not be imported at module top
+                # (it would create a database->middleware import cycle at
+                # startup). Production mounts TenantMiddleware without an
+                # explicit factory, so this path MUST resolve — a missing
+                # import here 500s every workspace-scoped request (staging
+                # gate finding 2026-09-07: NameError on X-Workspace-ID).
+                sf = self.session_factory
+                if sf is None:
+                    from ..database import async_session_factory as _default_factory
+
+                    sf = _default_factory
                 async with sf() as session:
                     has_access = await check_user_workspace_access(session, str(requested_workspace_id), str(jwt_user_id), tenant_id)
                     if not has_access:

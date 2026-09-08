@@ -258,7 +258,31 @@ class MemoryStateStore(StateStore):
 
 
 class RedisStateStore(StateStore):
-    """Redis-backed distributed state store for multi-replica workers."""
+    """Redis-backed distributed state store for multi-replica workers.
+
+    CAS contract: when expected_version is given, the write succeeds only if
+    the stored state_version equals it (atomic Lua compare-and-set); otherwise
+    ConcurrentUpdateError is raised and nothing is overwritten. A missing key
+    with expected_version behaves like the other backends (write proceeds).
+    Malformed stored JSON with expected_version raises instead of silently
+    overwriting corrupt state.
+    """
+
+    # KEYS[1]=key ARGV[1]=expected_version ARGV[2]=payload ARGV[3]=ttl ARGV[4]=new_version
+    _LUA_CAS = """
+local cur = redis.call('GET', KEYS[1])
+if cur then
+  local ok, obj = pcall(cjson.decode, cur)
+  if not ok or type(obj) ~= 'table' or obj.state_version == nil then
+    return redis.error_reply('CAS_MALFORMED')
+  end
+  if tonumber(obj.state_version) ~= tonumber(ARGV[1]) then
+    return redis.error_reply('CAS_CONFLICT:' .. tostring(obj.state_version))
+  end
+end
+redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
+return ARGV[4]
+"""
 
     def __init__(self, redis_client: Any = None, ttl_seconds: int = 604800):
         self.redis = redis_client
@@ -270,20 +294,51 @@ class RedisStateStore(StateStore):
     async def _get_client(self):
         if self.redis is not None:
             return self.redis
+        # NOTE: api.services.redis does not exist; build from settings like
+        # temporal/quota.py instead of importing a missing module (which made
+        # this backend a silent no-op that persisted nothing).
         try:
-            from api.services.redis import get_redis_client
-            self.redis = await get_redis_client()
-            return self.redis
+            import os
+
+            url = os.environ.get("REDIS_URL") or os.environ.get("REDIS__URL") or ""
+            if not url:
+                try:
+                    from ..config import settings as _settings
+
+                    url = getattr(_settings, "redis__url", "") or ""
+                except Exception:
+                    url = ""
+            if not url:
+                return None
+            import redis.asyncio as _aioredis
+
+            client = _aioredis.from_url(url, decode_responses=True, socket_connect_timeout=1, socket_timeout=2)
+            await client.ping()
+            self.redis = client
+            return client
         except Exception as exc:
             logger.debug(f"Redis client discovery unavailable: {exc}")
             return None
+
+    async def _maybe_await(self, value: Any) -> Any:
+        import inspect as _inspect
+
+        if _inspect.isawaitable(value):
+            return await value
+        return value
+
+    def _cas_conflict_version(self, exc: Exception) -> str | None:
+        msg = str(exc)
+        if "CAS_CONFLICT:" in msg:
+            return msg.split("CAS_CONFLICT:", 1)[1].strip().split()[0]
+        return None
 
     async def load(self, request_id: str) -> dict[str, Any] | None:
         client = await self._get_client()
         if not client:
             return None
         try:
-            raw = await client.get(self._key(request_id))
+            raw = await self._maybe_await(client.get(self._key(request_id)))
             if raw:
                 return json.loads(raw if isinstance(raw, str) else raw.decode("utf-8"))
         except Exception as exc:
@@ -296,13 +351,43 @@ class RedisStateStore(StateStore):
     ) -> int:
         client = await self._get_client()
         if not client:
+            logger.debug(f"RedisStateStore no client for {request_id}; version unchanged")
             return int(state_dict.get("state_version", 1))
         try:
+            base_version = int(state_dict.get("state_version", 1))
+            if expected_version is None:
+                payload_dict = dict(state_dict)
+                payload_dict["state_version"] = base_version + 1
+                payload = json.dumps(payload_dict, default=str)
+                await self._maybe_await(client.set(self._key(request_id), payload, ex=self.ttl))
+                return int(payload_dict["state_version"])
+            # CAS path: atomic Lua compare-and-set.
+            new_version = int(expected_version) + 1
             payload_dict = dict(state_dict)
-            payload_dict["state_version"] = int(state_dict.get("state_version", 1)) + 1
+            payload_dict["state_version"] = new_version
             payload = json.dumps(payload_dict, default=str)
-            await client.set(self._key(request_id), payload, ex=self.ttl)
-            return int(payload_dict["state_version"])
+            try:
+                await self._maybe_await(
+                    client.eval(self._LUA_CAS, 1, self._key(request_id), int(expected_version), payload, self.ttl, new_version)
+                )
+                return new_version
+            except Exception as lua_exc:
+                stored = self._cas_conflict_version(lua_exc)
+                if stored is not None:
+                    raise ConcurrentUpdateError(
+                        f"checkpoint {request_id}: expected v{expected_version}, stored v{stored}"
+                    ) from lua_exc
+                if "CAS_MALFORMED" in str(lua_exc):
+                    raise ConcurrentUpdateError(
+                        f"checkpoint {request_id}: stored state malformed; refusing overwrite"
+                    ) from lua_exc
+                if "CAS_MISSING" in str(lua_exc):
+                    raise ConcurrentUpdateError(
+                        f"checkpoint {request_id}: expected v{expected_version}, stored state missing"
+                    ) from lua_exc
+                raise
+        except ConcurrentUpdateError:
+            raise
         except Exception as exc:
             logger.warning(f"RedisStateStore failed to save {request_id}: {exc}")
             return int(state_dict.get("state_version", 1))

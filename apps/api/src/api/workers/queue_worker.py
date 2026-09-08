@@ -218,7 +218,7 @@ async def handle_event_publish(data: dict[str, Any], db: Any = None) -> dict[str
     from api.database import async_session_factory
     from api.infrastructure.background_envelope import (
         BackgroundSecurityError,
-        verify_background_envelope,
+        averify_background_envelope,
     )
     from api.middleware.tenant import TenantContext, check_user_workspace_access
     from api.orchestrator.router import UserRequest, handle
@@ -229,12 +229,13 @@ async def handle_event_publish(data: dict[str, Any], db: Any = None) -> dict[str
     logger.info("Event publish: type=%s tenant=%s", event_type, data.get("tenantId"))
 
     if event_type == "agent.execute":
-        # ZERO-TRUST SECURITY ENVELOPE VERIFICATION
+        # ZERO-TRUST SECURITY ENVELOPE VERIFICATION (async: distributed
+        # Redis SET NX EX nonce claim when Redis is configured).
         envelope = data.get("envelope") or payload.get("envelope")
         if not envelope:
             raise BackgroundSecurityError("Missing required background security envelope for agent.execute")
 
-        valid, reason, verified = verify_background_envelope(envelope)
+        valid, reason, verified = await averify_background_envelope(envelope)
         if not valid or not verified:
             raise BackgroundSecurityError(f"Security envelope validation failed: {reason}")
 
@@ -291,7 +292,7 @@ async def handle_schedule_agent_run(data: dict[str, Any]) -> dict[str, Any]:
     from api.infrastructure.background_daemon import execute_agent_schedule_job
     from api.infrastructure.background_envelope import (
         BackgroundSecurityError,
-        verify_background_envelope,
+        averify_background_envelope,
     )
     from api.middleware.tenant import TenantContext
 
@@ -300,12 +301,12 @@ async def handle_schedule_agent_run(data: dict[str, Any]) -> dict[str, Any]:
     if not schedule_id or not agent_id:
         return {"status": "skipped", "reason": "missing schedule_id/agent_id"}
 
-    # ZERO-TRUST SECURITY ENVELOPE VERIFICATION
+    # ZERO-TRUST SECURITY ENVELOPE VERIFICATION (async: distributed nonce).
     envelope = data.get("envelope")
     if not envelope:
         raise BackgroundSecurityError("Missing required security envelope for schedule.agent_run")
 
-    valid, reason, verified = verify_background_envelope(envelope)
+    valid, reason, verified = await averify_background_envelope(envelope)
     if not valid or not verified:
         raise BackgroundSecurityError(f"Security envelope validation failed: {reason}")
 
