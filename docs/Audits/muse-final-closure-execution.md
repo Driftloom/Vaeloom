@@ -51,6 +51,31 @@ Final verdict: MUSE CONDITIONALLY READY (condition: operator Docker recovery + �
 [ ] final verdict              — §25: CONDITIONALLY READY (exact condition §3-operator-action)
 ```
 
+## FINAL RELEASE CLOSURE — BLOCKED (§16)
+
+```
+Date: 2026-09-08 UTC
+HEAD verified: aaa6e49281f0329f6432e5862202ff136cca8f72 (== required candidate)
+Tree: clean except M tools/executor.py (foreign, excluded) + .env.staging + scratch_race_probe.py
+Docker: STILL DOWN — client 29.6.2 OK, daemon pipe
+  npipe:////./pipe/dockerDesktopLinuxEngine missing; `docker ps` fails.
+  Docker Desktop Service stopped (recorded prior session; unchanged).
+Staging rebuild: NOT POSSIBLE (no daemon — no hammering per §3).
+Tenant isolation 3/3: PENDING rebuild
+Signup race 0/10: PENDING rebuild
+50-user isolation: PENDING rebuild
+n=100 latency: PENDING rebuild (prior /health n=100 PASS retained as evidence, percentiles not reconstructed)
+Security regression: hermetic suites green on aaa6e49 tree (prior session); no code changed since,
+  so no new regression possible from this session (zero source diffs made here).
+New P0/P1: NONE (no code changed, no new runtime exercised).
+
+CODE/SECURITY GATE: CLOSED (P0=0, P1=0)
+LIVE RELEASE ARTIFACT GATE: BLOCKED BY DOCKER INFRASTRUCTURE
+VERDICT: MUSE CONDITIONALLY READY
+Remaining action: operator starts Docker Desktop → rebuild aaa6e49 →
+  pytest tests/test_staging_api_isolation.py → scratch_race_probe.py (expect fails: 0).
+```
+
 ## Docker failure record (§3)
 
 ```
