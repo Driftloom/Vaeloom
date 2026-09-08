@@ -534,6 +534,24 @@ Remaining P3:            MCP bounded; JWT denylist; OTel noise; foreign executor
 Final verdict:           MUSE CONDITIONALLY READY
 ```
 
+## FINAL ARTIFACT RELEASE CLOSURE — 2026-09-09 (final gate run)
+
+```text
+Source: c8d7eb3 lineage verified (HEAD 205f209; `git diff aaa6e49..HEAD -- src` EMPTY;
+  foreign executor.py still excluded/uncommitted; .env.staging + race probe untracked).
+Docker: healthy (Client+Server 29.6.2, full stack Up; staging API healthy 200).
+Build: NOT re-attempted blindly — egress retested first per §4: deb.debian.org STILL 403
+  (container + Windows host; Docker approved proxy http.docker.internal:3128 in path,
+  block originates beyond it). Rebuild would fail at Dockerfile:19 identically. STOP per §4.
+  No Dockerfile/mirror/proxy change made (Princeton reachable-but-unapproved; supply-chain
+  discipline holds). Single remaining blocker: approved build egress (options A/C/D/E).
+Fresh live re-confirmation (candidate source, healthy infra, this run):
+  RLS 12/12 + nonce 10/10 + CAS 8/8 = 30/30 PASS; staging API healthy.
+  Staging-image gates (isolation 3/3, race 0/10, 50-user) still require the rebuilt image.
+P0: 0 | P1: 0 | No new defects (zero source diffs; nothing to regress).
+Final verdict: MUSE CONDITIONALLY READY.
+```
+
 ## BUILD RECOVERY RUN — 2026-09-08 ~23:16 UTC (supersedes Docker-down blocker)
 
 Docker recovered (Desktop 4.84.0); candidate source re-verified identical to
