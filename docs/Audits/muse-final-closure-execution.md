@@ -108,6 +108,30 @@ Verdict stays: MUSE CONDITIONALLY READY. Production image must be cut from 301fd
   source once apt egress is fixed; then rerun isolation suite + race probe (expect 3/3, 0/10).
 ```
 
+## BUILD RECOVERY RUN — 2026-09-08 ~23:16 UTC
+
+```
+HEAD verified: c8d7eb3; src diff vs aaa6e49: EMPTY. Foreign executor.py still excluded.
+Docker: RECOVERED (Desktop 4.84.0, Engine 29.6.2, full stack healthy).
+Build: FAILED again at Dockerfile:19, captured exactly —
+  deb.debian.org trixie/trixie-updates/trixie-security InRelease → 403 Forbidden
+  (IP 151.101.194.132:80), timestamp 2026-09-08T23:16:06Z. No repeated hammering.
+Egress diagnosis (from inside staging network):
+  deb.debian.org = 403 | pypi.org = 200 | cdn.playwright.dev = reachable |
+  princeton mirror = 200 | container proxy env = none set |
+  host deb.debian.org = 403 (host-level egress policy, NOT Docker-specific) |
+  Docker proxy = http.docker.internal:3128 (approved path; 403 comes from beyond it).
+Correct fix per §3: (A) restore egress for Debian origins, or (C) org-APPROVED
+  alternate mirror through the §4 Dockerfile process. Princeton is reachable but
+  NOT established as approved — NOT used unilaterally (supply-chain discipline).
+  No Dockerfile/source change made (§2, §4).
+Fresh live re-confirmation (candidate source tree, healthy infra):
+  RLS 12/12 + nonce 10/10 + CAS 8/8 = 30/30 PASS.
+  Staging isolation 2/3 (cross-user PASS, latency PASS, zero NameError in logs;
+  50-user setup fails on FK race — pre-candidate image, expected differential).
+Verdict unchanged: MUSE CONDITIONALLY READY. Single blocker: approved build egress.
+```
+
 ## Docker failure record (§3)
 
 ```

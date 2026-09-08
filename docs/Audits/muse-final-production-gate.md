@@ -534,6 +534,24 @@ Remaining P3:            MCP bounded; JWT denylist; OTel noise; foreign executor
 Final verdict:           MUSE CONDITIONALLY READY
 ```
 
+## BUILD RECOVERY RUN — 2026-09-08 ~23:16 UTC (supersedes Docker-down blocker)
+
+Docker recovered (Desktop 4.84.0); candidate source re-verified identical to
+`aaa6e49`; foreign hunk still excluded. Rebuild attempted once with full logs:
+**still fails** at `Dockerfile:19` — `deb.debian.org` → **403 Forbidden**
+(host-level egress policy, confirmed from Windows host too; Docker uses approved
+proxy `http.docker.internal:3128`, 403 originates beyond it). `pypi.org` (200),
+Playwright CDN (reachable), and Princeton mirror (200) prove selective domain
+filtering, not general outage. Princeton was **not** used: reachable ≠
+org-approved, and rewiring package origins unilaterally would violate
+supply-chain discipline (§4 process documented for the owner: approve mirror →
+minimal Dockerfile ARG → assess signature verification → rebuild → rerun gates).
+No source/build file was modified. Fresh evidence this run: RLS/nonce/CAS
+**30/30**; staging isolation **2/3** with zero `NameError` (50-user setup fails
+on the pre-candidate image's FK race — expected differential, not a regression).
+**Verdict unchanged: `MUSE CONDITIONALLY READY`** — single remaining blocker is
+approved build egress (or an approved mirror through §4).
+
 ## Appendix — live evidence index (timestamps UTC 2026-09-07)
 
 - 18:13 staging API healthy (`{"status":"ok",...,"version":"0.2.0"}`).
