@@ -16,6 +16,26 @@ Audit docs untracked: muse-end-to-end-zero-trust-audit.md, muse-final-production
 scratch_race_probe.py: present untracked (kept for operator rerun §6)
 ```
 
+## Closure outcome (appended post-execution)
+
+```
+Final commit: 9025e43f84dd768b67531bf40f2d286fe7defbd8
+  "fix(muse): close final production gate invariants" (17 files; excludes
+  foreign executor.py hunk, .env.staging secrets, scratch_race_probe.py)
+Tree after commit: clean except M tools/executor.py (foreign) + untracked
+  .env.staging + scratch_race_probe.py (operator rerun script, kept deliberately)
+Docker at close: STILL DOWN (daemon pipe missing; service stopped) — rebuild blocked.
+§11: unenveloped job REJECTED (BackgroundSecurityError); enveloped verify True.
+§12: FOREIGN / KEEP-OUT-OF-COMMIT + OWNER ACK REQUIRED (timeouts benign; github_token
+  precedence preserved; config.py foreign hunk reverted — getattr fallback keeps it working).
+§13: all 7 diffs reviewed; contracts hold (atomic NX EX, async workers, Lua CAS,
+  single-read idempotency, fail-closed flag default-off, lazy factory, signup commit).
+§14 bypass scan: CLEAN. §15 phantom audit: confirmed (trio still disabled-by-design).
+§16: chunked post-remediation runs green; all failures stash-proven pre-existing.
+§17: IDEMPOTENCY_FAIL_CLOSED default False (local-safe); production GDPR paths MUST set true.
+Final verdict: MUSE CONDITIONALLY READY (condition: operator Docker recovery + §4-§8 rerun).
+```
+
 ## Remaining obligations checklist (§2)
 
 ```
