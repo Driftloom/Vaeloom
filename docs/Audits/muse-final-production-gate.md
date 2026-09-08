@@ -509,6 +509,31 @@ race probe (0/10 FK). All scripts/tests already committed in this repo.
 
 ---
 
+## FINAL RELEASE CLOSURE (2026-09-08)
+
+```text
+Final commit:            301fd6b (source identical to aaa6e49; docs-only delta verified)
+Final image:             NONE — rebuild blocked (see below); running staging image
+                         forensically proven PRE-candidate (tenant fix present,
+                         signup fix absent). No old image claimed as final.
+Docker recovery:         2026-09-08 ~17:37 UTC, operator-restored (Desktop 4.84.0)
+Staging rebuild:         FAIL (environmental) — Dockerfile apt layer 403s persistently
+                         (2 attempts); any source change forces the apt layer by construction.
+Staging isolation:       2/3 on pre-candidate image (cross-user PASS, latency PASS,
+                         50-user setup FAILS on FK race — expected, proves fix delta)
+Signup race:             2/10 FK fails on pre-candidate image (historical signature reproduced)
+50-user isolation:       PENDING final-image rebuild
+n=100 (health):          p50 0.0ms, p95 16.0ms, p99 16.0ms, max 16.0ms, errors 0
+Final smoke:             PASS modulo expected FK-race errors (no NameError/auth/CAS/dup issues)
+Security regression:     PASS (zero source diffs this run; hermetic suites green previously)
+P0: 0
+P1: 0
+Remaining P2:            final-image reruns; vector relevance; optional provider drill
+Remaining P3:            MCP bounded; JWT denylist; OTel noise; foreign executor hunk (excluded);
+                         apt-egress build policy (infra, not product)
+Final verdict:           MUSE CONDITIONALLY READY
+```
+
 ## Appendix — live evidence index (timestamps UTC 2026-09-07)
 
 - 18:13 staging API healthy (`{"status":"ok",...,"version":"0.2.0"}`).

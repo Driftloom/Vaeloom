@@ -76,6 +76,38 @@ Remaining action: operator starts Docker Desktop → rebuild aaa6e49 →
   pytest tests/test_staging_api_isolation.py → scratch_race_probe.py (expect fails: 0).
 ```
 
+## RELEASE CLOSURE RUN — 2026-09-08 ~17:37 UTC (Docker recovered by operator)
+
+```
+Docker: RECOVERED (Desktop 4.84.0, Engine 29.6.2). Full stack up: staging
+  (api/worker/redis/pg), main PG+Redis, temporal, minio.
+HEAD: 301fd6b; source diff vs aaa6e49: EMPTY (docs-only delta) — candidate source verified.
+Rebuild: BLOCKED — Dockerfile line 19 `playwright install --with-deps chromium`
+  fails persistently: Debian apt returns 403 Forbidden (egress network policy,
+  deb.debian.org via 151.101.194.132). Retried 2x, same. Source COPY (line 14)
+  precedes the apt layer, so ANY source change forces apt — no cache path exists.
+  Fixing needs Dockerfile/network change = out of scope for this gate (§2).
+Running image forensics (docker exec grep):
+  tenant.py lazy-factory fix: PRESENT | queue_worker averify: PRESENT |
+  auth_service signup-commit fix: ABSENT
+  => running image = pre-candidate (tenant-fix era); NOT the final artifact.
+Differential evidence on running image:
+  - cross-user isolation + search isolation: PASS, zero NameError in logs
+    (tenant fix confirmed live; old-image NameError theory refuted for this image)
+  - 50-user setup: FAILS with workspaces_user_id_fkey FK 500s (signup race
+    reproduced — the exact defect the committed fix addresses)
+  - race probe: fails: 2 (identical 2/10 historical signature)
+Fresh live re-confirmation (recovered infra): RLS 12/12 PASS; nonce+CAS 18/18 PASS.
+Latency (health, n=100, errors=0): p50 0.0ms, p95 16.0ms, p99 16.0ms, max 16.0ms, mean 3.1ms.
+  Labeled HEALTH latency only (not agent runtime); no SLO exists (measured, no threshold).
+Smoke: API logs show only FK-race errors (expected pre-fix) + OTel noise; no tenant/
+  workspace/auth/envelope/duplicate/checkpoint errors. Worker startup broker race observed
+  transient (PING True on all RESP variants after); schedules worker left running.
+50-user zero-leak on FINAL image: STILL PENDING (needs rebuild → apt unblock).
+Verdict stays: MUSE CONDITIONALLY READY. Production image must be cut from 301fd6b
+  source once apt egress is fixed; then rerun isolation suite + race probe (expect 3/3, 0/10).
+```
+
 ## Docker failure record (§3)
 
 ```
