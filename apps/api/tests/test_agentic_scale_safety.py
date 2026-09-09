@@ -114,7 +114,7 @@ class TestLoopSpendAndQuotaGate:
         ws_id = "ws-gate-pass"
         await agent_cost_tracker.set_budget(ws_id, 100.0)
         try:
-            err = await _check_spend_and_quota(ws_id, "resume")
+            err, kind = await _check_spend_and_quota(ws_id, "resume")
             assert err is None
         finally:
             await agent_cost_tracker.clear_budget(ws_id)
@@ -125,9 +125,10 @@ class TestLoopSpendAndQuotaGate:
         await agent_cost_tracker.set_budget(ws_id, 0.00001)
         await agent_cost_tracker.track_usage("resume", ws_id, 5000, 5000, "gpt-4o")
         try:
-            err = await _check_spend_and_quota(ws_id, "resume")
+            err, kind = await _check_spend_and_quota(ws_id, "resume")
             assert err is not None
             assert "Workspace LLM spend budget exhausted" in err
+            assert kind == "cost_budget"
         finally:
             await agent_cost_tracker.clear_budget(ws_id)
 

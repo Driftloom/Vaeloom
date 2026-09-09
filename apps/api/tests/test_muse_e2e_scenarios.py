@@ -70,7 +70,7 @@ class TestScenarioResearch:
         plan = await plan_phase(req, LoopState("s1-research", workspace_id="ws"))
         assert "rag_context" in plan and "context_manifest" in (plan["rag_context"] or {})
 
-        async def _act(plan, request, on_token=None):
+        async def _act(plan, request, on_token=None, state=None):
             return await request.agent.execute()
         monkeypatch.setattr(loop_mod, "act_phase", _act)
         from api.agents.qa_agent.handler import QAAgent
@@ -91,7 +91,7 @@ class TestScenarioMultiStep:
         _mem_store()
         seen = []
 
-        async def _act(plan, request, on_token=None):
+        async def _act(plan, request, on_token=None, state=None):
             seen.append(1)
             return {"agent_name": "mock", "action": "suggest", "confidence": 0.9,
                     "result": {"summary": f"step {len(seen)} of 2 done",
@@ -422,7 +422,7 @@ class TestCancellationE2E:
         _mem_store()
         calls = []
 
-        async def _act(plan, request, on_token=None):
+        async def _act(plan, request, on_token=None, state=None):
             calls.append(1)
             if len(calls) == 1:
                 # First step reports no progress (low confidence) so the run
@@ -587,7 +587,7 @@ class TestMuseMechanics:
         from api.orchestrator.state_store import get_state_store
         _mem_store()
 
-        async def _act(plan, request, on_token=None):
+        async def _act(plan, request, on_token=None, state=None):
             return {"agent_name": "mock", "action": "execute", "confidence": 1.0,
                     "result": {"summary": "ok", "details": {}, "proposals": [], "questions": []}}
         monkeypatch.setattr(loop_mod, "act_phase", _act)
@@ -689,7 +689,7 @@ class TestPerformanceBaseline:
         from api.orchestrator import loop as loop_mod
         _mem_store()
 
-        async def _act(plan, request, on_token=None):
+        async def _act(plan, request, on_token=None, state=None):
             return {"agent_name": "mock", "action": "execute", "confidence": 1.0,
                     "result": {"summary": "fast ok", "details": {}, "proposals": [], "questions": []}}
         monkeypatch.setattr(loop_mod, "act_phase", _act)
@@ -806,7 +806,7 @@ class TestPerformanceDepth:
         try:
             n_steps = []
 
-            async def _act(plan, request, on_token=None):
+            async def _act(plan, request, on_token=None, state=None):
                 n_steps.append(1)
                 if len(n_steps) % 2 == 1:
                     return {"agent_name": "mock", "action": "suggest", "confidence": 0.4,

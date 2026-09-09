@@ -169,9 +169,12 @@ async def test_improve_phase_emits_consolidation():
         resp = await improve_phase(state, req)
         assert resp.status == "success"
         assert resp.final_result == "Generated resume successfully"
-        mock_cons.assert_called_once_with(
-            workspace_id=wid,
-            agent_name="resume",
-            user_prompt="prefer remote work",
-            summary="Generated resume successfully",
-        )
+        mock_cons.assert_called_once()
+        _kw = mock_cons.call_args.kwargs
+        assert _kw["workspace_id"] == wid
+        assert _kw["agent_name"] == "resume"
+        assert _kw["user_prompt"] == "prefer remote work"
+        assert _kw["summary"] == "Generated resume successfully"
+        # Zero-trust learning closure: stable idempotent event + correlation.
+        assert _kw["event_id"] == "traj:req_improve_1"
+        assert _kw["correlation_id"] == "req_improve_1"

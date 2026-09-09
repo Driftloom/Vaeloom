@@ -181,7 +181,7 @@ class TestResumeNoReplay:
         async def _plan(req, state):
             return {"message": req.message, "agent_type": "t"}
         monkeypatch.setattr(loop_mod, "plan_phase", _plan)
-        async def _act(plan, request, on_token=None):
+        async def _act(plan, request, on_token=None, state=None):
             return await request.agent.execute()
         monkeypatch.setattr(loop_mod, "act_phase", _act)
         from api.agents.qa_agent.handler import QAAgent
@@ -440,7 +440,7 @@ class TestProvenance:
                 "message": req.message, "agent_type": "t",
                 "rag_context": {"entities": [{"id": "e1", "name": "Acme"}], "documents": [], "preferences": []}}
         monkeypatch.setattr(loop_mod, "plan_phase", _plan)
-        async def _act(plan, request, on_token=None):
+        async def _act(plan, request, on_token=None, state=None):
             return await request.agent.execute()
         monkeypatch.setattr(loop_mod, "act_phase", _act)
         from api.agents.qa_agent.handler import QAAgent

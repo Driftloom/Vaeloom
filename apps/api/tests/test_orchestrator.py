@@ -362,7 +362,7 @@ class TestRunAgentLoop:
         # but confidence 0.0 keeps QA rejecting every round.
         attempts = []
 
-        async def never_satisfying_act(plan, request):
+        async def never_satisfying_act(plan, request, on_token=None, state=None):
             attempts.append(1)
             return {"agent_name": "mock", "action": "suggest", "confidence": 0.0, "result": {"summary": f"still trying #{len(attempts)}", "details": {}, "proposals": [], "questions": []}}
 
@@ -392,7 +392,7 @@ class TestRunAgentLoop:
         # test_runtime_phase_b.py::TestLoopSafety).
         attempts = []
 
-        async def varying_act(plan, request, on_token=None):
+        async def varying_act(plan, request, on_token=None, state=None):
             attempts.append(1)
             out = await request.agent.execute()
             out = dict(out)

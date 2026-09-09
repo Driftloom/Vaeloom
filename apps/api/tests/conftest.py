@@ -90,7 +90,8 @@ def _build_test_app(db_session):
         integrations, billing, documents, resumes, applications,
         plugins, chat, notifications, connectors, scheduler,
         analytics, audit, iam, knowledge_graph, recommendations,
-        webhooks, gmail, provider_keys,
+        webhooks, gmail, provider_keys, profile, opportunities, council,
+        cognition, sovereignty, anticipation, federation,
     )
     from api.services.gdpr import router as gdpr_router
     from api.services.consent import router as consent_router
@@ -149,6 +150,13 @@ def _build_test_app(db_session):
     test_app.include_router(approval_router, prefix="/api/v1")
     test_app.include_router(gmail.router, prefix="/api/v1")
     test_app.include_router(admin_console.router, prefix="")
+    test_app.include_router(profile.router, prefix="/api/v1/profile")
+    test_app.include_router(opportunities.router, prefix="/api/v1/opportunities")
+    test_app.include_router(council.router, prefix="/api/v1/council")
+    test_app.include_router(cognition.router, prefix="/api/v1/cognition")
+    test_app.include_router(sovereignty.router, prefix="/api/v1/sovereignty")
+    test_app.include_router(anticipation.router, prefix="/api/v1/anticipation")
+    test_app.include_router(federation.router, prefix="/api/v1/federation")
 
     @test_app.get("/metrics")
     async def metrics():

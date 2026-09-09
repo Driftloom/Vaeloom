@@ -77,7 +77,7 @@ def _build_test_app(db_session):
         health, auth, workspaces, memory, agents, events, search,
         integrations, billing, documents, resumes, applications,
         plugins, chat, notifications, connectors, scheduler,
-        analytics, audit, iam, knowledge_graph, recommendations,
+        analytics, audit, iam, knowledge_graph, recommendations, profile, opportunities, council,
     )
 
     test_app = FastAPI()
@@ -118,6 +118,9 @@ def _build_test_app(db_session):
     test_app.include_router(chat.router, prefix="/api/v1/chat")
     test_app.include_router(knowledge_graph.router, prefix="/api/v1/knowledge-graph")
     test_app.include_router(recommendations.router, prefix="/api/v1/recommendations")
+    test_app.include_router(profile.router, prefix="/api/v1/profile")
+    test_app.include_router(opportunities.router, prefix="/api/v1/opportunities")
+    test_app.include_router(council.router, prefix="/api/v1/council")
 
     @test_app.get("/metrics")
     async def metrics():

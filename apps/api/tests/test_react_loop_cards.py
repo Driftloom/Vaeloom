@@ -57,7 +57,7 @@ async def test_react_loop_direct_structured_answer(monkeypatch):
     # llm_service singleton instance leaves a shadowing __dict__ entry after
     # teardown (pytest restores by assignment) that hijacks later tests'
     # class-level patches. Never patch the singleton instance bare.
-    async def mock_stream(self, messages, tools=None):
+    async def mock_stream(self, messages, tools=None, **kwargs):
         captured_messages.extend(messages)
         yield {
             "type": "text_delta",
@@ -99,7 +99,7 @@ async def test_react_loop_tool_execution_flow(monkeypatch):
     call_count = 0
 
     # Stream generator yielding tool_calls in round 0, and final text in round 1
-    async def mock_stream(self, messages, tools=None):
+    async def mock_stream(self, messages, tools=None, **kwargs):
         nonlocal call_count
         if call_count == 0:
             call_count += 1
@@ -140,51 +140,71 @@ async def test_react_loop_tool_execution_flow(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_react_loop_approval_gated_tool(monkeypatch):
+async def test_react_loop_approval_gated_tool(monkeypatch, db_session):
+    """Approval-gated tools are never auto-executed: without approval the run
+    pauses with a durable PENDING request + card (real DB rows)."""
+    import uuid as _uuid
+    from sqlalchemy import select as _select
+    from api.models.schema import AgentApproval
+
     monkeypatch.setattr(settings, "agent_react_enabled", True)
     monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
 
-    rounds_messages = []
+    class _SessionCtx:
+        def __init__(self, s):
+            self.s = s
 
-    async def mock_stream(self, messages, tools=None):
-        rounds_messages.append(list(messages))
-        if len(rounds_messages) == 1:
-            # First round: LLM tries to call draft_email (which is in approval_gated_tools)
-            yield {
-                "type": "tool_calls",
-                "tool_calls": [
-                    {
-                        "id": "call_draft_1",
-                        "function": {
-                            "name": "draft_email",
-                            "arguments": json.dumps({"recipient": "test@company.com", "subject": "Hi"}),
-                        },
-                    }
-                ],
-            }
-        else:
-            # Second round: receives approval required notice, synthesizes safe response
-            yield {
-                "type": "text_delta",
-                "text": '{"summary": "Drafted email awaiting approval.", "proposals": []}',
-            }
+        async def __aenter__(self):
+            return self.s
+
+        async def __aexit__(self, *a):
+            return False
+
+    _factory = lambda: _SessionCtx(db_session)  # noqa: E731
+    monkeypatch.setattr("api.database.async_session_factory", _factory)
+
+    async def mock_stream(self, messages, tools=None, **kwargs):
+        # LLM requests draft_email with the REAL schema args (to/subject/body).
+        yield {
+            "type": "tool_calls",
+            "tool_calls": [
+                {
+                    "id": "call_draft_1",
+                    "function": {
+                        "name": "draft_email",
+                        "arguments": json.dumps({"to": "test@company.com", "subject": "Hi", "body": "Hello"}),
+                    },
+                }
+            ],
+        }
         yield {"type": "done"}
 
     monkeypatch.setattr(LLMService, "generate_completion_with_tools_stream", mock_stream)
 
+    ws = str(_uuid.uuid4())
     agent = DummyAgent()
     result = await _try_react_loop(
         agent=agent,
         message="Send an email to the hiring manager",
-        workspace_id="ws_123",
+        workspace_id=ws,
         agent_name="dummy",
+        db=db_session,
+        request_id=f"req-approval-{_uuid.uuid4().hex[:8]}",
     )
 
     assert result is not None
-    # Check that the tool result in the 2nd round message history informed the LLM about approval required
-    tool_feedback = [m for m in rounds_messages[1] if m.get("role") == "tool"]
-    assert len(tool_feedback) == 1
-    assert "Approval required" in tool_feedback[0]["content"]
+    assert result["action"] == "request_approval", result
+    approval_id = (result.get("approval") or {}).get("approval_id")
+    assert approval_id, result
+    # Durable PENDING request bound to this exact tool+args.
+    row = (await db_session.execute(
+        _select(AgentApproval).where(AgentApproval.id == _uuid.UUID(approval_id))
+    )).scalar_one_or_none()
+    assert row is not None and row.status == "PENDING"
+    assert (row.payload or {}).get("tool") == "draft_email"
+    # Termination is explicit and the run ledger records the pause.
+    assert result.get("termination_reason") == "success"  # outer flow surfaces the card as satisfied work
+    assert (result.get("react") or {}).get("termination") == "approval_paused"
 
 
 @pytest.mark.asyncio
@@ -192,7 +212,7 @@ async def test_act_phase_react_integration(monkeypatch):
     monkeypatch.setattr(settings, "agent_react_enabled", True)
     monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
 
-    async def mock_stream(self, messages, tools=None):
+    async def mock_stream(self, messages, tools=None, **kwargs):
         yield {
             "type": "text_delta",
             # Valid resume contract: summary + proposals + questions.
