@@ -38,6 +38,12 @@ class User(Base):
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"))
     consent_version: Mapped[str | None] = mapped_column(String(20))
     consent_granted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    bio: Mapped[str | None] = mapped_column(Text)
+    headline: Mapped[str | None] = mapped_column(String(255))
+    location: Mapped[str | None] = mapped_column(String(255))
+    phone: Mapped[str | None] = mapped_column(String(50))
+    social_links: Mapped[dict] = mapped_column(JSON, default=dict)
+    job_title: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -46,6 +52,11 @@ class User(Base):
     workspaces: Mapped[list["Workspace"]] = relationship("Workspace", back_populates="owner", cascade="all, delete-orphan")
     workspace_users: Mapped[list["WorkspaceUser"]] = relationship("WorkspaceUser", back_populates="user", cascade="all, delete-orphan")
     memories: Mapped[list["Memory"]] = relationship("Memory", back_populates="user", cascade="all, delete-orphan")
+    scale_memories: Mapped[list["ScaleMemoryNode"]] = relationship("ScaleMemoryNode", back_populates="user", cascade="all, delete-orphan")
+    sovereign_identity: Mapped["SovereignIdentity | None"] = relationship("SovereignIdentity", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    verifiable_credentials: Mapped[list["VerifiableCredential"]] = relationship("VerifiableCredential", back_populates="user", cascade="all, delete-orphan")
+    crdt_deltas: Mapped[list["CrdtSyncDelta"]] = relationship("CrdtSyncDelta", back_populates="user", cascade="all, delete-orphan")
+    proactive_proposals: Mapped[list["ProactiveProposal"]] = relationship("ProactiveProposal", back_populates="user", cascade="all, delete-orphan")
     agents: Mapped[list["Agent"]] = relationship("Agent", back_populates="user", cascade="all, delete-orphan")
 
 
@@ -121,6 +132,7 @@ class Workspace(Base):
     members: Mapped[list["WorkspaceUser"]] = relationship("WorkspaceUser", back_populates="workspace", cascade="all, delete-orphan")
     documents: Mapped[list["Document"]] = relationship("Document", back_populates="workspace", cascade="all, delete-orphan")
     memories: Mapped[list["Memory"]] = relationship("Memory", back_populates="workspace", cascade="all, delete-orphan")
+    scale_memories: Mapped[list["ScaleMemoryNode"]] = relationship("ScaleMemoryNode", back_populates="workspace", cascade="all, delete-orphan")
     memory_records: Mapped[list["MemoryRecord"]] = relationship("MemoryRecord", back_populates="workspace", cascade="all, delete-orphan")
     entities: Mapped[list["Entity"]] = relationship("Entity", back_populates="workspace", cascade="all, delete-orphan")
     resumes: Mapped[list["Resume"]] = relationship("Resume", back_populates="workspace", cascade="all, delete-orphan")
@@ -130,6 +142,9 @@ class Workspace(Base):
     agent_actions: Mapped[list["AgentAction"]] = relationship("AgentAction", back_populates="workspace", cascade="all, delete-orphan")
     permissions: Mapped[list["Permission"]] = relationship("Permission", back_populates="workspace", cascade="all, delete-orphan")
     connectors: Mapped[list["Connector"]] = relationship("Connector", back_populates="workspace", cascade="all, delete-orphan")
+    verifiable_credentials: Mapped[list["VerifiableCredential"]] = relationship("VerifiableCredential", back_populates="workspace", cascade="all, delete-orphan")
+    crdt_deltas: Mapped[list["CrdtSyncDelta"]] = relationship("CrdtSyncDelta", back_populates="workspace", cascade="all, delete-orphan")
+    proactive_proposals: Mapped[list["ProactiveProposal"]] = relationship("ProactiveProposal", back_populates="workspace", cascade="all, delete-orphan")
     agents: Mapped[list["Agent"]] = relationship("Agent", back_populates="workspace", cascade="all, delete-orphan")
 
     __table_args__ = (Index("idx_workspaces_user_id", "user_id"),)
@@ -318,6 +333,131 @@ class MemoryRecord(Base):
     __table_args__ = (
         Index("idx_memory_records_workspace_type", "workspace_id", "type"),
         Index("idx_memory_records_workspace_freshness", "workspace_id", "freshness_at"),
+    )
+
+
+class ScaleMemoryNode(Base):
+    __tablename__ = "scale_memory_nodes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    tier: Mapped[str] = mapped_column(String(20), nullable=False)  # SUB_DAILY, DAILY, WEEKLY, MONTHLY, ANNUAL, NORTH_STAR
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    key_insights: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    friction_points: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    unresolved_questions: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    action_commitments: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    embedding = Column(Vector(1536), nullable=True)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="scale_memories")
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="scale_memories")
+
+    __table_args__ = (
+        Index("idx_scale_memory_user_tier", "user_id", "tier", "period_start"),
+        Index("idx_scale_memory_workspace_tier", "workspace_id", "tier", "period_start"),
+    )
+
+
+class SovereignIdentity(Base):
+    __tablename__ = "sovereign_identities"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    did: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    public_key: Mapped[str] = mapped_column(Text, nullable=False)
+    encrypted_private_key: Mapped[str] = mapped_column(EncryptedString, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="sovereign_identity")
+
+    __table_args__ = (
+        Index("idx_sovereign_identity_user_id", "user_id"),
+        Index("idx_sovereign_identity_did", "did"),
+    )
+
+
+class VerifiableCredential(Base):
+    __tablename__ = "verifiable_credentials"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    credential_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    subject_did: Mapped[str] = mapped_column(String(255), nullable=False)
+    issuer_did: Mapped[str] = mapped_column(String(255), nullable=False)
+    claims: Mapped[dict] = mapped_column(JSON, nullable=False)
+    proof: Mapped[dict] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="verifiable_credentials")
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="verifiable_credentials")
+
+    __table_args__ = (
+        Index("idx_vc_user_status", "user_id", "status"),
+        Index("idx_vc_workspace_status", "workspace_id", "status"),
+        Index("idx_vc_credential_type", "credential_type"),
+    )
+
+
+class CrdtSyncDelta(Base):
+    __tablename__ = "crdt_sync_deltas"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    client_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    hlc_timestamp: Mapped[str] = mapped_column(String(100), nullable=False)
+    operation: Mapped[str] = mapped_column(String(20), nullable=False)
+    encrypted_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="crdt_deltas")
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="crdt_deltas")
+
+    __table_args__ = (
+        Index("idx_crdt_workspace_entity", "workspace_id", "entity_type", "hlc_timestamp"),
+        Index("idx_crdt_user_hlc", "user_id", "hlc_timestamp"),
+    )
+
+
+class ProactiveProposal(Base):
+    __tablename__ = "proactive_proposals"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    trigger_type: Mapped[str] = mapped_column(String(50), nullable=False)  # UPCOMING_EVENT, APPLICATION_DEADLINE, COMMITMENT_GAP, SYSTEM_OPTIMIZATION
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    proposed_action: Mapped[str] = mapped_column(String(100), nullable=False)  # PREPARE_BRIEF, FOLLOW_UP_EMAIL, AUDIT_DOCUMENTS, SCHEDULE_BLOCK
+    action_payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    urgency: Mapped[str] = mapped_column(String(20), default="MEDIUM")  # LOW, MEDIUM, HIGH, CRITICAL
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")  # PENDING, ACCEPTED, DISMISSED, EXPIRED
+    relevance_score: Mapped[float] = mapped_column(Float, default=0.8)
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dismissed_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="proactive_proposals")
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="proactive_proposals")
+
+    __table_args__ = (
+        Index("idx_proposals_workspace_status", "workspace_id", "status"),
+        Index("idx_proposals_user_status", "user_id", "status"),
+        Index("idx_proposals_trigger_type", "trigger_type"),
     )
 
 
@@ -671,6 +811,41 @@ class ToolIdempotency(Base):
     __table_args__ = (
         UniqueConstraint("workspace_id", "idem_key", name="uq_tool_idempotency_ws_key"),
         Index("idx_tool_idempotency_ws_tool", "workspace_id", "tool_name"),
+    )
+
+
+class LearningEvent(Base):
+    """Durable learning admission ledger + idempotency anchor (Muse learning completion).
+
+    One row per (workspace_id, event_id). The UNIQUE constraint is the
+    correctness mechanism: concurrent duplicate learning submissions race on
+    INSERT and exactly one wins; losers return idempotent/duplicate instead of
+    persisting a second copy. Learned state itself lives in `entities`
+    (preference/skill/...); this table is the auditable admission record that
+    survives process restarts.
+    """
+
+    __tablename__ = "learning_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    event_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    signal_type: Mapped[str] = mapped_column(String(50), nullable=False, default="trajectory")
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="trajectory_feedback")
+    payload: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="admitted")
+    reason: Mapped[str] = mapped_column(String(200), nullable=False, default="admitted")
+    correlation_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "event_id", name="uq_learning_events_ws_event"),
+        Index("idx_learning_events_workspace", "workspace_id"),
+        Index("idx_learning_events_ws_status", "workspace_id", "status"),
+        Index("idx_learning_events_event_id", "event_id"),
     )
 
 

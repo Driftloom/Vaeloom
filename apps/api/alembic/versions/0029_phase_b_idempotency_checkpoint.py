@@ -16,30 +16,32 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Durable side-effect idempotency (UNIQUE is the correctness mechanism).
-    op.create_table(
-        "tool_idempotency",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("workspace_id", sa.String(255), nullable=False),
-        sa.Column("idem_key", sa.String(255), nullable=False),
-        sa.Column("tool_name", sa.String(255), nullable=False),
-        sa.Column("agent_id", sa.String(255), nullable=False, server_default=""),
-        sa.Column("request_id", sa.String(255), nullable=False, server_default=""),
-        sa.Column("status", sa.String(20), nullable=False, server_default="succeeded"),
-        sa.Column("result_json", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("workspace_id", "idem_key", name="uq_tool_idempotency_ws_key"),
-    )
-    op.create_index("idx_tool_idempotency_ws_tool", "tool_idempotency", ["workspace_id", "tool_name"])
-
-    # Optimistic-concurrency version on checkpoints (SQLite: plain column;
-    # Postgres: plain column, CAS enforced in application transaction).
-    try:
-        op.add_column("loop_checkpoints", sa.Column("state_version", sa.Integer(), nullable=False, server_default="1"))
-    except Exception:
-        pass
+    op.execute(sa.text("""
+    CREATE TABLE IF NOT EXISTS tool_idempotency (
+        id UUID PRIMARY KEY,
+        workspace_id VARCHAR(255) NOT NULL,
+        idem_key VARCHAR(255) NOT NULL,
+        tool_name VARCHAR(255) NOT NULL,
+        agent_id VARCHAR(255) NOT NULL DEFAULT '',
+        request_id VARCHAR(255) NOT NULL DEFAULT '',
+        status VARCHAR(20) NOT NULL DEFAULT 'succeeded',
+        result_json JSON NOT NULL DEFAULT '{}',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+    );
+    """))
+    op.execute(sa.text("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'uq_tool_idempotency_ws_key'
+        ) THEN
+            ALTER TABLE tool_idempotency ADD CONSTRAINT uq_tool_idempotency_ws_key UNIQUE (workspace_id, idem_key);
+        END IF;
+    END $$;
+    """))
+    op.execute(sa.text("CREATE INDEX IF NOT EXISTS idx_tool_idempotency_ws_tool ON tool_idempotency (workspace_id, tool_name);"))
+    op.execute(sa.text("ALTER TABLE loop_checkpoints ADD COLUMN IF NOT EXISTS state_version INTEGER NOT NULL DEFAULT 1;"))
 
 
 def downgrade() -> None:
