@@ -64,6 +64,8 @@ $RECYCLE.BIN/
 .env.local
 .env.development
 .env.development.local
+.env.staging
+.env.staging.local
 .env.production
 .env.production.local
 .env.test
@@ -116,6 +118,8 @@ blob-report/
 tmp/
 temp/
 scratch/
+scratch*.py
+scratch_*.py
 
 # Graphify knowledge graph — ALL outputs (build artifacts, cache, exports, temp files)
 graphify-out/
