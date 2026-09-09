@@ -6,6 +6,13 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/workspace/ws-1/memory',
 }));
 
+jest.mock('../../hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { displayName: 'Test User', email: 'test@example.com' },
+    isAuthenticated: true,
+  }),
+}));
+
 describe('Sidebar', () => {
   it('groups navigation into IA spaces', () => {
     render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);

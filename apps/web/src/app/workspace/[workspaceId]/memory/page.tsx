@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { Tabs, TabPanel } from '@/components/shared/Tabs';
 import { DynamicGraphViewer } from '@/lib/dynamic-imports';
 import { MemoryCorrectionPanel } from '@/components/memory/MemoryCorrectionPanel';
+import { ScaleMemoryViewer } from '@/components/memory/ScaleMemoryViewer';
 import { memoryApi, memoryFeedApi } from '@/lib/api-client';
 import { Modal } from '@vaeloom/ui-kit';
 import { useToast } from '@/components/shared/Toast';
@@ -100,6 +101,7 @@ export default function MemoryGraphPage() {
 
   const tabs = [
     { id: 'feed', label: `Agentic Updates${feedData?.feed ? ` (${feedData.feed.length})` : ''}` },
+    { id: 'scale', label: 'SCALE Hierarchy' },
     { id: 'graph', label: 'Graph' },
     { id: 'list', label: 'All Memories' },
     { id: 'corrections', label: 'Corrections' },
@@ -260,6 +262,10 @@ export default function MemoryGraphPage() {
           Superseded versions stay visible; corrections create new rows with{' '}
           <span className="font-mono">supersedes_id</span>.
         </p>
+      </TabPanel>
+
+      <TabPanel id="scale" activeTab={active}>
+        {workspaceId && <ScaleMemoryViewer workspaceId={workspaceId} />}
       </TabPanel>
 
       <TabPanel id="graph" activeTab={active}>

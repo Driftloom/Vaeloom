@@ -15,6 +15,7 @@ import type {
   KnowledgeGraphNode,
   KnowledgeGraphEdge,
 } from '@vaeloom/shared-types';
+export type { Event, EventSubscription } from '@vaeloom/shared-types';
 
 import { api, ApiError, getToken, transformKeys, API_BASE, API_PREFIX } from './api';
 export {
@@ -2223,6 +2224,374 @@ export const webhookApi = {
   deliveries(id: string): Promise<{ deliveries: WebhookDeliveryItem[]; total: number }> {
     return apiClient.get<{ deliveries: WebhookDeliveryItem[]; total: number }>(
       `/webhooks/${encodeURIComponent(id)}/deliveries`,
+    );
+  },
+};
+
+// ── Profile ──────────────────────────────────────────────────────────
+export interface SkillItem {
+  name: string;
+  confidence: number;
+  source: string;
+  verified: boolean;
+  tag?: string;
+  validationTier?: 'V0' | 'V1' | 'V2' | 'V3' | 'V4' | string;
+  decayStatus?: 'fresh' | 'active' | 'stale' | string;
+  decayFactor?: number;
+  effectiveConfidence?: number;
+  isMatchable?: boolean;
+}
+
+export interface CareerEntry {
+  company: string;
+  role: string;
+  startDate: string | null;
+  endDate: string | null;
+  achievements: string[];
+  confidence: number;
+}
+
+export interface JobPreferencesData {
+  jobTypes: string[];
+  salaryRange: Record<string, unknown>;
+  preferredIndustries: string[];
+  dealbreakers: string[];
+  remotePreference: string | null;
+}
+
+export interface MemorySummaryItem {
+  type: string;
+  count: number;
+  lastUpdated: string | null;
+}
+
+export interface ProfileData {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  headline: string | null;
+  location: string | null;
+  phone: string | null;
+  socialLinks: Record<string, string>;
+  jobTitle: string | null;
+  authProvider: string;
+  preferences: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  skills: SkillItem[];
+  careerHistory: CareerEntry[];
+  jobPreferences: JobPreferencesData | null;
+  memorySummary: MemorySummaryItem[];
+  yearsExperience: number | null;
+}
+
+export interface UpdateProfileData {
+  display_name?: string;
+  bio?: string;
+  headline?: string;
+  location?: string;
+  phone?: string;
+  social_links?: Record<string, string>;
+  job_title?: string;
+  avatar_url?: string;
+  preferences?: Record<string, unknown>;
+}
+
+export interface ProfileCompletenessData {
+  score: number;
+  totalFields: number;
+  filledFields: number;
+  suggestions: Array<{ field: string; action: string; boost: string }>;
+}
+
+export interface PublicProfileData {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  headline: string | null;
+  location: string | null;
+  jobTitle: string | null;
+  socialLinks: Record<string, string>;
+  skills: SkillItem[];
+  careerHistory: CareerEntry[];
+  yearsExperience: number | null;
+  createdAt: string;
+}
+
+export interface ATSReadinessData {
+  score: number;
+  statusLabel: string;
+  targetRole: string | null;
+  totalSkillsCount: number;
+  matchingSkills: string[];
+  missingSkills: string[];
+  suggestions: string[];
+  keywordMatchPct: number;
+}
+
+export interface ProfileRecommendationItem {
+  id: string;
+  agentName: string;
+  category: string;
+  title: string;
+  description: string;
+  actionLabel: string;
+  actionUrl: string | null;
+  impact: string;
+  createdAt: string;
+}
+
+export interface ProfileActivityItem {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  status: string;
+  agentName?: string;
+}
+
+export const profileApi = {
+  get(workspaceId?: string): Promise<ProfileData> {
+    const params = workspaceId ? { workspace_id: workspaceId } : undefined;
+    return apiClient.get<ProfileData>('/profile', params);
+  },
+  update(data: UpdateProfileData, workspaceId?: string): Promise<ProfileData> {
+    const qs = workspaceId ? `?workspace_id=${workspaceId}` : '';
+    return apiClient.put<ProfileData>(`/profile${qs}`, data);
+  },
+  uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.request<{ avatarUrl: string }>('/profile/avatar', {
+      method: 'POST',
+      body: formData,
+      headers: {},
+    });
+  },
+  completeness(workspaceId?: string): Promise<ProfileCompletenessData> {
+    const params = workspaceId ? { workspace_id: workspaceId } : undefined;
+    return apiClient.get<ProfileCompletenessData>('/profile/completeness', params);
+  },
+  confirmSkill(skillName: string, workspaceId: string): Promise<ProfileData> {
+    return apiClient.post<ProfileData>('/profile/skills/confirm', {
+      skill_name: skillName,
+      workspace_id: workspaceId,
+    });
+  },
+  addSkill(skillName: string, workspaceId: string, confidence = 1.0): Promise<ProfileData> {
+    return apiClient.post<ProfileData>('/profile/skills', {
+      skill_name: skillName,
+      workspace_id: workspaceId,
+      confidence,
+    });
+  },
+  removeSkill(skillName: string, workspaceId: string): Promise<ProfileData> {
+    return apiClient.delete<ProfileData>(
+      `/profile/skills/${encodeURIComponent(skillName)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  updatePreferences(data: Partial<JobPreferencesData>, workspaceId: string): Promise<ProfileData> {
+    return apiClient.put<ProfileData>('/profile/preferences', {
+      workspace_id: workspaceId,
+      job_types: data.jobTypes ?? [],
+      salary_range: data.salaryRange ?? {},
+      preferred_industries: data.preferredIndustries ?? [],
+      dealbreakers: data.dealbreakers ?? [],
+      remote_preference: data.remotePreference ?? null,
+    });
+  },
+  autoPopulate(workspaceId: string): Promise<ProfileData> {
+    return apiClient.post<ProfileData>('/profile/auto-populate', {
+      workspace_id: workspaceId,
+    });
+  },
+  getPublic(userId: string): Promise<PublicProfileData> {
+    return apiClient.get<PublicProfileData>(`/profile/public/${encodeURIComponent(userId)}`);
+  },
+  atsReadiness(workspaceId: string): Promise<ATSReadinessData> {
+    return apiClient.get<ATSReadinessData>('/profile/ats-readiness', {
+      workspace_id: workspaceId,
+    });
+  },
+  recommendations(workspaceId: string): Promise<ProfileRecommendationItem[]> {
+    return apiClient.get<ProfileRecommendationItem[]>('/profile/recommendations', {
+      workspace_id: workspaceId,
+    });
+  },
+  addCareer(
+    data: {
+      company: string;
+      role: string;
+      startDate?: string;
+      endDate?: string;
+      achievements?: string[];
+    },
+    workspaceId: string,
+  ): Promise<ProfileData> {
+    return apiClient.post<ProfileData>('/profile/career', {
+      workspace_id: workspaceId,
+      company: data.company,
+      role: data.role,
+      start_date: data.startDate,
+      end_date: data.endDate,
+      achievements: data.achievements ?? [],
+    });
+  },
+  updateCareer(
+    company: string,
+    data: { role?: string; startDate?: string; endDate?: string; achievements?: string[] },
+    workspaceId: string,
+  ): Promise<ProfileData> {
+    return apiClient.put<ProfileData>(`/profile/career/${encodeURIComponent(company)}`, {
+      workspace_id: workspaceId,
+      role: data.role,
+      start_date: data.startDate,
+      end_date: data.endDate,
+      achievements: data.achievements,
+    });
+  },
+  deleteCareer(company: string, workspaceId: string): Promise<ProfileData> {
+    return apiClient.delete<ProfileData>(
+      `/profile/career/${encodeURIComponent(company)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  activity(workspaceId: string): Promise<ProfileActivityItem[]> {
+    return apiClient.get<ProfileActivityItem[]>('/profile/activity', {
+      workspace_id: workspaceId,
+    });
+  },
+};
+
+// ── Opportunities (PIOS Opportunity Engine) ─────────────────────────
+export interface OpportunityDTO {
+  id?: string;
+  title: string;
+  company: string;
+  type?: 'job' | 'hackathon' | 'research' | 'oss' | 'cofounder' | string;
+  requiredSkills?: string[];
+  location?: string | null;
+  url?: string | null;
+  description?: string | null;
+}
+
+export interface OpportunityMetrics {
+  cosineSimilarity: number;
+  networkProximity: number;
+  decayWeightedConfidence: number;
+  skillGapPenalty: number;
+}
+
+export interface MatchedSkillDetail {
+  name: string;
+  tag?: string;
+  validationTier?: string;
+  decayStatus?: string;
+  decayFactor?: number;
+  effectiveConfidence?: number;
+}
+
+export interface OpportunityMatchResult {
+  opportunityId: string;
+  title: string;
+  company: string;
+  type: string;
+  matchScore: number;
+  whyYou: string;
+  metrics: OpportunityMetrics;
+  matchedSkills: MatchedSkillDetail[];
+  missingSkills: string[];
+}
+
+export const opportunityApi = {
+  match(opportunity: OpportunityDTO, connectedEntitiesCount = 0): Promise<OpportunityMatchResult> {
+    return apiClient.post<OpportunityMatchResult>('/opportunities/match', {
+      opportunity: {
+        id: opportunity.id,
+        title: opportunity.title,
+        company: opportunity.company,
+        type: opportunity.type ?? 'job',
+        required_skills: opportunity.requiredSkills ?? [],
+        location: opportunity.location,
+        url: opportunity.url,
+        description: opportunity.description,
+      },
+      connected_entities_count: connectedEntitiesCount,
+    });
+  },
+  rank(opportunities: OpportunityDTO[], topK = 10): Promise<OpportunityMatchResult[]> {
+    return apiClient.post<OpportunityMatchResult[]>('/opportunities/rank', {
+      opportunities: opportunities.map((o) => ({
+        id: o.id,
+        title: o.title,
+        company: o.company,
+        type: o.type ?? 'job',
+        required_skills: o.requiredSkills ?? [],
+        location: o.location,
+        url: o.url,
+        description: o.description,
+      })),
+      top_k: topK,
+    });
+  },
+};
+
+// ── Agent Council (PIOS Adjudication Quality Gate) ───────────────────
+export interface CouncilReviewRequest {
+  artifact: string;
+  artifactType?: string;
+  context?: Record<string, unknown>;
+  mode?: 'collaborative' | 'adversarial';
+}
+
+export interface CouncilCritique {
+  role: string;
+  stance: 'PASS' | 'CONCERN' | 'BLOCK' | string;
+  analysis: string;
+  irreducibleFlaws: string[];
+  reducibleFlaws: string[];
+  confidence: number;
+}
+
+export interface CouncilRebuttal {
+  reviewerRole: string;
+  targetRole: string;
+  agreement: boolean;
+  rebuttalComment: string;
+}
+
+export interface CouncilVerdict {
+  verdict: 'SHIP' | 'REVISE' | 'HOLD';
+  overallScore: number;
+  confidence: number;
+  summary: string;
+  revisionBrief: string[];
+  irreducibleFlaws: string[];
+  reducibleFlaws: string[];
+  round1Critiques: Record<string, CouncilCritique>;
+  round2Rebuttals: CouncilRebuttal[];
+  bypassedTriage: boolean;
+  timestamp: string;
+}
+
+export const councilApi = {
+  review(body: CouncilReviewRequest): Promise<CouncilVerdict> {
+    return apiClient.post<CouncilVerdict>('/council/review', {
+      artifact: body.artifact,
+      artifact_type: body.artifactType ?? 'text',
+      context: body.context ?? {},
+      mode: body.mode ?? 'collaborative',
+    });
+  },
+  triage(artifact: string): Promise<{ requiresCouncil: boolean; length: number; reason: string }> {
+    return apiClient.post<{ requiresCouncil: boolean; length: number; reason: string }>(
+      '/council/triage',
+      {
+        artifact,
+      },
     );
   },
 };

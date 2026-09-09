@@ -392,4 +392,170 @@ export const api = {
       return request('/billing/subscription', { method: 'POST', body: JSON.stringify({ plan }) });
     },
   },
+
+  // Sovereignty & Verifiable Credentials
+  sovereignty: {
+    getIdentity(): Promise<{
+      did: string;
+      publicKeyBase64: string;
+      didDocument: Record<string, unknown>;
+      createdAt: string;
+    }> {
+      return request('/sovereignty/identity');
+    },
+    listCredentials(
+      workspaceId: string,
+      credentialType?: string,
+    ): Promise<{
+      credentials: Array<{
+        id: string;
+        credentialType: string;
+        subjectDid: string;
+        issuerDid: string;
+        claims: Record<string, any>;
+        status: string;
+        createdAt: string;
+      }>;
+      total: number;
+    }> {
+      const qs = new URLSearchParams({ workspace_id: workspaceId });
+      if (credentialType) qs.set('credential_type', credentialType);
+      return request(`/sovereignty/credentials?${qs.toString()}`);
+    },
+    getCredential(workspaceId: string, credentialId: string): Promise<Record<string, unknown>> {
+      return request(`/sovereignty/credentials/${credentialId}?workspace_id=${workspaceId}`);
+    },
+    verifyCredential(credential: Record<string, unknown>): Promise<{
+      isValid: boolean;
+      issuer: string;
+      subject: string;
+      credentialType: string;
+      claimsVerified: boolean;
+      signatureVerified: boolean;
+      reason?: string | null;
+      checkedAt: string;
+    }> {
+      return request('/sovereignty/credentials/verify', {
+        method: 'POST',
+        body: JSON.stringify({ credential }),
+      });
+    },
+    issueCapability(body: {
+      workspace_id: string;
+      capability_tag: string;
+      validation_tier: string;
+      evidence: string[];
+    }): Promise<Record<string, unknown>> {
+      return request('/sovereignty/credentials/issue/capability', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+    },
+    pullSyncDeltas(
+      workspaceId: string,
+      sinceHlc?: string,
+    ): Promise<{
+      deltas: Array<any>;
+      total: number;
+      latestHlc: string | null;
+      hasMore: boolean;
+    }> {
+      const qs = new URLSearchParams({ workspace_id: workspaceId });
+      if (sinceHlc) qs.set('since_hlc', sinceHlc);
+      return request(`/sovereignty/sync/pull?${qs.toString()}`);
+    },
+  },
+  anticipation: {
+    listProposals(
+      workspaceId: string,
+      status?: string,
+    ): Promise<{
+      proposals: Array<{
+        id: string;
+        triggerType: string;
+        title: string;
+        summary: string;
+        proposedAction: string;
+        actionPayload: Record<string, any>;
+        urgency: string;
+        status: string;
+        relevanceScore: number;
+        scheduledFor?: string | null;
+        dismissedReason?: string | null;
+        createdAt: string;
+      }>;
+      total: number;
+    }> {
+      const qs = new URLSearchParams({ workspace_id: workspaceId });
+      if (status) qs.set('status', status);
+      return request(`/anticipation/proposals?${qs.toString()}`);
+    },
+    scan(workspaceId: string): Promise<{
+      proposals: Array<{
+        id: string;
+        triggerType: string;
+        title: string;
+        summary: string;
+        proposedAction: string;
+        actionPayload: Record<string, any>;
+        urgency: string;
+        status: string;
+        relevanceScore: number;
+        scheduledFor?: string | null;
+        dismissedReason?: string | null;
+        createdAt: string;
+      }>;
+      total: number;
+    }> {
+      return request('/anticipation/scan', {
+        method: 'POST',
+        body: JSON.stringify({ workspace_id: workspaceId }),
+      });
+    },
+    acceptProposal(
+      workspaceId: string,
+      proposalId: string,
+    ): Promise<{
+      id: string;
+      triggerType: string;
+      title: string;
+      summary: string;
+      proposedAction: string;
+      actionPayload: Record<string, any>;
+      urgency: string;
+      status: string;
+      relevanceScore: number;
+      scheduledFor?: string | null;
+      dismissedReason?: string | null;
+      createdAt: string;
+    }> {
+      return request(`/anticipation/proposals/${proposalId}/accept`, {
+        method: 'POST',
+        body: JSON.stringify({ workspace_id: workspaceId }),
+      });
+    },
+    dismissProposal(
+      workspaceId: string,
+      proposalId: string,
+      reason?: string,
+    ): Promise<{
+      id: string;
+      triggerType: string;
+      title: string;
+      summary: string;
+      proposedAction: string;
+      actionPayload: Record<string, any>;
+      urgency: string;
+      status: string;
+      relevanceScore: number;
+      scheduledFor?: string | null;
+      dismissedReason?: string | null;
+      createdAt: string;
+    }> {
+      return request(`/anticipation/proposals/${proposalId}/dismiss`, {
+        method: 'POST',
+        body: JSON.stringify({ workspace_id: workspaceId, reason }),
+      });
+    },
+  },
 };

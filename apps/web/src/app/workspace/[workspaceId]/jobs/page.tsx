@@ -5,8 +5,8 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Tabs, TabPanel } from '@/components/shared/Tabs';
-import { schedulerApi, agentApi, applicationApi } from '@/lib/api-client';
-import type { JobResponse } from '@/lib/api-client';
+import { schedulerApi, agentApi, applicationApi, opportunityApi } from '@/lib/api-client';
+import type { JobResponse, OpportunityMatchResult } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 function formatDate(iso?: string): string {
@@ -49,6 +49,26 @@ export default function JobsPage() {
       return [];
     }
   });
+
+  // PIOS Opportunity Matcher State
+  const [matcherTitle, setMatcherTitle] = useState('Senior AI Systems Engineer');
+  const [matcherCompany, setMatcherCompany] = useState('Anthropic / OpenAI');
+  const [matcherType, setMatcherType] = useState('job');
+  const [matcherSkills, setMatcherSkills] = useState(
+    'Python, FastAPI, LLM, Vector Search, Kubernetes',
+  );
+  const [matcherDesc, setMatcherDesc] = useState(
+    'Architect sovereign AI agent systems with local context and deterministic policy gates.',
+  );
+  const [matcherNetworkCount, setMatcherNetworkCount] = useState(3);
+  const [matching, setMatching] = useState(false);
+  const [matchResult, setMatchResult] = useState<OpportunityMatchResult | null>(null);
+
+  // Proposal match cache for inline search cards
+  const [proposalMatches, setProposalMatches] = useState<Record<string, OpportunityMatchResult>>(
+    {},
+  );
+  const [matchingProposal, setMatchingProposal] = useState<string | null>(null);
 
   // Saved jobs: durable backend via POST /workspaces/{id}/applications (draft), localStorage as offline fallback
   useEffect(() => {
@@ -276,8 +296,78 @@ export default function JobsPage() {
     [fetchJobs, toast],
   );
 
+  const handleRunMatch = useCallback(async () => {
+    if (!workspaceId) return;
+    setMatching(true);
+    try {
+      const skillsArray = matcherSkills
+        .split(/[,;\n]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const res = await opportunityApi.match(
+        {
+          title: matcherTitle.trim() || 'Role',
+          company: matcherCompany.trim() || 'Target Co',
+          type: matcherType,
+          requiredSkills: skillsArray,
+          description: matcherDesc.trim() || undefined,
+        },
+        matcherNetworkCount,
+      );
+      setMatchResult(res);
+      toast({
+        tone: 'success',
+        title: 'Match Analyzed',
+        detail: `PIOS Match Score: ${Math.round(res.matchScore * 100)}%`,
+      });
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Matching Failed',
+        detail: err instanceof Error ? err.message : 'Could not compute opportunity match.',
+      });
+    } finally {
+      setMatching(false);
+    }
+  }, [
+    workspaceId,
+    matcherTitle,
+    matcherCompany,
+    matcherType,
+    matcherSkills,
+    matcherDesc,
+    matcherNetworkCount,
+    toast,
+  ]);
+
+  const handleMatchProposal = useCallback(
+    async (title: string, detail?: string) => {
+      if (!workspaceId) return;
+      setMatchingProposal(title);
+      try {
+        const res = await opportunityApi.match({
+          title,
+          company: 'Opportunity',
+          description: detail,
+          requiredSkills: [title],
+        });
+        setProposalMatches((prev) => ({ ...prev, [title]: res }));
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: 'Inline Match Failed',
+          detail: err instanceof Error ? err.message : 'Please try again.',
+        });
+      } finally {
+        setMatchingProposal(null);
+      }
+    },
+    [workspaceId, toast],
+  );
+
   const tabs = [
     { id: 'search', label: 'Job Search' },
+    { id: 'matcher', label: 'PIOS Matcher' },
     { id: 'schedule', label: `Scheduled${jobs.length ? ` (${jobs.length})` : ''}` },
     { id: 'saved', label: `Saved${saved.length ? ` (${saved.length})` : ''}` },
   ];
@@ -345,11 +435,78 @@ export default function JobsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {searchResult.proposals.map((p, i) => {
                   const isSaved = saved.some((s) => s.title === p.title);
+                  const piosMatch = proposalMatches[p.title];
+                  const isMatching = matchingProposal === p.title;
+
                   return (
-                    <div key={i} className="card">
-                      <h4 className="font-medium text-text">{p.title}</h4>
-                      {p.detail && <p className="text-sm text-text-muted mt-1">{p.detail}</p>}
-                      <div className="mt-3 flex gap-2">
+                    <div key={i} className="card flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-medium text-text">{p.title}</h4>
+                          {piosMatch ? (
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full font-mono font-medium border ${
+                                piosMatch.matchScore >= 0.75
+                                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                  : piosMatch.matchScore >= 0.5
+                                    ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                                    : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                              }`}
+                              title="PIOS matcher_core score"
+                            >
+                              {Math.round(piosMatch.matchScore * 100)}% Fit
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleMatchProposal(p.title, p.detail)}
+                              disabled={isMatching}
+                              className="text-[11px] px-2 py-0.5 rounded-full bg-surface-200 hover:bg-surface-hover text-text-muted hover:text-text border border-border transition-colors shrink-0"
+                            >
+                              {isMatching ? 'Matching…' : '⚡ PIOS Fit'}
+                            </button>
+                          )}
+                        </div>
+
+                        {p.detail && <p className="text-sm text-text-muted mt-1">{p.detail}</p>}
+
+                        {/* Inline PIOS Explanation */}
+                        {piosMatch && (
+                          <div className="mt-3 p-2.5 rounded-lg bg-surface-200/70 border border-border text-xs space-y-2">
+                            <p className="text-text-dim leading-relaxed">
+                              <span className="font-medium text-text">Why You:</span>{' '}
+                              {piosMatch.whyYou}
+                            </p>
+                            {piosMatch.matchedSkills.length > 0 && (
+                              <div className="flex flex-wrap gap-1 items-center">
+                                <span className="text-[10px] text-text-muted">Matched:</span>
+                                {piosMatch.matchedSkills.map((ms, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px]"
+                                  >
+                                    {ms.name} ({ms.validationTier || 'V1'})
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {piosMatch.missingSkills.length > 0 && (
+                              <div className="flex flex-wrap gap-1 items-center">
+                                <span className="text-[10px] text-text-muted">Gaps:</span>
+                                {piosMatch.missingSkills.map((gs, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-400 border border-border text-[10px]"
+                                  >
+                                    {gs}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
                         <button
                           onClick={() => handleSave(p)}
                           disabled={isSaved}
@@ -389,6 +546,341 @@ export default function JobsPage() {
             description="Enter a role, stack or location and run the Job Search agent. Results are ranked with match explanations; save/reject persists locally, and Apply requires approval."
           />
         )}
+      </TabPanel>
+
+      <TabPanel id="matcher" activeTab={active}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Opportunity Input Form */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-text">Opportunity Definition</h3>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                  PIOS Engine
+                </span>
+              </div>
+              <p className="text-xs text-text-muted mb-4">
+                Define an opportunity to evaluate against your Human Capability Graph using the PIOS{' '}
+                <code className="text-text font-mono text-[10px]">matcher_core</code> algorithm.
+              </p>
+
+              {/* Quick Presets */}
+              <div className="mb-4">
+                <label className="text-[11px] font-medium text-text-muted mb-1.5 block">
+                  Quick Presets
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    {
+                      label: 'AI Architect',
+                      title: 'Senior AI Systems Architect',
+                      company: 'Autonomous Systems Corp',
+                      skills: 'Python, PyTorch, Distributed Systems, FastAPI, Vector Search',
+                      desc: 'Build sovereign multiscale agentic runtime systems with deterministic policy gates.',
+                    },
+                    {
+                      label: 'Fullstack Dev',
+                      title: 'Founding Fullstack Engineer',
+                      company: 'Driftloom Labs',
+                      skills: 'TypeScript, Next.js, React, Tailwind CSS, PostgreSQL',
+                      desc: 'Design and deploy resilient local-first cognitive interfaces and real-time workspaces.',
+                    },
+                    {
+                      label: 'LLM Researcher',
+                      title: 'LLM Systems Researcher',
+                      company: 'Cortex Frontier',
+                      skills: 'Python, LLM, Model Distillation, Prompt Engineering, Evaluation',
+                      desc: 'Research 2-round cross-read agent consensus protocols and truth hierarchy resolution.',
+                    },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setMatcherTitle(preset.title);
+                        setMatcherCompany(preset.company);
+                        setMatcherSkills(preset.skills);
+                        setMatcherDesc(preset.desc);
+                      }}
+                      className="text-[11px] px-2 py-1 rounded-md bg-surface-200 hover:bg-surface-hover text-text border border-border transition-colors"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-text block mb-1">
+                    Role or Project Title
+                  </label>
+                  <input
+                    value={matcherTitle}
+                    onChange={(e) => setMatcherTitle(e.target.value)}
+                    placeholder="e.g. Lead AI Platform Engineer"
+                    className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-medium text-text block mb-1">
+                      Company / Organization
+                    </label>
+                    <input
+                      value={matcherCompany}
+                      onChange={(e) => setMatcherCompany(e.target.value)}
+                      placeholder="e.g. Anthropic"
+                      className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-text block mb-1">Type</label>
+                    <select
+                      value={matcherType}
+                      onChange={(e) => setMatcherType(e.target.value)}
+                      className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary"
+                    >
+                      <option value="job">Job</option>
+                      <option value="hackathon">Hackathon</option>
+                      <option value="research">Research Fellowship</option>
+                      <option value="oss">Open Source</option>
+                      <option value="cofounder">Co-founder</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-text block mb-1">
+                    Required Skills (comma-separated)
+                  </label>
+                  <input
+                    value={matcherSkills}
+                    onChange={(e) => setMatcherSkills(e.target.value)}
+                    placeholder="Python, FastAPI, Vector Search, Distributed Systems"
+                    className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-text block mb-1">
+                    Description / Problem Context
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={matcherDesc}
+                    onChange={(e) => setMatcherDesc(e.target.value)}
+                    placeholder="Describe the opportunity expectations..."
+                    className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-text block mb-1">
+                    Knowledge Graph Proximity (Connected Entities: {matcherNetworkCount})
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value={matcherNetworkCount}
+                    onChange={(e) => setMatcherNetworkCount(parseInt(e.target.value, 10))}
+                    className="w-full accent-primary cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-text-dim">
+                    <span>0 (Cold)</span>
+                    <span>5 (1-hop mutuals)</span>
+                    <span>10 (Dense cluster)</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleRunMatch}
+                  disabled={matching || !matcherTitle.trim()}
+                  className="w-full py-2.5 px-4 rounded-xl font-medium text-xs bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-all flex items-center justify-center gap-2 mt-2"
+                >
+                  {matching ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Evaluating Capability Graph…
+                    </>
+                  ) : (
+                    '⚡ Run PIOS Capability Match'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Match Analysis Breakdown */}
+          <div className="lg:col-span-7">
+            {matchResult ? (
+              <div className="space-y-4">
+                {/* Score & Verdict Banner */}
+                <div className="card bg-gradient-to-br from-surface to-surface-200 border-primary/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] font-mono uppercase tracking-wider text-text-dim">
+                        PIOS Alignment Score
+                      </span>
+                      <h3 className="text-2xl font-bold text-text mt-0.5">{matchResult.title}</h3>
+                      <p className="text-xs text-text-muted">
+                        {matchResult.company} • {matchResult.type}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div
+                        className={`text-3xl font-extrabold font-mono ${
+                          matchResult.matchScore >= 0.75
+                            ? 'text-emerald-400'
+                            : matchResult.matchScore >= 0.5
+                              ? 'text-amber-400'
+                              : 'text-rose-400'
+                        }`}
+                      >
+                        {Math.round(matchResult.matchScore * 100)}%
+                      </div>
+                      <span className="text-[10px] text-text-dim">
+                        {matchResult.matchScore >= 0.75
+                          ? 'High Demonstrated Fit'
+                          : matchResult.matchScore >= 0.5
+                            ? 'Emerging Capability Alignment'
+                            : 'Skill Gap Exceeds Threshold'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Why You Narrative */}
+                  <div className="mt-4 p-3 rounded-lg bg-background/80 border border-border">
+                    <h4 className="text-xs font-semibold text-text flex items-center gap-1.5 mb-1.5">
+                      <span>💡</span> Why You (Natural Language Grounding)
+                    </h4>
+                    <p className="text-xs text-text-muted leading-relaxed">{matchResult.whyYou}</p>
+                  </div>
+                </div>
+
+                {/* 4-Dimensional Mathematical Breakdown */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="card p-3 text-center">
+                    <span className="text-[10px] text-text-dim block mb-1">Cosine Similarity</span>
+                    <span className="text-base font-mono font-bold text-text">
+                      {(matchResult.metrics.cosineSimilarity * 100).toFixed(1)}%
+                    </span>
+                    <span className="text-[9px] text-text-muted block mt-0.5">Semantic Fit</span>
+                  </div>
+                  <div className="card p-3 text-center">
+                    <span className="text-[10px] text-text-dim block mb-1">Recency Decay</span>
+                    <span className="text-base font-mono font-bold text-emerald-400">
+                      {(matchResult.metrics.decayWeightedConfidence * 100).toFixed(1)}%
+                    </span>
+                    <span className="text-[9px] text-text-muted block mt-0.5">Half-Life Model</span>
+                  </div>
+                  <div className="card p-3 text-center">
+                    <span className="text-[10px] text-text-dim block mb-1">Network Proximity</span>
+                    <span className="text-base font-mono font-bold text-primary">
+                      {matchResult.metrics.networkProximity.toFixed(2)}x
+                    </span>
+                    <span className="text-[9px] text-text-muted block mt-0.5">Graph Boost</span>
+                  </div>
+                  <div className="card p-3 text-center">
+                    <span className="text-[10px] text-text-dim block mb-1">Skill Gap Penalty</span>
+                    <span className="text-base font-mono font-bold text-rose-400">
+                      -{(matchResult.metrics.skillGapPenalty * 100).toFixed(1)}%
+                    </span>
+                    <span className="text-[9px] text-text-muted block mt-0.5">Missing Bounds</span>
+                  </div>
+                </div>
+
+                {/* Capability Mapping */}
+                <div className="card space-y-3">
+                  <h4 className="text-xs font-semibold text-text">
+                    Demonstrated Capability Mapping
+                  </h4>
+
+                  {matchResult.matchedSkills.length > 0 ? (
+                    <div>
+                      <span className="text-[11px] font-medium text-text-muted block mb-1.5">
+                        Matched Capabilities ({matchResult.matchedSkills.length})
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {matchResult.matchedSkills.map((ms, idx) => (
+                          <div
+                            key={idx}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-200 border border-border text-xs"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            <span className="font-medium text-text">{ms.name}</span>
+                            <span className="text-[9px] font-mono px-1 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                              {ms.validationTier || 'V1'}
+                            </span>
+                            <span className="text-[9px] text-text-dim">
+                              {ms.decayStatus || 'fresh'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-text-muted">
+                      No exact capability overlap detected yet.
+                    </p>
+                  )}
+
+                  {matchResult.missingSkills.length > 0 && (
+                    <div className="pt-2 border-t border-border">
+                      <span className="text-[11px] font-medium text-text-muted block mb-1.5">
+                        Skill Gaps ({matchResult.missingSkills.length})
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {matchResult.missingSkills.map((gs, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 rounded bg-zinc-800/40 text-zinc-400 border border-border text-xs"
+                          >
+                            {gs}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="pt-3 flex gap-2">
+                    <button
+                      onClick={() =>
+                        handleSave({ title: matchResult.title, detail: matchResult.whyYou })
+                      }
+                      className="flex-1 py-2 rounded-lg text-xs font-medium bg-surface-200 hover:bg-surface-hover text-text border border-border transition-colors"
+                    >
+                      Save to Opportunities
+                    </button>
+                    <button
+                      onClick={() => handleApply(matchResult.title)}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
+                    >
+                      Apply with Agent
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="card h-full min-h-[380px] flex flex-col items-center justify-center text-center p-8 border-dashed">
+                <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl mb-3">
+                  ⚡
+                </div>
+                <h3 className="text-base font-semibold text-text mb-1">PIOS Opportunity Engine</h3>
+                <p className="text-xs text-text-muted max-w-sm mb-4 leading-relaxed">
+                  Instead of generic job searches, PIOS reverse-matches your demonstrated
+                  capabilities, validation tiers (V0–V4), and memory recency half-life against
+                  external roles.
+                </p>
+                <div className="text-[11px] font-mono text-text-dim bg-surface-200 px-3 py-1.5 rounded-lg border border-border">
+                  matcher_core = cosine × proximity × decay − gap_penalty
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </TabPanel>
 
       <TabPanel id="schedule" activeTab={active}>

@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '../../hooks/useAuth';
 
 interface NavLink {
   name: string;
@@ -30,6 +31,25 @@ function groupLinks(workspaceId: string): NavGroup[] {
     {
       label: 'Assist',
       links: [
+        {
+          name: 'Profile',
+          path: ws('/profile'),
+          icon: (
+            <svg
+              className={iconClass}
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+              />
+            </svg>
+          ),
+        },
         {
           name: 'Dashboard',
           path: ws(''),
@@ -298,6 +318,25 @@ function groupLinks(workspaceId: string): NavGroup[] {
       label: 'Trust & Rights',
       links: [
         {
+          name: 'Sovereign Vault',
+          path: ws('/vault'),
+          icon: (
+            <svg
+              className={iconClass}
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
+              />
+            </svg>
+          ),
+        },
+        {
           name: 'Settings',
           path: ws('/settings'),
           icon: (
@@ -478,7 +517,20 @@ export function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const groups = groupLinks(workspaceId);
+  const ws = (path: string) => `/workspace/${workspaceId}${path}`;
+
+  const userInitials = user?.displayName
+    ? user.displayName
+        .split(' ')
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : (user?.email?.[0]?.toUpperCase() ?? 'U');
+
+  const userName = user?.displayName ?? user?.email ?? 'User';
 
   return (
     <aside
@@ -504,6 +556,21 @@ export function Sidebar({
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+      </div>
+      {/* User card */}
+      <div className="px-3 py-3 border-b border-border shrink-0">
+        <Link
+          href={ws('/profile')}
+          className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-hover transition-colors group"
+        >
+          <div className="w-9 h-9 rounded-full bg-surface-active border border-border flex items-center justify-center text-text-muted font-mono text-xs shrink-0">
+            {userInitials}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-text truncate">{userName}</p>
+            <p className="text-xs text-text-dim truncate">View profile</p>
+          </div>
+        </Link>
       </div>
       <nav className="flex-1 overflow-y-auto py-3 px-2" aria-label="Workspace navigation">
         {groups.map((group) => (

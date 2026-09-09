@@ -9,6 +9,8 @@ import { api } from '../../../lib/api';
 import { approvalApi } from '@/lib/api-client';
 import Link from 'next/link';
 import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist';
+import { MorningBriefingCard } from '@/components/dashboard/MorningBriefingCard';
+import { AnticipationFeed } from '@/components/dashboard/AnticipationFeed';
 import type { Agent, Memory, PaginatedResponse, Event } from '@vaeloom/shared-types';
 
 function formatRelativeTime(iso: string): string {
@@ -128,6 +130,9 @@ export default function DashboardPage() {
           )}
         </p>
       </header>
+
+      {workspaceId && <MorningBriefingCard workspaceId={workspaceId} />}
+      {workspaceId && <AnticipationFeed workspaceId={workspaceId} />}
 
       {(agentCount === 0 || memoryCount === 0) && <OnboardingChecklist workspaceId={workspaceId} />}
 
