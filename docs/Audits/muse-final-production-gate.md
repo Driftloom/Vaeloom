@@ -583,3 +583,142 @@ approved build egress (or an approved mirror through §4).
   fails.
 - Late window: daemon wedge; host access lost; hermetic re-verification
   continued (~2,900 green).
+
+## FINAL PRODUCTION RELEASE CLOSURE — 2026-09-08 ~23:30 UTC (this run)
+
+Zero-trust end-to-end execution per final release prompt. **No source,
+Dockerfile, compose, or config file was modified by this run** (report-only docs
+append).
+
+### Baseline forensics (fresh, this run)
+
+```text
+git status --short:   M apps/api/src/api/tools/executor.py (unstaged, foreign — see below)
+                      ?? .env.staging (untracked, disposable staging env)
+                      ?? apps/api/scratch_race_probe.py (untracked, race probe script)
+HEAD:                 d4e1b23f67d8162f15d87bf125f1acdc35c406c5 (master)
+Log (8):              d4e1b23 → 205f209 → c8d7eb3 → 301fd6b → aaa6e49 → 9025e43 → 2044cec → c5580bc
+git diff aaa6e49..HEAD --name-only:  docs/Audits/muse-final-closure-execution.md
+                                 docs/Audits/muse-final-production-gate.md
+                                 (DOCS ONLY — no other files)
+git diff aaa6e49..HEAD -- src:   EMPTY (source-equivalent to candidate — PROVEN)
+git diff aaa6e49..HEAD -- Dockerfile docker-compose.yml compose.yml: EMPTY
+```
+
+Lineage resolved: `9025e43` (fix commit — 7 src files: tenant + signup + nonce +
+CAS + idempotency + config + queue_worker) → `aaa6e49` (docs-only, candidate
+pointer — 1 docs file) → `301fd6b` → `c8d7eb3` → `205f209` → `d4e1b23` (HEAD,
+all docs-only). Candidate tree verified to contain BOTH release fixes
+(`await db.commit()` in `auth_service.py::signup`; lazy `async_session_factory`
+import in `middleware/tenant.py:176`).
+
+### Foreign / excluded code (§3)
+
+`apps/api/src/api/tools/executor.py` unstaged hunk (19+/5-, working tree ONLY —
+not in candidate, not committed): tool timeout overrides 10→15s + new timeout
+keys; `_resolve_github_token` prefers `settings.github_token` before env.
+Assessed: **benign, no auth/tenant/workspace/approval bypass** (workspace token
+still first; `getattr(settings,...,"")` degrades to prior behavior). Not
+required by production runtime. **Exclusion preserved** — not committed, not
+merged; any future release build MUST use a clean tree (`git stash` / detached
+candidate checkout), because `docker build` ships the working tree, not the
+commit.
+
+### Docker health (§4)
+
+Healthy: Client+Server 29.6.2, Desktop 4.84.0, Compose v5.3.1. Main stack
+(postgres/redis/temporal/minio) Up healthy; staging stack
+(api/worker/redis/postgres, `vaeloom-staging-*`) Up. Approved proxy configured:
+`HTTP/HTTPS Proxy: http.docker.internal:3128` (docker info). No stale-container
+reuse: staging containers pinned to image `f09d3bb7f397` (built 2026-09-07 18:43
+UTC — see identity note below).
+
+### Build egress blocker — FRESH reproduction (§5)
+
+Full `docker build --no-cache` NOT re-burned (2 full attempts already failed
+identically; 3rd adds zero information). Instead the exact failing operation was
+reproduced cleanly in the identical base image this run:
+
+- Container: `docker run --rm python:3.12-slim sh -c "apt-get update"` →
+  `deb.debian.org/debian trixie InRelease`, `trixie-updates InRelease`,
+  `trixie-security InRelease` → **403 Forbidden** (IP 151.101.2.132:80, all 3
+  repos). Same `python:3.12-slim` base as `apps/api/Dockerfile:1`; same
+  `apt-get update` as Dockerfile:11/:19
+  (`playwright install --with-deps chromium` shells to apt at :19).
+- Windows host:
+  `Invoke-WebRequest http://deb.debian.org/debian/dists/bookworm/InRelease` →
+  **403 Forbidden**. Block exists independent of Docker/proxy.
+- Control: fresh `python:3.12-slim` image PULL from Docker Hub SUCCEEDED this
+  run → selective domain filtering (`deb.debian.org`), not general outage.
+- Approved proxy (`http.docker.internal:3128`) is in path, but the host itself
+  403s → **block originates beyond the proxy** (upstream/host-network policy).
+
+No Dockerfile / mirror / proxy / TLS change made. Princeton mirror NOT used
+(reachable ≠ org-approved). Per §37: **STOP — RELEASE BLOCKED.**
+
+### Image identity (§7) / fresh staging (§8) / live gates (§9–§32)
+
+Not executable without the rebuilt image — marked UNVERIFIED/BLOCKED for the
+final candidate, not PASS. Historical supporting evidence retained WITHOUT
+promotion: staging image `f09d3bb7f397` forensically proven PRE-candidate
+(tenant fix present, signup `db.commit()` absent — expected differential, not a
+regression); RLS/nonce/CAS 30/30 fresh-live from prior run stands as supporting
+evidence only (committed src tree unchanged since — zero delta, nothing to
+regress; rerunning would be ritual, not evidence). No old-image result is
+claimed as final-candidate proof.
+
+### Release matrix (final candidate `d4e1b23` == source `aaa6e49`)
+
+| Gate                                                  | Result             | Evidence                                                   |
+| ----------------------------------------------------- | ------------------ | ---------------------------------------------------------- |
+| Candidate source identity                             | PASS               | HEAD d4e1b23; src diff vs aaa6e49 EMPTY; lineage docs-only |
+| Foreign-code exclusion                                | PASS               | executor.py hunk unstaged/benign/excluded, documented      |
+| Docker health                                         | PASS               | 29.6.2 healthy; proxy approved+configured                  |
+| Build egress                                          | **BLOCKED**        | deb.debian.org 403, container + host, fresh this run       |
+| Image identity                                        | UNVERIFIED/BLOCKED | no rebuild possible; no old image claimed                  |
+| Fresh staging / health / isolation / race / 50-user   | UNVERIFIED/BLOCKED | require rebuilt image                                      |
+| RLS / nonce / CAS / queue / recovery / approval, etc. | HISTORICAL ONLY    | 30/30-class prior live proofs; src unchanged               |
+| P0 / P1                                               | 0 / 0              | no new defects (zero committed src delta)                  |
+
+```text
+RELEASE BLOCKED
+
+Root cause:
+Host/network egress policy blocks approved Debian package origin during
+Docker image construction (deb.debian.org → HTTP 403, all InRelease repos;
+reproduced container + host; approved proxy in path, block beyond it).
+
+Application source:
+Verified candidate (d4e1b23 source-equivalent to aaa6e49; both fixes in tree).
+
+P0:
+0
+
+P1:
+0
+
+Remaining blocker:
+Approved Docker build egress OR approved Debian mirror (owner options A/C/D/E
+per prior runs — no app change permitted to route around it).
+
+Next required action:
+Infrastructure/network owner approval. Then: clean-tree rebuild → image
+identity → fresh staging → rerun final-image gates (§38 chain).
+
+No application remediation required.
+```
+
+```text
+VAELOOM FINAL PRODUCTION RELEASE
+================================
+Candidate: d4e1b23 (source == aaa6e49, EMPTY src diff)
+Image: NONE (rebuild blocked at apps/api/Dockerfile:11/:19 apt layer)
+Artifact identity: NOT PROVEN (no image to prove; pre-candidate f09d3bb7f397 excluded by forensics)
+Fresh staging: BLOCKED (healthy infra, stale image — not reused as evidence)
+P0: 0 | P1: 0 | P2: bounded residuals (final-image reruns, vector relevance, provider drill) | P3: MCP bounded, JWT denylist, OTel noise, foreign hunk excluded, apt-egress policy
+Critical gates: source identity PASS; egress BLOCKED (403 fresh both planes); all final-image gates UNVERIFIED/BLOCKED
+Remaining blockers: approved Docker build egress OR approved Debian mirror
+Final verdict: NOT READY (environmental — RELEASE BLOCKED per §37)
+Release decision: The candidate source is verified and defect-free at P0/P1, but no release-candidate image can be constructed while host/network policy 403s the approved Debian origin; promotion is refused rather than faked, and the single required action sits with the infrastructure/network owner.
+Audit: docs/Audits/muse-final-production-gate.md
+```

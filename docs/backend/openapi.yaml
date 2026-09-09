@@ -270,6 +270,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/saml/callback:
+    post:
+      tags:
+        - auth
+      summary: Saml Callback Post
+      operationId: saml_callback_post_api_v1_auth_saml_callback_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
   /api/v1/workspaces:
     get:
       tags:
@@ -799,7 +812,8 @@ paths:
       tags:
         - memory
       summary: Get Memory History
-      description: DB-backed version history for a memory — EXC-P12-03 durable history.
+      description: "DB-backed version history for a memory \u2014 EXC-P12-03 durable\
+        \ history."
       operationId: get_memory_history_api_v1_memories__memory_id__history_get
       parameters:
         - name: memory_id
@@ -830,8 +844,8 @@ paths:
       tags:
         - memory
       summary: Get Memory Chunks
-      description: Chunk-level provenance for a memory's source document — obsidian
-        chunk view.
+      description: "Chunk-level provenance for a memory's source document \u2014 obsidian\
+        \ chunk view."
       operationId: get_memory_chunks_api_v1_memories__memory_id__chunks_get
       parameters:
         - name: memory_id
@@ -987,6 +1001,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents/runs/{request_id}/cancel:
+    post:
+      tags:
+        - agents
+      summary: Cancel Run
+      description: "Cooperative cancellation of an active agent run (\xA731).\n\n\
+        Sets the durable cancel flag; the orchestrator loop (and any worker\ndriving\
+        \ it) observes the flag before its next consequential step and\nterminates\
+        \ as cancelled/user_cancel without further side effects.\nWorkspace binding\
+        \ is verified twice (caller membership + checkpoint\nownership); unknown runs\
+        \ return 404 to avoid enumeration."
+      operationId: cancel_run_api_v1_agents_runs__request_id__cancel_post
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Request Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRun'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/agents/chat:
     post:
       tags:
@@ -1022,10 +1073,10 @@ paths:
       tags:
         - agents
       summary: Chat Stream
-      description: "Streaming orchestrator chat — phase-by-phase SSE.\n\nEvents:\n\
-        \  intent → plan → act → tool_start/tool_result → observe → reflect → token*\
-        \ → approval_required? → done\nUses the full 5-phase loop (not the simple\
-        \ execute path) with QA gate."
+      description: "Streaming orchestrator chat \u2014 phase-by-phase SSE.\n\nEvents:\n\
+        \  intent \u2192 plan \u2192 act \u2192 tool_start/tool_result \u2192 observe\
+        \ \u2192 reflect \u2192 token* \u2192 approval_required? \u2192 done\nUses\
+        \ the full 5-phase loop (not the simple execute path) with QA gate."
       operationId: chat_stream_api_v1_agents_chat_stream_post
       requestBody:
         content:
@@ -2114,6 +2165,155 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResumeArtifactResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/{resume_id}/source:
+    get:
+      tags:
+        - resumes
+      summary: Get Resume Source
+      operationId: get_resume_source_api_v1_resumes__resume_id__source_get
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeSourceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - resumes
+      summary: Update Resume Source
+      operationId: update_resume_source_api_v1_resumes__resume_id__source_put
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSourceRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeSourceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/{resume_id}/compile-typst:
+    post:
+      tags:
+        - resumes
+      summary: Compile Typst
+      description: "Live Typst compile: source \u2192 PDF. WASM on frontend is primary;\
+        \ this is the backend fallback + artifact persist."
+      operationId: compile_typst_api_v1_resumes__resume_id__compile_typst_post
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompileTypstRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeArtifactResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/resumes/{resume_id}/ai/inline:
+    post:
+      tags:
+        - resumes
+      summary: Inline Ai
+      description: "Overleaf inline AI: select range \u2192 intent \u2192 diff ops.\
+        \ Zero-hallucination via provenance."
+      operationId: inline_ai_api_v1_resumes__resume_id__ai_inline_post
+      parameters:
+        - name: resume_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Resume Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InlineAiRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InlineAiResponse'
         '422':
           description: Validation Error
           content:
@@ -3917,6 +4117,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/admin/agents/usage/budgets:
+    put:
+      tags:
+        - agents
+      summary: Set Agent Budget
+      operationId: set_agent_budget_api_v1_admin_agents_usage_budgets_put
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetSetRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - agents
+      summary: Get Agent Budget
+      operationId: get_agent_budget_api_v1_admin_agents_usage_budgets_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - agents
+      summary: Clear Agent Budget
+      operationId: clear_agent_budget_api_v1_admin_agents_usage_budgets_delete
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/gmail/watch:
     get:
       tags:
@@ -4237,8 +4513,893 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/temporal/workflows/{workflow_id}:
+    get:
+      tags:
+        - temporal
+      summary: Get Workflow Status
+      operationId: get_workflow_status_api_v1_temporal_workflows__workflow_id__get
+      parameters:
+        - name: workflow_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workflow Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/temporal/workflows/{workflow_id}/cancel:
+    post:
+      tags:
+        - temporal
+      summary: Cancel Workflow
+      operationId: cancel_workflow_api_v1_temporal_workflows__workflow_id__cancel_post
+      parameters:
+        - name: workflow_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workflow Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/temporal/workflows/{workflow_id}/signal/{signal_name}:
+    post:
+      tags:
+        - temporal
+      summary: Signal Workflow
+      operationId: signal_workflow_api_v1_temporal_workflows__workflow_id__signal__signal_name__post
+      parameters:
+        - name: workflow_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workflow Id
+        - name: signal_name
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Signal Name
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - type: object
+                  additionalProperties: true
+                - type: 'null'
+              title: Payload
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/temporal/workflows/ingest:
+    post:
+      tags:
+        - temporal
+      summary: Start Ingest Workflow
+      operationId: start_ingest_workflow_api_v1_temporal_workflows_ingest_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+              title: Body
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/temporal/workflows/connector-sync:
+    post:
+      tags:
+        - temporal
+      summary: Start Connector Sync
+      operationId: start_connector_sync_api_v1_temporal_workflows_connector_sync_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+              title: Body
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/temporal/workflows/durable-agent:
+    post:
+      tags:
+        - temporal
+      summary: Start Durable Agent
+      description: "Start DurableAgentRunWorkflow \u2014 LangGraph executes inside\
+        \ DurableAgentRunActivity (ADR-039).\n\nTemporal owns durability, LangGraph\
+        \ owns topology. Input is IDs/refs only; secrets rejected.\nUsed by k6-langgraph\
+        \ and agent chat."
+      operationId: start_durable_agent_api_v1_temporal_workflows_durable_agent_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+              title: Body
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile:
+    get:
+      tags:
+        - profile
+      summary: Get Profile
+      description: Get the current user's profile with memory-derived data.
+      operationId: get_profile_api_v1_profile_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Workspace ID for memory-derived data
+            title: Workspace Id
+          description: Workspace ID for memory-derived data
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - profile
+      summary: Update Profile
+      description: Update the current user's profile.
+      operationId: update_profile_api_v1_profile_put
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/avatar:
+    post:
+      tags:
+        - profile
+      summary: Upload Avatar
+      description: Upload a profile avatar image.
+      operationId: upload_avatar_api_v1_profile_avatar_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_upload_avatar_api_v1_profile_avatar_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvatarUploadResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/avatar/{user_id}:
+    get:
+      tags:
+        - profile
+      summary: Get Avatar
+      description: Retrieve the avatar image for a user.
+      operationId: get_avatar_api_v1_profile_avatar__user_id__get
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/completeness:
+    get:
+      tags:
+        - profile
+      summary: Get Completeness
+      description: Get profile completeness score with suggestions.
+      operationId: get_completeness_api_v1_profile_completeness_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileCompletenessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/skills/confirm:
+    post:
+      tags:
+        - profile
+      summary: Confirm Skill
+      description: Confirm a skill, updating memory and knowledge graph with verified=True.
+      operationId: confirm_skill_api_v1_profile_skills_confirm_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmSkillRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/skills:
+    post:
+      tags:
+        - profile
+      summary: Add Skill
+      description: Add a skill to profile memory and knowledge graph.
+      operationId: add_skill_api_v1_profile_skills_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddSkillRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/skills/{skill_name}:
+    delete:
+      tags:
+        - profile
+      summary: Remove Skill
+      description: Remove a skill from profile memory and knowledge graph.
+      operationId: remove_skill_api_v1_profile_skills__skill_name__delete
+      parameters:
+        - name: skill_name
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Skill Name
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/preferences:
+    put:
+      tags:
+        - profile
+      summary: Update Preferences
+      description: Update job and career preferences in memory.
+      operationId: update_preferences_api_v1_profile_preferences_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateJobPreferencesRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/auto-populate:
+    post:
+      tags:
+        - profile
+      summary: Auto Populate
+      description: Auto-populate user profile, skills, and career memories from workspace
+        resume / documents.
+      operationId: auto_populate_api_v1_profile_auto_populate_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutoPopulateRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/public/{user_id}:
+    get:
+      tags:
+        - profile
+      summary: Get Public Profile
+      description: Get public read-only profile for external sharing.
+      operationId: get_public_profile_api_v1_profile_public__user_id__get
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/ats-readiness:
+    get:
+      tags:
+        - profile
+      summary: Get Ats Readiness
+      description: Calculate live ATS readiness score and skill matches/gaps.
+      operationId: get_ats_readiness_api_v1_profile_ats_readiness_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ATSReadinessResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/recommendations:
+    get:
+      tags:
+        - profile
+      summary: Get Recommendations
+      description: Get proactive agent recommendations tailored for the profile.
+      operationId: get_recommendations_api_v1_profile_recommendations_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProfileRecommendationItem'
+                title: Response Get Recommendations Api V1 Profile Recommendations
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/career:
+    post:
+      tags:
+        - profile
+      summary: Add Career
+      description: Add a new career experience entry to Memory and Entity graph.
+      operationId: add_career_api_v1_profile_career_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCareerEntryRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/career/{company}:
+    put:
+      tags:
+        - profile
+      summary: Update Career
+      description: Update an existing career experience entry in Memory and Entity
+        graph.
+      operationId: update_career_api_v1_profile_career__company__put
+      parameters:
+        - name: company
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCareerEntryRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - profile
+      summary: Delete Career
+      description: Delete a career experience entry from Memory and Entity graph.
+      operationId: delete_career_api_v1_profile_career__company__delete
+      parameters:
+        - name: company
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Company
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/activity:
+    get:
+      tags:
+        - profile
+      summary: Get Profile Activity
+      description: Get profile-specific activity stream.
+      operationId: get_profile_activity_api_v1_profile_activity_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProfileActivityItem'
+                title: Response Get Profile Activity Api V1 Profile Activity Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/opportunities/match:
+    post:
+      tags:
+        - opportunities
+      summary: Match Single Opportunity
+      description: Match a single opportunity against the user's demonstrated capability
+        profile.
+      operationId: match_single_opportunity_api_v1_opportunities_match_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Match Single Opportunity Api V1 Opportunities Match
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/opportunities/rank:
+    post:
+      tags:
+        - opportunities
+      summary: Rank Opportunities
+      description: Rank a list of candidate opportunities using PIOS matcher_core.
+      operationId: rank_opportunities_api_v1_opportunities_rank_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchMatchRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Rank Opportunities Api V1 Opportunities Rank Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/council/review:
+    post:
+      tags:
+        - council
+      summary: Review Artifact
+      description: 'Submits an artifact to the 5-Agent Council (Skeptic, Voice, Evidence,
+        Strategy, Adjudicator)
+
+        for a 2-round deliberation and returns a binding SHIP, REVISE, or HOLD verdict.'
+      operationId: review_artifact_api_v1_council_review_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouncilReviewRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouncilVerdict'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/council/triage:
+    post:
+      tags:
+        - council
+      summary: Triage Artifact
+      description: 'Phase 1 Triage check: determines if artifact requires full council
+        review.'
+      operationId: triage_artifact_api_v1_council_triage_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouncilTriageRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Triage Artifact Api V1 Council Triage Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
+    ATSReadinessResponse:
+      properties:
+        score:
+          type: integer
+          title: Score
+        status_label:
+          type: string
+          title: Status Label
+        target_role:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Target Role
+        total_skills_count:
+          type: integer
+          title: Total Skills Count
+          default: 0
+        matching_skills:
+          items:
+            type: string
+          type: array
+          title: Matching Skills
+          default: []
+        missing_skills:
+          items:
+            type: string
+          type: array
+          title: Missing Skills
+          default: []
+        suggestions:
+          items:
+            type: string
+          type: array
+          title: Suggestions
+          default: []
+        keyword_match_pct:
+          type: number
+          title: Keyword Match Pct
+          default: 0.0
+      type: object
+      required:
+        - score
+        - status_label
+      title: ATSReadinessResponse
+    AddCareerEntryRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        company:
+          type: string
+          title: Company
+        role:
+          type: string
+          title: Role
+        start_date:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Start Date
+        end_date:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: End Date
+        achievements:
+          items:
+            type: string
+          type: array
+          title: Achievements
+          default: []
+      type: object
+      required:
+        - workspace_id
+        - company
+        - role
+      title: AddCareerEntryRequest
+    AddSkillRequest:
+      properties:
+        skill_name:
+          type: string
+          title: Skill Name
+        workspace_id:
+          type: string
+          title: Workspace Id
+        confidence:
+          type: number
+          title: Confidence
+          default: 1.0
+      type: object
+      required:
+        - skill_name
+        - workspace_id
+      title: AddSkillRequest
     AgentCreate:
       properties:
         name:
@@ -4658,6 +5819,49 @@ components:
         - access_token
         - user
       title: AuthResponse
+    AutoPopulateRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+      type: object
+      required:
+        - workspace_id
+      title: AutoPopulateRequest
+    AvatarUploadResponse:
+      properties:
+        avatar_url:
+          type: string
+          title: Avatar Url
+      type: object
+      required:
+        - avatar_url
+      title: AvatarUploadResponse
+    BatchMatchRequest:
+      properties:
+        opportunities:
+          items:
+            $ref: '#/components/schemas/OpportunityDTO'
+          type: array
+          title: Opportunities
+        top_k:
+          type: integer
+          title: Top K
+          default: 10
+      type: object
+      required:
+        - opportunities
+      title: BatchMatchRequest
+    Body_upload_avatar_api_v1_profile_avatar_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+        - file
+      title: Body_upload_avatar_api_v1_profile_avatar_post
     Body_upload_document_api_v1_documents_post:
       properties:
         file:
@@ -4668,6 +5872,70 @@ components:
       required:
         - file
       title: Body_upload_document_api_v1_documents_post
+    BudgetSetRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+          description: Workspace ID
+        limit_usd:
+          type: number
+          minimum: 0.0
+          title: Limit Usd
+          description: Max LLM spend in USD per period
+        period_hours:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Period Hours
+          description: Budget window in hours
+          default: 24.0
+      type: object
+      required:
+        - workspace_id
+        - limit_usd
+      title: BudgetSetRequest
+    CancelRun:
+      properties:
+        workspaceId:
+          type: string
+          title: Workspaceid
+      type: object
+      required:
+        - workspaceId
+      title: CancelRun
+    CareerEntry:
+      properties:
+        company:
+          type: string
+          title: Company
+        role:
+          type: string
+          title: Role
+        start_date:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Start Date
+        end_date:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: End Date
+        achievements:
+          items:
+            type: string
+          type: array
+          title: Achievements
+          default: []
+        confidence:
+          type: number
+          title: Confidence
+          default: 0.0
+      type: object
+      required:
+        - company
+        - role
+      title: CareerEntry
     ChatMessage:
       properties:
         workspaceId:
@@ -4723,6 +5991,46 @@ components:
       required:
         - template_slug
       title: CompileResumeRequest
+    CompileTypstRequest:
+      properties:
+        template_slug:
+          type: string
+          minLength: 1
+          title: Template Slug
+          default: jakes-resume
+        typst_source:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Typst Source
+          description: Raw Typst source; if omitted uses stored source or transpiles
+            from JSON
+        format:
+          type: string
+          pattern: ^(pdf|html)$
+          title: Format
+          default: pdf
+        max_pages:
+          type: integer
+          maximum: 3.0
+          minimum: 1.0
+          title: Max Pages
+          default: 2
+      type: object
+      title: CompileTypstRequest
+    ConfirmSkillRequest:
+      properties:
+        skill_name:
+          type: string
+          title: Skill Name
+        workspace_id:
+          type: string
+          title: Workspace Id
+      type: object
+      required:
+        - skill_name
+        - workspace_id
+      title: ConfirmSkillRequest
     ConnectorResponse:
       properties:
         id:
@@ -4794,6 +6102,100 @@ components:
         - agent_access
         - email_marketing
       title: ConsentScope
+    CouncilReviewRequest:
+      properties:
+        artifact:
+          type: string
+          minLength: 1
+          title: Artifact
+          description: Text or code artifact to evaluate
+        artifact_type:
+          type: string
+          title: Artifact Type
+          description: text, code, resume, cover_letter, proposal
+          default: text
+        context:
+          additionalProperties: true
+          type: object
+          title: Context
+          description: Additional metadata or user context
+        mode:
+          type: string
+          title: Mode
+          description: collaborative or adversarial
+          default: collaborative
+      type: object
+      required:
+        - artifact
+      title: CouncilReviewRequest
+    CouncilTriageRequest:
+      properties:
+        artifact:
+          type: string
+          title: Artifact
+      type: object
+      required:
+        - artifact
+      title: CouncilTriageRequest
+    CouncilVerdict:
+      properties:
+        verdict:
+          $ref: '#/components/schemas/CouncilVerdictType'
+        overall_score:
+          type: number
+          title: Overall Score
+        confidence:
+          type: number
+          title: Confidence
+        summary:
+          type: string
+          title: Summary
+        revision_brief:
+          items:
+            type: string
+          type: array
+          title: Revision Brief
+        irreducible_flaws:
+          items:
+            type: string
+          type: array
+          title: Irreducible Flaws
+        reducible_flaws:
+          items:
+            type: string
+          type: array
+          title: Reducible Flaws
+        round_1_critiques:
+          additionalProperties:
+            $ref: '#/components/schemas/DeliberatorCritique'
+          type: object
+          title: Round 1 Critiques
+        round_2_rebuttals:
+          items:
+            $ref: '#/components/schemas/RebuttalEntry'
+          type: array
+          title: Round 2 Rebuttals
+        bypassed_triage:
+          type: boolean
+          title: Bypassed Triage
+          default: false
+        timestamp:
+          type: string
+          title: Timestamp
+      type: object
+      required:
+        - verdict
+        - overall_score
+        - confidence
+        - summary
+      title: CouncilVerdict
+    CouncilVerdictType:
+      type: string
+      enum:
+        - SHIP
+        - REVISE
+        - HOLD
+      title: CouncilVerdictType
     CoverLetterRequest:
       properties:
         body:
@@ -4999,6 +6401,49 @@ components:
       required:
         - name
       title: CreateWorkspaceRequest
+    DeliberatorCritique:
+      properties:
+        role:
+          $ref: '#/components/schemas/DeliberatorRole'
+        stance:
+          type: string
+          title: Stance
+          default: PASS
+        analysis:
+          type: string
+          title: Analysis
+        irreducible_flaws:
+          items:
+            type: string
+          type: array
+          title: Irreducible Flaws
+        reducible_flaws:
+          items:
+            type: string
+          type: array
+          title: Reducible Flaws
+        confidence:
+          type: number
+          title: Confidence
+          default: 0.85
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+      type: object
+      required:
+        - role
+        - analysis
+      title: DeliberatorCritique
+    DeliberatorRole:
+      type: string
+      enum:
+        - skeptic
+        - voice_identity
+        - evidence_calibration
+        - strategy_stakes
+        - adjudicator
+      title: DeliberatorRole
     DocumentActionListResponse:
       properties:
         actions:
@@ -5126,6 +6571,11 @@ components:
             - type: string
             - type: 'null'
           title: Summary
+        raw_storage_key:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Raw Storage Key
         metadata:
           anyOf:
             - additionalProperties: true
@@ -5541,6 +6991,65 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    InlineAiRequest:
+      properties:
+        start_line:
+          type: integer
+          minimum: 1.0
+          title: Start Line
+          description: 1-indexed start line of selection
+        end_line:
+          type: integer
+          minimum: 1.0
+          title: End Line
+          description: 1-indexed end line of selection
+        intent:
+          type: string
+          title: Intent
+          description: tailor|condense|xyz|ats_fix
+          default: tailor
+        target_jd:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Target Jd
+          description: Target job description for tailoring
+        selected_text:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Selected Text
+          description: Explicit selected text; if omitted extracted from source lines
+      type: object
+      required:
+        - start_line
+        - end_line
+      title: InlineAiRequest
+    InlineAiResponse:
+      properties:
+        diff:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Diff
+        suggestions:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Suggestions
+          default: []
+        ats_score:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Ats Score
+      type: object
+      required:
+        - diff
+      title: InlineAiResponse
     IntegrationCreate:
       properties:
         name:
@@ -5673,6 +7182,38 @@ components:
         - error
         - created_at
       title: JobExecutionResponse
+    JobPreferences:
+      properties:
+        job_types:
+          items:
+            type: string
+          type: array
+          title: Job Types
+          default: []
+        salary_range:
+          additionalProperties: true
+          type: object
+          title: Salary Range
+          default: {}
+        preferred_industries:
+          items:
+            type: string
+          type: array
+          title: Preferred Industries
+          default: []
+        dealbreakers:
+          items:
+            type: string
+          type: array
+          title: Dealbreakers
+          default: []
+        remote_preference:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Remote Preference
+      type: object
+      title: JobPreferences
     JobResponse:
       properties:
         id:
@@ -5781,6 +7322,18 @@ components:
         - email
         - password
       title: LoginRequest
+    MatchRequest:
+      properties:
+        opportunity:
+          $ref: '#/components/schemas/OpportunityDTO'
+        connected_entities_count:
+          type: integer
+          title: Connected Entities Count
+          default: 0
+      type: object
+      required:
+        - opportunity
+      title: MatchRequest
     McpCallRequest:
       properties:
         tool_name:
@@ -5843,8 +7396,25 @@ components:
             - working
             - note
             - fact
+            - project
+            - skill
+            - organization
+            - relationship
+            - event
+            - insight
+            - goal
+            - feedback
+            - decision
+            - knowledge
+            - reference
+            - contact
+            - financial
+            - health
+            - learning
+            - workflow
           title: Type
-          description: One of the 6 canonical memory types
+          description: One of 22 memory types (6 canonical + 16 enterprise additive
+            per CONT-P12 expand-contract 0027)
         domain:
           anyOf:
             - type: string
@@ -6083,6 +7653,25 @@ components:
         - memory
         - score
       title: MemorySearchResult
+    MemorySummary:
+      properties:
+        type:
+          type: string
+          title: Type
+        count:
+          type: integer
+          title: Count
+        last_updated:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Last Updated
+      type: object
+      required:
+        - type
+        - count
+      title: MemorySummary
     MemoryUpdate:
       properties:
         type:
@@ -6092,6 +7681,30 @@ components:
               minLength: 1
             - type: 'null'
           title: Type
+          description: 22 types allowed; see 0027 ck_memories_type_valid
+        taxonomy_version:
+          anyOf:
+            - type: integer
+              maximum: 2.0
+              minimum: 1.0
+            - type: 'null'
+          title: Taxonomy Version
+          description: expand-contract version 1=legacy 6, 2=expanded 22
+        lineage:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Lineage
+          description: model/prompt/tool/retrieval lineage per CONT-P12-R06
+        confidence:
+          anyOf:
+            - type: number
+              maximum: 1.0
+              minimum: 0.0
+            - type: 'null'
+          title: Confidence
+          description: contradiction/confidence per WS-12.2 task 4
         domain:
           anyOf:
             - type: string
@@ -6252,6 +7865,248 @@ components:
         - created_at
         - updated_at
       title: NotificationResponse
+    OpportunityDTO:
+      properties:
+        id:
+          type: string
+          title: Id
+        title:
+          type: string
+          title: Title
+        company:
+          type: string
+          title: Company
+        type:
+          type: string
+          title: Type
+          default: job
+        required_skills:
+          items:
+            type: string
+          type: array
+          title: Required Skills
+          default: []
+        location:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Location
+        url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Url
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+      type: object
+      required:
+        - title
+        - company
+      title: OpportunityDTO
+    ProfileActivityItem:
+      properties:
+        id:
+          type: string
+          title: Id
+        type:
+          type: string
+          title: Type
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        timestamp:
+          type: string
+          title: Timestamp
+        status:
+          type: string
+          title: Status
+          default: completed
+        agent_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Agent Name
+      type: object
+      required:
+        - id
+        - type
+        - title
+        - description
+        - timestamp
+      title: ProfileActivityItem
+    ProfileCompletenessResponse:
+      properties:
+        score:
+          type: integer
+          title: Score
+        total_fields:
+          type: integer
+          title: Total Fields
+        filled_fields:
+          type: integer
+          title: Filled Fields
+        suggestions:
+          items:
+            additionalProperties:
+              type: string
+            type: object
+          type: array
+          title: Suggestions
+          default: []
+      type: object
+      required:
+        - score
+        - total_fields
+        - filled_fields
+      title: ProfileCompletenessResponse
+    ProfileRecommendationItem:
+      properties:
+        id:
+          type: string
+          title: Id
+        agent_name:
+          type: string
+          title: Agent Name
+        category:
+          type: string
+          title: Category
+        title:
+          type: string
+          title: Title
+        description:
+          type: string
+          title: Description
+        action_label:
+          type: string
+          title: Action Label
+        action_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Action Url
+        impact:
+          type: string
+          title: Impact
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - agent_name
+        - category
+        - title
+        - description
+        - action_label
+        - impact
+        - created_at
+      title: ProfileRecommendationItem
+    ProfileResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        email:
+          type: string
+          title: Email
+        display_name:
+          type: string
+          title: Display Name
+        avatar_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Avatar Url
+        bio:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Bio
+        headline:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Headline
+        location:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Location
+        phone:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Phone
+        social_links:
+          additionalProperties:
+            type: string
+          type: object
+          title: Social Links
+          default: {}
+        job_title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Job Title
+        auth_provider:
+          type: string
+          title: Auth Provider
+          default: email
+        preferences:
+          additionalProperties: true
+          type: object
+          title: Preferences
+          default: {}
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        skills:
+          items:
+            $ref: '#/components/schemas/SkillItem'
+          type: array
+          title: Skills
+          default: []
+        career_history:
+          items:
+            $ref: '#/components/schemas/CareerEntry'
+          type: array
+          title: Career History
+          default: []
+        job_preferences:
+          anyOf:
+            - $ref: '#/components/schemas/JobPreferences'
+            - type: 'null'
+        memory_summary:
+          items:
+            $ref: '#/components/schemas/MemorySummary'
+          type: array
+          title: Memory Summary
+          default: []
+        years_experience:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Years Experience
+      type: object
+      required:
+        - id
+        - email
+        - display_name
+        - created_at
+        - updated_at
+      title: ProfileResponse
     ProviderKeyCreate:
       properties:
         provider:
@@ -6377,6 +8232,72 @@ components:
           title: Is Active
       type: object
       title: ProviderKeyUpdate
+    PublicProfileResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        display_name:
+          type: string
+          title: Display Name
+        avatar_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Avatar Url
+        bio:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Bio
+        headline:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Headline
+        location:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Location
+        job_title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Job Title
+        social_links:
+          additionalProperties:
+            type: string
+          type: object
+          title: Social Links
+          default: {}
+        skills:
+          items:
+            $ref: '#/components/schemas/SkillItem'
+          type: array
+          title: Skills
+          default: []
+        career_history:
+          items:
+            $ref: '#/components/schemas/CareerEntry'
+          type: array
+          title: Career History
+          default: []
+        years_experience:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Years Experience
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - display_name
+        - created_at
+      title: PublicProfileResponse
     PublicUser:
       properties:
         id:
@@ -6389,6 +8310,11 @@ components:
         display_name:
           type: string
           title: Display Name
+        avatar_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Avatar Url
         auth_provider:
           type: string
           title: Auth Provider
@@ -6419,6 +8345,25 @@ components:
           title: Message
       type: object
       title: PushNotificationRequest
+    RebuttalEntry:
+      properties:
+        reviewer_role:
+          $ref: '#/components/schemas/DeliberatorRole'
+        target_role:
+          $ref: '#/components/schemas/DeliberatorRole'
+        agreement:
+          type: boolean
+          title: Agreement
+        rebuttal_comment:
+          type: string
+          title: Rebuttal Comment
+      type: object
+      required:
+        - reviewer_role
+        - target_role
+        - agreement
+        - rebuttal_comment
+      title: RebuttalEntry
     RefreshRequest:
       properties:
         refresh_token:
@@ -6516,6 +8461,52 @@ components:
         - created_at
         - updated_at
       title: ResumeResponse
+    ResumeSourceResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        resume_id:
+          type: string
+          format: uuid
+          title: Resume Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        path:
+          type: string
+          title: Path
+          default: main.typ
+        content:
+          type: string
+          title: Content
+        lang:
+          type: string
+          title: Lang
+          default: typst
+        version:
+          type: integer
+          title: Version
+          default: 1
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - resume_id
+        - workspace_id
+        - content
+        - created_at
+        - updated_at
+      title: ResumeSourceResponse
     ResumeTemplateResponse:
       properties:
         slug:
@@ -6757,6 +8748,57 @@ components:
         - email
         - password
       title: SignupRequest
+    SkillItem:
+      properties:
+        name:
+          type: string
+          title: Name
+        confidence:
+          type: number
+          title: Confidence
+          default: 0.0
+        source:
+          type: string
+          title: Source
+          default: memory
+        verified:
+          type: boolean
+          title: Verified
+          default: false
+        tag:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tag
+        validation_tier:
+          type: string
+          title: Validation Tier
+          default: V1
+        effective_confidence:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Effective Confidence
+        decay_status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Decay Status
+          default: fresh
+        decay_factor:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Decay Factor
+          default: 1.0
+        is_matchable:
+          type: boolean
+          title: Is Matchable
+          default: false
+      type: object
+      required:
+        - name
+      title: SkillItem
     SubscribeRequest:
       properties:
         url:
@@ -6940,6 +8982,37 @@ components:
       required:
         - start_id
       title: TraverseRequest
+    UpdateCareerEntryRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        role:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Role
+        start_date:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Start Date
+        end_date:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: End Date
+        achievements:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Achievements
+      type: object
+      required:
+        - workspace_id
+      title: UpdateCareerEntryRequest
     UpdateConnectorRequest:
       properties:
         name:
@@ -6957,6 +9030,43 @@ components:
           title: Config
       type: object
       title: UpdateConnectorRequest
+    UpdateJobPreferencesRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        job_types:
+          items:
+            type: string
+          type: array
+          title: Job Types
+          default: []
+        salary_range:
+          additionalProperties: true
+          type: object
+          title: Salary Range
+          default: {}
+        preferred_industries:
+          items:
+            type: string
+          type: array
+          title: Preferred Industries
+          default: []
+        dealbreakers:
+          items:
+            type: string
+          type: array
+          title: Dealbreakers
+          default: []
+        remote_preference:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Remote Preference
+      type: object
+      required:
+        - workspace_id
+      title: UpdateJobPreferencesRequest
     UpdateJobRequest:
       properties:
         name:
@@ -7030,6 +9140,79 @@ components:
           title: Properties
       type: object
       title: UpdateNodeRequest
+    UpdateProfileRequest:
+      properties:
+        display_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Display Name
+        bio:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Bio
+        headline:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Headline
+        location:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Location
+        phone:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Phone
+        social_links:
+          anyOf:
+            - additionalProperties:
+                type: string
+              type: object
+            - type: 'null'
+          title: Social Links
+        job_title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Job Title
+        avatar_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Avatar Url
+        preferences:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Preferences
+      type: object
+      title: UpdateProfileRequest
+    UpdateSourceRequest:
+      properties:
+        content:
+          type: string
+          minLength: 1
+          title: Content
+          description: Raw Typst/LaTeX source text
+        path:
+          type: string
+          minLength: 1
+          title: Path
+          default: main.typ
+        lang:
+          type: string
+          pattern: ^(typst|latex|html)$
+          title: Lang
+          default: typst
+      type: object
+      required:
+        - content
+      title: UpdateSourceRequest
     UpdateWorkspaceRequest:
       properties:
         name:

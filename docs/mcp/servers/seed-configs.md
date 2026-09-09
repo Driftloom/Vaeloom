@@ -37,6 +37,7 @@ curl $API/api/v1/connectors/<id>/mcp/tools -H "Authorization: Bearer $TOKEN"
 | **Google Drive**                       | stdio     | `npx -y @modelcontextprotocol/server-gdrive`                           | Read-only Drive search & file content extraction                                                                                                                      |
 | **Gmail (Official Google Remote MCP)** | http      | `https://gmailmcp.googleapis.com/mcp/v1`                               | Google's remote MCP API (Developer Preview); requires `headers.Authorization: "Bearer <ACCESS_TOKEN>"` (encrypted at rest)                                            |
 | **Obsidian**                           | stdio     | `npx -y mcp-obsidian <vault-path>`                                     | Sync interview prep notes / roadmaps                                                                                                                                  |
+| **NotebookLM (PIOS Blueprint)**        | stdio     | `notebooklm-mcp`                                                       | Grounded query & synthesis over PIOS Blueprint (`610611eb-a7df-4315-b717-c7398df55441`)                                                                               |
 
 ## Config reference
 
